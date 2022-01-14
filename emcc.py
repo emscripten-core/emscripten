@@ -1135,7 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('stopping after linking to object file')
     return 0
 
-  phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs)
+  phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs, options)
 
   phase_link(linker_arguments, wasm_target)
 
@@ -1415,15 +1415,6 @@ def phase_setup(options, state, newargs, settings_map):
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     if settings.EXCEPTION_HANDLING:
       exit_with_error('Wasm SjLj is not supported with Wasm exceptions yet')
-
-  if settings.WASMFS and options.embed_files:
-    # wasmfs file embedding is done via emitting C code that contains the data
-    # and code to set them up. we add that as another input
-    wasmfs_temp_file = '/tmp/emscripten_temp/waka.c' # shared.configuration.get_temp_files().get(suffix='.c').name
-    print(package_files(options, 'waka'))
-    with open(wasmfs_temp_file, 'w') as f:
-      f.write(package_files(options, 'waka'))
-    input_files.append((len(input_files), wasmfs_temp_file))
 
   return (newargs, input_files)
 
@@ -2629,7 +2620,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs):
+def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs, options):
   extra_files_to_link = []
   # link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
@@ -2638,6 +2629,20 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
   all_linker_inputs = [f for _, f in sorted(linker_inputs)] + extra_files_to_link
   extra_files_to_link += system_libs.calculate(all_linker_inputs, newargs, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
+
+  if settings.WASMFS and options.embed_files:
+    # wasmfs file embedding is done via emitting C code that contains the data
+    # and code to set them up. we add that as another input, like a system
+    # library, that we compile on the fly here
+    temp_files = shared.configuration.get_temp_files()
+    temp_c = temp_files.get(suffix='.c').name
+    temp_o = unsuffixed(temp_c) + '.o'
+    temp_files.note(temp_o)
+    #print(package_files(options, 'waka'))
+    with open(temp_c, 'w') as f:
+      f.write(package_files(options, 'waka'))
+    shared.check_call([shared.CLANG_CC, temp_c, '-o', temp_o, '-c'] + get_cflags([]))
+    linker_arguments.append(temp_o)
 
 
 @ToolchainProfiler.profile_block('link')
