@@ -26,7 +26,7 @@ class interactive(BrowserCore):
     print()
 
   def test_html5_fullscreen(self):
-    self.btest(test_file('test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-s', 'EXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
+    self.btest(test_file('test_html5_fullscreen.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
 
   def test_html5_emscripten_exit_with_escape(self):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', args=['-DEXIT_WITH_F'])
@@ -35,10 +35,10 @@ class interactive(BrowserCore):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
 
   def test_html5_mouse(self):
-    self.btest(test_file('test_html5_mouse.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest(test_file('test_html5_mouse.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_html5_pointerlockerror(self):
-    self.btest(test_file('test_html5_pointerlockerror.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest(test_file('test_html5_pointerlockerror.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_sdl_mousewheel(self):
     self.btest_exit(test_file('test_sdl_mousewheel.c'))
@@ -53,7 +53,7 @@ class interactive(BrowserCore):
     self.btest_exit('sdl_fullscreen_samecanvassize.c')
 
   def test_sdl2_togglefullscreen(self):
-    self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
+    self.btest('sdl_togglefullscreen.c', expected='1', args=['-sUSE_SDL=2'])
 
   def test_sdl_audio(self):
     shutil.copyfile(test_file('sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -63,7 +63,7 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=_main,_play,_play2'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=_main,_play,_play2'])
     self.run_browser('page.html', '', '/report_result?1')
 
     # print('SDL2')
@@ -72,12 +72,12 @@ class interactive(BrowserCore):
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=[_main,_play,_play2', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=[_main,_play,_play2', '-sUSE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
   @parameterized({
     '': ([],),
-    'wasmfs': (['-s', 'WASMFS'],),
+    'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix_channels(self, args):
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -87,7 +87,7 @@ class interactive(BrowserCore):
 
   @parameterized({
     '': ([],),
-    'wasmfs': (['-s', 'WASMFS'],),
+    'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix(self, args):
     shutil.copyfile(test_file('sounds', 'pluck.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -101,21 +101,21 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=_main,_play'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=_main,_play'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest([test_file('sdl_audio_beep.cpp'), '-O2', '--closure=1', '--minify=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
+    self.compile_btest([test_file('sdl_audio_beep.cpp'), '-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), 'sound.wav')
     self.btest_exit('sdl2_mixer_wav.c', args=[
       '-O2',
-      '-s', 'USE_SDL=2',
-      '-s', 'USE_SDL_MIXER=2',
-      '-s', 'INITIAL_MEMORY=33554432',
+      '-sUSE_SDL=2',
+      '-sUSE_SDL_MIXER=2',
+      '-sINITIAL_MEMORY=33554432',
       '--preload-file', 'sound.wav'
     ])
 
@@ -132,21 +132,21 @@ class interactive(BrowserCore):
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
       '-DFLAGS=' + flags,
-      '-s', 'USE_SDL=2',
-      '-s', 'USE_SDL_MIXER=2',
-      '-s', 'SDL2_MIXER_FORMATS=' + json.dumps(formats),
-      '-s', 'INITIAL_MEMORY=33554432'
+      '-sUSE_SDL=2',
+      '-sUSE_SDL_MIXER=2',
+      '-sSDL2_MIXER_FORMATS=' + json.dumps(formats),
+      '-sINITIAL_MEMORY=33554432'
     ])
 
   def zzztest_sdl2_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl2_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_SDL=2', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl2_audio_beep.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_playback(self):
     shutil.copyfile(test_file('sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
 
-    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
+    for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
       self.compile_btest(['-O2', test_file('openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
       self.run_browser('page.html', '', '/report_result?1')
 
@@ -203,22 +203,22 @@ class interactive(BrowserCore):
     self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
-    self.btest_exit('test_glfw_cursor_disabled.c', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_dropfile(self):
-    self.btest_exit('test_glfw_dropfile.c', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_dropfile.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_fullscreen(self):
-    self.btest_exit('test_glfw_fullscreen.c', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_fullscreen.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_get_key_stuck(self):
-    self.btest_exit('test_glfw_get_key_stuck.c', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_get_key_stuck.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_joystick(self):
-    self.btest_exit('glfw_joystick.c', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('glfw_joystick.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
-    self.btest_exit('test_glfw_pointerlock.c', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_pointerlock.c', args=['-sUSE_GLFW=3'])
 
   def test_glut_fullscreen(self):
     self.skipTest('looks broken')
@@ -229,11 +229,11 @@ class interactive(BrowserCore):
 
   def test_threadprofiler(self):
     args = ['-O2', '--threadprofiler',
-            '-s', 'USE_PTHREADS',
-            '-s', 'ASSERTIONS',
+            '-sUSE_PTHREADS',
+            '-sASSERTIONS',
             '-DTEST_THREAD_PROFILING=1',
-            '-s', 'PTHREAD_POOL_SIZE=16',
-            '-s', 'INITIAL_MEMORY=64mb',
+            '-sPTHREAD_POOL_SIZE=16',
+            '-sINITIAL_MEMORY=64mb',
             '--shell-file', test_file('pthread', 'test_pthread_mandelbrot_shell.html')]
     self.btest_exit('pthread/test_pthread_mandelbrot.cpp', args=args)
 
@@ -241,23 +241,23 @@ class interactive(BrowserCore):
   def test_html5_callbacks_on_calling_thread(self):
     # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
     for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
   # and that the application can manually proxy the event from main browser thread to the application main thread, to
   # implement event suppression capabilities.
   def test_html5_callback_on_two_threads(self):
     # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
-    for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
+    for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
       self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
 
   # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
   def test_emscripten_hide_mouse(self):
-    for args in [[], ['-s', 'USE_PTHREADS']]:
+    for args in [[], ['-sUSE_PTHREADS']]:
       self.btest('emscripten_hide_mouse.c', expected='0', args=args)
 
   # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
   # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
   def test_webgl_offscreen_canvas_in_two_pthreads(self):
-    for args in [['-s', 'OFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-s', 'OFFSCREEN_FRAMEBUFFER']]:
-      self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS', '-lGL', '-s', 'GL_DEBUG', '-s', 'PROXY_TO_PTHREAD'])
+    for args in [['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']]:
+      self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-sUSE_PTHREADS', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
