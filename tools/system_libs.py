@@ -121,6 +121,7 @@ def get_libc_rt_files(is_optz=False, superset=False):
     'exp2.c',
     'exp2f.c', 'exp2f_data.c',
     'exp10.c', 'exp10f.c',
+    'ldexp.c', 'ldexpf.c', 'ldexpl.c',
     'scalbn.c', '__fpclassifyl.c',
     '__signbitl.c', '__signbitf.c', '__signbit.c',
     '__math_divzero.c', '__math_divzerof.c',
@@ -1857,6 +1858,10 @@ def install_system_headers(stamp):
   bin_src = utils.path_from_root('system/bin')
   bin_dest = shared.Cache.get_sysroot_dir('bin')
   copytree_exist_ok(bin_src, bin_dest)
+
+  cmake_src = utils.path_from_root('system/lib/cmake')
+  cmake_dest = shared.Cache.get_sysroot_dir('lib', 'cmake')
+  copytree_exist_ok(cmake_src, cmake_dest)
 
   # Create a stamp file that signal the the header have been installed
   # Removing this file, or running `emcc --clear-cache` or running

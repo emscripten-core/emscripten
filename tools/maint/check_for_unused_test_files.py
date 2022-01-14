@@ -18,6 +18,7 @@ ignore_dirs = set([
   '__pycache__',
 ])
 ignore_files = set([
+  'getValue_setValue_assert.out',
   'legacy_exported_runtime_numbers_assert.out',
 ])
 ignore_root_patterns = ['runner.*', 'test_*.py']
@@ -47,6 +48,9 @@ def check_file(dirpath, filename):
       return
     if any(fnmatch.fnmatch(filename, pattern) for pattern in ignore_root_patterns):
       return
+
+  if os.path.basename(filename) in ignore_files:
+    return
 
   # .out files are live if and only if they live alongside a live source file
   if ext == '.out' and os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c'):

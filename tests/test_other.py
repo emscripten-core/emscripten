@@ -766,6 +766,12 @@ f.close()
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
 
+  def test_cmake_find_sdl2(self):
+    os.mkdir('build')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_sdl2')], cwd='build')
+    self.run_process(['cmake', '--build', 'build'])
+    self.assertContained('SDL version: 2.0.', self.run_js('build/sdl2.js'))
+
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 
@@ -4536,6 +4542,9 @@ int main() {
 }
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'SAFE_HEAP'])
+
+  def test_bad_lookup(self):
+    self.do_runf(path_from_root('tests/filesystem/bad_lookup.cpp'), expected_output='ok')
 
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
