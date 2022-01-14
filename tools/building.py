@@ -1520,6 +1520,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   cmd += get_binaryen_feature_flags()
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
+  # TODO: all tools should support source maps; wasm-ctor-eval does not atm,
+  #       for example
   if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
