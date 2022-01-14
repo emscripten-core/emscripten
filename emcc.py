@@ -3927,6 +3927,7 @@ def is_int(s):
     return False
 
 
+@ToolchainProfiler.profile()
 def main(args):
   start_time = time.time()
   ret = run(args)

@@ -394,7 +394,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(params, opt_level, link_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
-      args = [compiler, test_file('hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
+      if has_malloc:
+        filename = test_file('hello_world_loop_malloc.c')
+      else:
+        filename = test_file('hello_world_loop.c')
+      args = [compiler, filename] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
@@ -571,7 +575,7 @@ f.close()
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
     conf = os.path.expanduser(config.EM_CONFIG)
-    proc = self.run_process([EMAR, '--em-config', conf, '-version'], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([EMAR, '--em-config', conf, '--version'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.stderr, "")
     self.assertContained('LLVM', proc.stdout)
 
@@ -761,6 +765,12 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+
+  def test_cmake_find_sdl2(self):
+    os.mkdir('build')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_sdl2')], cwd='build')
+    self.run_process(['cmake', '--build', 'build'])
+    self.assertContained('SDL version: 2.0.', self.run_js('build/sdl2.js'))
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -4533,6 +4543,9 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'SAFE_HEAP'])
 
+  def test_bad_lookup(self):
+    self.do_runf(path_from_root('tests/filesystem/bad_lookup.cpp'), expected_output='ok')
+
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
     # forced libs is ok, they were there anyhow
@@ -7879,6 +7892,12 @@ end
 
     self.run_process([emprofile, '--graph'])
     self.assertTrue(glob.glob('toolchain_profiler.results*.html'))
+
+  @with_env_modify({'EMPROFILE': '2'})
+  def test_toolchain_profiler_stderr(self):
+    stderr = self.run_process([EMCC, test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('start block "main"', stderr)
+    self.assertContained('block "main" took', stderr)
 
   def test_noderawfs(self):
     fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
@@ -11388,3 +11407,7 @@ void foo() {}
       }
     ''')
     self.run_process([EMCC, 'main.c', os.path.join('foo', 'foo bar.c')])
+
+  def test_tutorial(self):
+    # Ensure that files referenced in Tutorial.rst are buildable
+    self.run_process([EMCC, test_file('hello_world_file.cpp')])
