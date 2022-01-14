@@ -4616,6 +4616,9 @@ window.close = function() {
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'])
 
+  def test_fetch_headers_received(self):
+    self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
