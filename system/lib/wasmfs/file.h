@@ -139,6 +139,9 @@ class DataFile : public File {
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
+  // TODO: Design a proper API for flushing files.
+  virtual void flush() = 0;
+
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile(mode_t mode, backend_t backend)
@@ -160,6 +163,11 @@ public:
     }
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile()->write(buf, len, offset);
+    }
+
+    // TODO: Design a proper API for flushing files.
+    void flush() {
+      getFile()->flush();
     }
 
     // This function loads preloaded files from JS Memory into this DataFile.

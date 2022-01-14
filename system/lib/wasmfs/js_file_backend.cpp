@@ -46,6 +46,8 @@ class JSFile : public DataFile {
     return _wasmfs_read_js_file(index, buf, len, offset);
   }
 
+  void flush() override {}
+
   // The size of the JSFile is defined as the length of the backing JS array.
   size_t getSize() override { return _wasmfs_get_js_file_size(index); }
 

@@ -25,6 +25,8 @@ class StdinFile : public DataFile {
     return __WASI_ERRNO_INVAL;
   };
 
+  void flush() override {}
+
   size_t getSize() override { return 0; }
 
 public:
@@ -50,24 +52,22 @@ public:
 
 class StdoutFile : public WritingStdFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
+  void flush() override;
 
 public:
   StdoutFile() {}
 
   static std::shared_ptr<StdoutFile> getSingleton();
-
-  void flush();
 };
 
 class StderrFile : public WritingStdFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
+  void flush() override;
 
 public:
   StderrFile() {}
 
   static std::shared_ptr<StderrFile> getSingleton();
-
-  void flush();
 };
 
 } // namespace wasmfs

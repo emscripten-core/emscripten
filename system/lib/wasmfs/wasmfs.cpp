@@ -36,15 +36,18 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
-// TODO: destructor priority? We want this to happen last.
 WasmFS::~WasmFS() {
   // Flush musl libc streams.
-  // TODO: Integrate musl exit() which would call this for us.
+  // TODO: Integrate musl exit() which would call this for us. That might also
+  //       help with destructor priority - we need to happen last.
   fflush(0);
 
   // Flush our own streams. TODO: flush all possible streams.
-  StdoutFile::getSingleton()->flush();
-  StderrFile::getSingleton()->flush();
+  // Note that we lock here, although strictly speaking it is unnecessary given
+  // that we are in the destructor of WasmFS: nothing can possibly be running
+  // on files at this time.
+  DataFile::Handle(StdoutFile::getSingleton()).flush();
+  DataFile::Handle(StderrFile::getSingleton()).flush();
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
