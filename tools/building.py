@@ -658,16 +658,55 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   return output
 
 
+WASM_CALL_CTORS = '__wasm_call_ctors'
+
+
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, binary_file, debug_info=False): # noqa
-  logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
-  return
-  # TODO re-enable
-  # cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
-  # if binaryen_bin:
-  #   cmd += get_binaryen_feature_flags()
-  # check_call(cmd)
+def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
+  if settings.MINIMAL_RUNTIME:
+    CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
+  else:
+    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
+
+  js = utils.read_file(js_file)
+
+  has_wasm_call_ctors = False
+
+  # eval the ctor caller as well as main, or, in standalone mode, the proper
+  # entry/init function
+  if not settings.STANDALONE_WASM:
+    ctors = []
+    kept_ctors = []
+    has_wasm_call_ctors = CTOR_ADD_PATTERN in js
+    if has_wasm_call_ctors:
+      ctors += [WASM_CALL_CTORS]
+    if settings.HAS_MAIN:
+      ctors += ['main']
+      # TODO perhaps remove the call to main from the JS? or is this an abi
+      #      we want to preserve?
+      kept_ctors += ['main']
+    if not ctors:
+      logger.info('ctor_evaller: no ctors')
+      return
+    args = ['--ctors=' + ','.join(ctors)]
+    if kept_ctors:
+      args += ['--kept-exports=' + ','.join(kept_ctors)]
+  else:
+    if settings.EXPECT_MAIN:
+      ctor = '_start'
+    else:
+      ctor = '_initialize'
+    args = ['--ctors=' + ctor, '--kept-exports=' + ctor]
+  if settings.EVAL_CTORS == 2:
+    args += ['--ignore-external-input']
+  logger.info('ctor_evaller: trying to eval global ctors (' + ' '.join(args) + ')')
+  out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE, debug=debug_info)
+  logger.info('\n\n' + out)
+  num_successful = out.count('success on')
+  if num_successful and has_wasm_call_ctors:
+    js = js.replace(CTOR_ADD_PATTERN, '')
+  utils.write_file(js_file, js)
 
 
 def get_closure_compiler():
@@ -1481,7 +1520,9 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   cmd += get_binaryen_feature_flags()
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
-  if settings.GENERATE_SOURCE_MAP and outfile:
+  # TODO: all tools should support source maps; wasm-ctor-eval does not atm,
+  #       for example
+  if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
   ret = check_call(cmd, stdout=stdout).stdout

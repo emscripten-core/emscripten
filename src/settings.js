@@ -1535,40 +1535,40 @@ var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
 // [link]
 var PTHREADS_DEBUG = 0;
 
-// This tries to evaluate global ctors at compile-time, applying their effects
-// into the mem init file. This saves running code during startup, and also
-// allows removing the global ctor functions and other code that only they used,
-// so this is also good for reducing code size. However, this does make the
-// compile step much slower.
+// This tries to evaluate code at compile time. The main use case is to eval
+// global ctor functions, which are those that run before main(), but main()
+// itself or parts of it can also be evalled. Evaluating code this way can avoid
+// work at runtime, as it applies the results of the execution to memory and
+// globals and so forth, "snapshotting" the wasm and then just running it from
+// there when it is loaded.
 //
-// This basically runs the ctors during compile time, seeing if they execute
-// safely in a sandbox. Any ffi access out of wasm causes failure, as it could
-// do something nondeterministic and/or alter some other state we don't see. If
-// all the global ctor does is pure computation inside wasm, it should be ok.
-// Run with EMCC_DEBUG=1 in the env to see logging, and errors when it fails to
-// eval (you'll see a message, or a stack trace; in the latter case, the
-// functions on the stack should give you an idea of what ffi was called and
-// why, and perhaps you can refactor your code to avoid it, e.g., remove
-// mallocs, printfs in global ctors).
+// This will stop when it sees something it cannot eval at compile time, like a
+// call to an import. When running with this option you will see logging that
+// indicates what is evalled and where it stops.
 //
-// This optimization can increase the size of the mem init file, because ctors
-// can write to memory that would otherwise be in a zeroinit area. This may not
-// be a significant increase after gzip, if there are mostly zeros in there, and
-// in any case the mem init increase would be offset by a code size decrease.
-// (Unless you have a small ctor that writes 'random' data to memory, which
-// would reduce little code but add potentially lots of uncompressible data.)
+// This optimization can either reduce or increase code size. If a small amount
+// of code generates many changes in memory, for example, then overall size may
+// increase.
 //
 // LLVM's GlobalOpt *almost* does this operation. It does in simple cases, where
 // LLVM IR is not too complex for its logic to evaluate, but it isn't powerful
 // enough for e.g. libc++ iostream ctors. It is just hard to do at the LLVM IR
-// level - LLVM IR is complex and getting more complex, this would require
+// level - LLVM IR is complex and getting more complex, so this would require
 // GlobalOpt to have a full interpreter, plus a way to write back into LLVM IR
 // global objects.  At the wasm level, however, everything has been lowered
 // into a simple low level, and we also just need to write bytes into an array,
-// so this is easy for us to do, but not for LLVM. A further issue for LLVM is
-// that it doesn't know that we will not link in further code, so it only tries
-// to optimize ctors with lowest priority. We do know that, and can optimize all
-// the ctors.
+// so this is easy for us to do. A further issue for LLVM is that it doesn't
+// know that we will not link in further code, so it only tries to optimize
+// ctors with lowest priority (while we do know explicitly if dynamic linking is
+// enabled or not).
+//
+// If set to a value of 2, this also makes some "unsafe" assumptions,
+// specifically that there is no input received while evalling ctors. That means
+// we ignore args to main() as well as assume no environment vars are readable.
+// This allows more programs to be optimized, but you need to make sure your
+// program does not depend on those features - even just checking the value of
+// argc can lead to problems.
+//
 // [link]
 var EVAL_CTORS = 0;
 

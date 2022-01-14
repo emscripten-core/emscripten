@@ -642,6 +642,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
+  def measure_wasm_code_lines(self, wasm):
+    wat_lines = self.get_wasm_text(wasm).splitlines()
+    non_data_lines = [line for line in wat_lines if '(data ' not in line]
+    return len(non_data_lines)
+
   def run_js(self, filename, engine=None, args=[],
              output_nicerizer=None,
              assert_returncode=0,

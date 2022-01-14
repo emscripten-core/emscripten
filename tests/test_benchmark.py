@@ -379,6 +379,7 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker(default_v8_name, aot_v8),
       EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):
