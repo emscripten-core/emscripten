@@ -36,6 +36,7 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
+// TODO: destructor priority? We want this to happen last.
 WasmFS::~WasmFS() {
   // Flush musl libc streams.
   // TODO: Integrate musl exit() which would call this for us.
