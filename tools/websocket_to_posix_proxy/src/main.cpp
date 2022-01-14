@@ -1,12 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <memory.h>
+#include <vector>
 #include <sys/types.h>
+
 #include "posix_sockets.h"
 #include "threads.h"
-#include <assert.h>
-#include <vector>
-
 #include "sha1.h"
 #include "websocket_to_posix_proxy.h"
 #include "socket_registry.h"
