@@ -121,6 +121,7 @@ def get_libc_rt_files(is_optz=False, superset=False):
     'exp2.c',
     'exp2f.c', 'exp2f_data.c',
     'exp10.c', 'exp10f.c',
+    'ldexp.c', 'ldexpf.c', 'ldexpl.c',
     'scalbn.c', '__fpclassifyl.c',
     '__signbitl.c', '__signbitf.c', '__signbit.c',
     '__math_divzero.c', '__math_divzerof.c',
