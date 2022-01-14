@@ -1093,7 +1093,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
-  settings.limit_settings(COMPILE_TIME_SETTINGS)
+  settings.limit_settings(list(COMPILE_TIME_SETTINGS) + ['WASMFS', 'EXPORT_NAME', 'LZ4', 'ENVIRONMENT_MAY_BE_NODE'])
 
   newargs, input_files = phase_setup(options, state, newargs, settings_map)
 
@@ -1415,6 +1415,14 @@ def phase_setup(options, state, newargs, settings_map):
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     if settings.EXCEPTION_HANDLING:
       exit_with_error('Wasm SjLj is not supported with Wasm exceptions yet')
+
+  if settings.WASMFS and options.embed_files:
+    # wasmfs file embedding is done via emitting C code that contains the data
+    # and code to set them up. we add that as another input
+    wasmfs_temp_file = shared.configuration.get_temp_files().get(suffix='.c').name
+    with open(wasmfs_temp_file, 'w') as f:
+      f.write(package_files(options, 'waka'))
+    input_files.append((len(input_files), wasmfs_temp_file))
 
   return (newargs, input_files)
 
@@ -2732,11 +2740,9 @@ def package_files(options, target):
     file_args += ['--wasmfs-c']
   file_code = shared.check_call([shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args, stdout=PIPE).stdout
   if wasmfs_c:
-    print(file_code)
-    1/0
+    return file_code
   else:
     options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
-  return file_code
 
 
 @ToolchainProfiler.profile_block('source transforms')
@@ -2745,7 +2751,7 @@ def phase_source_transforms(options, target):
 
   # Embed and preload files
   if len(options.preload_files) or len(options.embed_files):
-    file_code = package_files(options, target)
+    package_files(options, target)
 
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):

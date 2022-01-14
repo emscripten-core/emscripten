@@ -502,7 +502,7 @@ def main():
             return '\\x0' + hex(char)[-1:]
           return '\\x' + hex(char)[-2:]
         data = ''.join([escape_for_c(char) for char in binary])
-        c_output += f'''static const char fileData{counter} = "{data}";\n'''
+        c_output += f'''static const char fileData{counter}[] = "{data}";\n'''
         c_output += f'''
 FILE* file{counter} = fopen("{dirname}" "{basename}", "wb");
 fwrite(fileData{counter}, 1, {len(binary)}, file{counter});
