@@ -2639,7 +2639,7 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     temp_o = unsuffixed(temp_c) + '.o'
     temp_files.note(temp_o)
     with open(temp_c, 'w') as f:
-      f.write(package_files(options, 'waka'))
+      f.write(package_files(options))
     shared.check_call([shared.CLANG_CC, temp_c, '-o', temp_o, '-c'] + get_cflags([]))
     linker_arguments.append(temp_o)
 
@@ -2720,7 +2720,7 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
   save_intermediate('original')
 
 
-def package_files(options, target):
+def package_files(options, target='default'):
   logger.debug('setting up files')
   file_args = ['--from-emcc', '--export-name=' + settings.EXPORT_NAME]
   if options.preload_files:
