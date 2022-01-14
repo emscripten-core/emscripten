@@ -32,40 +32,56 @@ public:
   static std::shared_ptr<StdinFile> getSingleton();
 };
 
-class StdoutFile : public DataFile {
+// A standard stream that writes: stdout or stderr.
+class WritingStdFile : public DataFile {
+protected:
   std::vector<char> writeBuffer;
-
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
-  // /dev/stdout reports a size of 0 in the terminal.
+  // /dev/stdout|stderr reports a size of 0 in the terminal.
   size_t getSize() override { return 0; }
 
 public:
-  StdoutFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {}
+  WritingStdFile() : DataFile(S_IWUGO, NullBackend, S_IFCHR) {}
+};
+
+class StdoutFile : public WritingStdFile {
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
+
+public:
+  StdoutFile() {}
+
   static std::shared_ptr<StdoutFile> getSingleton();
+
+  void flush() {
+    // Flush the musl libc buffers.
+    fflush(stdout);
+
+    // Write a null to flush the output.
+    const uint8_t nothing = 0;
+    write(&nothing, 1, 0);
+  }
 };
 
-class StderrFile : public DataFile {
-  std::vector<char> writeBuffer;
-
-  // TODO: May not want to proxy stderr (fd == 2) to the main thread.
-  // This will not show in HTML - a console.warn in a worker is sufficient.
-  // This would be a change from the current FS.
+class StderrFile : public WritingStdFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    return __WASI_ERRNO_INVAL;
-  };
-
-  // /dev/stderr reports a size of 0 in the terminal.
-  size_t getSize() override { return 0; }
-
 public:
-  StderrFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {}
+  StderrFile() {}
+
   static std::shared_ptr<StderrFile> getSingleton();
+
+  void flush() {
+    // Flush the musl libc buffers.
+    fflush(stderr);
+
+    // Write a null to flush the output.
+    const uint8_t nothing = 0;
+    write(&nothing, 1, 0);
+  }
 };
+
 } // namespace wasmfs

@@ -45,18 +45,22 @@ __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
   static const std::shared_ptr<StdoutFile> stdoutFile =
-    std::make_shared<StdoutFile>(S_IWUGO);
+    std::make_shared<StdoutFile>();
   return stdoutFile;
 }
 
 __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
   // Similar issue with Node and worker threads as emscripten_out.
+  // TODO: May not want to proxy stderr (fd == 2) to the main thread, as
+  //       emscripten_err does.
+  //       This will not show in HTML - a console.warn in a worker is
+  //       sufficient. This would be a change from the current FS.
   return writeStdBuffer(buf, len, &_emscripten_err, writeBuffer);
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {
   static const std::shared_ptr<StderrFile> stderrFile =
-    std::make_shared<StderrFile>(S_IWUGO);
+    std::make_shared<StderrFile>();
   return stderrFile;
 }
 

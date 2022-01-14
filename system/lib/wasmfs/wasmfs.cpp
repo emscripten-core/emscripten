@@ -36,6 +36,11 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
+WasmFS::~WasmFS() {
+  StdoutFile::getSingleton()->flush();
+  StderrFile::getSingleton()->flush();
+}
+
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
