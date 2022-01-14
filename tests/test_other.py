@@ -4543,6 +4543,9 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'SAFE_HEAP'])
 
+  def test_bad_lookup(self):
+    self.do_runf(path_from_root('tests/filesystem/bad_lookup.cpp'), expected_output='ok')
+
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
     # forced libs is ok, they were there anyhow
