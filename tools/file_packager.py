@@ -966,7 +966,6 @@ void __wasmfs_load_embedded() {
 }
 ''' % c_output
 
-
   if force or len(data_files):
     if jsoutput is None:
       print(ret)
