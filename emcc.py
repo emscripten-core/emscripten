@@ -1420,6 +1420,7 @@ def phase_setup(options, state, newargs, settings_map):
     # wasmfs file embedding is done via emitting C code that contains the data
     # and code to set them up. we add that as another input
     wasmfs_temp_file = '/tmp/emscripten_temp/waka.c' # shared.configuration.get_temp_files().get(suffix='.c').name
+    print(package_files(options, 'waka'))
     with open(wasmfs_temp_file, 'w') as f:
       f.write(package_files(options, 'waka'))
     input_files.append((len(input_files), wasmfs_temp_file))

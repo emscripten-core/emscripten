@@ -389,6 +389,8 @@ def main():
 
   metadata = {'files': []}
 
+  c_output = ''
+
   # Set up folders
   partial_dirs = []
   for file_ in data_files:
@@ -401,6 +403,7 @@ def main():
         if partial not in partial_dirs:
           code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
+          c_output += f'mkdir("{partial}", 0700);\n'
           partial_dirs.append(partial)
 
   if has_preloaded:
@@ -477,8 +480,6 @@ def main():
               }
       ''')
 
-  c_output = ''
-
   counter = 0
   for file_ in data_files:
     filename = file_['dstpath']
@@ -502,9 +503,10 @@ def main():
             return '\\x0' + hex(char)[-1:]
           return '\\x' + hex(char)[-2:]
         data = ''.join([escape_for_c(char) for char in binary])
+        # directories... :( make them
         c_output += f'''static const char fileData{counter}[] = "{data}";\n'''
         c_output += f'''
-FILE* file{counter} = fopen("{dirname}" "{basename}", "wb");
+FILE* file{counter} = fopen("{dirname}" "/" "{basename}", "wb");
 fwrite(fileData{counter}, 1, {len(binary)}, file{counter});
 fclose(file{counter});
 '''
@@ -956,6 +958,7 @@ fclose(file{counter});
     ret = r'''
 #include <emscripten.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 EMSCRIPTEN_KEEPALIVE void __wasmfs_load_embedded() {
 
