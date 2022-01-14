@@ -528,6 +528,7 @@ class TestCoreBase(RunnerCore):
     # No other configuration is supported, so always run this.
     self.do_runf(test_file('wasm32-unknown-emscripten.c'), '')
 
+  @also_with_wasmfs # tests file embedding
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(test_file('cube2md5.txt'), 'cube2md5.txt')
