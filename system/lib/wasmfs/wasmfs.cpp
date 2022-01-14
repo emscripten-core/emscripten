@@ -37,6 +37,11 @@ void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
 WasmFS::~WasmFS() {
+  // Flush musl libc streams.
+  // TODO: Integrate musl exit() which would call this for us.
+  fflush(0);
+
+  // Flush our own streams. TODO: flush all possible streams.
   StdoutFile::getSingleton()->flush();
   StderrFile::getSingleton()->flush();
 }

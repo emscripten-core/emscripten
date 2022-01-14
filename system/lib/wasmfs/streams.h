@@ -56,14 +56,7 @@ public:
 
   static std::shared_ptr<StdoutFile> getSingleton();
 
-  void flush() {
-    // Flush the musl libc buffers.
-    fflush(stdout);
-
-    // Write a null to flush the output.
-    const uint8_t nothing = 0;
-    write(&nothing, 1, 0);
-  }
+  void flush();
 };
 
 class StderrFile : public WritingStdFile {
@@ -74,14 +67,7 @@ public:
 
   static std::shared_ptr<StderrFile> getSingleton();
 
-  void flush() {
-    // Flush the musl libc buffers.
-    fflush(stderr);
-
-    // Write a null to flush the output.
-    const uint8_t nothing = 0;
-    write(&nothing, 1, 0);
-  }
+  void flush();
 };
 
 } // namespace wasmfs
