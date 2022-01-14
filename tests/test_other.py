@@ -6659,7 +6659,8 @@ int main() {
     second = test(3000, 1000, 2000, 0xf, 0x8f5) # noqa; 1 will succedd
     third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa; 0 will succeed
     print(first, second, third)
-    assert first < second and second < third, [first, second, third]
+    self.assertLess(first, second)
+    self.assertLess(second, third)
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
