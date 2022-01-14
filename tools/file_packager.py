@@ -956,11 +956,10 @@ fclose(file{counter});
 
   if wasmfs_c:
     ret = r'''
-#include <emscripten.h>
 #include <stdio.h>
 #include <sys/stat.h>
 
-EMSCRIPTEN_KEEPALIVE void __wasmfs_load_embedded() {
+void __wasmfs_load_embedded() {
 
 %s
 
