@@ -2638,7 +2638,6 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     temp_c = temp_files.get(suffix='.c').name
     temp_o = unsuffixed(temp_c) + '.o'
     temp_files.note(temp_o)
-    #print(package_files(options, 'waka'))
     with open(temp_c, 'w') as f:
       f.write(package_files(options, 'waka'))
     shared.check_call([shared.CLANG_CC, temp_c, '-o', temp_o, '-c'] + get_cflags([]))
