@@ -658,10 +658,12 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   return output
 
 
+WASM_CALL_CTORS = '__wasm_call_ctors'
+
+
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
-  WASM_CALL_CTORS = '__wasm_call_ctors'
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:

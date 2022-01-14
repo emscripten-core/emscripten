@@ -34,14 +34,12 @@ from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
 
-WASM_INIT_FUNC = '__wasm_call_ctors'
-
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
+  exports_that_are_not_initializers = [x for x in exports if x not in building.WASM_CALL_CTORS]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
 
@@ -701,7 +699,7 @@ def create_receiving(exports):
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
-  exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
+  exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
 
   receiving = []
 
