@@ -55,7 +55,8 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
 
 // If files are embedded in the program, then this symbol is defined. We will
 // call it and it will set those files up.
-__attribute__((__weak__)) extern "C" void __wasmfs_load_embedded();
+__attribute__((__weak__))
+extern "C" void __wasmfs_load_embedded();
 
 void WasmFS::loadInitialFiles() {
   // Debug builds only: add check to ensure loadInitialFiles() is called once.
