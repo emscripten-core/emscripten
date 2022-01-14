@@ -43,8 +43,8 @@ def get(ports, settings, shared):
     render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c
     render/software/SDL_render_sw.c render/software/SDL_rotate.c render/software/SDL_triangle.c
     sensor/SDL_sensor.c sensor/dummy/SDL_dummysensor.c
-    stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
-    stdlib/SDL_stdlib.c stdlib/SDL_string.c thread/SDL_thread.c timer/SDL_timer.c
+    stdlib/SDL_crc32.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
+    stdlib/SDL_stdlib.c stdlib/SDL_string.c stdlib/SDL_strtokr.c thread/SDL_thread.c timer/SDL_timer.c
     video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c
     video/SDL_blit_N.c video/SDL_blit_auto.c video/SDL_blit_copy.c video/SDL_blit_slow.c
     video/SDL_bmp.c video/SDL_clipboard.c video/SDL_egl.c video/SDL_fillrect.c video/SDL_pixels.c
@@ -57,7 +57,8 @@ def get(ports, settings, shared):
     audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c
     power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c
     filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c
-    main/dummy/SDL_dummy_main.c'''.split()
+    main/dummy/SDL_dummy_main.c locale/SDL_locale.c locale/emscripten/SDL_syslocale.c misc/SDL_url.c
+    misc/dummy/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
     thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
