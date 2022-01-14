@@ -46,9 +46,9 @@ def get_base_cflags(force_object_files=False):
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
-    flags += ['-s', 'RELOCATABLE']
+    flags += ['-sRELOCATABLE']
   if settings.MEMORY64:
-    flags += ['-s', 'MEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
 
 
@@ -533,7 +533,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS']
+      cflags += ['-sUSE_PTHREADS']
     return cflags
 
   def get_base_name(self):
@@ -631,7 +631,7 @@ class NoExceptLibrary(Library):
     if self.eh_mode == Exceptions.NONE:
       cflags += ['-fno-exceptions']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
     elif self.eh_mode == Exceptions.WASM:
       cflags += ['-fwasm-exceptions']
     return cflags
@@ -675,11 +675,11 @@ class SjLjLibrary(Library):
     if self.is_wasm:
       # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
-      cflags += ['-s', 'SUPPORT_LONGJMP=wasm',
-                 '-s', 'DISABLE_EXCEPTION_THROWING=1',
+      cflags += ['-sSUPPORT_LONGJMP=wasm',
+                 '-sDISABLE_EXCEPTION_THROWING=1',
                  '-D__USING_WASM_SJLJ__']
     else:
-      cflags += ['-s', 'SUPPORT_LONGJMP=emscripten']
+      cflags += ['-sSUPPORT_LONGJMP=emscripten']
     return cflags
 
   def get_base_name(self):
@@ -1050,7 +1050,7 @@ class crt1_reactor(MuslInternalLibrary):
 
 class crtbegin(Library):
   name = 'crtbegin'
-  cflags = ['-s', 'USE_PTHREADS']
+  cflags = ['-sUSE_PTHREADS']
   src_dir = 'system/lib/pthread'
   src_files = ['emscripten_tls_init.c']
 

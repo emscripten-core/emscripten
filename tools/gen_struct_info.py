@@ -268,13 +268,13 @@ def inspect_headers(headers, cflags):
                                '-Wno-format',
                                '-nostdlib',
                                compiler_rt,
-                               '-s', 'MEMORY64=' + str(settings.MEMORY64),
-                               '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                               '-s', 'LLD_REPORT_UNDEFINED=1',
-                               '-s', 'STRICT',
+                               '-sMEMORY64=' + str(settings.MEMORY64),
+                               '-sBOOTSTRAPPING_STRUCT_INFO=1',
+                               '-sLLD_REPORT_UNDEFINED=1',
+                               '-sSTRICT',
                                # Use SINGLE_FILE=1 so there is only a single
                                # file to cleanup.
-                               '-s', 'SINGLE_FILE']
+                               '-sSINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
