@@ -4,7 +4,7 @@
     "es-check": "^6.1.1",
     "eslint": "^8.6.0",
     "eslint-config-google": "^0.14.0",
-    "source-map": "0.5.7",
+    "source-map": "0.7.3",
     "ws": "~0.4.28"
   },
   "dependencies": {
