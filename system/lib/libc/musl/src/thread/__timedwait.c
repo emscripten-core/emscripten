@@ -78,15 +78,18 @@ int __timedwait_cp(volatile int *addr, int val,
 				// cancel execution.
 				return ECANCELED;
 			}
-			if (msecsToSleep > 0)
-				// Must wait in slices in case this thread is cancelled in between.
-				r = -emscripten_futex_wait((void*)addr, val,
-					msecsToSleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : msecsToSleep);
 			// Assist other threads by executing proxied operations that are effectively singlethreaded.
 			if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
 
 			msecsToSleep = sleepUntilTime - emscripten_get_now();
-		} while (r == ETIMEDOUT && msecsToSleep > 0);
+			if (msecsToSleep <= 0) {
+				r = ETIMEDOUT;
+				break;
+			}
+			// Must wait in slices in case this thread is cancelled in between.
+			r = -emscripten_futex_wait((void*)addr, val,
+				msecsToSleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : msecsToSleep);
+		} while (r == ETIMEDOUT);
 	} else {
 		// Can wait in one go.
 		r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);

@@ -28,10 +28,10 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 					if (waiters) a_dec(waiters);
 					return;
 				}
-				// Must wait in slices in case this thread is cancelled in between.
-				e = emscripten_futex_wait((void*)addr, val, max_ms_slice_to_sleep);
 				// Assist other threads by executing proxied operations that are effectively singlethreaded.
 				if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
+				// Must wait in slices in case this thread is cancelled in between.
+				e = emscripten_futex_wait((void*)addr, val, max_ms_slice_to_sleep);
 			} while (e == -ETIMEDOUT);
 		} else {
 			// Can wait in one go.
