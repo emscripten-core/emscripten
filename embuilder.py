@@ -29,6 +29,8 @@ MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc-debug',
+    'libc-optz',
+    'libc-optz-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
@@ -48,12 +50,11 @@ MINIMAL_TASKS = [
     'libsockets',
     'libstubs',
     'libstubs-debug',
-    'libc_rt',
-    'libc_rt-optz',
     'struct_info',
     'libstandalonewasm',
     'crt1',
-    'libunwind-except'
+    'libunwind-except',
+    'libnoexit',
 ]
 
 # Variant builds that we want to support for certain ports

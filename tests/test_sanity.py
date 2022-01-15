@@ -101,7 +101,7 @@ SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 #  FILESYSTEM=0 avoids bringing libc for that)
 # (ERROR_ON_UNDEFINED_SYMBOLS=0 is needed because __errno_location is
 #  not included on the native side but needed by a lot of JS libraries.)
-MINIMAL_HELLO_WORLD = [test_file('hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
+MINIMAL_HELLO_WORLD = [test_file('hello_world_em_asm.c'), '-O1', '-sFILESYSTEM=0', '-sERROR_ON_UNDEFINED_SYMBOLS=0']
 
 
 class sanity(RunnerCore):
@@ -206,11 +206,11 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = Path(path_from_root('tools/settings_template.py')).read_text()
+      template_data = Path(path_from_root('tools/config_template.py')).read_text()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
-      self.assertContained('{{{', template_file)
-      self.assertContained('}}}', template_file)
+      self.assertContained('{{{', template_data)
+      self.assertContained('}}}', template_data)
       for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
         self.assertContained(content, config_data)
 
@@ -415,7 +415,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
       self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
@@ -583,14 +583,14 @@ fi
       self.assertNotExists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
         self.assertContained(RETRIEVING_MESSAGE, output)
         self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
         self.assertNotContained(RETRIEVING_MESSAGE, output)
         self.assertNotContained(BUILDING_MESSAGE, output)
 

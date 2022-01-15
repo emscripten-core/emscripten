@@ -119,6 +119,59 @@ linker can handle a mix wasm object files and LTO object files.  Passing
 Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all
 source files with ``-flto`` and also link with ``flto``.
 
+EVAL_CTORS
+==========
+
+Building with ``-sEVAL_CTORS`` will evaluate as much code as possible at
+compile time. That includes both the "global ctor" functions (functions LLVM
+emits that run before ``main()``) as well as ``main()`` itself. As much as can
+be evaluated will be, and the resulting state is then "snapshotted" into the
+wasm. Then when the program is run it will begin from that state, and not need
+to execute that code, which can save time.
+
+This optimization can either reduce or increase code size. If a small amount
+of code generates many changes in memory, for example, then overall size may
+increase. It is best to build with this flag and then measure code and startup
+speed and see if the tradeoff is worthwhile in your program.
+
+You can make an effort to write EVAL_CTORS-friendly code, by deferring things
+that cannot be evalled as much as possible. For example, calls to imports stop
+this optimization, and so if you have a game engine that creates a GL context
+and then does some pure computation to set up unrelated data structures in
+memory, then you could reverse that order. Then the pure computation could run
+first, and be evalled away, and the GL context creation call to an import would
+not prevent that. Other things you can do are to avoid using ``argc/argv``, to
+avoid using ``getenv()``, and so forth.
+
+Logging is shown when using this option so that you can see whether things can
+be improved. Here is an example of output from ``emcc -sEVAL_CTORS``:
+
+::
+
+  trying to eval __wasm_call_ctors
+    ...partial evalling successful, but stopping since could not eval: call import: wasi_snapshot_preview1.environ_sizes_get
+         recommendation: consider --ignore-external-input
+    ...stopping
+
+The first line indicates an attempt to eval LLVM's function that runs global
+ctors. It evalled some of the function but then it stopped on the WASI import
+``environ_sizes_get``, which means it is trying to read from the environment.
+As the output says, you can tell ``EVAL_CTORS`` to ignore external input, which
+will ignore such things. You can enable that with mode ``2``, that is, build
+with ``emcc -sEVAL_CTORS=2``:
+
+::
+
+  trying to eval __wasm_call_ctors
+    ...success on __wasm_call_ctors.
+  trying to eval main
+    ...stopping (in block) since could not eval: call import: wasi_snapshot_preview1.fd_write
+    ...stopping
+
+Now it has succeeded to eval ``__wasm_call_ctors`` completely. It then moved on
+to ``main``, where it stopped because of a call to WASI's ``fd_write``, that is,
+a call to print something.
+
 Very large codebases
 ====================
 

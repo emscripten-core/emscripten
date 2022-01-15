@@ -4220,7 +4220,9 @@ is_gnu_v3_mangled_dtor (const char *name)
 int main(int argc, char **argv)
 {
   int status;
-  printf("*%s*\n", __cxa_demangle(argv[1], 0, 0, &status));
+  char* s = __cxa_demangle(argv[1], 0, 0, &status);
+  printf("*%s*\n", s);
+  free(s);
   return 0;
 }
 

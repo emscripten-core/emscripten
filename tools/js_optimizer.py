@@ -122,7 +122,7 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
-@ToolchainProfiler.profile_block('chunkify')
+@ToolchainProfiler.profile()
 def chunkify(funcs, chunk_size):
   chunks = []
   # initialize reasonably, the rest of the funcs we need to split out

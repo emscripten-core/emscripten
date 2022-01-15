@@ -41,29 +41,12 @@ function load(f) {
 // Basic utilities
 load('utility.js');
 
-// Load settings, can be overridden by commandline
-load('./settings.js');
-load('./settings_internal.js');
-
+// Load settings from JSON passed on the command line
 const settingsFile = process['argv'][2];
+assert(settingsFile);
 
-if (settingsFile) {
-  const settings = JSON.parse(read(settingsFile));
-  for (const key in settings) {
-    if (Object.prototype.hasOwnProperty.call(settings, key)) {
-      let value = settings[key];
-      if (value[0] == '@') {
-        // response file type thing, workaround for large inputs: value is @path-to-file
-        try {
-          value = JSON.parse(read(value.substr(1)));
-        } catch (e) {
-          // continue normally; assume it is not a response file
-        }
-      }
-      global[key] = eval(JSON.stringify(value));
-    }
-  }
-}
+const settings = JSON.parse(read(settingsFile));
+Object.assign(global, settings);
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);

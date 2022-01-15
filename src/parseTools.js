@@ -441,9 +441,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
   assert(!forcedAlign, 'forcedAlign is no longer supported');
-  sep = sep || ';';
 
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
@@ -499,8 +498,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
 const UNROLL_LOOP_MAX = 8;
 
-function makeCopyValues(dest, src, num, type, modifier, align, sep) {
-  sep = sep || ';';
+function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   function unroll(type, num, jump) {
     jump = jump || 1;
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
@@ -890,8 +888,7 @@ function makeRetainedCompilerSettings() {
   const ignore = new Set(['STRUCT_INFO']);
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
-      const name = setting[0];
-      ignore.add(name);
+      ignore.add(setting);
     }
   }
 

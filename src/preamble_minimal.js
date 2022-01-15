@@ -6,7 +6,7 @@
 
 #include "runtime_safe_heap.js"
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) throw text;

@@ -18,13 +18,29 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.1
+3.1.2
 -----
+- `EVAL_CTORS` has been rewritten and improved. The main differences from before
+  are that it is much more capable (it can now eval parts of functions and not
+  just all or nothing, and it can eval more wasm constructs like globals). It is
+  no longer run by default, so to use it you should build with `-s EVAL_CTORS`.
+  See `settings.js` for more details. (#16011)
+- `wasmX` test suites that are defined in `test_core.py` have been renamed to
+  `coreX` to better reflect where they are defined.  The old suite names such
+  as `wasm2` will continue to work for now as aliases.
+
+3.1.1 - 08/01/2022
+------------------
+- Happy new year!
 - Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
   includes all downstream patches and many upstream changes.
 - libc++ library updated to llvm-13. (#15901)
 - libc++-abi library updated to llvm-13. (#15904)
 - compiler-rt library updated to llvm-13. (#15906)
+- Added new internal/debugging related environment variable
+  EM_FORCE_RESPONSE_FILES that can be set to 0 to force disable the use of
+  response files, and to 1 to force enable response files. If not set,
+  response files will be used if command lines are long (> 8192 chars). (#15973)
 
 3.1.0 - 12/22/2021
 ------------------

@@ -87,7 +87,7 @@ attributes:
   }
 
 For a full example, see the file
-tests/fetch/example_async_xhr_to_memory_via_indexeddb.cpp.
+tests/fetch/example_async_xhr_to_memory_via_indexeddb.c.
 
 Persisting data bytes from memory
 ---------------------------------
@@ -389,7 +389,7 @@ be dealt with separately.
     strcpy(attr.requestMethod, "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     // Make a Range request to only fetch bytes 10 to 20
-    const char* headers[] = {"Range", "bytes=10-20"};
+    const char* headers[] = {"Range", "bytes=10-20", NULL};
     attr.requestHeaders = headers;
     attr.onsuccess = downloadSucceeded;
     attr.onerror = downloadFailed;

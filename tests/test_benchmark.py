@@ -203,9 +203,9 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd = [
       EMCC, filename,
       OPTIMIZATIONS,
-      '-s', 'INITIAL_MEMORY=256MB',
-      '-s', 'ENVIRONMENT=node,shell',
-      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
+      '-sINITIAL_MEMORY=256MB',
+      '-sENVIRONMENT=node,shell',
+      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + LLVM_FEATURE_FLAGS
     if common.EMTEST_FORCE64:
@@ -216,7 +216,7 @@ class EmscriptenBenchmarker(Benchmarker):
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM' not in cmd:
-      cmd += ['-s', 'FILESYSTEM=0']
+      cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
@@ -253,9 +253,9 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     # wasm2c doesn't want minimal runtime which the normal emscripten
     # benchmarker defaults to, as we don't have any JS anyhow
     emcc_args = emcc_args + [
-      '-s', 'STANDALONE_WASM',
-      '-s', 'MINIMAL_RUNTIME=0',
-      '-s', 'WASM2C'
+      '-sSTANDALONE_WASM',
+      '-sMINIMAL_RUNTIME=0',
+      '-sWASM2C'
     ]
 
     global LLVM_FEATURE_FLAGS
@@ -379,6 +379,7 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker(default_v8_name, aot_v8),
       EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):
@@ -970,7 +971,7 @@ class benchmark(common.RunnerCore):
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
@@ -1047,7 +1048,7 @@ class benchmark(common.RunnerCore):
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
     self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_party', 'sqlite')],
-                      emcc_args=['-s', 'FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1096,7 +1097,7 @@ class benchmark(common.RunnerCore):
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + test_file('poppler', 'include'), '-I' + test_file('freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
-                                 test_file('poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
-                                 '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['-sFILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
+                                 test_file('poppler', 'emscripten_html5.pdf') + '@input.pdf', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                                 '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)

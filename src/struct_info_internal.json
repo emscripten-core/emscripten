@@ -29,7 +29,10 @@
                 "timeSpentInStatus",
                 "name"
             ]
-        }
+        },
+        "defines": [
+          "SIGCANCEL"
+        ]
     },
     {
         "file": "dynlink.h",

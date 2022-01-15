@@ -194,12 +194,12 @@ class sockets(BrowserCore):
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
   def test_sockets_echo_pthreads(self, extra_args=[]):
-    self.test_sockets_echo(['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.test_sockets_echo(['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   def test_sdl2_sockets_echo(self):
-    harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
+    harness = CompiledServerHarness('sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164)
     with harness:
-      self.btest('sdl2_net_client.c', expected='0', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+      self.btest('sdl2_net_client.c', expected='0', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
     sockets_include = '-I' + test_file('sockets')
@@ -326,7 +326,7 @@ class sockets(BrowserCore):
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
         with harness:
-          self.run_process([EMCC, '-Werror', test_file('sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', test_file('sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -349,7 +349,7 @@ class sockets(BrowserCore):
           };
           ''')
 
-          self.run_process([EMCC, '-Werror', test_file('sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
+          self.run_process([EMCC, '-Werror', test_file('sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE)
 
           out = self.run_js('client.js')
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -359,7 +359,7 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   def test_websocket_send(self):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest(test_file('websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME', '-s', 'WEBSOCKET_DEBUG'])
+      self.btest(test_file('websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
@@ -374,4 +374,4 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest(test_file('websocket', 'tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-s', 'PROXY_POSIX_SOCKETS', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+        self.btest(test_file('websocket', 'tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])

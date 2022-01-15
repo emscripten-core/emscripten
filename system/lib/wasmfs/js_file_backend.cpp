@@ -13,17 +13,17 @@
 using js_index_t = uint32_t;
 
 extern "C" {
-int _emscripten_write_js_file(js_index_t index,
-                              const uint8_t* buffer,
-                              size_t length,
-                              off_t offset);
-int _emscripten_read_js_file(js_index_t index,
-                             const uint8_t* buffer,
-                             size_t length,
-                             off_t offset);
-int _emscripten_get_js_file_size(js_index_t index);
-int _emscripten_create_js_file();
-void _emscripten_remove_js_file(js_index_t index);
+int _wasmfs_write_js_file(js_index_t index,
+                          const uint8_t* buffer,
+                          size_t length,
+                          off_t offset);
+int _wasmfs_read_js_file(js_index_t index,
+                         const uint8_t* buffer,
+                         size_t length,
+                         off_t offset);
+int _wasmfs_get_js_file_size(js_index_t index);
+int _wasmfs_create_js_file();
+void _wasmfs_remove_js_file(js_index_t index);
 }
 
 namespace wasmfs {
@@ -35,7 +35,7 @@ class JSFile : public DataFile {
 
   // JSFiles will write from a Wasm Memory buffer into the backing JS array.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return _emscripten_write_js_file(index, buf, len, offset);
+    return _wasmfs_write_js_file(index, buf, len, offset);
   }
 
   // JSFiles will read from the backing JS array into a Wasm Memory buffer.
@@ -43,20 +43,20 @@ class JSFile : public DataFile {
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
     assert(offset + len <= getSize());
-    return _emscripten_read_js_file(index, buf, len, offset);
+    return _wasmfs_read_js_file(index, buf, len, offset);
   }
 
   // The size of the JSFile is defined as the length of the backing JS array.
-  size_t getSize() override { return _emscripten_get_js_file_size(index); }
+  size_t getSize() override { return _wasmfs_get_js_file_size(index); }
 
 public:
   JSFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
     // Create a new file in the backing JS array and store its index.
-    index = _emscripten_create_js_file();
+    index = _wasmfs_create_js_file();
   }
 
   // Remove the typed array file contents in the backing JS array.
-  ~JSFile() { _emscripten_remove_js_file(index); }
+  ~JSFile() { _wasmfs_remove_js_file(index); }
 };
 
 class JSFileBackend : public Backend {
