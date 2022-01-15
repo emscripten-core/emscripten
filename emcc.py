@@ -1440,8 +1440,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
-  if settings.SHRINK_LEVEL >= 2:
-    default_setting('EVAL_CTORS', 1)
 
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
@@ -2164,6 +2162,19 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.SINGLE_FILE:
     settings.GENERATE_SOURCE_MAP = 0
+
+  if settings.EVAL_CTORS:
+    if settings.WASM2JS:
+      # code size/memory and correctness issues TODO
+      exit_with_error('EVAL_CTORS is not compatible with wasm2js yet')
+    elif settings.USE_PTHREADS:
+      exit_with_error('EVAL_CTORS is not compatible with pthreads yet (passive segments)')
+    elif settings.RELOCATABLE:
+      exit_with_error('EVAL_CTORS is not compatible with relocatable yet (movable segments)')
+    elif settings.ASYNCIFY:
+      # In Asyncify exports can be called more than once, and this seems to not
+      # work properly yet (see test_emscripten_scan_registers).
+      exit_with_error('EVAL_CTORS is not compatible with asyncify yet')
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -3916,6 +3927,7 @@ def is_int(s):
     return False
 
 
+@ToolchainProfiler.profile()
 def main(args):
   start_time = time.time()
   ret = run(args)

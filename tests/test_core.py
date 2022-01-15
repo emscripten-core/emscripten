@@ -1533,6 +1533,13 @@ int main() {
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
 
+  @no_wasm2js('eval_ctors not supported yet')
+  @also_with_standalone_wasm(impure=True)
+  def test_eval_ctors_no_main(self):
+    self.set_setting('EVAL_CTORS')
+    self.emcc_args.append('--no-entry')
+    self.do_core_test('test_ctors_no_main.cpp')
+
   def test_class(self):
     self.do_core_test('test_class.cpp')
 
@@ -6783,12 +6790,11 @@ void* operator new(size_t size) {
     self.emcc_args += ['--tracing']
     self.do_core_test('test_tracing.c')
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/9527')
+  @no_wasm2js('eval_ctors not supported yet')
+  @also_with_standalone_wasm()
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
-      self.skipTest('need js optimizations')
-    if not self.is_wasm():
-      self.skipTest('this test uses wasm binaries')
+      self.skipTest('need opts')
 
     print('leave printf in ctor')
     self.set_setting('EVAL_CTORS')
@@ -6801,35 +6807,21 @@ void* operator new(size_t size) {
       int main() {}
     ''', "constructing!\n")
 
-    def get_code_size():
-      if self.is_wasm():
-        # Use number of functions as a for code size
-        return self.count_wasm_contents('hello_libcxx.wasm', 'funcs')
-      else:
-        return os.path.getsize('hello_libcxx.js')
+    def do_test(test, level=1, prefix='src'):
+      def get_code_size():
+        if self.is_wasm():
+          # this also includes the memory, but it is close enough for our
+          # purposes
+          return self.measure_wasm_code_lines(prefix + '.wasm')
+        else:
+          return os.path.getsize(prefix + '.js')
 
-    def get_mem_size():
-      if self.is_wasm():
-        # Use number of functions as a for code size
-        return self.count_wasm_contents('hello_libcxx.wasm', 'memory-data')
-      if self.uses_memory_init_file():
-        return os.path.getsize('hello_libcxx.js.mem')
-
-      # otherwise we ignore memory size
-      return 0
-
-    def do_test(test):
-      self.set_setting('EVAL_CTORS')
+      self.set_setting('EVAL_CTORS', level)
       test()
       ec_code_size = get_code_size()
-      ec_mem_size = get_mem_size()
       self.clear_setting('EVAL_CTORS')
       test()
       code_size = get_code_size()
-      mem_size = get_mem_size()
-      if mem_size:
-        print('mem: ', mem_size, '=>', ec_mem_size)
-        self.assertGreater(ec_mem_size, mem_size)
       print('code:', code_size, '=>', ec_code_size)
       self.assertLess(ec_code_size, code_size)
 
@@ -6854,56 +6846,19 @@ void* operator new(size_t size) {
 
     do_test(test1)
 
-    # The wasm backend currently exports a single initalizer so the ctor
-    # evaluation is all or nothing.  As well as that it doesn't currently
-    # do DCE of libcxx symbols (because the are marked as visibility(defaault)
-    # and because of that we end up not being able to eval ctors unless all
-    # libcxx constrcutors can be eval'd
-
     print('libcxx - remove 2 ctors from iostream code')
     output = 'hello, world!'
 
     def test2():
       self.do_runf(test_file('hello_libcxx.cpp'), output)
-    do_test(test2)
 
-    print('assertions too')
-    self.set_setting('ASSERTIONS')
-    self.do_runf(test_file('hello_libcxx.cpp'), output)
-    self.set_setting('ASSERTIONS', 0)
+    # in standalone more there is more usage of WASI APIs, which mode 2 is
+    # needed to avoid in order to fully optimize, so do not test mode 1 in
+    # that mode.
+    if not self.get_setting('STANDALONE_WASM'):
+      do_test(test2, level=1, prefix='hello_libcxx')
 
-    print('remove just some, leave others')
-
-    def test3():
-      self.do_run(r'''
-#include <iostream>
-#include <string>
-
-class std_string {
-public:
-  std_string(): ptr(nullptr) { std::cout << "std_string()\n"; }
-  std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s)" << std::endl; }
-  std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
-  const char* data() const { return ptr; }
-private:
-  const char* ptr;
-};
-
-const std_string txtTestString("212121\0");
-const std::string s2text("someweirdtext");
-
-int main() {
-  std::cout << s2text << std::endl;
-  std::cout << txtTestString.data() << std::endl;
-  std::cout << txtTestString.data() << std::endl;
-  return 0;
-}
-      ''', '''std_string(const char* s)
-someweirdtext
-212121
-212121
-''') # noqa
-    do_test(test3)
+    do_test(test2, level=2, prefix='hello_libcxx')
 
   def test_embind(self):
     self.emcc_args += ['--bind']
@@ -7797,10 +7752,11 @@ Module['onRuntimeInitialized'] = function() {
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
     if not conditional and self.is_optimizing():
-      self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
+      self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
     verify_working()
     # but breaking the second wasm actually breaks us
-    break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm')
+    if not break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm'):
+      raise Exception('could not break lazy wasm - missing expected code')
     verify_broken()
 
     # restore
@@ -8257,8 +8213,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if g_flag == '-gsource-map':
       if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
-      elif '-Oz' in self.emcc_args:
-        self.skipTest('-Oz breaks stack traces')
+      elif self.get_setting('EVAL_CTORS'):
+        self.skipTest('EVAL_CTORS does not support source maps')
 
     create_file('pre.js', 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};')
     self.emcc_args += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
@@ -8953,6 +8909,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
+wasmfs = make_run('wasmfs', emcc_args=['-s', 'WASMFS'])
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})

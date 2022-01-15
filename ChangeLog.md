@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.2
 -----
+- `EVAL_CTORS` has been rewritten and improved. The main differences from before
+  are that it is much more capable (it can now eval parts of functions and not
+  just all or nothing, and it can eval more wasm constructs like globals). It is
+  no longer run by default, so to use it you should build with `-s EVAL_CTORS`.
+  See `settings.js` for more details. (#16011)
 - `wasmX` test suites that are defined in `test_core.py` have been renamed to
   `coreX` to better reflect where they are defined.  The old suite names such
   as `wasm2` will continue to work for now as aliases.

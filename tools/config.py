@@ -171,7 +171,7 @@ def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
 
-  config_data = utils.read_file(path_from_root('tools/settings_template.py'))
+  config_data = utils.read_file(path_from_root('tools/config_template.py'))
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths

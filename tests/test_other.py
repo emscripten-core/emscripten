@@ -394,7 +394,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(params, opt_level, link_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
-      args = [compiler, test_file('hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
+      if has_malloc:
+        filename = test_file('hello_world_loop_malloc.c')
+      else:
+        filename = test_file('hello_world_loop.c')
+      args = [compiler, filename] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
@@ -571,7 +575,7 @@ f.close()
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
     conf = os.path.expanduser(config.EM_CONFIG)
-    proc = self.run_process([EMAR, '--em-config', conf, '-version'], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([EMAR, '--em-config', conf, '--version'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.stderr, "")
     self.assertContained('LLVM', proc.stdout)
 
@@ -761,6 +765,12 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+
+  def test_cmake_find_sdl2(self):
+    os.mkdir('build')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_sdl2')], cwd='build')
+    self.run_process(['cmake', '--build', 'build'])
+    self.assertContained('SDL version: 2.0.', self.run_js('build/sdl2.js'))
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -4533,6 +4543,9 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'SAFE_HEAP'])
 
+  def test_bad_lookup(self):
+    self.do_runf(path_from_root('tests/filesystem/bad_lookup.cpp'), expected_output='ok')
+
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
     # forced libs is ok, they were there anyhow
@@ -6613,136 +6626,75 @@ int main() {
 ''')
     self.expect_fail([EMXX, 'src.cpp', '-Oz'])
 
-  def test_eval_ctors_non_terminating(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
+  def test_eval_ctor_ordering(self):
+    # ensure order of execution remains correct, even with a bad ctor
+    def test(p1, p2, p3, last, expected):
       src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        volatile int total = 0;
         struct C {
-          C() {
-            volatile int y = 0;
-            while (y == 0) {}
+          C(int x) {
+            volatile int y = x;
+            y++;
+            y--;
+            if (y == 0xf) {
+              // A printf can't be evalled ahead of time, so this will stop
+              // us.
+              printf("you can't eval me ahead of time\n");
+            }
+            total <<= 4;
+            total += int(y);
           }
         };
-        C always;
-        int main() {}
-      '''
+        C __attribute__((init_priority(%d))) c1(0x5);
+        C __attribute__((init_priority(%d))) c2(0x8);
+        C __attribute__((init_priority(%d))) c3(%d);
+        int main() {
+          printf("total is 0x%%x.\n", total);
+        }
+      ''' % (p1, p2, p3, last)
       create_file('src.cpp', src)
-      self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+      self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s'])
+      self.assertContained('total is %s.' % hex(expected), self.run_js('a.out.js'))
+      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
+      shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
+      return os.path.getsize('a.out.wasm')
 
-  @disabled('EVAL_CTORS is currently disabled')
-  def test_eval_ctors(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
-      print('check no ctors is ok')
-
-      # on by default in -Oz, but user-overridable
-
-      def get_size(args):
-        print('get_size', args)
-        self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-s', 'WASM=%d' % wasm] + args)
-        self.assertContained('hello, world!', self.run_js('a.out.js'))
-        if wasm:
-          codesize = self.count_wasm_contents('a.out.wasm', 'funcs')
-          memsize = self.count_wasm_contents('a.out.wasm', 'memory-data')
-        else:
-          codesize = os.path.getsize('a.out.js')
-          memsize = os.path.getsize('a.out.js.mem')
-        return (codesize, memsize)
-
-      def check_size(left, right):
-        # can't measure just the mem out of the wasm, so ignore [1] for wasm
-        if left[0] == right[0] and left[1] == right[1]:
-          return 0
-        if left[0] < right[0] and left[1] > right[1]:
-          return -1 # smaller code, bigger mem
-        if left[0] > right[0] and left[1] < right[1]:
-          return 1
-        assert False, [left, right]
-
-      o2_size = get_size(['-O2'])
-      assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
-      assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS']), o2_size) < 0, 'eval_ctors works if user asks for it'
-      oz_size = get_size(['-Oz'])
-      assert check_size(get_size(['-Oz']), oz_size) == 0, 'deterministic'
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS']), oz_size) == 0, 'eval_ctors is on by default in oz'
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0']), oz_size) == 1, 'eval_ctors can be turned off'
-
-      linkable_size = get_size(['-Oz', '-s', 'EVAL_CTORS', '-s', 'LINKABLE'])
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0', '-s', 'LINKABLE']), linkable_size) == 1, 'noticeable difference in linkable too'
-
-    def test_eval_ctor_ordering(self):
-      # ensure order of execution remains correct, even with a bad ctor
-      def test(p1, p2, p3, last, expected):
-        src = r'''
-          #include <stdio.h>
-          #include <stdlib.h>
-          volatile int total = 0;
-          struct C {
-            C(int x) {
-              volatile int y = x;
-              y++;
-              y--;
-              if (y == 0xf) {
-                printf("you can't eval me ahead of time\n"); // bad ctor
-              }
-              total <<= 4;
-              total += int(y);
-            }
-          };
-          C __attribute__((init_priority(%d))) c1(0x5);
-          C __attribute__((init_priority(%d))) c2(0x8);
-          C __attribute__((init_priority(%d))) c3(%d);
-          int main() {
-            printf("total is 0x%%x.\n", total);
-          }
-        ''' % (p1, p2, p3, last)
-        create_file('src.cpp', src)
-        self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
-        self.assertContained('total is %s.' % hex(expected), self.run_js('a.out.js'))
-        shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
-        if wasm:
-          shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
-          return self.count_wasm_contents('a.out.wasm', 'funcs')
-        else:
-          return read_file('a.out.js').count('function _')
-
-      print('no bad ctor')
-      first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa
-      second = test(3000, 1000, 2000, 0xe, 0x8e5) # noqa
-      third  = test(2000, 3000, 1000, 0xe, 0xe58) # noqa
-      print(first, second, third)
-      assert first == second and second == third
-      print('with bad ctor')
-      first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa; 2 will succeed
-      second = test(3000, 1000, 2000, 0xf, 0x8f5) # noqa; 1 will succedd
-      third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa; 0 will succeed
-      print(first, second, third)
-      assert first < second and second < third, [first, second, third]
+    print('no bad ctor')
+    first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa
+    second = test(3000, 1000, 2000, 0xe, 0x8e5) # noqa
+    third  = test(2000, 3000, 1000, 0xe, 0xe58) # noqa
+    print(first, second, third)
+    assert first == second and second == third
+    print('with bad ctor')
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa; 2 will succeed
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # noqa; 1 will succedd
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa; 0 will succeed
+    print(first, second, third)
+    self.assertLess(first, second)
+    self.assertLess(second, third)
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
-      create_file('lib.js', r'''
+    create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
-  external_thing: function() {}
+external_thing: function() {}
 });
 ''')
-      create_file('src.cpp', r'''
-  extern "C" void external_thing();
-  struct C {
-    C() { external_thing(); } // don't remove this!
-  };
-  C c;
-  int main() {}
-      ''')
-      err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      # disabled in the wasm backend
-      self.assertContained('Ctor evalling in the wasm backend is disabled', err)
-      self.assertNotContained('ctor_evaller: not successful', err) # with logging
-      # TODO(sbc): Re-enable onece ctor evaluation is working with llvm backend.
-      # self.assertContained('external_thing', err) # the failing call should be mentioned
+    create_file('src.cpp', r'''
+extern "C" void external_thing();
+struct C {
+  C() { external_thing(); } // don't remove this!
+};
+C c;
+int main() {}
+    ''')
+    err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js', '-O2', '-s', 'EVAL_CTORS'], stderr=PIPE).stderr
+    # logging should show we failed, and why
+    self.assertNotContained('ctor_evaller: not successful', err)
+    self.assertContained('stopping since could not eval: call import: env.external_thing', err)
 
   def test_override_js_execution_environment(self):
     create_file('main.cpp', r'''
@@ -7240,6 +7192,8 @@ int main() {
     'Os': (['-Os'], [], []), # noqa
     'Oz': (['-Oz'], [], []), # noqa
     'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 74), # noqa
+    # EVAL_CTORS also removes the __wasm_call_ctors function
+    'Oz-ctors': (['-Oz', '-s', 'EVAL_CTORS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
@@ -7255,6 +7209,10 @@ int main() {
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka']), # noqa
+    # eval_ctors 1 can partially optimize, but runs into getenv() for locale
+    # code. mode 2 ignores those and fully optimizes out the ctors
+    'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
+    'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -7934,6 +7892,12 @@ end
 
     self.run_process([emprofile, '--graph'])
     self.assertTrue(glob.glob('toolchain_profiler.results*.html'))
+
+  @with_env_modify({'EMPROFILE': '2'})
+  def test_toolchain_profiler_stderr(self):
+    stderr = self.run_process([EMCC, test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('start block "main"', stderr)
+    self.assertContained('block "main" took', stderr)
 
   def test_noderawfs(self):
     fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
@@ -11443,3 +11407,7 @@ void foo() {}
       }
     ''')
     self.run_process([EMCC, 'main.c', os.path.join('foo', 'foo bar.c')])
+
+  def test_tutorial(self):
+    # Ensure that files referenced in Tutorial.rst are buildable
+    self.run_process([EMCC, test_file('hello_world_file.cpp')])
