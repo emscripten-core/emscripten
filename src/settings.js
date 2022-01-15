@@ -1971,6 +1971,14 @@ var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
 // [link]
 var TRUSTED_TYPES = 0;
 
+// When targeting older browsers emscripten will sometimes require that
+// polyfills be included in the output.  If you would prefer to take care of
+// polyfilling yourself via some other mechanism you can prevent emscripten
+// from generating these by passing `-sNO_POLYFILL` or `-sPOLYFILL=0`
+// With default browser targets emscripten does not need any polyfills so this
+// settings is *only* needed when also explicitly targeting older browsers.
+var POLYFILL = 1;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================

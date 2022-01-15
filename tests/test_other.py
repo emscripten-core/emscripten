@@ -10022,9 +10022,14 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
 
     # we fail without legacy support
-    self.assertNotContained('hello, world!', test([], expect_fail=True))
+    test([], expect_fail=True)
+
     # but work with it
-    self.assertContained('hello, world!', test(['-sLEGACY_VM_SUPPORT'], expect_fail=False))
+    output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    self.assertContained('hello, world!', output)
+
+    # unless we explictly disable polyfills
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   def test_webgpu_compiletest(self):
     for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
