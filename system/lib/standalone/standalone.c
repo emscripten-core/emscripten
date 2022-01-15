@@ -137,3 +137,60 @@ __cxa_throw(void* ptr, void* type, void* destructor) {
 void* __cxa_allocate_exception(size_t thrown_size) {
   abort();
 }
+
+// WasmFS integration. We stub out file preloading and such, that are not
+// expected to work anyhow.
+
+size_t _wasmfs_get_num_preloaded_files() {
+  return 0;
+}
+
+size_t _wasmfs_get_num_preloaded_dirs() {
+  return 0;
+}
+
+int _wasmfs_get_preloaded_file_size(int index) {
+  return 0;
+}
+
+int _wasmfs_get_preloaded_file_mode(int index) {
+  return 0;
+}
+
+void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {
+}
+
+void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {
+}
+
+void _wasmfs_get_preloaded_child_path(int index, void* buffer) {
+}
+
+void _wasmfs_get_preloaded_path_name(int index, void* buffer) {
+}
+
+__attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_write")))
+__wasi_errno_t imported__wasi_fd_write(
+    __wasi_fd_t fd,
+    const __wasi_ciovec_t *iovs,
+    size_t iovs_len,
+    __wasi_size_t *nwritten
+);
+
+
+
+static void wasi_write(__wasi_fd_t fd, char* buffer) {
+  struct __wasi_ciovec_t iov;
+  iov.buf = (uint8_t*)buffer;
+  iov.buf_len = strlen(buffer) + 1;
+  __wasi_size_t nwritten;
+  imported__wasi_fd_write(fd, &iov, 1, &nwritten);
+}
+
+void _emscripten_out(char* text) {
+  wasi_write(1, text);
+}
+
+void _emscripten_err(char* text) {
+  wasi_write(2, text);
+}
