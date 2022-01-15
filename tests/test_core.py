@@ -8828,6 +8828,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
 
+  def test_syscall_intercept(self):
+    self.do_core_test('test_syscall_intercept.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None):
