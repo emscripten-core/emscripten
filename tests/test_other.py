@@ -10080,7 +10080,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
-    libs = ['-lc', '-lcompiler_rt', '-lc_rt']
+    libs = ['-lc', '-lcompiler_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
@@ -10937,7 +10937,7 @@ kill -9 $$
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
-    libs = ['-lc', '-lc_rt', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
 
     # Check the the linker was run with `-mt` variants because `-pthread` was passed.

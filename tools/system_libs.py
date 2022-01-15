@@ -87,75 +87,6 @@ def create_lib(libname, inputs):
     building.emar('cr', libname, inputs)
 
 
-def get_libc_rt_files(is_optz=False, superset=False):
-  # Combining static linking with LTO is tricky under LLVM.  The codegen that
-  # happens during LTO can generate references to new symbols that didn't exist
-  # in the linker inputs themselves.
-  # These symbols are called libcalls in LLVM and are the result of intrinsics
-  # and builtins at the LLVM level.  These libcalls cannot themselves be part
-  # of LTO because once the linker is running the LTO phase new bitcode objects
-  # cannot be added to link.  Another way of putting it: by the time LTO happens
-  # the decision about which bitcode symbols to compile has already been made.
-  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
-  # To solve this we put all such libcalls in a separate library that, like
-  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
-  # CompilerRTLibrary).
-  # Note that this also includes things that may be depended on by those
-  # functions - fmin uses signbit, for example, so signbit must be here (so if
-  # fmin is added by codegen, it will have all it needs).
-  #
-  # This function is called from two different places:
-  # 1. From libc-rt to decide which files to include.  We pass is_optz if we
-  #    are building the size-optimized version of the library.
-  # 2. From the libc library to decide which files to ignore.  Here is pass
-  #    `superset=True` since we want ignore the superset all files that might
-  #    be part of libc-rt (size-optimized or otherwise).
-  math_files = [
-    'fmin.c', 'fminf.c', 'fminl.c',
-    'fmax.c', 'fmaxf.c', 'fmaxl.c',
-    'fmod.c', 'fmodf.c', 'fmodl.c',
-    'logf.c', 'logf_data.c',
-    'log2f.c', 'log2f_data.c',
-    'log10.c', 'log10f.c',
-    'exp.c', 'exp_data.c',
-    'exp2.c',
-    'exp2f.c', 'exp2f_data.c',
-    'exp10.c', 'exp10f.c',
-    'ldexp.c', 'ldexpf.c', 'ldexpl.c',
-    'scalbn.c', '__fpclassifyl.c',
-    '__signbitl.c', '__signbitf.c', '__signbit.c',
-    '__math_divzero.c', '__math_divzerof.c',
-    '__math_oflow.c', '__math_oflowf.c',
-    '__math_uflow.c', '__math_uflowf.c',
-    '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-  ]
-  if superset or is_optz:
-    math_files += ['pow_small.c', 'log_small.c', 'log2_small.c']
-  if superset or not is_optz:
-    math_files += ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
-
-  math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
-
-  other_files = files_in_path(
-    path='system/lib/libc',
-    filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_scan_stack.c',
-               'emscripten_memmove.c'])
-  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
-  # compile these with -O2 like we do the rest of compiler-rt since its
-  # probably not performance sensitive.  However we don't currently have
-  # a way to set per-file compiler flags.  And hopefully we should be able
-  # move all this stuff back into libc once we it LTO compatible.
-  iprintf_files = files_in_path(
-    path='system/lib/libc/musl/src/stdio',
-    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-               'printf.c', 'puts.c', '__lockfile.c'])
-  iprintf_files += files_in_path(
-    path='system/lib/libc/musl/src/string',
-    filenames=['strlen.c'])
-  return math_files + other_files + iprintf_files
-
-
 def is_case_insensitive(path):
   """Returns True if the filesystem at `path` is case insensitive."""
   utils.write_file(os.path.join(path, 'test_file'), '')
@@ -382,10 +313,17 @@ class Library:
         cmd.remove('-g')
       else:
         cmd += cflags
+      cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
     return objects
+
+  def customize_build_cmd(self, cmd, filename):  # noqa
+    """Allows libraries to customize the build command used on per-file basis.
+
+    For example, libc uses this to replace -Oz with -O2 for some subset of files."""
+    return cmd
 
   def build(self, out_filename):
     """Builds the library and returns the path to the file."""
@@ -767,7 +705,11 @@ class libnoexit(Library):
   src_files = ['atexit_dummy.c']
 
 
-class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+class libc(MuslInternalLibrary,
+           DebugLibrary,
+           OptimizedAggressivelyForSizeLibrary,
+           AsanInstrumentedLibrary,
+           MTLibrary):
   name = 'libc'
 
   # Without -fno-builtin, LLVM can optimize away or convert calls to library
@@ -783,6 +725,68 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
              '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
              '-Wno-pointer-sign']
+
+  def __init__(self, **kwargs):
+    self.non_lto_files = self.get_non_lto_files()
+    super().__init__(**kwargs)
+
+  def get_non_lto_files(self):
+    # Combining static linking with LTO is tricky under LLVM.  The codegen that
+    # happens during LTO can generate references to new symbols that didn't exist
+    # in the linker inputs themselves.
+    # These symbols are called libcalls in LLVM and are the result of intrinsics
+    # and builtins at the LLVM level.  These libcalls cannot themselves be part
+    # of LTO because once the linker is running the LTO phase new bitcode objects
+    # cannot be added to link.  Another way of putting it: by the time LTO happens
+    # the decision about which bitcode symbols to compile has already been made.
+    # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+    # To solve this we put all such libcalls in a separate library that, like
+    # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+    # CompilerRTLibrary).
+    # Note that this also includes things that may be depended on by those
+    # functions - fmin uses signbit, for example, so signbit must be here (so if
+    # fmin is added by codegen, it will have all it needs).
+    math_files = [
+      'fmin.c', 'fminf.c', 'fminl.c',
+      'fmax.c', 'fmaxf.c', 'fmaxl.c',
+      'fmod.c', 'fmodf.c', 'fmodl.c',
+      'logf.c', 'logf_data.c',
+      'log2f.c', 'log2f_data.c',
+      'log10.c', 'log10f.c',
+      'exp.c', 'exp_data.c',
+      'exp2.c',
+      'exp2f.c', 'exp2f_data.c',
+      'exp10.c', 'exp10f.c',
+      'ldexp.c', 'ldexpf.c', 'ldexpl.c',
+      'scalbn.c', '__fpclassifyl.c',
+      '__signbitl.c', '__signbitf.c', '__signbit.c',
+      '__math_divzero.c', '__math_divzerof.c',
+      '__math_oflow.c', '__math_oflowf.c',
+      '__math_uflow.c', '__math_uflowf.c',
+      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+      'pow_small.c', 'log_small.c', 'log2_small.c',
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
+    ]
+    math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
+
+    other_files = files_in_path(
+      path='system/lib/libc',
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_scan_stack.c',
+                 'emscripten_memmove.c'])
+    # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+    # compile these with -O2 like we do the rest of compiler-rt since its
+    # probably not performance sensitive.  However we don't currently have
+    # a way to set per-file compiler flags.  And hopefully we should be able
+    # move all this stuff back into libc once we it LTO compatible.
+    iprintf_files = files_in_path(
+      path='system/lib/libc/musl/src/stdio',
+      filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+                 'printf.c', 'puts.c', '__lockfile.c'])
+    iprintf_files += files_in_path(
+      path='system/lib/libc/musl/src/string',
+      filenames=['strlen.c'])
+    return math_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
@@ -877,11 +881,12 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'pthread_self_stub.c'
         ])
 
-    # These are included in wasm_libc_rt instead
-    ignore += [os.path.basename(f) for f in get_libc_rt_files(superset=True)]
+    if self.is_optz:
+      ignore += ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
+    else:
+      ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
-    # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       # Don't recurse into ingored directories
       remove = [d for d in dirnames if d in ignore]
@@ -976,9 +981,28 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
         path='system/lib/pthread',
         filenames=['emscripten_atomic.c', 'thread_profiler.c'])
 
+    libc_files += files_in_path(
+      path='system/lib/libc',
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_scan_stack.c',
+                 'emscripten_memmove.c'])
+
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
     return libc_files
+
+  def customize_build_cmd(self, cmd, filename):
+    if filename in self.non_lto_files:
+      # These files act more like the part of compiler-rt in that
+      # references to them can be generated at compile time.
+      # Treat them like compiler-rt in as much as never compile
+      # them as LTO and build them with -O2 rather then -Os (which
+      # use used for the rest of libc) because this set of files
+      # also contains performance sensitive math functions.
+      cmd = [a for a in cmd if not a.startswith('-flto')]
+      cmd = [a for a in cmd if not a.startswith('-O')]
+      cmd += ['-O2']
+    return cmd
 
 
 class libprintf_long_double(libc):
@@ -1425,13 +1449,6 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
-  name = 'libc_rt'
-
-  def get_files(self):
-    return get_libc_rt_files(is_optz=self.is_optz)
-
-
 class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   name = 'libubsan_minimal_rt'
   never_force = True
@@ -1708,7 +1725,6 @@ def get_libs_to_link(args, forced, only_forced):
     return libs_to_link
 
   if only_forced:
-    add_library('libc_rt')
     add_library('libcompiler_rt')
     return libs_to_link
 
@@ -1728,6 +1744,8 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
 
+  if settings.STANDALONE_WASM:
+    add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
     add_library('libstubs')
   if '-nolibc' not in args:
@@ -1743,9 +1761,6 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libc++abi')
     if settings.EXCEPTION_HANDLING:
       add_library('libunwind')
-  if settings.STANDALONE_WASM:
-    add_library('libstandalonewasm')
-  add_library('libc_rt')
 
   if settings.USE_ASAN:
     force_include.append('libasan_rt')
