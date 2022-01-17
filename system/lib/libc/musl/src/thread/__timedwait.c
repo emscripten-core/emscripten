@@ -87,8 +87,9 @@ int __timedwait_cp(volatile int *addr, int val,
 				break;
 			}
 			// Must wait in slices in case this thread is cancelled in between.
-			r = -emscripten_futex_wait((void*)addr, val,
-				msecsToSleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : msecsToSleep);
+			if (msecsToSleep > max_ms_slice_to_sleep)
+				msecsToSleep = max_ms_slice_to_sleep;
+			r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);
 		} while (r == ETIMEDOUT);
 	} else {
 		// Can wait in one go.

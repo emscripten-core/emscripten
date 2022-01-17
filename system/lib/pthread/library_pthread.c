@@ -105,9 +105,9 @@ void emscripten_thread_sleep(double msecs) {
     ms_to_sleep = target - emscripten_get_now();
     if (ms_to_sleep < min_ms_slice_to_sleep)
       continue;
-
-    emscripten_futex_wait(&dummyZeroAddress, 0,
-      ms_to_sleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : ms_to_sleep);
+    if (ms_to_sleep > max_ms_slice_to_sleep)
+      ms_to_sleep = max_ms_slice_to_sleep;
+    emscripten_futex_wait(&dummyZeroAddress, 0, ms_to_sleep);
   } while (ms_to_sleep > 0);
 
   emscripten_conditional_set_current_thread_status(
