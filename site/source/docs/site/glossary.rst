@@ -88,15 +88,6 @@ Emscripten tools and dependencies
   LLVM Interpreter
     The `LLVM interpreter (LLI) <http://llvm.org/releases/3.0/docs/CommandGuide/html/lli.html>`_ executes programs from :term:`LLVM` bitcode. This tool is not maintained and has odd errors and crashes.
 
-    Emscripten provides an alternative tool, the :term:`LLVM Nativizer`.
-
-  LLVM Nativizer
-    The LLVM Nativizer (`tools/nativize_llvm.py <https://github.com/emscripten-core/emscripten/blob/main/tools/nativize_llvm.py>`_) compiles LLVM bitcode to a native executable. This links to the host libraries, so comparisons of output with Emscripten builds will not necessarily be identical.
-
-    It performs a similar role to the :term:`LLVM Interpreter`.
-
-    .. note:: Sometimes the output of the this tool will crash or fail. This tool is intended for developers fixing bugs in Emscripten.
-
 
 SDK Terms
 =========
