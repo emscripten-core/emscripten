@@ -200,6 +200,22 @@ def also_with_wasmfs(func):
   return decorated
 
 
+# Similar to also_with_wasmfs, but also enables the full JS API
+def also_with_wasmfs_js(func):
+  def decorated(self):
+    func(self)
+    print('wasmfs')
+    if self.get_setting('STANDALONE_WASM'):
+      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
+    if self.get_setting('MEMORY64'):
+      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
+    self.set_setting('WASMFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+    func(self)
+  return decorated
+
+
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
 def also_with_standalone_wasm(wasm2c=False, impure=False):
@@ -5564,6 +5580,7 @@ Module['onRuntimeInitialized'] = function() {
       self.set_setting('NODERAWFS')
       self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
 
+  @also_with_wasmfs_js
   def test_unistd_links(self):
     self.clear()
     orig_compiler_opts = self.emcc_args.copy()

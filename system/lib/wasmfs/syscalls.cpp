@@ -34,43 +34,9 @@ extern "C" {
 
 using namespace wasmfs;
 
-// Copy the file specified by the pathname into JS.
-// Return a pointer to the JS buffer in HEAPU8.
-// The buffer will also contain the file length.
-// Caller must free the returned pointer.
-void* emscripten_wasmfs_read_file(char* path) {
-  struct stat file;
-  int err = 0;
-  err = stat(path, &file);
-  if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-
-  // The function will return a pointer to a buffer with the file length in the
-  // first 8 bytes. The remaining bytes will contain the buffer contents. This
-  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
-  off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
-  *(uint32_t*)result = size;
-
-  int fd = open(path, O_RDONLY);
-  if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-  int numRead = pread(fd, result + sizeof(size), size, 0);
-  // TODO: Generalize this so that it is thread-proof.
-  // Must guarantee that the file size has not changed by the time it is read.
-  assert(numRead == size);
-  err = close(fd);
-  if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-
-  return result;
-}
+//
+// Syscall support
+//
 
 long __syscall_dup3(long oldfd, long newfd, long flags) {
   auto fileTable = wasmFS.getLockedFileTable();
@@ -925,4 +891,80 @@ long __syscall_rename(long old_path, long new_path) {
 
   return 0;
 }
+
+//
+// JS API support
+//
+
+// Copy the file specified by the pathname into JS.
+// Return a pointer to the JS buffer in HEAPU8.
+// The buffer will also contain the file length.
+// Caller must free the returned pointer.
+void* _wasmfs_read_file(char* path) {
+  struct stat file;
+  int err = 0;
+  err = stat(path, &file);
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+
+  // The function will return a pointer to a buffer with the file length in the
+  // first 8 bytes. The remaining bytes will contain the buffer contents. This
+  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
+  off_t size = file.st_size;
+  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
+  *(uint32_t*)result = size;
+
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+  int numRead = pread(fd, result + sizeof(size), size, 0);
+  // TODO: Generalize this so that it is thread-proof.
+  // Must guarantee that the file size has not changed by the time it is read.
+  assert(numRead == size);
+  err = close(fd);
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+
+  return result;
+}
+
+// Calls mkdir().
+long _wasmfs_mkdir(char* path, long mode) {
+  return __syscall_mkdir(path, mode);
+}
+
+// Calls chdir().
+long _wasmfs_chdir(char* path) {
+  return __syscall_chdir(path);
+}
+
+// Writes to a file and returns the number of bytes written successfully.
+long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
+  auto pathParts = splitPath(pathname);
+
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.child) {
+    // Invalid path.
+    return 0;
+  }
+
+  auto dataFile = parsedPath.child->dynCast<DataFile>();
+  if (!dataFile) {
+    // Not a data file.
+    return 0;
+  }
+
+  auto result = file->locked().write(data, data_size, 0);
+  if (result != __WASI_ERRNO_SUCCESS) {
+    return 0;
+  }
+  return data_size;
+}
+
 }
