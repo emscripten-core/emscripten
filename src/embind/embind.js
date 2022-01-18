@@ -1743,7 +1743,7 @@ var LibraryEmbind = {
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationRegistry) {
-        attachFinalizer = (handle) => { return handle; };
+        attachFinalizer = (handle) => handle;
         return handle;
     }
     // If the running environment has a FinalizationRegistry (see
