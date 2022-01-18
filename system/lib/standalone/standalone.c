@@ -170,6 +170,11 @@ void _wasmfs_get_preloaded_child_path(int index, void* buffer) {
 void _wasmfs_get_preloaded_path_name(int index, void* buffer) {
 }
 
+// Import the VM's fd_write under a different name. Then we can interpose in
+// between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS
+// implements. And WasmFS will forward actual writing to stdout/stderr to the
+// VM's fd_write. (This allows WasmFS to do work in the middle, for example, it
+// could support embedded files and other functionality.)
 __attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_write")))
 __wasi_errno_t imported__wasi_fd_write(
     __wasi_fd_t fd,
@@ -177,8 +182,6 @@ __wasi_errno_t imported__wasi_fd_write(
     size_t iovs_len,
     __wasi_size_t *nwritten
 );
-
-
 
 static void wasi_write(__wasi_fd_t fd, char* buffer) {
   struct __wasi_ciovec_t iov;
