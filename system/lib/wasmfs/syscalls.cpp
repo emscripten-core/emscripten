@@ -919,6 +919,30 @@ long __syscall_symlink(char* old_path, char* new_path) {
   return 0;
 }
 
+long __syscall_readlink(char* path, char* buf, size_t bufSize) {
+  auto pathParts = splitPath(path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  if (!parsedPath.child->is<Symlink>()) {
+    return -EINVAL;
+  }
+
+  auto symlink = parsedPath.child->dynCast<Symlink>();
+  auto& target = symlink->locked().getTarget();
+
+  auto bytes = std::min(bufSize, target.size());
+  memcpy(buf, target.c_str(), bytes);
+
+  return bytes;
+}
+
 //
 // JS API support
 //
