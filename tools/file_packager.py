@@ -282,26 +282,24 @@ def main():
   # standalone calls
   if not from_emcc:
     ret = '''
-  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
-  ''' % {"EXPORT_NAME": export_name}
+  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": export_name}
 
   ret += '''
   if (!Module.expectedDataFileDownloads) {
     Module.expectedDataFileDownloads = 0;
   }
+
   Module.expectedDataFileDownloads++;
   (function() {
     // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
     // fetch the .data bundle on the worker
     if (Module['ENVIRONMENT_IS_PTHREAD']) return;
-    var loadPackage = function(metadata) {
-  '''
+    var loadPackage = function(metadata) {\n'''
 
   code = '''
       function assert(check, msg) {
         if (!check) throw msg + new Error().stack;
-      }
-  '''
+      }\n'''
 
   for file_ in data_files:
     if not should_ignore(file_['srcpath']):
@@ -425,65 +423,57 @@ def main():
             } else {
               err('Preloading file ' + that.name + ' failed');
             }
-          }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
-  '''
-    create_data = '''
-          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
-          Module['removeRunDependency']('fp ' + that.name);
-  '''
+          }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
+    create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
+          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
+          Module['removeRunDependency']('fp ' + that.name);'''
 
     if not lz4:
-        # Data requests - for getting a block of data out of the big archive - have
-        # a similar API to XHRs
-        code += '''
-          /** @constructor */
-          function DataRequest(start, end, audio) {
-            this.start = start;
-            this.end = end;
-            this.audio = audio;
-          }
-          DataRequest.prototype = {
-            requests: {},
-            open: function(mode, name) {
-              this.name = name;
-              this.requests[name] = this;
-              Module['addRunDependency']('fp ' + this.name);
-            },
-            send: function() {},
-            onload: function() {
-              var byteArray = this.byteArray.subarray(this.start, this.end);
-              this.finish(byteArray);
-            },
-            finish: function(byteArray) {
-              var that = this;
-      %s
-              this.requests[this.name] = null;
-            }
-          };
-      %s
-        ''' % (create_preloaded if use_preload_plugins else create_data, '''
-              var files = metadata['files'];
-              for (var i = 0; i < files.length; ++i) {
-                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-              }
-      ''')
+      # Data requests - for getting a block of data out of the big archive - have
+      # a similar API to XHRs
+      code += '''
+      /** @constructor */
+      function DataRequest(start, end, audio) {
+        this.start = start;
+        this.end = end;
+        this.audio = audio;
+      }
+      DataRequest.prototype = {
+        requests: {},
+        open: function(mode, name) {
+          this.name = name;
+          this.requests[name] = this;
+          Module['addRunDependency']('fp ' + this.name);
+        },
+        send: function() {},
+        onload: function() {
+          var byteArray = this.byteArray.subarray(this.start, this.end);
+          this.finish(byteArray);
+        },
+        finish: function(byteArray) {
+          var that = this;
+          %s
+          this.requests[this.name] = null;
+        }
+      };
 
-  counter = 0
-  for file_ in data_files:
+      var files = metadata['files'];
+      for (var i = 0; i < files.length; ++i) {
+        new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
+      }\n''' % (create_preloaded if use_preload_plugins else create_data)
+
+  for (counter, file_) in enumerate(data_files):
     filename = file_['dstpath']
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
       data = base64_encode(utils.read_binary(file_['srcpath']))
-      code += '''var fileData%d = '%s';\n''' % (counter, data)
-      code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
+      code += "      var fileData%d = '%s';\n" % (counter, data)
+      code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n"
                % (dirname, basename, counter))
-      counter += 1
     elif file_['mode'] == 'preload':
       # Preload
-      counter += 1
-
       metadata_el = {
         'filename': file_['dstpath'],
         'start': file_['data_start'],
@@ -499,16 +489,12 @@ def main():
   if has_preloaded:
     if not lz4:
       # Get the big archive and split it up
-      use_data = '''
-          // Reuse the bytearray from the XHR as the source for file reads.
+      use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
-    '''
-      use_data += '''
-            var files = metadata['files'];
-            for (var i = 0; i < files.length; ++i) {
-              DataRequest.prototype.requests[files[i].filename].onload();
-            }
-      '''
+          var files = metadata['files'];
+          for (var i = 0; i < files.length; ++i) {
+            DataRequest.prototype.requests[files[i].filename].onload();
+          }'''
       use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
                    % js_manipulation.escape_for_js_string(data_target))
 
@@ -520,19 +506,17 @@ def main():
                                 [utils.path_from_root('third_party/mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
-      use_data = '''
-            var compressedData = %s;
+      use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
-            Module['removeRunDependency']('datafile_%s');
-      ''' % (meta, "true" if use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+            Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
     package_uuid = uuid.uuid4()
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
     remote_package_name = os.path.basename(package_name)
-    ret += r'''
+    ret += '''
       var PACKAGE_PATH = '';
       if (typeof window === 'object') {
         PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
@@ -546,15 +530,12 @@ def main():
         Module['locateFile'] = Module['locateFilePackage'];
         err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
       }
-      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
-    ''' % (js_manipulation.escape_for_js_string(data_target),
-           js_manipulation.escape_for_js_string(remote_package_name))
+      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
     metadata['package_uuid'] = str(package_uuid)
     ret += '''
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
-      var PACKAGE_UUID = metadata['package_uuid'];
-    '''
+      var PACKAGE_UUID = metadata['package_uuid'];\n'''
 
     if use_preload_cache:
       code += r'''
@@ -717,13 +698,12 @@ def main():
               errback(error);
             };
           }
-        }
-      '''
+        }\n'''
 
     # add Node.js support code, if necessary
     node_support_code = ''
     if support_node:
-      node_support_code = r'''
+      node_support_code = '''
         if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
@@ -733,9 +713,8 @@ def main():
             }
           });
           return;
-        }
-      '''
-    ret += r'''
+        }'''.strip()
+    ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
         var xhr = new XMLHttpRequest();
@@ -787,10 +766,9 @@ def main():
 
       function handleError(error) {
         console.error('package error:', error);
-      };
-    ''' % {'node_support_code': node_support_code}
+      };\n''' % {'node_support_code': node_support_code}
 
-    code += r'''
+    code += '''
       function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
         assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
@@ -798,17 +776,15 @@ def main():
         var curr;
         %s
       };
-      Module['addRunDependency']('datafile_%s');
-    ''' % (use_data, js_manipulation.escape_for_js_string(data_target))
+      Module['addRunDependency']('datafile_%s');\n''' % (use_data, js_manipulation.escape_for_js_string(data_target))
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
 
-    code += r'''
-      if (!Module.preloadResults) Module.preloadResults = {};
-    '''
+    code += '''
+      if (!Module.preloadResults) Module.preloadResults = {};\n'''
 
     if use_preload_cache:
-      code += r'''
+      code += '''
         function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
@@ -838,40 +814,36 @@ def main():
           }
         , preloadFallback);
 
-        if (Module['setStatus']) Module['setStatus']('Downloading...');
-      '''
+        if (Module['setStatus']) Module['setStatus']('Downloading...');\n'''
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
-      ret += r'''
-        var fetchedCallback = null;
-        var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+      ret += '''
+      var fetchedCallback = null;
+      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
-        if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
-          if (fetchedCallback) {
-            fetchedCallback(data);
-            fetchedCallback = null;
-          } else {
-            fetched = data;
-          }
-        }, handleError);
-      '''
-
-      code += r'''
-        Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
-        if (fetched) {
-          processPackageData(fetched);
-          fetched = null;
+      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+        if (fetchedCallback) {
+          fetchedCallback(data);
+          fetchedCallback = null;
         } else {
-          fetchedCallback = processPackageData;
+          fetched = data;
         }
-      '''
+      }, handleError);\n'''
+
+      code += '''
+      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
+      if (fetched) {
+        processPackageData(fetched);
+        fetched = null;
+      } else {
+        fetchedCallback = processPackageData;
+      }\n'''
 
   ret += '''
-    function runWithFS() {
-  '''
+    function runWithFS() {\n'''
   ret += code
   ret += '''
     }
@@ -880,15 +852,14 @@ def main():
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
-    }
-  '''
+    }\n'''
 
   if separate_metadata:
       _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
-   }
+  }
 
-   function runMetaWithFS() {
+  function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     var xhr = new XMLHttpRequest();
@@ -900,25 +871,22 @@ def main():
     xhr.open('GET', REMOTE_METADATA_NAME, true);
     xhr.overrideMimeType('application/json');
     xhr.send(null);
-   }
+  }
 
-   if (Module['calledRun']) {
+  if (Module['calledRun']) {
     runMetaWithFS();
-   } else {
+  } else {
     if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runMetaWithFS);
-   }
-  ''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')}
+  }\n''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')}
 
   else:
       _metadata_template = '''
-   }
-   loadPackage(%s);
-  ''' % json.dumps(metadata)
+    }
+    loadPackage(%s);\n''' % json.dumps(metadata)
 
   ret += '''%s
-  })();
-  ''' % _metadata_template
+  })();\n''' % _metadata_template
 
   if force or len(data_files):
     if jsoutput is None:

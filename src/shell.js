@@ -36,11 +36,13 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
 
+#if POLYFILL
 #if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000) // https://caniuse.com/#feat=promises
 // Include a Promise polyfill for legacy browsers. This is needed either for
 // wasm2js, where we polyfill the wasm API which needs Promises, or when using
 // modularize which creates a Promise for when the module is ready.
 #include "polyfill/promise.js"
+#endif
 #endif
 
 // See https://caniuse.com/mdn-javascript_builtins_object_assign

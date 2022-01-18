@@ -2497,18 +2497,33 @@ int f() {
     os.chdir('subdir')
     create_file('data2.txt', 'data2')
 
+    def check(text):
+      self.assertGreater(len(text), 0)
+      empty_lines = 0
+      # check the generated is relatively tidy
+      for line in text.splitlines():
+        if line and line[-1].isspace():
+          self.fail('output contains trailing whitespace: `%s`' % line)
+
+        if line.strip():
+          empty_lines = 0
+        else:
+          empty_lines += 1
+          if empty_lines > 1:
+            self.fail('output contains more then one empty line in row')
+
     # relative path to below the current dir is invalid
     stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
     self.assertContained('below the current directory', stderr)
 
     # relative path that ends up under us is cool
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertGreater(len(proc.stdout), 0)
     self.assertNotContained('below the current directory', proc.stderr)
+    check(proc.stdout)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
     proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertGreater(len(proc2.stdout), 0)
+    check(proc2.stdout)
     self.assertNotContained('below the current directory', proc2.stderr)
 
     def clean(txt):
@@ -10022,9 +10037,14 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
 
     # we fail without legacy support
-    self.assertNotContained('hello, world!', test([], expect_fail=True))
+    test([], expect_fail=True)
+
     # but work with it
-    self.assertContained('hello, world!', test(['-sLEGACY_VM_SUPPORT'], expect_fail=False))
+    output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    self.assertContained('hello, world!', output)
+
+    # unless we explictly disable polyfills
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   def test_webgpu_compiletest(self):
     for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:

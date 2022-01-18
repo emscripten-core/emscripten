@@ -189,6 +189,9 @@ def can_do_standalone(self):
 def also_with_wasmfs(func):
   def decorated(self):
     func(self)
+    if self.get_setting('WASMFS'):
+      # Nothing more to test.
+      return
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
@@ -5335,6 +5338,7 @@ main( int argv, char ** argc ) {
     self.do_core_test('test_write_stdout_fileno.c')
     self.do_core_test('test_write_stdout_fileno.c', args=['-sFILESYSTEM=0'])
 
+  @also_with_wasmfs # tests EXIT_RUNTIME flushing
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8928,7 +8932,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=[], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-O2'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
