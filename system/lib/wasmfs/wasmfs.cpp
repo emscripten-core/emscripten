@@ -46,8 +46,8 @@ WasmFS::~WasmFS() {
   // Note that we lock here, although strictly speaking it is unnecessary given
   // that we are in the destructor of WasmFS: nothing can possibly be running
   // on files at this time.
-  DataFile::Handle(StdoutFile::getSingleton()).flush();
-  DataFile::Handle(StderrFile::getSingleton()).flush();
+  StdoutFile::getSingleton()->locked().flush();
+  StderrFile::getSingleton()->locked().flush();
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
