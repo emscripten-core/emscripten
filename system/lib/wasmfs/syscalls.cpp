@@ -934,16 +934,6 @@ void* _wasmfs_read_file(char* path) {
   return result;
 }
 
-// Calls mkdir().
-long _wasmfs_mkdir(char* path, long mode) {
-  return __syscall_mkdir((long)path, mode);
-}
-
-// Calls chdir().
-long _wasmfs_chdir(char* path) {
-  return __syscall_chdir((long)path);
-}
-
 // Writes to a file and returns the number of bytes written successfully.
 long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto pathParts = splitPath(pathname);
@@ -966,6 +956,16 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     return 0;
   }
   return data_size;
+}
+
+// Calls mkdir().
+long _wasmfs_mkdir(char* path, long mode) {
+  return __syscall_mkdir((long)path, mode);
+}
+
+// Calls chdir().
+long _wasmfs_chdir(char* path) {
+  return __syscall_chdir((long)path);
 }
 
 }
