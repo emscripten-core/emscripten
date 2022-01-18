@@ -632,8 +632,9 @@ long __syscall_getcwd(long buf, long size) {
   // Return value is a null-terminated c string.
   strcpy((char*)buf, res);
 
-  return 0;
+  return buf;
 }
+
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   // TODO: This is only partial implementation of __wasi_fd_fdstat_get. Enough
   // to get __wasi_fd_is_valid working.

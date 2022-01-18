@@ -1,14 +1,23 @@
+getcwd() result: /
 Current working dir: /
+getcwd() result: /working
 Current working dir: /working
+getcwd() result: /
 Current working dir: /
+getcwd() result: /working/test
 Current working dir: /working/test
 Errno: No such file or directory
+getcwd() result: /working/test
 Current working dir is still: /working/test
 Errno: No error information
+getcwd() result: /working
 Current working dir is now: /working
 Errno: No such file or directory
+getcwd() result: /working
 Current working dir is still: /working
+getcwd() result: /dev
 Current working dir: /dev
 Errno: Not a directory
+getcwd() result: /dev
 Current working dir is still: /dev
 Errno: Invalid argument
