@@ -190,6 +190,8 @@ def also_with_wasmfs(func):
   def decorated(self):
     func(self)
     print('wasmfs')
+    if self.get_setting('STANDALONE_WASM'):
+      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     if self.get_setting('MEMORY64'):
       self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
