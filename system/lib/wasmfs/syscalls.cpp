@@ -913,7 +913,7 @@ long __syscall_symlink(char* old_path, char* new_path) {
   }
 
   auto backend = parsedPath.parent->unlocked()->getBackend();
-  auto created = backend->createSymlink(old_path);
+  auto created = backend->createSymlink(normalizePath(old_path));
   parsedPath.parent->setEntry(pathParts.back(), created);
 
   return 0;

@@ -257,4 +257,10 @@ std::vector<std::string> splitPath(char* pathname) {
 
   return pathParts;
 }
+
+std::string normalizePath(char* pathname) {
+  auto parts = splitPath(pathname);
+  abort();
+}
+
 } // namespace wasmfs

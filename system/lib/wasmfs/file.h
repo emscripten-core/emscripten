@@ -307,4 +307,10 @@ getDir(std::vector<std::string>::iterator begin,
 // element will be "/" iff the path is an absolute path.
 std::vector<std::string> splitPath(char* pathname);
 
+// "Normalizes" a path, removing ".." entries. For example,
+//   foo/../bar
+// will become
+//   bar
+std::string normalizePath(char* pathname);
+
 } // namespace wasmfs
