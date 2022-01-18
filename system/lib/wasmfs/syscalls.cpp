@@ -892,7 +892,7 @@ long __syscall_rename(long old_path, long new_path) {
   return 0;
 }
 
-long __syscall_symlink(long old_path, long new_path) {
+long __syscall_symlink(char* old_path, char* new_path) {
   auto pathParts = splitPath(new_path);
 
   long err;
@@ -985,14 +985,16 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   return data_size;
 }
 
-// Calls mkdir().
 long _wasmfs_mkdir(char* path, long mode) {
   return __syscall_mkdir((long)path, mode);
 }
 
-// Calls chdir().
 long _wasmfs_chdir(char* path) {
   return __syscall_chdir((long)path);
+}
+
+void _wasmfs_symlink(char* old_path, char* new_path) {
+  __syscall_symlink(old_path, new_path);
 }
 
 }

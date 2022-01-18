@@ -116,7 +116,7 @@ var WasmfsLibrary = {
     writeFile: function(path, data) {
       var pathBuffer = allocateUTF8(path);
       var dataBuffer = allocate(data);
-      __wasmfs_write_file(pathBuffer, dataBuffer, dataSize);
+      __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
       _free(pathBuffer);
     },

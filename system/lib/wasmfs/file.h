@@ -241,15 +241,21 @@ protected:
 };
 
 class Symlink : public File {
+protected:
   // The target file that this symlink points to.
   std::string target;
 
+  // 4096 bytes is the size of a block in ext4.
+  // This value was also copied from the JS file system.
+  size_t getSize() override;
+
 public:
   static constexpr FileKind expectedKind = File::SymlinkKind;
-  Symlink(mode_t mode, backend_t backend, std::string target)
-    : File(File::SymlinkKind, mode | S_IFREG, backend), target(target) {}
-  Symlink(mode_t mode, backend_t backend, mode_t fileType, std::string target)
-    : File(File::SymlinkKind, mode | fileType, backend), target(target) {}
+  // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
+  // not matter, so that value will never be read (what matters is the mode of
+  // the target).
+  Symlink(std::string target, backend_t backend)
+    : File(File::SymlinkKind, 0, backend), target(target) {}
   virtual ~Symlink() = default;
 
   class Handle : public File::Handle {
@@ -257,7 +263,7 @@ public:
     std::shared_ptr<Symlink> getFile() { return file->cast<Symlink>(); }
 
   public:
-    Handle(std::shared_ptr<File> symlink) : File::Handle(Symlink) {}
+    Handle(std::shared_ptr<File> symlink) : File::Handle(symlink) {}
     Handle(Handle&&) = default;
 
     std::string& getTarget() {

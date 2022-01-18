@@ -31,8 +31,8 @@ public:
   // By default all backends create normal Symlink instances for symlinks.
   // That is, the default behavior is to implement symlinks in the trivial
   // manner and in-memory.
-  virtual std::shared_ptr<Symlink> createSymlink(mode_t mode) {
-    return std::make_shared<Symlink>(mode, this);
+  virtual std::shared_ptr<Symlink> createSymlink(std::string target) {
+    return std::make_shared<Symlink>(target, this);
   }
 
   virtual ~Backend() = default;
