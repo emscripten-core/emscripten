@@ -73,7 +73,7 @@ def get(ports, settings, shared):
                  '-o', o, '-I' + ports.get_include_dir('SDL2'),
                  '-O2', '-w']
       if settings.USE_PTHREADS:
-        command += ['-s', 'USE_PTHREADS']
+        command += ['-sUSE_PTHREADS']
       commands.append(command)
       o_s.append(o)
     ports.run_commands(commands)
