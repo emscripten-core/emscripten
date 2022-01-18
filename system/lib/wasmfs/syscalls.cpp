@@ -985,22 +985,27 @@ void* _wasmfs_read_file(char* path) {
   return result;
 }
 
-// Writes to a file and returns the number of bytes written successfully.
+// Writes to a file, possibly creating it, and returns the number of bytes
+// written successfully.
 long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto pathParts = splitPath(pathname);
 
   long err;
   auto parsedPath = getParsedPath(pathParts, err);
-  if (!parsedPath.child) {
-    // Invalid path.
+  if (!parsedPath.parent) {
     return 0;
   }
 
-  auto dataFile = parsedPath.child->dynCast<DataFile>();
-  if (!dataFile) {
-    // Not a data file.
+  if (!parsedPath.child) {
+    // Create a file here.
+    wasmfs_create_file(pathname, O_WRONLY, parsedPath.parent->getParent()->getBackend());
+  } else if (!parsedPath.child->is<DataFile>()) {
+    // There is something here but it isn't a data file.
     return 0;
   }
+
+  auto child = parsedPath.parent->getEntry(pathParts.back());
+  auto dataFile = child->dynCast<DataFile>();
 
   auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);
   if (result != __WASI_ERRNO_SUCCESS) {
