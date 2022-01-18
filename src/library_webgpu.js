@@ -1515,6 +1515,19 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
   },
 
+  wgpuCommandEncoderClearBuffer: function(encoderId, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsI32s('size') }}}
+
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    commandEncoder["clearBuffer"](
+      buffer, 
+      {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}},
+      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}} 
+    );
+  },
+
   wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, {{{ defineI64Param('srcOffset') }}}, dstId, {{{ defineI64Param('dstOffset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('srcOffset') }}}
     {{{ receiveI64ParamAsI32s('dstOffset') }}}
