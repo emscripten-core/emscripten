@@ -53,8 +53,8 @@ def get(ports, settings, shared):
                  '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
                  '-DCP_USE_DOUBLES=0',
                  '-O2',
-                 '-s', 'USE_ZLIB=1',
-                 '-s', 'USE_LIBPNG=1',
+                 '-sUSE_ZLIB=1',
+                 '-sUSE_LIBPNG=1',
                  '-o', o, '-w']
 
       for include in cocos2dx_includes:
