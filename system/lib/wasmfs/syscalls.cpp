@@ -892,6 +892,33 @@ long __syscall_rename(long old_path, long new_path) {
   return 0;
 }
 
+long __syscall_symlink(long old_path, long new_path) {
+  auto pathParts = splitPath(new_path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+
+  // Parent node doesn't exist.
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
+
+  // Check if the requested directory already exists.
+  if (parsedPath.child) {
+    return -EEXIST;
+  }
+
+  auto backend = parsedPath.parent->unlocked()->getBackend();
+  auto created = backend->createSymlink(old_path);
+  parsedPath.parent->setEntry(pathParts.back(), created);
+
+  return 0;
+}
+
 //
 // JS API support
 //

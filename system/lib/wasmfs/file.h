@@ -240,6 +240,34 @@ protected:
   size_t getSize() override { return 4096; }
 };
 
+class Symlink : public File {
+  // The target file that this symlink points to.
+  std::string target;
+
+public:
+  static constexpr FileKind expectedKind = File::SymlinkKind;
+  Symlink(mode_t mode, backend_t backend, std::string target)
+    : File(File::SymlinkKind, mode | S_IFREG, backend), target(target) {}
+  Symlink(mode_t mode, backend_t backend, mode_t fileType, std::string target)
+    : File(File::SymlinkKind, mode | fileType, backend), target(target) {}
+  virtual ~Symlink() = default;
+
+  class Handle : public File::Handle {
+
+    std::shared_ptr<Symlink> getFile() { return file->cast<Symlink>(); }
+
+  public:
+    Handle(std::shared_ptr<File> symlink) : File::Handle(Symlink) {}
+    Handle(Handle&&) = default;
+
+    std::string& getTarget() {
+      return getFile()->target;
+    }
+  };
+
+  Handle locked() { return Handle(shared_from_this()); }
+};
+
 struct ParsedPath {
   std::optional<Directory::Handle> parent;
   std::shared_ptr<File> child;

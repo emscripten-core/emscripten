@@ -90,10 +90,6 @@ public:
     // This creates a file on a thread specified by the proxy member.
     return std::make_shared<ProxiedFile>(mode, this, backend, proxy);
   }
-
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, this);
-  }
 };
 
 // Create a proxied backend by supplying another backend.
