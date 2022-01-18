@@ -5319,6 +5319,7 @@ main( int argv, char ** argc ) {
     self.do_core_test('test_write_stdout_fileno.c')
     self.do_core_test('test_write_stdout_fileno.c', args=['-sFILESYSTEM=0'])
 
+  @also_with_wasmfs # tests EXIT_RUNTIME flushing
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')

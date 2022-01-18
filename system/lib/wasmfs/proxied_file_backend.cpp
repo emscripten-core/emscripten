@@ -39,6 +39,8 @@ class ProxiedFile : public DataFile {
     return result;
   }
 
+  void flush() override {}
+
   // Querying the size of the Proxied File returns the size of the underlying
   // file given by the proxying mechanism.
   size_t getSize() override {
