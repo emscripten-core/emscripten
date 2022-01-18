@@ -1773,7 +1773,7 @@ var LibraryEmbind = {
             "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
             "Originally allocated"); // `.stack` will add "at ..." after this sentence
             if ('captureStackTrace' in Error) {
-                Error.captureStackTrace(info.leakWarning, cls.constructor);
+                Error.captureStackTrace(info.leakWarning, Object.getPrototypeOf($$.ptrType).fromWireType);
             }
  #endif
             finalizationRegistry.register(handle, info, handle);
