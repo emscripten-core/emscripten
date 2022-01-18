@@ -189,6 +189,9 @@ def can_do_standalone(self):
 def also_with_wasmfs(func):
   def decorated(self):
     func(self)
+    if self.get_setting('WASMFS'):
+      # Nothing more to test.
+      return
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
@@ -8911,7 +8914,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=[], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-O2'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})

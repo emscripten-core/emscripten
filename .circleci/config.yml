@@ -383,7 +383,8 @@ jobs:
     steps:
       - run-tests:
           # also add a little select testing for wasm2js in -O3
-          test_targets: "core3 wasm2js3.test_memorygrowth_2"
+          # also add a little select wasmfs testing
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world_standalone"
   test-wasm2js1:
     executor: bionic
     steps:
