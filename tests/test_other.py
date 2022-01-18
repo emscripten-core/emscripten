@@ -11440,3 +11440,6 @@ void foo() {}
   def test_tutorial(self):
     # Ensure that files referenced in Tutorial.rst are buildable
     self.run_process([EMCC, test_file('hello_world_file.cpp')])
+
+  def test_stdint_limits(self):
+    self.do_other_test('test_stdint_limits.c')
