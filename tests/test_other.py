@@ -1478,12 +1478,15 @@ int f() {
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
       int main() {
         FILE *f = fopen("somefile.txt", "r");
+        assert(f);
         char buf[100];
-        fread(buf, 1, 20, f);
+        int rtn = fread(buf, 1, 20, f);
+        assert(rtn == 20);
         buf[20] = 0;
         fclose(f);
         printf("|%s|\n", buf);
@@ -1491,7 +1494,7 @@ int f() {
       }
     ''')
 
-    self.run_process([EMXX, 'main.cpp'] + args)
+    self.run_process([EMCC, 'main.c'] + args)
     # run in node.js to ensure we verify that file preloading works there
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
@@ -5774,18 +5777,17 @@ int main() {
   }
   return 0;
 }
-
 ''')
-
-    self.run_process([EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-sSIDE_MODULE', '-sEXPORT_ALL'])
-    self.run_process([EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-sSIDE_MODULE', '-sEXPORT_ALL'])
-    self.run_process([EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-sSIDE_MODULE', '-sEXPORT_ALL'])
-    self.run_process([EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-sSIDE_MODULE', '-sEXPORT_ALL'])
-    self.run_process([EMCC, '-o', 'main.js', 'main.c', '-sMAIN_MODULE', '-sINITIAL_MEMORY=' + str(32 * 1024 * 1024),
+    self.run_process([EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
                       '--embed-file', 'libhello1.wasm@/lib/libhello1.wasm',
                       '--embed-file', 'libhello2.wasm@/usr/lib/libhello2.wasm',
                       '--embed-file', 'libhello3.wasm@/libhello3.wasm',
                       '--embed-file', 'libhello4.wasm@/usr/local/lib/libhello4.wasm',
+                      'libhello1.wasm', 'libhello2.wasm', 'libhello3.wasm', 'libhello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
                       '--pre-js', 'pre.js'])
     out = self.run_js('main.js')
     self.assertContained('Hello1', out)
