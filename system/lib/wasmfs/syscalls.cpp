@@ -936,18 +936,19 @@ void* _wasmfs_read_file(char* path) {
 
 // Calls mkdir().
 long _wasmfs_mkdir(char* path, long mode) {
-  return __syscall_mkdir(path, mode);
+  return __syscall_mkdir((long)path, mode);
 }
 
 // Calls chdir().
 long _wasmfs_chdir(char* path) {
-  return __syscall_chdir(path);
+  return __syscall_chdir((long)path);
 }
 
 // Writes to a file and returns the number of bytes written successfully.
 long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto pathParts = splitPath(pathname);
 
+  long err;
   auto parsedPath = getParsedPath(pathParts, err);
   if (!parsedPath.child) {
     // Invalid path.
@@ -960,7 +961,7 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     return 0;
   }
 
-  auto result = file->locked().write(data, data_size, 0);
+  auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);
   if (result != __WASI_ERRNO_SUCCESS) {
     return 0;
   }
