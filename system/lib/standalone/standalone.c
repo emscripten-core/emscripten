@@ -129,11 +129,17 @@ double emscripten_get_now(void) {
 // allows users to see a clear error if a throw happens, and 99% of the
 // overhead is in the catching, so this is a reasonable tradeoff.
 // For now, in a standalone build just terminate. TODO nice error message
-void
-__cxa_throw(void* ptr, void* type, void* destructor) {
+//
+// Define these symbols as weak so that when we build with exceptions
+// enabled (using wasm-eh) we get the real versions of these functions
+// as defined in libc++abi.
+
+__attribute__((__weak__))
+void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
 }
 
+__attribute__((__weak__))
 void* __cxa_allocate_exception(size_t thrown_size) {
   abort();
 }

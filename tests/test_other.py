@@ -10299,6 +10299,15 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
+  @require_v8
+  def test_standalone_wasm_exceptions(self):
+    self.set_setting('STANDALONE_WASM')
+    self.set_setting('WASM_BIGINT')
+    self.wasm_engines = []
+    self.emcc_args += ['-fwasm-exceptions']
+    self.v8_args.append('--experimental-wasm-eh')
+    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
     # ASSERTIONS to help with any confusion when the user calls malloc/free
