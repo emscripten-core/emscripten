@@ -2602,6 +2602,28 @@ int f() {
     self.assertEqual(result.returncode, 1)
     self.assertContained(MESSAGE, result.stderr)
 
+  def test_file_packager_embed(self):
+    create_file('data.txt', 'hello data')
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+
+    create_file('test.c', '''
+    #include <stdio.h>
+
+    int main() {
+      FILE* f = fopen("data.txt", "r");
+      char buf[64];
+      int rtn = fread(buf, 1, 64, f);
+      buf[rtn] = '\\0';
+      fclose(f);
+      printf("%s\\n", buf);
+      return 0;
+    }
+    ''')
+    self.run_process([EMCC, '--pre-js=data.js', 'test.c', '-sFORCE_FILESYSTEM'])
+    output = self.run_js('a.out.js')
+    self.assertContained('hello data', output)
+
   def test_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
     self.run_process([EMCC, test_file('sdl_headless.c'), '-sHEADLESS'])
