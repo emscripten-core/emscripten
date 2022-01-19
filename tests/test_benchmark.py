@@ -215,7 +215,7 @@ class EmscriptenBenchmarker(Benchmarker):
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
-    if 'FORCE_FILESYSTEM' not in cmd:
+    if '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
