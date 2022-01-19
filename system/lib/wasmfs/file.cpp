@@ -258,8 +258,6 @@ std::vector<std::string> splitPath(char* pathname) {
   return pathParts;
 }
 
-// Joins path parts, assuming they were created by splitPath. That means that
-// the first item is '/' iff the path is absolute.
 std::string joinPath(const std::vector<std::string> parts) {
   std::string ret;
   for (auto& part : parts) {

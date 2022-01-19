@@ -307,6 +307,10 @@ getDir(std::vector<std::string>::iterator begin,
 // element will be "/" iff the path is an absolute path.
 std::vector<std::string> splitPath(char* pathname);
 
+// Joins path parts, assuming they were created by splitPath. That means that
+// the first item is '/' iff the path is absolute.
+std::string joinPath(const std::vector<std::string> parts);
+
 // "Normalizes" a path, removing ".." entries. For example,
 //   foo/../bar
 // will become
