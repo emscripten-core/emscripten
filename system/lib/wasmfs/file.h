@@ -266,9 +266,7 @@ public:
     Handle(std::shared_ptr<File> symlink) : File::Handle(symlink) {}
     Handle(Handle&&) = default;
 
-    std::string& getTarget() {
-      return getFile()->target;
-    }
+    std::string& getTarget() { return getFile()->target; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }

@@ -999,7 +999,8 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 
   if (!parsedPath.child) {
     // Create a file here.
-    wasmfs_create_file(pathname, O_WRONLY, parsedPath.parent->getParent()->getBackend());
+    wasmfs_create_file(
+      pathname, O_WRONLY, parsedPath.parent->getParent()->getBackend());
   } else if (!parsedPath.child->is<DataFile>()) {
     // There is something here but it isn't a data file.
     return 0;
@@ -1019,12 +1020,9 @@ long _wasmfs_mkdir(char* path, long mode) {
   return __syscall_mkdir((long)path, mode);
 }
 
-long _wasmfs_chdir(char* path) {
-  return __syscall_chdir((long)path);
-}
+long _wasmfs_chdir(char* path) { return __syscall_chdir((long)path); }
 
 void _wasmfs_symlink(char* old_path, char* new_path) {
   __syscall_symlink(old_path, new_path);
 }
-
 }
