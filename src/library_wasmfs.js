@@ -66,7 +66,7 @@ var WasmfsLibrary = {
       var pathName = allocateUTF8(path);
       
       // Copy the file into a JS buffer on the heap.
-      var buf = _emscripten_wasmfs_read_file(pathName);
+      var buf = __wasmfs_read_file(pathName);
       // The integer length is returned in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i64') }}};
       
@@ -86,7 +86,34 @@ var WasmfsLibrary = {
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
       return '/';
-    }
+    },
+
+#if FORCE_FILESYSTEM
+    // Full JS API support
+    mkdir: function(path, mode) {
+      // Adjust mode in the same way as the JS FS
+      mode = mode !== undefined ? mode : 511 /* 0777 */;
+      mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
+      mode |= {{{ cDefine('S_IFDIR') }}};
+
+      var buffer = allocateUTF8(path);
+      __wasmfs_mkdir(buffer);
+      _free(buffer);
+    },
+    chdir: function(path) {
+      var buffer = allocateUTF8(path);
+      var ret = __wasmfs_chdir(buffer);
+      _free(buffer);
+      return ret;
+    },
+    writeFile: function(path, data) {
+      var pathBuffer = allocateUTF8(path);
+      var dataBuffer = allocate(data);
+      __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+      _free(dataBuffer);
+      _free(pathBuffer);
+    },
+#endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
   _wasmfs_get_num_preloaded_files: function() {

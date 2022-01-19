@@ -38,7 +38,7 @@ using namespace wasmfs;
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
 // Caller must free the returned pointer.
-void* emscripten_wasmfs_read_file(char* path) {
+void* _wasmfs_read_file(char* path) {
   struct stat file;
   int err = 0;
   err = stat(path, &file);
