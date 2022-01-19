@@ -115,7 +115,7 @@ class Cache:
         subdir.append('thinlto')
       else:
         subdir.append('lto')
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       subdir.append('pic')
     if subdir:
       path = os.path.join(path, '-'.join(subdir))

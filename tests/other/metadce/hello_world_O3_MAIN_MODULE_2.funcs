@@ -1,11 +1,11 @@
 $__emscripten_stdout_close
 $__emscripten_stdout_seek
+$__errno_location
 $__fwritex
 $__stdio_write
 $__towrite
-$__wasm_apply_data_relocs
 $__wasm_call_ctors
-$__wasm_start
+$dlfree
 $dlmalloc
 $legalstub$dynCall_jiji
 $main

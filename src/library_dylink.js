@@ -6,7 +6,7 @@
 var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
 
 var LibraryDylink = {
-#if RELOCATABLE
+#if SUPPORT_DYLINK
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
@@ -65,6 +65,9 @@ var LibraryDylink = {
   $isInternalSym: function(symName) {
     // TODO: find a way to mark these in the binary or avoid exporting them.
     return [
+      'memory',
+      '__indirect_function_table',
+      '__stack_pointer',
       '__cpp_exception',
       '__c_longjmp',
       '__wasm_apply_data_relocs',
@@ -85,6 +88,7 @@ var LibraryDylink = {
 
   $updateGOT__internal: true,
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
+  $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
     err("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -136,13 +140,26 @@ var LibraryDylink = {
 #endif
   },
 
+  $normalizeExports__internal: true,
+  $normalizeExports: function(exports) {
+    var normalized = {}
+    for (var e in exports) {
+      var value = exports[e];
+      if (!isInternalSym(e) && typeof value == 'object' && typeof value.value != 'undefined') {
+        // a breaking change in the wasm spec, globals are now objects
+        // https://github.com/WebAssembly/mutable-global/issues/1
+        normalized[e] = value.value;
+      } else {
+        normalized[e] = value;
+      }
+    }
+    return normalized;
+  },
+
   // Applies relocations to exported things.
   $relocateExports__internal: true,
-  $relocateExports__deps: ['$updateGOT'],
-  $relocateExports__docs: '/** @param {boolean=} replace */',
-  $relocateExports: function(exports, memoryBase, replace) {
+  $relocateExports: function(exports, memoryBase) {
     var relocated = {};
-
     for (var e in exports) {
       var value = exports[e];
 #if SPLIT_MODULE
@@ -152,17 +169,8 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value == 'object') {
-        // a breaking change in the wasm spec, globals are now objects
-        // https://github.com/WebAssembly/mutable-global/issues/1
-        value = value.value;
-      }
-      if (typeof value == 'number') {
-        value += memoryBase;
-      }
-      relocated[e] = value;
+      relocated[e] = typeof value == 'number' ? value + memoryBase : value;
     }
-    updateGOT(relocated, replace);
     return relocated;
   },
 
@@ -198,7 +206,7 @@ var LibraryDylink = {
     err('done reportUndefinedSymbols');
 #endif
   },
-#endif
+#endif // SUPPORT_DYLINK
 
 #if !MAIN_MODULE
 #if !ALLOW_UNIMPLEMENTED_SYSCALLS
@@ -271,7 +279,7 @@ var LibraryDylink = {
   // use normally malloc from the main program to do these allocations).
 
   // Allocate memory even if malloc isn't ready yet.
-  $getMemory__deps: ['$GOT', '__heap_base'],
+  $getMemory__deps: ['$GOT', '__heap_base', '_emscripten_sbrk_addr'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -279,20 +287,30 @@ var LibraryDylink = {
 #endif
     if (runtimeInitialized)
       return _malloc(size);
+
     var ret = ___heap_base;
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
+#if USE_PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+#if DYLINK_DEBUG
+      err('__emscripten_sbrk_addr[' + __emscripten_sbrk_addr + '] : ' + ret + ' -> ' + end);
+#endif
+      {{{ makeSetValue('__emscripten_sbrk_addr', '0', 'end', POINTER_TYPE) }}};
+#if USE_PTHREADS
+    }
+#endif
     ___heap_base = end;
-    GOT['__heap_base'].value = end;
     return ret;
   },
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
   $getDylinkMetadata__internal: true,
-  $getDylinkMetadata: function(binary) {
+  $getDylinkMetadata: function(binary, optional = false) {
     var offset = 0;
     var end = 0;
 
@@ -329,6 +347,9 @@ var LibraryDylink = {
       if (dylinkSection.length === 0) {
         name = 'dylink'
         dylinkSection = WebAssembly.Module.customSections(binary, name);
+      }
+      if (!dylinkSection.length && optional) {
+        return undefined;
       }
       failIf(dylinkSection.length === 0, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
@@ -420,7 +441,7 @@ var LibraryDylink = {
   $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in exports) {
-      if (!exports.hasOwnProperty(sym)) {
+      if (!Object.prototype.hasOwnProperty.call(exports, sym)) {
         continue;
       }
 
@@ -463,8 +484,9 @@ var LibraryDylink = {
   $loadWebAssemblyModule__docs: '/** @param {number=} handle */',
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
-    '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
+    '$normalizeExports', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
+    '$updateGOT',
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
@@ -582,7 +604,9 @@ var LibraryDylink = {
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
-        moduleExports = relocateExports(instance.exports, memoryBase);
+        moduleExports = normalizeExports(instance.exports);
+        moduleExports = relocateExports(moduleExports, memoryBase);
+        updateGOT(moduleExports);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }
@@ -791,32 +815,36 @@ var LibraryDylink = {
     return true;
   },
 
-  $preloadDylibs__internal: true,
-  $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
-  $preloadDylibs: function() {
+  $loadDylibDeps__internal: true,
+  $loadDylibDeps__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
+  $loadDylibDeps: function() {
 #if DYLINK_DEBUG
-    err('preloadDylibs');
+    err('loadDylibDeps');
 #endif
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
-      err('preloadDylibs: no libraries to preload');
+      err('loadDylibDeps: no libraries to preload');
 #endif
+#if !USE_PTHREADS
       reportUndefinedSymbols();
+#endif
       return;
     }
 
     // Load binaries asynchronously
-    addRunDependency('preloadDylibs');
+    addRunDependency('loadDylibDeps');
     dynamicLibraries.reduce(function(chain, lib) {
       return chain.then(function() {
         return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
       });
     }, Promise.resolve()).then(function() {
       // we got them all, wonderful
+#if !USE_PTHREADS
       reportUndefinedSymbols();
-      removeRunDependency('preloadDylibs');
+#endif
+      removeRunDependency('loadDylibDeps');
 #if DYLINK_DEBUG
-    err('preloadDylibs done!');
+    err('loadDylibDeps done!');
 #endif
     });
   },

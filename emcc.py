@@ -698,7 +698,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # on the dynamic linker to create them on the fly.
     # TODO(sbc): Integrate with metadata['invokeFuncs'] that comes from the
     # main module to avoid creating new invoke functions at runtime.
-    imports = set(i for i in imports if not i.startswith('invoke_'))
+    imports = set(i for i in imports if not i.startswith('invoke_') and i not in ('__memory_base',))
     weak_imports = imports.intersection(exports)
     strong_imports = imports.difference(exports)
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
@@ -850,8 +850,11 @@ def get_cflags(user_args):
   if settings.INLINING_LIMIT:
     cflags.append('-fno-inline-functions')
 
-  if settings.RELOCATABLE and '-fPIC' not in user_args:
+  if (settings.RELOCATABLE or settings.MAIN_MODULE) and '-fPIC' not in user_args:
     cflags.append('-fPIC')
+
+  if settings.MAIN_MODULE:
+    cflags.append('-mmutable-globals')
 
   # We use default visiibilty=default in emscripten even though the upstream
   # backend defaults visibility=hidden.  This matched the expectations of C/C++
@@ -1419,7 +1422,7 @@ def phase_setup(options, state, newargs, user_settings):
             'unused-command-line-argument',
             "compiler flag ignored during linking: '%s'" % arg)
 
-  if settings.MAIN_MODULE or settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
   # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
@@ -1472,14 +1475,13 @@ def phase_setup(options, state, newargs, user_settings):
 
 
 def setup_pthreads(target):
-  if settings.RELOCATABLE:
-    # phtreads + dyanmic linking has certain limitations
-    if settings.SIDE_MODULE:
-      diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
-    elif settings.MAIN_MODULE:
-      diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
-    elif settings.LINKABLE:
-      diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+  # phtreads + dyanmic linking has certain limitations
+  if settings.SIDE_MODULE:
+    diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
+  elif settings.MAIN_MODULE:
+    diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
+  elif settings.LINKABLE:
+    diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH:
     diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
@@ -1817,7 +1819,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibDeps']
   elif settings.SIDE_MODULE:
     assert not settings.MAIN_MODULE
     # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
@@ -1835,28 +1837,38 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.LINKABLE and settings.USER_EXPORTED_FUNCTIONS:
     diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
-  if settings.MAIN_MODULE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$getDylinkMetadata',
-        '$mergeLibSymbols',
-    ]
-
   if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '$registerTlsInit',
     ]
 
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
+    settings.SUPPORT_DYLINK = 1
+
+  if settings.SUPPORT_DYLINK:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '$reportUndefinedSymbols',
         '$relocateExports',
+        '$normalizeExports',
+        '$updateGOT',
         '$GOTHandler',
-        '__heap_base',
-        '__stack_pointer',
+    ]
+
+  if settings.MAIN_MODULE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$getDylinkMetadata',
+        '$mergeLibSymbols',
     ]
     # Unconditional dependency in library_dylink.js
-    settings.REQUIRED_EXPORTS += ['setThrew']
+    settings.REQUIRED_EXPORTS += [
+        '_emscripten_sbrk_addr',
+        'setThrew',
+        '__stack_pointer',
+        '__heap_base'
+    ]
+    default_setting(user_settings, 'ALLOW_TABLE_GROWTH', 1)
 
+  if settings.RELOCATABLE:
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
     if settings.WASM2JS:
@@ -2394,7 +2406,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
-    if settings.RELOCATABLE:
+    if settings.SUPPORT_DYLINK:
       exit_with_error('ASan does not support dynamic linking')
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
@@ -2416,7 +2428,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
   # various settings require malloc/free support from JS
-  if settings.RELOCATABLE or \
+  if settings.MAIN_MODULE or \
      settings.BUILD_AS_WORKER or \
      settings.USE_WEBGPU or \
      settings.USE_PTHREADS or \
@@ -2535,7 +2547,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   # Export tag objects which are likely needed by the native code, but which are
   # currently not reported in the metadata of wasm-emscripten-finalize
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE:
     if settings.EXCEPTION_HANDLING:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
     if settings.SUPPORT_LONGJMP == 'wasm':

@@ -46,7 +46,7 @@ def get_base_cflags(force_object_files=False):
   flags = ['-g']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
     flags += ['-sRELOCATABLE']
   if settings.MEMORY64:
     flags += ['-sMEMORY64=' + str(settings.MEMORY64)]

@@ -231,3 +231,5 @@ var TRANSPILE_TO_ES5 = false;
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = []
+
+var SUPPORT_DYLINK = 0;

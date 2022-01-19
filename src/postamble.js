@@ -209,7 +209,12 @@ function callMain(args) {
 #endif // HAS_MAIN
 
 #if STACK_OVERFLOW_CHECK
+var doneStackCheckInit = false;
 function stackCheckInit() {
+  if (doneStackCheckInit)
+    return false;
+  doneStackCheckInit = true;
+  //err("stackCheckInit");
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
@@ -223,7 +228,7 @@ function stackCheckInit() {
 }
 #endif
 
-#if RELOCATABLE
+#if MAIN_MODULE
 var dylibsLoaded = false;
 #endif
 
@@ -242,25 +247,23 @@ function run(args) {
   stackCheckInit();
 #endif
 
-#if RELOCATABLE
-  if (!dylibsLoaded) {
-  // Loading of dynamic libraries needs to happen on each thread, so we can't
-  // use the normal __ATPRERUN__ mechanism.
 #if MAIN_MODULE
-    preloadDylibs();
-#else
-    reportUndefinedSymbols();
-#endif
+  if (!dylibsLoaded) {
+    // Loading of dynamic libraries needs to happen on each thread, so we can't
+    // use the normal __ATPRERUN__ mechanism.
+    loadDylibDeps();
     dylibsLoaded = true;
 
     // Loading dylibs can add run dependencies.
     if (runDependencies > 0) {
 #if RUNTIME_LOGGING
-      err('preloadDylibs added run() dependencies, not running yet');
+      err('loadDylibDeps added run() dependencies, not running yet');
 #endif
       return;
     }
   }
+#elif RELOCATABLE
+  reportUndefinedSymbols();
 #endif
 
 #if WASM_WORKERS

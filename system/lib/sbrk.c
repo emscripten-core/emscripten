@@ -31,7 +31,7 @@ void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
 
 extern size_t __heap_base;
 
-static uintptr_t sbrk_val = (uintptr_t)&__heap_base;
+uintptr_t _emscripten_sbrk_addr = (uintptr_t)&__heap_base;
 
 uintptr_t* emscripten_get_sbrk_ptr() {
 #ifdef __PIC__
@@ -39,12 +39,12 @@ uintptr_t* emscripten_get_sbrk_ptr() {
   // potentially *before* the setup of the dynamically-linked __heap_base, when
   // using SAFE_HEAP. (SAFE_HEAP instruments *all* memory accesses, so even the
   // code doing dynamic linking itself ends up instrumented, which is why we can
-  // get such an instrumented call before sbrk_val has its proper value.)
-  if (sbrk_val == 0) {
-    sbrk_val = (uintptr_t)&__heap_base;
+  // get such an instrumented call before _emscripten_sbrk_addr has its proper value.)
+  if (_emscripten_sbrk_addr == 0) {
+    _emscripten_sbrk_addr = (uintptr_t)&__heap_base;
   }
 #endif
-  return &sbrk_val;
+  return &_emscripten_sbrk_addr;
 }
 
 void *sbrk(intptr_t increment_) {

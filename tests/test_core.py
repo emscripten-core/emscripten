@@ -3872,8 +3872,10 @@ ok
     ''', '''
       #include "header.h"
 
+      int foo = 11;
+
       int sidey() {
-        return 11;
+        return foo;
       }
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 

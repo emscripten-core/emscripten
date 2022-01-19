@@ -19,7 +19,7 @@ Module.realPrint = out;
 out = err = () => {};
 #endif
 
-#if RELOCATABLE
+#if MAIN_MODULE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
 #endif
 
@@ -373,8 +373,8 @@ function initRuntime() {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-#if RUNTIME_LOGGING
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
+#if RUNTIME_LOGGING
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
@@ -992,7 +992,7 @@ function createWasm() {
 #if SPLIT_MODULE
     'placeholder': new Proxy({}, splitModuleProxyHandler),
 #endif
-#if RELOCATABLE
+#if MAIN_MODULE || RELOCATABLE
     'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
 #endif
@@ -1004,8 +1004,20 @@ function createWasm() {
   function receiveInstance(instance, module) {
     var exports = instance.exports;
 
+#if !RELOCATABLE
+    Module['asm'] = exports;
+    wasmTable = Module['asm']['__indirect_function_table'];
+#if ASSERTIONS && !PURE_WASI
+    assert(wasmTable, "table not found in wasm exports");
+#endif
+#endif
+
+#if MAIN_MODULE || RELOCATABLE
+    exports = normalizeExports(exports);
 #if RELOCATABLE
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
+#endif
+    updateGOT(exports);
 #endif
 
 #if MEMORY64
@@ -1023,9 +1035,9 @@ function createWasm() {
     Module['asm'] = exports;
 
 #if MAIN_MODULE
-    var metadata = getDylinkMetadata(module);
+    var metadata = getDylinkMetadata(module, true);
 #if AUTOLOAD_DYLIBS
-    if (metadata.neededDynlibs) {
+    if (metadata && metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
@@ -1053,13 +1065,6 @@ function createWasm() {
 #endif
 #if !MEM_INIT_IN_WASM
     runMemoryInitializer();
-#endif
-
-#if !RELOCATABLE
-    wasmTable = Module['asm']['__indirect_function_table'];
-#if ASSERTIONS && !PURE_WASI
-    assert(wasmTable, "table not found in wasm exports");
-#endif
 #endif
 
 #if hasExportedFunction('___wasm_call_ctors')
@@ -1138,7 +1143,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SHARED_MEMORY || RELOCATABLE
+#if SHARED_MEMORY || SUPPORT_DYLINK
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.

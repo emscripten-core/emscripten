@@ -1,7 +1,14 @@
+__errno_location
+__heap_base
+__indirect_function_table
+__stack_pointer
 __wasm_call_ctors
+_emscripten_sbrk_addr
 dynCall_jiji
+free
 main
 malloc
+memory
 setThrew
 stackAlloc
 stackRestore

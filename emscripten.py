@@ -212,8 +212,7 @@ def report_missing_symbols(js_library_funcs):
   # PROXY_TO_PTHREAD only makes sense with a main(), so error if one is
   # missing. note that when main() might arrive from another module we cannot
   # error here.
-  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols and \
-     not settings.RELOCATABLE:
+  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols and not settings.SUPPORT_DYLINK:
     exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
 
   if settings.IGNORE_MISSING_MAIN:
@@ -495,7 +494,7 @@ def finalize_wasm(infile, outfile, memfile):
     # When we dynamically link our JS loader adds functions from wasm modules to
     # the table. It must add the original versions of them, not legalized ones,
     # so that indirect calls have the right type, so export those.
-    if settings.RELOCATABLE:
+    if settings.SUPPORT_DYLINK:
       args.append('--pass-arg=legalize-js-interface-export-originals')
     modify_wasm = True
   else:
@@ -608,6 +607,8 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+
+  if settings.MAIN_MODULE:
     if settings.EXCEPTION_HANDLING:
       send_items_map['__cpp_exception'] = '___cpp_exception'
     if settings.SUPPORT_LONGJMP == 'wasm':

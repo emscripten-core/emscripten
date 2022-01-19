@@ -1,6 +1,7 @@
 __THREW__
 ___environ
 __environ
+__heap_base
 __optpos
 __optreset
 __progname
@@ -8,7 +9,9 @@ __progname_full
 __sig_actions
 __sig_pending
 __signgam
+__stack_pointer
 __threwValue
+_emscripten_sbrk_addr
 _environ
 _ns_flagdata
 daylight

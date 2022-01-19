@@ -269,7 +269,10 @@ def link_llvm(linker_inputs, target):
 
 def lld_flags_for_executable(external_symbols):
   cmd = []
-  if external_symbols:
+  if settings.MAIN_MODULE:
+    cmd.append('--experimental-pic')
+    cmd.append('--unresolved-symbols=import-dynamic')
+  elif external_symbols:
     undefs = shared.get_temp_files().get('.undefined').name
     utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
@@ -967,7 +970,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
     js_file = acorn_optimizer(js_file, passes)
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
-  if not settings.LINKABLE:
+  if not settings.LINKABLE and not settings.SUPPORT_DYLINK:
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
