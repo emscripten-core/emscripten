@@ -58,31 +58,25 @@ Notes:
 """
 
 import base64
-import os
-import sys
-import shutil
-import random
-import uuid
 import ctypes
+import fnmatch
+import json
+import os
+import posixpath
+import random
+import shutil
+import sys
+import uuid
+from subprocess import PIPE
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.append(__rootdir__)
 
-import posixpath
 from tools import shared, utils, js_manipulation
-from subprocess import PIPE
-import fnmatch
-import json
 
-if len(sys.argv) == 1:
-  print('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
-See the source for more details.''')
-  sys.exit(0)
 
 DEBUG = os.environ.get('EMCC_DEBUG')
-
-data_target = sys.argv[1]
 
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
@@ -96,6 +90,43 @@ AV_WORKAROUND = 0
 
 excluded_patterns = []
 new_data_files = []
+
+
+class Options:
+  def __init__(self):
+    self.export_name = 'Module'
+    self.has_preloaded = False
+    self.jsoutput = None
+    self.from_emcc = False
+    self.force = True
+    # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
+    # cache VFS XHR so that subsequent page loads can read the data from the
+    # offline cache instead.
+    self.use_preload_cache = False
+    self.indexeddb_name = 'EM_PRELOAD_CACHE'
+    # If set to True, the package metadata is stored separately from js-output
+    # file which makes js-output file immutable to the package content changes.
+    # If set to False, the package metadata is stored inside the js-output file
+    # which makes js-output file to mutate on each invocation of this packager tool.
+    self.separate_metadata = False
+    self.lz4 = False
+    self.use_preload_plugins = False
+    self.support_node = True
+
+
+class DataFile:
+  def __init__(self, srcpath, dstpath, mode, explicit_dst_path):
+    self.srcpath = srcpath
+    self.dstpath = dstpath
+    self.mode = mode
+    self.explicit_dst_path = explicit_dst_path
+
+
+options = Options()
+
+
+def err(*args):
+  print(*args, file=sys.stderr)
 
 
 def base64_encode(b):
@@ -146,56 +177,36 @@ def add(mode, rootpathsrc, rootpathdst):
       if not should_ignore(fullname):
         new_dirnames.append(name)
       elif DEBUG:
-        print('Skipping directory "%s" from inclusion in the emscripten '
-              'virtual file system.' % fullname, file=sys.stderr)
+        err('Skipping directory "%s" from inclusion in the emscripten '
+            'virtual file system.' % fullname)
     for name in filenames:
       fullname = os.path.join(dirpath, name)
       if not should_ignore(fullname):
         # Convert source filename relative to root directory of target FS.
         dstpath = os.path.join(rootpathdst,
                                os.path.relpath(fullname, rootpathsrc))
-        new_data_files.append({'srcpath': fullname, 'dstpath': dstpath,
-                               'mode': mode, 'explicit_dst_path': True})
+        new_data_files.append(DataFile(srcpath=fullname, dstpath=dstpath,
+                                       mode=mode, explicit_dst_path=True))
       elif DEBUG:
-        print('Skipping file "%s" from inclusion in the emscripten '
-              'virtual file system.' % fullname, file=sys.stderr)
+        err('Skipping file "%s" from inclusion in the emscripten '
+            'virtual file system.' % fullname)
     dirnames.clear()
     dirnames.extend(new_dirnames)
 
 
-class Options:
-  def __init__(self):
-    self.export_name = 'Module'
-    self.has_preloaded = False
-    self.jsoutput = None
-    self.from_emcc = False
-    self.force = True
-    # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
-    # cache VFS XHR so that subsequent page loads can read the data from the
-    # offline cache instead.
-    self.use_preload_cache = False
-    self.indexeddb_name = 'EM_PRELOAD_CACHE'
-    # If set to True, the package metadata is stored separately from js-output
-    # file which makes js-output file immutable to the package content changes.
-    # If set to False, the package metadata is stored inside the js-output file
-    # which makes js-output file to mutate on each invocation of this packager tool.
-    self.separate_metadata = False
-    self.lz4 = False
-    self.use_preload_plugins = False
-    self.support_node = True
-
-
-options = Options()
-
-
 def main():
+  if len(sys.argv) == 1:
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  See the source for more details.''')
+    return 1
+
+  data_target = sys.argv[1]
   data_files = []
   plugins = []
   leading = ''
 
   for arg in sys.argv[2:]:
     if arg == '--preload':
-      options.has_preloaded = True
       leading = 'preload'
     elif arg == '--embed':
       leading = 'embed'
@@ -211,7 +222,7 @@ def main():
       options.indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      print('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
+      err('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       options.separate_metadata = True
@@ -256,44 +267,43 @@ def main():
         # Use source path as destination path.
         srcpath = dstpath = arg.replace('@@', '@')
       if os.path.isfile(srcpath) or os.path.isdir(srcpath):
-        data_files.append({'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode,
-                           'explicit_dst_path': uses_at_notation})
+        data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
+                                   explicit_dst_path=uses_at_notation))
       else:
-        print('error: ' + arg + ' does not exist', file=sys.stderr)
+        err('error: ' + arg + ' does not exist')
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      print('Unknown parameter:', arg, file=sys.stderr)
+      err('Unknown parameter:', arg)
       return 1
 
-  if (not options.force) and not data_files:
-    options.has_preloaded = False
-  if not options.has_preloaded or options.jsoutput is None:
-    assert not options.separate_metadata, (
-       'cannot separate-metadata without both --preloaded files '
-       'and a specified --js-output')
+  options.has_preloaded = any(f.mode == 'preload' for f in data_files)
+
+  if options.separate_metadata:
+    if not options.has_preloaded or not options.jsoutput:
+      err('cannot separate-metadata without both --preloaded files '
+          'and a specified --js-output')
+      return 1
 
   if not options.from_emcc:
-    print('Remember to build the main file with  -s FORCE_FILESYSTEM=1  '
-          'so that it includes support for loading this file package',
-          file=sys.stderr)
+    err('Remember to build the main file with  -s FORCE_FILESYSTEM=1  '
+        'so that it includes support for loading this file package')
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
-    print('error: TARGET should not be the same value of --js-output',
-          file=sys.stderr)
+    err('error: TARGET should not be the same value of --js-output')
     return 1
 
   for file_ in data_files:
-    if not should_ignore(file_['srcpath']):
-      if os.path.isdir(file_['srcpath']):
-        add(file_['mode'], file_['srcpath'], file_['dstpath'])
+    if not should_ignore(file_.srcpath):
+      if os.path.isdir(file_.srcpath):
+        add(file_.mode, file_.srcpath, file_.dstpath)
       else:
         new_data_files.append(file_)
   data_files = [file_ for file_ in new_data_files
-                if not os.path.isdir(file_['srcpath'])]
+                if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
-    print('Nothing to do!', file=sys.stderr)
+    err('Nothing to do!')
     sys.exit(1)
 
   # Absolutize paths, and check that they make sense
@@ -301,55 +311,53 @@ def main():
   # even if we cd'd into a symbolic link.
   curr_abspath = os.path.abspath(os.getcwd())
 
-  for file_ in data_files:
-    if not file_['explicit_dst_path']:
+  if not file_.explicit_dst_path:
+    for file_ in data_files:
       # This file was not defined with src@dst, so we inferred the destination
       # from the source. In that case, we require that the destination not be
       # under the current location
-      path = file_['dstpath']
+      path = file_.dstpath
       # Use os.path.realpath to resolve any symbolic links to hard paths,
       # to match the structure in curr_abspath.
       abspath = os.path.realpath(os.path.abspath(path))
       if DEBUG:
-          print(path, abspath, curr_abspath, file=sys.stderr)
+        err(path, abspath, curr_abspath)
       if not abspath.startswith(curr_abspath):
-        print('Error: Embedding "%s" which is below the current directory '
-              '"%s". This is invalid since the current directory becomes the '
-              'root that the generated code will see' % (path, curr_abspath),
-              file=sys.stderr)
+        err('Error: Embedding "%s" which is below the current directory '
+            '"%s". This is invalid since the current directory becomes the '
+            'root that the generated code will see' % (path, curr_abspath))
         sys.exit(1)
-      file_['dstpath'] = abspath[len(curr_abspath) + 1:]
+      file_.dstpath = abspath[len(curr_abspath) + 1:]
       if os.path.isabs(path):
-        print('Warning: Embedding an absolute file/directory name "%s" to the '
-              'virtual filesystem. The file will be made available in the '
-              'relative path "%s". You can use the explicit syntax '
-              '--preload-file srcpath@dstpath to explicitly specify the target '
-              'location the absolute source path should be directed to.'
-              % (path, file_['dstpath']), file=sys.stderr)
+        err('Warning: Embedding an absolute file/directory name "%s" to the '
+            'virtual filesystem. The file will be made available in the '
+            'relative path "%s". You can use the explicit syntax '
+            '--preload-file srcpath@dstpath to explicitly specify the target '
+            'location the absolute source path should be directed to.'
+            % (path, file_.dstpath))
 
   for file_ in data_files:
     # name in the filesystem, native and emulated
-    file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/')
+    file_.dstpath = file_.dstpath.replace(os.path.sep, '/')
     # If user has submitted a directory name as the destination but omitted
     # the destination filename, use the filename from source file
-    if file_['dstpath'].endswith('/'):
-      file_['dstpath'] = file_['dstpath'] + os.path.basename(file_['srcpath'])
+    if file_.dstpath.endswith('/'):
+      file_.dstpath = file_.dstpath + os.path.basename(file_.srcpath)
     # make destination path always relative to the root
-    file_['dstpath'] = posixpath.normpath(os.path.join('/', file_['dstpath']))
+    file_.dstpath = posixpath.normpath(os.path.join('/', file_.dstpath))
     if DEBUG:
-      print('Packaging file "%s" to VFS in path "%s".'
-            % (file_['srcpath'],  file_['dstpath']), file=sys.stderr)
+      err('Packaging file "%s" to VFS in path "%s".' % (file_.srcpath,  file_.dstpath))
 
   # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
-  seen = {}
+  seen = set()
 
   def was_seen(name):
-    if seen.get(name):
-        return True
-    seen[name] = 1
+    if name in seen:
+      return True
+    seen.add(name)
     return False
 
-  data_files = [file_ for file_ in data_files if not was_seen(file_['dstpath'])]
+  data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
   if AV_WORKAROUND:
     random.shuffle(data_files)
@@ -361,7 +369,7 @@ def main():
 
   metadata = {'files': []}
 
-  ret = generate_js(data_files, metadata)
+  ret = generate_js(data_target, data_files, metadata)
 
   if options.force or len(data_files):
     if options.jsoutput is None:
@@ -386,7 +394,7 @@ def main():
   return 0
 
 
-def generate_js(data_files, metadata):
+def generate_js(data_target, data_files, metadata):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
@@ -415,7 +423,7 @@ def generate_js(data_files, metadata):
   # Set up folders
   partial_dirs = []
   for file_ in data_files:
-    dirname = os.path.dirname(file_['dstpath'])
+    dirname = os.path.dirname(file_.dstpath)
     dirname = dirname.lstrip('/') # absolute paths start with '/', remove that
     if dirname != '':
       parts = dirname.split('/')
@@ -432,10 +440,10 @@ def generate_js(data_files, metadata):
     start = 0
     with open(data_target, 'wb') as data:
       for file_ in data_files:
-        file_['data_start'] = start
-        with open(file_['srcpath'], 'rb') as f:
+        file_.data_start = start
+        with open(file_.srcpath, 'rb') as f:
           curr = f.read()
-        file_['data_end'] = start + len(curr)
+        file_.data_end = start + len(curr)
         if AV_WORKAROUND:
             curr += '\x00'
         start += len(curr)
@@ -443,10 +451,10 @@ def generate_js(data_files, metadata):
 
     # TODO: sha256sum on data_target
     if start > 256 * 1024 * 1024:
-      print('warning: file packager is creating an asset bundle of %d MB. '
-            'this is very large, and browsers might have trouble loading it. '
-            'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
-            % (start / (1024 * 1024)), file=sys.stderr)
+      err('warning: file packager is creating an asset bundle of %d MB. '
+          'this is very large, and browsers might have trouble loading it. '
+          'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
+          % (start / (1024 * 1024)))
 
     create_preloaded = '''
           Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
@@ -497,22 +505,22 @@ def generate_js(data_files, metadata):
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   for (counter, file_) in enumerate(data_files):
-    filename = file_['dstpath']
+    filename = file_.dstpath
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
-    if file_['mode'] == 'embed':
+    if file_.mode == 'embed':
       # Embed
-      data = base64_encode(utils.read_binary(file_['srcpath']))
+      data = base64_encode(utils.read_binary(file_.srcpath))
       code += "      var fileData%d = '%s';\n" % (counter, data)
       # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
       code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
                % (dirname, basename, counter))
-    elif file_['mode'] == 'preload':
+    elif file_.mode == 'preload':
       # Preload
       metadata_el = {
-        'filename': file_['dstpath'],
-        'start': file_['data_start'],
-        'end': file_['data_end'],
+        'filename': file_.dstpath,
+        'start': file_.data_start,
+        'end': file_.data_end,
       }
       if filename[-4:] in AUDIO_SUFFIXES:
         metadata_el['audio'] = 1
