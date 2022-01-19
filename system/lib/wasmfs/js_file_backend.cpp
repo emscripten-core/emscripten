@@ -67,9 +67,6 @@ public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<JSFile>(mode, this);
   }
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, this);
-  }
 };
 
 // This function is exposed to users to instantiate a new JSBackend.
