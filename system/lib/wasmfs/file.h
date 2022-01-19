@@ -311,6 +311,8 @@ std::vector<std::string> splitPath(char* pathname);
 //   foo/../bar
 // will become
 //   bar
+// Also removes repeated /
+// TODO: Remove "."
 std::string normalizePath(char* pathname);
 
 } // namespace wasmfs
