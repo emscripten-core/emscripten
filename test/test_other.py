@@ -1240,24 +1240,24 @@ f.close()
 
   def test_commons_link(self):
     create_file('a.h', r'''
-#if !defined(A_H)
-#define A_H
-extern int foo[8];
-#endif
-''')
+      #if !defined(A_H)
+      #define A_H
+      extern int foo[8];
+      #endif
+    ''')
     create_file('a.c', r'''
-#include "a.h"
-int foo[8];
-''')
+      #include "a.h"
+      int foo[8];
+    ''')
     create_file('main.c', r'''
-#include <stdio.h>
-#include "a.h"
+      #include <stdio.h>
+      #include "a.h"
 
-int main() {
-    printf("|%d|\n", foo[0]);
-    return 0;
-}
-''')
+      int main() {
+        printf("|%d|\n", foo[0]);
+        return 0;
+      }
+    ''')
 
     self.run_process([EMCC, '-o', 'a.o', '-c', 'a.c'])
     self.run_process([EMAR, 'rv', 'library.a', 'a.o'])
