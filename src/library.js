@@ -73,7 +73,8 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  $setFileTime__deps: ['$setErrNo'],
+#if FILESYSTEM
+  $setFileTime__deps: ['$FS', '$setErrNo'],
   $setFileTime: function(path, time) {
     path = UTF8ToString(path);
     try {
@@ -85,8 +86,14 @@ LibraryManager.library = {
       return -1;
     }
   },
+#else
+  $setFileTime: function(path, time) {
+    // No filesystem support; no-op.
+    return 0;
+  },
+#endif
 
-  utime__deps: ['$FS', '$setFileTime'],
+  utime__deps: ['$setFileTime'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -103,7 +110,7 @@ LibraryManager.library = {
     return setFileTime(path, time);
   },
 
-  utimes__deps: ['$FS', '$setFileTime'],
+  utimes__deps: ['$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
