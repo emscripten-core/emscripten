@@ -895,7 +895,6 @@ long __syscall_symlink(char* old_path, char* new_path) {
   long err;
   auto parsedPath = getParsedPath(pathParts, err);
 
-  // Parent node doesn't exist.
   if (!parsedPath.parent) {
     return err;
   }
@@ -904,7 +903,6 @@ long __syscall_symlink(char* old_path, char* new_path) {
     return -ENAMETOOLONG;
   }
 
-  // Check if the requested directory already exists.
   if (parsedPath.child) {
     return -EEXIST;
   }
