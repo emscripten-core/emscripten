@@ -88,4 +88,8 @@ long _wasmfs_mkdir(char* path, long mode) {
 
 long _wasmfs_chdir(char* path) { return __syscall_chdir((long)path); }
 
+void _wasmfs_symlink(char* old_path, char* new_path) {
+  __syscall_symlink(old_path, new_path);
+}
+
 }
