@@ -91,22 +91,19 @@ var WasmfsLibrary = {
 #if FORCE_FILESYSTEM
     // Full JS API support
     mkdir: function(path) {
-      var buffer = allocateUTF8(path);
+      var buffer = allocateUTF8OnStack(path);
       __wasmfs_mkdir(buffer);
-      _free(buffer);
     },
     chdir: function(path) {
-      var buffer = allocateUTF8(path);
+      var buffer = allocateUTF8OnStack(path);
       var ret = __wasmfs_chdir(buffer);
-      _free(buffer);
       return ret;
     },
     writeFile: function(path, data) {
-      var pathBuffer = allocateUTF8(path);
+      var pathBuffer = allocateUTF8OnStack(path);
       var dataBuffer = allocate(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
-      _free(pathBuffer);
     },
 #endif
   },
