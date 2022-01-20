@@ -163,70 +163,77 @@ def add(mode, rootpathsrc, rootpathdst):
     dirnames.extend(new_dirnames)
 
 
+class Options:
+  def __init__(self):
+    self.export_name = 'Module'
+    self.has_preloaded = False
+    self.jsoutput = None
+    self.from_emcc = False
+    self.force = True
+    # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
+    # cache VFS XHR so that subsequent page loads can read the data from the
+    # offline cache instead.
+    self.use_preload_cache = False
+    self.indexeddb_name = 'EM_PRELOAD_CACHE'
+    # If set to True, the package metadata is stored separately from js-output
+    # file which makes js-output file immutable to the package content changes.
+    # If set to False, the package metadata is stored inside the js-output file
+    # which makes js-output file to mutate on each invocation of this packager tool.
+    self.separate_metadata = False
+    self.lz4 = False
+    self.use_preload_plugins = False
+    self.support_node = True
+
+
+options = Options()
+
+
 def main():
   data_files = []
-  export_name = 'Module'
-  leading = ''
-  has_preloaded = False
   plugins = []
-  jsoutput = None
-  from_emcc = False
-  force = True
-  # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
-  # cache VFS XHR so that subsequent page loads can read the data from the
-  # offline cache instead.
-  use_preload_cache = False
-  indexeddb_name = 'EM_PRELOAD_CACHE'
-  # If set to True, the package metadata is stored separately from js-output
-  # file which makes js-output file immutable to the package content changes.
-  # If set to False, the package metadata is stored inside the js-output file
-  # which makes js-output file to mutate on each invocation of this packager tool.
-  separate_metadata = False
-  lz4 = False
-  use_preload_plugins = False
-  support_node = True
+  leading = ''
 
   for arg in sys.argv[2:]:
     if arg == '--preload':
-      has_preloaded = True
+      options.has_preloaded = True
       leading = 'preload'
     elif arg == '--embed':
       leading = 'embed'
     elif arg == '--exclude':
       leading = 'exclude'
     elif arg == '--no-force':
-      force = False
+      options.force = False
       leading = ''
     elif arg == '--use-preload-cache':
-      use_preload_cache = True
+      options.use_preload_cache = True
       leading = ''
     elif arg.startswith('--indexedDB-name'):
-      indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
+      options.indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
       print('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
-      separate_metadata = True
+      options.separate_metadata = True
       leading = ''
     elif arg == '--lz4':
-      lz4 = True
+      options.lz4 = True
       leading = ''
     elif arg == '--use-preload-plugins':
-      use_preload_plugins = True
+      options.use_preload_plugins = True
       leading = ''
     elif arg == '--no-node':
-      support_node = False
+      options.support_node = False
       leading = ''
     elif arg.startswith('--js-output'):
-      jsoutput = arg.split('=', 1)[1] if '=' in arg else None
+      options.jsoutput = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg.startswith('--export-name'):
       if '=' in arg:
-        export_name = arg.split('=', 1)[1]
+        options.export_name = arg.split('=', 1)[1]
       leading = ''
     elif arg.startswith('--from-emcc'):
-      from_emcc = True
+      options.from_emcc = True
       leading = ''
     elif arg.startswith('--plugin'):
       with open(arg.split('=', 1)[1]) as f:
@@ -260,46 +267,22 @@ def main():
       print('Unknown parameter:', arg, file=sys.stderr)
       return 1
 
-  if (not force) and not data_files:
-    has_preloaded = False
-  if not has_preloaded or jsoutput is None:
-    assert not separate_metadata, (
+  if (not options.force) and not data_files:
+    options.has_preloaded = False
+  if not options.has_preloaded or options.jsoutput is None:
+    assert not options.separate_metadata, (
        'cannot separate-metadata without both --preloaded files '
        'and a specified --js-output')
 
-  if not from_emcc:
+  if not options.from_emcc:
     print('Remember to build the main file with  -s FORCE_FILESYSTEM=1  '
           'so that it includes support for loading this file package',
           file=sys.stderr)
 
-  if jsoutput and os.path.abspath(jsoutput) == os.path.abspath(data_target):
+  if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     print('error: TARGET should not be the same value of --js-output',
           file=sys.stderr)
     return 1
-
-  ret = ''
-  # emcc will add this to the output itself, so it is only needed for
-  # standalone calls
-  if not from_emcc:
-    ret = '''
-  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": export_name}
-
-  ret += '''
-  if (!Module.expectedDataFileDownloads) {
-    Module.expectedDataFileDownloads = 0;
-  }
-
-  Module.expectedDataFileDownloads++;
-  (function() {
-    // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
-    // fetch the .data bundle on the worker
-    if (Module['ENVIRONMENT_IS_PTHREAD']) return;
-    var loadPackage = function(metadata) {\n'''
-
-  code = '''
-      function assert(check, msg) {
-        if (!check) throw msg + new Error().stack;
-      }\n'''
 
   for file_ in data_files:
     if not should_ignore(file_['srcpath']):
@@ -378,6 +361,57 @@ def main():
 
   metadata = {'files': []}
 
+  ret = generate_js(data_files, metadata)
+
+  if options.force or len(data_files):
+    if options.jsoutput is None:
+      print(ret)
+    else:
+      # Overwrite the old jsoutput file (if exists) only when its content
+      # differs from the current generated one, otherwise leave the file
+      # untouched preserving its old timestamp
+      if os.path.isfile(options.jsoutput):
+        with open(options.jsoutput) as f:
+          old = f.read()
+        if old != ret:
+          with open(options.jsoutput, 'w') as f:
+            f.write(ret)
+      else:
+        with open(options.jsoutput, 'w') as f:
+          f.write(ret)
+      if options.separate_metadata:
+        with open(options.jsoutput + '.metadata', 'w') as f:
+          json.dump(metadata, f, separators=(',', ':'))
+
+  return 0
+
+
+def generate_js(data_files, metadata):
+  # emcc will add this to the output itself, so it is only needed for
+  # standalone calls
+  if options.from_emcc:
+    ret = ''
+  else:
+    ret = '''
+  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
+
+  ret += '''
+  if (!Module.expectedDataFileDownloads) {
+    Module.expectedDataFileDownloads = 0;
+  }
+
+  Module.expectedDataFileDownloads++;
+  (function() {
+    // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
+    // fetch the .data bundle on the worker
+    if (Module['ENVIRONMENT_IS_PTHREAD']) return;
+    var loadPackage = function(metadata) {\n'''
+
+  code = '''
+      function assert(check, msg) {
+        if (!check) throw msg + new Error().stack;
+      }\n'''
+
   # Set up folders
   partial_dirs = []
   for file_ in data_files:
@@ -392,7 +426,7 @@ def main():
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
-  if has_preloaded:
+  if options.has_preloaded:
     # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
     # XHRs which has overhead.
     start = 0
@@ -428,7 +462,7 @@ def main():
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency']('fp ' + that.name);'''
 
-    if not lz4:
+    if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
       # a similar API to XHRs
       code += '''
@@ -460,7 +494,7 @@ def main():
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if use_preload_plugins else create_data)
+      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   for (counter, file_) in enumerate(data_files):
     filename = file_['dstpath']
@@ -487,8 +521,8 @@ def main():
     else:
       assert 0
 
-  if has_preloaded:
-    if not lz4:
+  if options.has_preloaded:
+    if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
@@ -511,7 +545,7 @@ def main():
             compressedData['data'] = byteArray;
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
-            Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+            Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
     package_uuid = uuid.uuid4()
     package_name = data_target
@@ -538,7 +572,7 @@ def main():
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
       var PACKAGE_UUID = metadata['package_uuid'];\n'''
 
-    if use_preload_cache:
+    if options.use_preload_cache:
       code += r'''
         var indexedDB;
         if (typeof window === 'object') {
@@ -551,7 +585,7 @@ def main():
         }
         var IDB_RO = "readonly";
         var IDB_RW = "readwrite";
-        var DB_NAME = "''' + indexeddb_name + '''";
+        var DB_NAME = "''' + options.indexeddb_name + '''";
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
@@ -703,7 +737,7 @@ def main():
 
     # add Node.js support code, if necessary
     node_support_code = ''
-    if support_node:
+    if options.support_node:
       node_support_code = '''
         if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
@@ -784,7 +818,7 @@ def main():
     code += '''
       if (!Module.preloadResults) Module.preloadResults = {};\n'''
 
-    if use_preload_cache:
+    if options.use_preload_cache:
       code += '''
         function preloadFallback(error) {
           console.error(error);
@@ -855,7 +889,7 @@ def main():
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
 
-  if separate_metadata:
+  if options.separate_metadata:
       _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
@@ -879,7 +913,7 @@ def main():
   } else {
     if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runMetaWithFS);
-  }\n''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')}
+  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
 
   else:
       _metadata_template = '''
@@ -889,27 +923,7 @@ def main():
   ret += '''%s
   })();\n''' % _metadata_template
 
-  if force or len(data_files):
-    if jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(jsoutput):
-        with open(jsoutput) as f:
-          old = f.read()
-        if old != ret:
-          with open(jsoutput, 'w') as f:
-            f.write(ret)
-      else:
-        with open(jsoutput, 'w') as f:
-          f.write(ret)
-      if separate_metadata:
-        with open(jsoutput + '.metadata', 'w') as f:
-          json.dump(metadata, f, separators=(',', ':'))
-
-  return 0
+  return ret
 
 
 if __name__ == '__main__':
