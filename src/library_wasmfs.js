@@ -96,8 +96,7 @@ var WasmfsLibrary = {
     },
     chdir: function(path) {
       var buffer = allocateUTF8OnStack(path);
-      var ret = __wasmfs_chdir(buffer);
-      return ret;
+      return __wasmfs_chdir(buffer);
     },
     writeFile: function(path, data) {
       var pathBuffer = allocateUTF8OnStack(path);
