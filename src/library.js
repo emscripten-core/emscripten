@@ -87,9 +87,12 @@ LibraryManager.library = {
     }
   },
 #else
+  $setFileTime__deps: ['$setErrNo'],
   $setFileTime: function(path, time) {
-    // No filesystem support; no-op.
-    return 0;
+    // No filesystem support; return an error as if the file does not exist
+    // (which it almost certainly does not, except for standard streams).
+    setErrNo({{{ cDefine('ENOENT') }}});
+    return -1;
   },
 #endif
 
