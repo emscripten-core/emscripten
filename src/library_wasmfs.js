@@ -90,12 +90,7 @@ var WasmfsLibrary = {
 
 #if FORCE_FILESYSTEM
     // Full JS API support
-    mkdir: function(path, mode) {
-      // Adjust mode in the same way as the JS FS
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
-      mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
-      mode |= {{{ cDefine('S_IFDIR') }}};
-
+    mkdir: function(path) {
       var buffer = allocateUTF8(path);
       __wasmfs_mkdir(buffer);
       _free(buffer);
