@@ -245,8 +245,6 @@ protected:
   // The target file that this symlink points to.
   std::string target;
 
-  // 4096 bytes is the size of a block in ext4.
-  // This value was also copied from the JS file system.
   size_t getSize() override;
 
 public:
