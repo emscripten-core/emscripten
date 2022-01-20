@@ -3479,11 +3479,13 @@ LibraryManager.library = {
   // programs. This function is for implementing them.
   _emscripten_get_progname__sig: 'vii',
   _emscripten_get_progname: function(str, len) {
+  #if !MINIMAL_RUNTIME
   #if ASSERTIONS
     assert(typeof str === 'number');
     assert(typeof len === 'number');
   #endif
     stringToUTF8(thisProgram, str, len);
+  #endif
   },
 
   emscripten_console_log__sig: 'vi',
