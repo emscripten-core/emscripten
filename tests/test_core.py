@@ -2005,7 +2005,9 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE' in args:
       self.check_dylink()
-    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,_malloc']
+    self.emcc_args += args
+    if '-sMAIN_MODULE' not in args:
+      self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
@@ -7227,25 +7229,11 @@ void* operator new(size_t size) {
   def test_dwarf(self):
     self.emcc_args.append('-g')
 
-    create_file('src.cpp', '''
-      #include <emscripten.h>
-      EM_JS(int, out_to_js, (int x), {})
-      void foo() {
-        out_to_js(0); // line 5
-        out_to_js(1); // line 6
-        out_to_js(2); // line 7
-        // A silly possible recursion to avoid binaryen doing any inlining.
-        if (out_to_js(3)) foo();
-      }
-      int main() {
-        foo();
-      }
-    ''')
-
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
+    shutil.copyfile(test_file('core/test_dwarf.c'), 'test_dwarf.c')
 
-    self.emcc('src.cpp', self.get_emcc_args(), js_filename)
+    self.emcc('test_dwarf.c', self.get_emcc_args(), js_filename)
 
     out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
@@ -7278,17 +7266,17 @@ void* operator new(size_t size) {
     self.assertIn('.debug_ranges', sections)
 
     # verify some content in the sections
-    self.assertIn('"src.cpp"', sections['.debug_info'])
+    self.assertIn('"test_dwarf.c"', sections['.debug_info'])
     # the line section looks like this:
     # Address            Line   Column File   ISA Discriminator Flags
     # ------------------ ------ ------ ------ --- ------------- -------------
     # 0x000000000000000b      5      0      3   0             0  is_stmt
     src_to_addr = {}
-    found_src_cpp = False
+    found_dwarf_c = False
     for line in sections['.debug_line'].splitlines():
-      if 'name: "src.cpp"' in line:
-        found_src_cpp = True
-      if not found_src_cpp:
+      if 'name: "test_dwarf.c"' in line:
+        found_dwarf_c = True
+      if not found_dwarf_c:
         continue
       if 'debug_line' in line:
         break
@@ -7300,9 +7288,9 @@ void* operator new(size_t size) {
         src_to_addr.setdefault(key, []).append(addr)
 
     # each of the calls must remain in the binary, and be mapped
-    self.assertIn((5, 9), src_to_addr)
-    self.assertIn((6, 9), src_to_addr)
-    self.assertIn((7, 9), src_to_addr)
+    self.assertIn((6, 3), src_to_addr)
+    self.assertIn((7, 3), src_to_addr)
+    self.assertIn((8, 3), src_to_addr)
 
     def get_dwarf_addr(line, col):
       addrs = src_to_addr[(line, col)]
@@ -7312,8 +7300,8 @@ void* operator new(size_t size) {
 
     # the lines must appear in sequence (as calls to JS, the optimizer cannot
     # reorder them)
-    self.assertLess(get_dwarf_addr(5, 9), get_dwarf_addr(6, 9))
-    self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
+    self.assertLess(get_dwarf_addr(6, 3), get_dwarf_addr(7, 3))
+    self.assertLess(get_dwarf_addr(7, 3), get_dwarf_addr(8, 3))
 
     # Get the wat, printing with -g which has binary offsets
     wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
@@ -7370,7 +7358,7 @@ void* operator new(size_t size) {
 
     # match up the DWARF and the wat
     for i in range(3):
-      dwarf_addr = get_dwarf_addr(5 + i, 9)
+      dwarf_addr = get_dwarf_addr(6 + i, 3)
       start_wat_addr, end_wat_addr = get_wat_addr(i)
       # the dwarf may match any of the 3 instructions that form the stream of
       # of instructions implementing the call in the source code, in theory
