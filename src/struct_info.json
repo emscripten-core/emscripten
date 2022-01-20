@@ -1181,6 +1181,7 @@
                 "label"
             ],
             "WGPUCompilationMessage": [
+                "nextInChain",
                 "message",
                 "type",
                 "lineNum",
@@ -1188,9 +1189,10 @@
                 "offset",
                 "length"
             ],
-            "WGPUComputePassDescriptor": [
-                "nextInChain",
-                "label"
+            "WGPUComputePassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1254,6 +1256,10 @@
                 "chain",
                 "clampDepth"
             ],
+            "WGPUPrimitiveDepthClipControl": [
+                "chain",
+                "unclippedDepth"
+            ],
             "WGPUPrimitiveState": [
                 "nextInChain",
                 "topology",
@@ -1279,7 +1285,9 @@
                 "colorFormatsCount",
                 "colorFormats",
                 "depthStencilFormat",
-                "sampleCount"
+                "sampleCount",
+                "depthReadOnly",
+                "stencilReadOnly"
             ],
             "WGPURenderPassDepthStencilAttachment": [
                 "view",
@@ -1291,6 +1299,11 @@
                 "stencilStoreOp",
                 "clearStencil",
                 "stencilReadOnly"
+            ],
+            "WGPURenderPassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1327,7 +1340,8 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source"
+                "source",
+                "code"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1407,8 +1421,15 @@
                 "alpha"
             ],
             "WGPUCompilationInfo": [
+                "nextInChain",
                 "messageCount",
                 "messages"
+            ],
+            "WGPUComputePassDescriptor": [
+                "nextInChain",
+                "label",
+                "timestampWriteCount",
+                "timestampWrites"
             ],
             "WGPUDepthStencilState": [
                 "nextInChain",
@@ -1493,6 +1514,7 @@
             ],
             "WGPUDeviceDescriptor": [
                 "nextInChain",
+                "label",
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits"
@@ -1503,7 +1525,9 @@
                 "colorAttachmentCount",
                 "colorAttachments",
                 "depthStencilAttachment",
-                "occlusionQuerySet"
+                "occlusionQuerySet",
+                "timestampWriteCount",
+                "timestampWrites"
             ],
             "WGPUVertexState": [
                 "nextInChain",

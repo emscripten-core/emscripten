@@ -91,6 +91,7 @@
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
+    WHOLE_MAP_SIZE: 0xFFFFFFFF, // 32bits max
     AdapterType: {
       Unknown: 3,
     },
@@ -350,6 +351,16 @@ var LibraryWebGPU = {
       'not-equal',
       'always',
     ],
+    CompilationInfoRequestStatus: [
+      'success',
+      'error',
+      'device-lost',
+      'unknown',
+    ],
+    ComputePassTimestampLocation: [
+      'beginning',
+      'end',
+    ],
     CullMode: [
       'none',
       'front',
@@ -359,17 +370,19 @@ var LibraryWebGPU = {
       'validation',
       'out-of-memory',
     ],
-    FeatureName: [
-      undefined,
-      'depth-clamping',
-      'depth24unorm-stencil8',
-      'depth32float-stencil8',
-      'timestamp-query',
-      'pipeline-statistics-query',
-      'texture-compression-bc',
-      'texture-compression-etc2',
-      'texture-compression-astc',
-    ],
+    FeatureName: {
+      0: undefined,
+      1: 'depth-clip-control',
+      2: 'depth24unorm-stencil8',
+      3: 'depth32float-stencil8',
+      4: 'timestamp-query',
+      5: 'pipeline-statistics-query',
+      6: 'texture-compression-bc',
+      7: 'texture-compression-etc2',
+      8: 'texture-compression-astc',
+      9: 'indirect-first-instance',
+      1000: 'depth-clamping',
+    },
     FilterMode: [
       'nearest',
       'linear',
@@ -391,6 +404,7 @@ var LibraryWebGPU = {
       'compute-shader-invocations',
     ],
     PowerPreference: [
+      'undefined',
       'low-power',
       'high-performance',
     ],
@@ -405,6 +419,10 @@ var LibraryWebGPU = {
       'occlusion',
       'pipeline-statistics',
       'timestamp',
+    ],
+    RenderPassTimestampLocation: [
+      'beginning',
+      'end',
     ],
     SamplerBindingType: [
       undefined,
@@ -488,7 +506,9 @@ var LibraryWebGPU = {
       'depth16unorm',
       'depth24plus',
       'depth24plus-stencil8',
+      'depth24unorm-stencil8',
       'depth32float',
+      'depth32float-stencil8',
       'bc1-rgba-unorm',
       'bc1-rgba-unorm-srgb',
       'bc2-rgba-unorm',
@@ -1599,6 +1619,10 @@ var LibraryWebGPU = {
 
   // wgpuShaderModule
 
+  wgpuShaderModuleGetCompilationInfo: function(shaderModuleId, callback, userdata) {
+    var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
+    abort('TODO: wgpuShaderModuleGetCompilationInfo unimplemented');
+  },
   wgpuShaderModuleSetLabel: function(shaderModuleId, labelPtr) {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     shaderModule.label = UTF8ToString(labelPtr);
