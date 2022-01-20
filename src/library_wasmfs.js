@@ -90,35 +90,24 @@ var WasmfsLibrary = {
 
 #if FORCE_FILESYSTEM
     // Full JS API support
-    mkdir: function(path, mode) {
-      // Adjust mode in the same way as the JS FS
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
-      mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
-      mode |= {{{ cDefine('S_IFDIR') }}};
-
-      var buffer = allocateUTF8(path);
+    mkdir: function(path) {
+      var buffer = allocateUTF8OnStack(path);
       __wasmfs_mkdir(buffer);
-      _free(buffer);
     },
     chdir: function(path) {
-      var buffer = allocateUTF8(path);
-      var ret = __wasmfs_chdir(buffer);
-      _free(buffer);
-      return ret;
-    },
-    symlink: function(oldpath, newpath) {
-      var oldBuffer = allocateUTF8(oldpath);
-      var newBuffer = allocateUTF8(newpath);
-      __wasmfs_symlink(oldBuffer, newBuffer);
-      _free(newBuffer);
-      _free(oldBuffer);
+      var buffer = allocateUTF8OnStack(path);
+      return __wasmfs_chdir(buffer);
     },
     writeFile: function(path, data) {
-      var pathBuffer = allocateUTF8(path);
+      var pathBuffer = allocateUTF8OnStack(path);
       var dataBuffer = allocate(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
-      _free(pathBuffer);
+    },
+    symlink: function(oldpath, newpath) {
+      var oldBuffer = allocateUTF8OnStack(oldpath);
+      var newBuffer = allocateUTF8OnStack(newpath);
+      __wasmfs_symlink(oldBuffer, newBuffer);
     },
 #endif
   },

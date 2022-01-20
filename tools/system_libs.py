@@ -1428,7 +1428,10 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   def get_files(self):
     return files_in_path(
         path='system/lib/wasmfs',
-        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp', 'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp', 'js_file_backend.cpp', 'proxied_file_backend.cpp'])
+        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp',
+                   'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp',
+                   'js_file_backend.cpp', 'proxied_file_backend.cpp',
+                   'js_api.cpp'])
 
   def can_use(self):
     return settings.WASMFS
