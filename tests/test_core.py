@@ -5596,7 +5596,7 @@ Module['onRuntimeInitialized'] = function() {
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
       # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-      
+
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('TODO: wasmfs+node')

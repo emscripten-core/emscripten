@@ -940,4 +940,8 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
   return bytes;
 }
 
+void _wasmfs_symlink(char* old_path, char* new_path) {
+  __syscall_symlink(old_path, new_path);
+}
+
 }
