@@ -20,19 +20,19 @@ extern void _emscripten_get_progname(char*, int);
 __attribute__((constructor))
 static void __progname_ctor(void)
 {
-		static char full_path[PATH_MAX];
-		char *basename;
+	static char full_path[PATH_MAX];
+	char *basename;
 
-		_emscripten_get_progname(full_path, sizeof(full_path));
+	_emscripten_get_progname(full_path, sizeof(full_path));
 
-		basename = strrchr(full_path, '/');
-		if (basename == NULL) {
-			basename = full_path;
-		} else {
-			basename++;
-		}
+	basename = strrchr(full_path, '/');
+	if (basename == NULL) {
+		basename = full_path;
+	} else {
+		basename++;
+	}
 
-		__progname_full = full_path;
-		__progname = basename;
+	__progname_full = full_path;
+	__progname = basename;
 }
 #endif
