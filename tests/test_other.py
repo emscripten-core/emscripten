@@ -461,6 +461,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def test_tsearch(self):
     self.do_other_test('test_tsearch.c')
 
+  def test_libc_progname(self):
+    self.do_other_test('test_libc_progname.c')
+
   def test_combining_object_files(self):
     # Compiling two files with -c will generate separate object files
     self.run_process([EMCC, test_file('twopart_main.cpp'), test_file('twopart_side.c'), '-c'])
