@@ -26,6 +26,9 @@ var LibraryPThread = {
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     tlsInitFunctions: [],
+#if EMSCRIPTEN_NATIVE_FS
+    nativeFSHandle: 0,
+#endif
 #if PTHREADS_DEBUG
     nextWorkerID: 1,
     debugInit: function() {
@@ -69,6 +72,10 @@ var LibraryPThread = {
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
       PThread['threadInit'] = PThread.threadInit;
+#if EMSCRIPTEN_NATIVE_FS
+      PThread['initNativeFSHandle'] = PThread.initNativeFSHandle;
+      PThread['nativeFSHandle'] = PThread.nativeFSHandle;
+#endif
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
@@ -252,6 +259,11 @@ var LibraryPThread = {
           killThread(d['thread']);
         } else if (cmd === 'cancelThread') {
           cancelThread(d['thread']);
+        } else if (cmd === 'initNativeFSHandle') {
+          var sab_view = new Int32Array(d.flag);
+          Atomics.store(sab_view, 1, NATIVEFS.handle);
+          Atomics.store(sab_view, 0, 1);
+          Atomics.notify(sab_view, 0);
         } else if (cmd === 'loaded') {
           worker.loaded = true;
           if (onFinishedLoading) onFinishedLoading(worker);
@@ -375,7 +387,7 @@ var LibraryPThread = {
           );
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
         } else
- #endif
+#endif
         PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
@@ -395,9 +407,9 @@ var LibraryPThread = {
         PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
       } else
 #endif
-      PThread.unusedWorkers.push(new Worker(pthreadMainJs));
-    },
-
+        PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+    }
+    ,
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
 #if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT
@@ -421,6 +433,19 @@ var LibraryPThread = {
       }
       return PThread.unusedWorkers.pop();
     }
+#if EMSCRIPTEN_NATIVE_FS
+    ,
+    initNativeFSHandle: function() {
+      assert(ENVIRONMENT_IS_PTHREAD);
+      var sab = new SharedArrayBuffer(8);
+      var sab_view = new Int32Array(sab);
+      sab_view[0] = 0; // flag
+      sab_view[1] = 0; // nativefs pointer
+      postMessage( { 'cmd': 'initNativeFSHandle', flag: sab });
+      Atomics.wait(sab_view, 0, 0);
+      return Atomics.load(sab_view, 1);
+    }
+#endif
   },
 
   $ptrToString: function(ptr) {
@@ -571,7 +596,18 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    worker.runPthread = () => {
+#if EMSCRIPTEN_NATIVE_FS
+    if (NATIVEFS.handle == 0) {
+        // don't change the pointer each time a new thread is spawned
+        NATIVEFS.handle = Module._malloc(16 * 1024 + 5 * 4);
+        NATIVEFS.worker.postMessage({
+            ops: "init_nativefs_runtime",
+            moduleWasmMemory: Module.wasmMemory.buffer,
+            handle: NATIVEFS.handle              
+        });
+    }
+#endif
+      worker.runPthread = () => {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
@@ -920,6 +956,14 @@ var LibraryPThread = {
     'emscripten_proxy_to_main_thread_js',
     'emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+#if EMSCRIPTEN_NATIVE_FS
+      if (index === 0) {
+          func = NATIVEFS.MAIN_THREAD_CONSTS[0];
+          // unused in this case
+          numCallArgs = 0;
+          return func.apply(null);
+      }
+#endif
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
@@ -1005,6 +1049,16 @@ var LibraryPThread = {
     // in sync and might not contain the function pointer `ptr` at all.
     __emscripten_thread_sync_code();
 #endif
+#if EMSCRIPTEN_NATIVE_FS
+    if (NATIVEFS.handle === undefined) {
+      /*
+        you don't want the pthread worker to start before 
+        the native_fs worker started.
+      */
+      var view = new Int32Array(Module.wasmMemory.buffer, NATIVEFS.handle, 3);
+      Atomics.wait(view, 0, 0);
+    }
+#endif        
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 

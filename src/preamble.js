@@ -338,7 +338,46 @@ function preRun() {
 #if ASSERTIONS && USE_PTHREADS
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
-
+#if EMSCRIPTEN_NATIVE_FS
+#if ENVIRONMENT_MAY_BE_NODE
+  // FIXME: this does not work for now, this should not run in node
+  // err("nativefs error: EMSCRIPTEN_NATIVE_FS is a web-only api!");
+#endif
+  if (NATIVEFS.worker === 0) {
+    /*
+      The function will make sure the runtime worker is set, and
+      will initialise the nativefs structure.
+    
+      It must be a runDependency, the main program should not run
+      before nativefs is ready to push/read/seek files.
+    */
+    addRunDependency('nativefs_init');
+    NATIVEFS.worker = new Worker("./" + '{{{ NATIVE_FS_WORKER_FILE }}}');        
+    NATIVEFS.handle = 0;       
+    NATIVEFS.files = [];
+    /*
+      This message will "round trip", because we have no guarantees
+      the runtime fs worker won't be ready before the runtime.
+      (which would be bad because we would send an empty sharedMemory)
+     */
+    NATIVEFS.worker.postMessage({ ops: "init_nativefs" });
+    NATIVEFS.worker.onmessage = function (msg) {
+      if (msg.data.ops === "init_nativefs") {
+        removeRunDependency('nativefs_init');
+      }
+      else if (msg.data.ops === "init_fs_lock") {
+        /*
+          sharedMemory was successfuly received, we can set the 
+          fs lock (all the pthreads must wait on this before they 
+          are ready to read/seek files)
+         */
+        var view = new Int32Array(Module.wasmMemory.buffer, NATIVEFS.handle, 5);
+        Atomics.store(view, 0, 1);
+        Atomics.notify(view, 0);
+      }
+    };
+  }
+#endif
 #if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];

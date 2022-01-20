@@ -129,6 +129,9 @@ var WASM_BINARY_FILE = '';
 // name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
+// name of the file containing the filesystem runtime worker
+var NATIVE_FS_WORKER_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 

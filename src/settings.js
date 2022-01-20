@@ -1994,6 +1994,16 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 // [link]
 var TEST_MEMORY_GROWTH_FAILS = 0;
 
+// This option will enable exposing the native file system throught
+// the native filesystem api (web.dev/file-system-access).
+// It is desabled by default.
+var EMSCRIPTEN_NATIVE_FS = 0;
+
+// This option depends on the previous one, it controls the size of allocated
+// nativefs structure that contains state information on the files currently open.
+// default value is 1024, maximum number of file descriptors allowed. 
+var NATIVEFS_MAX_FD=1024
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

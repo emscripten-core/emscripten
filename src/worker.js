@@ -209,6 +209,9 @@ self.onmessage = (e) => {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
+#if EMSCRIPTEN_NATIVE_FS
+      Module['PThread'].nativeFSHandle = Module['PThread'].initNativeFSHandle();
+#endif
       Module['PThread'].threadInit();
 
 #if EMBIND
@@ -219,7 +222,6 @@ self.onmessage = (e) => {
         initializedJS = true;
       }
 #endif // EMBIND
-
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
         // Native codebases sometimes spawn threads with other thread entry point signatures,

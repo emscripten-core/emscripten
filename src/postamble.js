@@ -190,6 +190,9 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
+#if EMSCRIPTEN_NATIVE_FS
+    _nativefs_cleanup();
+#endif
     // if we're not running an evented main loop, it's time to exit
     exit(ret, /* implicit = */ true);
     return ret;

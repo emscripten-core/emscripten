@@ -131,6 +131,10 @@ global.LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
+    if (EMSCRIPTEN_NATIVE_FS) {
+      libraries.push('library_nativefs.js')
+    }
+      
     if (MAX_WEBGL_VERSION >= 2) {
       // library_webgl2.js must be included only after library_webgl.js, so if we are
       // about to include library_webgl2.js, first squeeze in library_webgl.js.

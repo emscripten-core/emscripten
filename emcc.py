@@ -2071,6 +2071,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
     # set location of worker.js
     settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
+
+    # set location of nativefs_worker.js
+    settings.NATIVE_FS_WORKER_FILE = unsuffixed_basename(target) + '.nativefs_worker.js'
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
@@ -2840,6 +2843,19 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       write_file(worker_output, minified_worker)
 
+  if settings.EMSCRIPTEN_NATIVE_FS:
+    if not settings.USE_PTHREADS:
+      exit_with_error('EMSCRIPTEN_NATIVE_FS feature needs -s USE_PTHREADS')
+    target_dir = os.path.dirname(os.path.abspath(target))
+    worker_output = os.path.join(target_dir, settings.NATIVE_FS_WORKER_FILE)
+    contents = shared.read_and_preprocess(utils.path_from_root('src/nativefs_worker.js'), expand_macros=True)
+    write_file(worker_output, contents)
+
+    # Minify the worker.js file in optimized builds
+    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
+      write_file(worker_output, minified_worker)
+    
   # track files that will need native eols
   generated_text_files_with_native_eols = []
 
