@@ -18,9 +18,6 @@ public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode, this);
   }
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, this);
-  }
 };
 
 backend_t createMemoryFileBackend() {
