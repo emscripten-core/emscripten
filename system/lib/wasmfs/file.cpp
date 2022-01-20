@@ -258,42 +258,4 @@ std::vector<std::string> splitPath(char* pathname) {
   return pathParts;
 }
 
-std::string joinPath(const std::vector<std::string> parts) {
-  std::string ret;
-  for (auto& part : parts) {
-    // Add a '/' if we need one.
-    // |ret| may already end with '/' if we are an absolute path, as then the
-    // first part is "/".
-    if (!ret.empty() && ret.back() != '/') {
-      ret += '/';
-    }
-    ret += part;
-  }
-  return ret;
-}
-
-std::string normalizePath(char* pathname) {
-  auto parts = splitPath(pathname);
-  if (parts.empty()) {
-    return pathname;
-  }
-
-  // Recreate an output vector of the things we keep. Each time we see an ".."
-  // we can remove the last thing, as we are balancing it out by going back.
-  std::vector<std::string> kept;
-  for (auto& part : parts) {
-    if (part == "..") {
-      // If there is nothing to pop, do nothing; ".." is identical to "." at the
-      // root. TODO handle the non-root case
-      if (!kept.empty()) {
-        kept.pop_back();
-      }
-    } else {
-      kept.push_back(part);
-    }
-  }
-
-  return joinPath(parts);
-}
-
 } // namespace wasmfs
