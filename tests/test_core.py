@@ -998,6 +998,29 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  def test_longjmp_with_and_without_exceptions(self):
+    # Emscripten SjLj with and without Emscripten EH support
+    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+    self.set_setting('DEFAULT_TO_CXX') # See comments on @with_both_eh_sjlj
+    for disable_catching in [0, 1]:
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_catching)
+      self.do_core_test('test_longjmp.c')
+    # Wasm SjLj with and without Wasm EH support
+    self.set_setting('SUPPORT_LONGJMP', 'wasm')
+    if not self.is_wasm():
+      self.skipTest('wasm2js does not support wasm EH/SjLj')
+    self.require_v8()
+    # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('Wasm EH does not work with asan yet')
+    self.emcc_args.append('-fwasm-exceptions')
+    self.v8_args.append('--experimental-wasm-eh')
+    old_args = self.emcc_args.copy()
+    for arg in ['-fwasm-exceptions', '-fno-exceptions']:
+      self.emcc_args.append(arg)
+      self.do_core_test('test_longjmp.c')
+      self.emcc_args = old_args
+
   @with_both_eh_sjlj
   def test_longjmp2(self):
     self.do_core_test('test_longjmp2.c')
@@ -1103,11 +1126,31 @@ int main()
   def test_setjmp_noleak(self):
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
+  @with_both_eh_sjlj
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
+    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+
+  def test_exceptions_with_and_without_longjmp(self):
+    self.set_setting('EXCEPTION_DEBUG')
+    self.maybe_closure()
+    # Emscripten EH with and without Emscripten SjLj support
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    for support_longjmp in [0, 1]:
+    for support_longjmp in [0, 'emscripten']:
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    # Wasm EH with and without Wasm SjLj support
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    if not self.is_wasm():
+      self.skipTest('wasm2js does not support wasm EH/SjLj')
+    self.require_v8()
+    # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+    if '-fsanitize=address' in self.emcc_args:
+      self.skipTest('Wasm EH does not work with asan yet')
+    self.emcc_args.append('-fwasm-exceptions')
+    self.v8_args.append('--experimental-wasm-eh')
+    for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
