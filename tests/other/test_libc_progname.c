@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <emscripten.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -23,6 +24,11 @@ int main(void) {
 
   /* Ensure the basename contains no path separator. */
   assert(!strchr(__progname, '/'));
+
+  if (EM_ASM_INT({ return process.platform.startsWith("win") })) {
+    // The rest of the test here assumes unix-style pathnames.
+    return 0;
+  }
 
   /* Ensure the full path starts with the root directory. */
   assert(*__progname_full == '/');
