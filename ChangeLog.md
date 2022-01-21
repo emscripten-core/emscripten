@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.2
+3.1.3
 -----
+
+3.1.2 - 20/01/2022
+------------------
 - A new setting, `POLYFILL`, was added which is on by default but can be disabled
   (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
   For default browser targets, no polyfills are needed so this option only has
