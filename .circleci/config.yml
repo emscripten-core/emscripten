@@ -116,7 +116,7 @@ commands:
       - run:
           name: freeze cache
           command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+            echo "NO_FROZEN_CACHE=True" >> ~/emsdk/.emscripten
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
