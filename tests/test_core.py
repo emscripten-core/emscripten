@@ -187,6 +187,22 @@ def also_with_wasmfs(func):
   return decorated
 
 
+# Similar to also_with_wasmfs, but also enables the full JS API
+def also_with_wasmfs_js(func):
+  def decorated(self):
+    func(self)
+    print('wasmfs')
+    if self.get_setting('STANDALONE_WASM'):
+      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
+    if self.get_setting('MEMORY64'):
+      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
+    self.set_setting('WASMFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+    func(self)
+  return decorated
+
+
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
 def also_with_standalone_wasm(wasm2c=False, impure=False):
@@ -5602,20 +5618,25 @@ Module['onRuntimeInitialized'] = function() {
       self.set_setting('NODERAWFS')
       self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
 
-  def test_unistd_links(self):
-    self.clear()
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
-        print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
-        # Also, other detected discrepancies if you do end up running this test on NODEFS:
-        # test expects /, but Windows gives \ as path slashes.
-        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-        continue
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/links.c', js_engines=[config.NODE_JS])
+  @parameterized({
+    'memfs': (['-DMEMFS'], False),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'], True)
+  })
+  def test_unistd_links(self, args, nodefs):
+    self.emcc_args += args
+
+    if WINDOWS and nodefs:
+      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
+      # Also, other detected discrepancies if you do end up running this test on NODEFS:
+      # test expects /, but Windows gives \ as path slashes.
+      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+
+    if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('TODO: wasmfs+node')
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+
+    self.do_run_in_out_file_test('unistd/links.c', js_engines=[config.NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   def test_unistd_symlink_on_nodefs(self):
@@ -8937,7 +8958,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=['-O2'], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})

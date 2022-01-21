@@ -5,10 +5,12 @@
  * found in the LICENSE file.
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
+#include <assert.h>
 #include <emscripten.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 int main() {
   EM_ASM(
@@ -27,10 +29,24 @@ int main() {
 
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {
     printf("readlink(%s)\n", files[i]);
-    printf("ret: %zd\n", readlink(files[i], buffer, 256));
+    int ret = readlink(files[i], buffer, 256);
     printf("errno: %d\n", errno);
-    printf("result: %s\n\n", buffer);
+    if (ret < 0) {
+      printf("not a link\n\n");
+      continue;
+    }
+    // WASMFS behaves the same as Linux (and as best as I can tell, the spec),
+    // seeing the symlink as a string. The old JS FS instead normalizes it and
+    // returns something modified.
+    // The same happens in the assertions below.
+#ifdef WASMFS
+    assert(strcmp(buffer, "../test/../there!") == 0);
+#else
+    assert(strcmp(buffer, "/there!") == 0);
+#endif
+    assert(strlen(buffer) == ret);
     errno = 0;
+    printf("\n");
   }
 
   printf("symlink/overwrite\n");
@@ -44,16 +60,26 @@ int main() {
   errno = 0;
 
   printf("readlink(created link)\n");
-  printf("ret: %zd\n", readlink("folder/link", buffer, 256));
+  int ret = readlink("folder/link", buffer, 256);
   printf("errno: %d\n", errno);
-  printf("result: %s\n\n", buffer);
+#ifdef WASMFS
+  assert(strcmp(buffer, "new-nonexistent-path") == 0);
+#else
+  assert(strcmp(buffer, "/working/folder/new-nonexistent-path") == 0);
+#endif
+  assert(strlen(buffer) == ret);
   errno = 0;
+  printf("\n");
 
   buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = '*';
   printf("readlink(short buffer)\n");
   printf("ret: %zd\n", readlink("link", buffer, 4));
   printf("errno: %d\n", errno);
-  printf("result: %s\n", buffer);
+#ifdef WASMFS
+  assert(strcmp(buffer, "../t**nexistent-path") == 0);
+#else
+  assert(strcmp(buffer, "/the**ng/folder/new-nonexistent-path") == 0);
+#endif
   errno = 0;
 
   return 0;
