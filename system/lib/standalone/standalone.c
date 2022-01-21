@@ -176,11 +176,13 @@ imported__wasi_fd_write(__wasi_fd_t fd,
                         __wasi_size_t* nwritten);
 
 static void wasi_write(__wasi_fd_t fd, char* buffer) {
-  struct __wasi_ciovec_t iov;
-  iov.buf = (uint8_t*)buffer;
-  iov.buf_len = strlen(buffer) + 1;
+  struct __wasi_ciovec_t iovs[2];
+  iovs[0].buf = (uint8_t*)buffer;
+  iovs[0].buf_len = strlen(buffer);
+  iovs[1].buf = (uint8_t*)"\n";
+  iovs[1].buf_len = 1;
   __wasi_size_t nwritten;
-  imported__wasi_fd_write(fd, &iov, 1, &nwritten);
+  imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
 void _emscripten_out(char* text) { wasi_write(1, text); }
