@@ -175,7 +175,8 @@ imported__wasi_fd_write(__wasi_fd_t fd,
                         size_t iovs_len,
                         __wasi_size_t* nwritten);
 
-static void wasi_write(__wasi_fd_t fd, char* buffer) {
+// Write a buffer + a newline.
+static void wasi_writeln(__wasi_fd_t fd, char* buffer) {
   struct __wasi_ciovec_t iovs[2];
   iovs[0].buf = (uint8_t*)buffer;
   iovs[0].buf_len = strlen(buffer);
@@ -185,6 +186,6 @@ static void wasi_write(__wasi_fd_t fd, char* buffer) {
   imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
-void _emscripten_out(char* text) { wasi_write(1, text); }
+void _emscripten_out(char* text) { wasi_writeln(1, text); }
 
-void _emscripten_err(char* text) { wasi_write(2, text); }
+void _emscripten_err(char* text) { wasi_writeln(2, text); }
