@@ -10,6 +10,8 @@ void foo() {
 int main() {
   int jmpval = setjmp(buf);
   if (jmpval != 0) {
+    // This is not reached, because foo() doesn't longjmp. This test checks
+    // compilation of a setjmp call with a nested try.
     printf("setjmp returned for the second time\n");
     return 0;
   }
