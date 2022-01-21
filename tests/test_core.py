@@ -8890,6 +8890,9 @@ lto3 = make_run('lto3', emcc_args=['-flto', '-O3'])
 ltos = make_run('ltos', emcc_args=['-flto', '-Os'])
 ltoz = make_run('ltoz', emcc_args=['-flto', '-Oz'])
 
+thinlto3 = make_run('thinlto3', emcc_args=['-flto=thin', '-O3'])
+thinltos = make_run('thinltos', emcc_args=['-flto=thin', '-Os'])
+
 wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
 wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
 wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
