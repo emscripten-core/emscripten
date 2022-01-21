@@ -7602,12 +7602,12 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_a': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
     'onlylist_b': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
     'onlylist_c': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'onlylist_d': (['-sASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False, None, True),
+    'onlylist_d': (['-sASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_memory64('TODO: asyncify for wasm64')
-  def test_asyncify_lists(self, args, should_pass, response=None, no_san=False):
+  def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
       self.set_setting('ASYNCIFY_ONLY', '@response.file')
@@ -7623,8 +7623,9 @@ Module['onRuntimeInitialized'] = function() {
     # not end up emitted in the final binary
     if self.is_wasm():
       filename = 'test_asyncify_lists.wasm'
-      # there should be no name section
-      self.assertTrue(webassembly.Module(filename).has_name_section())
+      # there should be no name section. sanitizers, however, always enable that
+      if not is_sanitizing(self.emcc_args):
+        self.assertFalse(webassembly.Module(filename).has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
       if '-O3' in self.emcc_args:
