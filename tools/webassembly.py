@@ -387,6 +387,12 @@ class Module:
 
     return tables
 
+  def has_name_section(self):
+    for section in self.sections():
+      if section.type == SecType.CUSTOM and section.name == 'name':
+        return True
+    return False
+
 
 def parse_dylink_section(wasm_file):
   module = Module(wasm_file)

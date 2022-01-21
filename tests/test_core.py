@@ -6776,6 +6776,10 @@ void* operator new(size_t size) {
     # ensure function names are preserved
     self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
+
+    # there should be a name section in the file
+    self.assertTrue(webassembly.Module('test_demangle_stacks.wasm').has_name_section())
+
     print('without assertions, the stack is not printed, but a message suggesting assertions is')
     self.set_setting('ASSERTIONS', 0)
     self.do_core_test('test_demangle_stacks_noassert.cpp', assert_returncode=NON_ZERO)
@@ -7619,14 +7623,12 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_a': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
     'onlylist_b': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
     'onlylist_c': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'onlylist_d': (['-sASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False, None, True),
+    'onlylist_d': (['-sASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
   @no_memory64('TODO: asyncify for wasm64')
-  def test_asyncify_lists(self, args, should_pass, response=None, no_san=False):
-    if no_san and is_sanitizing(self.emcc_args):
-      self.skipTest('remaining asyncify+sanitizer TODO')
+  def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
       self.set_setting('ASYNCIFY_ONLY', '@response.file')
@@ -7640,15 +7642,15 @@ Module['onRuntimeInitialized'] = function() {
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
-    # (note that we can't check this if sanitizers run, as they include a lot of
-    # static strings that would match the search)
-    if self.is_wasm() and not is_sanitizing(self.emcc_args):
-      binary = read_binary('test_asyncify_lists.wasm')
-      # there should be no name section
-      self.assertFalse(b'name' in binary)
+    if self.is_wasm():
+      filename = 'test_asyncify_lists.wasm'
+      # there should be no name section. sanitizers, however, always enable that
+      if not is_sanitizing(self.emcc_args):
+        self.assertFalse(webassembly.Module(filename).has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
       if '-O3' in self.emcc_args:
+        binary = read_binary(filename)
         self.assertFalse(b'main' in binary)
 
   @parameterized({
