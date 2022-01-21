@@ -6928,9 +6928,9 @@ void* operator new(size_t size) {
     do_test(test2, level=2, prefix='hello_libcxx')
 
   def test_embind(self):
-    self.emcc_args += ['--bind']
-
-    create_file('test_embind.cpp', r'''
+    # Very that both the old `--bind` arg and the new `-lembind` arg work
+    for args in [['-lembind'], ['--bind']]:
+      create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -6945,11 +6945,11 @@ void* operator new(size_t size) {
 
         return 0;
       }
-    ''')
-    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11')
+      ''')
+      self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   def test_embind_2(self):
-    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printLerp() {
           out('lerp ' + Module.lerp(100, 200, 66) + '.');
@@ -6974,7 +6974,7 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_2.cpp', 'lerp 166')
 
   def test_embind_3(self):
-    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function ready() {
         try {
@@ -7002,7 +7002,7 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
   def test_embind_4(self):
-    self.emcc_args += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module.getBufferView()[0]);
@@ -7034,46 +7034,46 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_4.cpp', '107')
 
   def test_embind_5(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_embind_5.cpp')
 
   def test_embind_custom_marshal(self):
-    self.emcc_args += ['--bind', '--pre-js', test_file('embind/test_custom_marshal.js')]
+    self.emcc_args += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
     self.do_run_in_out_file_test('embind/test_custom_marshal.cpp', assert_identical=True)
 
   def test_embind_float_constants(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_float_constants.cpp')
 
   def test_embind_negative_constants(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
 
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
 
   def test_embind_val(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
   def test_embind_val_assignment(self):
-    err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '--bind', '-c'])
+    err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
@@ -7102,11 +7102,11 @@ void* operator new(size_t size) {
         emscripten::function("dotest", &test);
       }
     ''')
-    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
   def test_embind_polymorphic_class_no_rtti(self):
-    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
 
   def test_embind_no_rtti_followed_by_rtti(self):
@@ -7134,7 +7134,7 @@ void* operator new(size_t size) {
         emscripten::function("dotest", &test);
       }
     '''
-    self.emcc_args += ['--bind', '-fno-rtti', '-frtti']
+    self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
   @parameterized({
@@ -8544,7 +8544,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
@@ -8814,7 +8814,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
-    self.emcc_args += ['--bind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
+    self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
 
   @needs_dylink
@@ -8856,7 +8856,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_embind_lib_with_asyncify(self, args):
     self.uses_es6 = True
     self.emcc_args += [
-      '--bind',
+      '-lembind',
       '-sASYNCIFY',
       '-sASYNCIFY_IMPORTS=["sleep_and_return"]',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),

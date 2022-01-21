@@ -56,7 +56,7 @@ the simple C++ ``lerp()`` :cpp:func:`function` to JavaScript.
 To compile the above example using *embind*, we invoke *emcc* with the
 :ref:`bind <emcc-bind>` option::
 
-   emcc --bind -o quick_example.js quick_example.cpp
+   emcc -lembind -o quick_example.js quick_example.cpp
 
 The resulting **quick_example.js** file can be loaded as a node module
 or via a ``<script>`` tag:
@@ -107,7 +107,7 @@ the object file.
 For example, to generate bindings for a hypothetical **library.a** compiled
 with Emscripten run *emcc* with ``--whole-archive`` compiler flag::
 
-   emcc --bind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
+   emcc -lembind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
 
 Classes
 =======
@@ -875,7 +875,7 @@ and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 
-   emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
+   emcc -O2 -Wall -Werror -lembind -o oscillator.html oscillator.cpp
 
 
 Built-in type conversions

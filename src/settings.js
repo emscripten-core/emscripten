@@ -1202,7 +1202,7 @@ var EXPORT_NAME = 'Module';
 // When this flag is set, the following features (linker flags) are unavailable:
 //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
-//  --bind: Embind uses eval() to jit functions for speed.
+// Embind: uses eval() to jit functions for speed.
 //
 // Additionally, the following Emscripten runtime functions are unavailable when
 // DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
