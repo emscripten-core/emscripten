@@ -105,9 +105,7 @@ std::string Directory::Handle::getName(std::shared_ptr<File> target) {
 //
 
 size_t Symlink::getSize() {
-  // TODO: Should we need this, we could parse |target| and forward getSize()
-  //       from there.
-  return 0;
+  return target.size();
 }
 
 //
