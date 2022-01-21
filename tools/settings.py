@@ -11,7 +11,7 @@ from .utils import path_from_root, exit_with_error
 from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
-MEM_SIZE_SETTINGS = (
+MEM_SIZE_SETTINGS = {
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
@@ -19,9 +19,9 @@ MEM_SIZE_SETTINGS = (
     'GL_MAX_TEMP_BUFFER_SIZE',
     'MAXIMUM_MEMORY',
     'DEFAULT_PTHREAD_STACK_SIZE'
-)
+}
 
-PORTS_SETTINGS = (
+PORTS_SETTINGS = {
     # All port-related settings are valid at compile time
     'USE_SDL',
     'USE_LIBPNG',
@@ -47,11 +47,11 @@ PORTS_SETTINGS = (
     'USE_FREETYPE',
     'SDL2_MIXER_FORMATS',
     'SDL2_IMAGE_FORMATS',
-)
+}
 
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
-COMPILE_TIME_SETTINGS = (
+COMPILE_TIME_SETTINGS = {
     'MEMORY64',
     'INLINING_LIMIT',
     'DISABLE_EXCEPTION_CATCHING',
@@ -78,7 +78,7 @@ COMPILE_TIME_SETTINGS = (
     # TODO: should not be here
     'AUTO_ARCHIVE_INDEXES',
     'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
-) + PORTS_SETTINGS
+}.union(PORTS_SETTINGS)
 
 
 class SettingsManager:
