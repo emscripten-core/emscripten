@@ -104,10 +104,10 @@ var WasmfsLibrary = {
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
     },
-    symlink: function(oldpath, newpath) {
-      var oldBuffer = allocateUTF8OnStack(oldpath);
-      var newBuffer = allocateUTF8OnStack(newpath);
-      __wasmfs_symlink(oldBuffer, newBuffer);
+    symlink: function(target, linkpath) {
+      var targetBuffer = allocateUTF8OnStack(targetpath);
+      var linkpathBuffer = allocateUTF8OnStack(linkpathpath);
+      __wasmfs_symlink(targetBuffer, linkpathBuffer);
     },
 #endif
   },
