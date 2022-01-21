@@ -929,8 +929,7 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
     return -EINVAL;
   }
 
-  auto symlink = parsedPath.child->dynCast<Symlink>();
-  auto& target = symlink->locked().getTarget();
+  const auto& target = parsedPath.child->dynCast<Symlink>()->getTarget();
 
   auto bytes = std::min(bufSize, target.size());
   memcpy(buf, target.c_str(), bytes);

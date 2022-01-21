@@ -242,8 +242,9 @@ protected:
 
 class Symlink : public File {
 protected:
-  // The target file that this symlink points to.
-  std::string target;
+  // The target file that this symlink points to. This is constant as symlinks
+  // cannot be modified to point to different things.
+  const std::string target;
 
   size_t getSize() override;
 
@@ -257,17 +258,17 @@ public:
   virtual ~Symlink() = default;
 
   class Handle : public File::Handle {
-
     std::shared_ptr<Symlink> getFile() { return file->cast<Symlink>(); }
 
   public:
     Handle(std::shared_ptr<File> symlink) : File::Handle(symlink) {}
     Handle(Handle&&) = default;
-
-    std::string& getTarget() { return getFile()->target; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
+
+  // Constant, and therefore thread-safe, and can be done without locking.
+  const std::string& getTarget() { return target; }
 };
 
 struct ParsedPath {
