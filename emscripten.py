@@ -80,16 +80,16 @@ def optimize_syscalls(declares):
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
     syscall_prefixes = ('__syscall_', 'fd_')
-    syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
+    syscalls = {d for d in declares if d.startswith(syscall_prefixes)}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
-    if set(syscalls).issubset(set([
+    if syscalls.issubset({
       '__syscall_ioctl',
       'fd_seek',
       'fd_write',
       'fd_close',
-    ])):
+    }):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
       settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
