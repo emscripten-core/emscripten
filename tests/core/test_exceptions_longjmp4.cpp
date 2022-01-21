@@ -18,10 +18,10 @@ int main() {
     try {
       foo();
     } catch (int n) {
-      printf("inner catch: caught %d\n");
+      printf("inner catch: caught %d\n", n);
     }
   } catch (int n) {
-    printf("outer catch: caught %d\n");
+    printf("outer catch: caught %d\n", n);
   }
   return 0;
 }
