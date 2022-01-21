@@ -257,16 +257,6 @@ public:
     : File(File::SymlinkKind, 0, backend), target(target) {}
   virtual ~Symlink() = default;
 
-  class Handle : public File::Handle {
-    std::shared_ptr<Symlink> getFile() { return file->cast<Symlink>(); }
-
-  public:
-    Handle(std::shared_ptr<File> symlink) : File::Handle(symlink) {}
-    Handle(Handle&&) = default;
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
-
   // Constant, and therefore thread-safe, and can be done without locking.
   const std::string& getTarget() { return target; }
 };
