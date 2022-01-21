@@ -105,8 +105,8 @@ var WasmfsLibrary = {
       _free(dataBuffer);
     },
     symlink: function(target, linkpath) {
-      var targetBuffer = allocateUTF8OnStack(targetpath);
-      var linkpathBuffer = allocateUTF8OnStack(linkpathpath);
+      var targetBuffer = allocateUTF8OnStack(target);
+      var linkpathBuffer = allocateUTF8OnStack(linkpath);
       __wasmfs_symlink(targetBuffer, linkpathBuffer);
     },
 #endif
