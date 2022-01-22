@@ -12,24 +12,24 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 test_dir = os.path.join(root_dir, 'tests')
-ignore_dirs = set([
+ignore_dirs = {
   'third_party',
   'metadce',
   '__pycache__',
-])
-ignore_files = set([
+}
+ignore_files = {
   'getValue_setValue_assert.out',
   'legacy_exported_runtime_numbers_assert.out',
-])
+}
 ignore_root_patterns = ['runner.*', 'test_*.py']
-ignore_root_files = set([
+ignore_root_files = {
   'jsrun.py',
   'clang_native.py',
   'common.py',
   'parallel_testsuite.py',
   'parse_benchmark_output.py',
   'malloc_bench.c',
-])
+}
 
 
 def grep(string, subdir=''):

@@ -405,7 +405,7 @@ def link_bitcode(args, target, force_archive_contents=False):
   # Tracking unresolveds is necessary for .a linking, see below.
   # Specify all possible entry points to seed the linking process.
   # For a simple application, this would just be "main".
-  unresolved_symbols = set([func[1:] for func in settings.EXPORTED_FUNCTIONS])
+  unresolved_symbols = {func[1:] for func in settings.EXPORTED_FUNCTIONS}
   resolved_symbols = set()
   # Paths of already included object files from archives.
   added_contents = set()
@@ -1028,7 +1028,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       'root': True
     })
   # fix wasi imports TODO: support wasm stable with an option?
-  WASI_IMPORTS = set([
+  WASI_IMPORTS = {
     'environ_get',
     'environ_sizes_get',
     'args_get',
@@ -1044,7 +1044,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     'proc_exit',
     'clock_res_get',
     'clock_time_get',
-  ])
+  }
   for item in graph:
     if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
