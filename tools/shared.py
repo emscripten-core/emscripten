@@ -664,6 +664,13 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def get_llvm_target():
+  if settings.MEMORY64:
+    return 'wasm64-unknown-emscripten'
+  else:
+    return 'wasm32-unknown-emscripten'
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -690,6 +697,7 @@ LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_MC = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-mc')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))

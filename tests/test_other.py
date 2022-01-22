@@ -2590,7 +2590,7 @@ int f() {
     assert json.dumps("direc'tory") in proc.stdout
 
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
-    MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
+    MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
     create_file('data.txt', 'data1')
     # mention when running standalone
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
@@ -2608,7 +2608,11 @@ int f() {
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+    # Without --obj-output we issue a warning
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
+    self.assertContained('--obj-output is recommended when using --embed', err)
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o', '--js-output=data.js'])
 
     create_file('test.c', '''
     #include <stdio.h>
@@ -2623,7 +2627,7 @@ int f() {
       return 0;
     }
     ''')
-    self.run_process([EMCC, '--pre-js=data.js', 'test.c', '-sFORCE_FILESYSTEM'])
+    self.run_process([EMCC, '--pre-js=data.js', 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
