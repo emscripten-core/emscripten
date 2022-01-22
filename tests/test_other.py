@@ -7277,8 +7277,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    # Temporarily disabled while https://reviews.llvm.org/D117412 rolls in
-    # 'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
