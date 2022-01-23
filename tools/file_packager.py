@@ -134,6 +134,10 @@ def err(*args):
   print(*args, file=sys.stderr)
 
 
+def to_unix_path(p):
+  return p.replace(os.path.sep, '/')
+
+
 def base64_encode(b):
   b64 = base64.b64encode(b)
   return b64.decode('ascii')
@@ -265,18 +269,19 @@ def generate_object_file(data_files):
         err('embedding %s at %s' % (f.srcpath, f.dstpath))
 
       size = os.path.getsize(f.srcpath)
-      name = to_asm_string(f.dstpath)
+      dstpath = to_asm_string(f.dstpath)
+      srcpath = to_unix_path(f.srcpath)
       out.write(dedent(f'''
       .section .rodata.{f.c_symbol_name},"",@
 
       # The name of file
       {f.c_symbol_name}_name:
-      .asciz "{name}"
-      .size {f.c_symbol_name}_name, {len(name)+1}
+      .asciz "{dstpath}"
+      .size {f.c_symbol_name}_name, {len(dstpath)+1}
 
       # The size of the file followed by the content itself
       {f.c_symbol_name}:
-      .incbin "{f.srcpath}"
+      .incbin "{srcpath}"
       .size {f.c_symbol_name}, {size}
       '''))
 
@@ -462,7 +467,7 @@ def main():
 
   for file_ in data_files:
     # name in the filesystem, native and emulated
-    file_.dstpath = file_.dstpath.replace(os.path.sep, '/')
+    file_.dstpath = to_unix_path(file_.dstpath)
     # If user has submitted a directory name as the destination but omitted
     # the destination filename, use the filename from source file
     if file_.dstpath.endswith('/'):
