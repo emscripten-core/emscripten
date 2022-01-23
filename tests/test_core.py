@@ -5626,7 +5626,7 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += args
 
     if WINDOWS and nodefs:
-      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
+      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges')
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
       # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
