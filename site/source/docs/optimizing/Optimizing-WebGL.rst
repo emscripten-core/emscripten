@@ -135,7 +135,7 @@ After having verified that CPU-GPU pipeline sync bubbles do not occur, and rende
 
 - Use lowest possible fragment shader precision when it is enough (lowp). Optimize shaders aggressively beforehand at offline authoring time, do not expect that the GPU GLSL driver would do any optimizations on the fly. This is particularly important for mobile GPU drivers.
 
-- Sort renderables by target FBO first, then by shader program, and third to minimize any other needed GL state changes or to minimize overdraw, depending on whether the program is CPU or BPU bound. This helps tile based renderers. Call WebGL 2 ``glDiscardFramebuffer()`` when the contents of an FBO are no longer needed.
+- Sort renderables by target FBO first, then by shader program, and third to minimize any other needed GL state changes or to minimize overdraw, depending on whether the program is CPU or GPU bound. This helps tile based renderers. Call WebGL 2 ``glDiscardFramebuffer()`` when the contents of an FBO are no longer needed.
 
 - Use a GPU profiler, or implement custom fragment shaders that can help profiling how much overdraw the rendered scene has. A large amount of overdraw not only generates extra work, but the sequential dependencies between rendering to the same blocks of display memory slow down parallel rendering. If rendering a 3D scene with depth buffering enabled, consider sorting the scene from front to back to minimize overdraw and redundant per pixel fill bandwidth. If using very complex fragment shaders in a 3D scene, consider doing a depth prepass to reduce the number of actually rasterized color fragments to an absolute minimum.
 
