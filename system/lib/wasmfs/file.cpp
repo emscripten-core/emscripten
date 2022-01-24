@@ -17,9 +17,11 @@ size_t _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 }
 
 namespace wasmfs {
+
 //
 // DataFile
 //
+
 void DataFile::Handle::preloadFromJS(int index) {
   // TODO: Each Datafile type could have its own impl of file preloading.
   // Create a buffer with the required file size.
@@ -33,9 +35,11 @@ void DataFile::Handle::preloadFromJS(int index) {
 
   write((const uint8_t*)buffer.data(), buffer.size(), 0);
 }
+
 //
 // Directory
 //
+
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
   auto found =
     std::find_if(getDir()->entries.begin(),
@@ -95,9 +99,19 @@ std::string Directory::Handle::getName(std::shared_ptr<File> target) {
 
   return "";
 }
+
+//
+// Symlink
+//
+
+size_t Symlink::getSize() {
+  return target.size();
+}
+
 //
 // Path Parsing utilities
 //
+
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
                          std::shared_ptr<File> forbiddenAncestor) {
@@ -241,4 +255,5 @@ std::vector<std::string> splitPath(char* pathname) {
 
   return pathParts;
 }
+
 } // namespace wasmfs

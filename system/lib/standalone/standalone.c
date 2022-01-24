@@ -42,6 +42,11 @@ struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
 }
 
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
+  // See https://github.com/bytecodealliance/wasmtime/issues/3714
+  if (clk_id > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk_id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
   __wasi_timestamp_t res;
   __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
   if (error != __WASI_ERRNO_SUCCESS) {

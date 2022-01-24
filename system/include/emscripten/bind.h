@@ -1884,10 +1884,9 @@ void constant(const char* name, const ConstantType& v) {
         static_cast<double>(asGenericValue(BT::toWireType(v))));
 }
 
-} // end namespace emscripten
+// EMSCRIPTEN_BINDINGS simple creates a static constructor function which
+// will get included in the program if the translation unit in which it is
+// define gets linked into the program.
+#define EMSCRIPTEN_BINDINGS(name) __attribute__((constructor)) static void __embind_init_##name(void)
 
-#define EMSCRIPTEN_BINDINGS(name)                                       \
-    static struct EmscriptenBindingInitializer_##name {                 \
-        EmscriptenBindingInitializer_##name();                          \
-    } EmscriptenBindingInitializer_##name##_instance;                   \
-    EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
+} // end namespace emscripten

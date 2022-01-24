@@ -889,4 +889,51 @@ long __syscall_rename(long old_path, long new_path) {
   return 0;
 }
 
+long __syscall_symlink(char* old_path, char* new_path) {
+  auto pathParts = splitPath(new_path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
+
+  if (parsedPath.child) {
+    return -EEXIST;
+  }
+
+  auto backend = parsedPath.parent->unlocked()->getBackend();
+  auto created = backend->createSymlink(old_path);
+  parsedPath.parent->setEntry(pathParts.back(), created);
+
+  return 0;
+}
+
+long __syscall_readlink(char* path, char* buf, size_t bufSize) {
+  auto pathParts = splitPath(path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  if (!parsedPath.child->is<Symlink>()) {
+    return -EINVAL;
+  }
+
+  const auto& target = parsedPath.child->dynCast<Symlink>()->getTarget();
+
+  auto bytes = std::min(bufSize, target.size());
+  memcpy(buf, target.c_str(), bytes);
+
+  return bytes;
+}
 }

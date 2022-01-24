@@ -104,6 +104,11 @@ var WasmfsLibrary = {
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
     },
+    symlink: function(target, linkpath) {
+      var targetBuffer = allocateUTF8OnStack(target);
+      var linkpathBuffer = allocateUTF8OnStack(linkpath);
+      __wasmfs_symlink(targetBuffer, linkpathBuffer);
+    },
 #endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
