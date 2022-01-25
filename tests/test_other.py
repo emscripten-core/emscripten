@@ -2428,6 +2428,7 @@ int f() {
     output = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('Constructed from C++ destructed', output)
     self.assertContained('Constructed from JS destructed', output)
+    self.assertNotContained('Foo* destructed', output)
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
