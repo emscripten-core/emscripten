@@ -8105,13 +8105,14 @@ Module['onRuntimeInitialized'] = function() {
   @no_memory64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
+    self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-sASYNCIFY_IMPORTS=["_Z8my_sleepi"]']
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
 
       int main() {
-        my_sleep(1);     
+        my_sleep(1);
         return 0;
       }
     ''', r'''
