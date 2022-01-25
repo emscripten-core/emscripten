@@ -6,7 +6,7 @@ class Foo {
   std::string mName;
 
 public:
-  Foo(std::string name = "Constructed from JS") : mName(name) {}
+  Foo(std::string name) : mName(name) {}
   ~Foo() { std::cout << mName << " destructed" << std::endl; }
 };
 
@@ -20,7 +20,7 @@ using namespace emscripten;
 
 EMSCRIPTEN_BINDINGS(Marci) {
   class_<Foo>("Foo").smart_ptr_constructor<std::shared_ptr<Foo>>(
-    "Foo", std::make_shared<Foo>);
+    "Foo", &std::make_shared<Foo, std::string>);
 
   function("foo", foo);
   function("pFoo", pFoo, allow_raw_pointers());
