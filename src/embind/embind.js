@@ -1750,7 +1750,7 @@ var LibraryEmbind = {
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
     // for class handles.  We check for the presence of FinalizationRegistry
     // at run-time, not build-time.
-    finalizationRegistry = new FinalizationRegistry(function (info) {
+    finalizationRegistry = new FinalizationRegistry((info) => {
 #if ASSERTIONS
         console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
 #endif
@@ -1780,9 +1780,7 @@ var LibraryEmbind = {
         }
         return handle;
     };
-    detachFinalizer = (handle) => {
-        finalizationRegistry.unregister(handle);
-    };
+    detachFinalizer = (handle) => finalizationRegistry.unregister(handle);
     return attachFinalizer(handle);
   },
 

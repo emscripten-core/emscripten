@@ -2417,6 +2417,18 @@ int f() {
       output = self.run_js('a.out.js')
       self.assertNotContained('FAIL', output)
 
+  def test_embind_finalization(self):
+    self.run_process(
+      [EMXX,
+       test_file('embind/test_finalization.cpp'),
+       '--post-js', test_file('embind/test_finalization.js'),
+       '--bind']
+    )
+    self.node_args += ['--expose-gc']
+    output = self.run_js('a.out.js', engine=config.NODE_JS)
+    self.assertContained('Constructed from C++ destructed', output)
+    self.assertContained('Constructed from JS destructed', output)
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
