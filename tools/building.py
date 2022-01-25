@@ -1241,6 +1241,10 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
 
+  # Strip the non-debug sections out of the DWARF file
+  check_call([LLVM_OBJCOPY, wasm_file_with_dwarf, '--only-keep-debug',
+              '--keep-section', 'name'])
+
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
