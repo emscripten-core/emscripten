@@ -10471,6 +10471,12 @@ exec "$@"
     self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
                          stderr)
 
+  def test_SUPPORT_LONGJMP_wasm(self):
+    # Tests if -sSUPPORT_LONGJMP=wasm alone is enough to use Wasm SjLj, i.e., it
+    # automatically sets DISABLE_EXCEPTION_THROWING to 1, which is 0 by default,
+    # because Emscripten EH and Wasm SjLj cannot be used at the same time.
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
+
   def test_pthread_MODULARIZE(self):
     stderr = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'], stderr=PIPE, check=False).stderr
     self.assertContained('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work',
