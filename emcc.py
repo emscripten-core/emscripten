@@ -1914,7 +1914,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '__asyncify_state',
         '__asyncify_data'
       ]
-    
+
     # Unconditional dependency in library_dylink.js
     settings.REQUIRED_EXPORTS += ['setThrew']
 
