@@ -1502,7 +1502,11 @@ int f() {
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
-  def test_embed_file_dup(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-sWASMFS'],),
+  })
+  def test_embed_file_dup(self, args):
     ensure_dir(self.in_dir('tst', 'test1'))
     ensure_dir(self.in_dir('tst', 'test2'))
 
@@ -1529,7 +1533,7 @@ int f() {
       }
     ''')
 
-    self.run_process([EMXX, 'main.cpp', '--embed-file', 'tst'])
+    self.run_process([EMXX, 'main.cpp', '--embed-file', 'tst'] + args)
     self.assertContained('|frist|\n|sacond|\n|thard|\n', self.run_js('a.out.js'))
 
   def test_exclude_file(self):
