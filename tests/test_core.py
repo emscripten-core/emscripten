@@ -8101,6 +8101,34 @@ Module['onRuntimeInitialized'] = function() {
       if should_pass:
         raise
 
+  @needs_dylink
+  @no_memory64('TODO: asyncify for wasm64')
+  def test_asyncify_side_module(self):
+    self.set_setting('ASYNCIFY')
+    self.emcc_args += ['-sASYNCIFY_IMPORTS=["_Z8my_sleepi"]']
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        my_sleep(1);     
+        return 0;
+      }
+    ''', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+      #include "header.h"
+
+      void my_sleep(int milli_seconds) {
+        // put variable onto stack
+        volatile int value = 42;
+        printf("%d ", value);
+        emscripten_sleep(milli_seconds);
+        // variable on stack in side module function should be restored.
+        printf("%d\n", value);
+      }
+    ''', '42 42', header='void my_sleep(int);')
+
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
