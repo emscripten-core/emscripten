@@ -823,23 +823,33 @@
             "nextInChain": 0
         },
         "WGPUCompilationInfo": {
-            "__size__": 8,
-            "messageCount": 0,
-            "messages": 4
+            "__size__": 12,
+            "messageCount": 4,
+            "messages": 8,
+            "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 40,
-            "length": 32,
-            "lineNum": 8,
-            "linePos": 16,
-            "message": 0,
-            "offset": 24,
-            "type": 4
+            "__size__": 48,
+            "length": 40,
+            "lineNum": 16,
+            "linePos": 24,
+            "message": 4,
+            "nextInChain": 0,
+            "offset": 32,
+            "type": 8
         },
         "WGPUComputePassDescriptor": {
-            "__size__": 8,
+            "__size__": 16,
             "label": 4,
-            "nextInChain": 0
+            "nextInChain": 0,
+            "timestampWriteCount": 8,
+            "timestampWrites": 12
+        },
+        "WGPUComputePassTimestampWrite": {
+            "__size__": 12,
+            "location": 8,
+            "queryIndex": 4,
+            "querySet": 0
         },
         "WGPUComputePipelineDescriptor": {
             "__size__": 32,
@@ -869,11 +879,12 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 16,
+            "__size__": 20,
+            "label": 4,
             "nextInChain": 0,
-            "requiredFeatures": 8,
-            "requiredFeaturesCount": 4,
-            "requiredLimits": 12
+            "requiredFeatures": 12,
+            "requiredFeaturesCount": 8,
+            "requiredLimits": 16
         },
         "WGPUExtent3D": {
             "__size__": 12,
@@ -963,6 +974,11 @@
             "chain": 0,
             "clampDepth": 8
         },
+        "WGPUPrimitiveDepthClipControl": {
+            "__size__": 12,
+            "chain": 0,
+            "unclippedDepth": 8
+        },
         "WGPUPrimitiveState": {
             "__size__": 20,
             "cullMode": 16,
@@ -994,13 +1010,15 @@
             "nextInChain": 0
         },
         "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 24,
+            "__size__": 28,
             "colorFormats": 12,
             "colorFormatsCount": 8,
+            "depthReadOnly": 24,
             "depthStencilFormat": 16,
             "label": 4,
             "nextInChain": 0,
-            "sampleCount": 20
+            "sampleCount": 20,
+            "stencilReadOnly": 25
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 48,
@@ -1023,13 +1041,21 @@
             "view": 0
         },
         "WGPURenderPassDescriptor": {
-            "__size__": 24,
+            "__size__": 32,
             "colorAttachmentCount": 8,
             "colorAttachments": 12,
             "depthStencilAttachment": 16,
             "label": 4,
             "nextInChain": 0,
-            "occlusionQuerySet": 20
+            "occlusionQuerySet": 20,
+            "timestampWriteCount": 24,
+            "timestampWrites": 28
+        },
+        "WGPURenderPassTimestampWrite": {
+            "__size__": 12,
+            "location": 8,
+            "queryIndex": 4,
+            "querySet": 0
         },
         "WGPURenderPipelineDescriptor": {
             "__size__": 84,
@@ -1086,8 +1112,9 @@
             "codeSize": 8
         },
         "WGPUShaderModuleWGSLDescriptor": {
-            "__size__": 12,
+            "__size__": 16,
             "chain": 0,
+            "code": 12,
             "source": 8
         },
         "WGPUStencilFaceState": {
