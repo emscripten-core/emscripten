@@ -602,7 +602,7 @@ def generate_js(data_target, data_files, metadata):
             }
           }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
-          Module['FS_createDataFile'](null, this.name, byteArray, true, true, true);
+          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency']('fp ' + that.name);'''
 
     if not options.lz4:
@@ -649,7 +649,7 @@ def generate_js(data_target, data_files, metadata):
         var content = HEAPU32[start32++];
         var name = UTF8ToString(name_addr)
         // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-        Module['FS_createDataFile'](null, name, HEAP8.subarray(content, content + len), true, true, true);
+        Module['FS_createDataFile'](name, null, HEAP8.subarray(content, content + len), true, true, true);
       } while (HEAPU32[start32]);'''
     else:
       err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more effecient than JS encoding')
