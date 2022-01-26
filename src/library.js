@@ -464,10 +464,8 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  mktime__deps: ['tzset'],
-  mktime__sig: 'ii',
-  mktime: function(tmPtr) {
-    _tzset();
+  _mktime_js__sig: 'ii',
+  _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -507,7 +505,6 @@ LibraryManager.library = {
 
     return (date.getTime() / 1000)|0;
   },
-  timelocal: 'mktime',
 
   _gmtime_js__sig: 'iii',
   _gmtime_js: function(time, tmPtr) {
@@ -524,10 +521,8 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
-  timegm__deps: ['tzset'],
-  timegm__sig: 'ii',
-  timegm: function(tmPtr) {
-    _tzset();
+  _timegm_js__sig: 'ii',
+  _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -545,10 +540,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime_r__deps: ['tzset'],
-  localtime_r__sig: 'iii',
-  localtime_r: function(time, tmPtr) {
-    _tzset();
+  _localtime_js__sig: 'iii',
+  _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
@@ -568,16 +561,9 @@ LibraryManager.library = {
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
-
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.POINTER_SIZE + ' : 0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
-
-    return tmPtr;
   },
-  __localtime_r: 'localtime_r',
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r__deps: ['mktime'],
   __asctime_r__sig: 'iii',
   __asctime_r: function(tmPtr, buf) {
     var date = {
@@ -622,23 +608,24 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  tzset__deps: ['tzset_impl'],
-  tzset__sig: 'v',
-  tzset: function() {
+  _tzset_js__deps: ['tzset_impl'],
+  _tzset_js__sig: 'viii',
+  _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (_tzset.called) return;
-    _tzset.called = true;
-    _tzset_impl();
+    if (__tzset_js.called) return;
+    __tzset_js.called = true;
+    _tzset_impl(timezone, daylight, tzname);
   },
 
+  tzset_impl__internal: true,
   tzset_impl__proxy: 'sync',
-  tzset_impl__sig: 'v',
-  tzset_impl__deps: ['_get_daylight', '_get_timezone', '_get_tzname',
+  tzset_impl__sig: 'viii',
+  tzset_impl__deps: [
 #if MINIMAL_RUNTIME
     '$allocateUTF8'
 #endif
   ],
-  tzset_impl: function() {
+  tzset_impl: function(timezone, daylight, tzname) {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
@@ -655,9 +642,9 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', 'i32') }}};
 
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
+    {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -669,11 +656,11 @@ LibraryManager.library = {
     var summerNamePtr = allocateUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
     } else {
-      {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
     }
   },
 
