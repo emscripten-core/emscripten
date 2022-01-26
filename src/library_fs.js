@@ -1590,7 +1590,11 @@ FS.staticInit();` +
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = name ? PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
+      var path = name;
+      if (parent) {
+        parent = typeof parent === 'string' ? parent : FS.getPath(parent);
+        path = name ? PATH.join2(parent, name) : parent;
+      }
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
@@ -1860,7 +1864,6 @@ FS.staticInit();` +
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-      Browser.init(); // XXX perhaps this method should move onto Browser?
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
       var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
@@ -1874,18 +1877,13 @@ FS.staticInit();` +
           if (onload) onload();
           removeRunDependency(dep);
         }
-        var handled = false;
-        Module['preloadPlugins'].forEach(function(plugin) {
-          if (handled) return;
-          if (plugin['canHandle'](fullname)) {
-            plugin['handle'](byteArray, fullname, finish, function() {
-              if (onerror) onerror();
-              removeRunDependency(dep);
-            });
-            handled = true;
-          }
-        });
-        if (!handled) finish(byteArray);
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, function() {
+          if (onerror) onerror();
+          removeRunDependency(dep);
+        })) {
+          return;
+        }
+        finish(byteArray);
       }
       addRunDependency(dep);
       if (typeof url == 'string') {

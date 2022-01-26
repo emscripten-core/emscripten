@@ -56,7 +56,8 @@ var WasmfsLibrary = {
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
-      wasmFS$preloadedFiles.push({pathName: parent, fileData: data, mode: mode});
+      var pathName = name ? parent + '/' + name : parent;
+      wasmFS$preloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
     createPath: function(parent, path, canRead, canWrite) {
       // Cache file path directory names.
@@ -109,6 +110,11 @@ var WasmfsLibrary = {
       var dataBuffer = allocate(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
+    },
+    symlink: function(target, linkpath) {
+      var targetBuffer = allocateUTF8OnStack(target);
+      var linkpathBuffer = allocateUTF8OnStack(linkpath);
+      __wasmfs_symlink(targetBuffer, linkpathBuffer);
     },
 #endif
   },

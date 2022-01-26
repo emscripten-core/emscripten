@@ -1502,7 +1502,11 @@ int f() {
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
-  def test_embed_file_dup(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-sWASMFS'],),
+  })
+  def test_embed_file_dup(self, args):
     ensure_dir(self.in_dir('tst', 'test1'))
     ensure_dir(self.in_dir('tst', 'test2'))
 
@@ -1529,7 +1533,7 @@ int f() {
       }
     ''')
 
-    self.run_process([EMXX, 'main.cpp', '--embed-file', 'tst'])
+    self.run_process([EMXX, 'main.cpp', '--embed-file', 'tst'] + args)
     self.assertContained('|frist|\n|sacond|\n|thard|\n', self.run_js('a.out.js'))
 
   def test_exclude_file(self):
@@ -2590,7 +2594,7 @@ int f() {
     assert json.dumps("direc'tory") in proc.stdout
 
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
-    MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
+    MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
     create_file('data.txt', 'data1')
     # mention when running standalone
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
@@ -2608,7 +2612,11 @@ int f() {
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+    # Without --obj-output we issue a warning
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
+    self.assertContained('--obj-output is recommended when using --embed', err)
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o', '--js-output=data.js'])
 
     create_file('test.c', '''
     #include <stdio.h>
@@ -2623,7 +2631,7 @@ int f() {
       return 0;
     }
     ''')
-    self.run_process([EMCC, '--pre-js=data.js', 'test.c', '-sFORCE_FILESYSTEM'])
+    self.run_process([EMCC, '--pre-js=data.js', 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
@@ -7273,8 +7281,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    # Temporarily disabled while https://reviews.llvm.org/D117412 rolls in
-    # 'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)

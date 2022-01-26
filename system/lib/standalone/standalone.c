@@ -42,6 +42,11 @@ struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
 }
 
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
+  // See https://github.com/bytecodealliance/wasmtime/issues/3714
+  if (clk_id > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk_id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
   __wasi_timestamp_t res;
   __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
   if (error != __WASI_ERRNO_SUCCESS) {
@@ -175,14 +180,17 @@ imported__wasi_fd_write(__wasi_fd_t fd,
                         size_t iovs_len,
                         __wasi_size_t* nwritten);
 
-static void wasi_write(__wasi_fd_t fd, char* buffer) {
-  struct __wasi_ciovec_t iov;
-  iov.buf = (uint8_t*)buffer;
-  iov.buf_len = strlen(buffer) + 1;
+// Write a buffer + a newline.
+static void wasi_writeln(__wasi_fd_t fd, char* buffer) {
+  struct __wasi_ciovec_t iovs[2];
+  iovs[0].buf = (uint8_t*)buffer;
+  iovs[0].buf_len = strlen(buffer);
+  iovs[1].buf = (uint8_t*)"\n";
+  iovs[1].buf_len = 1;
   __wasi_size_t nwritten;
-  imported__wasi_fd_write(fd, &iov, 1, &nwritten);
+  imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
-void _emscripten_out(char* text) { wasi_write(1, text); }
+void _emscripten_out(char* text) { wasi_writeln(1, text); }
 
-void _emscripten_err(char* text) { wasi_write(2, text); }
+void _emscripten_err(char* text) { wasi_writeln(2, text); }

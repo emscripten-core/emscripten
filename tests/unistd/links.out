@@ -1,17 +1,13 @@
 readlink(link)
-ret: 7
 errno: 0
-result: /there!
 
 readlink(file)
-ret: -1
 errno: 28
-result: /there!
+not a link
 
 readlink(folder)
-ret: -1
 errno: 28
-result: /there!
+not a link
 
 symlink/overwrite
 ret: -1
@@ -21,11 +17,8 @@ symlink/normal
 ret: 0
 errno: 0
 readlink(created link)
-ret: 36
 errno: 0
-result: /working/folder/new-nonexistent-path
 
 readlink(short buffer)
 ret: 4
 errno: 0
-result: /the**ng/folder/new-nonexistent-path

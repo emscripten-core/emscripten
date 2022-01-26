@@ -18,8 +18,15 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.2
+3.1.3
 -----
+- The file packager now supports embedding files directly into wasm memory and
+  `emcc` now uses this mode when the `--embed-file` option is used.  If you
+  use `file_packager` directly it is recommended that you switch to the new mode
+  by adding `--obj-output` to the command line. (#16050)
+
+3.1.2 - 20/01/2022
+------------------
 - A new setting, `POLYFILL`, was added which is on by default but can be disabled
   (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
   For default browser targets, no polyfills are needed so this option only has

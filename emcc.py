@@ -148,8 +148,8 @@ UBSAN_SANITIZERS = {
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
-COMPILE_ONLY_FLAGS = set(['--default-obj-ext'])
-LINK_ONLY_FLAGS = set([
+COMPILE_ONLY_FLAGS = {'--default-obj-ext'}
+LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
@@ -157,7 +157,7 @@ LINK_ONLY_FLAGS = set([
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
-])
+}
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -814,14 +814,7 @@ def emsdk_cflags(user_args):
 
 
 def get_clang_flags():
-  return ['-target', get_llvm_target()]
-
-
-def get_llvm_target():
-  if settings.MEMORY64:
-    return 'wasm64-unknown-emscripten'
-  else:
-    return 'wasm32-unknown-emscripten'
+  return ['-target', shared.get_llvm_target()]
 
 
 cflags = None
@@ -979,6 +972,41 @@ def get_subresource_location(path, data_uri=None):
     return os.path.basename(path)
 
 
+@ToolchainProfiler.profile_block('package_files')
+def package_files(options, target):
+  rtn = []
+  logger.debug('setting up files')
+  file_args = ['--from-emcc', '--export-name=' + settings.EXPORT_NAME]
+  if options.preload_files:
+    file_args.append('--preload')
+    file_args += options.preload_files
+  if options.embed_files:
+    file_args.append('--embed')
+    file_args += options.embed_files
+  if options.exclude_files:
+    file_args.append('--exclude')
+    file_args += options.exclude_files
+  if options.use_preload_cache:
+    file_args.append('--use-preload-cache')
+  if settings.LZ4:
+    file_args.append('--lz4')
+  if options.use_preload_plugins:
+    file_args.append('--use-preload-plugins')
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    file_args.append('--no-node')
+  if options.embed_files:
+    object_file = in_temp('embedded_files.o')
+    file_args += ['--obj-output=' + object_file]
+    rtn.append(object_file)
+
+  cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
+  file_code = shared.check_call(cmd, stdout=PIPE).stdout
+
+  options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+
+  return rtn
+
+
 run_via_emxx = False
 
 
@@ -1053,7 +1081,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   if '-dumpmachine' in args:
-    print(get_llvm_target())
+    print(shared.get_llvm_target())
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
@@ -1128,6 +1156,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
+
+  # Embed and preload files
+  if len(options.preload_files) or len(options.embed_files):
+    linker_arguments += package_files(options, target)
 
   if options.oformat == OFormat.OBJECT:
     logger.debug(f'link_to_object: {linker_arguments} -> {target}')
@@ -1413,8 +1445,6 @@ def phase_setup(options, state, newargs, settings_map):
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     if not settings.DISABLE_EXCEPTION_THROWING:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
-    if settings.EXCEPTION_HANDLING:
-      exit_with_error('Wasm SjLj is not supported with Wasm exceptions yet')
 
   return (newargs, input_files)
 
@@ -1885,6 +1915,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
         '_wasmfs_write_file',
         '_wasmfs_mkdir',
         '_wasmfs_chdir',
+        '_wasmfs_symlink',
       ]
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
@@ -2701,7 +2732,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
 
   phase_emscript(options, in_wasm, wasm_target, memfile)
 
-  phase_source_transforms(options, target)
+  phase_source_transforms(options)
 
   if memfile and not settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
@@ -2732,32 +2763,8 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
 
 
 @ToolchainProfiler.profile_block('source transforms')
-def phase_source_transforms(options, target):
+def phase_source_transforms(options):
   global final_js
-
-  # Embed and preload files
-  if len(options.preload_files) or len(options.embed_files):
-    logger.debug('setting up files')
-    file_args = ['--from-emcc', '--export-name=' + settings.EXPORT_NAME]
-    if len(options.preload_files):
-      file_args.append('--preload')
-      file_args += options.preload_files
-    if len(options.embed_files):
-      file_args.append('--embed')
-      file_args += options.embed_files
-    if len(options.exclude_files):
-      file_args.append('--exclude')
-      file_args += options.exclude_files
-    if options.use_preload_cache:
-      file_args.append('--use-preload-cache')
-    if settings.LZ4:
-      file_args.append('--lz4')
-    if options.use_preload_plugins:
-      file_args.append('--use-preload-plugins')
-    if not settings.ENVIRONMENT_MAY_BE_NODE:
-      file_args.append('--no-node')
-    file_code = shared.check_call([shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args, stdout=PIPE).stdout
-    options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):
