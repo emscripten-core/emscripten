@@ -1143,6 +1143,10 @@ int main()
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
   @with_both_eh_sjlj
+  def test_setjmp_within_loop(self):
+    self.do_core_test('test_setjmp_within_loop.c')
+
+  @with_both_eh_sjlj
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
