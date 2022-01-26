@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
-# There are several ways symbols or addresses can be looked up.
-# Addr -> line:
-# llvm-symbolizer, using debug info and section offset
-# ?, using source map and file offset
-# Addr -> Symbol
-# ?, using symbol map and file offset?
-# Symbol -> Addr (nm, section offset)
+# This is a utility for looking up the symbol names and/or file+line numbers
+# of code addresses. There are several possible sources of this information,
+# with varying granularity (listed here in approximate preference order).
 
-# If the wasm has debug info, use llvm-symbolizer (convert the addresses)
-# If there is a source map, use it (do we have a parser?)
-# If there is a symbol map, use it (interpolate the addresses)
-# If there is a name section use llvm-nm (convert the addresses)
+# If the wasm has DWARF info, llvm-symbolizer can show the symbol, file, and
+# line/column number, potentially including inlining.
+# If there is a source map, we can parse it to get file and line number.
+# If there is an emscripten symbol map, we can parse that to get the symbol name
+# If there is a name section or symbol table, llvm-nm can show the symbol name.
 
 import os
 import sys
@@ -66,6 +63,6 @@ if __name__ == '__main__':
   try:
     rv = main(sys.argv)
   except (Error, webassembly.InvalidWasmError, OSError) as e:
-    print(f'{sys.argv[0]}: {str(e)}')
+    print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
     rv = 1
   sys.exit(rv)
