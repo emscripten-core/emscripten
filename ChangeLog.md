@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   `emcc` now uses this mode when the `--embed-file` option is used.  If you
   use `file_packager` directly it is recommended that you switch to the new mode
   by adding `--obj-output` to the command line. (#16050)
+- The `--bind` flag used to enable embind has been deprecated in favor of
+  `-lembind`.  The semantics have not changed and the old flag continues to
+  work. (#16087)
 
 3.1.2 - 20/01/2022
 ------------------

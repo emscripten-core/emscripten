@@ -824,7 +824,7 @@ f.close()
     # For linking you need to use `em++` or pass `-x c++`
     create_file('test.c', 'foo\n')
     for compiler in [EMCC, EMXX]:
-      self.run_process([compiler, '-c', '--bind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
+      self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
@@ -1081,7 +1081,7 @@ int main() {
         return 0;
       }
     ''')
-    test(EMXX, 'main.cpp', ['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
+    test(EMXX, 'main.cpp', ['-Wl,--start-group', lib_name, '-Wl,--end-group', '-lembind'], None)
 
   def test_whole_archive(self):
     # Verify that -Wl,--whole-archive includes the static constructor from the
@@ -2362,7 +2362,7 @@ int f() {
           function("sleep", &emscripten_sleep);
       }
     ''')
-    self.run_process([EMXX, 'main.cpp', '--bind', '-sASYNCIFY', '--post-js', 'post.js'])
+    self.run_process([EMXX, 'main.cpp', '-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
     self.assertContained('done', self.run_js('a.out.js'))
 
   def test_embind_closure_no_dynamic_execution(self):
@@ -2387,7 +2387,7 @@ int f() {
         emscripten::function("bar", &bar);
       }
     ''')
-    self.run_process([EMXX, 'main.cpp', '--bind', '-O2', '--closure', '1',
+    self.run_process([EMXX, 'main.cpp', '-lembind', '-O2', '--closure', '1',
                       '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
     self.assertContained('10\nok\n', self.run_js('a.out.js'))
 
@@ -2395,10 +2395,10 @@ int f() {
   @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
   def test_embind(self):
     test_cases = [
-        (['--bind']),
-        (['--bind', '-O1']),
-        (['--bind', '-O2']),
-        (['--bind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
+        (['-lembind']),
+        (['-lembind', '-O1']),
+        (['-lembind', '-O2']),
+        (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
     ]
     without_utf8_args = ['-sEMBIND_STD_STRING_IS_UTF8=0']
     test_cases_without_utf8 = []
@@ -2407,7 +2407,7 @@ int f() {
     test_cases += test_cases_without_utf8
     test_cases.extend([(args[:] + ['-sDYNAMIC_EXECUTION=0']) for args in test_cases])
     # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases.append((['--bind', '-O2', '--closure=1']))
+    test_cases.append((['-lembind', '-O2', '--closure=1']))
     for args in test_cases:
       print(args)
       self.clear()
@@ -4460,7 +4460,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
       self.assertContained('%d %d %d __attribute__((used))' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), out)
 
     test()
-    test(['--bind'])
+    test(['-lembind'])
 
   def test_dashE_respect_dashO(self):
     # issue #3365
@@ -10754,7 +10754,7 @@ exec "$@"
       if 'emscripten_pc_get_function' in function:
         cmd.append('-sUSE_OFFSET_CONVERTER')
       if 'embind' in function:
-        cmd.append('--bind')
+        cmd.append('-lembind')
       if 'websocket' in function:
         cmd += ['-sPROXY_POSIX_SOCKETS', '-lwebsocket.js']
       if function == 'Mix_LoadWAV_RW':

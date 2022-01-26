@@ -1362,6 +1362,7 @@ def map_to_js_libs(library_name):
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
+    'embind': ['embind/embind.js', 'embind/emval.js'],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
@@ -1390,6 +1391,7 @@ def map_to_js_libs(library_name):
   }
   # And some are hybrid and require JS and native libraries to be included
   native_library_map = {
+    'embind': 'libembind',
     'GL': 'libGL',
   }
 
