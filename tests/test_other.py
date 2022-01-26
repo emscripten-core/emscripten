@@ -8223,10 +8223,12 @@ int main() {
     # Test DWARF output
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-O1', '-o', 'test_dwarf.js'])
+
     # Use hard-coded addresses. This is potentially brittle, but LLVM's
     # O1 output is pretty minimal so hopefully it won't break too much?
     # Another option would be to disassemble the binary to look for certain
     # instructions or code sequences.
+
     def get_addr(address):
       return self.run_process(
           [PYTHON, path_from_root('emsymbolizer.py'), 'test_dwarf.wasm', address],
