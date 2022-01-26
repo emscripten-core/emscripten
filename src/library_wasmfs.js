@@ -16,7 +16,7 @@ var WasmfsLibrary = {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
       // TODO: use WasmFS code to resolve and join the path here?
-      var fullname = parent + '/' + name;
+      var fullname = name ? parent + '/' + name : parent;
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
