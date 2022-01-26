@@ -39,6 +39,8 @@ class ProxiedFile : public DataFile {
     return result;
   }
 
+  void flush() override {}
+
   // Querying the size of the Proxied File returns the size of the underlying
   // file given by the proxying mechanism.
   size_t getSize() override {
@@ -87,10 +89,6 @@ public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // This creates a file on a thread specified by the proxy member.
     return std::make_shared<ProxiedFile>(mode, this, backend, proxy);
-  }
-
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, this);
   }
 };
 

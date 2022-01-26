@@ -18,8 +18,24 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.2
+3.1.3
 -----
+- The file packager now supports embedding files directly into wasm memory and
+  `emcc` now uses this mode when the `--embed-file` option is used.  If you
+  use `file_packager` directly it is recommended that you switch to the new mode
+  by adding `--obj-output` to the command line. (#16050)
+
+3.1.2 - 20/01/2022
+------------------
+- A new setting, `POLYFILL`, was added which is on by default but can be disabled
+  (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
+  For default browser targets, no polyfills are needed so this option only has
+  meaning when targeting older browsers.
+- `EVAL_CTORS` has been rewritten and improved. The main differences from before
+  are that it is much more capable (it can now eval parts of functions and not
+  just all or nothing, and it can eval more wasm constructs like globals). It is
+  no longer run by default, so to use it you should build with `-s EVAL_CTORS`.
+  See `settings.js` for more details. (#16011)
 - `wasmX` test suites that are defined in `test_core.py` have been renamed to
   `coreX` to better reflect where they are defined.  The old suite names such
   as `wasm2` will continue to work for now as aliases.

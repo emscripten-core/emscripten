@@ -50,7 +50,8 @@ var WasmfsLibrary = {
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
-      wasmFS$preloadedFiles.push({pathName: parent, fileData: data, mode: mode});
+      var pathName = name ? parent + '/' + name : parent;
+      wasmFS$preloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
     createPath: function(parent, path, canRead, canWrite) {
       // Cache file path directory names.
@@ -66,7 +67,7 @@ var WasmfsLibrary = {
       var pathName = allocateUTF8(path);
       
       // Copy the file into a JS buffer on the heap.
-      var buf = _emscripten_wasmfs_read_file(pathName);
+      var buf = __wasmfs_read_file(pathName);
       // The integer length is returned in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i64') }}};
       
@@ -86,7 +87,30 @@ var WasmfsLibrary = {
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
       return '/';
-    }
+    },
+
+#if FORCE_FILESYSTEM
+    // Full JS API support
+    mkdir: function(path) {
+      var buffer = allocateUTF8OnStack(path);
+      __wasmfs_mkdir(buffer);
+    },
+    chdir: function(path) {
+      var buffer = allocateUTF8OnStack(path);
+      return __wasmfs_chdir(buffer);
+    },
+    writeFile: function(path, data) {
+      var pathBuffer = allocateUTF8OnStack(path);
+      var dataBuffer = allocate(data);
+      __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+      _free(dataBuffer);
+    },
+    symlink: function(target, linkpath) {
+      var targetBuffer = allocateUTF8OnStack(target);
+      var linkpathBuffer = allocateUTF8OnStack(linkpath);
+      __wasmfs_symlink(targetBuffer, linkpathBuffer);
+    },
+#endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
   _wasmfs_get_num_preloaded_files: function() {

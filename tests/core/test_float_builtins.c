@@ -52,9 +52,11 @@ void test_long_double(long double x) {
   printf("ceil(x) = %Lf\n", ceill(x));
   printf("floor(x) = %Lf\n", floorl(x));
   printf("atan(x) = %Lf\n", atanl(x));
-  printf("atan2(x,1) = %Lf\n", atan2l(x,1));
+  printf("atan2(x,1) = %Lf\n", atan2l(x, 1));
   printf("asin(x) = %Lf\n", asinl(x));
   printf("acos(x) = %Lf\n", acosl(x));
+  printf("expl(x) = %Lf\n", expl(x));
+  printf("ldexpl(x) = %Lf\n", ldexpl(x, 7));
 }
 
 int main() {

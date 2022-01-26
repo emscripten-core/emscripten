@@ -34,7 +34,7 @@ def get(ports, settings, shared):
     Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
     ports.install_headers(dest_path)
 
-    ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    ports.build_port(dest_path, final, flags=['-sUSE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
   return [shared.Cache.get_lib('libpng.a', create, what='port')]
 

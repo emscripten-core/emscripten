@@ -1590,7 +1590,11 @@ FS.staticInit();` +
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = name ? PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
+      var path = name;
+      if (parent) {
+        parent = typeof parent === 'string' ? parent : FS.getPath(parent);
+        path = name ? PATH.join2(parent, name) : parent;
+      }
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {

@@ -23,6 +23,10 @@
 // THE SOFTWARE.
 //==============================================================================
 
+#if !POLYFILL
+assert(false, "this file should never be included unless POLYFILL is set");
+#endif
+
 /** @suppress{duplicate} This is already defined in from Closure's built-in
     externs.zip//es6.js, Closure should not yell when seeing this again. */
 var Promise = (function() {

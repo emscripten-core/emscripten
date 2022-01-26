@@ -30,7 +30,7 @@ def get(ports, settings, shared):
       o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
       command = [shared.EMCC,
                  '-c', os.path.join(src_root, src),
-                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-s', 'USE_HARFBUZZ=1', '-o', o, '-w']
+                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)
 

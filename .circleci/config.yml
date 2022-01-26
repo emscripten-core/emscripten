@@ -331,8 +331,8 @@ jobs:
           name: get wasmtime
           command: |
             # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
-            export VERSION=v0.8.0
-            wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
+            export VERSION=v0.33.0
+            wget https://github.com/bytecodealliance/wasmtime/releases/download/$VERSION/wasmtime-$VERSION-x86_64-linux.tar.xz
             tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
             cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
       - run:
@@ -363,6 +363,10 @@ jobs:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
+    # Temporarily set EMCC_READ_METADATA to compare to ensure that the python
+    # can marches precisely the output wasm-emscripten-finalize.
+    environment:
+      EMCC_READ_METADATA: "compare"
     steps:
       - run-tests:
           test_targets: "core0"
@@ -379,7 +383,8 @@ jobs:
     steps:
       - run-tests:
           # also add a little select testing for wasm2js in -O3
-          test_targets: "core3 wasm2js3.test_memorygrowth_2"
+          # also add a little select wasmfs testing
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -439,7 +444,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
   test-mac:
     executor: mac
     environment:

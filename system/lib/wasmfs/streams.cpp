@@ -16,6 +16,7 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
                                      std::vector<char>& fd_write_buffer) {
   for (size_t j = 0; j < len; j++) {
     uint8_t current = buf[j];
+    // Flush on either a null or a newline.
     if (current == '\0' || current == '\n') {
       fd_write_buffer.push_back('\0'); // for null-terminated C strings
       console_write(fd_write_buffer.data());
@@ -43,20 +44,37 @@ __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
   return writeStdBuffer(buf, len, &_emscripten_out, writeBuffer);
 }
 
+void StdoutFile::flush() {
+  // Write a null to flush the output (see comment above on "Flush on either a
+  // null or a newline").
+  const uint8_t nothing = '\0';
+  write(&nothing, 1, 0);
+}
+
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
   static const std::shared_ptr<StdoutFile> stdoutFile =
-    std::make_shared<StdoutFile>(S_IWUGO);
+    std::make_shared<StdoutFile>();
   return stdoutFile;
 }
 
 __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
   // Similar issue with Node and worker threads as emscripten_out.
+  // TODO: May not want to proxy stderr (fd == 2) to the main thread, as
+  //       emscripten_err does.
+  //       This will not show in HTML - a console.warn in a worker is
+  //       sufficient. This would be a change from the current FS.
   return writeStdBuffer(buf, len, &_emscripten_err, writeBuffer);
+}
+
+void StderrFile::flush() {
+  // Similar to StdoutFile.
+  const uint8_t nothing = '\0';
+  write(&nothing, 1, 0);
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {
   static const std::shared_ptr<StderrFile> stderrFile =
-    std::make_shared<StderrFile>(S_IWUGO);
+    std::make_shared<StderrFile>();
   return stderrFile;
 }
 

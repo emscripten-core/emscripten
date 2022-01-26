@@ -22,22 +22,27 @@ int main() {
 
   // Try to print the root directory.
   char cwd[100];
-  getcwd(cwd, sizeof(cwd));
+  char* ret;
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
   // Try to switch to /working.
   chdir("working");
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
   // Try to switch back to the root directory.
   chdir("/");
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
   // Try to switch to a subdirectory of working.
   chdir("/working/test");
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
   // Try to switch to a non-existent relative path from subdirectory.
@@ -45,7 +50,8 @@ int main() {
   chdir("working");
   printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOENT);
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir is still: %s\n", cwd);
 
   // Try to switch back to absolute path /working.
@@ -53,7 +59,8 @@ int main() {
   chdir("/working");
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir is now: %s\n", cwd);
 
   // Try to switch to a non-existent absolute path.
@@ -61,19 +68,22 @@ int main() {
   chdir("/foobar");
   printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOENT);
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir is still: %s\n", cwd);
 
   // Try to switch to /dev.
   chdir("/dev");
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
   // Try to change cwd to a file.
   chdir("/dev/stdout");
   printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOTDIR);
-  getcwd(cwd, sizeof(cwd));
+  ret = getcwd(cwd, sizeof(cwd));
+  assert(ret == cwd);
   printf("Current working dir is still: %s\n", cwd);
 
   // Try to pass a size of 0.

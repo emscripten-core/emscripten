@@ -42,6 +42,11 @@ struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
 }
 
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
+  // See https://github.com/bytecodealliance/wasmtime/issues/3714
+  if (clk_id > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk_id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
   __wasi_timestamp_t res;
   __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
   if (error != __WASI_ERRNO_SUCCESS) {
@@ -129,11 +134,63 @@ double emscripten_get_now(void) {
 // allows users to see a clear error if a throw happens, and 99% of the
 // overhead is in the catching, so this is a reasonable tradeoff.
 // For now, in a standalone build just terminate. TODO nice error message
-void
-__cxa_throw(void* ptr, void* type, void* destructor) {
+//
+// Define these symbols as weak so that when we build with exceptions
+// enabled (using wasm-eh) we get the real versions of these functions
+// as defined in libc++abi.
+
+__attribute__((__weak__))
+void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
 }
 
+__attribute__((__weak__))
 void* __cxa_allocate_exception(size_t thrown_size) {
   abort();
 }
+
+// WasmFS integration. We stub out file preloading and such, that are not
+// expected to work anyhow.
+
+size_t _wasmfs_get_num_preloaded_files() { return 0; }
+
+size_t _wasmfs_get_num_preloaded_dirs() { return 0; }
+
+int _wasmfs_get_preloaded_file_size(int index) { return 0; }
+
+int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
+
+size_t _wasmfs_copy_preloaded_file_data(int index, void* buffer) { return 0; }
+
+void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
+
+void _wasmfs_get_preloaded_child_path(int index, void* buffer) {}
+
+void _wasmfs_get_preloaded_path_name(int index, void* buffer) {}
+
+// Import the VM's fd_write under a different name. Then we can interpose in
+// between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS
+// implements. And WasmFS will forward actual writing to stdout/stderr to the
+// VM's fd_write. (This allows WasmFS to do work in the middle, for example, it
+// could support embedded files and other functionality.)
+__attribute__((import_module("wasi_snapshot_preview1"),
+               import_name("fd_write"))) __wasi_errno_t
+imported__wasi_fd_write(__wasi_fd_t fd,
+                        const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        __wasi_size_t* nwritten);
+
+// Write a buffer + a newline.
+static void wasi_writeln(__wasi_fd_t fd, char* buffer) {
+  struct __wasi_ciovec_t iovs[2];
+  iovs[0].buf = (uint8_t*)buffer;
+  iovs[0].buf_len = strlen(buffer);
+  iovs[1].buf = (uint8_t*)"\n";
+  iovs[1].buf_len = 1;
+  __wasi_size_t nwritten;
+  imported__wasi_fd_write(fd, iovs, 2, &nwritten);
+}
+
+void _emscripten_out(char* text) { wasi_writeln(1, text); }
+
+void _emscripten_err(char* text) { wasi_writeln(2, text); }

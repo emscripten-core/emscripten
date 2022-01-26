@@ -139,6 +139,9 @@ class DataFile : public File {
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
+  // TODO: Design a proper API for flushing files.
+  virtual void flush() = 0;
+
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile(mode_t mode, backend_t backend)
@@ -160,6 +163,11 @@ public:
     }
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile()->write(buf, len, offset);
+    }
+
+    // TODO: Design a proper API for flushing files.
+    void flush() {
+      getFile()->flush();
     }
 
     // This function loads preloaded files from JS Memory into this DataFile.
@@ -230,6 +238,27 @@ protected:
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.
   size_t getSize() override { return 4096; }
+};
+
+class Symlink : public File {
+protected:
+  // The target file that this symlink points to. This is constant as symlinks
+  // cannot be modified to point to different things.
+  const std::string target;
+
+  size_t getSize() override;
+
+public:
+  static constexpr FileKind expectedKind = File::SymlinkKind;
+  // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
+  // not matter, so that value will never be read (what matters is the mode of
+  // the target).
+  Symlink(std::string target, backend_t backend)
+    : File(File::SymlinkKind, 0, backend), target(target) {}
+  virtual ~Symlink() = default;
+
+  // Constant, and therefore thread-safe, and can be done without locking.
+  const std::string& getTarget() { return target; }
 };
 
 struct ParsedPath {

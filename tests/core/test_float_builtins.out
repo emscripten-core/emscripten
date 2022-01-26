@@ -12,4 +12,6 @@ atan(x) = 1.508378
 atan2(x,1) = 1.508378
 asin(x) = nan
 acos(x) = nan
+expl(x) = 8886110.520508
+ldexpl(x) = 2048.000000
 ***end***

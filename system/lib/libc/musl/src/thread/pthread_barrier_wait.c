@@ -93,12 +93,11 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 			if (is_runtime_thread) {
 				int e;
 				do {
-					// Main thread waits in _very_ small slices so that it stays responsive to assist proxied
-					// pthread calls.
+					// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
 					e = emscripten_futex_wait(&inst->finished, 1, 1);
 					// Assist other threads by executing proxied operations that are effectively singlethreaded.
 					emscripten_main_thread_process_queued_calls();
-				} while(e == -ETIMEDOUT);
+				} while (e == -ETIMEDOUT);
 			} else {
 				// Can wait in one go.
 				emscripten_futex_wait(&inst->finished, 1, INFINITY);

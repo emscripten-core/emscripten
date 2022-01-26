@@ -12,11 +12,12 @@
 var SourceMapConsumer = require('source-map').SourceMapConsumer;
 var fs = require('fs');
 
-var consumer = new SourceMapConsumer(fs.readFileSync(process.argv[2], 'utf-8'));
-var mappings = [];
+new SourceMapConsumer(fs.readFileSync(process.argv[2], 'utf-8')).then((consumer) => {
+  var mappings = [];
 
-consumer.eachMapping(function(mapping) {
-  mappings.push(mapping);
+  consumer.eachMapping(function(mapping) {
+    mappings.push(mapping);
+  });
+
+  console.log(JSON.stringify(mappings, null, 2));
 });
-
-console.log(JSON.stringify(mappings));

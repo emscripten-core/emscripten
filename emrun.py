@@ -254,7 +254,7 @@ user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
-// Don't ask user if he wants to set Firefox as the default system browser
+// Don't ask user if they want to set Firefox as the default system browser
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
@@ -294,7 +294,7 @@ user_pref('browser.newtabpage.introShown', true);
 user_pref('browser.download.panel.shown', true);
 user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
-// Don't ask the user if he wants to close the browser when there are multiple tabs.
+// Don't ask the user if they want to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
 user_pref("dom.allow_scripts_to_close_windows", true);

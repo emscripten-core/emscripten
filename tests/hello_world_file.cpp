@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+
 int main() {
   FILE *file = fopen("tests/hello_world_file.txt", "rb");
   if (!file) {

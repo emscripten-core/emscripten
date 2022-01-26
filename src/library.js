@@ -73,7 +73,8 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  $setFileTime__deps: ['$setErrNo'],
+#if FILESYSTEM
+  $setFileTime__deps: ['$FS', '$setErrNo'],
   $setFileTime: function(path, time) {
     path = UTF8ToString(path);
     try {
@@ -85,8 +86,17 @@ LibraryManager.library = {
       return -1;
     }
   },
+#else
+  $setFileTime__deps: ['$setErrNo'],
+  $setFileTime: function(path, time) {
+    // No filesystem support; return an error as if the file does not exist
+    // (which it almost certainly does not, except for standard streams).
+    setErrNo({{{ cDefine('ENOENT') }}});
+    return -1;
+  },
+#endif
 
-  utime__deps: ['$FS', '$setFileTime'],
+  utime__deps: ['$setFileTime'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -103,7 +113,7 @@ LibraryManager.library = {
     return setFileTime(path, time);
   },
 
-  utimes__deps: ['$FS', '$setFileTime'],
+  utimes__deps: ['$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
@@ -3473,6 +3483,19 @@ LibraryManager.library = {
     assert(typeof str === 'number');
 #endif
     err(UTF8ToString(str));
+  },
+
+  // Use program_invocation_short_name and program_invocation_name in compiled
+  // programs. This function is for implementing them.
+  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname: function(str, len) {
+  #if !MINIMAL_RUNTIME
+  #if ASSERTIONS
+    assert(typeof str === 'number');
+    assert(typeof len === 'number');
+  #endif
+    stringToUTF8(thisProgram, str, len);
+  #endif
   },
 
   emscripten_console_log__sig: 'vi',
