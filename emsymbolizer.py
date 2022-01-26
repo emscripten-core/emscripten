@@ -22,8 +22,10 @@ from tools.shared import check_call
 LLVM_SYMBOLIZER = os.path.expanduser(
     shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
 
+
 class Error(BaseException):
   pass
+
 
 def get_codesec_offset(module):
   for sec in module.sections():
@@ -44,6 +46,7 @@ def symbolize_address_dwarf(module, address):
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
   check_call(cmd)
+
 
 def main(argv):
   wasm_file = argv[1]

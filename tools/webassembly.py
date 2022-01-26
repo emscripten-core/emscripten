@@ -107,8 +107,10 @@ class DylinkType(IntEnum):
   EXPORT_INFO = 3
   IMPORT_INFO = 4
 
+
 class InvalidWasmError(BaseException):
   pass
+
 
 Section = namedtuple('Section', ['type', 'size', 'offset', 'name'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
