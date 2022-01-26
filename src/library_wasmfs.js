@@ -14,7 +14,7 @@ var WasmfsLibrary = {
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
+    createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
       // TODO: use WasmFS code to resolve and join the path here?
       var fullname = name ? parent + '/' + name : parent;
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
@@ -27,7 +27,7 @@ var WasmfsLibrary = {
           if (onload) onload();
           removeRunDependency(dep);
         }
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, function() {
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
@@ -37,30 +37,30 @@ var WasmfsLibrary = {
       }
       addRunDependency(dep);
       if (typeof url == 'string') {
-        asyncLoad(url, function(byteArray) {
+        asyncLoad(url, (byteArray) => {
           processData(byteArray);
         }, onerror);
       } else {
         processData(url);
       }
     },
-    getMode: function(canRead, canWrite) {
+    getMode: (canRead, canWrite) => {
       var mode = 0;
       if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
+    createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
       wasmFS$preloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
-    createPath: function(parent, path, canRead, canWrite) {
+    createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
       wasmFS$preloadedDirs.push({parentPath: parent, childName: path});
     },
-    readFile: function(path, opts) {
+    readFile: (path, opts) => {
       opts = opts || {};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
@@ -68,24 +68,24 @@ var WasmfsLibrary = {
       }
 
       var pathName = allocateUTF8(path);
-      
+
       // Copy the file into a JS buffer on the heap.
       var buf = __wasmfs_read_file(pathName);
       // The integer length is returned in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i64') }}};
-      
+
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
       var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
       if (opts.encoding === 'utf8') {
         ret = UTF8ArrayToString(ret, 0);
       }
-      
+
       _free(pathName);
       _free(buf);
       return ret;
     },
-    cwd: function() {
+    cwd: () => {
       // TODO: Remove dependency on FS.cwd().
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
@@ -94,21 +94,21 @@ var WasmfsLibrary = {
 
 #if FORCE_FILESYSTEM
     // Full JS API support
-    mkdir: function(path) {
+    mkdir: (path) => {
       var buffer = allocateUTF8OnStack(path);
       __wasmfs_mkdir(buffer);
     },
-    chdir: function(path) {
+    chdir: (path) => {
       var buffer = allocateUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     },
-    writeFile: function(path, data) {
+    writeFile: (path, data) => {
       var pathBuffer = allocateUTF8OnStack(path);
       var dataBuffer = allocate(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
     },
-    symlink: function(target, linkpath) {
+    symlink: (target, linkpath) => {
       var targetBuffer = allocateUTF8OnStack(target);
       var linkpathBuffer = allocateUTF8OnStack(linkpath);
       __wasmfs_symlink(targetBuffer, linkpathBuffer);
@@ -147,7 +147,7 @@ var WasmfsLibrary = {
         // Initialize typed array on first write operation.
         wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
       }
-      
+
       if (offset + length > wasmFS$JSMemoryFiles[index].length) {
         // Resize the typed array if the length of the write buffer exceeds its capacity.
         var oldContents = wasmFS$JSMemoryFiles[index];
