@@ -125,6 +125,7 @@ class Module:
   """Extremely minimal wasm module reader.  Currently only used
   for parsing the dylink section."""
   def __init__(self, filename):
+    self.buf = None # Set this before FS calls below in case they throw.
     self.filename = filename
     self.size = os.path.getsize(filename)
     self.buf = open(filename, 'rb')
@@ -134,7 +135,7 @@ class Module:
       raise InvalidWasmError(f'{filename} is not a valid wasm file')
 
   def __del__(self):
-    if hasattr(self, 'buf'):
+    if self.buf:
       self.buf.close()
 
   def readAt(self, offset, count):

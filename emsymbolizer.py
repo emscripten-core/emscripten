@@ -28,7 +28,6 @@ class Error(BaseException):
 def get_codesec_offset(module):
   for sec in module.sections():
     if sec.type == webassembly.SecType.CODE:
-      print(sec)
       return sec.offset
   raise Error(f'No code section found in {module.filename}')
 
@@ -44,13 +43,12 @@ def symbolize_address_dwarf(module, address):
   vma_adjust = get_codesec_offset(module)
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
-  #print(cmd)
   check_call(cmd)
 
 def main(argv):
   wasm_file = argv[1]
-  print('Warning: the command-line and output format of this file are not'
-        'finalized yet')
+  print('Warning: the command-line and output format of this file are not '
+        'finalized yet', file=sys.stderr)
   module = webassembly.Module(wasm_file)
 
   if not has_debug_line_section(module):
