@@ -15,11 +15,14 @@ test_dir = os.path.join(root_dir, 'tests')
 ignore_dirs = {
   'third_party',
   'metadce',
+  'cmake',
   '__pycache__',
 }
 ignore_files = {
   'getValue_setValue_assert.out',
+  'test_emsize.wasm',
   'legacy_exported_runtime_numbers_assert.out',
+  'test_asyncify_during_exit_no_async.out',
 }
 ignore_root_patterns = ['runner.*', 'test_*.py']
 ignore_root_files = {
