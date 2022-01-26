@@ -910,6 +910,7 @@ class libc(MuslInternalLibrary,
           'localtime.c',
           'nanosleep.c',
           'clock_nanosleep.c',
+          'ctime_r.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -1573,7 +1574,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__year_to_secs.c',
                    'clock.c',
                    'clock_gettime.c',
-                   'ctime_r.c',
                    'difftime.c',
                    'gettimeofday.c',
                    'localtime_r.c',

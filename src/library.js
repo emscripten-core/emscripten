@@ -615,14 +615,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime_r', '$withStackSave'],
-  ctime_r__sig: 'iii',
-  ctime_r: function(time, buf) {
-    return withStackSave(function() {
-      return ___asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    });
-  },
-
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
     return leap ? 366 : 365;
