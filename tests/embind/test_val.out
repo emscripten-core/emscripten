@@ -251,6 +251,9 @@ pass
 pass
 pass
 test:
+template<typename T> std::vector<T *> vecFromJSArray(const val& v)
+pass
+test:
 template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)
 pass
 pass
