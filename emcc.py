@@ -1445,9 +1445,9 @@ def phase_setup(options, state, newargs, settings_map):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    if 'DISABLE_EXCEPTION_THROWING' in settings_map and settings_map['DISABLE_EXCEPTION_THROWING'] == '0':
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
+    if not settings.DISABLE_EXCEPTION_THROWING:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
-    settings.DISABLE_EXCEPTION_THROWING = 1
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
     # and this can be 0 only if the user specifies so.
     if not settings.DISABLE_EXCEPTION_CATCHING:
