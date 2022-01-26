@@ -8243,8 +8243,7 @@ int main() {
 
     # Check that the dwarf file has only dwarf and name sections
     debug_wasm = webassembly.Module('subdir/output.wasm.debug.wasm')
-    section_names = [sec.name for sec in debug_wasm.sections()]
-    if 'name' not in section_names:
+    if not debug_wasm.has_name_section():
       self.fail('name section not found in separate dwarf file')
     for sec in debug_wasm.sections():
       if sec.type != webassembly.SecType.CUSTOM:
