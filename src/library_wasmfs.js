@@ -3,44 +3,47 @@ var WasmfsLibrary = {
   $wasmFS$JSMemoryFreeList: [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
-  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs', '$wasmFS$JSMemoryFiles', '$wasmFS$JSMemoryFreeList'],
+  $FS__deps: [
+    '$wasmFS$preloadedFiles',
+    '$wasmFS$preloadedDirs',
+    '$wasmFS$JSMemoryFiles',
+    '$wasmFS$JSMemoryFreeList',
+    '$asyncLoad',
+    // TODO: when preload-plugins are not used, we do not need this.
+    '$Browser',
+  ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-        Browser.init(); 
-        var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-        var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
-        function processData(byteArray) {
-          function finish(byteArray) {
-            if (preFinish) preFinish();
-            if (!dontCreateFile) {
-              FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-            }
-            if (onload) onload();
-            removeRunDependency(dep);
+      // TODO: use WasmFS code to resolve and join the path here?
+      var fullname = name ? parent + '/' + name : parent;
+      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
+      function processData(byteArray) {
+        function finish(byteArray) {
+          if (preFinish) preFinish();
+          if (!dontCreateFile) {
+            FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }
-          var handled = false;
-          Module['preloadPlugins'].forEach(function(plugin) {
-            if (handled) return;
-            if (plugin['canHandle'](fullname)) {
-              plugin['handle'](byteArray, fullname, finish, function() {
-                if (onerror) onerror();
-                removeRunDependency(dep);
-              });
-              handled = true;
-            }
-          });
-          if (!handled) finish(byteArray);
+          if (onload) onload();
+          removeRunDependency(dep);
         }
-        addRunDependency(dep);
-        if (typeof url == 'string') {
-          asyncLoad(url, function(byteArray) {
-            processData(byteArray);
-          }, onerror);
-        } else {
-          processData(url);
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, function() {
+          if (onerror) onerror();
+          removeRunDependency(dep);
+        })) {
+          return;
         }
-      },
+        finish(byteArray);
+      }
+      addRunDependency(dep);
+      if (typeof url == 'string') {
+        asyncLoad(url, function(byteArray) {
+          processData(byteArray);
+        }, onerror);
+      } else {
+        processData(url);
+      }
+    },
     getMode: function(canRead, canWrite) {
       var mode = 0;
       if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
