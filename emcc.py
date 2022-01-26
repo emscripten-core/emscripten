@@ -2918,9 +2918,6 @@ def parse_args(newargs):
       skip = False
       continue
 
-    # On Windows Vista (and possibly others), excessive spaces in the command line
-    # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
-    newargs[i] = newargs[i].strip()
     arg = newargs[i]
     arg_value = None
 
