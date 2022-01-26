@@ -27,7 +27,7 @@ var WasmfsLibrary = {
           if (onload) onload();
           removeRunDependency(dep);
         }
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, function() {
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
@@ -85,7 +85,7 @@ var WasmfsLibrary = {
       _free(buf);
       return ret;
     },
-    cwd: function() {
+    cwd: () => {
       // TODO: Remove dependency on FS.cwd().
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
