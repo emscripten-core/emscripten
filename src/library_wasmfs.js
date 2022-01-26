@@ -9,6 +9,8 @@ var WasmfsLibrary = {
     '$wasmFS$JSMemoryFiles',
     '$wasmFS$JSMemoryFreeList',
     '$asyncLoad',
+    // TODO: when preload-plugins are not used, we do not need this.
+    '$Browser',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -31,6 +33,7 @@ var WasmfsLibrary = {
         })) {
           return;
         }
+        finish(byteArray);
       }
       addRunDependency(dep);
       if (typeof url == 'string') {
