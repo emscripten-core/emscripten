@@ -25,18 +25,12 @@ var WasmfsLibrary = {
           if (onload) onload();
           removeRunDependency(dep);
         }
-        var handled = false;
-        Module['preloadPlugins'].forEach(function(plugin) {
-          if (handled) return;
-          if (plugin['canHandle'](fullname)) {
-            plugin['handle'](byteArray, fullname, finish, function() {
-              if (onerror) onerror();
-              removeRunDependency(dep);
-            });
-            handled = true;
-          }
-        });
-        if (!handled) finish(byteArray);
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, function() {
+          if (onerror) onerror();
+          removeRunDependency(dep);
+        })) {
+          return;
+        }
       }
       addRunDependency(dep);
       if (typeof url == 'string') {
