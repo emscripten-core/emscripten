@@ -1187,29 +1187,30 @@ int f() {
 
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
-    # This mans that to export library function you also need to explicitly
+    # This means that to export library function you also need to explicitly
     # list them in EXPORTED_FUNCTIONS.
     lib = r'''
       #include <stdio.h>
       #include <emscripten.h>
       EMSCRIPTEN_KEEPALIVE void libfunc() { puts("libfunc\n"); }
+      void libfunc2() { puts("libfunc2\n"); }
     '''
     create_file('lib.c', lib)
     create_file('main.js', '''
       var Module = {
         onRuntimeInitialized: function() {
           _libfunc();
-          __get_daylight();
+          _libfunc2();
         }
       };
     ''')
 
-    # __get_daylight should not be linked by default, even with EXPORT_ALL
+    # libfunc2 should not be linked by default, even with EXPORT_ALL
     self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('__get_daylight is not defined', err)
+    self.assertContained('_libfunc2 is not defined', err)
 
-    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=__get_daylight', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
   def test_stdin(self):

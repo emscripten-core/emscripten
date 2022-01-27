@@ -1,13 +1,8 @@
 #include "time_impl.h"
 #include <errno.h>
 
-#ifdef __EMSCRIPTEN__
-void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
-#endif
-
 struct tm *__gmtime_r(const time_t *restrict t, struct tm *restrict tm)
 {
-#ifndef __EMSCRIPTEN__
 	if (__secs_to_tm(*t, tm) < 0) {
 		errno = EOVERFLOW;
 		return 0;
@@ -15,12 +10,6 @@ struct tm *__gmtime_r(const time_t *restrict t, struct tm *restrict tm)
 	tm->tm_isdst = 0;
 	tm->__tm_gmtoff = 0;
 	tm->__tm_zone = __utc;
-#else
-	_gmtime_js(t, tm);
-	tm->tm_isdst = 0;
-	tm->__tm_gmtoff = 0;
-	tm->__tm_zone = "GMT";
-#endif
 	return tm;
 }
 
