@@ -21,7 +21,8 @@ $_emscripten_thread_init
 $_main_thread
 $a_cas
 $a_dec
-$a_inc.1
+$a_fetch_add
+$a_inc
 $a_swap
 $add
 $dispose_chunk

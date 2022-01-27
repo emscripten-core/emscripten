@@ -817,7 +817,7 @@ class libc(MuslInternalLibrary,
 
     if self.is_mt:
       ignore += [
-        'clone.c', '__lock.c',
+        'clone.c',
         'pthread_create.c',
         'pthread_kill.c', 'pthread_sigmask.c',
         '__set_thread_area.c', 'synccall.c',
@@ -961,7 +961,6 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'dynlink.c',
-          'extras.c',
           'wasi-helpers.c',
           'emscripten_get_heap_size.c',
           'raise.c',

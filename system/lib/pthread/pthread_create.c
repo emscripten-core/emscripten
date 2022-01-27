@@ -144,9 +144,17 @@ int __pthread_create(pthread_t* restrict res,
 #endif
 
   //printf("start __pthread_create: %p\n", self);
+
+  // Set libc.need_locks before calling __pthread_create_js since
+  // by the time it returns the thread could be running and we
+  // want libc.need_locks to be set from the moment it starts.
+  if (!libc.threads_minus_1++) libc.need_locks = 1;
+
   int rtn = __pthread_create_js(new, attrp, entry, arg);
-  if (rtn != 0)
+  if (rtn != 0) {
+    if (!--libc.threads_minus_1) libc.need_locks = 0;
     return rtn;
+  }
 
   // TODO(sbc): Implement circular list of threads
   /*
@@ -208,6 +216,8 @@ void _emscripten_thread_exit(void* result) {
   __pthread_tsd_run_dtors();
 
   free_tls_data();
+
+  if (!--libc.threads_minus_1) libc.need_locks = 0;
 
   // TODO(sbc): Implement circular list of threads
   /*
