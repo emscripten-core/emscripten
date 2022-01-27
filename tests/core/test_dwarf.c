@@ -2,7 +2,7 @@
 
 EM_JS(int, out_to_js, (int x), {})
 
-void foo() {
+void __attribute__((noinline)) foo() {
   out_to_js(0); // line 5
   out_to_js(1); // line 6
   out_to_js(2); // line 7
@@ -10,6 +10,12 @@ void foo() {
   if (out_to_js(3)) foo();
 }
 
+void __attribute__((always_inline)) bar() {
+  out_to_js(3);
+  __builtin_trap();
+}
+
 int main() {
   foo();
+  bar();
 }

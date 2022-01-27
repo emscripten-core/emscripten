@@ -8219,6 +8219,30 @@ int main() {
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
 
+  def test_emsymbolizer(self):
+    # Test DWARF output
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-g', '-O1', '-o', 'test_dwarf.js'])
+
+    # Use hard-coded addresses. This is potentially brittle, but LLVM's
+    # O1 output is pretty minimal so hopefully it won't break too much?
+    # Another option would be to disassemble the binary to look for certain
+    # instructions or code sequences.
+
+    def get_addr(address):
+      return self.run_process(
+          [PYTHON, path_from_root('emsymbolizer.py'), 'test_dwarf.wasm', address],
+          stdout=PIPE).stdout
+
+    # Check a location in foo(), not inlined.
+    self.assertIn('test_dwarf.c:6:3', get_addr('0x101'))
+    # Check that both bar (inlined) and main (inlinee) are in the output,
+    # as described by the DWARF.
+    # TODO: consider also checking the function names once the output format
+    # stabilizes more
+    self.assertRegex(get_addr('0x124').replace('\n', ''),
+                     'test_dwarf.c:15:3.*test_dwarf.c:20:3')
+
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')

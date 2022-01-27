@@ -108,6 +108,10 @@ class DylinkType(IntEnum):
   IMPORT_INFO = 4
 
 
+class InvalidWasmError(BaseException):
+  pass
+
+
 Section = namedtuple('Section', ['type', 'size', 'offset', 'name'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field'])
@@ -123,15 +127,18 @@ class Module:
   """Extremely minimal wasm module reader.  Currently only used
   for parsing the dylink section."""
   def __init__(self, filename):
+    self.buf = None # Set this before FS calls below in case they throw.
+    self.filename = filename
     self.size = os.path.getsize(filename)
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
-    assert magic == MAGIC
-    assert version == VERSION
+    if magic != MAGIC or version != VERSION:
+      raise InvalidWasmError(f'{filename} is not a valid wasm file')
 
   def __del__(self):
-    self.buf.close()
+    if self.buf:
+      self.buf.close()
 
   def readAt(self, offset, count):
     self.buf.seek(offset)
