@@ -220,10 +220,6 @@ weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
 weak_alias(__pthread_detach, pthread_detach);
 weak_alias(__pthread_detach, thrd_detach);
 
-pthread_t emscripten_main_browser_thread_id() {
-  return __pthread_self();
-}
-
 // pthread_equal is defined as a macro in C, as a function for C++; undef it
 // here so we define the function for C++ that links to us.
 #ifdef pthread_equal
