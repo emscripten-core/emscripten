@@ -80,7 +80,7 @@ See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs
 .. _filesystem-api-noderawfs:
 
 NODERAWFS
-------
+---------
 
 .. note:: This file system is only for use when running inside :term:`node.js`.
 
