@@ -8269,6 +8269,16 @@ int main() {
     self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
     self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
 
+    # Check that the dwarf file has only dwarf and name sections
+    debug_wasm = webassembly.Module('subdir/output.wasm.debug.wasm')
+    if not debug_wasm.has_name_section():
+      self.fail('name section not found in separate dwarf file')
+    for sec in debug_wasm.sections():
+      if sec.type != webassembly.SecType.CUSTOM:
+        self.fail(f'non-custom section type {sec.type} found in separate dwarf file')
+      elif sec.name != 'name' and not sec.name.startswith('.debug'):
+        self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
+
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     self.assertNotExists('a.out.wasm.debug.wasm')
