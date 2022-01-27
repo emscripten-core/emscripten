@@ -29,6 +29,10 @@ mergeInto(LibraryManager.library, {
     }`,
   $NODERAWFS: {
     lookup: function(parent, name) {
+#if ASSERTIONS
+      assert(parent)
+      assert(parent.path)
+#endif
       return FS.lookupPath(parent.path + '/' + name).node;
     },
     lookupPath: function(path, opts) {
@@ -38,7 +42,7 @@ mergeInto(LibraryManager.library, {
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
-      return { path: path, node: { id: st.ino, mode: mode }};
+      return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
@@ -90,7 +94,8 @@ mergeInto(LibraryManager.library, {
       }
       var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: newMode, node_ops: NODERAWFS, seekable: true };
+      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },
