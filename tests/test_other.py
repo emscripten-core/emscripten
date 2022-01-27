@@ -1849,6 +1849,10 @@ int f() {
     self.set_setting('USE_ICU')
     self.do_runf(test_file('other/test_icu.cpp'))
 
+  def test_sdl2_ttf(self):
+    # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
+    self.emcc(test_file('sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
     create_file('main.cpp', r'''
