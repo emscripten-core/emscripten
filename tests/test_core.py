@@ -5433,6 +5433,12 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
+  def test_fs_nodefs_readdir(self):
+    # externally setup an existing folder structure: existing/a
+    os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
+
   @no_windows('no symlink support on windows')
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
