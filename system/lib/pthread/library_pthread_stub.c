@@ -389,6 +389,10 @@ int sem_destroy(sem_t *sem) {
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
 
+void __lock(void* ptr) {}
+
+void __unlock(void* ptr) {}
+
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.
 void emscripten_thread_sleep(double msecs) {
