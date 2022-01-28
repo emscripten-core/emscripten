@@ -827,15 +827,12 @@ class libc(MuslInternalLibrary,
         'syscall_cp.c', 'tls.c',
         # TODO: Support this. See #12216.
         'pthread_setname_np.c',
-        # TODO: Prefer to use the musl implementation.
-        'pthread_testcancel.c',
       ]
       libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=[
           'library_pthread.c',
           'pthread_create.c',
-          'pthread_testcancel.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
