@@ -19,6 +19,7 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 	if (t->self != t) return ESRCH;
 	// Thread is attempting to join to itself.  Already detached threads are
 	// handled below by returning EINVAL instead.
+	// TODO: The detached check here is just to satisfy the `other.test_{proxy,main}_pthread_join_detach` tests.
 	if (t->detach_state != DT_DETACHED && __pthread_self() == t) return EDEADLK;
 #endif
 	int state, cs, r = 0;
