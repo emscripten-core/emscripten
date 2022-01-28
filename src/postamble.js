@@ -364,8 +364,8 @@ function checkUnflushedContent() {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
     if (flush) flush();
-#elif hasExportedFunction('_fflush')
-    _fflush(0);
+#elif hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
