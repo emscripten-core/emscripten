@@ -45,7 +45,5 @@ int main(int ac, char **av)
     c1 += first == last;
     c2 += first == newer;
   }
-  EM_ASM({
-    console.log('*' + $0 + ',' + $1 + '*');
-  }, c1, c2);
+  emscripten_log(EM_LOG_CONSOLE, "*%d,%d*\n", c1, c2);
 }
