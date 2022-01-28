@@ -5982,7 +5982,7 @@ int main(void) {
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
-#include <emscripten/html5.h>
+#include <emscripten/console.h>
 #include <new>
 
 void* operator new(size_t size) {
