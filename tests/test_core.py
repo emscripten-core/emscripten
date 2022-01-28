@@ -304,6 +304,21 @@ def no_memory64(note):
   return decorator
 
 
+def no_wasmfs(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('WASMFS'):
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
@@ -5941,6 +5956,7 @@ int main(void) {
   @require_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
+  @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
