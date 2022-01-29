@@ -892,10 +892,6 @@ var LibraryPThread = {
     return 0;
   },
 
-  __atomic_is_lock_free: function(size, ptr) {
-    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
-  },
-
   __call_main__deps: ['exit', '$exitOnMainThread'],
   __call_main: function(argc, argv) {
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
