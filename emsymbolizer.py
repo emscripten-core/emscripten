@@ -11,6 +11,7 @@
 # If there is an emscripten symbol map, we can parse that to get the symbol name
 # If there is a name section or symbol table, llvm-nm can show the symbol name.
 
+import argparse
 from collections import namedtuple
 import json
 import os
@@ -22,6 +23,7 @@ from tools.shared import check_call
 LLVM_SYMBOLIZER = os.path.expanduser(
     shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
 
+VERBOSE_DEBUG = False
 
 class Error(BaseException):
   pass
@@ -45,7 +47,8 @@ def symbolize_address_dwarf(module, address):
   vma_adjust = get_codesec_offset(module)
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
-  print(cmd)
+  if VERBOSE_DEBUG:
+    print(cmd)
   check_call(cmd)
 
 
@@ -72,7 +75,8 @@ class WasmSourceMap(object):
   def parse(self, filename):
     with open(filename) as f:
       source_map_json = json.loads(f.read())
-      print(source_map_json)
+      if VERBOSE_DEBUG:
+        print(source_map_json)
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
@@ -124,12 +128,9 @@ class WasmSourceMap(object):
       if len(data) >= 5:
         name += data[4]
         info.append(name)
-      print(info)
       self.mapping[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
     self.offsets.sort()
-    print(self.mapping)
-    print(self.offsets)
 
 
   def find_offset(self, offset):
@@ -166,24 +167,33 @@ def symbolize_address_sourcemap(module, address):
   module.seek(section.offset)
   URL = module.readString()
   # TODO: support removing a prefix from the URL
-  print(URL)
+  if VERBOSE_DEBUG:
+    print(URL)
   sm = WasmSourceMap()
   sm.parse(URL)
+  if VERBOSE_DEBUG:
+    csoff = get_codesec_offset(module)
+    print(sm.mapping)
+    # Print with section offsets to compare against dwarf
+    for k, v in sm.mapping.items():
+      m2[k-csoff] = v
+      print(f'{k-csoff:x}: {v}')
   print(sm.lookup(address))
 
 
-def main(argv):
-  wasm_file = argv[1]
-  print('Warning: the command-line and output format of this tool are not '
-        'finalized yet', file=sys.stderr)
-  module = webassembly.Module(wasm_file)
-  address = int(argv[2], 16)
+def main(args):
+  module = webassembly.Module(args.wasm_file)
+  base = 16 if args.address.lower().startswith('0x') else 10
+  address = int(args.address, base)
 
-  if has_debug_line_section(module):
+  if args.addrtype == 'code':
+    address += get_codesec_offset(module)
+
+  if has_debug_line_section(module) and (args.source == 'dwarf' or not args.source):
     symbolize_address_dwarf(module, address)
-    return 0
+    #return 0
 
-  if get_sourceMappingURLSection(module): # TODO: allow forcing SM file
+  if get_sourceMappingURLSection(module) and (args.source =='sourcemap' or not args.source):
     symbolize_address_sourcemap(module, address)
     return 0
 
@@ -193,8 +203,28 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap'],
+                      #default=None,
+                      help='Force debug info source type')
+  parser.add_argument('-f', '--file', action='store',
+                      #default=None,
+                      help='Force debug info source file')
+  parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
+                      default='file',
+                      help='Address type (code section or file offset)')
+  parser.add_argument('-v', '--verbose', action='store_true',
+                      help='Print verbose info for debugging this script')
+  parser.add_argument('wasm_file', help='Wasm file')
+  parser.add_argument('address', help='Address to lookup')
+  args = parser.parse_args()
+  if args.verbose:
+    VERBOSE_DEBUG=True
+
+  print('Warning: the command-line and output format of this tool are not '
+        'finalized yet', file=sys.stderr)
   try:
-    rv = main(sys.argv)
+    rv = main(args)
   except (Error, webassembly.InvalidWasmError, OSError) as e:
     print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
     rv = 1
