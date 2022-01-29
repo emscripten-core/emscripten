@@ -3607,18 +3607,19 @@ int main() {
 ''')
     warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
 
-    def test(cxx, no_exit, assertions, flush, keepalive):
+    def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
       if cxx:
         cmd = [EMXX, 'code.cpp']
       else:
         cmd = [EMCC, 'code.c']
-      # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
-      print('%s: no_exit=%d assertions=%d flush=%d keepalive=%d' % (cmd[1], no_exit, assertions, flush, keepalive))
+      print('%s: no_exit=%d assertions=%d flush=%d keepalive=%d filesystem=%d' % (cmd[1], no_exit, assertions, flush, keepalive, filesystem))
       cmd += ['-sEXIT_RUNTIME=%d' % (1 - no_exit), '-sASSERTIONS=%d' % assertions]
       if flush:
         cmd += ['-DFLUSH']
       if keepalive:
         cmd += ['-DKEEPALIVE']
+      if not filesystem:
+        cmd += ['-sNO_FILESYSTEM']
       self.run_process(cmd)
       output = self.run_js('a.out.js')
       exit = 1 - no_exit
@@ -3628,13 +3629,14 @@ int main() {
 
     # Run just one test with KEEPALIVE set.  In this case we don't expect to see any kind
     # of warning becasue we are explictly requesting the runtime stay alive for later use.
-    test(cxx=0, no_exit=1, assertions=1, flush=0, keepalive=1)
+    test(cxx=0, no_exit=1, assertions=1, keepalive=1)
+    test(cxx=0, no_exit=1, assertions=1, filesystem=0)
 
     for cxx in [0, 1]:
       for no_exit in [0, 1]:
         for assertions in [0, 1]:
           for flush in [0, 1]:
-            test(cxx, no_exit, assertions, flush, 0)
+            test(cxx, no_exit, assertions, flush)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
