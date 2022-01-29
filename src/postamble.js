@@ -397,11 +397,13 @@ function checkUnflushedContent() {
 function exit(status, implicit) {
   EXITSTATUS = status;
 
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-  checkUnflushedContent();
-#endif // EXIT_RUNTIME
-#endif // ASSERTIONS
+#if ASSERTIONS && !EXIT_RUNTIME
+  // Skip this check if the runtime is being kept alive deliberately.
+  // For example if `exit_with_live_runtime` is called.
+  if (!runtimeKeepaliveCounter) {
+    checkUnflushedContent();
+  }
+#endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
   if (!implicit) {
