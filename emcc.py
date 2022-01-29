@@ -1985,12 +1985,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
       ]
 
     if settings.FILESYSTEM and not settings.STANDALONE_WASM:
-      # to flush streams on FS exit, we need to be able to call fflush
-      # we only include it if the runtime is exitable, or when ASSERTIONS
+      # We use __stdio_exit to shut down musl's stdio subsystems and flush
+      # streams on exit.
+      # We only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
       if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-        settings.EXPORT_IF_DEFINED += ['fflush']
+        settings.EXPORT_IF_DEFINED += ['__stdio_exit']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
