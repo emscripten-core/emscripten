@@ -2022,7 +2022,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Functions needs to be exported from the module since they are used in worker.js
     settings.REQUIRED_EXPORTS += [
       'emscripten_dispatch_to_thread_',
-      '_emscripten_main_thread_futex',
       '_emscripten_thread_free_data',
       '_emscripten_allow_main_runtime_queued_calls',
       'emscripten_main_browser_thread_id',
