@@ -10,6 +10,7 @@ $__pthread_setcancelstate
 $__set_thread_state
 $__stdio_write
 $__timedwait
+$__wake
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
