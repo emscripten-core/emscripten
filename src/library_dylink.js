@@ -624,6 +624,9 @@ var LibraryDylink = {
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
+#if ASYNCIFY
+        moduleExports = Asyncify.instrumentWasmExports(moduleExports);
+#endif
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }
