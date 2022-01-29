@@ -264,6 +264,11 @@ mergeInto(LibraryManager.library, {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
+#if RELOCATABLE
+      if (!func) {
+        func = Module[asmjsMangle(name)];
+      }
+#endif
       return func;
     },
 
