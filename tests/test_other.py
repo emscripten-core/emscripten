@@ -4407,19 +4407,20 @@ dir
   def test_emversion(self):
     create_file('src.cpp', r'''
       #include <stdio.h>
+      #include <emscripten/version.h>
       int main() {
         printf("major: %d\n", __EMSCRIPTEN_major__);
         printf("minor: %d\n", __EMSCRIPTEN_minor__);
         printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
       }
     ''')
-    self.run_process([EMXX, 'src.cpp'])
     expected = '''\
 major: %d
 minor: %d
 tiny: %d
 ''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY)
-    self.assertContained(expected, self.run_js('a.out.js'))
+    self.do_runf('src.cpp', expected)
+    self.do_runf('src.cpp', expected, emcc_args=['-sSTRICT'])
 
   def test_libc_files_without_syscalls(self):
     # a program which includes FS due to libc js library support, but has no syscalls,
