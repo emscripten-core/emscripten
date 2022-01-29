@@ -1549,10 +1549,10 @@ class BrowserCore(RunnerCore):
                '--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
-        # also compile in report_result.cpp and forice-include report_result.h
+        # also compile in report_result.c and forice-include report_result.h
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
-                 test_file('report_result.cpp')]
+                 test_file('report_result.c')]
     if EMTEST_BROWSER == 'node':
       args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)
