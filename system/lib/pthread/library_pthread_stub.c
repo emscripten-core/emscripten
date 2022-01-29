@@ -206,6 +206,8 @@ int pthread_cancel(pthread_t thread) {
   return 0;
 }
 
+void pthread_testcancel() {}
+
 _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
