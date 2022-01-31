@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.3
+3.1.4
 -----
+
+3.1.3 - 31/01/2022
+------------------
 - The file packager now supports embedding files directly into wasm memory and
   `emcc` now uses this mode when the `--embed-file` option is used.  If you
   use `file_packager` directly it is recommended that you switch to the new mode
