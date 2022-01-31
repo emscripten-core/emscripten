@@ -274,6 +274,12 @@ var LibraryPThread = {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
           }
+        } else if (cmd === 'custom') {
+          if (Module['onCustomMessage']) {
+            Module['onCustomMessage'](d);
+          } else {
+            throw 'Custom message received but worker Module.onCustomMessage not implemented.';
+          }
         } else {
           err("worker sent an unknown command " + cmd);
         }
