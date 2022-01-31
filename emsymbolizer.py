@@ -161,12 +161,15 @@ class WasmSourceMap(object):
         self.names[info.name] if info.name is not None else None)
 
 
-def symbolize_address_sourcemap(module, address):
-  section = get_sourceMappingURLSection(module)
-  assert section
-  module.seek(section.offset)
-  URL = module.readString()
-  # TODO: support removing a prefix from the URL
+def symbolize_address_sourcemap(module, address, force_file):
+  URL = force_file
+  if not URL:
+    section = get_sourceMappingURLSection(module)
+    assert section
+    module.seek(section.offset)
+    # TODO: support removing a prefix from the URL
+    URL = module.readString()
+
   if VERBOSE_DEBUG:
     print(URL)
   sm = WasmSourceMap()
@@ -176,7 +179,6 @@ def symbolize_address_sourcemap(module, address):
     print(sm.mapping)
     # Print with section offsets to compare against dwarf
     for k, v in sm.mapping.items():
-      m2[k-csoff] = v
       print(f'{k-csoff:x}: {v}')
   print(sm.lookup(address))
 
@@ -193,8 +195,8 @@ def main(args):
     symbolize_address_dwarf(module, address)
     #return 0
 
-  if get_sourceMappingURLSection(module) and (args.source =='sourcemap' or not args.source):
-    symbolize_address_sourcemap(module, address)
+  if (get_sourceMappingURLSection(module) and not args.source) or args.source == 'sourcemap':
+    symbolize_address_sourcemap(module, address, args.file)
     return 0
 
   raise Error('No .debug_line or sourceMappingURL section found in'
