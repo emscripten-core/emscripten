@@ -21,6 +21,7 @@ $_emscripten_thread_free_data
 $_emscripten_thread_init
 $_main_thread
 $a_cas
+$a_cas_p.1
 $a_dec
 $a_fetch_add.1
 $a_inc
