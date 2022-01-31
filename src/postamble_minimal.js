@@ -31,12 +31,12 @@ function run() {
   PThread.terminateAllThreads();
 #endif
 
-#if IN_TEST_HARNESS
-  // fflush() filesystem stdio for test harness, since there are existing
+#if IN_TEST_HARNESS && hasExportedFunction('___stdio_exit')
+  // flush any stdio streams for test harness, since there are existing
   // tests that depend on this behavior.
   // For production use, instead print full lines to avoid this kind of lazy
   // behavior.
-  if (typeof _fflush !== 'undefined') _fflush();
+  ___stdio_exit();
 #endif
 
 #if ASSERTIONS

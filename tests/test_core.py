@@ -5998,14 +5998,15 @@ int main(void) {
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
+#include <emscripten/console.h>
 #include <new>
 
 void* operator new(size_t size) {
-  printf("new %zu!\\n", size);
+  emscripten_console_log("new!");
   return malloc(size);
 }
 '''
-    self.do_run(src, 'new 4!\n*1,0*')
+    self.do_run(src, 'new!\n*1,0*')
 
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   @no_lsan('lsan also changes malloc, and that ends up linking in new twice')

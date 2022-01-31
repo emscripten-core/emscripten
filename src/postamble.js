@@ -364,8 +364,8 @@ function checkUnflushedContent() {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
     if (flush) flush();
-#elif hasExportedFunction('_fflush')
-    _fflush(0);
+#elif hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
@@ -397,11 +397,13 @@ function checkUnflushedContent() {
 function exit(status, implicit) {
   EXITSTATUS = status;
 
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-  checkUnflushedContent();
-#endif // EXIT_RUNTIME
-#endif // ASSERTIONS
+#if ASSERTIONS && !EXIT_RUNTIME
+  // Skip this check if the runtime is being kept alive deliberately.
+  // For example if `exit_with_live_runtime` is called.
+  if (!runtimeKeepaliveCounter) {
+    checkUnflushedContent();
+  }
+#endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
   if (!implicit) {
