@@ -3578,16 +3578,21 @@ int main(int argc, char **argv) {
     # check we warn if there is unflushed info
     create_file('code.c', r'''
 #include <stdio.h>
+#include <emscripten/emscripten.h>
 int main(int argc, char **argv) {
   printf("hello\n");
   printf("world"); // no newline, not flushed
 #if FLUSH
   printf("\n");
 #endif
+#if KEEPALIVE
+  emscripten_exit_with_live_runtime();
+#endif
 }
 ''')
     create_file('code.cpp', r'''
 #include <iostream>
+#include <emscripten/emscripten.h>
 int main() {
   using namespace std;
   cout << "hello" << std::endl;
@@ -3595,23 +3600,41 @@ int main() {
 #if FLUSH
   std::cout << std::endl;
 #endif
+#if KEEPALIVE
+  emscripten_exit_with_live_runtime();
+#endif
 }
 ''')
-    for compiler, src in [(EMCC, 'code.c'), (EMXX, 'code.cpp')]:
+    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+
+    def test(cxx, no_exit, assertions, flush, keepalive):
+      if cxx:
+        cmd = [EMXX, 'code.cpp']
+      else:
+        cmd = [EMCC, 'code.c']
+      # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
+      print('%s: no_exit=%d assertions=%d flush=%d keepalive=%d' % (cmd[1], no_exit, assertions, flush, keepalive))
+      cmd += ['-sEXIT_RUNTIME=%d' % (1 - no_exit), '-sASSERTIONS=%d' % assertions]
+      if flush:
+        cmd += ['-DFLUSH']
+      if keepalive:
+        cmd += ['-DKEEPALIVE']
+      self.run_process(cmd)
+      output = self.run_js('a.out.js')
+      exit = 1 - no_exit
+      self.assertContained('hello', output)
+      self.assertContainedIf('world', output, exit or flush)
+      self.assertContainedIf(warning, output, no_exit and assertions and not flush and not keepalive)
+
+    # Run just one test with KEEPALIVE set.  In this case we don't expect to see any kind
+    # of warning becasue we are explictly requesting the runtime stay alive for later use.
+    test(cxx=0, no_exit=1, assertions=1, flush=0, keepalive=1)
+
+    for cxx in [0, 1]:
       for no_exit in [0, 1]:
         for assertions in [0, 1]:
           for flush in [0, 1]:
-            # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
-            print(src, no_exit, assertions, flush)
-            cmd = [compiler, src, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-sASSERTIONS=%d' % assertions]
-            if flush:
-              cmd += ['-DFLUSH']
-            self.run_process(cmd)
-            output = self.run_js('a.out.js')
-            exit = 1 - no_exit
-            self.assertContained('hello', output)
-            assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
-            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
+            test(cxx, no_exit, assertions, flush, 0)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:

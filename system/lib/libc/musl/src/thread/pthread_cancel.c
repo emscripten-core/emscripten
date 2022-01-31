@@ -3,7 +3,6 @@
 #include "pthread_impl.h"
 #include "syscall.h"
 
-#ifndef __EMSCRIPTEN__
 hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 
 long __cancel()
@@ -15,6 +14,7 @@ long __cancel()
 	return -ECANCELED;
 }
 
+#ifndef __EMSCRIPTEN__
 long __syscall_cp_asm(volatile void *, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t);
@@ -67,6 +67,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 
 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
 }
+#endif
 
 void __testcancel()
 {
@@ -75,6 +76,7 @@ void __testcancel()
 		__cancel();
 }
 
+#ifndef __EMSCRIPTEN__
 static void init_cancellation()
 {
 	struct sigaction sa = {

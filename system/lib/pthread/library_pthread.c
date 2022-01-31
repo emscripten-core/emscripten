@@ -36,8 +36,6 @@
 
 #include "threading_internal.h"
 
-void __pthread_testcancel();
-
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = a->_a_transferredcanvases;
   return 0;
