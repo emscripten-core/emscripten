@@ -63,6 +63,13 @@ function assert(condition, text) {
 
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
+#if ENVIRONMENT_MAY_BE_NODE
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    fs.writeSync(2, text + '\n');
+    return;
+  }
+#endif
   console.error(text);
 }
 function threadAlert() {
