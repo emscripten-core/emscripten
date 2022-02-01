@@ -7946,10 +7946,16 @@ end
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
     shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '--closure=1',
-                      '--pre-js', test_file('test_closure_externs_pre_js.js'),
-                      '--closure-args', '--externs "local_externs.js"'])
+    test_cases = (
+      ['--closure-args', '--externs "local_externs.js"'],
+      ['--closure-args', '--externs=local_externs.js'],
+      ['--closure-args=--externs=local_externs.js'],
+    )
+    for args in test_cases:
+      self.run_process([EMCC, test_file('hello_world.c'),
+                       '--closure=1',
+                       '--pre-js', test_file('test_closure_externs_pre_js.js')] +
+                       args)
 
   def test_closure_externs_one_arg(self):
     # Test that if an externs file is specified with --externs=foo.js (e.g. when using Bazel),

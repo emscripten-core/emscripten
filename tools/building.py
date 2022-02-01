@@ -863,19 +863,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   for e in CLOSURE_EXTERNS:
     args += ['--externs', e]
-  # Clients may specify extern files or js files like:
-  # --closure-args=--externs=user_externs.js
-  # We need to split this argument so the file stands alone as its own argument.
-  # This allows us to convert any relative path to an absolute path in run_closure_cmd.
-  for c in user_args:
-    if c.startswith('--externs='):
-      args.append('--externs')
-      args.append(c[len('--externs='):])
-    elif c.startswith('--js='):
-      args.append('--js')
-      args.append(c[len('--js='):])
-    else:
-      args.append(c)
+  args += user_args
 
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env, pretty=pretty)
@@ -896,8 +884,15 @@ def run_closure_cmd(cmd, filename, env, pretty):
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
 
   for i in range(len(cmd)):
-    if cmd[i] == '--externs' or cmd[i] == '--js':
-      cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
+    for prefix in ('--externs', '--js'):
+      # Handle the case where the the flag and the value are two separate arguments.
+      if cmd[i] == prefix:
+        cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
+      # and the case where they are one argument, e.g. --externs=foo.js
+      elif cmd[i].startswith(prefix + '='):
+        # Replace the argument with a version that has a safe filename.
+        filename = cmd[i].split('=', 1)[1]
+        cmd[i] = '='.join([prefix, move_to_safe_7bit_ascii_filename(filename)])
 
   outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
