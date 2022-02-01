@@ -7946,10 +7946,21 @@ end
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
     shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
+    shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs2.js')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '--closure=1',
                       '--pre-js', test_file('test_closure_externs_pre_js.js'),
                       '--closure-args', '--externs "local_externs.js"'])
+
+  def test_closure_externs_one_arg(self):
+    # Test that if an externs file is specified with --externs=foo.js (e.g. when using Bazel),
+    # its absolute path is still used (otherwise the file will not be found).
+    shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '--closure=1',
+                      '--pre-js', test_file('test_closure_externs_pre_js.js'),
+                      '--closure-args=--externs=local_externs.js'])
+
 
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):

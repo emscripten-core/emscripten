@@ -863,7 +863,19 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   for e in CLOSURE_EXTERNS:
     args += ['--externs', e]
-  args += user_args
+  # Clients may specify extern files or js files like:
+  # --closure-args=--externs=user_externs.js
+  # We need to split this argument so the file stands alone as its own argument.
+  # This allows us to convert any relative path to an absolute path in run_closure_cmd.
+  for c in user_args:
+    if c.startswith('--externs='):
+      args.append('--externs')
+      args.append(c[len('--externs='):])
+    elif c.startswith('--js='):
+      args.append('--js')
+      args.append(c[len('--js='):])
+    else:
+      args.append(c)
 
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env, pretty=pretty)
