@@ -7946,7 +7946,6 @@ end
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
     shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
-    shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs2.js')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '--closure=1',
                       '--pre-js', test_file('test_closure_externs_pre_js.js'),
