@@ -7953,9 +7953,9 @@ end
     )
     for args in test_cases:
       self.run_process([EMCC, test_file('hello_world.c'),
-                       '--closure=1',
-                       '--pre-js', test_file('test_closure_externs_pre_js.js')] +
-                       args)
+                        '--closure=1',
+                        '--pre-js', test_file('test_closure_externs_pre_js.js')] +
+                        args)
 
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
