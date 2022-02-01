@@ -5,7 +5,7 @@
  */
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThread();',
+  $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
@@ -25,11 +25,14 @@ var LibraryPThread = {
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     tlsInitFunctions: [],
+    init: function() {
+      if (ENVIRONMENT_IS_PTHREAD) {
+        PThread.initWorker();
+      } else {
+        PThread.initMainThread();
+      }
+    },
     initMainThread: function() {
-#if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD);
-#endif
-
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
@@ -48,6 +51,17 @@ var LibraryPThread = {
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
+#endif
+
+#if !MINIMAL_RUNTIME
+      // The default behaviour for pthreads is always to exit once they return
+      // from their entry point (or call pthread_exit).  If we set noExitRuntime
+      // to true here on pthreads they would never complete and attempt to
+      // pthread_join to them would block forever.
+      // pthreads can still choose to set `noExitRuntime` explicitly, or
+      // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+      // their main function.  See comment in src/worker.js for more.
+      noExitRuntime = false;
 #endif
     },
     // Maps pthread_t to pthread info objects
