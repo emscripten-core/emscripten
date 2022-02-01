@@ -60,13 +60,11 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
-  // Export needed variables that worker.js needs to Module.
-  Module['HEAPU32'] = HEAPU32;
-  Module['__emscripten_thread_init'] = __emscripten_thread_init;
-  Module['_pthread_self'] = _pthread_self;
-
   if (ENVIRONMENT_IS_PTHREAD) {
-    PThread.initWorker();
+    // Export needed variables that worker.js needs to Module.
+    Module['HEAPU32'] = HEAPU32;
+    Module['__emscripten_thread_init'] = __emscripten_thread_init;
+    Module['_pthread_self'] = _pthread_self;
     return;
   }
 #endif
