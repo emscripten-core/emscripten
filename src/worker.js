@@ -14,7 +14,8 @@ var Module = {};
 
 #if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
-if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
   var nodeWorkerThreads = require('worker_threads');
@@ -25,7 +26,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     onmessage({ data: data });
   });
 
-  var nodeFS = require('fs');
+  var fs = require('fs');
 
   Object.assign(global, {
     self: global,
@@ -36,7 +37,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
-      (0, eval)(nodeFS.readFileSync(f, 'utf8'));
+      (0, eval)(fs.readFileSync(f, 'utf8'));
     },
     postMessage: function(msg) {
       parentPort.postMessage(msg);
@@ -107,6 +108,9 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if PTHREADS_DEBUG
+      err('worker.js: loading module')
+#endif
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
