@@ -40,26 +40,26 @@ def get(ports, settings, shared):
     shutil.copytree(source_path, dest_path)
 
     flags = [
-      '-s', 'USE_SDL=2',
+      '-sUSE_SDL=2',
       '-O2',
       '-DMUSIC_WAV',
     ]
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-s', 'USE_VORBIS=1',
+        '-sUSE_VORBIS=1',
         '-DMUSIC_OGG',
       ]
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-s', 'USE_MPG123=1',
+        '-sUSE_MPG123=1',
         '-DMUSIC_MP3_MPG123',
       ]
 
     if "mod" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-s', 'USE_MODPLUG=1',
+        '-sUSE_MODPLUG=1',
         '-DMUSIC_MOD_MODPLUG',
       ]
 

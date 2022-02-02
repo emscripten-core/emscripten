@@ -20,6 +20,10 @@ static long dummy_getpid() {
 }
 weak_alias(dummy_getpid, __syscall_getpid);
 
+pthread_t emscripten_main_browser_thread_id() {
+  return &__main_pthread;
+}
+
 __attribute__((constructor))
 static void init_pthread_self(void) {
   __main_pthread.locale = &libc.global_locale;

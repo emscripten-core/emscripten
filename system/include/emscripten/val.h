@@ -634,14 +634,14 @@ namespace emscripten {
         };
     }
 
-    template <typename T>
-    std::vector<T> vecFromJSArray(const val& v) {
+    template <typename T, typename... Policies>
+    std::vector<T> vecFromJSArray(const val& v, Policies... policies) {
         const size_t l = v["length"].as<size_t>();
 
         std::vector<T> rv;
         rv.reserve(l);
         for (size_t i = 0; i < l; ++i) {
-            rv.push_back(v[i].as<T>());
+            rv.push_back(v[i].as<T>(std::forward<Policies>(policies)...));
         }
 
         return rv;

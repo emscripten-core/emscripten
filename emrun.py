@@ -254,7 +254,7 @@ user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
-// Don't ask user if he wants to set Firefox as the default system browser
+// Don't ask user if they want to set Firefox as the default system browser
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
@@ -294,7 +294,7 @@ user_pref('browser.newtabpage.introShown', true);
 user_pref('browser.download.panel.shown', true);
 user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
-// Don't ask the user if he wants to close the browser when there are multiple tabs.
+// Don't ask the user if they want to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
 user_pref("dom.allow_scripts_to_close_windows", true);
@@ -684,13 +684,12 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       # Binary file dump/upload handling. Requests to
       # "stdio.html?file=filename" will write binary data to the given file.
       data = self.rfile.read(int(self.headers['Content-Length']))
-      filename = query[len('file='):]
-      dump_out_directory = 'dump_out'
+      filename = unquote_u(query[len('file='):])
+      filename = os.path.join(emrun_options.dump_out_directory, os.path.normpath(filename))
       try:
-        os.mkdir(dump_out_directory)
+        os.makedirs(os.path.dirname(filename))
       except OSError:
         pass
-      filename = os.path.join(dump_out_directory, os.path.normpath(filename))
       with open(filename, 'wb') as fh:
         fh.write(data)
       logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
@@ -1570,6 +1569,9 @@ to emrun itself and arguments to your page.
 
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
+
+  parser.add_argument('--dump_out_directory', default='dump_out', type=str,
+                      help='If specified, overrides the directory for dump files using emrun_file_dump method.')
 
   parser.add_argument('serve', nargs='?', default='')
 

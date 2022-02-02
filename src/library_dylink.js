@@ -311,7 +311,12 @@ var LibraryDylink = {
       end = binary.length
     } else {
       var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-      failIf(int32View[0] != 0x6d736100, 'need to see wasm magic number'); // \0asm
+#if SUPPORT_BIG_ENDIAN
+      var magicNumberFound = int32View[0] == 0x6d736100 || int32View[0] == 0x0061736d;
+#else
+      var magicNumberFound = int32View[0] == 0x6d736100;
+#endif
+      failIf(!magicNumberFound, 'need to see wasm magic number'); // \0asm
       // we should see the dylink custom section right after the magic number and wasm version
       failIf(binary[8] !== 0, 'need the dylink section to be first')
       offset = 9;
@@ -792,7 +797,7 @@ var LibraryDylink = {
 #endif
     var searchpaths = [];
 
-    var isValidFile = function(filename) {
+    var isValidFile = (filename) => {
       var target = FS.findObject(filename);
       return target && !target.isFolder && !target.isDevice;
     };

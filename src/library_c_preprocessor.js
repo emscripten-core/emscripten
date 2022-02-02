@@ -36,14 +36,13 @@ mergeInto(LibraryManager.library, {
   // Supported preprocessor directives: #if, #ifdef, #ifndef, #else, #elif, #endif, #define and #undef.
   // predefs: Specifies a dictionary of { 'key1': function(arg0, arg1) {...}, 'key2': ... } of predefined preprocessing variables
   $preprocess_c_code__deps: ['$jstoi_q', '$find_closing_parens_index'],
-  $preprocess_c_code: function(code, defs) {
+  $preprocess_c_code: function(code, defs = {}) {
     var i = 0, // iterator over the input string
       len = code.length, // cache input length
       out = '', // generates the preprocessed output string
       stack = [1]; // preprocessing stack (state of active/inactive #ifdef/#else blocks we are currently inside)
     // a mapping 'symbolname' -> function(args) which evaluates the given cpp macro, e.g. #define FOO(x) x+10.
-    defs = defs || {};
-    defs['defined'] = function(args) { // built-in "#if defined(x)"" macro.
+    defs['defined'] = (args) => { // built-in "#if defined(x)"" macro.
 #if ASSERTIONS
       assert(args.length == 1);
 #endif
@@ -258,7 +257,7 @@ mergeInto(LibraryManager.library, {
             var macroEnd = expression.indexOf(')', macroStart);
             let params = expression.substring(macroStart+1, macroEnd).split(',').map(x => x.trim());
             let value = tokenize(expression.substring(macroEnd+1).trim())
-            defs[expression.substring(0, macroStart)] = function(args) {
+            defs[expression.substring(0, macroStart)] = (args) => {
               var ret = '';
               value.forEach((x) => {
                 var argIndex = params.indexOf(x);
@@ -268,9 +267,7 @@ mergeInto(LibraryManager.library, {
             };
           } else { // #define FOO (x + y + z)
             let value = expandMacros(expression.substring(firstWs+1).trim(), 0);
-            defs[expression.substring(0, firstWs)] = function() {
-              return value;
-            };
+            defs[expression.substring(0, firstWs)] = () => value;
           }
         }
         break;

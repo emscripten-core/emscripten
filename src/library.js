@@ -73,7 +73,8 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  $setFileTime__deps: ['$setErrNo'],
+#if FILESYSTEM
+  $setFileTime__deps: ['$FS', '$setErrNo'],
   $setFileTime: function(path, time) {
     path = UTF8ToString(path);
     try {
@@ -85,8 +86,17 @@ LibraryManager.library = {
       return -1;
     }
   },
+#else
+  $setFileTime__deps: ['$setErrNo'],
+  $setFileTime: function(path, time) {
+    // No filesystem support; return an error as if the file does not exist
+    // (which it almost certainly does not, except for standard streams).
+    setErrNo({{{ cDefine('ENOENT') }}});
+    return -1;
+  },
+#endif
 
-  utime__deps: ['$FS', '$setFileTime'],
+  utime__deps: ['$setFileTime'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -103,7 +113,7 @@ LibraryManager.library = {
     return setFileTime(path, time);
   },
 
-  utimes__deps: ['$FS', '$setFileTime'],
+  utimes__deps: ['$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
@@ -361,21 +371,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if MINIMAL_RUNTIME && !EXIT_RUNTIME
-  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
-  atexit: function(){},
-  __cxa_atexit: function(){},
-#else
-  atexit__proxy: 'sync',
-  atexit__sig: 'iii',
-  atexit: function(func, arg) {
-#if EXIT_RUNTIME
-    __ATEXIT__.unshift({ func: func, arg: arg });
-#endif
-  },
-  __cxa_atexit: 'atexit',
-#endif
-
   // TODO: There are currently two abort() functions that get imported to asm
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
@@ -469,10 +464,8 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  mktime__deps: ['tzset'],
-  mktime__sig: 'ii',
-  mktime: function(tmPtr) {
-    _tzset();
+  _mktime_js__sig: 'ii',
+  _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -512,13 +505,9 @@ LibraryManager.library = {
 
     return (date.getTime() / 1000)|0;
   },
-  timelocal: 'mktime',
 
-#if MINIMAL_RUNTIME
-  gmtime_r__deps: ['$allocateUTF8'],
-#endif
-  gmtime_r__sig: 'iii',
-  gmtime_r: function(time, tmPtr) {
+  _gmtime_js__sig: 'iii',
+  _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -527,22 +516,13 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // Allocate a string "GMT" for us to point to.
-    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-    return tmPtr;
   },
-  __gmtime_r: 'gmtime_r',
 
-  timegm__deps: ['tzset'],
-  timegm__sig: 'ii',
-  timegm: function(tmPtr) {
-    _tzset();
+  _timegm_js__sig: 'ii',
+  _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -560,10 +540,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime_r__deps: ['tzset'],
-  localtime_r__sig: 'iii',
-  localtime_r: function(time, tmPtr) {
-    _tzset();
+  _localtime_js__sig: 'iii',
+  _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
@@ -583,16 +561,9 @@ LibraryManager.library = {
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
-
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.POINTER_SIZE + ' : 0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
-
-    return tmPtr;
   },
-  __localtime_r: 'localtime_r',
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r__deps: ['mktime'],
   __asctime_r__sig: 'iii',
   __asctime_r: function(tmPtr, buf) {
     var date = {
@@ -630,14 +601,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime_r', '$withStackSave'],
-  ctime_r__sig: 'iii',
-  ctime_r: function(time, buf) {
-    return withStackSave(function() {
-      return ___asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    });
-  },
-
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
     return leap ? 366 : 365;
@@ -645,23 +608,24 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  tzset__deps: ['tzset_impl'],
-  tzset__sig: 'v',
-  tzset: function() {
+  _tzset_js__deps: ['tzset_impl'],
+  _tzset_js__sig: 'viii',
+  _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (_tzset.called) return;
-    _tzset.called = true;
-    _tzset_impl();
+    if (__tzset_js.called) return;
+    __tzset_js.called = true;
+    _tzset_impl(timezone, daylight, tzname);
   },
 
+  tzset_impl__internal: true,
   tzset_impl__proxy: 'sync',
-  tzset_impl__sig: 'v',
-  tzset_impl__deps: ['_get_daylight', '_get_timezone', '_get_tzname',
+  tzset_impl__sig: 'viii',
+  tzset_impl__deps: [
 #if MINIMAL_RUNTIME
     '$allocateUTF8'
 #endif
   ],
-  tzset_impl: function() {
+  tzset_impl: function(timezone, daylight, tzname) {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
@@ -678,9 +642,9 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', 'i32') }}};
 
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
+    {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -692,11 +656,11 @@ LibraryManager.library = {
     var summerNamePtr = allocateUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
     } else {
-      {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
     }
   },
 
@@ -2403,8 +2367,8 @@ LibraryManager.library = {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
+    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
+    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
@@ -2652,19 +2616,19 @@ LibraryManager.library = {
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+    if (flags & {{{ cDefine('EM_LOG_DEMANGLE') }}}) {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
-    if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map === 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= 8/*EM_LOG_C_STACK*/;
-      flags |= 16/*EM_LOG_JS_STACK*/;
+      flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
+      flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
     }
 
     var stack_args = null;
-    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
+    if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
       while (stack_args[1].includes('_emscripten_'))
@@ -2709,25 +2673,25 @@ LibraryManager.library = {
 
       var haveSourceMap = false;
 
-      if (flags & 8/*EM_LOG_C_STACK*/) {
+      if (flags & {{{ cDefine('EM_LOG_C_STACK') }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
         haveSourceMap = (orig && orig.source);
         if (haveSourceMap) {
-          if (flags & 64/*EM_LOG_NO_PATHS*/) {
+          if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
           callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
-      if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
-        if (flags & 64/*EM_LOG_NO_PATHS*/) {
+      if ((flags & {{{ cDefine('EM_LOG_JS_STACK') }}}) || !haveSourceMap) {
+        if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
-      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
+      if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
@@ -2756,24 +2720,24 @@ LibraryManager.library = {
 
   emscripten_log_js__deps: ['emscripten_get_callstack_js'],
   emscripten_log_js: function(flags, str) {
-    if (flags & 24/*EM_LOG_C_STACK | EM_LOG_JS_STACK*/) {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
     }
 
-    if (flags & 1 /*EM_LOG_CONSOLE*/) {
-      if (flags & 4 /*EM_LOG_ERROR*/) {
-        err(str);
-      } else if (flags & 2 /*EM_LOG_WARN*/) {
+    if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
+      if (flags & {{{ cDefine('EM_LOG_ERROR') }}}) {
+        console.error(str);
+      } else if (flags & {{{ cDefine('EM_LOG_WARN') }}}) {
         console.warn(str);
-      } else if (flags & 512 /*EM_LOG_INFO*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_INFO') }}}) {
         console.info(str);
-      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_DEBUG') }}}) {
         console.debug(str);
       } else {
-        out(str);
+        console.log(str);
       }
-    } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
+    } else if (flags & {{{ cDefine('EM_LOG_ERROR') | cDefine('EM_LOG_WARN') }}}) {
       err(str);
     } else {
       out(str);
@@ -3365,10 +3329,8 @@ LibraryManager.library = {
 #endif
     var argCache = [];
     return function() {
-      argCache.length = arguments.length;
-      for (var i = 0; i < arguments.length; i++) {
-        argCache[i] = arguments[i];
-      }
+      argCache.length = 0;
+      Object.assign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
     };
   },
@@ -3498,6 +3460,19 @@ LibraryManager.library = {
     assert(typeof str === 'number');
 #endif
     err(UTF8ToString(str));
+  },
+
+  // Use program_invocation_short_name and program_invocation_name in compiled
+  // programs. This function is for implementing them.
+  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname: function(str, len) {
+  #if !MINIMAL_RUNTIME
+  #if ASSERTIONS
+    assert(typeof str === 'number');
+    assert(typeof len === 'number');
+  #endif
+    stringToUTF8(thisProgram, str, len);
+  #endif
   },
 
   emscripten_console_log__sig: 'vi',

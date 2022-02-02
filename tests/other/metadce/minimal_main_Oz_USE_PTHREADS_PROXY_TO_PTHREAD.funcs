@@ -7,8 +7,10 @@ $__pthread_mutex_unlock
 $__pthread_rwlock_tryrdlock
 $__pthread_self_internal
 $__pthread_setcancelstate
+$__set_thread_state
 $__stdio_write
 $__timedwait
+$__wake.2
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
@@ -19,8 +21,10 @@ $_emscripten_thread_free_data
 $_emscripten_thread_init
 $_main_thread
 $a_cas
+$a_cas_p.1
 $a_dec
-$a_inc.1
+$a_fetch_add.1
+$a_inc
 $a_swap
 $add
 $dispose_chunk

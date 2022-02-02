@@ -7,7 +7,7 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-global.nodeFS = require('fs');
+const fs = require('fs');
 global.nodePath = require('path');
 
 global.print = (x) => {
@@ -22,7 +22,7 @@ function find(filename) {
   const prefixes = [__dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
     const combined = nodePath.join(prefixes[i], filename);
-    if (nodeFS.existsSync(combined)) {
+    if (fs.existsSync(combined)) {
       return combined;
     }
   }
@@ -31,7 +31,7 @@ function find(filename) {
 
 global.read = (filename) => {
   const absolute = find(filename);
-  return nodeFS.readFileSync(absolute).toString();
+  return fs.readFileSync(absolute).toString();
 };
 
 function load(f) {
@@ -41,29 +41,12 @@ function load(f) {
 // Basic utilities
 load('utility.js');
 
-// Load settings, can be overridden by commandline
-load('./settings.js');
-load('./settings_internal.js');
-
+// Load settings from JSON passed on the command line
 const settingsFile = process['argv'][2];
+assert(settingsFile);
 
-if (settingsFile) {
-  const settings = JSON.parse(read(settingsFile));
-  for (const key in settings) {
-    if (Object.prototype.hasOwnProperty.call(settings, key)) {
-      let value = settings[key];
-      if (value[0] == '@') {
-        // response file type thing, workaround for large inputs: value is @path-to-file
-        try {
-          value = JSON.parse(read(value.substr(1)));
-        } catch (e) {
-          // continue normally; assume it is not a response file
-        }
-      }
-      global[key] = eval(JSON.stringify(value));
-    }
-  }
-}
+const settings = JSON.parse(read(settingsFile));
+Object.assign(global, settings);
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);

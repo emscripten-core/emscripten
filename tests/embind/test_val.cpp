@@ -58,9 +58,18 @@ void throw_js_error(val js_error)
   js_error.throw_();
 }
 
+struct Dummy {};
+
+Dummy * makeDummy()
+{
+  return new Dummy();
+}
+
 EMSCRIPTEN_BINDINGS(test_bindings)
 {
+  emscripten::class_<Dummy>("Dummy");
   emscripten::function("throw_js_error", &throw_js_error);
+  emscripten::function("makeDummy", &makeDummy, emscripten::allow_raw_pointers());
 }
 
 int main()
@@ -574,7 +583,7 @@ int main()
   ensure_js("test_val_throw_('message')");
   ensure_js("test_val_throw_(new TypeError('message'))");
   
-  // this test should probably go elsewhere as it is not a member of val
+  // these tests should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
     // can't declare like this because i get:
@@ -593,6 +602,18 @@ int main()
   ensure(aAsArray.at(2).as<string>() == "b");
   ensure(aAsArray.size() == 4);
   
+  test("template<typename T> std::vector<T *> vecFromJSArray(const val& v)");
+  EM_ASM(
+    b = [];
+    b[0] = Module.makeDummy();
+    b[1] = Module.makeDummy();
+  );
+  const std::vector<Dummy *>& bAsArray = vecFromJSArray<Dummy *>(val::global("b"), allow_raw_pointers());
+  ensure(bAsArray.size() == 2);
+  for (auto *dummy : bAsArray) {
+    delete dummy;
+  }
+
   test("template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)");
   
   const std::vector<float>& aAsNumberVectorFloat = convertJSArrayToNumberVector<float>(val::global("a"));

@@ -29,6 +29,8 @@ MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc-debug',
+    'libc-optz',
+    'libc-optz-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
@@ -48,12 +50,11 @@ MINIMAL_TASKS = [
     'libsockets',
     'libstubs',
     'libstubs-debug',
-    'libc_rt',
-    'libc_rt-optz',
     'struct_info',
     'libstandalonewasm',
     'crt1',
-    'libunwind-except'
+    'libunwind-except',
+    'libnoexit',
 ]
 
 # Variant builds that we want to support for certain ports
@@ -131,6 +132,8 @@ def main():
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
+  parser.add_argument('--verbose', action='store_true',
+                      help='show build commands')
   parser.add_argument('--wasm64', action='store_true',
                       help='use wasm64 architecture')
   parser.add_argument('operation', help='currently only "build" and "clear" are supported')
@@ -149,6 +152,9 @@ def main():
 
   if args.lto:
     settings.LTO = "full"
+
+  if args.verbose:
+    shared.PRINT_STAGES = True
 
   if args.pic:
     settings.RELOCATABLE = 1

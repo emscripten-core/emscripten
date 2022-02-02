@@ -17,7 +17,7 @@ Special commands:
   - xml:    generate XML coverage report in ./coverage.xml
 
 Otherwise, you can run any python script or Emscripten command, for example:
-  - emcoverage.py ./tests/runner.py wasm0
+  - emcoverage.py ./tests/runner.py core0
   - emcoverage.py emcc file1.c file2.c
 
 Running a command under emcoverage.py will collect the code coverage

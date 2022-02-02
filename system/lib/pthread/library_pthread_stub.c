@@ -206,6 +206,8 @@ int pthread_cancel(pthread_t thread) {
   return 0;
 }
 
+void pthread_testcancel() {}
+
 _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
@@ -219,10 +221,6 @@ int __pthread_detach(pthread_t t) {
 weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
 weak_alias(__pthread_detach, pthread_detach);
 weak_alias(__pthread_detach, thrd_detach);
-
-pthread_t emscripten_main_browser_thread_id() {
-  return __pthread_self();
-}
 
 // pthread_equal is defined as a macro in C, as a function for C++; undef it
 // here so we define the function for C++ that links to us.
@@ -392,6 +390,10 @@ int sem_destroy(sem_t *sem) {
 }
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+
+void __lock(void* ptr) {}
+
+void __unlock(void* ptr) {}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.

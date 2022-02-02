@@ -15,7 +15,7 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engined to test all engines!
+# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engines to test all engines!
 
 import argparse
 import atexit
@@ -47,12 +47,12 @@ logger = logging.getLogger("runner")
 
 # The core test modes
 core_test_modes = [
-  'wasm0',
-  'wasm1',
-  'wasm2',
-  'wasm3',
-  'wasms',
-  'wasmz',
+  'core0',
+  'core1',
+  'core2',
+  'core3',
+  'cores',
+  'corez',
   'strict',
   'wasm2js0',
   'wasm2js1',
@@ -64,7 +64,7 @@ core_test_modes = [
 ]
 
 # The default core test mode, used when none is specified
-default_core_test_mode = 'wasm0'
+default_core_test_mode = 'core0'
 
 # The non-core test modes
 non_core_test_modes = [
@@ -80,6 +80,7 @@ non_core_test_modes = [
   'posixtest',
   'posixtest_browser',
   'minimal0',
+  'wasmfs',
 ]
 
 
@@ -225,8 +226,21 @@ def print_random_test_statistics(num_tests):
   atexit.register(show)
 
 
+def replace_legacy_suite_names(args):
+  newargs = []
+
+  for a in args:
+    if a.startswith('wasm') and not a.startswith('wasm2js') and not a.startswith('wasmfs'):
+      print('warning: test suites in test_core.py have been renamed from `wasm` to `core`. Please use the new names')
+      a = a.replace('wasm', 'core', 1)
+    newargs.append(a)
+
+  return newargs
+
+
 def load_test_suites(args, modules):
   loader = unittest.TestLoader()
+  args = replace_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
   for m in modules:

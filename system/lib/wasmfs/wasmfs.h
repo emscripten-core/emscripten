@@ -44,6 +44,8 @@ public:
     preloadFiles();
   }
 
+  ~WasmFS();
+
   // This get method returns a locked file table.
   // There is only ever one FileTable in the system.
   FileTable::Handle getLockedFileTable() {

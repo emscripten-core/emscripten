@@ -18,8 +18,52 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.1
+3.1.4
 -----
+- The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
+  macros are now available via the `emscripten/version.h` header file.  For the
+  time being, unless you enable `-sSTRICT`, these are still also defined
+  directly on the command line.  If you use these macros please make sure you
+  include `emscripten/version.h` (or `emscripten.h` which indirectly includes
+  it). (#16147)
+
+3.1.3 - 31/01/2022
+------------------
+- The file packager now supports embedding files directly into wasm memory and
+  `emcc` now uses this mode when the `--embed-file` option is used.  If you
+  use `file_packager` directly it is recommended that you switch to the new mode
+  by adding `--obj-output` to the command line. (#16050)
+- The `--bind` flag used to enable embind has been deprecated in favor of
+  `-lembind`.  The semantics have not changed and the old flag continues to
+  work. (#16087)
+
+3.1.2 - 20/01/2022
+------------------
+- A new setting, `POLYFILL`, was added which is on by default but can be disabled
+  (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
+  For default browser targets, no polyfills are needed so this option only has
+  meaning when targeting older browsers.
+- `EVAL_CTORS` has been rewritten and improved. The main differences from before
+  are that it is much more capable (it can now eval parts of functions and not
+  just all or nothing, and it can eval more wasm constructs like globals). It is
+  no longer run by default, so to use it you should build with `-s EVAL_CTORS`.
+  See `settings.js` for more details. (#16011)
+- `wasmX` test suites that are defined in `test_core.py` have been renamed to
+  `coreX` to better reflect where they are defined.  The old suite names such
+  as `wasm2` will continue to work for now as aliases.
+
+3.1.1 - 08/01/2022
+------------------
+- Happy new year!
+- Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
+  includes all downstream patches and many upstream changes.
+- libc++ library updated to llvm-13. (#15901)
+- libc++-abi library updated to llvm-13. (#15904)
+- compiler-rt library updated to llvm-13. (#15906)
+- Added new internal/debugging related environment variable
+  EM_FORCE_RESPONSE_FILES that can be set to 0 to force disable the use of
+  response files, and to 1 to force enable response files. If not set,
+  response files will be used if command lines are long (> 8192 chars). (#15973)
 
 3.1.0 - 12/22/2021
 ------------------
@@ -28,7 +72,7 @@ See docs/process.md for more on how version tagging works.
   For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
   emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
   traspile any ES6 down to ES5.  When this automatic transpilation is performed
-  we generate a warning which can disabled (using `-Wno-transpile`) or by
+  we generate a warning which can be disabled (using `-Wno-transpile`) or by
   explicitly opting in-to or out-of closure using `--closure=1` or
   `--closure=0`. (#15763).
 

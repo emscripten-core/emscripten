@@ -36,8 +36,6 @@
 
 #include "threading_internal.h"
 
-void __pthread_testcancel();
-
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = a->_a_transferredcanvases;
   return 0;
@@ -87,10 +85,6 @@ void emscripten_thread_sleep(double msecs) {
   double now = emscripten_get_now();
   double target = now + msecs;
 
-  __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
-                          // thread is cancelled during the sleep.
-  emscripten_current_thread_process_queued_calls();
-
   // If we have less than this many msecs left to wait, busy spin that instead.
   double min_ms_slice_to_sleep = 0.1;
 
@@ -99,8 +93,8 @@ void emscripten_thread_sleep(double msecs) {
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
-  now = emscripten_get_now();
-  while (now < target) {
+
+  do {
     // Keep processing the main loop of the calling thread.
     __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                             // thread is cancelled during the sleep.
@@ -108,14 +102,13 @@ void emscripten_thread_sleep(double msecs) {
 
     now = emscripten_get_now();
     double ms_to_sleep = target - now;
-    if (ms_to_sleep > max_ms_slice_to_sleep) {
+    if (ms_to_sleep < min_ms_slice_to_sleep)
+      continue;
+    if (ms_to_sleep > max_ms_slice_to_sleep)
       ms_to_sleep = max_ms_slice_to_sleep;
-    }
-    if (ms_to_sleep >= min_ms_slice_to_sleep) {
-      emscripten_futex_wait(&dummyZeroAddress, 0, ms_to_sleep);
-    }
+    emscripten_futex_wait(&dummyZeroAddress, 0, ms_to_sleep);
     now = emscripten_get_now();
-  };
+  } while (now < target);
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
@@ -830,8 +823,6 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   va_end(args);
   return ret;
 }
-
-void __emscripten_init_main_thread_js(void* tb);
 
 static void *dummy_tsd[1] = { 0 };
 weak_alias(dummy_tsd, __pthread_tsd_main);

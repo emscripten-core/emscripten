@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
   // Dump a file to local filesystem with emrun.
   EM_ASM(emrun_file_dump("test.dat", HEAPU8.subarray(0, 128)););
   EM_ASM(emrun_file_dump("heap.dat", HEAPU8));
+  EM_ASM(emrun_file_dump("nested/with space.dat", HEAPU8.subarray(128, 256)););
 
   if (argc <= 1)
     exit(1);

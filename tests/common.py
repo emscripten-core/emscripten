@@ -642,6 +642,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
+  def measure_wasm_code_lines(self, wasm):
+    wat_lines = self.get_wasm_text(wasm).splitlines()
+    non_data_lines = [line for line in wat_lines if '(data ' not in line]
+    return len(non_data_lines)
+
   def run_js(self, filename, engine=None, args=[],
              output_nicerizer=None,
              assert_returncode=0,
@@ -958,7 +963,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-s', 'SIDE_MODULE'] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_emcc_args()
       cmdv += linkto
       self.run_process(cmdv)
 
@@ -1537,17 +1542,17 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS']
+    args += ['-sIN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
                '--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
-        # also compile in report_result.cpp and forice-include report_result.h
+        # also compile in report_result.c and forice-include report_result.h
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
-                 test_file('report_result.cpp')]
+                 test_file('report_result.c')]
     if EMTEST_BROWSER == 'node':
       args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)
@@ -1584,7 +1589,7 @@ class BrowserCore(RunnerCore):
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
+        args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
     outfile = 'test.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
@@ -1607,7 +1612,7 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
+                 original_args + ['-sWASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1618,7 +1623,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-sGL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################

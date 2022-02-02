@@ -341,7 +341,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--bind``
   [link]
-  Compiles the source code using the :ref:`embind` bindings to connect C/C++ and JavaScript.
+  Links against embind library.  Deprecated: Use ``-lembind`` instead.
 
 ``--ignore-dynamic-linking``
   [link]

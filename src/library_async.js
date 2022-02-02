@@ -62,9 +62,7 @@ mergeInto(LibraryManager.library, {
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
-      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map(function(x) {
-        return x.split('.')[1];
-      });
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
@@ -166,7 +164,7 @@ mergeInto(LibraryManager.library, {
       assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
       assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
 #endif
-      return new Promise(function(resolve, reject) {
+      return new Promise((resolve, reject) => {
         Asyncify.asyncPromiseHandlers = {
           resolve: resolve,
           reject: reject
@@ -236,7 +234,7 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync(function(handleSleepReturnValue) {
+        startAsync((handleSleepReturnValue) => {
 #if ASSERTIONS
           assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number' || typeof handleSleepReturnValue === 'boolean'); // old emterpretify API supported other stuff
 #endif
@@ -259,7 +257,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
+          runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -308,7 +306,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
+          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
@@ -323,9 +321,7 @@ mergeInto(LibraryManager.library, {
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach(function(func) {
-          callUserCallback(func);
-        });
+        Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
@@ -338,7 +334,7 @@ mergeInto(LibraryManager.library, {
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
     handleAsync: function(startAsync) {
-      return Asyncify.handleSleep(function(wakeUp) {
+      return Asyncify.handleSleep((wakeUp) => {
         // TODO: add error handling as a second param when handleSleep implements it.
         startAsync().then(wakeUp);
       });
@@ -347,14 +343,12 @@ mergeInto(LibraryManager.library, {
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
-    Asyncify.handleSleep(function(wakeUp) {
-      safeSetTimeout(wakeUp, ms);
-    });
+    Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
-    Asyncify.handleSleep(function(wakeUp) {
+    Asyncify.handleSleep((wakeUp) => {
       var _url = UTF8ToString(url);
       var _file = UTF8ToString(file);
       _file = PATH_FS.resolve(FS.cwd(), _file);
@@ -365,20 +359,18 @@ mergeInto(LibraryManager.library, {
         _url, true, true,
         wakeUp,
         wakeUp,
-        undefined, // dontCreateFile
-        undefined, // canOwn
-        function() { // preFinish
-          // if the destination directory does not yet exist, create it
-          FS.mkdirTree(destinationDirectory);
-        }
+        false, // dontCreateFile
+        false, // canOwn
+        // preFinish: if the destination directory does not yet exist, create it
+        () => FS.mkdirTree(destinationDirectory)
       );
     });
   },
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
-      asyncLoad(UTF8ToString(url), function(byteArray) {
+    Asyncify.handleSleep((wakeUp) => {
+      asyncLoad(UTF8ToString(url), (byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
@@ -386,7 +378,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
         {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
-      }, function() {
+      }, () => {
         {{{ makeSetValue('perror',  0, '1', 'i32') }}};
         wakeUp();
       }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
@@ -395,12 +387,12 @@ mergeInto(LibraryManager.library, {
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
-    Asyncify.handleSleep(function(wakeUp) {
+    Asyncify.handleSleep((wakeUp) => {
       // We must first unwind, so things are spilled to the stack. Then while
       // we are pausing we do the actual scan. After that we can resume. Note
       // how using a timeout here avoids unbounded call stack growth, which
       // could happen if we tried to scan the stack immediately after unwinding.
-      safeSetTimeout(function() {
+      safeSetTimeout(() => {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = HEAP32[Asyncify.currData >> 2];
         {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
@@ -410,7 +402,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_lazy_load_code: function() {
-    Asyncify.handleSleep(function(wakeUp) {
+    Asyncify.handleSleep((wakeUp) => {
       // Update the expected wasm binary file to be the lazy one.
       wasmBinaryFile += '.lazy.wasm';
       // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.

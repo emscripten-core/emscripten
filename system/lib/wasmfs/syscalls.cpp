@@ -34,44 +34,6 @@ extern "C" {
 
 using namespace wasmfs;
 
-// Copy the file specified by the pathname into JS.
-// Return a pointer to the JS buffer in HEAPU8.
-// The buffer will also contain the file length.
-// Caller must free the returned pointer.
-void* emscripten_wasmfs_read_file(char* path) {
-  struct stat file;
-  int err = 0;
-  err = stat(path, &file);
-  if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-
-  // The function will return a pointer to a buffer with the file length in the
-  // first 8 bytes. The remaining bytes will contain the buffer contents. This
-  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
-  off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
-  *(uint32_t*)result = size;
-
-  int fd = open(path, O_RDONLY);
-  if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-  int numRead = pread(fd, result + sizeof(size), size, 0);
-  // TODO: Generalize this so that it is thread-proof.
-  // Must guarantee that the file size has not changed by the time it is read.
-  assert(numRead == size);
-  err = close(fd);
-  if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
-    abort();
-  }
-
-  return result;
-}
-
 long __syscall_dup3(long oldfd, long newfd, long flags) {
   auto fileTable = wasmFS.getLockedFileTable();
 
@@ -632,8 +594,9 @@ long __syscall_getcwd(long buf, long size) {
   // Return value is a null-terminated c string.
   strcpy((char*)buf, res);
 
-  return 0;
+  return buf;
 }
+
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   // TODO: This is only partial implementation of __wasi_fd_fdstat_get. Enough
   // to get __wasi_fd_is_valid working.
@@ -924,5 +887,53 @@ long __syscall_rename(long old_path, long new_path) {
   lockedNewParentDir.setEntry(newBase, oldParsedPath.child);
 
   return 0;
+}
+
+long __syscall_symlink(char* old_path, char* new_path) {
+  auto pathParts = splitPath(new_path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
+
+  if (parsedPath.child) {
+    return -EEXIST;
+  }
+
+  auto backend = parsedPath.parent->unlocked()->getBackend();
+  auto created = backend->createSymlink(old_path);
+  parsedPath.parent->setEntry(pathParts.back(), created);
+
+  return 0;
+}
+
+long __syscall_readlink(char* path, char* buf, size_t bufSize) {
+  auto pathParts = splitPath(path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  if (!parsedPath.child->is<Symlink>()) {
+    return -EINVAL;
+  }
+
+  const auto& target = parsedPath.child->dynCast<Symlink>()->getTarget();
+
+  auto bytes = std::min(bufSize, target.size());
+  memcpy(buf, target.c_str(), bytes);
+
+  return bytes;
 }
 }

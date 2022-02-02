@@ -31,7 +31,7 @@
             ]
         },
         "defines": [
-          "EM_THREAD_NAME_MAX"
+          "SIGCANCEL"
         ]
     },
     {

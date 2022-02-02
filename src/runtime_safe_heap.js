@@ -12,8 +12,7 @@
     @param {number} value
     @param {string} type
     @param {number|boolean=} noSafe */
-function setValue(ptr, value, type, noSafe) {
-  type = type || 'i8';
+function setValue(ptr, value, type = 'i8', noSafe) {
   if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {
@@ -47,8 +46,7 @@ function setValue(ptr, value, type, noSafe) {
 /** @param {number} ptr
     @param {string} type
     @param {number|boolean=} noSafe */
-function getValue(ptr, type, noSafe) {
-  type = type || 'i8';
+function getValue(ptr, type = 'i8', noSafe) {
   if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {
@@ -112,7 +110,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #else
   if (dest % bytes !== 0) warnOnce('alignment error in a memory store operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
 #endif
-  if (runtimeInitialized) {
+  if (runtimeInitialized && !runtimeExited) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
     assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
@@ -136,7 +134,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
 #else
   if (dest % bytes !== 0) warnOnce('alignment error in a memory load operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
 #endif
-  if (runtimeInitialized) {
+  if (runtimeInitialized && !runtimeExited) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
     assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack

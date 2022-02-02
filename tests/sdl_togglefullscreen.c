@@ -136,8 +136,9 @@ int main() {
   /* SDL 1 limits which events can be used here.
    * Click and mouseup don't work.
    */
-  if (emscripten_set_mouseup_callback(NULL, NULL, 1, mouseup) != EMSCRIPTEN_RESULT_SUCCESS) {
+  if (emscripten_set_mouseup_callback("#canvas", NULL, 1, mouseup) != EMSCRIPTEN_RESULT_SUCCESS) {
     printf("Couldn't to set mouse callback. Test failed.\n");
+    return 1;
   }
 
   printf("You should see a yellow canvas.\n");

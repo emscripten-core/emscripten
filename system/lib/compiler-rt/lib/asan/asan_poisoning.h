@@ -51,9 +51,6 @@ ALWAYS_INLINE void FastPoisonShadow(uptr aligned_beg, uptr aligned_size,
   // probably provide higher-level interface for these operations.
   // For now, just memset on Windows.
   if (value || SANITIZER_WINDOWS == 1 ||
-      // RTEMS doesn't have have pages, let alone a fast way to zero
-      // them, so default to memset.
-      SANITIZER_RTEMS == 1 ||
       // Emscripten doesn't have a nice way to zero whole pages.
       // The bulk memory proposal will allow memset to be optimized, but
       // even then, we still must use memset.

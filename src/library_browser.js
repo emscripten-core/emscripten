@@ -310,6 +310,23 @@ var LibraryBrowser = {
       }
     },
 
+    // Tries to handle an input byteArray using preload plugins. Returns true if
+    // it was handled.
+    handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
+      // Ensure plugins are ready.
+      Browser.init();
+
+      var handled = false;
+      Module['preloadPlugins'].forEach(function(plugin) {
+        if (handled) return;
+        if (plugin['canHandle'](fullname)) {
+          plugin['handle'](byteArray, fullname, finish, onerror);
+          handled = true;
+        }
+      });
+      return handled;
+    },
+
     createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
       if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 

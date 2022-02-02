@@ -655,8 +655,10 @@ var ENVIRONMENT = 'web,webview,worker,node';
 var LZ4 = 0;
 
 // Emscripten exception handling options.
-// These options only pertain to Emscripten exception handling and do not
-// control the experimental native wasm exception handling option.
+// The three options below (DISABLE_EXCEPTION_CATCHING,
+// EXCEPTION_CATCHING_ALLOWED, and DISABLE_EXCEPTION_THROWING) only pertain to
+// Emscripten exception handling and do not control the experimental native wasm
+// exception handling option (EXCEPTION_HANDLING).
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
@@ -682,6 +684,21 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 //
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_ALLOWED = [];
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++
+// 'throw') support library. This does not need to be set directly, but pass
+// -fno-exceptions to the build disable exceptions support. (This is basically
+// -fno-exceptions, but checked at final link time instead of individual .cpp
+// file compile time) If the program *does* contain throwing code (some source
+// files were not compiled with `-fno-exceptions`), and this flag is set at link
+// time, then you will get errors on undefined symbols, as the exception
+// throwing code is not linked in. If so you should either unset the option (if
+// you do want exceptions) or fix the compilation of the source files so that
+// indeed no exceptions are used).
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
+// [link]
+var DISABLE_EXCEPTION_THROWING = 0;
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
@@ -1198,10 +1215,12 @@ var EXPORT_NAME = 'Module';
 // that is targeting a privileged or a certified execution environment, see
 // Firefox Content Security Policy (CSP) webpage for details:
 // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+//
 // When this flag is set, the following features (linker flags) are unavailable:
-//  --closure 1: When using closure compiler, eval() would be needed to locate the Module object.
 //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
-//  --bind: Embind would need to eval().
+// and some features may fall back to slower code paths when they need to:
+// Embind: uses eval() to jit functions for speed.
+//
 // Additionally, the following Emscripten runtime functions are unavailable when
 // DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
 // - emscripten_run_script(),
@@ -1210,6 +1229,7 @@ var EXPORT_NAME = 'Module';
 // - dlopen(),
 // - the functions ccall() and cwrap() are still available, but they are restricted to only
 //   being able to call functions that have been exported in the Module object in advance.
+//
 // When set to -s DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
 // to warnings instead of throwing an exception.
 // [link]
@@ -1440,11 +1460,6 @@ var SDL2_IMAGE_FORMATS = [];
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
-// The list of defines (C_DEFINES) was moved into struct_info.json in the same
-// directory.  That file is automatically parsed by tools/gen_struct_info.py.
-// If you modify the headers, just clear your cache and emscripten libc should
-// see the new values.
-
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
 var IN_TEST_HARNESS = 0;
@@ -1537,40 +1552,40 @@ var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
 // [link]
 var PTHREADS_DEBUG = 0;
 
-// This tries to evaluate global ctors at compile-time, applying their effects
-// into the mem init file. This saves running code during startup, and also
-// allows removing the global ctor functions and other code that only they used,
-// so this is also good for reducing code size. However, this does make the
-// compile step much slower.
+// This tries to evaluate code at compile time. The main use case is to eval
+// global ctor functions, which are those that run before main(), but main()
+// itself or parts of it can also be evalled. Evaluating code this way can avoid
+// work at runtime, as it applies the results of the execution to memory and
+// globals and so forth, "snapshotting" the wasm and then just running it from
+// there when it is loaded.
 //
-// This basically runs the ctors during compile time, seeing if they execute
-// safely in a sandbox. Any ffi access out of wasm causes failure, as it could
-// do something nondeterministic and/or alter some other state we don't see. If
-// all the global ctor does is pure computation inside wasm, it should be ok.
-// Run with EMCC_DEBUG=1 in the env to see logging, and errors when it fails to
-// eval (you'll see a message, or a stack trace; in the latter case, the
-// functions on the stack should give you an idea of what ffi was called and
-// why, and perhaps you can refactor your code to avoid it, e.g., remove
-// mallocs, printfs in global ctors).
+// This will stop when it sees something it cannot eval at compile time, like a
+// call to an import. When running with this option you will see logging that
+// indicates what is evalled and where it stops.
 //
-// This optimization can increase the size of the mem init file, because ctors
-// can write to memory that would otherwise be in a zeroinit area. This may not
-// be a significant increase after gzip, if there are mostly zeros in there, and
-// in any case the mem init increase would be offset by a code size decrease.
-// (Unless you have a small ctor that writes 'random' data to memory, which
-// would reduce little code but add potentially lots of uncompressible data.)
+// This optimization can either reduce or increase code size. If a small amount
+// of code generates many changes in memory, for example, then overall size may
+// increase.
 //
 // LLVM's GlobalOpt *almost* does this operation. It does in simple cases, where
 // LLVM IR is not too complex for its logic to evaluate, but it isn't powerful
 // enough for e.g. libc++ iostream ctors. It is just hard to do at the LLVM IR
-// level - LLVM IR is complex and getting more complex, this would require
+// level - LLVM IR is complex and getting more complex, so this would require
 // GlobalOpt to have a full interpreter, plus a way to write back into LLVM IR
 // global objects.  At the wasm level, however, everything has been lowered
 // into a simple low level, and we also just need to write bytes into an array,
-// so this is easy for us to do, but not for LLVM. A further issue for LLVM is
-// that it doesn't know that we will not link in further code, so it only tries
-// to optimize ctors with lowest priority. We do know that, and can optimize all
-// the ctors.
+// so this is easy for us to do. A further issue for LLVM is that it doesn't
+// know that we will not link in further code, so it only tries to optimize
+// ctors with lowest priority (while we do know explicitly if dynamic linking is
+// enabled or not).
+//
+// If set to a value of 2, this also makes some "unsafe" assumptions,
+// specifically that there is no input received while evalling ctors. That means
+// we ignore args to main() as well as assume no environment vars are readable.
+// This allows more programs to be optimized, but you need to make sure your
+// program does not depend on those features - even just checking the value of
+// argc can lead to problems.
+//
 // [link]
 var EVAL_CTORS = 0;
 
@@ -1819,21 +1834,6 @@ var MAYBE_WASM2JS = 0;
 // [link]
 var ASAN_SHADOW_SIZE = -1
 
-// Internal: Tracks whether Emscripten should link in exception throwing (C++
-// 'throw') support library. This does not need to be set directly, but pass
-// -fno-exceptions to the build disable exceptions support. (This is basically
-// -fno-exceptions, but checked at final link time instead of individual .cpp
-// file compile time) If the program *does* contain throwing code (some source
-// files were not compiled with `-fno-exceptions`), and this flag is set at link
-// time, then you will get errors on undefined symbols, as the exception
-// throwing code is not linked in. If so you should either unset the option (if
-// you do want exceptions) or fix the compilation of the source files so that
-// indeed no exceptions are used).
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
-// [link]
-var DISABLE_EXCEPTION_THROWING = 0;
-
 // Whether we should use the offset converter.  This is needed for older
 // versions of v8 (<7.7) that does not give the hex module offset into wasm
 // binary in stack traces, as well as for avoiding using source map entries
@@ -1972,6 +1972,14 @@ var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
 // the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
 // [link]
 var TRUSTED_TYPES = 0;
+
+// When targeting older browsers emscripten will sometimes require that
+// polyfills be included in the output.  If you would prefer to take care of
+// polyfilling yourself via some other mechanism you can prevent emscripten
+// from generating these by passing `-sNO_POLYFILL` or `-sPOLYFILL=0`
+// With default browser targets emscripten does not need any polyfills so this
+// settings is *only* needed when also explicitly targeting older browsers.
+var POLYFILL = 1;
 
 //===========================================
 // Internal, used for testing only, from here

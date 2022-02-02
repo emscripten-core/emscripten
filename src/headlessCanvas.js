@@ -5,7 +5,6 @@
  */
 
 function headlessCanvas() {
-  var that = this;
   var ret = {
     headless: true,
     getContext: function(which) {

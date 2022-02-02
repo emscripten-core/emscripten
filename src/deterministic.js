@@ -5,14 +5,12 @@
  */
 
 var MAGIC = 0;
-Math.random = function() {
+Math.random = () => {
   MAGIC = Math.pow(MAGIC + 1.8912, 3) % 1;
   return MAGIC;
 };
 var TIME = 10000;
-Date.now = function() {
-  return TIME++;
-};
+Date.now = () => TIME++;
 if (typeof performance === 'object') performance.now = Date.now;
 if (ENVIRONMENT_IS_NODE) process['hrtime'] = Date.now;
 

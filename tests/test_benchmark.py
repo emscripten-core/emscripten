@@ -203,9 +203,9 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd = [
       EMCC, filename,
       OPTIMIZATIONS,
-      '-s', 'INITIAL_MEMORY=256MB',
-      '-s', 'ENVIRONMENT=node,shell',
-      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
+      '-sINITIAL_MEMORY=256MB',
+      '-sENVIRONMENT=node,shell',
+      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + LLVM_FEATURE_FLAGS
     if common.EMTEST_FORCE64:
@@ -215,8 +215,8 @@ class EmscriptenBenchmarker(Benchmarker):
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
-    if 'FORCE_FILESYSTEM' not in cmd:
-      cmd += ['-s', 'FILESYSTEM=0']
+    if '-sFORCE_FILESYSTEM' not in cmd:
+      cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
@@ -253,9 +253,9 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     # wasm2c doesn't want minimal runtime which the normal emscripten
     # benchmarker defaults to, as we don't have any JS anyhow
     emcc_args = emcc_args + [
-      '-s', 'STANDALONE_WASM',
-      '-s', 'MINIMAL_RUNTIME=0',
-      '-s', 'WASM2C'
+      '-sSTANDALONE_WASM',
+      '-sMINIMAL_RUNTIME=0',
+      '-sWASM2C'
     ]
 
     global LLVM_FEATURE_FLAGS
@@ -379,6 +379,7 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker(default_v8_name, aot_v8),
       EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):
@@ -958,7 +959,7 @@ class benchmark(common.RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
-    shutil.copyfile(test_file('third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
+    shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
       ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
@@ -970,7 +971,7 @@ class benchmark(common.RunnerCore):
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
@@ -986,16 +987,16 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_zlib(self):
     self.emcc_args.remove('-Werror')
-    src = read_file(test_file('benchmark', 'test_zlib_benchmark.c'))
+    src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
-                      force_c=True, shared_args=['-I' + test_file('third_party', 'zlib')], lib_builder=lib_builder)
+                      force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
 
   def test_zzz_coremark(self):
-    src = read_file(test_file('third_party', 'coremark', 'core_main.c'))
+    src = read_file(test_file('third_party/coremark/core_main.c'))
 
     def lib_builder(name, native, env_init):
       return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
@@ -1004,15 +1005,15 @@ class benchmark(common.RunnerCore):
       iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
       return 100000.0 / float(iters_sec)
 
-    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + test_file('third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
+    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + test_file('third_party/coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self):
-    src = read_file(test_file('benchmark', 'test_box2d_benchmark.cpp'))
+    src = read_file(test_file('benchmark/test_box2d_benchmark.cpp'))
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party', 'box2d')], lib_builder=lib_builder)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
@@ -1037,17 +1038,17 @@ class benchmark(common.RunnerCore):
                       lib_builder=lib_builder)
 
   def test_zzz_lzma(self):
-    src = read_file(test_file('benchmark', 'test_lzma_benchmark.c'))
+    src = read_file(test_file('benchmark/test_lzma_benchmark.c'))
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'lzma'), [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + test_file('third_party', 'lzma')], lib_builder=lib_builder)
+    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + test_file('third_party/lzma')], lib_builder=lib_builder)
 
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_party', 'sqlite')],
-                      emcc_args=['-s', 'FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_part/sqlite')],
+                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1095,8 +1096,8 @@ class benchmark(common.RunnerCore):
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + test_file('poppler', 'include'), '-I' + test_file('freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
-                                 test_file('poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
-                                 '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      shared_args=['-I' + test_file('poppler/include'), '-I' + test_file('freetype/include')],
+                      emcc_args=['-sFILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
+                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                                 '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)
