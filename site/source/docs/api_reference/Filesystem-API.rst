@@ -98,7 +98,7 @@ This is a special backend as it replaces all normal filesystem access with direc
     );
   #endif
 
-See `yellp<https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
 
 .. _filesystem-api-idbfs:
 
