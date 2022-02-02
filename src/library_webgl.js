@@ -569,6 +569,10 @@ var LibraryGL = {
         var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
         return ret;
       };
+      glCtx['bufferData'] = function(a1, a2, a3, a4, a5) {
+          var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+          return ret;
+      };
     },
 #endif
     // Returns the context handle to the new context.
