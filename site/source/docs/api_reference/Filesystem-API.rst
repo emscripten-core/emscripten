@@ -75,7 +75,7 @@ NODEFS
 
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
-See `red <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
 
 .. _filesystem-api-noderawfs:
 
@@ -88,6 +88,7 @@ This is a special backend as it replaces all normal filesystem access with direc
  
 .. code-block:: js
 
+  // Without NODERAWFS, you need to mount a directory for NODEFS. With NODERAWFS, that is not needed and you can simply access files immediately.
   #ifndef NODERAWFS
     // mount the current folder as a NODEFS instance
     // inside of emscripten
@@ -97,7 +98,7 @@ This is a special backend as it replaces all normal filesystem access with direc
     );
   #endif
 
-See `yello <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
 
 .. _filesystem-api-idbfs:
 
