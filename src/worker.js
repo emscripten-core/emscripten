@@ -141,6 +141,10 @@ self.onmessage = (e) => {
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 
+#if PTHREADS_DEBUG
+      Module['workerID'] = e.data.workerID;
+#endif
+
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
