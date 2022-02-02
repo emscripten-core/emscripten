@@ -175,6 +175,7 @@ class other(RunnerCore):
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
+  @disabled('https://github.com/emscripten-core/emscripten/issues/16178')
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
