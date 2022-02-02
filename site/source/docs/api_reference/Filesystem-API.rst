@@ -75,7 +75,7 @@ NODEFS
 
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
-See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
+See `red<https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
 
 .. _filesystem-api-noderawfs:
 
@@ -98,7 +98,7 @@ This is a special backend as it replaces all normal filesystem access with direc
     );
   #endif
 
-See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
+See `yellp<https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
 
 .. _filesystem-api-idbfs:
 
@@ -272,7 +272,7 @@ File system API
        });
      }
 
-  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
+  A real example of functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
 
   :param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
   :param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.
