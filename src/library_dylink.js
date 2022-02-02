@@ -115,12 +115,12 @@ var LibraryDylink = {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
 #if DYLINK_DEBUG
-        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value);
+        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
 #endif
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
-        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + " " + value);
+        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
       }
 #endif
     }
@@ -427,6 +427,13 @@ var LibraryDylink = {
     }
   },
 
+#if DYLINK_DEBUG
+  $dumpTable: function() {
+    for (var i = 0; i < wasmTable.length; i++)
+      err('table: ' + i + ' : ' + wasmTable.get(i));
+  },
+#endif
+
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__deps: [
@@ -649,6 +656,7 @@ var LibraryDylink = {
   $loadDynamicLibrary: function(lib, flags, handle) {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
+    err('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
     if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
       LDSO.loadedLibsByName[lib] = {
@@ -798,7 +806,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
+  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError', '$PATH'],
   $dlopenInternal: function(handle, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -807,6 +815,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('dlopenInternal: ' + filename);
 #endif
+    filename = PATH.normalize(filename);
     var searchpaths = [];
 
     var isValidFile = (filename) => {
@@ -933,14 +942,19 @@ var LibraryDylink = {
     }
 
     if (typeof result === 'function') {
+#if DYLINK_DEBUG
+      err('dlsym: ' + symbol + ' getting table slot for: ' + result);
+#endif
       // Insert the function into the wasm table.  If its a direct wasm function
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
       // in library JS file.
-      return addFunction(result, result.sig);
-    } else {
-      return result;
+      result = addFunction(result, result.sig);
     }
+#if DYLINK_DEBUG
+    err('dlsym: ' + symbol + ' -> ' + result);
+#endif
+    return result;
   },
 #endif // MAIN_MODULE != 0
 };
