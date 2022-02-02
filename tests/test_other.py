@@ -140,21 +140,6 @@ class other(RunnerCore):
   def do_other_test(self, testname, emcc_args=[], **kwargs):
     self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
 
-  # Another utility to run a test in this suite. This receives a source file
-  # to compile, with optional compiler and execution flags.
-  # Output can be checked by seeing if literals are contained, and that a list
-  # of regexes match. The return code can also be checked.
-  def do_smart_test(self, source, literals=[], engine=None, regexes=[],
-                    emcc_args=[], run_args=[], assert_returncode=0):
-    self.run_process([compiler_for(source), source] + self.get_emcc_args() + emcc_args)
-    seen = self.run_js('a.out.js', engine=engine, args=run_args, assert_returncode=assert_returncode) + '\n'
-
-    for literal in literals:
-      self.assertContained([literal], seen)
-
-    for regex in regexes:
-      self.assertTrue(re.search(regex, seen), 'Expected regex "%s" to match on:\n%s' % (regex, seen))
-
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
     output = []
@@ -9423,22 +9408,25 @@ int main(void) {
     ]],
   })
   def test_lsan_stack_trace(self, ext, regexes):
-    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-gsource-map'],
-                       assert_returncode=NON_ZERO, literals=[
-      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
-      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
-      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
-    ], regexes=regexes)
+    self.do_runf(test_file('other/test_lsan_leaks.' + ext),
+                 emcc_args=['-fsanitize=leak', '-gsource-map'],
+                 regex=True,
+                 assert_all=True,
+                 assert_returncode=NON_ZERO, expected_output=[
+      r'Direct leak of 2048 byte\(s\) in 1 object\(s\) allocated from',
+      r'Direct leak of 1337 byte\(s\) in 1 object\(s\) allocated from',
+      r'Direct leak of 42 byte\(s\) in 1 object\(s\) allocated from',
+    ] + regexes)
 
   @parameterized({
     'c': ['c'],
     'cpp': ['cpp'],
   })
   def test_lsan_no_leak(self, ext):
-    self.do_smart_test(test_file('other/test_lsan_no_leak.' + ext),
-                       emcc_args=['-fsanitize=leak', '-sASSERTIONS=0'],
-                       regexes=[r'^\s*$'])
+    self.do_runf(test_file('other/test_lsan_no_leak.' + ext),
+                 regex=True,
+                 emcc_args=['-fsanitize=leak', '-sASSERTIONS=0'],
+                 expected_output=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
     self.do_runf(test_file('other/test_lsan_leaks.c'),
