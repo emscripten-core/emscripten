@@ -32,7 +32,9 @@ See docs/process.md for more on how version tagging works.
   use it. The new SjLj support is enabled by `-sSUPPORT_LONGJMP=wasm`. This can
   be used with Wasm exception support (`-fwasm-exceptions`), but not with
   Emscripten exception support (`-fexceptions` or
-  `-sDISABLE_EXCEPTION_CATCHING=0`). (#14976 and #16072)
+  `-sDISABLE_EXCEPTION_CATCHING=0`). When using Wasm EH with Wasm SjLj, there is
+  one restriction that you cannot call `setjmp` within a `catch` clause.
+  (#14976 and #16072)
 
 3.1.2 - 20/01/2022
 ------------------
