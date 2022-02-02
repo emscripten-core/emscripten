@@ -136,6 +136,7 @@ flaky = {
 disabled = {
   **flaky,
   **unsupported_noreturn,
+  'test_pthread_create_10_1': 'broken test: https://github.com/emscripten-core/posixtestsuite/issues/10 (also relies on SIGSEGV which we don\'t support)',
 }
 
 # These tests are known to fail reliably.  We run them anyway so that we can

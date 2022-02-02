@@ -2052,6 +2052,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     worker_imports = [
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
+      '__emscripten_thread_crashed',
       '_emscripten_tls_init',
       '_emscripten_current_thread_process_queued_calls',
       '_pthread_self',
