@@ -84,7 +84,7 @@ NODERAWFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`.
 
- This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far. 
+This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far. 
  
 .. code-block:: js
 
