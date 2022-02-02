@@ -573,6 +573,13 @@ var LibraryGL = {
           var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
           return ret;
       };
+      const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
+      for (const f of matrixFuncs) {
+          glCtx[f] = function(a1, a2, a3, a4, a5) {
+              // WebGL2 version has 2 extra optional parameters, ensure we forward them
+              return glCtx['real_' + f](a1, a2, a3, a4, a5);
+          }
+      }
     },
 #endif
     // Returns the context handle to the new context.
