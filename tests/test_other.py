@@ -146,7 +146,7 @@ class other(RunnerCore):
   # of regexes match. The return code can also be checked.
   def do_smart_test(self, source, literals=[], engine=None, regexes=[],
                     emcc_args=[], run_args=[], assert_returncode=0):
-    self.run_process([compiler_for(source), source] + emcc_args)
+    self.run_process([compiler_for(source), source] + self.get_emcc_args() + emcc_args)
     seen = self.run_js('a.out.js', engine=engine, args=run_args, assert_returncode=assert_returncode) + '\n'
 
     for literal in literals:
@@ -1593,9 +1593,9 @@ int f() {
       }
       ''')
 
-    self.do_smart_test(
+    self.do_runf(
       'main.cpp',
-      ['0123456789'],
+      '0123456789',
       emcc_args=[
         '-sEXIT_RUNTIME=1',
         '-sMAIN_MODULE=1',
@@ -1700,9 +1700,9 @@ int f() {
       }
       ''')
 
-    self.do_smart_test(
+    self.do_runf(
       'main.cpp',
-      ['123'],
+      '123',
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
@@ -9390,9 +9390,11 @@ int main(void) {
     'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
   })
   def test_lsan_leaks(self, ext, args):
-    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak'] + args,
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.' + ext),
+                 emcc_args=['-fsanitize=leak'] + args,
+                 assert_returncode=NON_ZERO,
+                 assert_all=True,
+                 expected_output=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
       'Direct leak of 42 byte(s) in 1 object(s) allocated from',
@@ -9433,61 +9435,63 @@ int main(void) {
                        regexes=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
-    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.c'),
+                 assert_all=True,
+                 emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_null_deref(self):
-    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_asan_null_deref.c'),
+                 emcc_args=['-fsanitize=address'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_memory_growth(self):
-    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_asan_null_deref.c'),
+                 emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
-    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-sEXIT_RUNTIME'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.c'),
+                 assert_all=True,
+                 emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-sEXIT_RUNTIME'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
+    self.do_runf(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
 
   def test_asan_strncpy(self):
     # Regression test for asan false positives in strncpy:
     # https://github.com/emscripten-core/emscripten/issues/14618
-    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
+    self.do_runf(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with TOTAL_STACK setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
-    self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
-                       ['success'],
-                       emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
-                                  '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
-                                  '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
-                                  '--profiling-funcs'])
+    self.do_runf(test_file('other/test_proxy_to_pthread_stack.c'),
+                 ['success'],
+                 emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                            '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
+                            '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                            '--profiling-funcs'])
 
   @parameterized({
     'async': ['-sWASM_ASYNC_COMPILATION'],
     'sync': ['-sWASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
-    self.do_smart_test(test_file('other/test_offset_converter.c'),
-                       emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + list(args), literals=['ok'])
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok',
+                 emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + list(args))
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
@@ -9815,8 +9819,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
 
   def test_boost_graph(self):
-    self.do_smart_test(test_file('test_boost_graph.cpp'),
-                       emcc_args=['-sUSE_BOOST_HEADERS'])
+    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-sUSE_BOOST_HEADERS'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''

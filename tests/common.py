@@ -1111,7 +1111,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
               self.assertContained(o, js_output)
           else:
             self.assertContained(expected_output, js_output)
-            if check_for_error:
+            if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
