@@ -8,6 +8,9 @@
 #include <errno.h>
 #include <math.h>
 #include <emscripten/threading.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "atomic.h"
 #include "threading_internal.h"
 
@@ -106,9 +109,26 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
   return 0;
 }
 
+static _Atomic bool thread_crashed = false;
+
+void _emscripten_thread_crashed() {
+  thread_crashed = true;
+}
+
 int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   if ((((intptr_t)addr)&3) != 0) {
     return -EINVAL;
+  }
+
+  // When a secondary thread crashes, we need to be able to interrupt the main
+  // thread even if it's in a blocking/looping on a mutex.  We want to avoid
+  // using the normal proxying mechanism to send this message since it can
+  // allocate (or otherwise itself crash) so use a low level atomic primitive
+  // for this signal.
+  if (emscripten_is_main_runtime_thread() && thread_crashed) {
+    // Return the event loop so we can handle the message from the crashed
+    // thread.
+    emscripten_unwind_to_js_event_loop();
   }
 
   int ret;

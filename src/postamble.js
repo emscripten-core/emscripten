@@ -448,6 +448,9 @@ function exit(status, implicit) {
 }
 
 function procExit(code) {
+#if RUNTIME_DEBUG
+  err('procExit: ' + code);
+#endif
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
 #if USE_PTHREADS
