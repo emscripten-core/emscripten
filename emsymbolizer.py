@@ -187,28 +187,28 @@ def main(args):
   module = webassembly.Module(args.wasm_file)
   base = 16 if args.address.lower().startswith('0x') else 10
   address = int(args.address, base)
+  symbolized = 0
 
   if args.addrtype == 'code':
     address += get_codesec_offset(module)
 
-  if has_debug_line_section(module) and (args.source == 'dwarf' or not args.source):
+  if (has_debug_line_section(module) and not args.source) or 'dwarf' in args.source:
     symbolize_address_dwarf(module, address)
-    #return 0
+    symbolized += 1
 
-  if (get_sourceMappingURLSection(module) and not args.source) or args.source == 'sourcemap':
+  if (get_sourceMappingURLSection(module) and not args.source) or 'sourcemap' in args.source:
     symbolize_address_sourcemap(module, address, args.file)
-    return 0
+    symbolized += 1
 
-  raise Error('No .debug_line or sourceMappingURL section found in'
-              f'{module.filename}.'
-              " I don't know how to symbolize this file yet")
+  if not symbolized:
+    raise Error('No .debug_line or sourceMappingURL section found in '
+                f'{module.filename}.'
+                " I don't know how to symbolize this file yet")
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap'],
-                      #default=None,
-                      help='Force debug info source type')
+  parser.add_argument('-s', '--source', help='Force debug info source type')
   parser.add_argument('-f', '--file', action='store',
                       #default=None,
                       help='Force debug info source file')
