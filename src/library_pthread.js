@@ -952,12 +952,18 @@ var LibraryPThread = {
     return {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
   },
 
+#if STACK_OVERFLOW_CHECK >= 2 && MAIN_MODULE
+  $establishStackSpace__deps: ['$setDylinkStackLimits'],
+#endif
   $establishStackSpace__internal: true,
   $establishStackSpace: function() {
     var pthread_ptr = _pthread_self();
     var stackTop = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackMax = stackTop - stackSize;
+#if PTHREADS_DEBUG
+    err('establishStackSpace: ' + stackTop + ' -> ' + stackMax);
+#endif
 #if ASSERTIONS
     assert(stackTop != 0);
     assert(stackMax != 0);
@@ -970,6 +976,11 @@ var LibraryPThread = {
     // Set stack limits used by binaryen's `StackCheck` pass.
     // TODO(sbc): Can this be combined with the above.
     ___set_stack_limits(stackTop, stackMax);
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackTop, stackMax);
+#endif
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
