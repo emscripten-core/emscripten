@@ -833,6 +833,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'library_pthread.c',
+          'proxying.c',
           'pthread_create.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_init.c',

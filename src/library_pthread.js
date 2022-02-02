@@ -5,10 +5,11 @@
  */
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThread();',
+  $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
+                   '$ptrToString',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -25,11 +26,34 @@ var LibraryPThread = {
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     tlsInitFunctions: [],
-    initMainThread: function() {
-#if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD);
-#endif
+#if PTHREADS_DEBUG
+    nextWorkerID: 1,
+    debugInit: function() {
+      function pthreadLogPrefix() {
+        var t = 0;
+        if (runtimeInitialized && !runtimeExited && typeof _pthread_self !== 'undefined') {
+          t = _pthread_self();
+        }
+        return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
+      }
 
+      // When PTHREAD_DEBUG is enabled, prefix all err() messages with the calling
+      // thread ID.
+      var origErr = err;
+      err = (message) => origErr(pthreadLogPrefix() + message);
+    },
+#endif
+    init: function() {
+#if PTHREADS_DEBUG
+      PThread.debugInit();
+#endif
+      if (ENVIRONMENT_IS_PTHREAD) {
+        PThread.initWorker();
+      } else {
+        PThread.initMainThread();
+      }
+    },
+    initMainThread: function() {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
@@ -48,6 +72,17 @@ var LibraryPThread = {
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
+#endif
+
+#if !MINIMAL_RUNTIME
+      // The default behaviour for pthreads is always to exit once they return
+      // from their entry point (or call pthread_exit).  If we set noExitRuntime
+      // to true here on pthreads they would never complete and attempt to
+      // pthread_join to them would block forever.
+      // pthreads can still choose to set `noExitRuntime` explicitly, or
+      // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+      // their main function.  See comment in src/worker.js for more.
+      noExitRuntime = false;
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -172,7 +207,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
+      err('threadInit.');
 #endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
@@ -251,7 +286,7 @@ var LibraryPThread = {
         if (worker.pthread) {
           var pthread_ptr = worker.pthread.threadInfoStruct;
           if (pthread_ptr) {
-            message = 'Pthread 0x' + pthread_ptr.toString(16) + ' sent an error!';
+            message = 'Pthread ' + ptrToString(pthread_ptr) + ' sent an error!';
           }
         }
 #endif
@@ -309,6 +344,9 @@ var LibraryPThread = {
 #endif
 #if MAIN_MODULE
         'dynamicLibraries': Module['dynamicLibraries'],
+#endif
+#if PTHREADS_DEBUG
+        'workerID': PThread.nextWorkerID++,
 #endif
       });
     },
@@ -385,10 +423,14 @@ var LibraryPThread = {
     }
   },
 
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
+  },
+
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    err('killThread 0x' + pthread_ptr.toString(16));
+    err('killThread ' + ptrToString(pthread_ptr));
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
@@ -584,6 +626,9 @@ var LibraryPThread = {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
     }
+#if PTHREADS_DEBUG
+    err("createThread: " + ptrToString(pthread_ptr));
+#endif
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
     var transferList = [];
@@ -757,7 +802,7 @@ var LibraryPThread = {
     if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
     if (thread === _emscripten_main_browser_thread_id()) {
       if (signal == 0) return 0; // signal == 0 is a no-op.
-      err('Main thread (id=0x' + thread.toString(16) + ') cannot be killed with pthread_kill!');
+      err('Main thread (id=' + ptrToString(thread) + ') cannot be killed with pthread_kill!');
       return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
@@ -766,7 +811,7 @@ var LibraryPThread = {
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
-      err('pthread_kill attempted on thread 0x' + thread.toString(16) + ', which does not point to a valid thread, or does not exist anymore!');
+      err('pthread_kill attempted on thread ' + ptrToString(thread) + ', which does not point to a valid thread, or does not exist anymore!');
       return {{{ cDefine('ESRCH') }}};
     }
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
@@ -786,14 +831,14 @@ var LibraryPThread = {
     if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
 #if PTHREADS_DEBUG
-      err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
+      err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
       exitOnMainThread(returnCode);
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
 #if PTHREADS_DEBUG
-    err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+    err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
@@ -938,6 +983,9 @@ var LibraryPThread = {
   },
 
   $invokeEntryPoint: function(ptr, arg) {
+#if PTHREADS_DEBUG
+    err('invokeEntryPoint: ' + ptrToString(ptr));
+#endif
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
@@ -960,6 +1008,25 @@ var LibraryPThread = {
         return /*0*/;
       }
       worker.postMessage({'cmd' : 'processThreadQueue'});
+    }
+    return 1;
+  },
+
+  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+    if (targetThreadId == currThreadId) {
+      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
+    } else if (ENVIRONMENT_IS_PTHREAD) {
+      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+    } else {
+      var pthread = PThread.pthreads[targetThreadId];
+      var worker = pthread && pthread.worker;
+      if (!worker) {
+#if ASSERTIONS
+        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
+#endif
+        return /*0*/;
+      }
+      worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
     }
     return 1;
   }

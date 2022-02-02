@@ -2505,6 +2505,15 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
+  def test_pthread_proxying(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('INITIAL_MEMORY=32mb')
+    args = [f'-I{path_from_root("system/lib/pthread")}']
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
+                                 emcc_args=args, interleaved_output=False)
+
+  @node_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
@@ -2559,6 +2568,13 @@ The current type of b is: 9
     # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_pthread_abort_interrupt(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    expected = ['Aborted(). Build with -s ASSERTIONS=1 for more info', 'Aborted(native code called abort())']
+    self.do_runf(test_file('pthread/test_pthread_abort_interrupt.c'), expected, assert_returncode=NON_ZERO)
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
