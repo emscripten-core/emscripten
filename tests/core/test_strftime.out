@@ -1,3 +1,4 @@
+%%H=%H %%M=%m %%z=%z -> %H=20 %M=02 %z=+0000
 strftime test #1: 1
 strftime test #2: 1
 strftime test #3: 1

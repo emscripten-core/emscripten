@@ -1024,11 +1024,16 @@ LibraryManager.library = {
         return '%';
       }
     };
+
+    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
+    // re-inject them after processing.
+    pattern = pattern.replace(/%%/g, '\0\0')
     for (var rule in EXPANSION_RULES_2) {
       if (pattern.includes(rule)) {
         pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
       }
     }
+    pattern = pattern.replace(/\0\0/g, '%')
 
     var bytes = intArrayFromString(pattern, false);
     if (bytes.length > maxsize) {
