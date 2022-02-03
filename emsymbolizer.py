@@ -25,6 +25,7 @@ LLVM_SYMBOLIZER = os.path.expanduser(
 
 VERBOSE_DEBUG = False
 
+
 class Error(BaseException):
   pass
 
@@ -62,15 +63,15 @@ def get_sourceMappingURLSection(module):
 class WasmSourceMap(object):
   # This implementation is derived from emscripten's sourcemap-support.js
   Location = namedtuple('Location',
-                                ['source', 'line', 'column', 'name'],
-                                defaults=[None, None, None, None])
+                        ['source', 'line', 'column', 'name'],
+                        defaults=[None, None, None, None])
+
   def __init__(self):
     self.version = None
     self.sources = []
     self.names = []
     self.mapping = {}
     self.offsets = []
-
 
   def parse(self, filename):
     with open(filename) as f:
@@ -94,7 +95,7 @@ class WasmSourceMap(object):
       for i, c in enumerate(string):
         try:
           integer = vlq_map[c]
-        except ValueEror as v:
+        except ValueError:
           raise Error(f'Invalid character ({c}) in VLQ')
         value += (integer & 31) << shift
         if integer & 32:
@@ -122,16 +123,16 @@ class WasmSourceMap(object):
       if len(data) >= 3:
         line += data[2]
         info.append(line)
-      if len(data) >=4:
+      if len(data) >= 4:
         col += data[3]
         info.append(col)
       if len(data) >= 5:
         name += data[4]
         info.append(name)
+
       self.mapping[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
     self.offsets.sort()
-
 
   def find_offset(self, offset):
     # Find the largest mapped offset <= the search offset
@@ -146,14 +147,15 @@ class WasmSourceMap(object):
         lo = mid + 1
     return self.offsets[lo - 1]
 
-
   def lookup(self, offset):
     nearest = self.find_offset(offset)
     assert nearest in self.mapping, 'Sourcemap has an offset with no mapping'
     info = self.mapping[nearest]
 
     # TODO: it's kind of icky to use Location for both the internal indexed
-    # location and external string version?
+    # location and external string version. Once we have more uniform output
+    # format and API for the various backends (e.g SM vs DWARF vs others), this
+    # could be improved.
     return WasmSourceMap.Location(
         self.sources[info.source] if info.source is not None else None,
         info.line,
@@ -164,10 +166,11 @@ class WasmSourceMap(object):
 def symbolize_address_sourcemap(module, address, force_file):
   URL = force_file
   if not URL:
+    # If a sourcemap file is not forced, read it from the wasm module
     section = get_sourceMappingURLSection(module)
     assert section
     module.seek(section.offset)
-    # TODO: support removing a prefix from the URL
+    # TODO: support stripping/replacing a prefix from the URL
     URL = module.readString()
 
   if VERBOSE_DEBUG:
@@ -177,7 +180,7 @@ def symbolize_address_sourcemap(module, address, force_file):
   if VERBOSE_DEBUG:
     csoff = get_codesec_offset(module)
     print(sm.mapping)
-    # Print with section offsets to compare against dwarf
+    # Print with section offsets to easily compare against dwarf
     for k, v in sm.mapping.items():
       print(f'{k-csoff:x}: {v}')
   print(sm.lookup(address))
@@ -192,11 +195,13 @@ def main(args):
   if args.addrtype == 'code':
     address += get_codesec_offset(module)
 
-  if (has_debug_line_section(module) and not args.source) or 'dwarf' in args.source:
+  if ((has_debug_line_section(module) and not args.source) or
+     'dwarf' in args.source):
     symbolize_address_dwarf(module, address)
     symbolized += 1
 
-  if (get_sourceMappingURLSection(module) and not args.source) or 'sourcemap' in args.source:
+  if ((get_sourceMappingURLSection(module) and not args.source) or
+     'sourcemap' in args.source):
     symbolize_address_sourcemap(module, address, args.file)
     symbolized += 1
 
@@ -210,7 +215,6 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-s', '--source', help='Force debug info source type')
   parser.add_argument('-f', '--file', action='store',
-                      #default=None,
                       help='Force debug info source file')
   parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
                       default='file',
@@ -221,7 +225,7 @@ if __name__ == '__main__':
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()
   if args.verbose:
-    VERBOSE_DEBUG=True
+    VERBOSE_DEBUG = True
 
   print('Warning: the command-line and output format of this tool are not '
         'finalized yet', file=sys.stderr)
