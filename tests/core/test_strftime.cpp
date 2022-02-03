@@ -39,6 +39,11 @@ int main() {
   tm.tm_yday = 51;
   tm.tm_isdst = 0;
 
+  // Test %% escaping
+  const char *fmt = "%%H=%H %%M=%m %%z=%z";
+  strftime(s, sizeof(s), fmt, &tm);
+  printf("%s -> %s\n", fmt, s);
+
   size = strftime(s, 1000, "", &tm);
   test((size == 0) && (*s == '\0'), "strftime test #1", s);
 

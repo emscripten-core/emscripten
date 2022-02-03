@@ -184,6 +184,8 @@ shown below:
 In order to prevent the closure compiler from renaming the symbols in the
 above example code it needs to be rewritten as follows:
 
+.. code:: javascript
+
    var instance = new Module["MyClass"](10, "hello");
    instance["incrementX"]();
    instance["x"]; // 11

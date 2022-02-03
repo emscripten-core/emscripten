@@ -706,6 +706,8 @@
     {
         "file": "SDL/SDL_audio.h",
         "defines": [
+            "AUDIO_U8",
+            "AUDIO_F32",
             "AUDIO_S16LSB"
         ],
         "structs": {
@@ -998,7 +1000,6 @@
             "EM_PROXIED_PTHREAD_CREATE",
             "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_PROXIED_JS_FUNCTION",
             "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",

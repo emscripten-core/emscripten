@@ -555,7 +555,7 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
+        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
 #endif
 
         // initialize the module
@@ -611,6 +611,18 @@ var LibraryDylink = {
     });
     return loadModule();
   },
+
+#if STACK_OVERFLOW_CHECK >= 2
+  $setDylinkStackLimits: function(stackTop, stackMax) {
+    for (var name in LDSO.loadedLibsByName) {
+#if DYLINK_DEBUG
+      err('setDylinkStackLimits[' + name + ']');
+#endif
+      var lib = LDSO.loadedLibsByName[name];
+      lib.module['__set_stack_limits'](stackTop, stackMax);
+    }
+  },
+#endif
 
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
