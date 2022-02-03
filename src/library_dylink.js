@@ -211,7 +211,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError: ['___dl_seterr',
+  $dlSetError__deps: ['__dl_seterr',
 #if MINIMAL_RUNTIME
    '$intArrayFromString'
 #endif
