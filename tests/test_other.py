@@ -9853,8 +9853,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
         }
       }
     ''')
-    self.run_process([EMCC, 'src.c', '-sEMULATE_FUNCTION_POINTER_CASTS'])
-    self.assertContained('ok\ndone\n', self.run_js('a.out.js'))
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_missing_stdlibs(self):
     # Certain standard libraries are expected to be useable via -l flags but
