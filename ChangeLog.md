@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.4
 -----
+- llvm dependency updated to 15.0.0 to match upstream. (#16178)
 - The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
   macros are now available via the `emscripten/version.h` header file.  For the
   time being, unless you enable `-sSTRICT`, these are still also defined
