@@ -220,7 +220,7 @@ and want to ``await`` a dynamically retrieved ``Promise``, you can call an
 .. code-block:: cpp
 
     val my_object = /* ... */;
-    val result = my_object.call("someAsyncMethod").await();
+    val result = my_object.call<val>("someAsyncMethod").await();
 
 In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
