@@ -841,15 +841,7 @@
         "WGPUComputePassDescriptor": {
             "__size__": 16,
             "label": 4,
-            "nextInChain": 0,
-            "timestampWriteCount": 8,
-            "timestampWrites": 12
-        },
-        "WGPUComputePassTimestampWrite": {
-            "__size__": 12,
-            "location": 8,
-            "queryIndex": 4,
-            "querySet": 0
+            "nextInChain": 0
         },
         "WGPUComputePipelineDescriptor": {
             "__size__": 32,
@@ -1047,15 +1039,7 @@
             "depthStencilAttachment": 16,
             "label": 4,
             "nextInChain": 0,
-            "occlusionQuerySet": 20,
-            "timestampWriteCount": 24,
-            "timestampWrites": 28
-        },
-        "WGPURenderPassTimestampWrite": {
-            "__size__": 12,
-            "location": 8,
-            "queryIndex": 4,
-            "querySet": 0
+            "occlusionQuerySet": 20
         },
         "WGPURenderPipelineDescriptor": {
             "__size__": 84,
@@ -1114,7 +1098,6 @@
         "WGPUShaderModuleWGSLDescriptor": {
             "__size__": 16,
             "chain": 0,
-            "code": 12,
             "source": 8
         },
         "WGPUStencilFaceState": {

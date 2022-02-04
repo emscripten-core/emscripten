@@ -224,11 +224,6 @@ namespace wgpu {
         Info = 0x00000002,
     };
 
-    enum class ComputePassTimestampLocation : uint32_t {
-        Beginning = 0x00000000,
-        End = 0x00000001,
-    };
-
     enum class CreatePipelineAsyncStatus : uint32_t {
         Success = 0x00000000,
         Error = 0x00000001,
@@ -263,7 +258,6 @@ namespace wgpu {
 
     enum class FeatureName : uint32_t {
         Undefined = 0x00000000,
-        DepthClipControl = 0x00000001,
         Depth24UnormStencil8 = 0x00000002,
         Depth32FloatStencil8 = 0x00000003,
         TimestampQuery = 0x00000004,
@@ -335,11 +329,6 @@ namespace wgpu {
         Error = 0x00000001,
         Unknown = 0x00000002,
         DeviceLost = 0x00000003,
-    };
-
-    enum class RenderPassTimestampLocation : uint32_t {
-        Beginning = 0x00000000,
-        End = 0x00000001,
     };
 
     enum class RequestAdapterStatus : uint32_t {
@@ -659,7 +648,7 @@ namespace wgpu {
     struct CommandBufferDescriptor;
     struct CommandEncoderDescriptor;
     struct CompilationMessage;
-    struct ComputePassTimestampWrite;
+    struct ComputePassDescriptor;
     struct ConstantEntry;
     struct Extent3D;
     struct InstanceDescriptor;
@@ -674,7 +663,6 @@ namespace wgpu {
     struct RenderBundleDescriptor;
     struct RenderBundleEncoderDescriptor;
     struct RenderPassDepthStencilAttachment;
-    struct RenderPassTimestampWrite;
     struct RequestAdapterOptions;
     struct SamplerBindingLayout;
     struct SamplerDescriptor;
@@ -694,7 +682,6 @@ namespace wgpu {
     struct BindGroupLayoutEntry;
     struct BlendState;
     struct CompilationInfo;
-    struct ComputePassDescriptor;
     struct DepthStencilState;
     struct ImageCopyBuffer;
     struct ImageCopyTexture;
@@ -889,11 +876,9 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        void BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const;
         void Dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1) const;
         void DispatchIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void EndPass() const;
-        void EndPipelineStatisticsQuery() const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
@@ -961,7 +946,6 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         Surface CreateSurface(SurfaceDescriptor const * descriptor) const;
-        void ProcessEvents() const;
         void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;
 
       private:
@@ -1053,14 +1037,12 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void BeginOcclusionQuery(uint32_t queryIndex) const;
-        void BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const;
         void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) const;
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t baseVertex = 0, uint32_t firstInstance = 0) const;
         void DrawIndexedIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void DrawIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void EndOcclusionQuery() const;
         void EndPass() const;
-        void EndPipelineStatisticsQuery() const;
         void ExecuteBundles(uint32_t bundlesCount, RenderBundle const * bundles) const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
@@ -1126,7 +1108,6 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        TextureFormat GetPreferredFormat(Adapter const& adapter) const;
 
       private:
         friend ObjectBase<Surface, WGPUSurface>;
@@ -1256,10 +1237,9 @@ namespace wgpu {
         uint64_t length;
     };
 
-    struct ComputePassTimestampWrite {
-        QuerySet querySet;
-        uint32_t queryIndex;
-        ComputePassTimestampLocation location;
+    struct ComputePassDescriptor {
+        ChainedStruct const * nextInChain = nullptr;
+        char const * label = nullptr;
     };
 
     struct ConstantEntry {
@@ -1386,12 +1366,6 @@ namespace wgpu {
         bool stencilReadOnly = false;
     };
 
-    struct RenderPassTimestampWrite {
-        QuerySet querySet;
-        uint32_t queryIndex;
-        RenderPassTimestampLocation location;
-    };
-
     struct RequestAdapterOptions {
         ChainedStruct const * nextInChain = nullptr;
         Surface compatibleSurface = nullptr;
@@ -1437,7 +1411,6 @@ namespace wgpu {
             sType = SType::ShaderModuleWGSLDescriptor;
         }
         alignas(ChainedStruct) char const * source;
-        char const * code;
     };
 
     struct StencilFaceState {
@@ -1535,13 +1508,6 @@ namespace wgpu {
         ChainedStruct const * nextInChain = nullptr;
         uint32_t messageCount;
         CompilationMessage const * messages;
-    };
-
-    struct ComputePassDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        char const * label = nullptr;
-        uint32_t timestampWriteCount = 0;
-        ComputePassTimestampWrite const * timestampWrites;
     };
 
     struct DepthStencilState {
@@ -1652,8 +1618,6 @@ namespace wgpu {
         RenderPassColorAttachment const * colorAttachments;
         RenderPassDepthStencilAttachment const * depthStencilAttachment = nullptr;
         QuerySet occlusionQuerySet = nullptr;
-        uint32_t timestampWriteCount = 0;
-        RenderPassTimestampWrite const * timestampWrites;
     };
 
     struct VertexState {

@@ -1189,10 +1189,9 @@
                 "offset",
                 "length"
             ],
-            "WGPUComputePassTimestampWrite": [
-                "querySet",
-                "queryIndex",
-                "location"
+            "WGPUComputePassDescriptor": [
+                "nextInChain",
+                "label"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1300,11 +1299,6 @@
                 "clearStencil",
                 "stencilReadOnly"
             ],
-            "WGPURenderPassTimestampWrite": [
-                "querySet",
-                "queryIndex",
-                "location"
-            ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
                 "compatibleSurface",
@@ -1340,8 +1334,7 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source",
-                "code"
+                "source"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1424,12 +1417,6 @@
                 "nextInChain",
                 "messageCount",
                 "messages"
-            ],
-            "WGPUComputePassDescriptor": [
-                "nextInChain",
-                "label",
-                "timestampWriteCount",
-                "timestampWrites"
             ],
             "WGPUDepthStencilState": [
                 "nextInChain",
@@ -1525,9 +1512,7 @@
                 "colorAttachmentCount",
                 "colorAttachments",
                 "depthStencilAttachment",
-                "occlusionQuerySet",
-                "timestampWriteCount",
-                "timestampWrites"
+                "occlusionQuerySet"
             ],
             "WGPUVertexState": [
                 "nextInChain",
