@@ -13,56 +13,70 @@
 using js_index_t = uint32_t;
 
 extern "C" {
-int _wasmfs_write_js_file(js_index_t index,
-                          const uint8_t* buffer,
-                          size_t length,
-                          off_t offset);
-int _wasmfs_read_js_file(js_index_t index,
+// JSImpl API (see below for overview).
+int _wasmfs_jsimpl_write(backend_t backend,
+                         js_index_t index,
                          const uint8_t* buffer,
                          size_t length,
                          off_t offset);
-int _wasmfs_get_js_file_size(js_index_t index);
-int _wasmfs_create_js_file();
-void _wasmfs_remove_js_file(js_index_t index);
+int _wasmfs_jsimpl_read(backend_t backend,
+                        js_index_t index,
+                        const uint8_t* buffer,
+                        size_t length,
+                        off_t offset);
+int _wasmfs_jsimpl_get_size(backend_t backend, js_index_t index);
+int _wasmfs_jsimpl_create(backend_t backend);
+void _wasmfs_jsimpl_remove(backend_t backend, js_index_t index);
+
+// Backends.
+void _wasmfs_init_jsfile_backend_js();
 }
+
 
 namespace wasmfs {
 
-// This class describes a file that lives in JS Memory
-class JSFile : public DataFile {
-  // This index indicates the location of the JS File in the backing JS array.
-  js_index_t index;
-
-  // JSFiles will write from a Wasm Memory buffer into the backing JS array.
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return _wasmfs_write_js_file(index, buf, len, offset);
+// A "JSImplFile" is a file that is implemented by JS code. Which particular
+// JS code handles it is indicated by a pointer to the backend. The JS code on
+// the other side connects that pointer to the actual JS code, basically adding
+// a layer of indirection that way. This allows a single C++ class here to have
+// multiple JS implementations, which makes it easy to write new JS backends
+// without C++ boilerplate.
+//
+// Each file operation in the _wasmfs_jsimpl_* APIs that we call from here take
+// the backend and a pointer to this file itself. Those allow the JS to identify
+// both the backend and the particular file. TODO: We could use dense indexes
+// instead of pointers, which cause JS to use a map and not an array.
+class JSImplFile : public DataFile {
+  js_index_t getIndex() {
+    static_assert(sizeof(this) == sizeof(js_index_t), "TODO: wasm64");
+    return this;
   }
 
-  // JSFiles will read from the backing JS array into a Wasm Memory buffer.
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    return _wasmfs_jsimpl_write(getBackend(), getIndex(), buf, len, offset);
+  }
+
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
     assert(offset + len <= getSize());
-    return _wasmfs_read_js_file(index, buf, len, offset);
+    return _wasmfs_jsimpl_read(getBackend(), getIndex(), buf, len, offset);
   }
 
   void flush() override {}
 
-  // The size of the JSFile is defined as the length of the backing JS array.
-  size_t getSize() override { return _wasmfs_get_js_file_size(index); }
+  size_t getSize() override { return _wasmfs_jsimpl_get_size(getBackend(), getIndex()); }
 
 public:
-  JSFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
-    // Create a new file in the backing JS array and store its index.
-    index = _wasmfs_create_js_file();
+  JSImplFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
+    _wasmfs_jsimpl_constructor(getBackend());
   }
 
-  // Remove the typed array file contents in the backing JS array.
-  ~JSFile() { _wasmfs_remove_js_file(index); }
+  ~JSImplFile() { _wasmfs_jsimpl_destructor(getBackend(), getIndex()); }
 };
 
+// This backend's files reside in JS Memory.
 class JSFileBackend : public Backend {
-
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<JSFile>(mode, this);
@@ -71,7 +85,9 @@ public:
 
 // This function is exposed to users to instantiate a new JSBackend.
 extern "C" backend_t wasmfs_create_js_file_backend() {
-  return wasmFS.addBackend(std::make_unique<JSFileBackend>());
+  backend_t backend = wasmFS.addBackend(std::make_unique<JSFileBackend>());
+  _wasmfs_backend_add_jsfile(backend);
+  return backend;;
 }
 
 } // namespace wasmfs

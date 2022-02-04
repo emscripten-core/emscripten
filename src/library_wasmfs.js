@@ -148,75 +148,72 @@ var WasmfsLibrary = {
     HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
   },
 
+  // Backend support. WasmFSBackends will contain a mapping of backend IDs to
+  // the JS code that implements them. This is the JS side of the JSImpl class
+  // in C++.
+  WasmFSBackends: {},
+
   // JSFile backend
 
   $wasmFS$JSMemoryFiles : [],
   $wasmFS$JSMemoryFreeList: [],
 
-  _wasmfs_write_js_file__deps: [
-    '$wasmFS$JSMemoryFiles',
-  ],
-  _wasmfs_write_js_file: function(index, buffer, length, offset) {
-    try {
-      if (!wasmFS$JSMemoryFiles[index]) {
-        // Initialize typed array on first write operation.
-        wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
-      }
-
-      if (offset + length > wasmFS$JSMemoryFiles[index].length) {
-        // Resize the typed array if the length of the write buffer exceeds its capacity.
-        var oldContents = wasmFS$JSMemoryFiles[index];
-        var newContents = new Uint8Array(offset + length);
-        newContents.set(oldContents);
-        wasmFS$JSMemoryFiles[index] = newContents;
-      }
-
-      wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
-      return 0;
-    } catch (err) {
-      return {{{ cDefine('EIO') }}};
-    }
-  },
-  _wasmfs_read_js_file__deps: [
-    '$wasmFS$JSMemoryFiles',
-  ],
-  _wasmfs_read_js_file: function(index, buffer, length, offset) {
-    try {
-      HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
-      return 0;
-    } catch (err) {
-      return {{{ cDefine('EIO') }}};
-    }
-  },
-  _wasmfs_get_js_file_size__deps: [
-    '$wasmFS$JSMemoryFiles',
-  ],
-  _wasmfs_get_js_file_size: function(index) {
-    return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
-  },
-  _wasmfs_create_js_file__deps: [
+  _wasmfs_backend_add_jsfile__deps: [
+    '$WasmFSBackends',
     '$wasmFS$JSMemoryFiles',
     '$wasmFS$JSMemoryFreeList',
   ],
-  _wasmfs_create_js_file: function() {
-    // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
-    // wasmFS$JSMemoryFiles.
-    if (wasmFS$JSMemoryFreeList.length) {
-      // Pop off the top of the free list.
-      var index = wasmFS$JSMemoryFreeList.pop();
-      return index;
-    }
-    wasmFS$JSMemoryFiles.push(null);
-    return wasmFS$JSMemoryFiles.length - 1;
-  },
-  _wasmfs_remove_js_file__deps: [
-    '$wasmFS$JSMemoryFiles',
-    '$wasmFS$JSMemoryFreeList',
-  ],
-  _wasmfs_remove_js_file: function(index) {
-    wasmFS$JSMemoryFiles[index] = null;
-    // Add the index to the free list.
-    wasmFS$JSMemoryFreeList.push(index);
+  _wasmfs_backend_add_jsfile: function(backend) {
+    WasmFSBackends[backend] = {
+      constructor: function() {
+        // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
+        // wasmFS$JSMemoryFiles.
+        if (wasmFS$JSMemoryFreeList.length) {
+          // Pop off the top of the free list.
+          var index = wasmFS$JSMemoryFreeList.pop();
+          return index;
+        }
+        wasmFS$JSMemoryFiles.push(null);
+        return wasmFS$JSMemoryFiles.length - 1;
+      },
+      destructor: function(index) {
+        wasmFS$JSMemoryFiles[index] = null;
+        // Add the index to the free list.
+        wasmFS$JSMemoryFreeList.push(index);
+      },
+      write: function(index, buffer, length, offset) {
+        try {
+          if (!wasmFS$JSMemoryFiles[index]) {
+            // Initialize typed array on first write operation.
+            wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
+          }
+
+          if (offset + length > wasmFS$JSMemoryFiles[index].length) {
+            // Resize the typed array if the length of the write buffer exceeds its capacity.
+            var oldContents = wasmFS$JSMemoryFiles[index];
+            var newContents = new Uint8Array(offset + length);
+            newContents.set(oldContents);
+            wasmFS$JSMemoryFiles[index] = newContents;
+          }
+
+          wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+          return 0;
+        } catch (err) {
+          return {{{ cDefine('EIO') }}};
+        }
+      },
+      read: function(index, buffer, length, offset) {
+        try {
+          HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+          return 0;
+        } catch (err) {
+          return {{{ cDefine('EIO') }}};
+        }
+      },
+      getSize: function(index) {
+        return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
+      },
+    };
   },
 }
 
