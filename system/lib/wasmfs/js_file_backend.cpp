@@ -1,4 +1,4 @@
-// Copyright 2022 The Emscripten Authors.  All rights reserved.
+// Copyright 2021 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
@@ -19,15 +19,8 @@ void _wasmfs_backend_add_js_file(wasmfs::backend_t);
 
 namespace wasmfs {
 
-class JSFileBackend : public Backend {
-public:
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<JSImplFile>(mode, this);
-  }
-};
-
 extern "C" backend_t wasmfs_create_js_file_backend() {
-  backend_t backend = wasmFS.addBackend(std::make_unique<JSFileBackend>());
+  backend_t backend = wasmFS.addBackend(std::make_unique<JSImplBackend>());
   _wasmfs_backend_add_js_file(backend);
   return backend;;
 }

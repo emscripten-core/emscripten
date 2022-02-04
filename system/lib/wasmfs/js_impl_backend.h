@@ -1,4 +1,4 @@
-// Copyright 2021 The Emscripten Authors.  All rights reserved.
+// Copyright 2022 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
@@ -13,29 +13,28 @@
 #include "wasmfs.h"
 
 //
-// A JS Impl backend has files that are implemented by JS code. Which particular
-// JS code handles it is indicated by a pointer to the backend. The JS code on
-// the other side connects that pointer to the actual JS code, basically adding
-// a layer of indirection that way. This allows a single C++ class here to have
-// multiple JS implementations, which makes it easy to write new JS backends
-// without C++ boilerplate.
+// A JS Impl backend has files that are implemented by JS code. Each backend
+// object in C++ can call JS to define the proper JS code on that side, and we
+// keep a mapping of C++ pointer of backend => JS code in JS. Then, when we do
+// something like a read from a JSImplFile we pass it the backend, find the
+// proper code to run, and run it. This adds a layer of indirection at the JS
+// level that makes it easy to write new backends in 99% JS.
 //
 // Each file operation in the _wasmfs_jsimpl_* APIs that we call from here take
 // the backend and a pointer to this file itself. Those allow the JS to identify
 // both the backend and the particular file. TODO: We could use dense indexes
-// instead of pointers, which cause JS to use a map and not an array.
+// instead of pointers, and use an array instead of a map.
 //
 // To write a new backend in JS, you basically do the following:
 //
 //  1. Add a declaration of the C function to create the backend in the
 //     "backend creation" section of emscripten/wasmfs.h.
-//  2. Add a cpp file with the backend, that creates JSImplFile instances for
-//     its files.
-//  3. In the implementation of the C function from 1, create a backend and also
-//     call a JS method to set up the JS side.
-//  4. Write a new JS library starting with the implementation of the JS method
-//     just mentioned, which should set wasmFS$backends[backend] with a JS
-//     object containing the hooks to read and write and so forth.
+//  2. Add a cpp file for the new backend, and implement the C function from 1,
+//     which should create it on both the C++ (using JSImplBackend) and JS
+//     sides.
+// 3. Write a new JS library, and add the implementation of the JS method just
+//    mentioned, which should set up the mapping from the C++ backend object's
+//    address to the JS code containing the hooks to read and write etc.
 //
 // For a simple example, see js_file_backend.cpp and library_wasmfs_js_file.js
 //
@@ -94,6 +93,13 @@ public:
   }
 
   ~JSImplFile() { _wasmfs_jsimpl_destructor(getBackendIndex(), getFileIndex()); }
+};
+
+class JSFileBackend : public Backend {
+public:
+  std::shared_ptr<DataFile> createFile(mode_t mode) override {
+    return std::make_shared<JSImplFile>(mode, this);
+  }
 };
 
 } // namespace wasmfs
