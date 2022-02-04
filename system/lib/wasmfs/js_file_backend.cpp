@@ -10,6 +10,9 @@
 #include "backend.h"
 #include "wasmfs.h"
 
+// TODO rename this file
+// TODO add docs for "how to maek a backend"
+
 using js_index_t = uint32_t;
 
 extern "C" {
@@ -91,7 +94,7 @@ public:
 // This function is exposed to users to instantiate a new JSBackend.
 extern "C" backend_t wasmfs_create_js_file_backend() {
   backend_t backend = wasmFS.addBackend(std::make_unique<JSFileBackend>());
-  _wasmfs_backend_add_jsfile(js_index_t(backend));
+  _wasmfs_backend_add_jsfile(js_index_t(backend)); // helper to convert with above?
   return backend;;
 }
 

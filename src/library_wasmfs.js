@@ -148,44 +148,44 @@ var WasmfsLibrary = {
     HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
   },
 
-  // Backend support. WasmFSBackends will contain a mapping of backend IDs to
+  // Backend support. wasmFS$backends will contain a mapping of backend IDs to
   // the JS code that implements them. This is the JS side of the JSImpl class
   // in C++, together with the js_impl calls defined right after it.
-  WasmFSBackends: {},
+  $wasmFS$backends: {},
 
   _wasmfs_jsimpl_constructor: function(backend, file) {
 #if ASSERTIONS
-    assert(WasmFSBackends[backend]);
+    assert(wasmFS$backends[backend]);
 #endif
-    return WasmFSBackends[backend].constructor(file);
+    return wasmFS$backends[backend].constructor(file);
   },
 
   _wasmfs_jsimpl_destructor: function(backend, file) {
 #if ASSERTIONS
-    assert(WasmFSBackends[backend]);
+    assert(wasmFS$backends[backend]);
 #endif
-    return WasmFSBackends[backend].destructor(file);
+    return wasmFS$backends[backend].destructor(file);
   },
 
   _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
-    assert(WasmFSBackends[backend]);
+    assert(wasmFS$backends[backend]);
 #endif
-    return WasmFSBackends[backend].write(file, buffer, length, offset);
+    return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
   _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
-    assert(WasmFSBackends[backend]);
+    assert(wasmFS$backends[backend]);
 #endif
-    return WasmFSBackends[backend].read(file, buffer, length, offset);
+    return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 
   _wasmfs_jsimpl_get_size: function(backend, file) {
 #if ASSERTIONS
-    assert(WasmFSBackends[backend]);
+    assert(wasmFS$backends[backend]);
 #endif
-    return WasmFSBackends[backend].getSize(file);
+    return wasmFS$backends[backend].getSize(file);
   },
 
   // JSFile backend
@@ -193,11 +193,11 @@ var WasmfsLibrary = {
   $wasmFS$JSMemoryFiles: {},
 
   _wasmfs_backend_add_jsfile__deps: [
-    '$WasmFSBackends',
+    '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
   ],
   _wasmfs_backend_add_jsfile: function(backend) {
-    WasmFSBackends[backend] = {
+    wasmFS$backends[backend] = {
       constructor: function(file) {},
       destructor: function(file) {},
       write: function(file, buffer, length, offset) {
