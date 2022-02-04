@@ -1827,13 +1827,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
     ]
 
   if settings.STACK_OVERFLOW_CHECK:
-    # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
-    # of the stack is.
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_end', 'emscripten_stack_get_free']
-    if settings.STACK_OVERFLOW_CHECK == 2:
-      # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
-      # stack.
-      settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base']
+    settings.REQUIRED_EXPORTS += [
+      'emscripten_stack_get_end',
+      'emscripten_stack_get_free',
+      'emscripten_stack_get_base'
+    ]
 
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
