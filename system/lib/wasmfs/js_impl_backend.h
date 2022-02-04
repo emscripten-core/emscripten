@@ -12,6 +12,7 @@
 #include "backend.h"
 #include "wasmfs.h"
 
+//
 // A JS Impl backend has files that are implemented by JS code. Which particular
 // JS code handles it is indicated by a pointer to the backend. The JS code on
 // the other side connects that pointer to the actual JS code, basically adding
@@ -25,8 +26,19 @@
 // instead of pointers, which cause JS to use a map and not an array.
 //
 // To write a new backend in JS, you basically do the following:
-
-// TODO add docs for "how to maek a backend"
+//
+//  1. Add a declaration of the C function to create the backend in the
+//     "backend creation" section of emscripten/wasmfs.h.
+//  2. Add a cpp file with the backend, that creates JSImplFile instances for
+//     its files.
+//  3. In the implementation of the C function from 1, create a backend and also
+//     call a JS method to set up the JS side.
+//  4. Write a new JS library starting with the implementation of the JS method
+//     just mentioned, which should set wasmFS$backends[backend] with a JS
+//     object containing the hooks to read and write and so forth.
+//
+// For a simple example, see js_file_backend.cpp and library_wasmfs_js_file.js
+//
 
 using js_index_t = uint32_t;
 
