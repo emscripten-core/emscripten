@@ -100,7 +100,7 @@ public:
   }
 };
 
-class JSFileBackend : public Backend {
+class JSImplBackend : public Backend {
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<JSImplFile>(mode, this);
