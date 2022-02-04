@@ -1,13 +1,9 @@
 var WasmfsLibrary = {
-  $wasmFS$JSMemoryFiles : [],
-  $wasmFS$JSMemoryFreeList: [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
   $FS__deps: [
     '$wasmFS$preloadedFiles',
     '$wasmFS$preloadedDirs',
-    '$wasmFS$JSMemoryFiles',
-    '$wasmFS$JSMemoryFreeList',
     '$asyncLoad',
 #if !MINIMAL_RUNTIME
     // TODO: when preload-plugins are not used, we do not need this.
@@ -145,6 +141,21 @@ var WasmfsLibrary = {
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
+  _wasmfs_get_preloaded_file_size: function(index) {
+    return wasmFS$preloadedFiles[index].fileData.length;
+  },
+  _wasmfs_copy_preloaded_file_data: function(index, buffer) {
+    HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
+  },
+
+  // JSFile backend
+
+  $wasmFS$JSMemoryFiles : [],
+  $wasmFS$JSMemoryFreeList: [],
+
+  _wasmfs_write_js_file__deps: [
+    '$wasmFS$JSMemoryFiles',
+  ],
   _wasmfs_write_js_file: function(index, buffer, length, offset) {
     try {
       if (!wasmFS$JSMemoryFiles[index]) {
@@ -166,6 +177,9 @@ var WasmfsLibrary = {
       return {{{ cDefine('EIO') }}};
     }
   },
+  _wasmfs_read_js_file__deps: [
+    '$wasmFS$JSMemoryFiles',
+  ],
   _wasmfs_read_js_file: function(index, buffer, length, offset) {
     try {
       HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
@@ -174,9 +188,16 @@ var WasmfsLibrary = {
       return {{{ cDefine('EIO') }}};
     }
   },
+  _wasmfs_get_js_file_size__deps: [
+    '$wasmFS$JSMemoryFiles',
+  ],
   _wasmfs_get_js_file_size: function(index) {
     return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
   },
+  _wasmfs_create_js_file__deps: [
+    '$wasmFS$JSMemoryFiles',
+    '$wasmFS$JSMemoryFreeList',
+  ],
   _wasmfs_create_js_file: function() {
     // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
     // wasmFS$JSMemoryFiles.
@@ -188,16 +209,14 @@ var WasmfsLibrary = {
     wasmFS$JSMemoryFiles.push(null);
     return wasmFS$JSMemoryFiles.length - 1;
   },
+  _wasmfs_remove_js_file__deps: [
+    '$wasmFS$JSMemoryFiles',
+    '$wasmFS$JSMemoryFreeList',
+  ],
   _wasmfs_remove_js_file: function(index) {
     wasmFS$JSMemoryFiles[index] = null;
     // Add the index to the free list.
     wasmFS$JSMemoryFreeList.push(index);
-  },
-  _wasmfs_get_preloaded_file_size: function(index) {
-    return wasmFS$preloadedFiles[index].fileData.length;
-  },
-  _wasmfs_copy_preloaded_file_data: function(index, buffer) {
-    HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
   },
 }
 
