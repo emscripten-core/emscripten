@@ -87,3 +87,27 @@ var Buffer = function(var_args) {};
  * @nosideeffects
  */
 Buffer.from = function(arrayBuffer, byteOffset, length) {};
+
+/**
+ * @param {number} size
+ * @param {(string|!Buffer|number)=} fill
+ * @param {string=} encoding
+ * @return {!Buffer}
+ */
+Buffer.alloc = function(size, fill, encoding) {};
+
+/**
+ * @param {number=} start
+ * @param {number=} end
+ * @return {Buffer}
+ * @nosideeffects
+ */
+Buffer.prototype.slice = function(start, end) {};
+
+/**
+ * @param {string=} encoding
+ * @param {number=} start
+ * @param {number=} end
+ * @nosideeffects
+ */
+Buffer.prototype.toString = function(encoding, start, end) {};
