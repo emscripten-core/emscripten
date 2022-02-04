@@ -69,7 +69,7 @@ class JSImplFile : public DataFile {
 
 public:
   JSImplFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
-    _wasmfs_jsimpl_constructor(getBackend());
+    _wasmfs_jsimpl_constructor(getBackend(), getIndex());
   }
 
   ~JSImplFile() { _wasmfs_jsimpl_destructor(getBackend(), getIndex()); }

@@ -150,71 +150,92 @@ var WasmfsLibrary = {
 
   // Backend support. WasmFSBackends will contain a mapping of backend IDs to
   // the JS code that implements them. This is the JS side of the JSImpl class
-  // in C++.
+  // in C++, together with the js_impl calls defined right after it.
   WasmFSBackends: {},
+
+  _wasmfs_jsimpl_constructor: function(backend, file) {
+#if ASSERTIONS
+    assert(WasmFSBackends[backend]);
+#endif
+    return WasmFSBackends[backend].constructor(file);
+  },
+
+  _wasmfs_jsimpl_destructor: function(backend, file) {
+#if ASSERTIONS
+    assert(WasmFSBackends[backend]);
+#endif
+    return WasmFSBackends[backend].destructor(file);
+  },
+
+  _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
+#if ASSERTIONS
+    assert(WasmFSBackends[backend]);
+#endif
+    return WasmFSBackends[backend].write(file, buffer, length, offset);
+  },
+
+  _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
+#if ASSERTIONS
+    assert(WasmFSBackends[backend]);
+#endif
+    return WasmFSBackends[backend].read(file, buffer, length, offset);
+  },
+
+  _wasmfs_jsimpl_get_size: function(backend, file) {
+#if ASSERTIONS
+    assert(WasmFSBackends[backend]);
+#endif
+    return WasmFSBackends[backend].getSize(file);
+  },
 
   // JSFile backend
 
-  $wasmFS$JSMemoryFiles : [],
-  $wasmFS$JSMemoryFreeList: [],
+  $wasmFS$JSMemoryFiles : {},
 
   _wasmfs_backend_add_jsfile__deps: [
     '$WasmFSBackends',
     '$wasmFS$JSMemoryFiles',
-    '$wasmFS$JSMemoryFreeList',
   ],
   _wasmfs_backend_add_jsfile: function(backend) {
     WasmFSBackends[backend] = {
-      constructor: function() {
-        // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
-        // wasmFS$JSMemoryFiles.
-        if (wasmFS$JSMemoryFreeList.length) {
-          // Pop off the top of the free list.
-          var index = wasmFS$JSMemoryFreeList.pop();
-          return index;
-        }
-        wasmFS$JSMemoryFiles.push(null);
-        return wasmFS$JSMemoryFiles.length - 1;
+      constructor: function(file) {},
       },
-      destructor: function(index) {
-        wasmFS$JSMemoryFiles[index] = null;
-        // Add the index to the free list.
-        wasmFS$JSMemoryFreeList.push(index);
-      },
-      write: function(index, buffer, length, offset) {
+      destructor: function(file) {},
+      write: function(file, buffer, length, offset) {
         try {
-          if (!wasmFS$JSMemoryFiles[index]) {
+          if (!wasmFS$JSMemoryFiles[file]) {
             // Initialize typed array on first write operation.
-            wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
+            wasmFS$JSMemoryFiles[file] = new Uint8Array(offset + length);
           }
 
-          if (offset + length > wasmFS$JSMemoryFiles[index].length) {
+          if (offset + length > wasmFS$JSMemoryFiles[file].length) {
             // Resize the typed array if the length of the write buffer exceeds its capacity.
-            var oldContents = wasmFS$JSMemoryFiles[index];
+            var oldContents = wasmFS$JSMemoryFiles[file];
             var newContents = new Uint8Array(offset + length);
             newContents.set(oldContents);
-            wasmFS$JSMemoryFiles[index] = newContents;
+            wasmFS$JSMemoryFiles[file] = newContents;
           }
 
-          wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+          wasmFS$JSMemoryFiles[file].set(HEAPU8.subarray(buffer, buffer + length), offset);
           return 0;
         } catch (err) {
           return {{{ cDefine('EIO') }}};
         }
       },
-      read: function(index, buffer, length, offset) {
+      read: function(file, buffer, length, offset) {
         try {
-          HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+          HEAPU8.set(wasmFS$JSMemoryFiles[file].subarray(offset, offset + length), buffer);
           return 0;
         } catch (err) {
           return {{{ cDefine('EIO') }}};
         }
       },
-      getSize: function(index) {
-        return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
+      getSize: function(file) {
+        return wasmFS$JSMemoryFiles[file] ? wasmFS$JSMemoryFiles[file].length : 0;
       },
     };
   },
+
 }
 
 mergeInto(LibraryManager.library, WasmfsLibrary);
