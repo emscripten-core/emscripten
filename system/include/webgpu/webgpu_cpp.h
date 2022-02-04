@@ -258,6 +258,7 @@ namespace wgpu {
 
     enum class FeatureName : uint32_t {
         Undefined = 0x00000000,
+        DepthClipControl = 0x00000001,
         Depth24UnormStencil8 = 0x00000002,
         Depth32FloatStencil8 = 0x00000003,
         TimestampQuery = 0x00000004,

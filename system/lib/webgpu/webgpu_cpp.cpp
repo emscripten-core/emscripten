@@ -174,6 +174,7 @@ namespace wgpu {
     static_assert(alignof(FeatureName) == alignof(WGPUFeatureName), "alignof mismatch for FeatureName");
 
     static_assert(static_cast<uint32_t>(FeatureName::Undefined) == WGPUFeatureName_Undefined, "value mismatch for FeatureName::Undefined");
+    static_assert(static_cast<uint32_t>(FeatureName::DepthClipControl) == WGPUFeatureName_DepthClipControl, "value mismatch for FeatureName::DepthClipControl");
     static_assert(static_cast<uint32_t>(FeatureName::Depth24UnormStencil8) == WGPUFeatureName_Depth24UnormStencil8, "value mismatch for FeatureName::Depth24UnormStencil8");
     static_assert(static_cast<uint32_t>(FeatureName::Depth32FloatStencil8) == WGPUFeatureName_Depth32FloatStencil8, "value mismatch for FeatureName::Depth32FloatStencil8");
     static_assert(static_cast<uint32_t>(FeatureName::TimestampQuery) == WGPUFeatureName_TimestampQuery, "value mismatch for FeatureName::TimestampQuery");

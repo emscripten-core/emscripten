@@ -368,6 +368,7 @@ var LibraryWebGPU = {
     ],
     FeatureName: {
       0: undefined,
+      1: 'depth-clip-control',
       2: 'depth24unorm-stencil8',
       3: 'depth32float-stencil8',
       4: 'timestamp-query',
