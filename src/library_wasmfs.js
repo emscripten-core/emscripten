@@ -190,7 +190,7 @@ var WasmfsLibrary = {
 
   // JSFile backend
 
-  $wasmFS$JSMemoryFiles : {},
+  $wasmFS$JSMemoryFiles: {},
 
   _wasmfs_backend_add_jsfile__deps: [
     '$WasmFSBackends',
@@ -199,7 +199,6 @@ var WasmfsLibrary = {
   _wasmfs_backend_add_jsfile: function(backend) {
     WasmFSBackends[backend] = {
       constructor: function(file) {},
-      },
       destructor: function(file) {},
       write: function(file, buffer, length, offset) {
         try {
