@@ -4,14 +4,13 @@
 // found in the LICENSE file.
 
 // This file defines the JS file backend and JS file of the new file system.
-// Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "backend.h"
 #include "js_impl_backend.h"
 #include "wasmfs.h"
 
-// See library_wasmfs_js_file.
+// See library_wasmfs_js_file.js
 
 extern "C" {
 void _wasmfs_backend_add_js_file(wasmfs::backend_t);
@@ -23,7 +22,6 @@ extern "C" backend_t wasmfs_create_js_file_backend() {
   backend_t backend = wasmFS.addBackend(std::make_unique<JSImplBackend>());
   _wasmfs_backend_add_js_file(backend);
   return backend;
-  ;
 }
 
 } // namespace wasmfs
