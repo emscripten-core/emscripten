@@ -6,8 +6,8 @@
 import os
 import logging
 
-TAG = '3.2.0'
-HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
+VERSION = '3.2.0'
+HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
 
 deps = ['freetype']
 
@@ -79,14 +79,16 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
-                      TAG + '/harfbuzz-' + TAG + '.tar.xz', 'harfbuzz-' + TAG, sha512hash=HASH)
+  # Harfbuzz only published `.xz` packages, but not all python builds support
+  # unpacking lzma archives, so we mirror a `.gz` version:
+  # See https://github.com/emscripten-core/emsdk/issues/982
+  ports.fetch_project('harfbuzz', 'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-' + VERSION + '.tar.gz', 'harfbuzz-' + VERSION, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')
     ports.clear_project_build('harfbuzz')
 
-    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
     build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
     freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
