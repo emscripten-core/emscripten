@@ -3,11 +3,11 @@ mergeInto(LibraryManager.library, {
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
 
-  _wasmfs_backend_add_jsfile__deps: [
+  _wasmfs_backend_add_js_file__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
   ],
-  _wasmfs_backend_add_jsfile: function(backend) {
+  _wasmfs_backend_add_js_file: function(backend) {
     wasmFS$backends[backend] = {
       constructor: function(file) {},
       destructor: function(file) {},
