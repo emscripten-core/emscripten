@@ -23,8 +23,6 @@ from tools.shared import check_call
 LLVM_SYMBOLIZER = os.path.expanduser(
     shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
 
-VERBOSE_DEBUG = False
-
 
 class Error(BaseException):
   pass
@@ -48,12 +46,10 @@ def symbolize_address_dwarf(module, address):
   vma_adjust = get_codesec_offset(module)
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
-  if VERBOSE_DEBUG:
-    print(cmd)
   check_call(cmd)
 
 
-def get_sourceMappingURLSection(module):
+def get_sourceMappingURL_section(module):
   for sec in module.sections():
     if sec.name == "sourceMappingURL":
       return sec
@@ -76,7 +72,7 @@ class WasmSourceMap(object):
   def parse(self, filename):
     with open(filename) as f:
       source_map_json = json.loads(f.read())
-      if VERBOSE_DEBUG:
+      if shared.DEBUG:
         print(source_map_json)
 
     self.version = source_map_json['version']
@@ -167,17 +163,17 @@ def symbolize_address_sourcemap(module, address, force_file):
   URL = force_file
   if not URL:
     # If a sourcemap file is not forced, read it from the wasm module
-    section = get_sourceMappingURLSection(module)
+    section = get_sourceMappingURL_section(module)
     assert section
     module.seek(section.offset)
     # TODO: support stripping/replacing a prefix from the URL
     URL = module.readString()
 
-  if VERBOSE_DEBUG:
+  if shared.DEBUG:
     print(URL)
   sm = WasmSourceMap()
   sm.parse(URL)
-  if VERBOSE_DEBUG:
+  if shared.DEBUG:
     csoff = get_codesec_offset(module)
     print(sm.mapping)
     # Print with section offsets to easily compare against dwarf
@@ -200,7 +196,7 @@ def main(args):
     symbolize_address_dwarf(module, address)
     symbolized += 1
 
-  if ((get_sourceMappingURLSection(module) and not args.source) or
+  if ((get_sourceMappingURL_section(module) and not args.source) or
      'sourcemap' in args.source):
     symbolize_address_sourcemap(module, address, args.file)
     symbolized += 1
@@ -211,9 +207,10 @@ def main(args):
                 " I don't know how to symbolize this file yet")
 
 
-if __name__ == '__main__':
+def get_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', help='Force debug info source type')
+  parser.add_argument('-s', '--source', help='Force debug info source type',
+                      default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')
   parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
@@ -225,12 +222,16 @@ if __name__ == '__main__':
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()
   if args.verbose:
-    VERBOSE_DEBUG = True
+    shared.PRINT_STAGES = 1
+    shared.DEBUG = True
+  return args
 
+
+if __name__ == '__main__':
   print('Warning: the command-line and output format of this tool are not '
         'finalized yet', file=sys.stderr)
   try:
-    rv = main(args)
+    rv = main(get_args())
   except (Error, webassembly.InvalidWasmError, OSError) as e:
     print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
     rv = 1
