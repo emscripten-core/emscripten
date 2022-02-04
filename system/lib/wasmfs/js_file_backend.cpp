@@ -22,7 +22,8 @@ namespace wasmfs {
 extern "C" backend_t wasmfs_create_js_file_backend() {
   backend_t backend = wasmFS.addBackend(std::make_unique<JSImplBackend>());
   _wasmfs_backend_add_js_file(backend);
-  return backend;;
+  return backend;
+  ;
 }
 
 } // namespace wasmfs
