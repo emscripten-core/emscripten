@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
         return callback("Unable to connect to IndexedDB");
       }
       req.onupgradeneeded = (e) => {
-        var db = e.target.result;
+        var db = /** @type {IDBDatabase} */ (e.target.result);
         var transaction = e.target.transaction;
 
         var fileStore;
@@ -68,7 +68,7 @@ mergeInto(LibraryManager.library, {
         }
       };
       req.onsuccess = () => {
-        db = req.result;
+        db = /** @type {IDBDatabase} */ (req.result);
 
         // add to the cache
         IDBFS.dbs[name] = db;

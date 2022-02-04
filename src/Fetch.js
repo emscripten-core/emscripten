@@ -32,7 +32,7 @@ var Fetch = {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB upgrade needed. Clearing database.');
 #endif
-      var db = event.target.result;
+      var db = /** @type {IDBDatabase} */ (event.target.result);
       if (db.objectStoreNames.contains('FILES')) {
         db.deleteObjectStore('FILES');
       }
@@ -191,7 +191,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
   }
 }
 
-function fetchCacheData(db, fetch, data, onsuccess, onerror) {
+function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     console.error('fetch: IndexedDB not available!');
