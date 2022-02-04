@@ -7917,14 +7917,24 @@ end
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
   def test_closure_full_js_library(self):
-    # test for closure errors in the entire JS library
+    # Test for closure errors and warnings in the entire JS library.
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
 
-    # USE_WEBGPU is specified here to make sure that it's closure-safe.
-    # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-sINCLUDE_FULL_LIBRARY', '-sUSE_WEBGPU', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sCLOSURE_WARNINGS=error',
+                      '-sINCLUDE_FULL_LIBRARY',
+                      '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+
+  def test_closure_webgpu(self):
+    # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sINCLUDE_FULL_LIBRARY',
+                      '-sUSE_WEBGPU',
+                      '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):

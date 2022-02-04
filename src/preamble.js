@@ -625,6 +625,13 @@ function abort(what) {
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+
+  // Suppress closure compiler warning here. Closure compiler's builtin extern
+  // defintion for WebAssembly.RuntimeError claims it takes no arguments even
+  // though it can.
+  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
+
+  /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
@@ -1209,6 +1216,11 @@ function createWasm() {
 #endif
         typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+        // Suppress closure warning here since the upstream definition for
+        // instantiateStreaming only allows Promise<Repsponse> rather than
+        // an actual Response.
+        // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
+        /** @suppress {checkTypes} */
         var result = WebAssembly.instantiateStreaming(response, info);
 
 #if USE_OFFSET_CONVERTER

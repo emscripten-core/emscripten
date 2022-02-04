@@ -21,6 +21,7 @@ var LibraryExceptions = {
   // purpose, it references the primary exception.
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
+  $ExceptionInfo__docs: '/** @constructor */',
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
@@ -96,6 +97,11 @@ var LibraryExceptions = {
     };
   },
 
+  $CatchInfo__docs: `
+  /**
+   * @constructor
+   * @param {number=} ptr
+   */`,
   $CatchInfo__deps: ['$ExceptionInfo', '__cxa_is_pointer_type'],
   // This native structure is returned from __cxa_find_matching_catch, and serves as catching
   // context, i.e. stores information required to proceed with a specific selected catch. It stores
