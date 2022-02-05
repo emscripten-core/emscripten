@@ -9,8 +9,10 @@ var WasmfsLibrary = {
     '$wasmFS$JSMemoryFiles',
     '$wasmFS$JSMemoryFreeList',
     '$asyncLoad',
+#if !MINIMAL_RUNTIME
     // TODO: when preload-plugins are not used, we do not need this.
     '$Browser',
+#endif
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -27,12 +29,14 @@ var WasmfsLibrary = {
           if (onload) onload();
           removeRunDependency(dep);
         }
+#if !MINIMAL_RUNTIME
         if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
           return;
         }
+#endif
         finish(byteArray);
       }
       addRunDependency(dep);

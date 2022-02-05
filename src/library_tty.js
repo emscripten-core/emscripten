@@ -112,7 +112,7 @@ mergeInto(LibraryManager.library, {
             var bytesRead = 0;
 
             try {
-              bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, null);
+              bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, -1);
             } catch(e) {
               // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
               // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.

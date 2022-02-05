@@ -364,8 +364,8 @@ function checkUnflushedContent() {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
     if (flush) flush();
-#elif hasExportedFunction('_fflush')
-    _fflush(0);
+#elif hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
@@ -397,11 +397,13 @@ function checkUnflushedContent() {
 function exit(status, implicit) {
   EXITSTATUS = status;
 
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-  checkUnflushedContent();
-#endif // EXIT_RUNTIME
-#endif // ASSERTIONS
+#if ASSERTIONS && !EXIT_RUNTIME
+  // Skip this check if the runtime is being kept alive deliberately.
+  // For example if `exit_with_live_runtime` is called.
+  if (!runtimeKeepaliveCounter) {
+    checkUnflushedContent();
+  }
+#endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
   if (!implicit) {
@@ -446,6 +448,9 @@ function exit(status, implicit) {
 }
 
 function procExit(code) {
+#if RUNTIME_DEBUG
+  err('procExit: ' + code);
+#endif
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
 #if USE_PTHREADS
@@ -481,20 +486,6 @@ if (Module['noInitialRun']) shouldRunNow = false;
 #endif
 
 #endif // HAS_MAIN
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // The default behaviour for pthreads is always to exit once they return
-  // from their entry point (or call pthread_exit).  If we set noExitRuntime
-  // to true here on pthreads they would never complete and attempt to
-  // pthread_join to them would block forever.
-  // pthreads can still choose to set `noExitRuntime` explicitly, or
-  // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-  // their main function.  See comment in src/worker.js for more.
-  noExitRuntime = false;
-  PThread.initWorker();
-}
-#endif
 
 run();
 

@@ -140,21 +140,6 @@ class other(RunnerCore):
   def do_other_test(self, testname, emcc_args=[], **kwargs):
     self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
 
-  # Another utility to run a test in this suite. This receives a source file
-  # to compile, with optional compiler and execution flags.
-  # Output can be checked by seeing if literals are contained, and that a list
-  # of regexes match. The return code can also be checked.
-  def do_smart_test(self, source, literals=[], engine=None, regexes=[],
-                    emcc_args=[], run_args=[], assert_returncode=0):
-    self.run_process([compiler_for(source), source] + emcc_args)
-    seen = self.run_js('a.out.js', engine=engine, args=run_args, assert_returncode=assert_returncode) + '\n'
-
-    for literal in literals:
-      self.assertContained([literal], seen)
-
-    for regex in regexes:
-      self.assertTrue(re.search(regex, seen), 'Expected regex "%s" to match on:\n%s' % (regex, seen))
-
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
     output = []
@@ -1593,9 +1578,9 @@ int f() {
       }
       ''')
 
-    self.do_smart_test(
+    self.do_runf(
       'main.cpp',
-      ['0123456789'],
+      '0123456789',
       emcc_args=[
         '-sEXIT_RUNTIME=1',
         '-sMAIN_MODULE=1',
@@ -1700,9 +1685,9 @@ int f() {
       }
       ''')
 
-    self.do_smart_test(
+    self.do_runf(
       'main.cpp',
-      ['123'],
+      '123',
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
@@ -3578,16 +3563,21 @@ int main(int argc, char **argv) {
     # check we warn if there is unflushed info
     create_file('code.c', r'''
 #include <stdio.h>
+#include <emscripten/emscripten.h>
 int main(int argc, char **argv) {
   printf("hello\n");
   printf("world"); // no newline, not flushed
 #if FLUSH
   printf("\n");
 #endif
+#if KEEPALIVE
+  emscripten_exit_with_live_runtime();
+#endif
 }
 ''')
     create_file('code.cpp', r'''
 #include <iostream>
+#include <emscripten/emscripten.h>
 int main() {
   using namespace std;
   cout << "hello" << std::endl;
@@ -3595,23 +3585,43 @@ int main() {
 #if FLUSH
   std::cout << std::endl;
 #endif
+#if KEEPALIVE
+  emscripten_exit_with_live_runtime();
+#endif
 }
 ''')
-    for compiler, src in [(EMCC, 'code.c'), (EMXX, 'code.cpp')]:
+    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+
+    def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
+      if cxx:
+        cmd = [EMXX, 'code.cpp']
+      else:
+        cmd = [EMCC, 'code.c']
+      print('%s: no_exit=%d assertions=%d flush=%d keepalive=%d filesystem=%d' % (cmd[1], no_exit, assertions, flush, keepalive, filesystem))
+      cmd += ['-sEXIT_RUNTIME=%d' % (1 - no_exit), '-sASSERTIONS=%d' % assertions]
+      if flush:
+        cmd += ['-DFLUSH']
+      if keepalive:
+        cmd += ['-DKEEPALIVE']
+      if not filesystem:
+        cmd += ['-sNO_FILESYSTEM']
+      self.run_process(cmd)
+      output = self.run_js('a.out.js')
+      exit = 1 - no_exit
+      self.assertContained('hello', output)
+      self.assertContainedIf('world', output, exit or flush)
+      self.assertContainedIf(warning, output, no_exit and assertions and not flush and not keepalive)
+
+    # Run just one test with KEEPALIVE set.  In this case we don't expect to see any kind
+    # of warning becasue we are explictly requesting the runtime stay alive for later use.
+    test(cxx=0, no_exit=1, assertions=1, keepalive=1)
+    test(cxx=0, no_exit=1, assertions=1, filesystem=0)
+
+    for cxx in [0, 1]:
       for no_exit in [0, 1]:
         for assertions in [0, 1]:
           for flush in [0, 1]:
-            # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
-            print(src, no_exit, assertions, flush)
-            cmd = [compiler, src, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-sASSERTIONS=%d' % assertions]
-            if flush:
-              cmd += ['-DFLUSH']
-            self.run_process(cmd)
-            output = self.run_js('a.out.js')
-            exit = 1 - no_exit
-            self.assertContained('hello', output)
-            assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
-            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
+            test(cxx, no_exit, assertions, flush)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -4382,19 +4392,20 @@ dir
   def test_emversion(self):
     create_file('src.cpp', r'''
       #include <stdio.h>
+      #include <emscripten/version.h>
       int main() {
         printf("major: %d\n", __EMSCRIPTEN_major__);
         printf("minor: %d\n", __EMSCRIPTEN_minor__);
         printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
       }
     ''')
-    self.run_process([EMXX, 'src.cpp'])
     expected = '''\
 major: %d
 minor: %d
 tiny: %d
 ''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY)
-    self.assertContained(expected, self.run_js('a.out.js'))
+    self.do_runf('src.cpp', expected)
+    self.do_runf('src.cpp', expected, emcc_args=['-sSTRICT'])
 
   def test_libc_files_without_syscalls(self):
     # a program which includes FS due to libc js library support, but has no syscalls,
@@ -7906,24 +7917,37 @@ end
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
   def test_closure_full_js_library(self):
-    # test for closure errors in the entire JS library
+    # Test for closure errors and warnings in the entire JS library.
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sCLOSURE_WARNINGS=error',
+                      '-sINCLUDE_FULL_LIBRARY'])
 
-    # USE_WEBGPU is specified here to make sure that it's closure-safe.
-    # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-sINCLUDE_FULL_LIBRARY', '-sUSE_WEBGPU', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+  def test_closure_webgpu(self):
+    # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sINCLUDE_FULL_LIBRARY',
+                      '-sUSE_WEBGPU'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
     shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '--closure=1',
-                      '--pre-js', test_file('test_closure_externs_pre_js.js'),
-                      '--closure-args', '--externs "local_externs.js"'])
+    test_cases = (
+      ['--closure-args', '--externs "local_externs.js"'],
+      ['--closure-args', '--externs=local_externs.js'],
+      ['--closure-args=--externs=local_externs.js'],
+    )
+    for args in test_cases:
+      self.run_process([EMCC, test_file('hello_world.c'),
+                        '--closure=1',
+                        '--pre-js', test_file('test_closure_externs_pre_js.js')] +
+                       args)
 
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
@@ -9364,9 +9388,11 @@ int main(void) {
     'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
   })
   def test_lsan_leaks(self, ext, args):
-    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak'] + args,
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.' + ext),
+                 emcc_args=['-fsanitize=leak'] + args,
+                 assert_returncode=NON_ZERO,
+                 assert_all=True,
+                 expected_output=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
       'Direct leak of 42 byte(s) in 1 object(s) allocated from',
@@ -9389,79 +9415,84 @@ int main(void) {
     ]],
   })
   def test_lsan_stack_trace(self, ext, regexes):
-    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-gsource-map'],
-                       assert_returncode=NON_ZERO, literals=[
-      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
-      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
-      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
-    ], regexes=regexes)
+    self.do_runf(test_file('other/test_lsan_leaks.' + ext),
+                 emcc_args=['-fsanitize=leak', '-gsource-map'],
+                 regex=True,
+                 assert_all=True,
+                 assert_returncode=NON_ZERO, expected_output=[
+      r'Direct leak of 2048 byte\(s\) in 1 object\(s\) allocated from',
+      r'Direct leak of 1337 byte\(s\) in 1 object\(s\) allocated from',
+      r'Direct leak of 42 byte\(s\) in 1 object\(s\) allocated from',
+    ] + regexes)
 
   @parameterized({
     'c': ['c'],
     'cpp': ['cpp'],
   })
   def test_lsan_no_leak(self, ext):
-    self.do_smart_test(test_file('other/test_lsan_no_leak.' + ext),
-                       emcc_args=['-fsanitize=leak', '-sASSERTIONS=0'],
-                       regexes=[r'^\s*$'])
+    self.do_runf(test_file('other/test_lsan_no_leak.' + ext),
+                 regex=True,
+                 emcc_args=['-fsanitize=leak', '-sASSERTIONS=0'],
+                 expected_output=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
-    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.c'),
+                 assert_all=True,
+                 emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_null_deref(self):
-    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_asan_null_deref.c'),
+                 emcc_args=['-fsanitize=address'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_memory_growth(self):
-    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_asan_null_deref.c'),
+                 emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
-    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-sEXIT_RUNTIME'],
-                       assert_returncode=NON_ZERO, literals=[
+    self.do_runf(test_file('other/test_lsan_leaks.c'),
+                 assert_all=True,
+                 emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-sEXIT_RUNTIME'],
+                 assert_returncode=NON_ZERO, expected_output=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
+    self.do_runf(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
 
   def test_asan_strncpy(self):
     # Regression test for asan false positives in strncpy:
     # https://github.com/emscripten-core/emscripten/issues/14618
-    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
+    self.do_runf(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with TOTAL_STACK setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
-    self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
-                       ['success'],
-                       emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
-                                  '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
-                                  '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
-                                  '--profiling-funcs'])
+    self.do_runf(test_file('other/test_proxy_to_pthread_stack.c'),
+                 ['success'],
+                 emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                            '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
+                            '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                            '--profiling-funcs'])
 
   @parameterized({
     'async': ['-sWASM_ASYNC_COMPILATION'],
     'sync': ['-sWASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
-    self.do_smart_test(test_file('other/test_offset_converter.c'),
-                       emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + list(args), literals=['ok'])
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok',
+                 emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + list(args))
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
@@ -9789,8 +9820,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
 
   def test_boost_graph(self):
-    self.do_smart_test(test_file('test_boost_graph.cpp'),
-                       emcc_args=['-sUSE_BOOST_HEADERS'])
+    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-sUSE_BOOST_HEADERS'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''
@@ -9809,6 +9839,24 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
     self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
+
+  def test_setjmp_emulated_casts(self):
+    # using setjmp causes invokes(), and EMULATE_FUNCTION_POINTER_CASTS changes
+    # how the wasm table works; test that they work together properly
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <setjmp.h>
+      int main() {
+        jmp_buf jb;
+        if (!setjmp(jb)) {
+          printf("ok\n");
+          longjmp(jb, 1);
+        } else {
+          printf("done\n");
+        }
+      }
+    ''')
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_missing_stdlibs(self):
     # Certain standard libraries are expected to be useable via -l flags but

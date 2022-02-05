@@ -15,6 +15,7 @@ import hashlib
 import logging
 import multiprocessing
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -1064,6 +1065,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
                      interleaved_output=True,
+                     regex=False,
                      output_basename=None):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -1106,12 +1108,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
-          elif assert_all:
+          elif assert_all or len(expected_output) == 1:
             for o in expected_output:
-              self.assertContained(o, js_output)
+              if regex:
+                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (regex, js_output))
+              else:
+                self.assertContained(o, js_output)
           else:
-            self.assertContained(expected_output, js_output)
-            if check_for_error:
+            if regex:
+              match_any = any(re.search(o, js_output) for o in expected_output)
+              self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (expected_output, js_output))
+            else:
+              self.assertContained(expected_output, js_output)
+            if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
@@ -1549,10 +1558,10 @@ class BrowserCore(RunnerCore):
                '--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
-        # also compile in report_result.cpp and forice-include report_result.h
+        # also compile in report_result.c and forice-include report_result.h
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
-                 test_file('report_result.cpp')]
+                 test_file('report_result.c')]
     if EMTEST_BROWSER == 'node':
       args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)

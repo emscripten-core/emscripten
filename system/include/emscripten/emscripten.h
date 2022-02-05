@@ -25,6 +25,7 @@
 #include "em_types.h"
 #include "em_js.h"
 #include "wget.h"
+#include "version.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -7,7 +7,7 @@ import os
 import shutil
 from pathlib import Path
 
-TAG = '1.2.11'
+VERSION = '1.2.11'
 HASH = 'a42b8359e76cf7b3ae70bf31f0f8a8caa407ac80e8fe08b838076cd5e45ac2e685dae45eb59db2d25543fb3b5bd13b843a02bb8373cda704d7238be50d5e9c68'
 
 
@@ -16,12 +16,12 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', 'https://github.com/madler/zlib/archive/v' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
+  ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.zip', 'zlib-' + VERSION, sha512hash=HASH)
 
   def create(final):
     ports.clear_project_build('zlib')
 
-    source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
     dest_path = os.path.join(ports.get_build_dir(), 'zlib')
     shared.try_delete(dest_path)
     os.makedirs(dest_path)

@@ -836,6 +836,12 @@ def get_cflags(user_args):
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
     cflags.append('-DEMSCRIPTEN')
+    # The __EMSCRIPTEN_major__/__EMSCRIPTEN_minor__/__EMSCRIPTEN_tiny__ macros
+    # are now defined in emscripten/version.h but in non-strict mode, we continue
+    # to define them here (for now) for backwards compatibility.
+    cflags += ['-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
+               '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
+               '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY)]
 
   # if exception catching is disabled, we can prevent that code from being
   # generated in the frontend
@@ -873,11 +879,14 @@ def get_cflags(user_args):
 
   # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
   # data and other nice fixes.
-  cflags += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
+  cflags += ['-D_LIBCPP_ABI_VERSION=2']
+
+  if not settings.USE_PTHREADS:
+    # There is no point in using thread safe static inits in code that cannot
+    # be part of a multi-threaded program.
+    # TODO(sbc): Remove this if/when upstream clang takes care of this
+    # automatically: https://reviews.llvm.org/D118571.
+    cflags += ['-fno-threadsafe-statics']
 
   # Changes to default clang behavior
 
@@ -1798,6 +1807,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
 
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # Emulated casts forces a wasm ABI of (i64, i64, ...) in the table, which
+    # means all table functions are illegal for JS to call directly. Use
+    # dyncalls which call into the wasm, which then does an indirect call.
+    settings.DYNCALLS = 1
+
   if options.oformat != OFormat.OBJECT and final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
     diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
@@ -1818,13 +1833,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
     ]
 
   if settings.STACK_OVERFLOW_CHECK:
-    # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
-    # of the stack is.
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_end', 'emscripten_stack_get_free']
-    if settings.STACK_OVERFLOW_CHECK == 2:
-      # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
-      # stack.
-      settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base']
+    settings.REQUIRED_EXPORTS += [
+      'emscripten_stack_get_end',
+      'emscripten_stack_get_free',
+      'emscripten_stack_get_base'
+    ]
 
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
@@ -1984,13 +1997,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
         '$handleException'
       ]
 
-    if settings.FILESYSTEM and not settings.STANDALONE_WASM:
-      # to flush streams on FS exit, we need to be able to call fflush
-      # we only include it if the runtime is exitable, or when ASSERTIONS
+    if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
+      # We use __stdio_exit to shut down musl's stdio subsystems and flush
+      # streams on exit.
+      # We only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
-      if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-        settings.EXPORT_IF_DEFINED += ['fflush']
+      settings.EXPORT_IF_DEFINED += ['__stdio_exit']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
@@ -2022,7 +2035,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Functions needs to be exported from the module since they are used in worker.js
     settings.REQUIRED_EXPORTS += [
       'emscripten_dispatch_to_thread_',
-      '_emscripten_main_thread_futex',
       '_emscripten_thread_free_data',
       '_emscripten_allow_main_runtime_queued_calls',
       'emscripten_main_browser_thread_id',
@@ -2044,6 +2056,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     worker_imports = [
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
+      '__emscripten_thread_crashed',
       '_emscripten_tls_init',
       '_emscripten_current_thread_process_queued_calls',
       '_pthread_self',

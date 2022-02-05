@@ -144,9 +144,17 @@ int __pthread_create(pthread_t* restrict res,
 #endif
 
   //printf("start __pthread_create: %p\n", self);
+
+  // Set libc.need_locks before calling __pthread_create_js since
+  // by the time it returns the thread could be running and we
+  // want libc.need_locks to be set from the moment it starts.
+  if (!libc.threads_minus_1++) libc.need_locks = 1;
+
   int rtn = __pthread_create_js(new, attrp, entry, arg);
-  if (rtn != 0)
+  if (rtn != 0) {
+    if (!--libc.threads_minus_1) libc.need_locks = 0;
     return rtn;
+  }
 
   // TODO(sbc): Implement circular list of threads
   /*
@@ -209,6 +217,8 @@ void _emscripten_thread_exit(void* result) {
 
   free_tls_data();
 
+  if (!--libc.threads_minus_1) libc.need_locks = 0;
+
   // TODO(sbc): Implement circular list of threads
   /*
   __tl_lock();
@@ -237,16 +247,14 @@ void _emscripten_thread_exit(void* result) {
    * call; the loser is responsible for freeing thread resources. */
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
-  // Mark the thread as no longer running.
-  // When we publish this, the main thread is free to deallocate the thread
-  // object and we are done.
   if (state == DT_DETACHED) {
-    self->detach_state = DT_EXITED;
     __emscripten_thread_cleanup(self);
   } else {
-    self->detach_state = DT_EXITING;
-    // wake any threads that might be waiting for us to exit
-    emscripten_futex_wake(&self->detach_state, INT_MAX);
+    // Mark the thread as no longer running, so it can be joined.
+    // Once we publish this, any threads that are waiting to join with us can
+    // proceed and this worker can be recycled and used on another thread.
+    a_store(&self->detach_state, DT_EXITED);
+    __wake(&self->detach_state, 1, 1); // Wake any joiner.
   }
 }
 

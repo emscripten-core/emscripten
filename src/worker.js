@@ -14,7 +14,8 @@ var Module = {};
 
 #if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
-if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
   var nodeWorkerThreads = require('worker_threads');
@@ -25,7 +26,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     onmessage({ data: data });
   });
 
-  var nodeFS = require('fs');
+  var fs = require('fs');
 
   Object.assign(global, {
     self: global,
@@ -36,7 +37,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
-      (0, eval)(nodeFS.readFileSync(f, 'utf8'));
+      (0, eval)(fs.readFileSync(f, 'utf8'));
     },
     postMessage: function(msg) {
       parentPort.postMessage(msg);
@@ -63,6 +64,13 @@ function assert(condition, text) {
 
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
+#if ENVIRONMENT_MAY_BE_NODE
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    fs.writeSync(2, text + '\n');
+    return;
+  }
+#endif
   console.error(text);
 }
 function threadAlert() {
@@ -100,6 +108,9 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if PTHREADS_DEBUG
+      err('worker.js: loading module')
+#endif
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
@@ -129,6 +140,10 @@ self.onmessage = (e) => {
 #endif
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
+
+#if PTHREADS_DEBUG
+      Module['workerID'] = e.data.workerID;
+#endif
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
@@ -274,6 +289,10 @@ self.onmessage = (e) => {
       if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();
       }
+    } else if (e.data.cmd === 'processProxyingQueue') {
+      if (Module['_pthread_self']()) { // If this thread is actually running?
+        Module['_emscripten_proxy_execute_queue'](e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
@@ -281,6 +300,9 @@ self.onmessage = (e) => {
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex && ex.stack) err(ex.stack);
+    if (Module['__emscripten_thread_crashed']) {
+      Module['__emscripten_thread_crashed']();
+    }
     throw ex;
   }
 };

@@ -7,7 +7,7 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-global.nodeFS = require('fs');
+const fs = require('fs');
 global.nodePath = require('path');
 
 global.print = (x) => {
@@ -22,7 +22,7 @@ function find(filename) {
   const prefixes = [__dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
     const combined = nodePath.join(prefixes[i], filename);
-    if (nodeFS.existsSync(combined)) {
+    if (fs.existsSync(combined)) {
       return combined;
     }
   }
@@ -31,7 +31,7 @@ function find(filename) {
 
 global.read = (filename) => {
   const absolute = find(filename);
-  return nodeFS.readFileSync(absolute).toString();
+  return fs.readFileSync(absolute).toString();
 };
 
 function load(f) {

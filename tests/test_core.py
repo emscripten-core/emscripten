@@ -304,6 +304,21 @@ def no_memory64(note):
   return decorator
 
 
+def no_wasmfs(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('WASMFS'):
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
@@ -2490,6 +2505,15 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
+  def test_pthread_proxying(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('INITIAL_MEMORY=32mb')
+    args = [f'-I{path_from_root("system/lib/pthread")}']
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
+                                 emcc_args=args, interleaved_output=False)
+
+  @node_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
@@ -2544,6 +2568,13 @@ The current type of b is: 9
     # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_pthread_abort_interrupt(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    expected = ['Aborted(). Build with -s ASSERTIONS=1 for more info', 'Aborted(native code called abort())']
+    self.do_runf(test_file('pthread/test_pthread_abort_interrupt.c'), expected, assert_returncode=NON_ZERO)
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -5941,6 +5972,7 @@ int main(void) {
   @require_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
+  @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -5982,14 +6014,15 @@ int main(void) {
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
+#include <emscripten/console.h>
 #include <new>
 
 void* operator new(size_t size) {
-  printf("new %zu!\\n", size);
+  emscripten_console_log("new!");
   return malloc(size);
 }
 '''
-    self.do_run(src, 'new 4!\n*1,0*')
+    self.do_run(src, 'new!\n*1,0*')
 
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   @no_lsan('lsan also changes malloc, and that ends up linking in new twice')
@@ -8426,14 +8459,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('TOTAL_STACK', 1024)
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow)']
+      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
     else:
-      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
+      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
+                  '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
                  expected_output=expected,
-                 assert_returncode=NON_ZERO, assert_all=True)
+                 regex=True,
+                 assert_all=True,
+                 assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_safe_stack_pthread(self):
@@ -8442,9 +8478,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow)']
+      expected = ['Aborted(stack overflow']
     else:
-      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
+      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -8453,9 +8489,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow)']
+      expected = ['Aborted(stack overflow']
     else:
-      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
+      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack_alloca.c'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -8486,7 +8522,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       void sidey() {
         f(NULL);
       }
-    ''', ['Aborted(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
+    ''', ['Aborted(stack overflow', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')

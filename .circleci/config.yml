@@ -76,7 +76,7 @@ commands:
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/14.0.0/
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/15.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -384,7 +384,7 @@ jobs:
       - run-tests:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now"
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink"
   test-wasm2js1:
     executor: bionic
     steps:

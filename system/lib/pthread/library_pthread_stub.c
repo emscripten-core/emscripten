@@ -206,6 +206,8 @@ int pthread_cancel(pthread_t thread) {
   return 0;
 }
 
+void pthread_testcancel() {}
+
 _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
@@ -388,6 +390,10 @@ int sem_destroy(sem_t *sem) {
 }
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+
+void __lock(void* ptr) {}
+
+void __unlock(void* ptr) {}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.

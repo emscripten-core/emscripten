@@ -1024,11 +1024,16 @@ LibraryManager.library = {
         return '%';
       }
     };
+
+    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
+    // re-inject them after processing.
+    pattern = pattern.replace(/%%/g, '\0\0')
     for (var rule in EXPANSION_RULES_2) {
       if (pattern.includes(rule)) {
         pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
       }
     }
+    pattern = pattern.replace(/\0\0/g, '%')
 
     var bytes = intArrayFromString(pattern, false);
     if (bytes.length > maxsize) {
@@ -1870,6 +1875,7 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
+  $writeSockaddr__docs: '/** @param {number=} addrlen */',
   $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
@@ -2790,6 +2796,7 @@ LibraryManager.library = {
   // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
+  $convertFrameToPC__docs: '/** @returns {number} */',
   $convertFrameToPC__internal: true,
   $convertFrameToPC: function(frame) {
 #if !USE_OFFSET_CONVERTER
@@ -2813,11 +2820,10 @@ LibraryManager.library = {
       // This should work for wasm2js.  We tag the high bit to distinguish this
       // from wasm addresses.
       return 0x80000000 | +match[1];
-    } else {
-      // return 0 if we can't find any
-      return 0;
     }
 #endif
+    // return 0 if we can't find any
+    return 0;
   },
 
   // Returns a representation of a call site of the caller of this function, in a manner
@@ -3240,13 +3246,16 @@ LibraryManager.library = {
 
   // special runtime support
 
+#if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
-  __handle_stack_overflow: function() {
-    // TODO(sbc): Improve this error message.   The old abortStackOverflow used
-    // by asm.js used to do a better job:
-    // abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (_emscripten_stack_get_free() + allocSize) + ' bytes available!');
-    abort('stack overflow');
+  __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
+  __handle_stack_overflow: function(requested) {
+    requested = requested >>> 0;
+    abort('stack overflow (Attempt to set SP to 0x' + requested.toString(16) +
+          ', with stack limits [0x' + _emscripten_stack_get_end().toString(16) +
+          ' - 0x' + _emscripten_stack_get_base().toString(16) + '])');
   },
+#endif
 
   $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
@@ -3278,6 +3287,8 @@ LibraryManager.library = {
   // without user interaction.
   // If @elements is not provided, we default to the document and canvas
   // elements, which handle common use cases.
+  // TODO(sbc): Remove seemingly unused elements argument
+  $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
   $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: function(ctx, elements) {
     if (!elements) {
@@ -3329,15 +3340,14 @@ LibraryManager.library = {
 #endif
     var argCache = [];
     return function() {
-      argCache.length = arguments.length;
-      for (var i = 0; i < arguments.length; i++) {
-        argCache[i] = arguments[i];
-      }
+      argCache.length = 0;
+      Object.assign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
     };
   },
 #endif
 
+  $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: function(sig, ptr, args) {
 #if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
@@ -3561,6 +3571,7 @@ LibraryManager.library = {
     '$maybeExit',
 #endif
   ],
+  $callUserCallback__docs: '/** @param {boolean=} synchronous */',
   $callUserCallback: function(func, synchronous) {
     if (runtimeExited || ABORT) {
 #if ASSERTIONS
@@ -3623,6 +3634,7 @@ LibraryManager.library = {
    '$runtimeKeepalivePop',
 #endif
   ],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -3636,6 +3648,8 @@ LibraryManager.library = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
+
+  $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
     readAsync(url, function(arrayBuffer) {

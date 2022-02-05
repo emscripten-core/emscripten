@@ -422,11 +422,7 @@ FS.staticInit();` +
         };
       }
       // clone it, so we can return an instance of FSStream
-      var newStream = new FS.FSStream();
-      for (var p in stream) {
-        newStream[p] = stream[p];
-      }
-      stream = newStream;
+      stream = Object.assign(new FS.FSStream(), stream);
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
@@ -1490,9 +1486,10 @@ FS.staticInit();` +
     },
     quit: () => {
       FS.init.initialized = false;
-      // force-flush all streams, so we get musl std streams printed out
-#if hasExportedFunction('_fflush')
-      _fflush(0);
+      // Call musl-internal function to close all stdio streams, so nothing is
+      // left in internal buffers.
+#if hasExportedFunction('___stdio_exit')
+      ___stdio_exit();
 #endif
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
