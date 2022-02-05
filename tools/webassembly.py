@@ -206,8 +206,6 @@ class Module:
       name = None
       if section_type == SecType.CUSTOM:
         name = self.readString()
-        section_size -= (self.buf.tell() - section_offset)
-        section_offset = self.buf.tell()
 
       yield Section(section_type, section_size, section_offset, name)
       offset = section_offset + section_size

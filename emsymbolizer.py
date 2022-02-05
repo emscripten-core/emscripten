@@ -166,11 +166,12 @@ def symbolize_address_sourcemap(module, address, force_file):
     section = get_sourceMappingURL_section(module)
     assert section
     module.seek(section.offset)
+    assert module.readString() == 'sourceMappingURL'
     # TODO: support stripping/replacing a prefix from the URL
     URL = module.readString()
 
   if shared.DEBUG:
-    print(URL)
+    print(f'Source Mapping URL: {URL}')
   sm = WasmSourceMap()
   sm.parse(URL)
   if shared.DEBUG:
