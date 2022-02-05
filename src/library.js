@@ -3248,6 +3248,7 @@ LibraryManager.library = {
 
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
+  __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
     abort('stack overflow (Attempt to set SP to 0x' + requested.toString(16) +

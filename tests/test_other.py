@@ -7921,20 +7921,17 @@ end
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
-
     self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
                       '--closure=1',
                       '-sCLOSURE_WARNINGS=error',
-                      '-sINCLUDE_FULL_LIBRARY',
-                      '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+                      '-sINCLUDE_FULL_LIBRARY'])
 
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
                       '--closure=1',
                       '-sINCLUDE_FULL_LIBRARY',
-                      '-sUSE_WEBGPU',
-                      '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+                      '-sUSE_WEBGPU'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
