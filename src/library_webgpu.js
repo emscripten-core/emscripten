@@ -1091,6 +1091,8 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.colorFormats, '*') }}}),
         "depthStencilFormat": WebGPU.TextureFormat[{{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.depthStencilFormat) }}}],
         "sampleCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.sampleCount) }}},
+        "depthReadOnly": {{{ gpu.makeGetBool('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.depthReadOnly) }}},
+        "stencilReadOnly": {{{ gpu.makeGetBool('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.stencilReadOnly) }}},
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -1718,6 +1720,11 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
+    // Handle the defaulting of size required by WebGPU
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) {
+      size = undefined;
+    }
+
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
@@ -2266,6 +2273,9 @@ var LibraryWebGPU = {
         setLimitU32IfDefined("maxComputeWorkgroupsPerDimension", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupsPerDimension }}});
         desc["requiredLimits"] = requiredLimits;
       }
+
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
 
     {{{ runtimeKeepalivePush() }}}
