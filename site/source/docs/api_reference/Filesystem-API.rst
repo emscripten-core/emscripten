@@ -86,19 +86,7 @@ NODERAWFS
 
 This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far. 
  
-.. code-block:: js
-
-  // Without NODERAWFS, you need to mount a directory for NODEFS. With NODERAWFS, that is not needed and you can simply access files immediately.
-  #ifndef NODERAWFS
-    // mount the current folder as a NODEFS instance
-    // inside of emscripten
-    EM_ASM(
-      FS.mkdir('/working');
-      FS.mount(NODEFS, { root: '.' }, '/working');
-    );
-  #endif
-
-See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_noderawfs_nofollow.c>`_ for an example.
+See `this <https://github.com/emscripten-core/emscripten/blob/d936e807c4d7a6163827c1fdc4a8e87abe41db44/tests/fs/test_nodefs_rw.c#L31>`_ section on NODEFS,where you can see a mount operation - this is not needed in NODERAWFS.
 
 .. _filesystem-api-idbfs:
 
@@ -272,7 +260,7 @@ File system API
        });
      }
 
-  A real example of functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
+  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
 
   :param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
   :param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.
