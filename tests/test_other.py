@@ -9843,6 +9843,24 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
     self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
 
+  def test_setjmp_emulated_casts(self):
+    # using setjmp causes invokes(), and EMULATE_FUNCTION_POINTER_CASTS changes
+    # how the wasm table works; test that they work together properly
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <setjmp.h>
+      int main() {
+        jmp_buf jb;
+        if (!setjmp(jb)) {
+          printf("ok\n");
+          longjmp(jb, 1);
+        } else {
+          printf("done\n");
+        }
+      }
+    ''')
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
+
   def test_missing_stdlibs(self):
     # Certain standard libraries are expected to be useable via -l flags but
     # don't actually exist in our standard library path.  Make sure we don't
