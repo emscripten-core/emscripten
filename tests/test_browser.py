@@ -5166,6 +5166,12 @@ window.close = function() {
                expected='0',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
+  # Tests TLS variables in Wasm Workers
+  def test_wasm_worker_tls(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_tls.c'),
+               expected='42',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', path_from_root('tests', 'wasm_worker', 'wasm_worker_tls.S')])
+
   # Tests emscripten_wasm_worker_sleep()
   def test_wasm_worker_sleep(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_sleep.c'),

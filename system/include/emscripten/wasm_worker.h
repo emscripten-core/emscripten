@@ -28,11 +28,18 @@ EM_BOOL emscripten_current_thread_is_wasm_worker(void);
 // The main browser thread will return 0 as the ID. First Wasm Worker will return 1, and so on.
 uint32_t emscripten_wasm_worker_self_id(void);
 
-// postMessage()s a function call over to the given Wasm Worker.
-// Note that if the Wasm Worker runs in an infinite loop, it will not process the postMessage
-// queue to dispatch the function call, until the infinite loop is broken and execution is returned
-// back to the Worker event loop.
-// Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
+/* emscripten_wasm_worker_post_function_*: Post a pointer to a C/C++ function to be executed on the
+  target Wasm Worker (via sending a postMessage() to the target thread). Notes:
+ - The target worker 'id' must have been created by the same thread that is calling this function. That is,
+   a Wasm Worker cannot send a message to another Worker via this function.
+ - If running in a Wasm Worker context, specify worker ID 0 to pass a message to the parent thread.
+ - The target function pointer will be executed on the target Worker only after it yields back to its
+   event loop. If the target Wasm Worker executes an infinite loop that never yields, then the function
+   pointer will never be called.
+ - Passing messages between threads with this family of functions is relatively slow and has a really high
+   latency cost compared to direct coordination using atomics and synchronization primitives like mutexes
+   and synchronization primitives. Additionally these functions will generate garbage on the JS heap.
+   Therefore avoid using these functions where performance is critical. */
 void emscripten_wasm_worker_post_function_v(emscripten_wasm_worker_t id, void (*funcPtr)(void));
 void emscripten_wasm_worker_post_function_vi(emscripten_wasm_worker_t id, void (*funcPtr)(int), int arg0);
 void emscripten_wasm_worker_post_function_vii(emscripten_wasm_worker_t id, void (*funcPtr)(int, int), int arg0, int arg1);
