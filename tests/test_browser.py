@@ -3393,6 +3393,11 @@ window.close = function() {
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sMODULARIZE', '-sMINIMAL_RUNTIME'])
     self.run_browser('test.html', None, '/report_result?0')
 
+  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s EXPORT_NAME=Foo as well.
+  def test_minimal_runtime_export_name(self):
+    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
+    self.run_browser('test.html', None, '/report_result?0')
+
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [
