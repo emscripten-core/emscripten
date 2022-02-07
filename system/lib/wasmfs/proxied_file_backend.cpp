@@ -98,7 +98,8 @@ public:
 };
 
 // Create a proxied backend by supplying another backend.
-extern "C" backend_t wasmfs_create_proxied_backend(make_backend_t make_backend, void* arg) {
+extern "C" backend_t wasmfs_create_proxied_backend(make_backend_t make_backend,
+                                                   void* arg) {
   return wasmFS.addBackend(std::make_unique<ProxiedBackend>(make_backend, arg));
 }
 
