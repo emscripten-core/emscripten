@@ -31,7 +31,8 @@
 //     "backend creation" section of emscripten/wasmfs.h.
 //  2. Add a cpp file for the new backend, and implement the C function from 1,
 //     which should create it on both the C++ (using JSImplBackend) and JS
-//     sides.
+//     sides. (By convention, the C function should just call into C++ and JS
+//     which do the interesting work; the C is just a thin wrapper.)
 // 3. Write a new JS library, and add the implementation of the JS method just
 //    mentioned, which should set up the mapping from the C++ backend object's
 //    address to the JS code containing the hooks to read and write etc.
