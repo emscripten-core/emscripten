@@ -129,6 +129,12 @@ var WASM_BINARY_FILE = '';
 // name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
+// name of the file containing the Wasm Worker *.ww.js, if relevant
+var WASM_WORKER_FILE = '';
+
+// If 1, we are building with SharedArrayBuffer as Wasm Memory.
+var SHARED_MEMORY = 0;
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 

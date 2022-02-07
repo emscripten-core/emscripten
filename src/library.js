@@ -163,9 +163,9 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    // With pthreads, races can happen (another thread might increase the size
+    // With multithreaded builds, races can happen (another thread might increase the size
     // in between), so return a failure, and let the caller retry.
-#if USE_PTHREADS
+#if SHARED_MEMORY
     if (requestedSize <= oldSize) {
       return false;
     }
@@ -2416,6 +2416,7 @@ LibraryManager.library = {
 #endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
+// N.b. Wasm workers do not provide this kind of clock synchronization.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
                                "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
                                "} else " +

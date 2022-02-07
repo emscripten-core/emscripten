@@ -470,28 +470,38 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
+    self.is_ww = kwargs.pop('is_ww')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-sUSE_PTHREADS']
+    if self.is_ww:
+      cflags += ['-s', 'WASM_WORKERS=1']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
+    if self.is_ww:
+      name += '-ww'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt']
+    return super().vary_on() + ['is_mt', 'is_ww']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS, **kwargs)
 
+  @classmethod
+  def variations(cls):
+    combos = super(MTLibrary, cls).variations()
+    # pthreads and Wasm workers are currently not supported together.
+    return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 class DebugLibrary(Library):
   def __init__(self, **kwargs):
@@ -1016,6 +1026,17 @@ class libprintf_long_double(libc):
 
   def can_use(self):
     return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
+
+
+class libwasm_workers(MTLibrary):
+  name = 'libwasm_workers'
+
+  cflags = ['-Os', '-pthread']
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasm_worker',
+        filenames=['library_wasm_worker.c'])
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1804,6 +1825,9 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.USE_WEBGPU:
     add_library('libwebgpu_cpp')
+
+  if settings.WASM_WORKERS:
+    add_library('libwasm_workers')
 
   return libs_to_link
 

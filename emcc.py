@@ -308,7 +308,7 @@ def setup_environment_settings():
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
     exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.USE_PTHREADS:
+  if not settings.ENVIRONMENT_MAY_BE_WORKER and (settings.USE_PTHREADS or settings.WASM_WORKERS):
     exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
@@ -829,6 +829,12 @@ def get_cflags(user_args):
 
   if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
+
+  if settings.SHARED_MEMORY:
+    cflags.append('-D__EMSCRIPTEN_SHARED_MEMORY__=1')
+
+  if settings.WASM_WORKERS:
+    cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
 
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -1432,7 +1438,7 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
-  if settings.USE_PTHREADS and '-pthread' not in newargs:
+  if (settings.USE_PTHREADS or settings.WASM_WORKERS) and '-pthread' not in newargs:
     newargs += ['-pthread']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
@@ -1592,6 +1598,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
 
+  # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
+  if settings.USE_PTHREADS or settings.WASM_WORKERS:
+    settings.SHARED_MEMORY = 1
+
   if (options.oformat == OFormat.WASM or settings.PURE_WASI) and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
     # as there is no JS. an exception are side modules, as we can't tell at
@@ -1687,7 +1697,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.USE_PTHREADS and \
+  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting(user_settings, 'TEXTDECODER', 2)
 
@@ -1758,7 +1768,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '$mergeLibSymbols',
     ]
 
-  if settings.USE_PTHREADS:
+  if settings.USE_PTHREADS: # or settings.WASM_WORKERS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '$registerTlsInit',
     ]
@@ -2028,6 +2038,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # overrides that.
     default_setting(user_settings, 'ABORTING_MALLOC', 0)
 
+  if settings.SHARED_MEMORY:
+    # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
+    settings.TEXTDECODER = 0
+
   if settings.USE_PTHREADS:
     if settings.USE_PTHREADS == 2:
       exit_with_error('USE_PTHREADS=2 is no longer supported')
@@ -2077,10 +2091,19 @@ def phase_linker_setup(options, state, newargs, user_settings):
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
+
   # TODO: Move this into the library JS file once it becomes possible.
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+
+  if settings.WASM_WORKERS:
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
+    # set location of Wasm Worker bootstrap .js
+    if settings.WASM_WORKERS == 1:
+      settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
+    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -2152,6 +2175,20 @@ def phase_linker_setup(options, state, newargs, user_settings):
   elif settings.PROXY_TO_PTHREAD:
     exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
+  if settings.WASM_WORKERS:
+    if settings.SINGLE_FILE:
+      exit_with_error('TODO: -s SINGLE_FILE=1 is currently not supported with -s WASM_WORKERS!')
+    if settings.LINKABLE:
+      exit_with_error('TODO: -s LINKABLE=1 is currently not supported with -s WASM_WORKERS!')
+    if settings.SIDE_MODULE:
+      exit_with_error('TODO: -s SIDE_MODULE=1 is currently not supported with -s WASM_WORKERS!')
+    if settings.MAIN_MODULE:
+      exit_with_error('TODO: -s MAIN_MODULE=1 is currently not supported with -s WASM_WORKERS!')
+    if settings.PROXY_TO_WORKER:
+      exit_with_error('--proxy-to-worker is not supported with -s WASM_WORKERS!')
+    if settings.USE_PTHREADS:
+      exit_with_error('TODO: -pthread and -s USE_PTHREADS=1 are currently not supported with -s WASM_WORKERS!')
+
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
       exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
@@ -2222,8 +2259,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.STANDALONE_WASM:
-    if settings.USE_PTHREADS:
-      exit_with_error('STANDALONE_WASM does not support pthreads yet')
+    if settings.SHARED_MEMORY:
+      exit_with_error('STANDALONE_WASM does not support shared memories yet')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
     # the wasm must be runnable without the JS, so there cannot be anything that
@@ -2231,7 +2268,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.LEGALIZE_JS_FFI = 0
 
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
-  if settings.USE_PTHREADS or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
 
   if settings.WASM_BIGINT:
@@ -2266,9 +2303,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # can use a .mem file like asm.js used to.
     # generally we follow what the options tell us to do (which is to use
     # a .mem file in most cases, since it is binary & compact). however, for
-    # pthreads we must keep the memory segments in the wasm as they will be
-    # passive segments which the .mem format cannot handle.
-    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.USE_PTHREADS
+    # shared memory builds we must keep the memory segments in the wasm as
+    # they will be passive segments which the .mem format cannot handle.
+    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.USE_SHARED_MEMORY
   else:
     # wasm includes the mem init in the wasm binary. The exception is
     # wasm2js, which behaves more like js.
@@ -2830,8 +2867,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
   # write_file(final_js, src)
 
+  target_dir = os.path.dirname(os.path.abspath(target))
   if settings.USE_PTHREADS:
-    target_dir = os.path.dirname(os.path.abspath(target))
     worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
     contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
     write_file(worker_output, contents)
@@ -2840,6 +2877,16 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       write_file(worker_output, minified_worker)
+
+  if settings.WASM_WORKERS == 1:
+    worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
+    with open(worker_output, 'w') as f:
+      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'wasm_worker.js'), expand_macros=True))
+
+    # Minify the wasm_worker.js file in optimized builds
+    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
+      open(worker_output, 'w').write(minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []

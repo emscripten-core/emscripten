@@ -46,6 +46,10 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || USE_PTHREADS
 
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+#endif
+
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
   throw 'unclear environment';
@@ -114,8 +118,11 @@ function ready() {
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
+#if WASM_WORKERS
+  if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
     run();
-#if USE_PTHREADS
+#if USE_PTHREADS || WASM_WORKERS
   }
 #endif
 #else

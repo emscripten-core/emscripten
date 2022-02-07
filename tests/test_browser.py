@@ -5154,6 +5154,146 @@ window.close = function() {
   def test_system(self):
     self.btest_exit(test_file('system.c'))
 
+  # Tests emscripten_create_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
+  def test_wasm_worker_hello(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'hello_wasm_worker.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_worker_self_id() function
+  def test_wasm_worker_self_id(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_self_id.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_worker_sleep()
+  def test_wasm_worker_sleep(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_sleep.c'),
+               expected='1',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_terminate_wasm_worker()
+  def test_wasm_worker_terminate(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'terminate_wasm_worker.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_terminate_all_wasm_workers()
+  def test_wasm_worker_terminate_all(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'terminate_all_wasm_workers.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_worker_post_function_*() API
+  def test_wasm_worker_post_function(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'post_function.c'),
+               expected='8',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
+  # to send a message back from Worker to its parent thread.
+  def test_wasm_worker_post_function_to_main_thread(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'post_function_to_main_thread.c'),
+               expected='10',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_navigator_hardware_concurrency() and emscripten_atomics_is_lock_free()
+  def test_wasm_worker_hardware_concurrency_is_lock_free(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'hardware_concurrency_is_lock_free.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_wait_i32() and emscripten_wasm_notify() functions.
+  def test_wasm_worker_wait32_notify(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wait32_notify.c'),
+               expected='2',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
+  def test_wasm_worker_wait64_notify(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wait64_notify.c'),
+               expected='2',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_atomic_wait_async() function.
+  def test_wasm_worker_wait_async(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wait_async.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_atomic_cancel_wait_async() function.
+  def test_wasm_worker_cancel_wait_async(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'cancel_wait_async.c'),
+               expected='1',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_atomic_cancel_all_wait_asyncs() function.
+  def test_wasm_worker_cancel_all_wait_asyncs(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'cancel_all_wait_asyncs.c'),
+               expected='1',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_atomic_cancel_all_wait_asyncs_at_address() function.
+  def test_wasm_worker_cancel_all_wait_asyncs_at_address(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'cancel_all_wait_asyncs_at_address.c'),
+               expected='1',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_init(), emscripten_lock_waitinf_acquire() and emscripten_lock_release()
+  def test_wasm_worker_lock_waitinf(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_waitinf_acquire.c'),
+               expected='4000',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
+  def test_wasm_worker_lock_wait(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_wait_acquire.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_wait_acquire() between two Wasm Workers.
+  def test_wasm_worker_lock_wait2(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_wait_acquire2.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_async_acquire() function.
+  def test_wasm_worker_lock_async_acquire(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_async_acquire.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
+  def test_wasm_worker_lock_busyspin_wait(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_busyspin_wait_acquire.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_lock_busyspin_waitinf_acquire() in Worker and main thread.
+  def test_wasm_worker_lock_busyspin_waitinf(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'lock_busyspin_waitinf_acquire.c'),
+               expected='1',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests that proxied JS functions cannot be called from Wasm Workers
+  def test_wasm_worker_no_proxied_js_functions(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.c'),
+               expected='0',
+               args=['--js-library', path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.js'),
+                     '-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', '-s', 'ASSERTIONS=1'])
+
+  # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
+  def test_wasm_worker_semaphore_waitinf_acquire(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'semaphore_waitinf_acquire.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_semaphore_try_acquire() on the main thread
+  def test_wasm_worker_semaphore_try_acquire(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'semaphore_try_acquire.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
   @no_firefox('no 4GB support yet')
   @require_v8
   def test_zzz_zzz_4gb(self):
