@@ -91,7 +91,7 @@
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
-    WHOLE_MAP_SIZE: 0xFFFFFFFF, // 32bits max
+    WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
     AdapterType: {
       Unknown: 3,
     },
@@ -1721,14 +1721,15 @@ var LibraryWebGPU = {
     var buffer = bufferWrapper.object;
 
     // Handle the defaulting of size required by WebGPU
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) {
-      size = undefined;
+    var bufferSize = (new Uint32Array([size]))[0];
+    if (bufferSize === {{{ gpu.WHOLE_MAP_SIZE }}}) {
+      bufferSize = undefined;
     }
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    buffer["mapAsync"](mode, offset, size).then(function() {
+    buffer["mapAsync"](mode, offset, bufferSize).then(function() {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
