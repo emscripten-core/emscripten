@@ -839,7 +839,7 @@
             "type": 8
         },
         "WGPUComputePassDescriptor": {
-            "__size__": 16,
+            "__size__": 8,
             "label": 4,
             "nextInChain": 0
         },
@@ -1033,7 +1033,7 @@
             "view": 0
         },
         "WGPURenderPassDescriptor": {
-            "__size__": 32,
+            "__size__": 24,
             "colorAttachmentCount": 8,
             "colorAttachments": 12,
             "depthStencilAttachment": 16,
@@ -1096,7 +1096,7 @@
             "codeSize": 8
         },
         "WGPUShaderModuleWGSLDescriptor": {
-            "__size__": 16,
+            "__size__": 12,
             "chain": 0,
             "source": 8
         },
