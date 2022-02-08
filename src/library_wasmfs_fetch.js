@@ -30,12 +30,20 @@ mergeInto(LibraryManager.library, {
         if (!wasmFS$JSMemoryFiles[file]) {
           // This is the first read from this file, fetch it.
           // TODO: URL!
-          promise = fetch('data.dat').then((response) => {
-            if (!response['ok']) {
-              throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-            }
-            return response['arrayBuffer']();
-          }).then((buffer) => {
+          var url = 'data.dat';
+          if (typeof fetch === 'function') {
+            // On the web use fetch() normally.
+            promise = fetch().then((response) => {
+              if (!response['ok']) {
+                throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+              }
+              return response['arrayBuffer']();
+            });
+          } else {
+            // Until Node.js gets fetch support, use an async read.
+            promise = fs.readFile(url, "binary");
+          }
+          promise.then((buffer) => {
             wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
           });
         } else {
