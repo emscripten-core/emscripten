@@ -2,24 +2,25 @@ mergeInto(LibraryManager.library, {
   // Fetch backend: On first read, does a fetch() to get the data. It then
   // behaves like JSFile
 
-  _wasmfs_backend_add_fetch__deps: [
+  _wasmfs_create_fetch_backend_js__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
-    '_wasmfs_backend_add_js_file',
+    '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_backend_add_fetch: function(backend) {
+  _wasmfs_create_fetch_backend_js: function(backend) {
+console.log('maek fetch', backend);
     // Start with the normal JSFile operations.
-    __wasmfs_backend_add_js_file(backend);
+    __wasmfs_create_js_file_backend_js(backend);
 
     // Add the async operations on top.
     var jsFileOps = wasmFS$backends[backend];
     wasmFS$backends[backend] = {
-      alloc_file: function(file) {
-        jsFileOps.alloc_file(file);
+      allocFile: function(file) {
+        jsFileOps.allocFile(file);
         return new Promise.resolve();
       },
-      free_file: function(file) {
-        jsFileOps.free_file(file);
+      freeFile: function(file) {
+        jsFileOps.freeFile(file);
         return new Promise.resolve();
       },
       write: function(file, buffer, length, offset) {

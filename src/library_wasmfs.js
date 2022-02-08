@@ -159,14 +159,14 @@ var WasmFSLibrary = {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].alloc_file(file);
+    return wasmFS$backends[backend].allocFile(file);
   },
 
   _wasmfs_jsimpl_free_file: function(backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].free_file(file);
+    return wasmFS$backends[backend].freeFile(file);
   },
 
   _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
@@ -195,37 +195,37 @@ var WasmFSLibrary = {
   // implementors of backends: the hooks we call should return Promises, which
   // we then connect to the calling C++.
 
-  _wasmfs_async_jsimpl_alloc_file: function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_alloc_file: function(backend, file, fptr, arg) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    wasmFS$backends[backend].alloc_file(file).then(() => {
+    wasmFS$backends[backend].allocFile(file).then(() => {
       {{{ makeDynCall('vii', 'fptr') }}}(arg);
     });
   },
 
-  _wasmfs_async_jsimpl_free_file: function(backend, file) {
+  _wasmfs_jsimpl_async_free_file: function(backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].free_file(file);
+    return wasmFS$backends[backend].freeFile(file);
   },
 
-  _wasmfs_async_jsimpl_write: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
-  _wasmfs_async_jsimpl_read: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 
-  _wasmfs_async_jsimpl_get_size: function(backend, file) {
+  _wasmfs_jsimpl_async_get_size: function(backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif

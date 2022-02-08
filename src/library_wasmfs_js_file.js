@@ -9,10 +9,10 @@ mergeInto(LibraryManager.library, {
   ],
   _wasmfs_create_js_file_backend_js: function(backend) {
     wasmFS$backends[backend] = {
-      alloc_file: function(file) {
+      allocFile: function(file) {
         // Do nothing: we allocate the typed array lazily, see write()
       },
-      free_file: function(file) {
+      freeFile: function(file) {
         // Release the memory, as it now has no references to it any more.
         wasmFS$JSMemoryFiles[file] = undefined;
       },
