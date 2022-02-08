@@ -207,7 +207,7 @@ console.log('alloc file async', backend);
     });
   },
 
-  _wasmfs_jsimpl_async_free_file: function(backend, file) {
+  _wasmfs_jsimpl_async_free_file: function(backend, file, fptr, arg) {
 console.log('free file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -215,7 +215,7 @@ console.log('free file async', backend);
     return wasmFS$backends[backend].freeFile(file);
   },
 
-  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offset, fptr, arg) {
 console.log('write file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -223,12 +223,17 @@ console.log('write file async', backend);
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
-  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offset, fptr, arg) {
 console.log('read file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].read(file, buffer, length, offset);
+    {{{ runtimeKeepalivePush() }}}
+    wasmFS$backends[backend].read(file, buffer, length, offset).then((size) => {
+      {{{ runtimeKeepalivePop() }}}
+alert('HEAP32!');
+      {{{ makeDynCall('vii', 'fptr') }}}(arg);
+    });
   },
 
   _wasmfs_jsimpl_async_get_size: function(backend, file, fptr, arg) {
@@ -239,7 +244,11 @@ console.log('getSize file async', backend);
     {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].getSize(file).then((size) => {
       {{{ runtimeKeepalivePop() }}}
-      {{{ makeDynCall('vii', 'fptr') }}}(arg, size);
+console.log('waka get size response ' + size, 'writing to', arg + 8);
+      HEAP32[arg >> 2] = 0; // success
+      HEAP32[arg + 8 >> 2] = size;
+      HEAP32[arg + 12 >> 2] = 0;
+      {{{ makeDynCall('vii', 'fptr') }}}(arg);
     });
   },
 }

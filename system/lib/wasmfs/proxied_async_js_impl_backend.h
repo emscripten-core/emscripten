@@ -103,10 +103,14 @@ class ProxiedAsyncJSImplFile : public DataFile {
   void flush() override {}
 
   size_t getSize() override {
+EM_ASM({ console.error("getSize() C++") });
     CallbackState state;
 
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
       state.resume = resume;
+
+EM_ASM({ console.error("getSIze() C++ offset ptr " + $0) }, (uint32_t)&state.offset);
+
       _wasmfs_jsimpl_async_get_size(
         getBackendIndex(),
         getFileIndex(),

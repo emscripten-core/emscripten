@@ -5182,7 +5182,7 @@ window.close = function() {
   def test_wasmfs_fetch_backend(self):
     create_file('data.dat', 'hello, fetch')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
-                    args=['-sWASMFS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--profiling'])
+                    args=['-sWASMFS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--profiling', '-O0'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
