@@ -199,8 +199,8 @@ var WasmFSLibrary = {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    wasmFS$backends[backend].alloc_file(file).then((result) => {
-      {{{ makeDynCall('vii', 'fptr') }}}(arg, result);
+    wasmFS$backends[backend].alloc_file(file).then(() => {
+      {{{ makeDynCall('vii', 'fptr') }}}(arg);
     });
   },
 
