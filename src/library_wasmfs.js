@@ -231,7 +231,9 @@ console.log('read file async', backend);
     {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].read(file, buffer, length, offset).then((size) => {
       {{{ runtimeKeepalivePop() }}}
-alert('HEAP32!');
+      HEAP32[arg >> 2] = 0; // success
+      HEAP32[arg + 8 >> 2] = size;
+      HEAP32[arg + 12 >> 2] = 0;
       {{{ makeDynCall('vii', 'fptr') }}}(arg);
     });
   },
