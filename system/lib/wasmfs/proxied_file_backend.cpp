@@ -84,7 +84,14 @@ class ProxiedBackend : public Backend {
   emscripten::SyncToAsync proxy;
 
 public:
-  ProxiedBackend(backend_t backend) : backend(backend) {}
+  ProxiedBackend(std::function<backend_t()> createBackend) {
+    // Construct the sub-backend on the proper thread (it may set up some local
+    // state there in JS, for example).
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      backend = createBackend();
+      (*resume)();
+    });
+  }
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // This creates a file on a thread specified by the proxy member.
@@ -93,8 +100,10 @@ public:
 };
 
 // Create a proxied backend by supplying another backend.
-extern "C" backend_t wasmfs_create_proxied_backend(backend_t backend) {
-  return wasmFS.addBackend(std::make_unique<ProxiedBackend>(backend));
+extern "C" backend_t
+wasmfs_create_proxied_backend(backend_constructor_t create_backend, void* arg) {
+  return wasmFS.addBackend(std::make_unique<ProxiedBackend>(
+    [create_backend, arg]() { return create_backend(arg); }));
 }
 
 } // namespace wasmfs
