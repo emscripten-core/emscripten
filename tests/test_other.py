@@ -11441,6 +11441,7 @@ void foo() {}
     self.emcc_args.append('-DFETCH')
     self.emcc_args.append('--profiling')
     self.emcc_args.append('-sWASM=0')
+    self.emcc_args.append('-O2')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')

@@ -208,6 +208,7 @@ console.log('alloc file async', backend);
   },
 
   _wasmfs_jsimpl_async_free_file: function(backend, file) {
+console.log('free file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -215,6 +216,7 @@ console.log('alloc file async', backend);
   },
 
   _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offset) {
+console.log('write file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -222,6 +224,7 @@ console.log('alloc file async', backend);
   },
 
   _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offset) {
+console.log('read file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -229,11 +232,12 @@ console.log('alloc file async', backend);
   },
 
   _wasmfs_jsimpl_async_get_size: function(backend, file, fptr, arg) {
+console.log('getSize file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     {{{ runtimeKeepalivePush() }}}
-    wasmFS$backends[backend].allocFile(file).then((size) => {
+    wasmFS$backends[backend].getSize(file).then((size) => {
       {{{ runtimeKeepalivePop() }}}
       {{{ makeDynCall('vii', 'fptr') }}}(arg, size);
     });
