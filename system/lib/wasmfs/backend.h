@@ -44,5 +44,5 @@ public:
 // are not linked in if they are not called.
 backend_t createMemoryFileBackend();
 
-typedef backend_t (*make_backend_t)(void*);
+typedef backend_t (*backend_constructor_t)(void*);
 } // namespace wasmfs
