@@ -1727,6 +1727,9 @@ namespace wgpu {
     static_assert(sizeof(ComputePassEncoder) == sizeof(WGPUComputePassEncoder), "sizeof mismatch for ComputePassEncoder");
     static_assert(alignof(ComputePassEncoder) == alignof(WGPUComputePassEncoder), "alignof mismatch for ComputePassEncoder");
 
+    void ComputePassEncoder::BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const {
+        wgpuComputePassEncoderBeginPipelineStatisticsQuery(Get(), querySet.Get(), queryIndex);
+    }
     void ComputePassEncoder::Dispatch(uint32_t x, uint32_t y, uint32_t z) const {
         wgpuComputePassEncoderDispatch(Get(), x, y, z);
     }
@@ -1735,6 +1738,9 @@ namespace wgpu {
     }
     void ComputePassEncoder::EndPass() const {
         wgpuComputePassEncoderEndPass(Get());
+    }
+    void ComputePassEncoder::EndPipelineStatisticsQuery() const {
+        wgpuComputePassEncoderEndPipelineStatisticsQuery(Get());
     }
     void ComputePassEncoder::InsertDebugMarker(char const * markerLabel) const {
         wgpuComputePassEncoderInsertDebugMarker(Get(), reinterpret_cast<char const * >(markerLabel));
@@ -1895,6 +1901,9 @@ namespace wgpu {
         auto result = wgpuInstanceCreateSurface(Get(), reinterpret_cast<WGPUSurfaceDescriptor const * >(descriptor));
         return Surface::Acquire(result);
     }
+    void Instance::ProcessEvents() const {
+        wgpuInstanceProcessEvents(Get());
+    }
     void Instance::RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const {
         wgpuInstanceRequestAdapter(Get(), reinterpret_cast<WGPURequestAdapterOptions const * >(options), callback, reinterpret_cast<void * >(userdata));
     }
@@ -2049,6 +2058,9 @@ namespace wgpu {
     void RenderPassEncoder::BeginOcclusionQuery(uint32_t queryIndex) const {
         wgpuRenderPassEncoderBeginOcclusionQuery(Get(), queryIndex);
     }
+    void RenderPassEncoder::BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const {
+        wgpuRenderPassEncoderBeginPipelineStatisticsQuery(Get(), querySet.Get(), queryIndex);
+    }
     void RenderPassEncoder::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const {
         wgpuRenderPassEncoderDraw(Get(), vertexCount, instanceCount, firstVertex, firstInstance);
     }
@@ -2066,6 +2078,9 @@ namespace wgpu {
     }
     void RenderPassEncoder::EndPass() const {
         wgpuRenderPassEncoderEndPass(Get());
+    }
+    void RenderPassEncoder::EndPipelineStatisticsQuery() const {
+        wgpuRenderPassEncoderEndPipelineStatisticsQuery(Get());
     }
     void RenderPassEncoder::ExecuteBundles(uint32_t bundlesCount, RenderBundle const * bundles) const {
         wgpuRenderPassEncoderExecuteBundles(Get(), bundlesCount, reinterpret_cast<WGPURenderBundle const * >(bundles));
@@ -2183,6 +2198,10 @@ namespace wgpu {
     static_assert(sizeof(Surface) == sizeof(WGPUSurface), "sizeof mismatch for Surface");
     static_assert(alignof(Surface) == alignof(WGPUSurface), "alignof mismatch for Surface");
 
+    TextureFormat Surface::GetPreferredFormat(Adapter const& adapter) const {
+        auto result = wgpuSurfaceGetPreferredFormat(Get(), adapter.Get());
+        return static_cast<TextureFormat>(result);
+    }
     void Surface::WGPUReference(WGPUSurface handle) {
         if (handle != nullptr) {
             wgpuSurfaceReference(handle);

@@ -877,9 +877,11 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const;
         void Dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1) const;
         void DispatchIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void EndPass() const;
+        void EndPipelineStatisticsQuery() const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
@@ -947,6 +949,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         Surface CreateSurface(SurfaceDescriptor const * descriptor) const;
+        void ProcessEvents() const;
         void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;
 
       private:
@@ -1038,12 +1041,14 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void BeginOcclusionQuery(uint32_t queryIndex) const;
+        void BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const;
         void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) const;
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t baseVertex = 0, uint32_t firstInstance = 0) const;
         void DrawIndexedIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void DrawIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void EndOcclusionQuery() const;
         void EndPass() const;
+        void EndPipelineStatisticsQuery() const;
         void ExecuteBundles(uint32_t bundlesCount, RenderBundle const * bundles) const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
@@ -1109,6 +1114,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        TextureFormat GetPreferredFormat(Adapter const& adapter) const;
 
       private:
         friend ObjectBase<Surface, WGPUSurface>;
