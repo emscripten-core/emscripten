@@ -40,6 +40,8 @@ typedef backend_t (*backend_constructor_t)(void*);
 backend_t wasmfs_create_proxied_backend(backend_constructor_t create_backend,
                                         void* arg);
 
+backend_t wasmfs_create_fetch_backend(char* base_url);
+
 #ifdef __cplusplus
 }
 #endif
