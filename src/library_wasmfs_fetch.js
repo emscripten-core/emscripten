@@ -8,7 +8,7 @@ mergeInto(LibraryManager.library, {
     '_wasmfs_create_js_file_backend_js',
   ],
   _wasmfs_create_fetch_backend_js: function(backend) {
-console.log('maek fetch', backend);
+console.log(['maek fetch', backend] + '\n');
     // Start with the normal JSFile operations.
     __wasmfs_create_js_file_backend_js(backend);
 
@@ -33,16 +33,20 @@ console.log('maek fetch', backend);
         });
       } else {
         // Until Node.js gets fetch support, use an async read.
-        console.log('node1');
+        console.log(['node1', backend] + '\n');
         promise = new Promise((resolve, reject) => {
-          console.log('node2');
+          console.log(['node2', backend] + '\n');
           fs.readFile(url, "binary", (err, data) => {
-            console.log('node3', err, data);
+            console.log(['node3', err, data, backend] + '\n');
+            throw 'waka';
             if (err) reject();
             resolve(data);
           });
+          console.log(['node2a'] + '\n');
         });
+        console.log(['node2b'] + '\n');
       }
+      console.log(['promise', promise] + '\n');
       return promise.then((buffer) => {
         wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
       });
@@ -70,7 +74,7 @@ console.log('maek fetch', backend);
       getSize: function(file) {
         return getFile(file).then(() => {
           var ret = jsFileOps.getSize(file);
-          console.log('sizeey', ret);
+          console.log(['sizeey', ret] + '\n');
           return ret;
         });
       },

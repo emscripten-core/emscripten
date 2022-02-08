@@ -3648,7 +3648,6 @@ LibraryManager.library = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
-
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
