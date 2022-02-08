@@ -32,8 +32,6 @@ struct CallbackState {
 
   // The function to call to resume execution.
   emscripten::SyncToAsync::Callback resume;
-
-  CallbackState(emscripten::SyncToAsync::Callback resume) : resume(resume) {}
 };
 
 extern "C" {
@@ -108,7 +106,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     CallbackState state;
 
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state->resume = &resume;
+      state.resume = resume;
       _wasmfs_jsimpl_async_get_size(
         getBackendIndex(),
         getFileIndex(),
@@ -116,7 +114,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
         &state);
     });
 
-    return state->offset;
+    return state.offset;
   }
 
 public:
@@ -124,10 +122,10 @@ public:
                          backend_t backend,
                          emscripten::SyncToAsync& proxy)
     : DataFile(mode, backend), proxy(proxy) {
-    CallbackState state(resume);
+    CallbackState state;
 
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state->resume = &resume;
+      state.resume = resume;
 
       _wasmfs_jsimpl_async_alloc_file(
         getBackendIndex(),
