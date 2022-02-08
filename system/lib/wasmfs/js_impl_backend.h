@@ -96,9 +96,7 @@ public:
     _wasmfs_jsimpl_alloc_file(getBackendIndex(), getFileIndex());
   }
 
-  ~JSImplFile() {
-    _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex());
-  }
+  ~JSImplFile() { _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex()); }
 };
 
 class JSImplBackend : public Backend {

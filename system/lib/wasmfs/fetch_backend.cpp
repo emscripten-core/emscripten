@@ -25,7 +25,7 @@ public:
   FetchBackend() {
     // Run the JS on the target thread.
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-    _wasmfs_create_fetch_backend_js(this);
+      _wasmfs_create_fetch_backend_js(this);
       (*resume)();
     });
   }
