@@ -44,6 +44,8 @@ using js_index_t = uint32_t;
 
 extern "C" {
 // JSImpl API (see below for overview).
+void _wasmfs_jsimpl_alloc_file(js_index_t backend, js_index_t index);
+void _wasmfs_jsimpl_free_file(js_index_t backend, js_index_t index);
 int _wasmfs_jsimpl_write(js_index_t backend,
                          js_index_t index,
                          const uint8_t* buffer,
@@ -55,8 +57,6 @@ int _wasmfs_jsimpl_read(js_index_t backend,
                         size_t length,
                         off_t offset);
 int _wasmfs_jsimpl_get_size(js_index_t backend, js_index_t index);
-void _wasmfs_jsimpl_constructor(js_index_t backend, js_index_t index);
-void _wasmfs_jsimpl_destructor(js_index_t backend, js_index_t index);
 }
 
 namespace wasmfs {
@@ -93,11 +93,11 @@ class JSImplFile : public DataFile {
 
 public:
   JSImplFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
-    _wasmfs_jsimpl_constructor(getBackendIndex(), getFileIndex());
+    _wasmfs_jsimpl_alloc_file(getBackendIndex(), getFileIndex());
   }
 
   ~JSImplFile() {
-    _wasmfs_jsimpl_destructor(getBackendIndex(), getFileIndex());
+    _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex());
   }
 };
 

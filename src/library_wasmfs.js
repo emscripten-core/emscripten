@@ -153,18 +153,18 @@ var WasmFSLibrary = {
   // in C++, together with the js_impl calls defined right after it.
   $wasmFS$backends: {},
 
-  _wasmfs_jsimpl_constructor: function(backend, file) {
+  _wasmfs_jsimpl_alloc_file: function(backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].constructor(file);
+    return wasmFS$backends[backend].alloc_file(file);
   },
 
-  _wasmfs_jsimpl_destructor: function(backend, file) {
+  _wasmfs_jsimpl_free_file: function(backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].destructor(file);
+    return wasmFS$backends[backend].free_file(file);
   },
 
   _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
