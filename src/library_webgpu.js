@@ -1721,15 +1721,15 @@ var LibraryWebGPU = {
     var buffer = bufferWrapper.object;
 
     // Handle the defaulting of size required by WebGPU
-    var bufferSize = (new Uint32Array([size]))[0];
-    if (bufferSize === {{{ gpu.WHOLE_MAP_SIZE }}}) {
-      bufferSize = undefined;
+    // We want to check against gpu.WHOLE_MAP_SIZE but the size seems to come in as int32_t
+    if (size === -1) {
+      size = undefined;
     }
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    buffer["mapAsync"](mode, offset, bufferSize).then(function() {
+    buffer["mapAsync"](mode, offset, size).then(function() {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
