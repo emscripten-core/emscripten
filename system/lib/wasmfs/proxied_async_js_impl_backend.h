@@ -57,7 +57,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
   // TODO; proxy
     return _wasmfs_jsimpl_async_write(
-      getBackendIndex(), getFileIndex(), buf, len, offset);
+      getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
@@ -66,14 +66,14 @@ class ProxiedAsyncJSImplFile : public DataFile {
     // not exceed the file's size.
     assert(offset + len <= getSize());
     return _wasmfs_jsimpl_async_read(
-      getBackendIndex(), getFileIndex(), buf, len, offset);
+      getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
   }
 
   void flush() override {}
 
   size_t getSize() override {
   // TODO; proxy
-    return _wasmfs_jsimpl_async_get_size(getBackendIndex(), getFileIndex());
+    return _wasmfs_jsimpl_async_get_size(getBackendIndex(), getFileIndex(), nullptr, nullptr);
   }
 
 public:
@@ -88,14 +88,16 @@ public:
 
   ~ProxiedAsyncJSImplFile() {
   // TODO; proxy
-    _wasmfs_jsimpl_async_free_file(getBackendIndex(), getFileIndex());
+    _wasmfs_jsimpl_async_free_file(getBackendIndex(), getFileIndex(), nullptr, nullptr);
   }
 };
 
 class ProxiedAsyncJSImplBackend : public Backend {
+  emscripten::SyncToAsync proxy;
+
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<ProxiedAsyncJSImplFile>(mode, this);
+    return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
   }
 };
 
