@@ -13,14 +13,14 @@
 // See library_wasmfs_js_file.js
 
 extern "C" {
-void _wasmfs_backend_add_js_file(wasmfs::backend_t);
+void _wasmfs_create_js_file_backend_js(wasmfs::backend_t);
 }
 
 namespace wasmfs {
 
 extern "C" backend_t wasmfs_create_js_file_backend() {
   backend_t backend = wasmFS.addBackend(std::make_unique<JSImplBackend>());
-  _wasmfs_backend_add_js_file(backend);
+  _wasmfs_create_js_file_backend_js(backend);
   return backend;
 }
 

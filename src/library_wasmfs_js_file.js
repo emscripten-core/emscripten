@@ -3,11 +3,11 @@ mergeInto(LibraryManager.library, {
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
 
-  _wasmfs_backend_add_js_file__deps: [
+  _wasmfs_create_js_file_backend_js__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
   ],
-  _wasmfs_backend_add_js_file: function(backend) {
+  _wasmfs_create_js_file_backend_js: function(backend) {
     wasmFS$backends[backend] = {
       alloc_file: function(file) {
         // Do nothing: we allocate the typed array lazily, see write()
