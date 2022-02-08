@@ -30,7 +30,7 @@ mergeInto(LibraryManager.library, {
         if (!wasmFS$JSMemoryFiles[file]) {
           // This is the first read from this file, fetch it.
           // TODO: URL!
-          promise = fetch('data.dat').then((response) =>
+          promise = fetch('data.dat').then((response) => {
             if (!response['ok']) {
               throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
             }
