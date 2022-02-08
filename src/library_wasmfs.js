@@ -200,7 +200,9 @@ console.log('alloc file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
+    {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].allocFile(file).then(() => {
+      {{{ runtimeKeepalivePop() }}}
       {{{ makeDynCall('vii', 'fptr') }}}(arg);
     });
   },
@@ -230,7 +232,9 @@ console.log('alloc file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
+    {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].allocFile(file).then((size) => {
+      {{{ runtimeKeepalivePop() }}}
       {{{ makeDynCall('vii', 'fptr') }}}(arg, size);
     });
   },
