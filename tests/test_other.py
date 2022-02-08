@@ -7917,14 +7917,21 @@ end
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
   def test_closure_full_js_library(self):
-    # test for closure errors in the entire JS library
+    # Test for closure errors and warnings in the entire JS library.
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sCLOSURE_WARNINGS=error',
+                      '-sINCLUDE_FULL_LIBRARY'])
 
-    # USE_WEBGPU is specified here to make sure that it's closure-safe.
-    # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-sINCLUDE_FULL_LIBRARY', '-sUSE_WEBGPU', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+  def test_closure_webgpu(self):
+    # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-g1',
+                      '--closure=1',
+                      '-sINCLUDE_FULL_LIBRARY',
+                      '-sUSE_WEBGPU'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
@@ -9832,6 +9839,24 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
     self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
+
+  def test_setjmp_emulated_casts(self):
+    # using setjmp causes invokes(), and EMULATE_FUNCTION_POINTER_CASTS changes
+    # how the wasm table works; test that they work together properly
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <setjmp.h>
+      int main() {
+        jmp_buf jb;
+        if (!setjmp(jb)) {
+          printf("ok\n");
+          longjmp(jb, 1);
+        } else {
+          printf("done\n");
+        }
+      }
+    ''')
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_missing_stdlibs(self):
     # Certain standard libraries are expected to be useable via -l flags but

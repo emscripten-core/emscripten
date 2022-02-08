@@ -1807,6 +1807,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
 
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # Emulated casts forces a wasm ABI of (i64, i64, ...) in the table, which
+    # means all table functions are illegal for JS to call directly. Use
+    # dyncalls which call into the wasm, which then does an indirect call.
+    settings.DYNCALLS = 1
+
   if options.oformat != OFormat.OBJECT and final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
     diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
@@ -1827,13 +1833,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
     ]
 
   if settings.STACK_OVERFLOW_CHECK:
-    # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
-    # of the stack is.
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_end', 'emscripten_stack_get_free']
-    if settings.STACK_OVERFLOW_CHECK == 2:
-      # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
-      # stack.
-      settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base']
+    settings.REQUIRED_EXPORTS += [
+      'emscripten_stack_get_end',
+      'emscripten_stack_get_free',
+      'emscripten_stack_get_base'
+    ]
 
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
