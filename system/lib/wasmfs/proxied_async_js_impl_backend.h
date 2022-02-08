@@ -92,13 +92,4 @@ public:
   }
 };
 
-class ProxiedAsyncJSImplBackend : public Backend {
-  emscripten::SyncToAsync proxy;
-
-public:
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
-  }
-};
-
 } // namespace wasmfs

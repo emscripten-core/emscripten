@@ -196,6 +196,7 @@ var WasmFSLibrary = {
   // we then connect to the calling C++.
 
   _wasmfs_jsimpl_async_alloc_file: function(backend, file, fptr, arg) {
+console.log('alloc file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
