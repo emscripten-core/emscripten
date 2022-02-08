@@ -25,7 +25,7 @@ console.log(['maek fetch', backend] + '\n');
       var promise;
       if (typeof fetch === 'function') {
         // On the web use fetch() normally.
-        promise = fetch().then((response) => {
+        promise = fetch(url).then((response) => {
           if (!response['ok']) {
             throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
           }

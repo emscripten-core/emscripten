@@ -5180,8 +5180,9 @@ window.close = function() {
     test(['-sMALLOC=emmalloc-memvalidate-verbose'])
 
   def test_wasmfs_fetch_backend(self):
-    self.btest_exit(test_file('wasmfs/wasmfs_jsfile.c'),
-                    args=['-sWASMFS', '-DFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+    create_file('data.dat', 'hello, fetch')
+    self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
+                    args=['-sWASMFS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
