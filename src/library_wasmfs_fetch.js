@@ -12,54 +12,57 @@ console.log('maek fetch', backend);
     // Start with the normal JSFile operations.
     __wasmfs_create_js_file_backend_js(backend);
 
+    function getFile() {
+      if (wasmFS$JSMemoryFiles[file]) {
+        // The data is already here, so nothing to do before we continue on to
+        // the actual read below.
+        return Promise.resolve();
+      }
+
+      // This is the first time we want the file's data.
+      // TODO: URL!
+      var url = 'data.dat';
+      var promise;
+      if (typeof fetch === 'function') {
+        // On the web use fetch() normally.
+        promise = fetch().then((response) => {
+          if (!response['ok']) {
+            throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+          }
+          return response['arrayBuffer']();
+        });
+      } else {
+        // Until Node.js gets fetch support, use an async read.
+        promise = fs.readFile(url, "binary");
+      }
+      return promise.then((buffer) => {
+        wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
+      });
+    }
+
     // Add the async operations on top.
     var jsFileOps = wasmFS$backends[backend];
     wasmFS$backends[backend] = {
       allocFile: function(file) {
         jsFileOps.allocFile(file);
-        return new Promise.resolve();
+        return Promise.resolve();
       },
       freeFile: function(file) {
         jsFileOps.freeFile(file);
-        return new Promise.resolve();
+        return Promise.resolve();
       },
       write: function(file, buffer, length, offset) {
         abort();
       },
       read: function(file, buffer, length, offset) {
-        var promise;
-        if (!wasmFS$JSMemoryFiles[file]) {
-          // This is the first read from this file, fetch it.
-          // TODO: URL!
-          var url = 'data.dat';
-          if (typeof fetch === 'function') {
-            // On the web use fetch() normally.
-            promise = fetch().then((response) => {
-              if (!response['ok']) {
-                throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-              }
-              return response['arrayBuffer']();
-            });
-          } else {
-            // Until Node.js gets fetch support, use an async read.
-            promise = fs.readFile(url, "binary");
-          }
-          promise.then((buffer) => {
-            wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
-          });
-        } else {
-          // The data is already here, so nothing to do before we continue on to
-          // the actual read below.
-          promise = Promise.resolve();
-        }
-
-        // Do the actual read.
-        return promise.then(() => {
+        return getFile().then(() => {
           return jsFileOps.read(file, buffer, length, offset);
         });
       },
       getSize: function(file) {
-        return new Promise.resolve(jsFileOps.getSize(file));
+        return getFile().then(() => {
+          return jsFileOps.getSize(file);
+        });
       },
     };
   },

@@ -226,11 +226,13 @@ console.log('alloc file async', backend);
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 
-  _wasmfs_jsimpl_async_get_size: function(backend, file) {
+  _wasmfs_jsimpl_async_get_size: function(backend, file, fptr, arg) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].getSize(file);
+    wasmFS$backends[backend].allocFile(file).then((size) => {
+      {{{ makeDynCall('vii', 'fptr') }}}(arg, size);
+    });
   },
 }
 

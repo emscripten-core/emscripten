@@ -20,23 +20,42 @@
 
 using js_index_t = uint32_t;
 
+// Callbacks take a pointer to a CallbackState structure, which contains both the
+// function to call to resume execution, and storage for any out params.
+// Basically this stores the state during an async call.
+struct CallbackState {
+  // The result of the operation, either success or an error code.
+  __wasi_errno_t result;
+
+  // Some syscalls return an offset.
+  off_t offset;
+
+  // The function to call to resume execution.
+  emscripten::SyncToAsync::Callback resume;
+
+  CallbackState(emscripten::SyncToAsync::Callback resume) : resume(resume) {}
+};
+
+
 extern "C" {
 // JSImpl async API.
-typedef void (*async_callback_t)(void*);
 
-void _wasmfs_jsimpl_async_alloc_file(js_index_t backend, js_index_t index, async_callback_t callback, void* arg);
-void _wasmfs_jsimpl_async_free_file(js_index_t backend, js_index_t index, async_callback_t callback, void* arg);
-int _wasmfs_jsimpl_async_write(js_index_t backend,
+// An async callback with no extra parameters.
+typedef void (*async_callback_t)(CallbackState* state);
+
+void _wasmfs_jsimpl_async_alloc_file(js_index_t backend, js_index_t index, async_callback_t callback, CallbackState* state);
+void _wasmfs_jsimpl_async_free_file(js_index_t backend, js_index_t index, async_callback_t callback, CallbackState* state);
+void _wasmfs_jsimpl_async_write(js_index_t backend,
                          js_index_t index,
                          const uint8_t* buffer,
                          size_t length,
-                         off_t offset, async_callback_t callback, void* arg);
-int _wasmfs_jsimpl_async_read(js_index_t backend,
+                         off_t offset, async_callback_t callback, CallbackState* state);
+void _wasmfs_jsimpl_async_read(js_index_t backend,
                         js_index_t index,
                         const uint8_t* buffer,
                         size_t length,
-                        off_t offset, async_callback_t callback, void* arg);
-int _wasmfs_jsimpl_async_get_size(js_index_t backend, js_index_t index, async_callback_t callback, void* arg);
+                        off_t offset, async_callback_t callback, CallbackState* state);
+void _wasmfs_jsimpl_async_get_size(js_index_t backend, js_index_t index, async_callback_t callback, CallbackState* state);
 }
 
 namespace wasmfs {
@@ -56,8 +75,9 @@ class ProxiedAsyncJSImplFile : public DataFile {
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
   // TODO; proxy
-    return _wasmfs_jsimpl_async_write(
+    _wasmfs_jsimpl_async_write(
       getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
+    return __WASI_ERRNO_SUCCESS;
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
@@ -65,24 +85,36 @@ class ProxiedAsyncJSImplFile : public DataFile {
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
     assert(offset + len <= getSize());
-    return _wasmfs_jsimpl_async_read(
+    _wasmfs_jsimpl_async_read(
       getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
+    return __WASI_ERRNO_SUCCESS;
   }
 
   void flush() override {}
 
   size_t getSize() override {
-  // TODO; proxy
-    return _wasmfs_jsimpl_async_get_size(getBackendIndex(), getFileIndex(), nullptr, nullptr);
+    CallbackState state;
+
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      state->resume = &resume;
+      _wasmfs_jsimpl_async_get_size(getBackendIndex(), getFileIndex(), [](CallbackState* state) {
+        (*state->resume)();
+      }, &state);
+    });
+
+    return state->offset;
   }
 
 public:
   ProxiedAsyncJSImplFile(mode_t mode, backend_t backend, emscripten::SyncToAsync& proxy) : DataFile(mode, backend), proxy(proxy) {
+    CallbackState state(resume);
+
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      _wasmfs_jsimpl_async_alloc_file(getBackendIndex(), getFileIndex(), [](void* arg) {
-        auto* resume = (emscripten::SyncToAsync::Callback*)arg;
-        (**resume)();
-      }, (void*)&resume);
+      state->resume = &resume;
+
+      _wasmfs_jsimpl_async_alloc_file(getBackendIndex(), getFileIndex(), [](CallbackState* state) {
+        (*state->resume)();
+      }, &state);
     });
   }
 
