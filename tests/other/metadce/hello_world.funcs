@@ -22,6 +22,7 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $close_file
 $dynCall_jiji
+$emscripten_stack_get_base
 $emscripten_stack_get_end
 $emscripten_stack_get_free
 $emscripten_stack_init
