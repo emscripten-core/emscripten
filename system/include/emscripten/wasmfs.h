@@ -33,8 +33,12 @@ long wasmfs_create_directory(char* path, long mode, backend_t backend);
 // Creates a JSFile Backend in the new file system.
 backend_t wasmfs_create_js_file_backend();
 
+// A function that receives a void* and returns a backend.
+typedef backend_t (*backend_constructor_t)(void*);
+
 // Creates a Proxied Backend in the new file system.
-backend_t wasmfs_create_proxied_backend(backend_t backend);
+backend_t wasmfs_create_proxied_backend(backend_constructor_t create_backend,
+                                        void* arg);
 
 #ifdef __cplusplus
 }

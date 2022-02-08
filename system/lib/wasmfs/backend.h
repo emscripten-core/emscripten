@@ -43,4 +43,6 @@ public:
 // them will be defined in a header file. This is so that any unused backends
 // are not linked in if they are not called.
 backend_t createMemoryFileBackend();
+
+typedef backend_t (*backend_constructor_t)(void*);
 } // namespace wasmfs
