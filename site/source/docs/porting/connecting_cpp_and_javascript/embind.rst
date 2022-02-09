@@ -202,12 +202,14 @@ to enable the closure compiler.
 Memory management
 =================
 
-JavaScript, specifically ECMA-262 Edition 5.1, does not support `finalizers`_
-or weak references with callbacks. Therefore there is no way for Emscripten
-to automatically call the destructors on C++ objects.
+JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
+Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
+offer any guarantees that the provided finalization callback will be called.
+Embind uses this for cleanup if available, but only for smart pointers,
+and only as a last resort.
 
-.. warning:: JavaScript code must explicitly delete any C++ object handles
-   it has received, or the Emscripten heap will grow indefinitely.
+.. warning:: It is strongly recommended that JavaScript code explicitly deletes
+    any C++ object handles it has received.
 
 The :js:func:`delete()` JavaScript method is provided to manually signal that
 a C++ object is no longer needed and can be deleted:
@@ -1022,6 +1024,7 @@ real-world applications has proved to be more than acceptable.
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
+.. _FinalizationRegistry: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry
 .. _Reference Counting: https://en.wikipedia.org/wiki/Reference_counting
 .. _Boost.Python-like raw pointer policies: https://wiki.python.org/moin/boost.python/CallPolicy
 .. _Backbone.js: http://backbonejs.org/#Model-extend
