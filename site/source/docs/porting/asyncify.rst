@@ -220,11 +220,56 @@ and want to ``await`` a dynamically retrieved ``Promise``, you can call an
 .. code-block:: cpp
 
     val my_object = /* ... */;
-    val result = my_object.call("someAsyncMethod").await();
+    val result = my_object.call<val>("someAsyncMethod").await();
 
 In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
 automatically.
+
+Note that when Asyncify is used with Embind and the code is invoked from
+JavaScript, then it will be implicitly treated as an ``async`` function,
+returning a ``Promise`` to the return value, as demonstrated below.
+
+.. code-block:: cpp
+
+   #include <emscripten/bind.h>
+   #include <emscripten.h>
+
+   static int delayAndReturn(bool sleep) {
+     if (sleep) {
+       emscripten_sleep(0);
+     }
+     return 42;
+   }
+
+   EMSCRIPTEN_BINDINGS(example) {
+     emscripten::function("delayAndReturn", &delayAndReturn);
+   }
+
+Build with
+::
+
+    emcc -O3 example.cpp --bind -s ASYNCIFY
+
+Then invoke from JavaScript
+
+.. code-block:: javascript
+
+   let syncResult = Module.delayAndReturn(false);
+   console.log(syncResult); // 42
+   console.log(await syncResult); // also 42 because `await` is no-op
+
+   let asyncResult = Module.delayAndReturn(true);
+   console.log(asyncResult); // Promise { <pending> }
+   console.log(await asyncResult); // 42
+
+In contrast to JavaScript ``async`` functions which always return a ``Promise``,
+the return value is determined at run time, and a ``Promise`` is only returned
+if Asyncify calls are encountered (such as ``emscripten_sleep()``,
+``val::await()``, etc).
+
+If the code path is undetermined, the caller may either check if the returned
+value is an ``instanceof Promise`` or simply ``await`` on the returned value.
 
 Usage with ``ccall``
 ####################
