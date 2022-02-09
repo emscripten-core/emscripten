@@ -270,11 +270,8 @@ var WasiLibrary = {
   },
 
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
-    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsDouble('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
 
     var DOUBLE_LIMIT = 0x20000000000000; // 2^53
     // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
