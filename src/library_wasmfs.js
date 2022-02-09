@@ -203,7 +203,7 @@ console.log('alloc file async', backend);
     {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].allocFile(file).then(() => {
       {{{ runtimeKeepalivePop() }}}
-      {{{ makeDynCall('vii', 'fptr') }}}(arg);
+      {{{ makeDynCall('vi', 'fptr') }}}(arg);
     });
   },
 
@@ -212,29 +212,29 @@ console.log('free file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    return wasmFS$backends[backend].freeFile(file);
+    {{{ runtimeKeepalivePush() }}}
+    wasmFS$backends[backend].freeFile(file).then(() => {
+      {{{ runtimeKeepalivePop() }}}
+      {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    });
   },
 
-  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offset, fptr, arg) {
-console.log('write file async', backend);
-#if ASSERTIONS
-    assert(wasmFS$backends[backend]);
-#endif
-    return wasmFS$backends[backend].write(file, buffer, length, offset);
+  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offsetLow, offsetHigh, fptr, arg) {
+    abort('TODO');
   },
 
-  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offset, fptr, arg) {
+  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offsetLow, offsetHigh, fptr, arg) {
 console.log('read file async', backend);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     {{{ runtimeKeepalivePush() }}}
-    wasmFS$backends[backend].read(file, buffer, length, offset).then((size) => {
+    wasmFS$backends[backend].read(file, buffer, length, offsetLow /* FIXME */).then((size) => {
       {{{ runtimeKeepalivePop() }}}
       HEAP32[arg >> 2] = 0; // success
       HEAP32[arg + 8 >> 2] = size;
       HEAP32[arg + 12 >> 2] = 0;
-      {{{ makeDynCall('vii', 'fptr') }}}(arg);
+      {{{ makeDynCall('vi', 'fptr') }}}(arg);
     });
   },
 
@@ -250,7 +250,7 @@ console.log('waka get size response ' + size, 'writing to', arg + 8);
       HEAP32[arg >> 2] = 0; // success
       HEAP32[arg + 8 >> 2] = size;
       HEAP32[arg + 12 >> 2] = 0;
-      {{{ makeDynCall('vii', 'fptr') }}}(arg);
+      {{{ makeDynCall('vi', 'fptr') }}}(arg);
     });
   },
 }

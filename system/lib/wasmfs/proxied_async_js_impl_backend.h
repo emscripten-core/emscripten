@@ -84,10 +84,22 @@ class ProxiedAsyncJSImplFile : public DataFile {
   }
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    // TODO; proxy
-    _wasmfs_jsimpl_async_write(
-      getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
-    return __WASI_ERRNO_SUCCESS;
+    CallbackState state;
+
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      state.resume = resume;
+
+      _wasmfs_jsimpl_async_write(
+        getBackendIndex(),
+        getFileIndex(),
+        buf,
+        len,
+        offset,
+        [](CallbackState* state) { (*state->resume)(); },
+        &state);
+    });
+
+    return state.result;
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
@@ -95,21 +107,32 @@ class ProxiedAsyncJSImplFile : public DataFile {
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
     assert(offset + len <= getSize());
-    _wasmfs_jsimpl_async_read(
-      getBackendIndex(), getFileIndex(), buf, len, offset, nullptr, nullptr);
-    return __WASI_ERRNO_SUCCESS;
-  }
 
-  void flush() override {}
-
-  size_t getSize() override {
-EM_ASM({ console.error("getSize() C++") });
     CallbackState state;
 
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
       state.resume = resume;
 
-EM_ASM({ console.error("getSIze() C++ offset ptr " + $0) }, (uint32_t)&state.offset);
+      _wasmfs_jsimpl_async_read(
+        getBackendIndex(),
+        getFileIndex(),
+        buf,
+        len,
+        offset,
+        [](CallbackState* state) { (*state->resume)(); },
+        &state);
+    });
+
+    return state.result;
+  }
+
+  void flush() override {}
+
+  size_t getSize() override {
+    CallbackState state;
+
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      state.resume = resume;
 
       _wasmfs_jsimpl_async_get_size(
         getBackendIndex(),
@@ -140,9 +163,17 @@ public:
   }
 
   ~ProxiedAsyncJSImplFile() {
-    // TODO; proxy
-    _wasmfs_jsimpl_async_free_file(
-      getBackendIndex(), getFileIndex(), nullptr, nullptr);
+    CallbackState state;
+
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      state.resume = resume;
+
+      _wasmfs_jsimpl_async_free_file(
+        getBackendIndex(),
+        getFileIndex(),
+        [](CallbackState* state) { (*state->resume)(); },
+        &state);
+    });
   }
 };
 
