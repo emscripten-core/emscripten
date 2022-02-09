@@ -430,6 +430,7 @@ def main(args):
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
     '-I' + utils.path_from_root('system/lib/pthread/'),
+    '-I' + utils.path_from_root('system/lib/wasmfs/'),
   ]
 
   cxxflags = [

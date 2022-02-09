@@ -47,5 +47,14 @@
               "name"
             ]
         }
+    },
+    {
+        "file": "proxied_async_js_impl_backend.h",
+        "structs": {
+            "CallbackState": [
+                "result",
+                "offset"
+            ]
+        }
     }
 ]
