@@ -231,9 +231,8 @@ console.log('read file async', backend);
     {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].read(file, buffer, length, offsetLow /* FIXME */).then((size) => {
       {{{ runtimeKeepalivePop() }}}
-      HEAP32[arg >> 2] = 0; // success
-      HEAP32[arg + 8 >> 2] = size;
-      HEAP32[arg + 12 >> 2] = 0;
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
       {{{ makeDynCall('vi', 'fptr') }}}(arg);
     });
   },
@@ -246,10 +245,8 @@ console.log('getSize file async', backend);
     {{{ runtimeKeepalivePush() }}}
     wasmFS$backends[backend].getSize(file).then((size) => {
       {{{ runtimeKeepalivePop() }}}
-console.log('waka get size response ' + size, 'writing to', arg + 8);
-      HEAP32[arg >> 2] = 0; // success
-      HEAP32[arg + 8 >> 2] = size;
-      HEAP32[arg + 12 >> 2] = 0;
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
       {{{ makeDynCall('vi', 'fptr') }}}(arg);
     });
   },
