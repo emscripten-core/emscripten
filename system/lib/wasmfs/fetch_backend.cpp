@@ -20,9 +20,8 @@ namespace wasmfs {
 
 extern "C" backend_t wasmfs_create_fetch_backend(char* base_url) {
   // TODO: use base url, cache on JS side
-  return wasmFS.addBackend(std::make_unique<ProxiedAsyncJSBackend>([](backend_t backend) {
-    _wasmfs_create_fetch_backend_js(backend);
-  }));
+  return wasmFS.addBackend(std::make_unique<ProxiedAsyncJSBackend>(
+    [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));
 }
 
 } // namespace wasmfs
