@@ -218,7 +218,16 @@ var WasmFSLibrary = {
   },
 
   _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, offsetLow, offsetHigh, fptr, arg) {
-    abort('TODO');
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    wasmFS$backends[backend].write(file, buffer, length, offsetLow /* FIXME */).then((size) => {
+      {{{ runtimeKeepalivePop() }}}
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
+      {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    });
   },
 
   _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, offsetLow, offsetHigh, fptr, arg) {
