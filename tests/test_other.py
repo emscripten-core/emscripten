@@ -11436,17 +11436,6 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.test_wasmfs_jsfile()
 
-  @node_pthreads
-  def test_wasmfs_fetch_backend(self):
-    self.emcc_args.append('-DFETCH')
-    self.emcc_args.append('--profiling')
-    self.emcc_args.append('-sWASM=0')
-    self.emcc_args.append('-O2')
-    self.set_setting('USE_PTHREADS')
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.test_wasmfs_jsfile()
-
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
