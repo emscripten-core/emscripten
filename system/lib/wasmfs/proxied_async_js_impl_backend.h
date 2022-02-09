@@ -9,10 +9,10 @@
 
 #pragma once
 
+#include "async_callback.h"
 #include "backend.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
-#include "async_callback.h"
 
 //
 // Similar to JSImplBackend, but proxies to another thread where the JS can be

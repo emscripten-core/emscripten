@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "wasi/api.h"
 #include "sys/types.h"
+#include "wasi/api.h"
 
 // Callbacks for the async API between C and JS. This is declared in a small
 // separate header for convenience of gen_struct_info.
@@ -25,4 +25,3 @@ struct CallbackState {
   // Some syscalls return an offset.
   off_t offset;
 };
-
