@@ -169,14 +169,16 @@ var WasmFSLibrary = {
     return wasmFS$backends[backend].freeFile(file);
   },
 
-  _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_write: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
-  _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_read: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
