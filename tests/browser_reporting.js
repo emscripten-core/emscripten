@@ -20,7 +20,7 @@ function reportResultToServer(result, sync, port) {
     xhr.send();
     if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
       /* for easy debugging, don't close window on failure */
-//      setTimeout(function() { window.close() }, 1000);
+      setTimeout(function() { window.close() }, 1000);
     }
   }
 }
