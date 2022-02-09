@@ -60,7 +60,6 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'wasm64'
 ]
 
 # The default core test mode, used when none is specified
@@ -81,6 +80,7 @@ non_core_test_modes = [
   'posixtest_browser',
   'minimal0',
   'wasmfs',
+  'wasm64',
 ]
 
 
