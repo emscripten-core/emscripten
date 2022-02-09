@@ -197,43 +197,40 @@ var WasmFSLibrary = {
   // implementors of backends: the hooks we call should return Promises, which
   // we then connect to the calling C++.
 
-  _wasmfs_jsimpl_async_alloc_file: function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_alloc_file: async function(backend, file, fptr, arg) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     {{{ runtimeKeepalivePush() }}}
-    wasmFS$backends[backend].allocFile(file).then(() => {
-      {{{ runtimeKeepalivePop() }}}
-      {{{ makeDynCall('vi', 'fptr') }}}(arg);
-    });
+    await wasmFS$backends[backend].allocFile(file);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
   },
 
-  _wasmfs_jsimpl_async_free_file: function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_free_file: async function(backend, file, fptr, arg) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     {{{ runtimeKeepalivePush() }}}
-    wasmFS$backends[backend].freeFile(file).then(() => {
-      {{{ runtimeKeepalivePop() }}}
-      {{{ makeDynCall('vi', 'fptr') }}}(arg);
-    });
+    await wasmFS$backends[backend].freeFile(file);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
   },
 
-  _wasmfs_jsimpl_async_write: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+  _wasmfs_jsimpl_async_write: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     {{{ runtimeKeepalivePush() }}}
-    wasmFS$backends[backend].write(file, buffer, length, offset).then((size) => {
-      {{{ runtimeKeepalivePop() }}}
-      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
-      {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
-      {{{ makeDynCall('vi', 'fptr') }}}(arg);
-    });
+    var size = await wasmFS$backends[backend].write(file, buffer, length, offset);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
   },
 
-  _wasmfs_jsimpl_async_read: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+  _wasmfs_jsimpl_async_read: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -247,7 +244,7 @@ var WasmFSLibrary = {
     });
   },
 
-  _wasmfs_jsimpl_async_get_size: function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_get_size: async function(backend, file, fptr, arg) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
