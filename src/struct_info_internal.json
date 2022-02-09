@@ -49,7 +49,7 @@
         }
     },
     {
-        "file": "proxied_async_js_impl_backend.h",
+        "file": "async_callback.h",
         "structs": {
             "CallbackState": [
                 "result",

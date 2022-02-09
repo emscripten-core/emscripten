@@ -9,10 +9,8 @@
 
 #pragma once
 
-#include "backend.h"
-#include "thread_utils.h"
-#include "wasmfs.h"
-#include "async_callback.h"
+#include "wasi/api.h"
+#include "sys/types.h"
 
 // Callbacks for the async API between C and JS. This is declared in a small
 // separate header for convenience of gen_struct_info.
@@ -28,4 +26,3 @@ struct CallbackState {
   off_t offset;
 };
 
-} // namespace wasmfs
