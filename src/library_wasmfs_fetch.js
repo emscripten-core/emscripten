@@ -8,10 +8,10 @@ mergeInto(LibraryManager.library, {
     '$wasmFS$JSMemoryFiles',
     '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_create_fetch_backend_js: function(backend) {
+  _wasmfs_create_fetch_backend_js: async function(backend) {
     // Get a promise that fetches the data and stores it in JS memory (if it has
     // not already been fetched).
-    function getFile(file) {
+    async function getFile(file) {
       if (wasmFS$JSMemoryFiles[file]) {
         // The data is already here, so nothing to do before we continue on to
         // the actual read below.
@@ -21,14 +21,9 @@ mergeInto(LibraryManager.library, {
       // This is the first time we want the file's data.
       // TODO: real URL!
       var url = 'data.dat';
-      return fetch(url).then((response) => {
-        if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-        }
-        return response['arrayBuffer']();
-      }).then((buffer) => {
-        wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
-      });
+      var response = await fetch(url);
+      var buffer = await response['arrayBuffer']();
+      wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
     }
 
     // Start with the normal JSFile operations. This sets
@@ -41,29 +36,27 @@ mergeInto(LibraryManager.library, {
     wasmFS$backends[backend] = {
       // alloc/free operations are not actually async. Just forward to the
       // parent class, but we must return a Promise as the caller expects.
-      allocFile: function(file) {
+      allocFile: async function(file) {
         jsFileOps.allocFile(file);
         return Promise.resolve();
       },
-      freeFile: function(file) {
+      freeFile: async function(file) {
         jsFileOps.freeFile(file);
         return Promise.resolve();
       },
 
-      write: function(file, buffer, length, offset) {
+      write: async function(file, buffer, length, offset) {
         abort("TODO: file writing in fetch backend? read-only for now");
       },
 
       // read/getSize fetch the data, then forward to the parent class.
-      read: function(file, buffer, length, offset) {
-        return getFile(file).then(() => {
-          return jsFileOps.read(file, buffer, length, offset);
-        });
+      read: async function(file, buffer, length, offset) {
+        await getFile(file);
+        return jsFileOps.read(file, buffer, length, offset);
       },
-      getSize: function(file) {
-        return getFile(file).then(() => {
-          return jsFileOps.getSize(file);
-        });
+      getSize: async function(file) {
+        await getFile(file);
+        return jsFileOps.getSize(file);
       },
     };
   },
