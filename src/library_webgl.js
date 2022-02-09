@@ -570,6 +570,7 @@ var LibraryGL = {
         return ret;
       };
       glCtx['bufferData'] = function(a1, a2, a3, a4, a5) {
+          // WebGL1/2 versions have different parameters (not just extra ones)
           var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
           return ret;
       };
