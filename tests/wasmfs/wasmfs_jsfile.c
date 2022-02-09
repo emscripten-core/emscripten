@@ -34,18 +34,13 @@ static backend_t make_js_file_backend(void* arg) {
   return wasmfs_create_js_file_backend();
 }
 
-static backend_t make_backend() {
-#ifdef PROXYING
-  return wasmfs_create_proxied_backend(make_js_file_backend, NULL);
-#endif
-#ifdef FETCH
-  return wasmfs_create_fetch_backend("TODO/url");
-#endif
-  return make_js_file_backend(NULL);
-}
-
 int main() {
-  backend_t backend = make_backend();
+  backend_t backend;
+#ifndef PROXYING
+  backend = make_js_file_backend(NULL);
+#else
+  backend = wasmfs_create_proxied_backend(make_js_file_backend, NULL);
+#endif
 
   // Create a new backend file under root.
   int fd = wasmfs_create_file("/testfile", 0777, backend);
