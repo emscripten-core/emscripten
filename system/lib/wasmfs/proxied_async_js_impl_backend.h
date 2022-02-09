@@ -23,7 +23,7 @@ using js_index_t = uint32_t;
 
 // A callback state that also adds the C++ component for resuming. This is only
 // needed on the C++ side, but needs to be passed around as part of this
-// struct when we go through C and JS>
+// struct when we go through C and JS.
 struct CppCallbackState : public CallbackState {
   // The function to call to resume execution.
   emscripten::SyncToAsync::Callback resume;
@@ -98,7 +98,6 @@ class ProxiedAsyncJSImplFile : public DataFile {
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // TODO; proxy
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
     assert(offset + len <= getSize());
