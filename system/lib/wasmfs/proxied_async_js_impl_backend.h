@@ -171,4 +171,22 @@ public:
   }
 };
 
+class ProxiedAsyncJSBackend : public Backend {
+  emscripten::SyncToAsync proxy;
+
+public:
+  // Receives as a parameter a function to call on the proxied thread, which is
+  // useful for doing setup there.
+  ProxiedAsyncJSBackend(std::function<void(backend_t)> setupOnThread) {
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      setupOnThread(this);
+      (*resume)();
+    });
+  }
+
+  std::shared_ptr<DataFile> createFile(mode_t mode) override {
+    return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
+  }
+};
+
 } // namespace wasmfs

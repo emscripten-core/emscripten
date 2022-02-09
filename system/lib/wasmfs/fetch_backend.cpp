@@ -18,26 +18,11 @@ void _wasmfs_create_fetch_backend_js(wasmfs::backend_t);
 
 namespace wasmfs {
 
-class FetchBackend : public Backend {
-  emscripten::SyncToAsync proxy;
-
-public:
-  FetchBackend() {
-    // Run the JS on the target thread.
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      _wasmfs_create_fetch_backend_js(this);
-      (*resume)();
-    });
-  }
-
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
-  }
-};
-
 extern "C" backend_t wasmfs_create_fetch_backend(char* base_url) {
   // TODO: use base url, cache on JS side
-  return wasmFS.addBackend(std::make_unique<FetchBackend>());
+  return wasmFS.addBackend(std::make_unique<ProxiedAsyncJSBackend>([](backend_t backend) {
+    _wasmfs_create_fetch_backend_js(backend);
+  }));
 }
 
 } // namespace wasmfs
