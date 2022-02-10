@@ -26,7 +26,7 @@
   global.gpu = {
     makeInitManager: function(type) {
       var mgr = 'WebGPU.mgr' + type
-      return mgr + ' = ' + mgr + ' || makeManager();';
+      return mgr + ' = ' + mgr + ' || new Manager();';
     },
 
     makeReferenceRelease: function(type) {
@@ -147,40 +147,39 @@ var LibraryWebGPU = {
     initManagers: function() {
       if (WebGPU.mgrDevice) return;
 
-      function makeManager() {
-        return {
-          objects: {},
-          nextId: 1,
-          create: function(object, wrapper /* = {} */) {
-            wrapper = wrapper || {};
+      /** @constructor */
+      function Manager() {
+        this.objects = {};
+        this.nextId = 1;
+        this.create = function(object, wrapper /* = {} */) {
+          wrapper = wrapper || {};
 
-            var id = this.nextId++;
-            {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
-            wrapper.refcount = 1;
-            wrapper.object = object;
-            this.objects[id] = wrapper;
-            return id;
-          },
-          get: function(id) {
-            if (!id) return undefined;
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            return o.object;
-          },
-          reference: function(id) {
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            o.refcount++;
-          },
-          release: function(id) {
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            {{{ gpu.makeCheck('o.refcount > 0') }}}
-            o.refcount--;
-            if (o.refcount <= 0) {
-              delete this.objects[id];
-            }
-          },
+          var id = this.nextId++;
+          {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
+          wrapper.refcount = 1;
+          wrapper.object = object;
+          this.objects[id] = wrapper;
+          return id;
+        };
+        this.get = function(id) {
+          if (!id) return undefined;
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          return o.object;
+        };
+        this.reference = function(id) {
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          o.refcount++;
+        };
+        this.release = function(id) {
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          {{{ gpu.makeCheck('o.refcount > 0') }}}
+          o.refcount--;
+          if (o.refcount <= 0) {
+            delete this.objects[id];
+          }
         };
       }
 
