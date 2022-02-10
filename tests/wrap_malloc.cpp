@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include <assert.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,7 +21,7 @@ void * __attribute__((noinline)) malloc(size_t size)
 {
 	++totalAllocated;
 	void *ptr = emscripten_builtin_malloc(size);
-	emscripten_log(EM_LOG_CONSOLE, "Allocated %zu bytes, got %d. %d pointers allocated total.\n", size, ptr, totalAllocated);
+	emscripten_console_logf("Allocated %zu bytes, got %p. %d pointers allocated total.\n", size, ptr, totalAllocated);
 	return ptr;
 }
 
@@ -29,7 +29,7 @@ void __attribute__((noinline)) free(void *ptr)
 {
 	++totalFreed;
 	emscripten_builtin_free(ptr);
-	emscripten_log(EM_LOG_CONSOLE, "Freed ptr %p, %d pointers freed total.\n", ptr, totalFreed);
+	emscripten_console_logf("Freed ptr %p, %d pointers freed total.\n", ptr, totalFreed);
 }
 
 }
@@ -51,8 +51,8 @@ int main()
 		out = ptr;
 		free(ptr);
 	}
-	emscripten_log(EM_LOG_CONSOLE, "totalAllocated: %d\n", totalAllocated);
+	emscripten_console_logf("totalAllocated: %d\n", totalAllocated);
 	assert(totalAllocated == 20);
-	emscripten_log(EM_LOG_CONSOLE, "OK.\n");
+	emscripten_console_logf("OK.\n");
 	return 0;
 }
