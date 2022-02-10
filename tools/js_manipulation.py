@@ -111,7 +111,7 @@ def make_dynCall(sig, args):
     return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
 
 
-def make_invoke(sig, named=True):
+def make_invoke(sig):
   legal_sig = legalize_sig(sig) # TODO: do this in extcall, jscall?
   args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
   ret = 'return ' if sig[0] != 'v' else ''
@@ -122,17 +122,16 @@ def make_invoke(sig, named=True):
   else:
     rethrow = "if (e !== e+0) throw e;"
 
-  name = (' invoke_' + sig) if named else ''
   ret = '''\
-function%s(%s) {
-var sp = stackSave();
-try {
-  %s
-} catch(e) {
-  stackRestore(sp);
-  %s
-  _setThrew(1, 0);
-}
-}''' % (name, ','.join(args), body, rethrow)
+function invoke_%s(%s) {
+  var sp = stackSave();
+  try {
+    %s
+  } catch(e) {
+    stackRestore(sp);
+    %s
+    _setThrew(1, 0);
+  }
+}''' % (sig, ','.join(args), body, rethrow)
 
   return ret
