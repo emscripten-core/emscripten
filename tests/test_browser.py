@@ -2205,7 +2205,7 @@ void *getBindBuffer() {
     self.btest('sdl_ttf_render_text_solid.c', reference='sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest('sdl_alloctext.c', expected='1', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
     self.btest('sdl_surface_refcount.c', args=['-lSDL'], expected='1')
