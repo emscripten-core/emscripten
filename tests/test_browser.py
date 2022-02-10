@@ -5179,6 +5179,19 @@ window.close = function() {
     test(['-sMALLOC=emmalloc-memvalidate'])
     test(['-sMALLOC=emmalloc-memvalidate-verbose'])
 
+  @parameterized({
+    # the fetch backend works even on the main thread: we proxy to a background
+    # thread and busy-wait
+    'main_thread': (['-sPTHREAD_POOL_SIZE=1'],),
+    # using proxy_to_pthread also works, of course
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+  })
+  @requires_threads
+  def test_wasmfs_fetch_backend(self, args):
+    create_file('data.dat', 'hello, fetch')
+    self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
+                    args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
+
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])

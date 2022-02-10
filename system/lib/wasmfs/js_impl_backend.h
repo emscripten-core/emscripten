@@ -28,14 +28,16 @@
 // To write a new backend in JS, you basically do the following:
 //
 //  1. Add a declaration of the C function to create the backend in the
-//     "backend creation" section of emscripten/wasmfs.h.
+//     "backend creation" section of emscripten/wasmfs.h. (One line.)
 //  2. Add a cpp file for the new backend, and implement the C function from 1,
 //     which should create it on both the C++ (using JSImplBackend) and JS
 //     sides. (By convention, the C function should just call into C++ and JS
-//     which do the interesting work; the C is just a thin wrapper.)
+//     which do the interesting work; the C is just a thin wrapper.) (A few
+//     lines.)
 // 3. Write a new JS library, and add the implementation of the JS method just
 //    mentioned, which should set up the mapping from the C++ backend object's
-//    address to the JS code containing the hooks to read and write etc.
+//    address to the JS code containing the hooks to read and write etc. (99%
+//    of the work happens here.)
 //
 // For a simple example, see js_file_backend.cpp and library_wasmfs_js_file.js
 //
@@ -96,9 +98,7 @@ public:
     _wasmfs_jsimpl_alloc_file(getBackendIndex(), getFileIndex());
   }
 
-  ~JSImplFile() {
-    _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex());
-  }
+  ~JSImplFile() { _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex()); }
 };
 
 class JSImplBackend : public Backend {

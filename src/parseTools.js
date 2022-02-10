@@ -1073,6 +1073,19 @@ function receiveI64ParamAsI32s(name) {
   return '';
 }
 
+// TODO: use this in library_wasi.js and other places. but we need to add an
+//       error-handling hook here.
+function receiveI64ParamAsDouble(name) {
+  if (WASM_BIGINT) {
+    // Just convert the bigint into a double.
+    return `${name} = Number(${name});`;
+  }
+
+  // Combine the i32 params. Use an unsigned operator on low and shift high by
+  // 32 bits.
+  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+}
+
 function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
     return 'BigInt(low) | (BigInt(high) << BigInt(32))';

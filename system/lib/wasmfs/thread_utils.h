@@ -177,7 +177,7 @@ public:
   }
 };
 
-void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
+inline void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
   // The worker might not be waiting for work if some other invoker has already
   // sent work. Wait for the worker to be done with that work and ready for new
   // work.

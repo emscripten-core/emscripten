@@ -9,14 +9,14 @@ mergeInto(LibraryManager.library, {
   ],
   _wasmfs_create_js_file_backend_js: function(backend) {
     wasmFS$backends[backend] = {
-      alloc_file: function(file) {
+      allocFile: (file) => {
         // Do nothing: we allocate the typed array lazily, see write()
       },
-      free_file: function(file) {
+      freeFile: (file) => {
         // Release the memory, as it now has no references to it any more.
         wasmFS$JSMemoryFiles[file] = undefined;
       },
-      write: function(file, buffer, length, offset) {
+      write: (file, buffer, length, offset) => {
         try {
           if (!wasmFS$JSMemoryFiles[file]) {
             // Initialize typed array on first write operation.
@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
           return {{{ cDefine('EIO') }}};
         }
       },
-      read: function(file, buffer, length, offset) {
+      read: (file, buffer, length, offset) => {
         try {
           HEAPU8.set(wasmFS$JSMemoryFiles[file].subarray(offset, offset + length), buffer);
           return 0;
@@ -45,7 +45,7 @@ mergeInto(LibraryManager.library, {
           return {{{ cDefine('EIO') }}};
         }
       },
-      getSize: function(file) {
+      getSize: (file) => {
         return wasmFS$JSMemoryFiles[file] ? wasmFS$JSMemoryFiles[file].length : 0;
       },
     };
