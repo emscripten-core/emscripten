@@ -8681,6 +8681,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_testf(main, so_name=very_long_name,
                       need_reverse=False)
 
+  @parameterized({
+    '': (['-sNO_AUTOLOAD_DYLIBS'],),
+    'autoload': ([],)
+  })
+  @needs_dylink
+  @node_pthreads
+  def test_pthread_dylink_entry_point(self, args):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
+    self.dylink_testf(main, need_reverse=False, emcc_args=args)
+
   @needs_dylink
   @node_pthreads
   def test_pthread_dlopen(self):

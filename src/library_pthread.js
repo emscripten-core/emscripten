@@ -997,6 +997,12 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     err('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
+#if MAIN_MODULE
+    // Before we call the thread entry point, make sure any shared libraries
+    // have been loaded on this there.  Otherwise our table migth be not be
+    // in sync and might not contain the function pointer `ptr` at all.
+    __emscripten_thread_sync_code();
+#endif
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
