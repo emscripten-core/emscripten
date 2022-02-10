@@ -264,18 +264,19 @@ var HEAP,
   HEAPU32,
 /** @type {Float32Array} */
   HEAPF32,
+#if WASM_BIGINT
+/* BigInt64Array type is not correctly defined in closure
+/** not-@type {BigInt64Array} */
+  HEAP64,
+/* BigUInt64Array type is not correctly defined in closure
+/** not-t@type {BigUint64Array} */
+  HEAPU64,
+#endif
 /** @type {Float64Array} */
   HEAPF64;
 
 #if SUPPORT_BIG_ENDIAN
 var HEAP_DATA_VIEW;
-#endif
-
-#if WASM_BIGINT
-/** @type {BigInt64Array} */
-var HEAP64,
-/** @type {BigUint64Array} */
-    HEAPU64;
 #endif
 
 #if USE_PTHREADS

@@ -7929,7 +7929,13 @@ end
   def test_full_js_library_minimal_runtime(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
-  def test_closure_full_js_library(self):
+  @parameterized({
+    '': [[]],
+    # bigint support is interesting to test here because it changes which
+    # binaryen tools get run, which can affect how debug info is kept around
+    'bigint': [['-sWASM_BIGINT']],
+  })
+  def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
@@ -7940,7 +7946,7 @@ end
       '-sCLOSURE_WARNINGS=error',
       '-sINCLUDE_FULL_LIBRARY',
       '-sMAIN_MODULE'
-    ])
+    ] + args)
 
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
