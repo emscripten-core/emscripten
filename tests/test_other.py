@@ -7937,9 +7937,6 @@ end
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
-    # We must ignore various types of errors that are expected in this situation, as we
-    # are including a lot of JS without corresponding compiled code for it. This still
-    # lets us catch all other errors.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
       '-sCLOSURE_WARNINGS=error',
@@ -7949,6 +7946,7 @@ end
       '-sMAIN_MODULE',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
+      '-sLEGACY_GL_EMULATION',
     ] + args)
 
   def test_closure_webgpu(self):
