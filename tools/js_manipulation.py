@@ -115,6 +115,10 @@ def make_invoke(sig):
   legal_sig = legalize_sig(sig) # TODO: do this in extcall, jscall?
   args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
   ret = 'return ' if sig[0] != 'v' else ''
+  # For function that needs to return a genuine i64 (i.e. if legal_sig[0] is 'j')
+  # we need to return an actual BigInt, even in the exceptional case because
+  # wasm won't implicitly convert undefined to 0 in this case.
+  exceptional_ret = '\n    return BigInt(0);' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
   # C++ exceptions are numbers, and longjmp is a string 'longjmp'
   if settings.SUPPORT_LONGJMP:
@@ -130,8 +134,8 @@ function invoke_%s(%s) {
   } catch(e) {
     stackRestore(sp);
     %s
-    _setThrew(1, 0);
+    _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, rethrow)
+}''' % (sig, ','.join(args), body, rethrow, exceptional_ret)
 
   return ret
