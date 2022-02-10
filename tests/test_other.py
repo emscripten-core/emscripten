@@ -2431,7 +2431,7 @@ int f() {
     self.run_process(
       [EMXX,
        test_file('embind/test_finalization.cpp'),
-       '--post-js', test_file('embind/test_finalization.js'),
+       '--pre-js', test_file('embind/test_finalization.js'),
        '--bind']
     )
     self.node_args += ['--expose-gc']
