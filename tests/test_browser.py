@@ -4263,6 +4263,10 @@ window.close = function() {
   def test_custom_messages_proxy(self):
     self.btest(test_file('custom_messages_proxy.c'), expected='1', args=['--proxy-to-worker', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
 
+  @requires_threads
+  def test_custom_message_worker(self):
+    self.btest(test_file('custom_messages_worker.c'), expected='1', args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '--shell-file', test_file('custom_messages_worker_shell.html')])
+
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
       print(opts)
