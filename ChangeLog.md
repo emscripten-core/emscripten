@@ -312,6 +312,7 @@ See docs/process.md for more on how version tagging works.
   wasm binary.
 - The experimental SPLIT_MODULE setting now expects the secondary module to be
   named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+- sendfile.h header removed from musl. (#14248)
 
 2.0.21: 05/18/2021
 ------------------
