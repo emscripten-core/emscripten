@@ -631,7 +631,14 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(1) == 42);     // String containing numbers are converted correctly
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
-  
+
+  test("property and reuse the key");
+  val k("a key");
+  EM_VAL kh = k.as_handle();
+  val::global("a").set(kh, 1);
+  ensure(val::global("a")[kh].as<int>() == 1);
+  val::global("a").set(kh, 2);
+  ensure(val::global("a")[kh].as<int>() == 2);
   printf("end\n");
   return 0;
 }
