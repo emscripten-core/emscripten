@@ -36,25 +36,25 @@ mergeInto(LibraryManager.library, {
     wasmFS$backends[backend] = {
       // alloc/free operations are not actually async. Just forward to the
       // parent class, but we must return a Promise as the caller expects.
-      allocFile: async function(file) {
+      allocFile: async (file) => {
         jsFileOps.allocFile(file);
         return Promise.resolve();
       },
-      freeFile: async function(file) {
+      freeFile: async (file) => {
         jsFileOps.freeFile(file);
         return Promise.resolve();
       },
 
-      write: async function(file, buffer, length, offset) {
+      write: async (file, buffer, length, offset) => {
         abort("TODO: file writing in fetch backend? read-only for now");
       },
 
       // read/getSize fetch the data, then forward to the parent class.
-      read: async function(file, buffer, length, offset) {
+      read: async (file, buffer, length, offset) => {
         await getFile(file);
         return jsFileOps.read(file, buffer, length, offset);
       },
-      getSize: async function(file) {
+      getSize: async(file) => {
         await getFile(file);
         return jsFileOps.getSize(file);
       },
