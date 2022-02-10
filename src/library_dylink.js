@@ -132,6 +132,7 @@ var LibraryDylink = {
   // Applies relocations to exported things.
   $relocateExports__internal: true,
   $relocateExports__deps: ['$updateGOT'],
+  $relocateExports__docs: '/** @param {boolean=} replace */',
   $relocateExports: function(exports, memoryBase, replace) {
     var relocated = {};
 
@@ -174,6 +175,7 @@ var LibraryDylink = {
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
+          /** @suppress {checkTypes} */
           GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
@@ -295,6 +297,7 @@ var LibraryDylink = {
       return UTF8ArrayToString(binary, offset - len, len);
     }
 
+    /** @param {string=} message */
     function failIf(condition, message) {
       if (condition) throw new Error(message);
     }
@@ -336,8 +339,8 @@ var LibraryDylink = {
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
       for (var i = 0; i < neededDynlibsCount; ++i) {
-        var name = getString();
-        customSection.neededDynlibs.push(name);
+        var libname = getString();
+        customSection.neededDynlibs.push(libname);
       }
     } else {
       failIf(name !== 'dylink.0');
@@ -356,16 +359,16 @@ var LibraryDylink = {
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
           var neededDynlibsCount = getLEB();
           for (var i = 0; i < neededDynlibsCount; ++i) {
-            var name = getString();
-            customSection.neededDynlibs.push(name);
+            libname = getString();
+            customSection.neededDynlibs.push(libname);
           }
         } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
           var count = getLEB();
           while (count--) {
-            var name = getString();
+            var symname = getString();
             var flags = getLEB();
             if (flags & WASM_SYMBOL_TLS) {
-              customSection.tlsExports[name] = 1;
+              customSection.tlsExports[symname] = 1;
             }
           }
         } else {
@@ -436,6 +439,7 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
+  $loadWebAssemblyModule__docs: '/** @param {number=} handle */',
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
@@ -535,7 +539,7 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
             var resolved;
             stubs[prop] = function() {
-              if (!resolved) resolved = resolveSymbol(prop, true);
+              if (!resolved) resolved = resolveSymbol(prop);
               return resolved.apply(null, arguments);
             };
           }
@@ -653,6 +657,7 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__docs: '/** @param {number=} handle */',
   $loadDynamicLibrary: function(lib, flags, handle) {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
@@ -890,6 +895,7 @@ var LibraryDylink = {
   ],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
+    /** @param {Object=} e */
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);

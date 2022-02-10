@@ -71,7 +71,6 @@ var LibraryHTML5WebGPU = {
 
 {{{ html5_gpu.makeImportExport('device', 'Device') }}}
 {{{ html5_gpu.makeImportExport('queue', 'Queue') }}}
-{{{ html5_gpu.makeImportExport('fence', 'Fence') }}}
 
 {{{ html5_gpu.makeImportExport('command_buffer', 'CommandBuffer') }}}
 {{{ html5_gpu.makeImportExport('command_encoder', 'CommandEncoder') }}}
