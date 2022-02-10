@@ -7935,7 +7935,6 @@ end
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
     self.build(test_file('hello_world.c'), emcc_args=[
-      '-O1', '-g1',
       '--closure=1',
       '-sCLOSURE_WARNINGS=error',
       '-sINCLUDE_FULL_LIBRARY',
@@ -7945,7 +7944,6 @@ end
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
-      '-O1', '-g1',
       '--closure=1',
       '-sCLOSURE_WARNINGS=error',
       '-sINCLUDE_FULL_LIBRARY',
