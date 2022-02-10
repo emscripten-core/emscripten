@@ -18,6 +18,24 @@
 // Similar to JSImplBackend, but proxies to another thread where the JS can be
 // async.
 //
+// To write a new async backend in JS, you basically do the following:
+//
+//  1. Add a declaration of the C function to create the backend in the
+//     "backend creation" section of emscripten/wasmfs.h. (One line.)
+//  2. Add a cpp file for the new backend, and implement the C function from 1,
+//     which should create a ProxiedAsyncJSBackend while passing it code to
+//     set up the JS side. (A few lines.)
+// 3. Write a new JS library, and add the implementation of the JS method just
+//    mentioned, which should set up the mapping from the C++ backend object's
+//    address to the JS code containing the hooks to read and write etc. The
+//    hooks should each return a JS Promise. (99% of the work happens here.)
+//
+// This is basically the same as JSImplBackend, except that the code in step #3
+// is async (also, step #2 looks slightly different, but is similarly very
+// short).
+//
+// For a simple example, see fetch_backend.cpp and library_wasmfs_fetch.js.
+//
 
 using js_index_t = uint32_t;
 
