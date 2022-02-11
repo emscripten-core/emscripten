@@ -143,7 +143,6 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
         err = -EBADF;
         return ParsedPath{{}, nullptr};
       }
-      curr = getPath(openDir);
     } else {
       curr = wasmFS.getCWD();
     }
@@ -268,31 +267,5 @@ std::vector<std::string> splitPath(char* pathname) {
   }
 
   return pathParts;
-}
-
-std::string getPath(std::shared_ptr<File> file) {
-  std::string result = "";
-
-  while (curr != wasmFS.getRootDirectory()) {
-    auto parent = curr->locked().getParent();
-    // Check if the parent exists. The parent may not exist if the CWD or one
-    // of its ancestors has been unlinked.
-    if (!parent) {
-      return -ENOENT;
-    }
-
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
-    result = '/' + name + result;
-    curr = parentDir;
-  }
-
-  // Check if the cwd is the root directory.
-  if (result.empty()) {
-    result = "/";
-  }
-
-  return result;
 }
 } // namespace wasmfs
