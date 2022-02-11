@@ -656,8 +656,8 @@ var LibraryGLFW = {
                 id: allocate(intArrayFromString(gamepad.id)),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
-                buttons: allocate(new Array(gamepad.buttons.length)),
-                axes: allocate(new Array(gamepad.axes.length*4))
+                buttons: _malloc(gamepad.buttons.length),
+                axes: _malloc(gamepad.axes.length*4),
               };
 
               if (GLFW.joystickFunc) {
@@ -748,7 +748,7 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
-      var filenames = allocate(new Array(event.dataTransfer.files.length*4));
+      var filenames = _malloc(event.dataTransfer.files.length*4);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
