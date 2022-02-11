@@ -2232,48 +2232,6 @@ LibraryManager.library = {
 
     return 0;
   },
-  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
-  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
-  $GAI_ERRNO_MESSAGES: {},
-
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
-  gai_strerror: function(val) {
-    var buflen = 256;
-
-    // On first call to gai_strerror we initialise the buffer and populate the error messages.
-    if (!_gai_strerror.buffer) {
-        _gai_strerror.buffer = _malloc(buflen);
-
-        GAI_ERRNO_MESSAGES['0'] = 'Success';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_BADFLAGS') }}}] = 'Invalid value for \'ai_flags\' field';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_NONAME') }}}] = 'NAME or SERVICE is unknown';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_AGAIN') }}}] = 'Temporary failure in name resolution';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAIL') }}}] = 'Non-recoverable failure in name res';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAMILY') }}}] = '\'ai_family\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SOCKTYPE') }}}] = '\'ai_socktype\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SERVICE') }}}] = 'SERVICE not supported for \'ai_socktype\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_MEMORY') }}}] = 'Memory allocation failure';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SYSTEM') }}}] = 'System error returned in \'errno\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_OVERFLOW') }}}] = 'Argument buffer overflow';
-    }
-
-    var msg = 'Unknown error';
-
-    if (val in GAI_ERRNO_MESSAGES) {
-      if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
-        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above.
-      } else {
-        msg = GAI_ERRNO_MESSAGES[val];
-      }
-    }
-
-    writeAsciiToMemory(msg, _gai_strerror.buffer);
-    return _gai_strerror.buffer;
-  },
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
   // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html

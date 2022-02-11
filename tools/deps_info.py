@@ -152,7 +152,6 @@ _deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'gai_strerror': ['malloc'],
   'getaddrinfo': ['malloc', 'htonl', 'htons', 'ntohs'],
   'gethostbyaddr': ['malloc', 'htons'],
   'gethostbyname': ['malloc', 'htons'],
