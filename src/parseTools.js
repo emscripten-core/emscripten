@@ -1056,9 +1056,9 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name + '_bigint';
+    return `/** @type {!BigInt} */ ${name}_bigint`;
   }
-  return name + '_low, ' + name + '_high';
+  return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {

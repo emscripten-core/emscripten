@@ -2045,6 +2045,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
       'emscripten_sync_run_in_main_thread_2',
       'emscripten_sync_run_in_main_thread_4',
     ]
+
+    if settings.MAIN_MODULE:
+      settings.REQUIRED_EXPORTS += ['_emscripten_thread_sync_code', '__dl_seterr']
+
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
     ]

@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.4
 -----
+- Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
+  that did not previously have any effect are now honored (e.g.
+  `-fnew-alignment` and `-fshort-wchar`).
 - llvm dependency updated to 15.0.0 to match upstream. (#16178)
 - The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
   macros are now available via the `emscripten/version.h` header file.  For the
@@ -312,6 +315,7 @@ See docs/process.md for more on how version tagging works.
   wasm binary.
 - The experimental SPLIT_MODULE setting now expects the secondary module to be
   named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+- sendfile.h header removed from musl. (#14248)
 
 2.0.21: 05/18/2021
 ------------------

@@ -241,21 +241,21 @@ int main() {
   freeaddrinfo(servinfo);
 
   // test gai_strerror
-  assert(strncmp(gai_strerror(0), "Success", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_BADFLAGS), "Invalid value for 'ai_flags' field", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_NONAME), "NAME or SERVICE is unknown", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_AGAIN), "Temporary failure in name resolution", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_FAIL), "Non-recoverable failure in name res", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_FAMILY), "'ai_family' not supported", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_SOCKTYPE), "'ai_socktype' not supported", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_SERVICE), "SERVICE not supported for 'ai_socktype'", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_MEMORY), "Memory allocation failure", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_SYSTEM), "System error returned in 'errno'", 256) == 0);
-  assert(strncmp(gai_strerror(EAI_OVERFLOW), "Argument buffer overflow", 256) == 0);
-  assert(strncmp(gai_strerror(-5), "Unknown error", 256) == 0);
-  assert(strncmp(gai_strerror(-9), "Unknown error", 256) == 0);
-  assert(strncmp(gai_strerror(-13), "Unknown error", 256) == 0);
-  assert(strncmp(gai_strerror(-100), "Unknown error", 256) == 0);
+  assert(strcmp(gai_strerror(0), "Unknown error") == 0);
+  assert(strcmp(gai_strerror(EAI_BADFLAGS), "Invalid flags") == 0);
+  assert(strcmp(gai_strerror(EAI_NONAME), "Name does not resolve") == 0);
+  assert(strcmp(gai_strerror(EAI_AGAIN), "Try again") == 0);
+  assert(strcmp(gai_strerror(EAI_FAIL), "Non-recoverable error") == 0);
+  assert(strcmp(gai_strerror(EAI_FAMILY), "Unrecognized address family or invalid length") == 0);
+  assert(strcmp(gai_strerror(EAI_SOCKTYPE), "Unrecognized socket type") == 0);
+  assert(strcmp(gai_strerror(EAI_SERVICE), "Unrecognized service") == 0);
+  assert(strcmp(gai_strerror(EAI_MEMORY), "Out of memory") == 0);
+  assert(strcmp(gai_strerror(EAI_SYSTEM), "System error") == 0);
+  assert(strcmp(gai_strerror(EAI_OVERFLOW), "Overflow") == 0);
+  assert(strcmp(gai_strerror(-5), "Unknown error") == 0);
+  assert(strcmp(gai_strerror(-9), "Unknown error") == 0);
+  assert(strcmp(gai_strerror(-13), "Unknown error") == 0);
+  assert(strcmp(gai_strerror(-100), "Unknown error") == 0);
 
   puts("success");
 
