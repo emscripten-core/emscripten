@@ -634,11 +634,10 @@ int main()
 
   test("property and reuse the key");
   val k("a key");
-  EM_VAL kh = k.as_handle();
-  val::global("a").set(kh, 1);
-  ensure(val::global("a")[kh].as<int>() == 1);
-  val::global("a").set(kh, 2);
-  ensure(val::global("a")[kh].as<int>() == 2);
+  val::global("a").set(k, 1);
+  ensure(val::global("a")[k].as<int>() == 1);
+  val::global("a").set(k, 2);
+  ensure(val::global("a")[k].as<int>() == 2);
   printf("end\n");
   return 0;
 }
