@@ -147,8 +147,10 @@ LibraryManager.library = {
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
-    // Handle the case of 4GB (which would wrap to 0 in the return value) by
-    // returning up to 4GB - one wasm page.
+    // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
+    // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
+    // for any code that deals with heap sizes, which would require special
+    // casing all heap size related code to treat 0 specially.
     return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
 #else // no growth
     return HEAPU8.length;
@@ -201,15 +203,16 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_resize_heap' // Dummy depend on itself to allow following ','s to match up.
+  emscripten_resize_heap__deps: [
+    'emscripten_get_heap_max',
 #if ASSERTIONS == 2
-  , 'emscripten_get_now'
+    'emscripten_get_now',
 #endif
 #if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
+    '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
-  , '$emscripten_realloc_buffer'
+    '$emscripten_realloc_buffer',
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
@@ -222,13 +225,13 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
+    // With pthreads, races can happen (another thread might increase the size
+    // in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
     if (requestedSize <= oldSize) {
       return false;
     }
-#endif // USE_PTHREADS
-#if ASSERTIONS && !USE_PTHREADS
+#elif ASSERTIONS
     assert(requestedSize > oldSize);
 #endif
 
@@ -238,21 +241,25 @@ LibraryManager.library = {
 #endif
 
     // Memory resize rules:
-    // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
-    //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
-    //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
-    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 3. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
-    // 4. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
-    //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
+    // 1.  Always increase heap size to at least the requested size, rounded up
+    //     to next page multiple.
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap
+    //     geometrically: increase the heap size according to
+    //     MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%), At most
+    //     overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap
+    //     linearly: increase the heap size by at least
+    //     MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 3.  Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by
+    //     MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4.  If we were unable to allocate as much memory, it may be due to
+    //     over-eager decision to excessively reserve due to (3) above.
+    //     Hence if an allocation fails, cut down on the amount of excess
+    //     growth, in an attempt to succeed to perform a smaller allocation.
 
     // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    // In CAN_ADDRESS_2GB mode, stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate full 4GB Wasm memories, the size will wrap
-    // back to 0 bytes in Wasm side for any code that deals with heap sizes, which would require special casing all heap size related code to treat
-    // 0 specially.
-    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
+    var maxHeapSize = _emscripten_get_heap_max();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -264,8 +271,9 @@ LibraryManager.library = {
 #endif
     }
 
-    // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
-    // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+    // Loop through potential heap size increases. If we attempt a too eager
+    // reservation that fails, cut down on the attempted size and reserve a
+    // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
     for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
