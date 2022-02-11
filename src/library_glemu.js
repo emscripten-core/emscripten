@@ -2814,7 +2814,7 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glDisable') }}}
 
-      var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : () => {};
+      var glTexEnvf = (typeof _glTexEnvf != 'undefined') ? _glTexEnvf : () => {};
       /** @suppress {checkTypes} */
       _glTexEnvf = _emscripten_glTexEnvf = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvf(target, pname, param);
@@ -2823,7 +2823,7 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glTexEnvf') }}}
 
-      var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : () => {};
+      var glTexEnvi = (typeof _glTexEnvi != 'undefined') ? _glTexEnvi : () => {};
       /** @suppress {checkTypes} */
       _glTexEnvi = _emscripten_glTexEnvi = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
@@ -2832,7 +2832,7 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glTexEnvi') }}}
 
-      var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : () => {};
+      var glTexEnvfv = (typeof _glTexEnvfv != 'undefined') ? _glTexEnvfv : () => {};
       /** @suppress {checkTypes} */
       _glTexEnvfv = _emscripten_glTexEnvfv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);

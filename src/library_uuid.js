@@ -45,8 +45,8 @@ mergeInto(LibraryManager.library, {
       } catch(e) {}
 #endif // ENVIRONMENT_MAY_BE_NODE
     } else if (ENVIRONMENT_IS_WEB &&
-               typeof(window.crypto) !== 'undefined' &&
-               typeof(window.crypto.getRandomValues) !== 'undefined') {
+               typeof window.crypto != 'undefined' &&
+               typeof window.crypto.getRandomValues != 'undefined') {
       // If crypto.getRandomValues is available try to use it.
       uuid = new Uint8Array(16);
       window.crypto.getRandomValues(uuid);

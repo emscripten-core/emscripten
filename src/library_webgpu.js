@@ -73,7 +73,7 @@
       return 'assert(' + str + ');';
     },
     makeCheckDefined: function(name) {
-      return this.makeCheck('typeof ' + name + ' !== "undefined"');
+      return this.makeCheck('typeof ' + name + ' != "undefined"');
     },
     makeCheckDescriptor: function(descriptor) {
       // Assert descriptor is non-null, then that its nextInChain is null.
@@ -155,7 +155,7 @@ var LibraryWebGPU = {
           wrapper = wrapper || {};
 
           var id = this.nextId++;
-          {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
+          {{{ gpu.makeCheck("typeof this.objects[id] == 'undefined'") }}}
           wrapper.refcount = 1;
           wrapper.object = object;
           this.objects[id] = wrapper;
@@ -741,8 +741,8 @@ var LibraryWebGPU = {
         var OutOfMemory = 0x00000002;
         var type;
 #if ASSERTIONS
-        assert(typeof GPUValidationError !== 'undefined');
-        assert(typeof GPUOutOfMemoryError !== 'undefined');
+        assert(typeof GPUValidationError != 'undefined');
+        assert(typeof GPUOutOfMemoryError != 'undefined');
 #endif
         if (ev.error instanceof GPUValidationError) type = Validation;
         else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;

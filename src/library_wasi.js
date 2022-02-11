@@ -21,7 +21,7 @@ var WasiLibrary = {
       // Default values.
 #if !DETERMINISTIC
       // Browser language detection #8751
-      var lang = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
 #else
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
