@@ -653,11 +653,11 @@ var LibraryGLFW = {
             if (!GLFW.joys[joy]) {
               out('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
-                id: allocate(intArrayFromString(gamepad.id), ALLOC_NORMAL),
+                id: allocate(intArrayFromString(gamepad.id)),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
-                buttons: allocate(new Array(gamepad.buttons.length), ALLOC_NORMAL),
-                axes: allocate(new Array(gamepad.axes.length*4), ALLOC_NORMAL)
+                buttons: allocate(new Array(gamepad.buttons.length)),
+                axes: allocate(new Array(gamepad.axes.length*4))
               };
 
               if (GLFW.joystickFunc) {
@@ -748,7 +748,7 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
-      var filenames = allocate(new Array(event.dataTransfer.files.length*4), ALLOC_NORMAL);
+      var filenames = allocate(new Array(event.dataTransfer.files.length*4));
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
@@ -780,7 +780,7 @@ var LibraryGLFW = {
         };
         reader.readAsArrayBuffer(file);
 
-        var filename = allocate(intArrayFromString(path), ALLOC_NORMAL);
+        var filename = allocate(intArrayFromString(path));
         filenamesArray.push(filename);
         setValue(filenames + i*4, filename, 'i8*');
       }
@@ -1224,7 +1224,7 @@ var LibraryGLFW = {
   glfwGetVersionString__sig: 'i',
   glfwGetVersionString: function() {
     if (!GLFW.versionString) {
-      GLFW.versionString = allocate(intArrayFromString("3.2.1 JS WebGL Emscripten"), ALLOC_NORMAL);
+      GLFW.versionString = allocate(intArrayFromString("3.2.1 JS WebGL Emscripten"));
     }
     return GLFW.versionString;
   },
@@ -1276,7 +1276,7 @@ var LibraryGLFW = {
   glfwGetMonitorName__sig: 'ii',
   glfwGetMonitorName: function(mon) {
     if (!GLFW.monitorString) {
-      GLFW.monitorString = allocate(intArrayFromString("HTML5 WebGL Canvas"), ALLOC_NORMAL);
+      GLFW.monitorString = allocate(intArrayFromString("HTML5 WebGL Canvas"));
     }
     return GLFW.monitorString;
   },
