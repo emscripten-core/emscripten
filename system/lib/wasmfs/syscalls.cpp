@@ -949,7 +949,7 @@ long __syscall_utimensat(int dirFD,
                          const struct timespec times[2],
                          int flags) {
   // TODO: support flags here
-  assert(flags == = 0);
+  assert(flags == 0);
 
   auto pathParts = splitPath(path);
 
