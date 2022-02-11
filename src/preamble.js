@@ -207,11 +207,11 @@ var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 
 /**
- * allocate(): This is for internal use. You can use it yourself as well, but the interface
- *             is a little tricky (see docs right below). The reason is that it is optimized
- *             for multiple syntaxes to save space in generated code. So you should
- *             normally not use allocate(), and instead allocate memory using _malloc(),
- *             initialize it with setValue(), and so forth.
+ * allocate(): This function is no longer used by emscripten but is kept around to avoid
+ *             breaking external users.
+ *             You should normally not use allocate(), and instead allocate
+ *             memory using _malloc()/stackAlloc(), initialize it with
+ *             setValue(), and so forth.
  * @param {(Uint8Array|Array<number>)} slab: An array of data.
  * @param {number=} allocator : How to allocate memory, see ALLOC_*
  */
