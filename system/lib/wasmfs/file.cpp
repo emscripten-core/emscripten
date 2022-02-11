@@ -143,6 +143,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
         err = -EBADF;
         return ParsedPath{{}, nullptr};
       }
+      curr = openDir->dynCast<Directory>();
     } else {
       curr = wasmFS.getCWD();
     }
