@@ -8320,18 +8320,42 @@ int main() {
       # https://github.com/emscripten-core/emscripten/issues/13084)
       if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
         self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
-
+    shared.PRINT_STAGES = True
     # Check that dwarfdump can dump the debug info
-    dwdump = self.run_process(
-      [LLVM_DWARFDUMP, 'subdir/output.wasm.debug.wasm', '-name', 'main'],
-      stdout=PIPE).stdout
+    dwdump = shared.check_call(
+        [LLVM_DWARFDUMP, 'subdir/output.wasm.debug.wasm', '-name', 'main'],
+        stdout=PIPE).stdout
     # Basic check that the debug info is more than a skeleton. If so it will
     # have a subprogram descriptor for main
     self.assertIn('DW_TAG_subprogram', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
-    self.run_process([LLVM_DWP, '-e', 'subdir/output.wasm.debug.wasm',
-                      '-o', 'subdir/output.wasm.debug.wasm.dwp'])
+
+  def test_split_dwarf_dwp(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
+    self.assertExists('a.out.wasm')
+    self.assertExists('hello_world.dwo')
+
+    # The wasm will have full debug info for libc (ignore that), but only a
+    # skeleton for hello_world.c (no subprogram for main)
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm'], stdout=PIPE).stdout
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertNotIn('DW_AT_name\t("main")', dwdump)
+
+    # The dwo will have a subprogram for main in a section with a .dwo suffix
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'hello_world.dwo'],
+                              stdout=PIPE).stdout
+    self.assertIn('.debug_info.dwo contents:', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_name\t("main")', dwdump)
+
+    # Check that dwp runs, and results in usable output as well
+    self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
+    self.assertExists('a.out.wasm.dwp')
+    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
+    self.assertIn('.debug_info.dwo contents:', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_name\t("main")', dwdump)
 
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
