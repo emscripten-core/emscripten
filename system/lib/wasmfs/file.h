@@ -297,6 +297,4 @@ getDir(std::vector<std::string>::iterator begin,
 // element will be "/" iff the path is an absolute path.
 std::vector<std::string> splitPath(char* pathname);
 
-std::string getPath(std::shared_ptr<File> file);
-
 } // namespace wasmfs

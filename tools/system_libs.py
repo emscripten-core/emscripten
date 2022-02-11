@@ -1431,6 +1431,9 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
     return settings.WASMFS
 
 
+# Libc components of WasmFS, which uses more libc code than the JS filesystem.
+# This must be a separate library than libwasmfs because the build commands
+# are different for libc code.
 class libwasmfs_libc(MTLibrary, DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary):
   name = 'libwasmfs_libc'
 
