@@ -8320,9 +8320,9 @@ int main() {
       # https://github.com/emscripten-core/emscripten/issues/13084)
       if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
         self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
-    shared.PRINT_STAGES = True
+
     # Check that dwarfdump can dump the debug info
-    dwdump = shared.check_call(
+    dwdump = self.run_process(
         [LLVM_DWARFDUMP, 'subdir/output.wasm.debug.wasm', '-name', 'main'],
         stdout=PIPE).stdout
     # Basic check that the debug info is more than a skeleton. If so it will
