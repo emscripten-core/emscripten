@@ -8330,7 +8330,6 @@ int main() {
     self.assertIn('DW_TAG_subprogram', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
-
   def test_split_dwarf_dwp(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
     self.assertExists('a.out.wasm')
