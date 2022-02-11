@@ -1981,6 +1981,10 @@ var TRUSTED_TYPES = 0;
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = 1;
 
+// The parameters used when doing a fetch() of data over the network, like of
+// the wasm file.
+var FETCH_PARAMS = "{ credentials: 'same-origin' }";
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================

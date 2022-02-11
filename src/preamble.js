@@ -872,7 +872,7 @@ function getBinaryPromise() {
       && !isFileURI(wasmBinaryFile)
 #endif
     ) {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+      return fetch(wasmBinaryFile, {{{ FETCH_PARAMS }}}).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
@@ -1217,7 +1217,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch === 'function') {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, {{{ FETCH_PARAMS }}}).then(function (response) {
         // Suppress closure warning here since the upstream definition for
         // instantiateStreaming only allows Promise<Repsponse> rather than
         // an actual Response.

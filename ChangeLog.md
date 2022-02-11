@@ -30,6 +30,8 @@ See docs/process.md for more on how version tagging works.
   directly on the command line.  If you use these macros please make sure you
   include `emscripten/version.h` (or `emscripten.h` which indirectly includes
   it). (#16147)
+- Add a new option `FETCH_PARAMS` which is the set of options sent to `fetch`
+  when loading the wasm file or other things.
 
 3.1.3 - 31/01/2022
 ------------------
