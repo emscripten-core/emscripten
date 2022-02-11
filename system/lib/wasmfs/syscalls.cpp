@@ -944,21 +944,27 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
   return bytes;
 }
 
-#if 0
-long __syscall_utimensat(int dirfd, const char* path, const struct timespec[2] times, int flags) {
+long __syscall_utimensat(int dirFD, char* path, const struct timespec times[2], int flags) {
   // TODO: support flags here
   assert(flags === 0);
-  path = SYSCALLS.calculatePathAt(dirfd, path, true);
-  var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-  var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-  var atime = (seconds*1000) + (nanoseconds/(1000*1000));
-  times += {{{ C_STRUCTS.timespec.__size__ }}};
-  seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-  nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-  var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
-  FS.utime(path, atime, mtime);
+
+  auto pathParts = splitPath(path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirFD);
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  // TODO: tv_nsec (nanoseconds) as well? but time_t is seconds as an integer
+  auto aSeconds = times[0].tv_sec;
+  auto mSeconds = times[1].tv_sec;
+
+  auto locked = parsedPath.child->locked();
+  locked.atime() = aSeconds;
+  locked.mtime() = mSeconds;
+
   return 0;
 }
-#endif
 
 }
