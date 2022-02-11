@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, EMCONFIGURE
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -8321,15 +8321,50 @@ int main() {
     self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
     self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
 
-    # Check that the dwarf file has only dwarf and name sections
+    # Check that the dwarf file has only dwarf, name, and non-code sections
     debug_wasm = webassembly.Module('subdir/output.wasm.debug.wasm')
     if not debug_wasm.has_name_section():
       self.fail('name section not found in separate dwarf file')
     for sec in debug_wasm.sections():
-      if sec.type != webassembly.SecType.CUSTOM:
-        self.fail(f'non-custom section type {sec.type} found in separate dwarf file')
-      elif sec.name != 'name' and not sec.name.startswith('.debug'):
+      # TODO: check for absence of code section (see
+      # https://github.com/emscripten-core/emscripten/issues/13084)
+      if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
         self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
+
+    # Check that dwarfdump can dump the debug info
+    dwdump = self.run_process(
+        [LLVM_DWARFDUMP, 'subdir/output.wasm.debug.wasm', '-name', 'main'],
+        stdout=PIPE).stdout
+    # Basic check that the debug info is more than a skeleton. If so it will
+    # have a subprogram descriptor for main
+    self.assertIn('DW_TAG_subprogram', dwdump)
+    self.assertIn('DW_AT_name\t("main")', dwdump)
+
+  def test_split_dwarf_dwp(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
+    self.assertExists('a.out.wasm')
+    self.assertExists('hello_world.dwo')
+
+    # The wasm will have full debug info for libc (ignore that), but only a
+    # skeleton for hello_world.c (no subprogram for main)
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm'], stdout=PIPE).stdout
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertNotIn('DW_AT_name\t("main")', dwdump)
+
+    # The dwo will have a subprogram for main in a section with a .dwo suffix
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'hello_world.dwo'],
+                              stdout=PIPE).stdout
+    self.assertIn('.debug_info.dwo contents:', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_name\t("main")', dwdump)
+
+    # Check that dwp runs, and results in usable output as well
+    self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
+    self.assertExists('a.out.wasm.dwp')
+    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
+    self.assertIn('.debug_info.dwo contents:', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_name\t("main")', dwdump)
 
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
