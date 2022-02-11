@@ -269,12 +269,17 @@ struct ParsedPath {
 // TODO: When locking the directory structure is refactored, parent should be
 // returned as a pointer, similar to child.
 // Will return an empty handle if the parent is not a directory.
+//
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
 // an empty parent handle will be returned.
+//
+// If baseFD is provided, and the path is relative, then it will be interpreted
+// relative to the base. That is the behavior that the *at() syscalls require.
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
-                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+                         std::shared_ptr<File> forbiddenAncestor = nullptr,
+                         std::optional<__wasi_fd_t> baseFD = {});
 
 // Call getDir if one needs a parent directory of a file path.
 // TODO: Remove this when directory structure locking is refactored and use
@@ -291,5 +296,7 @@ getDir(std::vector<std::string>::iterator begin,
 // Return a vector of the '/'-delimited components of a path. The first
 // element will be "/" iff the path is an absolute path.
 std::vector<std::string> splitPath(char* pathname);
+
+std::string getPath(std::shared_ptr<File> file);
 
 } // namespace wasmfs

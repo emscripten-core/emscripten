@@ -566,31 +566,9 @@ long __syscall_getcwd(long buf, long size) {
     return -EINVAL;
   }
 
-  auto curr = wasmFS.getCWD();
+  std::string cwdPath = getPath(wasmFS.getRootDirectory());
 
-  std::string result = "";
-
-  while (curr != wasmFS.getRootDirectory()) {
-    auto parent = curr->locked().getParent();
-    // Check if the parent exists. The parent may not exist if the CWD or one
-    // of its ancestors has been unlinked.
-    if (!parent) {
-      return -ENOENT;
-    }
-
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
-    result = '/' + name + result;
-    curr = parentDir;
-  }
-
-  // Check if the cwd is the root directory.
-  if (result.empty()) {
-    result = "/";
-  }
-
-  auto res = result.c_str();
+  auto res = cwdPath.c_str();
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
@@ -943,4 +921,21 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
 
   return bytes;
 }
+
+long __syscall_utimensat: function(int dirfd, const char* path, const struct timespec[2] times, int flags) {
+  // TODO: support flags here
+  assert(flags === 0);
+#endif
+  path = SYSCALLS.calculatePathAt(dirfd, path, true);
+  var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+  var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+  var atime = (seconds*1000) + (nanoseconds/(1000*1000));
+  times += {{{ C_STRUCTS.timespec.__size__ }}};
+  seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+  nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+  var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+  FS.utime(path, atime, mtime);
+  return 0;
+},
+
 }
