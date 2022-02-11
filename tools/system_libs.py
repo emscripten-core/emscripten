@@ -1416,10 +1416,8 @@ class libasmfs(MTLibrary):
 class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 
-  cflags = ['-fno-exceptions', '-std=c++17']
-
   def get_files(self):
-    return files_in_path(
+    wasmfs_files = files_in_path(
         path='system/lib/wasmfs',
         filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp',
                    'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp',
@@ -1427,20 +1425,22 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'fetch_backend.cpp',
                    'js_api.cpp'])
 
-  def can_use(self):
-    return settings.WASMFS
-
-
-# Libc components of WasmFS, which uses more libc code than the JS filesystem.
-# This must be a separate library than libwasmfs because the build commands
-# are different for libc code.
-class libwasmfs_libc(MTLibrary, DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary):
-  name = 'libwasmfs_libc'
-
-  def get_files(self):
-    return files_in_path(
+    # The JS filesystem implements e.g. utime() directly in JS, while WasmFS
+    # wants to use the normal musl code that does a syscall, and WasmFS
+    # implements the syscall.
+    libc_files = files_in_path(
         path='system/lib/libc/musl/src/time',
         filenames=['utime.c'])
+
+    self.c_files = libc_files
+
+    return wasmfs_files + libc_files
+
+  def customize_build_cmd(self, cmd, filename):
+    # this library has both C++17 and C files; pick the flags accordingly
+    if filename not in self.c_files:
+      cmd += ['-fno-exceptions', '-std=c++17']
+    return cmd
 
   def can_use(self):
     return settings.WASMFS
