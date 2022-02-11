@@ -1431,6 +1431,18 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
     return settings.WASMFS
 
 
+class libwasmfs_libc(MTLibrary, DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary):
+  name = 'libwasmfs_libc'
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/libc/musl/src/time',
+        filenames=['utime.c'])
+
+  def can_use(self):
+    return settings.WASMFS
+
+
 class libhtml5(Library):
   name = 'libhtml5'
 

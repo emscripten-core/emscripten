@@ -458,24 +458,31 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   // Check if the requested directory already exists.
   if (parsedPath.child) {
     return -EEXIST;
-  } else {
-    // Mask rwx permissions for user, group and others, and the sticky bit.
-    // This prevents users from entering S_IFREG for example.
-    // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
-    mode &= S_IRWXUGO | S_ISVTX;
-
-    // By default, the backend that the directory is created in is the same as
-    // the parent directory. However, if a backend is passed as a parameter,
-    // then that backend is used.
-    if (!backend) {
-      backend = parsedPath.parent->unlocked()->getBackend();
-    }
-    // Create an empty in-memory directory.
-    auto created = backend->createDirectory(mode);
-
-    parsedPath.parent->setEntry(pathParts.back(), created);
-    return 0;
   }
+
+  // Mask rwx permissions for user, group and others, and the sticky bit.
+  // This prevents users from entering S_IFREG for example.
+  // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+  mode &= S_IRWXUGO | S_ISVTX;
+
+  // By default, the backend that the directory is created in is the same as
+  // the parent directory. However, if a backend is passed as a parameter,
+  // then that backend is used.
+  if (!backend) {
+    backend = parsedPath.parent->unlocked()->getBackend();
+  }
+  // Create an empty in-memory directory.
+  auto created = backend->createDirectory(mode);
+  parsedPath.parent->setEntry(pathParts.back(), created);
+
+  // Update the times.
+  auto lockedFile = created->locked();
+  time_t now = time(NULL);
+  lockedFile.atime() = now;
+  lockedFile.mtime() = now;
+  lockedFile.ctime() = now;
+
+  return 0;
 }
 
 // This function is exposed to users and allows users to specify a particular

@@ -29,7 +29,6 @@ using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
 
 class File : public std::enable_shared_from_this<File> {
-
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
@@ -134,7 +133,6 @@ protected:
 };
 
 class DataFile : public File {
-
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
