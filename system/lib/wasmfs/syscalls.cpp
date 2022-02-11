@@ -944,9 +944,12 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
   return bytes;
 }
 
-long __syscall_utimensat(int dirFD, char* path, const struct timespec times[2], int flags) {
+long __syscall_utimensat(int dirFD,
+                         char* path,
+                         const struct timespec times[2],
+                         int flags) {
   // TODO: support flags here
-  assert(flags === 0);
+  assert(flags == = 0);
 
   auto pathParts = splitPath(path);
 
@@ -966,5 +969,4 @@ long __syscall_utimensat(int dirFD, char* path, const struct timespec times[2], 
 
   return 0;
 }
-
 }
