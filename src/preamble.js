@@ -206,14 +206,15 @@ function _free() {
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 
-// allocate(): This is for internal use. You can use it yourself as well, but the interface
-//             is a little tricky (see docs right below). The reason is that it is optimized
-//             for multiple syntaxes to save space in generated code. So you should
-//             normally not use allocate(), and instead allocate memory using _malloc(),
-//             initialize it with setValue(), and so forth.
-// @slab: An array of data.
-// @allocator: How to allocate memory, see ALLOC_*
-/** @type {function((Uint8Array|Array<number>), number)} */
+/**
+ * allocate(): This is for internal use. You can use it yourself as well, but the interface
+ *             is a little tricky (see docs right below). The reason is that it is optimized
+ *             for multiple syntaxes to save space in generated code. So you should
+ *             normally not use allocate(), and instead allocate memory using _malloc(),
+ *             initialize it with setValue(), and so forth.
+ * @param {(Uint8Array|Array<number>)} slab: An array of data.
+ * @param {number=} allocator : How to allocate memory, see ALLOC_*
+ */
 function allocate(slab, allocator) {
   var ret;
 #if ASSERTIONS
@@ -227,11 +228,10 @@ function allocate(slab, allocator) {
     ret = {{{ makeMalloc('allocate', 'slab.length') }}};
   }
 
-  if (slab.subarray || slab.slice) {
-    HEAPU8.set(/** @type {!Uint8Array} */(slab), ret);
-  } else {
-    HEAPU8.set(new Uint8Array(slab), ret);
+  if (!slab.subarray && !slab.slice) {
+    slab = new Uint8Array(slab);
   }
+  HEAPU8.set(slab, ret);
   return ret;
 }
 
