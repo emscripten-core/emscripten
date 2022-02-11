@@ -5179,6 +5179,7 @@ window.close = function() {
     test(['-sMALLOC=emmalloc-memvalidate'])
     test(['-sMALLOC=emmalloc-memvalidate-verbose'])
 
+  @no_firefox('hangs on the main_thread version. TODO: browser bug?')
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
