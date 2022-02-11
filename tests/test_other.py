@@ -7944,7 +7944,11 @@ end
       '--closure=1',
       '-sCLOSURE_WARNINGS=error',
       '-sINCLUDE_FULL_LIBRARY',
-      '-sMAIN_MODULE'
+      # Enable as many features as possible in order to maximise
+      # tha amount of library code we inculde here.
+      '-sMAIN_MODULE',
+      '-sFETCH',
+      '-sFETCH_SUPPORT_INDEXEDDB',
     ] + args)
 
   def test_closure_webgpu(self):

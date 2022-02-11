@@ -1715,7 +1715,7 @@ FS.staticInit();` +
           if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
 
           // Some hints to the browser that we want binary data.
-          if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
+          xhr.responseType = 'arraybuffer';
           if (xhr.overrideMimeType) {
             xhr.overrideMimeType('text/plain; charset=x-user-defined');
           }
