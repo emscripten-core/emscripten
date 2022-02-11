@@ -5188,6 +5188,8 @@ window.close = function() {
   })
   @requires_threads
   def test_wasmfs_fetch_backend(self, args):
+    if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
+      return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
                     args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
