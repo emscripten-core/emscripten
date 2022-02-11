@@ -96,23 +96,6 @@ LibraryManager.library = {
   },
 #endif
 
-  utime__deps: ['$setFileTime'],
-  utime__proxy: 'sync',
-  utime__sig: 'iii',
-  utime: function(path, times) {
-    {{{ from64('times') }}};
-    // int utime(const char *path, const struct utimbuf *times);
-    // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
-    var time;
-    if (times) {
-      // NOTE: We don't keep track of access timestamps.
-      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
   utimes__deps: ['$setFileTime'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
