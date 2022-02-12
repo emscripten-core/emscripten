@@ -104,7 +104,7 @@ var WasmFSLibrary = {
     },
     writeFile: (path, data) => {
       var pathBuffer = allocateUTF8OnStack(path);
-      var dataBuffer = allocate(data);
+      var dataBuffer = _malloc(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
     },
