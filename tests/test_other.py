@@ -11557,10 +11557,16 @@ void foo() {}
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
-  def test_wasmfs_getdents(self):
+  @parameterized({
+    '': ('MEMORY',),
+    'node': ('NODE',),
+  })
+  def test_wasmfs_getdents(self, backend):
     # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
     self.set_setting('WASMFS')
+    self.emcc_args.append(f'-D{backend}')
+    self.emcc_args.append('-g')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   def test_wasmfs_readfile(self):
