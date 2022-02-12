@@ -425,7 +425,7 @@ static __wasi_fd_t doOpen(char* pathname,
 
 // This function is exposed to users and allows users to create a file in a
 // specific backend. An fd to an open file is returned.
-__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   return doOpen(pathname, O_CREAT, mode, backend);
 }
 
@@ -480,7 +480,7 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-long wasmfs_create_directory(char* path, long mode, backend_t backend) {
+int wasmfs_create_directory(char* path, long mode, backend_t backend) {
   return doMkdir(path, mode, backend);
 }
 

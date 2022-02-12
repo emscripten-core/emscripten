@@ -22,11 +22,13 @@ backend_t wasmfs_get_backend_by_path(char* path);
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
 
-// Creates a new file in the new file system under a specific backend.
-uint32_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+// Creates and opens a new file in the new file system under a specific backend.
+// Returns the file descriptor for the new file like `open`.
+int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 
 // Creates a new directory in the new file system under a specific backend.
-long wasmfs_create_directory(char* path, long mode, backend_t backend);
+// Returns 0 on success like `mkdir`.
+int wasmfs_create_directory(char* path, long mode, backend_t backend);
 
 // Backend creation
 
