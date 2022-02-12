@@ -373,9 +373,9 @@ fs.write = function(fd, buffer, offset, length, position, callback) {};
 /**
  * @param {*} fd
  * @param {*} buffer
- * @param {number} offset
- * @param {number} length
- * @param {number} position
+ * @param {number=} offset
+ * @param {number=} length
+ * @param {number=} position
  * @return {number}
  */
 fs.writeSync = function(fd, buffer, offset, length, position) {};
