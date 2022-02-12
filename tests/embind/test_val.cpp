@@ -632,12 +632,15 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
 
-  test("property and reuse the key");
+  test("property and reuse val");
   val k("a key");
   val::global("a").set(k, 1);
   ensure(val::global("a")[k].as<int>() == 1);
   val::global("a").set(k, 2);
   ensure(val::global("a")[k].as<int>() == 2);
+  val v(3);
+  val::global("a").set(k, v);
+  ensure(val::global("a")[k].as<int>() == 3);
   printf("end\n");
   return 0;
 }

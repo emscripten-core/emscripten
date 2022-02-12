@@ -494,26 +494,12 @@ namespace emscripten {
 
         template<typename T>
         val operator[](const T& key) const {
-            return val(internal::_emval_get_property(handle, val(key).handle));
-        }
-
-        val operator[](const val& key) const {
-            return val(internal::_emval_get_property(handle, key.handle));
-        }
-
-        template<typename K>
-        void set(const K& key, const val& v) {
-            internal::_emval_set_property(handle, val(key).handle, v.handle);
+            return val(internal::_emval_get_property(handle, wrapper_val(key).handle));
         }
 
         template<typename K, typename V>
         void set(const K& key, const V& value) {
-            internal::_emval_set_property(handle, val(key).handle, val(value).handle);
-        }
-
-        template<typename V>
-        void set(const val& key, const V& value) {
-            internal::_emval_set_property(handle, key.handle, val(value).handle);
+            internal::_emval_set_property(handle, wrapper_val(key).handle, wrapper_val(value).handle);
         }
 
         template<typename... Args>
@@ -622,6 +608,15 @@ namespace emscripten {
                     argList.getCount(),
                     argList.getTypes(),
                     argv));
+        }
+
+        template<typename T>
+        val wrapper_val(const T& v) const {
+            return val(v);
+        }
+
+        val wrapper_val(const val& v) const {
+            return v;
         }
 
         EM_VAL handle;
