@@ -219,31 +219,31 @@ function alignUp(x, multiple) {
 }
 
 var HEAP,
-/** @type {ArrayBuffer} */
+/** @type {!ArrayBuffer} */
   buffer,
-/** @type {Int8Array} */
+/** @type {!Int8Array} */
   HEAP8,
-/** @type {Uint8Array} */
+/** @type {!Uint8Array} */
   HEAPU8,
-/** @type {Int16Array} */
+/** @type {!Int16Array} */
   HEAP16,
-/** @type {Uint16Array} */
+/** @type {!Uint16Array} */
   HEAPU16,
-/** @type {Int32Array} */
+/** @type {!Int32Array} */
   HEAP32,
-/** @type {Uint32Array} */
+/** @type {!Uint32Array} */
   HEAPU32,
-/** @type {Float32Array} */
+/** @type {!Float32Array} */
   HEAPF32,
 #if WASM_BIGINT
 /* BigInt64Array type is not correctly defined in closure
-/** not-@type {BigInt64Array} */
+/** not-@type {!BigInt64Array} */
   HEAP64,
 /* BigUInt64Array type is not correctly defined in closure
-/** not-t@type {BigUint64Array} */
+/** not-t@type {!BigUint64Array} */
   HEAPU64,
 #endif
-/** @type {Float64Array} */
+/** @type {!Float64Array} */
   HEAPF64;
 
 #if SUPPORT_BIG_ENDIAN
