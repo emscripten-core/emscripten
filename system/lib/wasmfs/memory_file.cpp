@@ -10,6 +10,7 @@
 #include "memory_file.h"
 
 namespace wasmfs {
+
 __wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
     buffer.resize(offset + len);
@@ -27,4 +28,48 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 
   return __WASI_ERRNO_SUCCESS;
 }
+
+std::vector<Directory::Entry>::iterator
+MemoryDirectory::findEntry(const std::string& name) {
+  return std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+    return entry.name == name;
+  });
+}
+
+std::shared_ptr<File> MemoryDirectory::getEntry(const std::string& name) {
+  if (auto entry = findEntry(name); entry != entries.end()) {
+    return entry->file;
+  }
+  return nullptr;
+}
+
+bool MemoryDirectory::removeEntry(const std::string& name) {
+  auto entry = findEntry(name);
+  if (entry == entries.end()) {
+    return false;
+  }
+  entries.erase(entry);
+  return true;
+}
+
+std::shared_ptr<File> MemoryDirectory::insertEntry(const std::string& name,
+                                                   std::shared_ptr<File> file) {
+  if (auto entry = findEntry(name); entry != entries.end()) {
+    return entry->file;
+  }
+  entries.push_back({name, file});
+  return file;
+}
+
+std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
+  auto entry =
+    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.file == file;
+    });
+  if (entry != entries.end()) {
+    return entry->name;
+  }
+  return {};
+}
+
 } // namespace wasmfs

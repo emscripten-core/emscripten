@@ -17,12 +17,10 @@ namespace wasmfs {
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
+
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
-
   void flush() override {}
-
   size_t getSize() override { return buffer.size(); }
 
 public:
@@ -37,6 +35,24 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
+};
+
+class MemoryDirectory : public Directory {
+  // Use a vector instead of a map to save code size.
+  std::vector<Entry> entries;
+
+  std::vector<Entry>::iterator findEntry(const std::string& name);
+
+  std::shared_ptr<File> getEntry(const std::string& name) override;
+  bool removeEntry(const std::string& name) override;
+  std::shared_ptr<File> insertEntry(const std::string& name,
+                                    std::shared_ptr<File> file) override;
+  std::string getName(std::shared_ptr<File> file) override;
+  size_t getNumEntries() override { return entries.size(); }
+  std::vector<Directory::Entry> getEntries() override { return entries; }
+
+public:
+  MemoryDirectory(mode_t mode, backend_t backend) : Directory(mode, backend) {}
 };
 
 } // namespace wasmfs

@@ -29,7 +29,6 @@ using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
 
 class File : public std::enable_shared_from_this<File> {
-
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
@@ -66,45 +65,9 @@ public:
 
   backend_t getBackend() { return backend; }
 
-  class Handle {
-
-  protected:
-    // This mutex is needed when one needs to access access a previously locked
-    // file in the same thread. For example, rename will need to traverse
-    // 2 paths and access the same locked directory twice.
-    // TODO: During benchmarking, test recursive vs normal mutex performance.
-    std::unique_lock<std::recursive_mutex> lock;
-    std::shared_ptr<File> file;
-
-  public:
-    Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    Handle(std::shared_ptr<File> file, std::defer_lock_t)
-      : file(file), lock(file->mutex, std::defer_lock) {}
-    bool trylock() { return lock.try_lock(); }
-    size_t getSize() { return file->getSize(); }
-    mode_t& mode() { return file->mode; }
-    time_t& ctime() { return file->ctime; }
-    time_t& mtime() { return file->mtime; }
-    time_t& atime() { return file->atime; }
-
-    // Note: parent.lock() creates a new shared_ptr to the same Directory
-    // specified by the parent weak_ptr.
-    std::shared_ptr<File> getParent() { return file->parent.lock(); }
-    void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
-
-    std::shared_ptr<File> unlocked() { return file; }
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
-
-  std::optional<Handle> maybeLocked() {
-    auto handle = Handle(shared_from_this(), std::defer_lock);
-    if (handle.trylock()) {
-      return Handle(shared_from_this());
-    } else {
-      return {};
-    }
-  }
+  class Handle;
+  Handle locked();
+  std::optional<Handle> maybeLocked();
 
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
@@ -134,7 +97,8 @@ protected:
 };
 
 class DataFile : public File {
-
+  // TODO: Allow backends to override the version of read with multiple iovecs
+  // to make it possible to implement pipes. See #16269.
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
@@ -150,91 +114,47 @@ public:
     : File(File::DataFileKind, mode | fileType, backend) {}
   virtual ~DataFile() = default;
 
-  class Handle : public File::Handle {
-
-    std::shared_ptr<DataFile> getFile() { return file->cast<DataFile>(); }
-
-  public:
-    Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
-    Handle(Handle&&) = default;
-
-    __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
-      return getFile()->read(buf, len, offset);
-    }
-    __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
-      return getFile()->write(buf, len, offset);
-    }
-
-    // TODO: Design a proper API for flushing files.
-    void flush() {
-      getFile()->flush();
-    }
-
-    // This function loads preloaded files from JS Memory into this DataFile.
-    // TODO: Make this virtual so specific backends can specialize it for better
-    // performance.
-    void preloadFromJS(int index);
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
+  class Handle;
+  Handle locked();
 };
 
 class Directory : public File {
 public:
-  static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory(mode_t mode, backend_t backend)
-    : File(File::DirectoryKind, mode | S_IFDIR, backend) {}
-
   struct Entry {
     std::string name;
     std::shared_ptr<File> file;
   };
 
-  class Handle : public File::Handle {
-    std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
+private:
+  // Return the file with the given name or null if there is none.
+  virtual std::shared_ptr<File> getEntry(const std::string& name) = 0;
+  // Remove the file with the given name, returning `true` on success.
+  virtual bool removeEntry(const std::string& name) = 0;
+  // Insert the given file with the given name if there is not already an entry
+  // with the same name. Returns the inserted file or the preexisting file or
+  // null if the file could not be inserted and there was also no preexisting
+  // file.
+  virtual std::shared_ptr<File> insertEntry(const std::string& name,
+                                            std::shared_ptr<File> file) = 0;
+  // Return the name of the file if it is contained within this directory or an
+  // empty string if it is not.
+  virtual std::string getName(std::shared_ptr<File> file) = 0;
+  // The number of entries in this directory.
+  virtual size_t getNumEntries() = 0;
+  // The list of entries in this directory.
+  virtual std::vector<Directory::Entry> getEntries() = 0;
 
-  public:
-    Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
-    Handle(std::shared_ptr<File> directory, std::defer_lock_t)
-      : File::Handle(directory, std::defer_lock) {}
+public:
+  static constexpr FileKind expectedKind = File::DirectoryKind;
+  Directory(mode_t mode, backend_t backend)
+    : File(File::DirectoryKind, mode | S_IFDIR, backend) {}
+  virtual ~Directory() = default;
 
-    std::shared_ptr<File> getEntry(std::string pathName);
-
-    void setEntry(std::string pathName, std::shared_ptr<File> inserted);
-
-    void unlinkEntry(std::string pathName);
-
-    // Used to obtain the name of a child File in the directory entries vector.
-    std::string getName(std::shared_ptr<File> target);
-
-    int getNumEntries() { return getDir()->entries.size(); }
-
-    std::vector<Directory::Entry> getEntries() { return getDir()->entries; };
-
-#ifdef WASMFS_DEBUG
-    void printKeys() {
-      for (const auto& entry : getDir()->entries) {
-        emscripten_console_log(entry.name.c_str());
-      }
-    }
-#endif
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
-
-  std::optional<Handle> maybeLocked() {
-    auto handle = Handle(shared_from_this(), std::defer_lock);
-    if (handle.trylock()) {
-      return Handle(shared_from_this());
-    } else {
-      return {};
-    }
-  }
+  class Handle;
+  Handle locked();
+  std::optional<Handle> maybeLocked();
 
 protected:
-  // A vector (instead of a map) saves on code size, but will lead to linear
-  // search time in certain operations, ex. getEntry().
-  std::vector<Entry> entries;
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.
   size_t getSize() override { return 4096; }
@@ -259,6 +179,78 @@ public:
 
   // Constant, and therefore thread-safe, and can be done without locking.
   const std::string& getTarget() { return target; }
+};
+
+class File::Handle {
+protected:
+  // This mutex is needed when one needs to access access a previously locked
+  // file in the same thread. For example, rename will need to traverse
+  // 2 paths and access the same locked directory twice.
+  // TODO: During benchmarking, test recursive vs normal mutex performance.
+  std::unique_lock<std::recursive_mutex> lock;
+  std::shared_ptr<File> file;
+
+public:
+  Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+  Handle(std::shared_ptr<File> file, std::defer_lock_t)
+    : file(file), lock(file->mutex, std::defer_lock) {}
+  bool trylock() { return lock.try_lock(); }
+  size_t getSize() { return file->getSize(); }
+  mode_t& mode() { return file->mode; }
+  time_t& ctime() { return file->ctime; }
+  time_t& mtime() { return file->mtime; }
+  time_t& atime() { return file->atime; }
+
+  // Note: parent.lock() creates a new shared_ptr to the same Directory
+  // specified by the parent weak_ptr.
+  std::shared_ptr<File> getParent() { return file->parent.lock(); }
+  void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+
+  std::shared_ptr<File> unlocked() { return file; }
+};
+
+class DataFile::Handle : public File::Handle {
+  std::shared_ptr<DataFile> getFile() { return file->cast<DataFile>(); }
+
+public:
+  Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
+  Handle(Handle&&) = default;
+
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
+    return getFile()->read(buf, len, offset);
+  }
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
+    return getFile()->write(buf, len, offset);
+  }
+
+  // TODO: Design a proper API for flushing files.
+  void flush() { getFile()->flush(); }
+
+  // This function loads preloaded files from JS Memory into this DataFile.
+  // TODO: Make this virtual so specific backends can specialize it for better
+  // performance.
+  void preloadFromJS(int index);
+};
+
+class Directory::Handle : public File::Handle {
+  std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
+
+public:
+  Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
+  Handle(std::shared_ptr<File> directory, std::defer_lock_t)
+    : File::Handle(directory, std::defer_lock) {}
+
+  std::shared_ptr<File> getEntry(const std::string& name) {
+    return getDir()->getEntry(name);
+  }
+  std::shared_ptr<File> removeEntry(const std::string& name);
+  std::shared_ptr<File> insertEntry(const std::string& name,
+                                    std::shared_ptr<File> file);
+  std::string getName(std::shared_ptr<File> file) {
+    return getDir()->getName(file);
+  }
+  size_t getNumEntries() { return getDir()->getNumEntries(); }
+  std::vector<Directory::Entry> getEntries() { return getDir()->getEntries(); }
 };
 
 struct ParsedPath {
