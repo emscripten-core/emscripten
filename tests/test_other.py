@@ -11629,3 +11629,9 @@ void foo() {}
 
   def test_stdint_limits(self):
     self.do_other_test('test_stdint_limits.c')
+
+  def test_legacy_runtime(self):
+    self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
+    self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
+    self.set_setting('STRICT')
+    self.do_runf(test_file('other/test_legacy_runtime.c'), 'ReferenceError: allocate is not defined', assert_returncode=NON_ZERO)
