@@ -212,7 +212,7 @@ var LibraryPThread = {
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
-        PThread.tlsInitFunctions[i]();
+        if (PThread.tlsInitFunctions.hasOwnProperty(i)) PThread.tlsInitFunctions[i]();
       }
     },
     // Loads the WebAssembly module into the given list of Workers.
