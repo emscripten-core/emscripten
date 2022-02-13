@@ -615,7 +615,7 @@ namespace emscripten {
             return val(v);
         }
 
-        val wrapper_val(const val& v) const {
+        const val& wrapper_val(const val& v) const {
             return v;
         }
 
