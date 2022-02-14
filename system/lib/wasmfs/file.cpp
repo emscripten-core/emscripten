@@ -114,7 +114,8 @@ size_t Symlink::getSize() {
 
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
-                         std::shared_ptr<File> forbiddenAncestor) {
+                         std::shared_ptr<File> forbiddenAncestor,
+                         std::optional<__wasi_fd_t> baseFD) {
   std::shared_ptr<Directory> curr;
   auto begin = pathParts.begin();
 
@@ -132,7 +133,20 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       return ParsedPath{curr->locked(), curr};
     }
   } else {
-    curr = wasmFS.getCWD();
+    // This is a relative path. It is either relative to the current working
+    // directory if no base FD is given, or if the base FD is the special value
+    // indicating the CWD.
+    if (baseFD && *baseFD != AT_FDCWD) {
+      auto lockedOpenDir = wasmFS.getLockedFileTable()[*baseFD].locked();
+      auto openDir = lockedOpenDir.getFile();
+      if (!openDir->is<Directory>()) {
+        err = -EBADF;
+        return ParsedPath{{}, nullptr};
+      }
+      curr = openDir->dynCast<Directory>();
+    } else {
+      curr = wasmFS.getCWD();
+    }
   }
 
   for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
@@ -255,5 +269,4 @@ std::vector<std::string> splitPath(char* pathname) {
 
   return pathParts;
 }
-
 } // namespace wasmfs

@@ -29,7 +29,6 @@ using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
 
 class File : public std::enable_shared_from_this<File> {
-
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
@@ -134,7 +133,6 @@ protected:
 };
 
 class DataFile : public File {
-
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
@@ -271,12 +269,17 @@ struct ParsedPath {
 // TODO: When locking the directory structure is refactored, parent should be
 // returned as a pointer, similar to child.
 // Will return an empty handle if the parent is not a directory.
+//
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
 // an empty parent handle will be returned.
+//
+// If baseFD is provided, and the path is relative, then it will be interpreted
+// relative to the base. That is the behavior that the *at() syscalls require.
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
-                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+                         std::shared_ptr<File> forbiddenAncestor = nullptr,
+                         std::optional<__wasi_fd_t> baseFD = {});
 
 // Call getDir if one needs a parent directory of a file path.
 // TODO: Remove this when directory structure locking is refactored and use

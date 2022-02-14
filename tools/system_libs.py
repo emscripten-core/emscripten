@@ -908,6 +908,7 @@ class libc(MuslInternalLibrary,
           'nanosleep.c',
           'clock_nanosleep.c',
           'ctime_r.c',
+          'utime.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
