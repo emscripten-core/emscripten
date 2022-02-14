@@ -969,4 +969,17 @@ long __syscall_utimensat(int dirFD,
 
   return 0;
 }
+
+long __syscall_chmod(char* path, long mode) {
+  auto pathParts = splitPath(path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  parsedPath.child->locked().mode() = mode;
+
+  return 0;
+}
 }
