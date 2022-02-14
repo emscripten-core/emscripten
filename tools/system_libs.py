@@ -1419,17 +1419,22 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
 
   cflags = ['-fno-exceptions', '-std=c++17']
 
+  includes = ['system/lib/wasmfs']
+
   def get_files(self):
-    return files_in_path(
-        path='system/lib/wasmfs',
+    backends = files_in_path(
+        path='system/lib/wasmfs/backends',
         filenames=['fetch_backend.cpp',
-                   'file.cpp',
-                   'file_table.cpp',
-                   'js_api.cpp',
                    'js_file_backend.cpp',
                    'memory_file_backend.cpp',
-                   'paths.cpp',
                    'proxied_file_backend.cpp',
+                   ])
+    return backends + files_in_path(
+        path='system/lib/wasmfs',
+        filenames=['file.cpp',
+                   'file_table.cpp',
+                   'js_api.cpp',
+                   'paths.cpp',
                    'streams.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp',])
