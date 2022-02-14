@@ -1019,3 +1019,4 @@ long __syscall_access(long path, long amode) {
 
   return 0;
 }
+}
