@@ -482,11 +482,11 @@ var LibraryPThread = {
     }
   },
 
+#if MAIN_MODULE
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
     err("registerTlsInit: " + tlsInitFunc);
 #endif
-#if RELOCATABLE
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`emscripten_tls_init`) to relocate the TLS exports of the module
     // according to this new __tls_base.
@@ -518,10 +518,12 @@ var LibraryPThread = {
     if (runtimeInitialized) {
       tlsInitWrapper();
     }
-#else
-    PThread.tlsInitFunctions.push(tlsInitFunc);
-#endif
   },
+#else
+  $registerTlsInit: function(tlsInitFunc) {
+    PThread.tlsInitFunctions.push(tlsInitFunc);
+  },
+#endif
 
   $cancelThread: function(pthread_ptr) {
 #if ASSERTIONS

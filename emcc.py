@@ -1963,7 +1963,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
-  if settings.SIDE_MODULE and settings.GLOBAL_BASE != -1:
+  if settings.SIDE_MODULE and 'GLOBAL_BASE' in settings_map:
     exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
   # When building a side module we currently have to assume that any undefined
@@ -2351,7 +2351,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
 
-    if settings.GLOBAL_BASE != -1:
+    if 'GLOBAL_BASE' in settings_map:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
     # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
@@ -2398,12 +2398,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
-
-  if settings.GLOBAL_BASE == -1:
-    # default if nothing else sets it
-    # a higher global base is useful for optimizing load/store offsets, as it
-    # enables the --post-emscripten pass
-    settings.GLOBAL_BASE = 1024
 
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:

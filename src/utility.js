@@ -79,9 +79,7 @@ function error(msg) {
 }
 
 function range(size) {
-  const ret = [];
-  for (let i = 0; i < size; i++) ret.push(i);
-  return ret;
+  return Array.from(Array(size).keys());
 }
 
 function bind(self, func) {
@@ -124,6 +122,7 @@ function isPowerOfTwo(x) {
   return x > 0 && ((x & (x - 1)) == 0);
 }
 
+/** @constructor */
 function Benchmarker() {
   const totals = {};
   const ids = [];

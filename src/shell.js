@@ -29,7 +29,9 @@ var /** @type {{
   noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
   dataFileDownloads: Object,
-  preloadResults: Object
+  preloadResults: Object,
+  useWebGL: boolean,
+  expectedDataFileDownloads: number,
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};

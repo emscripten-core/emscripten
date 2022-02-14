@@ -203,38 +203,9 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-var ALLOC_NORMAL = 0; // Tries to use _malloc()
-var ALLOC_STACK = 1; // Lives for the duration of the current function call
-
-/**
- * allocate(): This is for internal use. You can use it yourself as well, but the interface
- *             is a little tricky (see docs right below). The reason is that it is optimized
- *             for multiple syntaxes to save space in generated code. So you should
- *             normally not use allocate(), and instead allocate memory using _malloc(),
- *             initialize it with setValue(), and so forth.
- * @param {(Uint8Array|Array<number>)} slab: An array of data.
- * @param {number=} allocator : How to allocate memory, see ALLOC_*
- */
-function allocate(slab, allocator) {
-  var ret;
-#if ASSERTIONS
-  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
-  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
+#if !STRICT
+#include "runtime_legacy.js"
 #endif
-
-  if (allocator == ALLOC_STACK) {
-    ret = stackAlloc(slab.length);
-  } else {
-    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
-  }
-
-  if (!slab.subarray && !slab.slice) {
-    slab = new Uint8Array(slab);
-  }
-  HEAPU8.set(slab, ret);
-  return ret;
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
