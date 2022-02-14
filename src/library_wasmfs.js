@@ -1,14 +1,14 @@
 var WasmFSLibrary = {
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
+#if USE_CLOSURE_COMPILER
+  // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
+  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
+#endif
   $FS__deps: [
     '$wasmFS$preloadedFiles',
     '$wasmFS$preloadedDirs',
     '$asyncLoad',
-#if !MINIMAL_RUNTIME
-    // TODO: when preload-plugins are not used, we do not need this.
-    '$Browser',
-#endif
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
