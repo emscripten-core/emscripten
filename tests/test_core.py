@@ -5637,7 +5637,10 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS', 'WASMFS']:
+    for fs in ['MEMFS', 'NODEFS']:
+      if fs == 'NODEFS' and self.get_setting('WASMFS'):
+        # TODO: NODEFS in WasmFS
+        continue
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
       # so skip testing those bits on that combination.
@@ -5650,8 +5653,10 @@ Module['onRuntimeInitialized'] = function() {
       if fs == 'WASMFS':
         self.emcc_args += ['-DNO_SYMLINK=1', '-sWASMFS']
       self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS and not MACOS:
+    # TODO: NODERAWFS in WasmFS
+    if not WINDOWS and not MACOS and not self.get_setting('WASMFS'):
       self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
       # 0 if root user
       if os.geteuid() == 0:

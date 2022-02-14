@@ -150,7 +150,7 @@ void test() {
   err = access("file1", F_OK);
   assert(!err);
 #endif
-#ifndef NO_SYMLINK
+#if !defined(NO_SYMLINK) && !defined(WASMFS)
   err = access("file1-link", F_OK);
   assert(err == -1);
 #endif
