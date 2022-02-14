@@ -5650,8 +5650,6 @@ Module['onRuntimeInitialized'] = function() {
           self.emcc_args += ['-DNO_SYMLINK=1']
         if MACOS:
           continue
-      if fs == 'WASMFS':
-        self.emcc_args += ['-DNO_SYMLINK=1', '-sWASMFS']
       self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
