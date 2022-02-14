@@ -6058,13 +6058,12 @@ void* operator new(size_t size) {
   def test_fakestat(self):
     self.do_core_test('test_fakestat.c')
 
+  @also_with_standalone_wasm()
   def test_mmap(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_mmap.c')
 
   def test_mmap_file(self):
