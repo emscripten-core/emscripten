@@ -221,13 +221,12 @@ var SyscallsLibrary = {
       return low;
     }
   },
-
-  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
+  __syscall_mmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  $syscallMmap2: function(addr, len, prot, flags, fd, off) {
+  __syscall_mmap2: function(addr, len, prot, flags, fd, off) {
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
@@ -261,13 +260,12 @@ var SyscallsLibrary = {
     SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, prot: prot, flags: flags, offset: off };
     return ptr;
   },
-
-  $syscallMunmap__deps: ['$SYSCALLS',
+  __syscall_munmap__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  $syscallMunmap: function(addr, len) {
+  __syscall_munmap: function(addr, len) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
 #endif
@@ -298,7 +296,6 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-
   __syscall_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -426,10 +423,6 @@ var SyscallsLibrary = {
   __syscall_readlink: function(path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
-  },
-  __syscall_munmap__deps: ['$syscallMunmap'],
-  __syscall_munmap: function(addr, len) {
-    return syscallMunmap(addr, len);
   },
   __syscall_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
@@ -783,10 +776,6 @@ var SyscallsLibrary = {
     if (size < cwdLengthInBytes + 1) return -{{{ cDefine('ERANGE') }}};
     stringToUTF8(cwd, buf, size);
     return buf;
-  },
-  __syscall_mmap2__deps: ['$syscallMmap2'],
-  __syscall_mmap2: function(addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
   },
   __syscall_truncate64: function(path, low, high) {
     path = SYSCALLS.getStr(path);

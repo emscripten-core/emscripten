@@ -2961,18 +2961,6 @@ LibraryManager.library = {
   },
 #endif
 
-  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
-  emscripten_builtin_mmap2__noleakcheck: true,
-  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
-  },
-
-  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
-  emscripten_builtin_munmap__noleakcheck: true,
-  emscripten_builtin_munmap: function (addr, len) {
-    return syscallMunmap(addr, len);
-  },
-
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
