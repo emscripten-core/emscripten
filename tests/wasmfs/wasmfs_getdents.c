@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +18,11 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-void print(struct dirent d, int fd) {
-  for (;;) {
+void print(int fd) {
+  while (true) {
+    struct dirent d;
     int nread = getdents(fd, &d, sizeof(d));
+    assert(nread != -1);
     if (nread == 0) {
       break;
     }
@@ -43,7 +46,7 @@ int main() {
   // Try opening the directory that was just created.
   int fd = open("/working", O_RDONLY | O_DIRECTORY);
   printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
+  print(fd);
 
   // Try reading an invalid fd.
   errno = 0;
@@ -69,25 +72,25 @@ int main() {
   fd = open("/", O_RDONLY | O_DIRECTORY);
 
   printf("------------- Reading from root Directory -------------\n");
-  print(d, fd);
+  print(fd);
 
   // Try opening the dev directory and read its contents.
   fd = open("/dev", O_RDONLY | O_DIRECTORY);
   printf("------------- Reading from /dev Directory -------------\n");
-  print(d, fd);
+  print(fd);
 
   // Try to advance the offset of the directory.
   // Expect that '.' will be skipped.
   fd = open("/working", O_RDONLY | O_DIRECTORY);
   printf("/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
   printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
+  print(fd);
 
   // Try to add a file to the /working directory.
   assert(open("/working/foobar", O_CREAT, S_IRGRP) != -1);
   printf("/working file position is: %lli\n", lseek(fd, 0, SEEK_SET));
   printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
+  print(fd);
 
   // The musl implementation of readdir relies on getdents.
   DIR* pDir;
