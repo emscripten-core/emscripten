@@ -220,7 +220,7 @@ var LibraryDylink = {
   ],
   $dlSetError: function(msg) {
     withStackSave(function() {
-      var cmsg = allocate(intArrayFromString(msg), ALLOC_STACK);
+      var cmsg = allocateUTF8OnStack(msg);
       ___dl_seterr(cmsg);
     });
   },

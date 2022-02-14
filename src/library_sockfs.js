@@ -742,7 +742,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (event === 'error') {
           withStackSave(function() {
-            var msg = allocate(intArrayFromString(data[2]), ALLOC_STACK);
+            var msg = allocateUTF8OnStack(data[2]);
             {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {

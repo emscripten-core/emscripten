@@ -405,6 +405,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
+    # We want to be strict about closure warnings in our test code.
+    # TODO(sbc): Remove this if we make it the default for `-Werror`:
+    # https://github.com/emscripten-core/emscripten/issues/16205):
+    self.ldflags = ['-sCLOSURE_WARNINGS=error']
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
@@ -534,8 +538,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
-  def get_emcc_args(self, main_file=False):
+  def get_emcc_args(self, main_file=False, ldflags=True):
     args = self.serialize_settings() + self.emcc_args
+    if ldflags:
+      args += self.ldflags
     if not main_file:
       for i, arg in enumerate(args):
         if arg in ('--pre-js', '--post-js'):
@@ -827,7 +833,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    emcc_args = self.get_emcc_args()
+    # get_library() is used to compile libraries, and not link executables,
+    # so we don't want to pass linker flags here (emscripten warns if you
+    # try to pass linker settings when compiling).
+    emcc_args = self.get_emcc_args(ldflags=False)
 
     hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
@@ -849,7 +858,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Avoid += so we don't mutate the default arg
       configure = configure + configure_args
 
-    cflags = ' '.join(self.get_emcc_args())
+    cflags = ' '.join(emcc_args)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
     return build_library(name, build_dir, output_dir, generated_libs, configure,
@@ -1508,42 +1517,48 @@ class BrowserCore(RunnerCore):
         img.src = '%s';
       };
 
-      // Automatically trigger the reftest?
-      if (!%s) {
-        // Yes, automatically
+      /** @suppress {uselessCode} */
+      function setupRefTest() {
+        // Automatically trigger the reftest?
+        if (!%s) {
+          // Yes, automatically
 
-        Module['postRun'] = doReftest;
+          Module['postRun'] = doReftest;
 
-        if (typeof WebGLClient !== 'undefined') {
-          // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
-          var realRAF = window.requestAnimationFrame;
-          window.requestAnimationFrame = /** @suppress{checkTypes} */ (function(func) {
-            realRAF(function() {
-              func();
-              realRAF(doReftest);
-            });
-          });
+          if (typeof WebGLClient !== 'undefined') {
+            // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
+            var realRAF = window.requestAnimationFrame;
+            /** @suppress{checkTypes} */
+            window.requestAnimationFrame = function(func) {
+              return realRAF(function() {
+                func();
+                realRAF(doReftest);
+              });
+            };
 
-          // trigger reftest from canvas render too, for workers not doing GL
-          var realWOM = worker.onmessage;
-          worker.onmessage = function(event) {
-            realWOM(event);
-            if (event.data.target === 'canvas' && event.data.op === 'render') {
-              realRAF(doReftest);
-            }
+            // trigger reftest from canvas render too, for workers not doing GL
+            var realWOM = worker.onmessage;
+            worker.onmessage = function(event) {
+              realWOM(event);
+              if (event.data.target === 'canvas' && event.data.op === 'render') {
+                realRAF(doReftest);
+              }
+            };
+          }
+
+        } else {
+          // Manually trigger the reftest.
+
+          // The user will call it.
+          // Add an event loop iteration to ensure rendering, so users don't need to bother.
+          var realDoReftest = doReftest;
+          doReftest = function() {
+            setTimeout(realDoReftest, 1);
           };
         }
-
-      } else {
-        // Manually trigger the reftest.
-
-        // The user will call it.
-        // Add an event loop iteration to ensure rendering, so users don't need to bother.
-        var realDoReftest = doReftest;
-        doReftest = function() {
-          setTimeout(realDoReftest, 1);
-        };
       }
+
+      setupRefTest();
 ''' % (reporting, basename, int(manually_trigger)))
 
   def compile_btest(self, args, reporting=Reporting.FULL):

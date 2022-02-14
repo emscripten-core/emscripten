@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2022 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 mergeInto(LibraryManager.library, {
   // Fetch backend: On first access of the file (either a read or a getSize), it
   // will fetch() the data from the network asynchronously. Otherwise, after

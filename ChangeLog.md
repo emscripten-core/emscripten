@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.4
 -----
+- Emscripten no longer uses the `allocate()` runtime function.  For backwards
+  compatabiliy with external JS code we still include this function by default
+  but it will no longer be included in `-sSTRICT` mode.  Usages of this function
+  are generally best replaced with `_malloc`, `stackAlloc` or `allocateUTF8`.
 - Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
   that did not previously have any effect are now honored (e.g.
   `-fnew-alignment` and `-fshort-wchar`).

@@ -10,11 +10,14 @@
 // a copy of that string as a Javascript String object.
 
 #if USE_PTHREADS && TEXTDECODER
-// UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
-// https://github.com/whatwg/encoding/issues/172
-// To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
-// which can still be much faster than creating a string character by
-// character.
+/**
+ * UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
+ * https://github.com/whatwg/encoding/issues/172
+ * To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
+ * which can still be much faster than creating a string character by
+ * character.
+ * @constructor
+ */
 function TextDecoderWrapper(encoding) {
   var textDecoder = new TextDecoder(encoding);
   this.decode = (data) => {

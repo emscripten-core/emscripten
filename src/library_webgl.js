@@ -569,6 +569,18 @@ var LibraryGL = {
         var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
         return ret;
       };
+      glCtx['bufferData'] = function(a1, a2, a3, a4, a5) {
+          // WebGL1/2 versions have different parameters (not just extra ones)
+          var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+          return ret;
+      };
+      const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
+      for (const f of matrixFuncs) {
+          glCtx[f] = function(a1, a2, a3, a4, a5) {
+              // WebGL2 version has 2 extra optional parameters, ensure we forward them
+              return glCtx['real_' + f](a1, a2, a3, a4, a5);
+          }
+      }
     },
 #endif
     // Returns the context handle to the new context.
@@ -4154,17 +4166,17 @@ var glFuncs = [[0, 'finish flush'],
  [10, '']];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach(function(data) {
-    var num = data[0];
-    var names = data[1];
-    var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-    var plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
-    var returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
-    var sigEnd = range(num).map(function() { return 'i' }).join('');
-    names.split(' ').forEach(function(name) {
+  funcs.forEach((data) => {
+    const num = data[0];
+    const names = data[1];
+    const args = range(num).map((i) => 'x' + i ).join(', ');
+    const plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
+    const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
+    const sigEnd = range(num).map(() => 'i').join('');
+    names.split(' ').forEach((name) => {
       if (name.length == 0) return;
-      var stub = plainStub;
-      var sig;
+      let stub = plainStub;
+      let sig;
       if (name[name.length-1] == '*') {
         name = name.substr(0, name.length-1);
         stub = returnStub;
@@ -4172,12 +4184,12 @@ function createGLPassthroughFunctions(lib, funcs) {
       } else {
         sig = 'v' + sigEnd;
       }
-      var cName = name;
+      let cName = name;
       if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.substr(0, cName.length-1);
       }
-      var cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
+      cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       if (!lib[cName + '__sig']) lib[cName + '__sig'] = sig;
@@ -4199,20 +4211,20 @@ function copyLibEntry(lib, a, b) {
 
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
-  Object.keys(lib).forEach(function(x) {
+  Object.keys(lib).forEach((x) => {
     if (isJsLibraryConfigIdentifier(x)) return;
     if (x.substr(0, 2) != 'gl') return;
     while (typeof lib[x] === 'string') {
       // resolve aliases right here, simpler for fastcomp
       copyLibEntry(lib, x, lib[x]);
     }
-    var y = 'emscripten_' + x;
-    lib[x + '__deps'] = (lib[x + '__deps'] || []).map(function(dep) {
+    const y = 'emscripten_' + x;
+    lib[x + '__deps'] = (lib[x + '__deps'] || []).map((dep) => {
       // prefix dependencies as well
       if (typeof dep === 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
-        var orig = dep;
+        const orig = dep;
         dep = 'emscripten_' + dep;
-        var fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
+        let fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
         // `function` is 8 characters, add space and an explicit name after if there isn't one already
         if (fixed.startsWith('function(') || fixed.startsWith('function (')) {
           fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);
