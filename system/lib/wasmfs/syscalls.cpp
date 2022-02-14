@@ -426,6 +426,8 @@ static __wasi_fd_t doOpen(char* pathname,
 // This function is exposed to users and allows users to create a file in a
 // specific backend. An fd to an open file is returned.
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doOpen, 0, 0, 0, 0), int>,
+                "unexpected conversion from result of doOpen to int");
   return doOpen(pathname, O_CREAT, mode, backend);
 }
 
