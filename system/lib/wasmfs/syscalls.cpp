@@ -25,7 +25,11 @@
 
 // File permission macros for wasmfs.
 // Used to improve readability compared to those in stat.h
+#define WASMFS_PERM_READ 0444
+
 #define WASMFS_PERM_WRITE 0222
+
+#define WASMFS_PERM_EXECUTE 0111
 
 // In Linux, the maximum length for a filename is 255 bytes.
 #define WASMFS_NAME_MAX 255
@@ -986,11 +990,11 @@ long __syscall_chmod(char* path, long mode) {
 long __syscall_access(long path, long amode) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
-  if (amode != F_OK && (F & ~(R_OK | W_OK | X_OK))) {
+  if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
     return -EINVAL;
   }
 
-  auto pathParts = splitPath(path);
+  auto pathParts = splitPath((char*)path);
   long err;
   auto parsedPath = getParsedPath(pathParts, err);
   if (!parsedPath.parent) {
@@ -1001,6 +1005,7 @@ long __syscall_access(long path, long amode) {
   }
 
   if (amode != F_OK) {
+    auto mode = parsedPath.child->locked().mode();
     if ((amode & R_OK) && !(mode & WASMFS_PERM_READ)) {
       return -EACCES;
     }

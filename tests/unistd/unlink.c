@@ -131,11 +131,8 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
-// TODO: Remove this when access is implemented.
-#ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
-#endif
 #if !defined(NO_SYMLINK) && !defined(WASMFS)
   err = access("file1-link", F_OK);
   assert(err == -1);
