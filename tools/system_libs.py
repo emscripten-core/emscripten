@@ -1428,6 +1428,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'js_api.cpp',
                    'js_file_backend.cpp',
                    'memory_file_backend.cpp',
+                   'paths.cpp',
                    'proxied_file_backend.cpp',
                    'streams.cpp',
                    'syscalls.cpp',

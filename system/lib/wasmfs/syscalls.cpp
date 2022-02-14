@@ -6,10 +6,6 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "backend.h"
-#include "file.h"
-#include "file_table.h"
-#include "wasmfs.h"
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -22,6 +18,12 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+
+#include "backend.h"
+#include "file.h"
+#include "file_table.h"
+#include "paths.h"
+#include "wasmfs.h"
 
 // File permission macros for wasmfs.
 // Used to improve readability compared to those in stat.h

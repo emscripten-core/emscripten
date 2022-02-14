@@ -6,12 +6,15 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "wasmfs.h"
-#include "memory_file.h"
-#include "streams.h"
 #include <emscripten/threading.h>
 
+#include "memory_file.h"
+#include "paths.h"
+#include "streams.h"
+#include "wasmfs.h"
+
 namespace wasmfs {
+
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
 // compilation error about using a reserved init priority less than 101. This
@@ -22,9 +25,9 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 26 "wasmfs.cpp" 3
+# 29 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 28 "wasmfs.cpp"
+# 31 "wasmfs.cpp"
 
 // These helper functions will be linked in from library_wasmfs.js.
 extern "C" {
@@ -145,4 +148,5 @@ void WasmFS::preloadFiles() {
     created->locked().preloadFromJS(i);
   }
 }
+
 } // namespace wasmfs
