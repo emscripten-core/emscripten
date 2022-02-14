@@ -982,4 +982,35 @@ long __syscall_chmod(char* path, long mode) {
 
   return 0;
 }
+
+long __syscall_access(long path, long amode) {
+  // The input must be F_OK (check for existence) or a combination of [RWX]_OK
+  // flags.
+  if (amode != F_OK && (F & ~(R_OK | W_OK | X_OK))) {
+    return -EINVAL;
+  }
+
+  auto pathParts = splitPath(path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+
+  if (amode != F_OK) {
+    if ((amode & R_OK) && !(mode & WASMFS_PERM_READ)) {
+      return -EACCES;
+    }
+    if ((amode & W_OK) && !(mode & WASMFS_PERM_WRITE)) {
+      return -EACCES;
+    }
+    if ((amode & X_OK) && !(mode & WASMFS_PERM_EXECUTE)) {
+      return -EACCES;
+    }
+  }
+
+  return 0;
 }
