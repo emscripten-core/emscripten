@@ -12,8 +12,26 @@
 #include "wasmfs.h"
 
 namespace wasmfs {
-class MemoryFileBackend : public Backend {
 
+__wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
+  if (offset + len > buffer.size()) {
+    buffer.resize(offset + len);
+  }
+  std::memcpy(&buffer[offset], buf, len);
+
+  return __WASI_ERRNO_SUCCESS;
+}
+
+__wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
+  // The caller should have already checked that the offset + len does
+  // not exceed the file's size.
+  assert(offset + len <= buffer.size());
+  std::memcpy(buf, &buffer[offset], len);
+
+  return __WASI_ERRNO_SUCCESS;
+}
+
+class MemoryFileBackend : public Backend {
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode, this);
@@ -23,4 +41,5 @@ public:
 backend_t createMemoryFileBackend() {
   return wasmFS.addBackend(std::make_unique<MemoryFileBackend>());
 }
+
 } // namespace wasmfs
