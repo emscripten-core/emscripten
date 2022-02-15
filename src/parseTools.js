@@ -259,7 +259,7 @@ function splitI64(value, floatConversion) {
 function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent === 'number') {
+  if (typeof indent == 'number') {
     const len = indent;
     indent = '';
     for (let i = 0; i < len; i++) {
@@ -555,11 +555,11 @@ function getFastValue(a, op, b, type) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a === 'number') {
+  if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) aNumber = parseFloat(a);
-  if (typeof b === 'number') {
+  if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) bNumber = parseFloat(b);
@@ -896,7 +896,7 @@ function makeRetainedCompilerSettings() {
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
-        if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
+        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
           ret[x] = global[x];
         }
       } catch (e) {}

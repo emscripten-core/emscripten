@@ -7982,6 +7982,65 @@ end
     create_file(externs, '')
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
+  def test_closure_type_annotations(self):
+    # Verify that certain type annotations exist to allow closure to avoid
+    # ambiguity and maximize optimization opportunities in user code.
+    #
+    # Currently we check for a fixed set of known attribute names which
+    # have been reported as unannoted in the past:
+    attributes = ['put', 'getContext', 'contains', 'stopPropagation', 'pause']
+    methods = ''
+    for attribute in attributes:
+      methods += f'''
+        this.{attribute} = function() {{
+          console.error("my {attribute}");
+        }};
+      '''
+    create_file('pre.js', '''
+      /** @constructor */
+      function Foo() {
+        this.bar = function() {
+          console.error("my bar");
+        };
+        this.baz = function() {
+          console.error("my baz");
+        };
+        %s
+        return this;
+      }
+
+      function getObj() {
+        return new Foo();
+      }
+
+      var testobj = getObj();
+      testobj.bar();
+
+      /** Also keep alive certain library functions */
+      Module['keepalive'] = [_emscripten_start_fetch, _emscripten_pause_main_loop, _SDL_AudioQuit];
+    ''' % methods)
+
+    self.build(test_file('hello_world.c'), emcc_args=[
+      '--closure=1',
+      '-sINCLUDE_FULL_LIBRARY',
+      '-sFETCH',
+      '-sFETCH_SUPPORT_INDEXEDDB',
+      '-sCLOSURE_WARNINGS=error',
+      '--pre-js=pre.js'
+    ])
+    code = read_file('hello_world.js')
+    # `bar` method is used so should not be DCE'd
+    self.assertContained('my bar', code)
+    # `baz` method is not used
+    self.assertNotContained('my baz', code)
+
+    for attribute in attributes:
+      # None of the attributes in our list should be used either and should therefore
+      # be DCE'd unless there is some usage of that name within emscripten that is
+      # not annotated.
+      if 'my ' + attribute in code:
+        self.assertFalse('Attribute `%s` could not be DCEd' % attribute)
+
   @with_env_modify({'EMPROFILE': '1'})
   def test_toolchain_profiler(self):
     # Verify some basic functionality of EMPROFILE
@@ -9620,7 +9679,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5150), 150)
+    self.assertLess(abs(changed - 4994), 150)
 
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')

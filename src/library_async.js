@@ -66,7 +66,7 @@ mergeInto(LibraryManager.library, {
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
-          if (typeof original === 'function') {
+          if (typeof original == 'function') {
             imports[x] = function() {
               var originalAsyncifyState = Asyncify.state;
               try {
@@ -111,7 +111,7 @@ mergeInto(LibraryManager.library, {
       for (var x in exports) {
         (function(x) {
           var original = exports[x];
-          if (typeof original === 'function') {
+          if (typeof original == 'function') {
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
               err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
@@ -153,7 +153,7 @@ mergeInto(LibraryManager.library, {
         Asyncify.state = Asyncify.State.Normal;
         // Keep the runtime alive so that a re-wind can be done later.
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
-        if (typeof Fibers !== 'undefined') {
+        if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
         }
       }
@@ -236,7 +236,7 @@ mergeInto(LibraryManager.library, {
         var reachedAfterCallback = false;
         startAsync((handleSleepReturnValue) => {
 #if ASSERTIONS
-          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number' || typeof handleSleepReturnValue === 'boolean'); // old emterpretify API supported other stuff
+          assert(!handleSleepReturnValue || typeof handleSleepReturnValue == 'number' || typeof handleSleepReturnValue == 'boolean'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
           Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
@@ -258,7 +258,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
-          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
+          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
@@ -307,7 +307,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
-          if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
+          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
         }

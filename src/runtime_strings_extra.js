@@ -35,7 +35,7 @@ function stringToAscii(str, outPtr) {
 var UTF16Decoder = new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf-16le');
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf-16le') : undefined;
+var UTF16Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf-16le') : undefined;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 

@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "file.h"
+#include "paths.h"
 
 using namespace wasmfs;
 

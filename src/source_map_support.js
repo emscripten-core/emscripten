@@ -109,7 +109,7 @@ function getSourceMap() {
 }
 
 function getSourceMapPromise() {
-  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
     return fetch(wasmSourceMapFile, { credentials: 'same-origin' }).then(function(response) {
       return response['json']();
     }).catch(function () {

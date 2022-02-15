@@ -9,9 +9,9 @@ mergeInto(LibraryManager.library, {
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
-      if (typeof indexedDB !== 'undefined') return indexedDB;
+      if (typeof indexedDB != 'undefined') return indexedDB;
       var ret = null;
-      if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       assert(ret, 'IDBFS used, but indexedDB not supported');
       return ret;
     },
@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
         return callback("Unable to connect to IndexedDB");
       }
       req.onupgradeneeded = (e) => {
-        var db = e.target.result;
+        var db = /** @type {IDBDatabase} */ (e.target.result);
         var transaction = e.target.transaction;
 
         var fileStore;
@@ -68,7 +68,7 @@ mergeInto(LibraryManager.library, {
         }
       };
       req.onsuccess = () => {
-        db = req.result;
+        db = /** @type {IDBDatabase} */ (req.result);
 
         // add to the cache
         IDBFS.dbs[name] = db;

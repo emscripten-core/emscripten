@@ -39,7 +39,7 @@ function TextDecoderWrapper(encoding) {
 var UTF8Decoder = new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8');
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8') : undefined;
+var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8') : undefined;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 

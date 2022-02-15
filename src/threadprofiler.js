@@ -52,7 +52,7 @@ var emscriptenThreadProfiler = {
   },
 
   updateUi: function updateUi() {
-    if (typeof PThread === 'undefined') {
+    if (typeof PThread == 'undefined') {
       // Likely running threadprofiler on a singlethreaded build, or not
       // initialized yet, ignore updating.
       return;
@@ -97,10 +97,10 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof Module !== 'undefined') {
-  if (typeof document !== 'undefined') {
+if (typeof Module != 'undefined') {
+  if (typeof document != 'undefined') {
     emscriptenThreadProfiler.initialize();
-  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process !== 'undefined') {
+  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
     emscriptenThreadProfiler.initializeNode();
   }
 }

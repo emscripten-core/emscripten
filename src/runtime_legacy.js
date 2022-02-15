@@ -19,8 +19,8 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 function allocate(slab, allocator) {
   var ret;
 #if ASSERTIONS
-  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
-  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
+  assert(typeof allocator == 'number', 'allocate no longer takes a type argument')
+  assert(typeof slab != 'number', 'allocate no longer takes a number as arg0')
 #endif
 
   if (allocator == ALLOC_STACK) {
