@@ -1023,8 +1023,4 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
 
   return 0;
 }
-
-long __syscall_access(long path, long amode) {
-  return __syscall_faccessat(AT_FDCWD, path, amode, 0);
-}
 }
