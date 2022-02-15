@@ -351,33 +351,6 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile.locked().getFile(), buffer);
 }
 
-long __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
-  bool nofollow = flags & AT_SYMLINK_NOFOLLOW;
-  bool allowEmpty = flags & AT_EMPTY_PATH;
-  // No other flags are supported yet.
-  assert((flags & ~(AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH)) == 0);
-
-  if (strlen((char*)path) == 0 && !allowEmpty) {
-    return -ENOENT;
-  }
-
-  auto pathParts = splitPath((char*)path);
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirfd);
-  if (!parsedPath.parent) {
-    return err;
-  }
-
-  // TODO: When symlinks are introduced, nofollow will affect whether we follow
-  //      links or not.
-  if (parsedPath.child) {
-    struct stat* buffer = (struct stat*)buf;
-    return doStat(parsedPath.child, buffer);
-  } else {
-    return -ENOENT;
-  }
-}
-
 static __wasi_fd_t doOpen(char* pathname,
                           long flags,
                           mode_t mode,
