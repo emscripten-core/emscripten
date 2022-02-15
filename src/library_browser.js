@@ -152,7 +152,7 @@ var LibraryBrowser = {
         var img = new Image();
         img.onload = () => {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
-          var canvas = document.createElement('canvas');
+          var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
           canvas.width = img.width;
           canvas.height = img.height;
           var ctx = canvas.getContext('2d');
@@ -327,7 +327,7 @@ var LibraryBrowser = {
       return handled;
     },
 
-    createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
+    createContext: function(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
       if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
@@ -946,7 +946,7 @@ var LibraryBrowser = {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = 'setimmediate';
-        var Browser_setImmediate_messageHandler = function(event) {
+        var Browser_setImmediate_messageHandler = function(/** @type {Event} */ event) {
           // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
           // so check for both cases.
           if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
@@ -1402,7 +1402,7 @@ var LibraryBrowser = {
 
     path = PATH_FS.resolve(path);
 
-    var canvas = Module["preloadedImages"][path];
+    var canvas = /** @type {HTMLCanvasElement} */(Module["preloadedImages"][path]);
     if (canvas) {
       var ctx = canvas.getContext("2d");
       var image = ctx.getImageData(0, 0, canvas.width, canvas.height);

@@ -1515,12 +1515,14 @@ var LibrarySDL = {
   SDL_AudioQuit__sig: 'v',
   SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
-      if (SDL.channels[i].audio) {
-        SDL.channels[i].audio.pause();
-        SDL.channels[i].audio = undefined;
+      var chan = /** @type {{ audio: (HTMLMediaElement|undefined) }} */ (SDL.channels[i]);
+      if (chan.audio) {
+        chan.audio.pause();
+        chan.audio = undefined;
       }
     }
-    if (SDL.music.audio) SDL.music.audio.pause();
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
+    if (audio) audio.pause();
     SDL.music.audio = undefined;
   },
 
@@ -2989,7 +2991,7 @@ var LibrarySDL = {
   Mix_HaltChannel__sig: 'ii',
   Mix_HaltChannel: function(channel) {
     function halt(channel) {
-      var info = SDL.channels[channel];
+      var info = /** @type {{ audio: HTMLMediaElement }} */ (SDL.channels[channel]);
       if (info.audio) {
         info.audio.pause();
         info.audio = null;
@@ -3070,7 +3072,7 @@ var LibrarySDL = {
   Mix_PauseMusic__proxy: 'sync',
   Mix_PauseMusic__sig: 'v',
   Mix_PauseMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) audio.pause();
   },
 
@@ -3084,7 +3086,7 @@ var LibrarySDL = {
   Mix_HaltMusic__proxy: 'sync',
   Mix_HaltMusic__sig: 'i',
   Mix_HaltMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) {
       audio.src = audio.src; // rewind <media> element
       audio.currentPosition = 0; // rewind Web Audio graph playback.
@@ -3135,6 +3137,7 @@ var LibrarySDL = {
       }
       return;
     }
+    /** @type {{ audio: HTMLMediaElement }} */
     var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
@@ -3199,7 +3202,7 @@ var LibrarySDL = {
         throw 'bad context';
       }
     } catch (ex) {
-      var canvas = document.createElement('canvas');
+      var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
     }
 #if ASSERTIONS

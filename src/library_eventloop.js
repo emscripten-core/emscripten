@@ -44,7 +44,7 @@ LibraryJSEventLoop = {
       'var __setImmediate_id_counter = 0;\n' +
       'var __setImmediate_queue = [];\n' +
       'var __setImmediate_message_id = "_si";\n' +
-      'function __setImmediate_cb(e) {\n' +
+      'function __setImmediate_cb(/** @type {Event} */e) {\n' +
         'if (e.data === __setImmediate_message_id) {\n' +
           'e.stopPropagation();\n' +
           '__setImmediate_queue.shift()();\n' +

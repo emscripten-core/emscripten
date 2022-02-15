@@ -584,7 +584,7 @@ var LibraryGL = {
     },
 #endif
     // Returns the context handle to the new context.
-    createContext: function(canvas, webGLContextAttributes) {
+    createContext: function(/** @type {HTMLCanvasElement} */ canvas, webGLContextAttributes) {
 #if OFFSCREEN_FRAMEBUFFER
       // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
       // try to detect when it's ok to discard contents of the rendered backbuffer.
@@ -637,10 +637,12 @@ var LibraryGL = {
       // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari version field in above check.
       if (!canvas.getContextSafariWebGL2Fixed) {
         canvas.getContextSafariWebGL2Fixed = canvas.getContext;
-        canvas.getContext = function(ver, attrs) {
+        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (Object|null)} */
+        function fixedGetContext(ver, attrs) {
           var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
           return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
         }
+        canvas.getContext = fixedGetContext;
       }
 #endif
 
