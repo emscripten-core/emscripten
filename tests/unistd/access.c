@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -54,7 +55,8 @@ int main() {
 
   EM_ASM({FS.writeFile('filetorename',  'renametest');});
   
-  rename("filetorename", "renamedfile");
+  int rename_ret = rename("filetorename", "renamedfile");
+  assert(rename_ret == 0);
 
   errno = 0;
   printf("F_OK(%s): %d\n", "filetorename", access("filetorename", F_OK));
