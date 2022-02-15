@@ -1012,7 +1012,7 @@ long __syscall_chmod(char* path, long mode) {
   return 0;
 }
 
-long __syscall_access(long path, long amode) {
+long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
@@ -1021,7 +1021,7 @@ long __syscall_access(long path, long amode) {
 
   auto pathParts = splitPath((char*)path);
   long err;
-  auto parsedPath = getParsedPath(pathParts, err);
+  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirfd);
   if (!parsedPath.parent) {
     return err;
   }
@@ -1043,5 +1043,9 @@ long __syscall_access(long path, long amode) {
   }
 
   return 0;
+}
+
+long __syscall_access(long path, long amode) {
+  return __syscall_faccessat(AT_FDCWD, path, amode, 0);
 }
 }
