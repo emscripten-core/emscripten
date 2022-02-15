@@ -253,9 +253,4 @@ public:
   std::vector<Directory::Entry> getEntries() { return getDir()->getEntries(); }
 };
 
-struct ParsedPath {
-  std::optional<Directory::Handle> parent;
-  std::shared_ptr<File> child;
-};
-
 } // namespace wasmfs
