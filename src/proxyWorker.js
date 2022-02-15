@@ -4,23 +4,23 @@
  * SPDX-License-Identifier: MIT
  */
 
-if (typeof console === 'undefined') {
+if (typeof console == 'undefined') {
   // we can't call Module.printErr because that might be circular
   var console = {
     log: function(x) {
-      if (typeof dump === 'function') dump('log: ' + x + '\n');
+      if (typeof dump == 'function') dump('log: ' + x + '\n');
     },
     debug: function(x) {
-      if (typeof dump === 'function') dump('debug: ' + x + '\n');
+      if (typeof dump == 'function') dump('debug: ' + x + '\n');
     },
     info: function(x) {
-      if (typeof dump === 'function') dump('info: ' + x + '\n');
+      if (typeof dump == 'function') dump('info: ' + x + '\n');
     },
     warn: function(x) {
-      if (typeof dump === 'function') dump('warn: ' + x + '\n');
+      if (typeof dump == 'function') dump('warn: ' + x + '\n');
     },
     error: function(x) {
-      if (typeof dump === 'function') dump('error: ' + x + '\n');
+      if (typeof dump == 'function') dump('error: ' + x + '\n');
     },
   };
 }
@@ -511,7 +511,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 
 // proxyWorker.js has defined 'document' and 'window' objects above, so need to
 // initialize them for library_html5.js explicitly here.
-if (typeof specialHTMLTargets !== 'undefined') {
+if (typeof specialHTMLTargets != 'undefined') {
   specialHTMLTargets = [0, document, window];
 }
 

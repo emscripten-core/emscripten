@@ -420,3 +420,9 @@ nodeBuffer.Buffer.prototype.binaryWrite = function(string, offset) {};
  * @return {nodeBuffer.Buffer}
  */
 nodeBuffer.Buffer.prototype.asciiWrite = function(string, offset) {};
+
+/**
+ * @return {ArrayBuffer}
+ * @nosideeffects
+ */
+nodeBuffer.Buffer.prototype.buffer = function() {};

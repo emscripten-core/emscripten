@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <malloc.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -16,6 +18,8 @@
 #include <emscripten/heap.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
+
+#include "lock.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -59,15 +63,73 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-long __map_file(int x, int y) {
-  return -ENOSYS;
+const unsigned char * __map_file(const char *pathname, size_t *size) {
+  errno = ENOSYS;
+  return NULL;
 }
 
-long __syscall_munmap(int x, int y) {
-  return -ENOSYS;
+struct map {
+  void* addr;
+  long length;
+  struct map* next;
+} __attribute__((aligned (1)));
+
+static volatile int lock[1];
+static struct map* mappings;
+
+long __syscall_munmap(long addr, long length) {
+  LOCK(lock);
+  struct map* map = mappings;
+  struct map* prev = NULL;
+  while (map) {
+    if (map->addr == (void*)addr) {
+      // We don't support partial munmapping.
+      if (map->length != length) {
+        map = NULL;
+        break;
+      }
+      if (prev) {
+        prev->next = map->next;
+      } else {
+        mappings = map->next;
+      }
+      break;
+    }
+    prev = map;
+    map = map->next;
+  }
+  UNLOCK(lock);
+
+  if (map) {
+    // Release the memory.
+    free(map->addr);
+    // Success!
+    return 0;
+  }
+
+  errno = EINVAL;
+  return -1;
 }
 
 long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
+  // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+  // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+  // In this case fd argument is ignored.
+  if (flags & MAP_ANONYMOUS) {
+    void* ptr = memalign(WASM_PAGE_SIZE, len + sizeof(struct map));
+    if (!ptr) {
+      return -ENOMEM;
+    }
+    memset(ptr, 0, len);
+    struct map* new_map = (struct map*)((char*)ptr + len);
+    new_map->addr = ptr;
+    new_map->length = len;
+    LOCK(lock);
+    new_map->next = mappings;
+    mappings = new_map;
+    UNLOCK(lock);
+    return (long)ptr;
+  }
   return -ENOSYS;
 }
 

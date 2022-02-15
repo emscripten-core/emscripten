@@ -4665,8 +4665,8 @@ res64 - external 64\n''', header='''
     create_file('third.c', 'int sidef() { return 36; }')
     create_file('fourth.c', 'int sideg() { return 17; }')
 
-    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args())
-    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args())
+    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args(ldflags=False))
     self.run_process([EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
@@ -5637,7 +5637,10 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS', 'WASMFS']:
+    for fs in ['MEMFS', 'NODEFS']:
+      if fs == 'NODEFS' and self.get_setting('WASMFS'):
+        # TODO: NODEFS in WasmFS
+        continue
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
       # so skip testing those bits on that combination.
@@ -5647,11 +5650,11 @@ Module['onRuntimeInitialized'] = function() {
           self.emcc_args += ['-DNO_SYMLINK=1']
         if MACOS:
           continue
-      if fs == 'WASMFS':
-        self.emcc_args += ['-DNO_SYMLINK=1', '-sWASMFS']
       self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS and not MACOS:
+    # TODO: NODERAWFS in WasmFS
+    if not WINDOWS and not MACOS and not self.get_setting('WASMFS'):
       self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
       # 0 if root user
       if os.geteuid() == 0:
@@ -6058,13 +6061,12 @@ void* operator new(size_t size) {
   def test_fakestat(self):
     self.do_core_test('test_fakestat.c')
 
+  @also_with_standalone_wasm()
   def test_mmap(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_mmap.c')
 
   def test_mmap_file(self):
@@ -6710,7 +6712,7 @@ void* operator new(size_t size) {
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
-    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args())
+    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(ldflags=False))
     # This should expand into -Wl,--start-group <objfile> -Wl,--end-group
     response_data = '--start-group ' + objfile + ' --end-group'
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
@@ -7185,6 +7187,8 @@ void* operator new(size_t size) {
   })
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
+    # TODO(): Remove once we make webidl output closure-warning free.
+    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
@@ -7448,6 +7452,10 @@ void* operator new(size_t size) {
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     create_file('post.js', 'var TheModule = Module();\n')
+    if not self.is_wasm():
+      # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
+      self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+
     self.emcc_args += [
       '--pre-js', test_file('core/modularize_closure_pre.js'),
       '--extern-post-js=post.js',

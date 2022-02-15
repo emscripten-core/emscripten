@@ -3393,6 +3393,11 @@ window.close = function() {
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sMODULARIZE', '-sMINIMAL_RUNTIME'])
     self.run_browser('test.html', None, '/report_result?0')
 
+  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s EXPORT_NAME=Foo as well.
+  def test_minimal_runtime_export_name(self):
+    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
+    self.run_browser('test.html', None, '/report_result?0')
+
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [
@@ -3486,6 +3491,8 @@ window.close = function() {
   # when compiling with the --preload-file option
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
+    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
+    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
@@ -5079,6 +5086,8 @@ window.close = function() {
     self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-sENVIRONMENT=web', '-O3', '--closure=1'])
 
   def test_no_declare_asm_module_exports_asmjs(self):
+    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
+    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
     for minimal_runtime in [[], ['-sMINIMAL_RUNTIME']]:
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 

@@ -37,7 +37,7 @@ if (Module['doWasm2JS']) {
 #endif
 
 #if WASM == 1
-if (typeof WebAssembly !== 'object') {
+if (typeof WebAssembly != 'object') {
   abort('no native wasm support detected');
 }
 #endif
@@ -203,38 +203,9 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-var ALLOC_NORMAL = 0; // Tries to use _malloc()
-var ALLOC_STACK = 1; // Lives for the duration of the current function call
-
-/**
- * allocate(): This is for internal use. You can use it yourself as well, but the interface
- *             is a little tricky (see docs right below). The reason is that it is optimized
- *             for multiple syntaxes to save space in generated code. So you should
- *             normally not use allocate(), and instead allocate memory using _malloc(),
- *             initialize it with setValue(), and so forth.
- * @param {(Uint8Array|Array<number>)} slab: An array of data.
- * @param {number=} allocator : How to allocate memory, see ALLOC_*
- */
-function allocate(slab, allocator) {
-  var ret;
-#if ASSERTIONS
-  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
-  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
+#if !STRICT
+#include "runtime_legacy.js"
 #endif
-
-  if (allocator == ALLOC_STACK) {
-    ret = stackAlloc(slab.length);
-  } else {
-    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
-  }
-
-  if (!slab.subarray && !slab.slice) {
-    slab = new Uint8Array(slab);
-  }
-  HEAPU8.set(slab, ret);
-  return ret;
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -317,7 +288,7 @@ if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the st
 assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
+assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
 
@@ -528,7 +499,7 @@ function addRunDependency(id) {
   if (id) {
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
+    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(function() {
         if (ABORT) {
@@ -744,7 +715,7 @@ function instrumentWasmExportsWithAbort(exports) {
   var instExports = {};
   for (var name in exports) {
       var original = exports[name];
-      if (typeof original === 'function') {
+      if (typeof original == 'function') {
         instExports[name] = makeAbortWrapper(original);
       } else {
         instExports[name] = original;
@@ -867,7 +838,7 @@ function getBinaryPromise() {
   // Cordova or Electron apps are typically loaded from a file:// url.
   // So use fetch if it is available and the url is not a file, otherwise fall back to XHR.
   if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
-    if (typeof fetch === 'function'
+    if (typeof fetch == 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       && !isFileURI(wasmBinaryFile)
 #endif
@@ -1182,7 +1153,7 @@ function createWasm() {
 
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-      if (typeof location !== 'undefined') {
+      if (typeof location != 'undefined') {
 #endif
         // WebAssembly compilation failed, try running the JS fallback instead.
         var search = location.search;
@@ -1210,13 +1181,13 @@ function createWasm() {
 
   function instantiateAsync() {
     if (!wasmBinary &&
-        typeof WebAssembly.instantiateStreaming === 'function' &&
+        typeof WebAssembly.instantiateStreaming == 'function' &&
         !isDataURI(wasmBinaryFile) &&
 #if ENVIRONMENT_MAY_BE_WEBVIEW
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
         !isFileURI(wasmBinaryFile) &&
 #endif
-        typeof fetch === 'function') {
+        typeof fetch == 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         // Suppress closure warning here since the upstream definition for
         // instantiateStreaming only allows Promise<Repsponse> rather than

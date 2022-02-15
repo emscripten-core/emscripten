@@ -324,10 +324,6 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_access: function(path, amode) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doAccess(path, amode);
-  },
   __syscall_rename: function(old_path, new_path) {
     old_path = SYSCALLS.getStr(old_path);
     new_path = SYSCALLS.getStr(new_path);
@@ -1134,7 +1130,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var t = library[x];
-  if (typeof t === 'string') return;
+  if (typeof t == 'string') return;
   t = t.toString();
 
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
@@ -1184,7 +1180,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     "} catch (e) {\n" +
-    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
+    "  if (typeof FS == 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +

@@ -69,68 +69,6 @@ LibraryManager.library = {
     return cString;
   },
 
-  // ==========================================================================
-  // utime.h
-  // ==========================================================================
-
-#if FILESYSTEM
-  $setFileTime__deps: ['$FS', '$setErrNo'],
-  $setFileTime: function(path, time) {
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      setErrNo(e.errno);
-      return -1;
-    }
-  },
-#else
-  $setFileTime__deps: ['$setErrNo'],
-  $setFileTime: function(path, time) {
-    // No filesystem support; return an error as if the file does not exist
-    // (which it almost certainly does not, except for standard streams).
-    setErrNo({{{ cDefine('ENOENT') }}});
-    return -1;
-  },
-#endif
-
-  utime__deps: ['$setFileTime'],
-  utime__proxy: 'sync',
-  utime__sig: 'iii',
-  utime: function(path, times) {
-    {{{ from64('times') }}};
-    // int utime(const char *path, const struct utimbuf *times);
-    // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
-    var time;
-    if (times) {
-      // NOTE: We don't keep track of access timestamps.
-      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
-  utimes__deps: ['$setFileTime'],
-  utimes__proxy: 'sync',
-  utimes__sig: 'iii',
-  utimes: function(path, times) {
-    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
-    // times[0] is the new access time (which we currently ignore)
-    // times[1] is the new modification time.
-    var time;
-    if (times) {
-      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
-      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
-      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
@@ -188,7 +126,7 @@ LibraryManager.library = {
       wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #if MEMORYPROFILER
-      if (typeof emscriptenMemoryProfiler !== 'undefined') {
+      if (typeof emscriptenMemoryProfiler != 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
       }
 #endif
@@ -791,7 +729,7 @@ LibraryManager.library = {
     var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     function leadingSomething(value, digits, character) {
-      var str = typeof value === 'number' ? value.toString() : (value || '');
+      var str = typeof value == 'number' ? value.toString() : (value || '');
       while (str.length < digits) {
         str = character[0]+str;
       }
@@ -1136,7 +1074,7 @@ LibraryManager.library = {
 
     function initDate() {
       function fixup(value, min, max) {
-        return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
+        return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
         year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
@@ -1729,7 +1667,7 @@ LibraryManager.library = {
 
     offset = 0; z = 0;
     for (w=0; w < words.length; w++) {
-      if (typeof words[w] === 'string') {
+      if (typeof words[w] == 'string') {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
@@ -2368,7 +2306,7 @@ LibraryManager.library = {
   // TODO: consider allowing the API to get a parameter for the number of
   // bytes.
   $getRandomDevice: function() {
-    if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
       var randomBuffer = new Uint8Array(1);
       return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
@@ -2477,12 +2415,12 @@ LibraryManager.library = {
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-                               "if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow != 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
+                               "if (typeof performance != 'undefined' && performance.now) {\n" +
                                "  _emscripten_get_now = () => performance.now();\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
@@ -2500,12 +2438,12 @@ LibraryManager.library = {
     } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-    if (typeof dateNow !== 'undefined') {
+    if (typeof dateNow != 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-    if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
+    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
@@ -2520,12 +2458,12 @@ LibraryManager.library = {
   // implementation is not :(
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
   emscripten_get_now_is_monotonic: `
-     ((typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+     ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      || (typeof dateNow !== 'undefined')
+      || (typeof dateNow != 'undefined')
 #endif
     );`,
 #else
@@ -2559,7 +2497,7 @@ LibraryManager.library = {
         str += ", ";
       }
       first = false;
-      if (typeof a === 'number' || typeof a === 'string') {
+      if (typeof a == 'number' || typeof a == 'string') {
         str += a;
       } else {
         str += '(' + typeof a + ')';
@@ -2593,7 +2531,7 @@ LibraryManager.library = {
     }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map === 'undefined') {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
       flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
@@ -2731,7 +2669,7 @@ LibraryManager.library = {
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret === 'number') return ret;
+    if (typeof ret == 'number') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
@@ -3007,9 +2945,9 @@ LibraryManager.library = {
                             ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: function (func) {
-    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
-    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
-    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
+    var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free != 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
@@ -3052,7 +2990,7 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
 #endif
       // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
@@ -3122,7 +3060,7 @@ LibraryManager.library = {
   $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process !== "undefined" ? global : this);
+    var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
 #else
@@ -3275,7 +3213,7 @@ LibraryManager.library = {
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
-    assert(typeof dynCalls !== 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
     assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
@@ -3342,7 +3280,7 @@ LibraryManager.library = {
         continue;
       }
       var func = callback.func;
-      if (typeof func === 'number') {
+      if (typeof func == 'number') {
         if (callback.arg === undefined) {
           {{{ makeDynCall('v', 'func') }}}();
         } else {
@@ -3427,7 +3365,7 @@ LibraryManager.library = {
   _emscripten_out__sig: 'vi',
   _emscripten_out: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     out(UTF8ToString(str));
   },
@@ -3435,7 +3373,7 @@ LibraryManager.library = {
   _emscripten_err__sig: 'vi',
   _emscripten_err: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     err(UTF8ToString(str));
   },
@@ -3446,8 +3384,8 @@ LibraryManager.library = {
   _emscripten_get_progname: function(str, len) {
   #if !MINIMAL_RUNTIME
   #if ASSERTIONS
-    assert(typeof str === 'number');
-    assert(typeof len === 'number');
+    assert(typeof str == 'number');
+    assert(typeof len == 'number');
   #endif
     stringToUTF8(thisProgram, str, len);
   #endif
@@ -3456,7 +3394,7 @@ LibraryManager.library = {
   emscripten_console_log__sig: 'vi',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.log(UTF8ToString(str));
   },
@@ -3464,7 +3402,7 @@ LibraryManager.library = {
   emscripten_console_warn__sig: 'vi',
   emscripten_console_warn: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.warn(UTF8ToString(str));
   },
@@ -3472,7 +3410,7 @@ LibraryManager.library = {
   emscripten_console_error__sig: 'vi',
   emscripten_console_error: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
   },
@@ -3483,7 +3421,7 @@ LibraryManager.library = {
 
   emscripten_throw_string: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     throw UTF8ToString(str);
   },

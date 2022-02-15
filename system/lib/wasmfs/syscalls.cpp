@@ -6,10 +6,6 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "backend.h"
-#include "file.h"
-#include "file_table.h"
-#include "wasmfs.h"
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -23,9 +19,19 @@
 #include <vector>
 #include <wasi/api.h>
 
+#include "backend.h"
+#include "file.h"
+#include "file_table.h"
+#include "paths.h"
+#include "wasmfs.h"
+
 // File permission macros for wasmfs.
 // Used to improve readability compared to those in stat.h
+#define WASMFS_PERM_READ 0444
+
 #define WASMFS_PERM_WRITE 0222
+
+#define WASMFS_PERM_EXECUTE 0111
 
 // In Linux, the maximum length for a filename is 255 bytes.
 #define WASMFS_NAME_MAX 255
@@ -419,7 +425,9 @@ static __wasi_fd_t doOpen(char* pathname,
 
 // This function is exposed to users and allows users to create a file in a
 // specific backend. An fd to an open file is returned.
-__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
+                "unexpected conversion from result of doOpen to int");
   return doOpen(pathname, O_CREAT, mode, backend);
 }
 
@@ -452,27 +460,38 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   // Check if the requested directory already exists.
   if (parsedPath.child) {
     return -EEXIST;
-  } else {
-    // Mask rwx permissions for user, group and others, and the sticky bit.
-    // This prevents users from entering S_IFREG for example.
-    // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
-    mode &= S_IRWXUGO | S_ISVTX;
-
-    // If there is no explicitly provided backend, use the parent's backend.
-    if (!backend) {
-      backend = parsedPath.parent->unlocked()->getBackend();
-    }
-    auto created = backend->createDirectory(mode);
-    if (!parsedPath.parent->insertEntry(pathParts.back(), created)) {
-      return -EPERM;
-    }
-    return 0;
   }
+
+  // Mask rwx permissions for user, group and others, and the sticky bit.
+  // This prevents users from entering S_IFREG for example.
+  // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+  mode &= S_IRWXUGO | S_ISVTX;
+
+  // By default, the backend that the directory is created in is the same as
+  // the parent directory. However, if a backend is passed as a parameter,
+  // then that backend is used.
+  if (!backend) {
+    backend = parsedPath.parent->unlocked()->getBackend();
+  }
+  // Create an empty in-memory directory.
+  auto created = backend->createDirectory(mode);
+  parsedPath.parent->insertEntry(pathParts.back(), created);
+
+  // Update the times.
+  auto lockedFile = created->locked();
+  time_t now = time(NULL);
+  lockedFile.atime() = now;
+  lockedFile.mtime() = now;
+  lockedFile.ctime() = now;
+
+  return 0;
 }
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-long wasmfs_create_directory(char* path, long mode, backend_t backend) {
+int wasmfs_create_directory(char* path, long mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), long>,
+                "unexpected conversion from result of doMkdir to int");
   return doMkdir(path, mode, backend);
 }
 
@@ -935,5 +954,77 @@ long __syscall_readlink(char* path, char* buf, size_t bufSize) {
   memcpy(buf, target.c_str(), bytes);
 
   return bytes;
+}
+
+long __syscall_utimensat(int dirFD,
+                         char* path,
+                         const struct timespec times[2],
+                         int flags) {
+  // TODO: support flags here
+  assert(flags == 0);
+
+  auto pathParts = splitPath(path);
+
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirFD);
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  // TODO: tv_nsec (nanoseconds) as well? but time_t is seconds as an integer
+  auto aSeconds = times[0].tv_sec;
+  auto mSeconds = times[1].tv_sec;
+
+  auto locked = parsedPath.child->locked();
+  locked.atime() = aSeconds;
+  locked.mtime() = mSeconds;
+
+  return 0;
+}
+
+long __syscall_chmod(char* path, long mode) {
+  auto pathParts = splitPath(path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+
+  parsedPath.child->locked().mode() = mode;
+
+  return 0;
+}
+
+long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
+  // The input must be F_OK (check for existence) or a combination of [RWX]_OK
+  // flags.
+  if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
+    return -EINVAL;
+  }
+
+  auto pathParts = splitPath((char*)path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirfd);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+
+  if (amode != F_OK) {
+    auto mode = parsedPath.child->locked().mode();
+    if ((amode & R_OK) && !(mode & WASMFS_PERM_READ)) {
+      return -EACCES;
+    }
+    if ((amode & W_OK) && !(mode & WASMFS_PERM_WRITE)) {
+      return -EACCES;
+    }
+    if ((amode & X_OK) && !(mode & WASMFS_PERM_EXECUTE)) {
+      return -EACCES;
+    }
+  }
+
+  return 0;
 }
 }

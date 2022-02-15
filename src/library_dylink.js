@@ -102,14 +102,14 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
 #endif
-        if (typeof value === 'function') {
+        if (typeof value == 'function') {
           GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
-        } else if (typeof value === 'number') {
+        } else if (typeof value == 'number') {
           GOT[symName].value = value;
-        } else if (typeof value === 'bigint') {
+        } else if (typeof value == 'bigint') {
           GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
@@ -145,12 +145,12 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value === 'object') {
+      if (typeof value == 'object') {
         // a breaking change in the wasm spec, globals are now objects
         // https://github.com/WebAssembly/mutable-global/issues/1
         value = value.value;
       }
-      if (typeof value === 'number') {
+      if (typeof value == 'number') {
         value += memoryBase;
       }
       relocated[e] = value;
@@ -174,13 +174,13 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
-        if (typeof value === 'function') {
+        if (typeof value == 'function') {
           /** @suppress {checkTypes} */
           GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
-        } else if (typeof value === 'number') {
+        } else if (typeof value == 'number') {
           GOT[symName].value = value;
         } else {
           throw new Error('bad export type for `' + symName + '`: ' + (typeof value));
@@ -220,7 +220,7 @@ var LibraryDylink = {
   ],
   $dlSetError: function(msg) {
     withStackSave(function() {
-      var cmsg = allocate(intArrayFromString(msg), ALLOC_STACK);
+      var cmsg = allocateUTF8OnStack(msg);
       ___dl_seterr(cmsg);
     });
   },
@@ -415,7 +415,7 @@ var LibraryDylink = {
       else {
         var curr = asmLibraryArg[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
-        if (!(typeof curr === 'function' && typeof next === 'function')) {
+        if (!(typeof curr == 'function' && typeof next == 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
@@ -947,7 +947,7 @@ var LibraryDylink = {
       result = lib.module[symbol];
     }
 
-    if (typeof result === 'function') {
+    if (typeof result == 'function') {
 #if DYLINK_DEBUG
       err('dlsym: ' + symbol + ' getting table slot for: ' + result);
 #endif

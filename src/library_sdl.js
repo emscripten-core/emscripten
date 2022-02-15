@@ -896,7 +896,7 @@ var LibrarySDL = {
 
     // returns false if the event was determined to be irrelevant
     makeCEvent: function(event, ptr) {
-      if (typeof event === 'number') {
+      if (typeof event == 'number') {
         // This is a pointer to a copy of a native C event that was SDL_PushEvent'ed
         _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
         _free(event); // the copy is no longer needed
@@ -1177,8 +1177,8 @@ var LibrarySDL = {
       // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
       // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
       if (!SDL.audioContext) {
-        if (typeof(AudioContext) !== 'undefined') SDL.audioContext = new AudioContext();
-        else if (typeof(webkitAudioContext) !== 'undefined') SDL.audioContext = new webkitAudioContext();
+        if (typeof AudioContext != 'undefined') SDL.audioContext = new AudioContext();
+        else if (typeof webkitAudioContext != 'undefined') SDL.audioContext = new webkitAudioContext();
       }
     },
 
@@ -1252,7 +1252,7 @@ var LibrarySDL = {
     // Abstracts away implementation differences.
     // Returns 'true' if pressed, 'false' otherwise.
     getJoystickButtonState: function(button) {
-      if (typeof button === 'object') {
+      if (typeof button == 'object') {
         // Current gamepad API editor's draft (Firefox Nightly)
         // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
         return button['pressed'];
@@ -1268,13 +1268,13 @@ var LibrarySDL = {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
         // If joystick was removed, state returns null.
-        if (typeof state === 'undefined') return;
+        if (typeof state == 'undefined') return;
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         // NOTE: Timestamp is currently not properly set for the GearVR controller
         //       on Samsung Internet: it is always zero.
-        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp || !state.timestamp) {
+        if (typeof state.timestamp != 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
@@ -1515,12 +1515,14 @@ var LibrarySDL = {
   SDL_AudioQuit__sig: 'v',
   SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
-      if (SDL.channels[i].audio) {
-        SDL.channels[i].audio.pause();
-        SDL.channels[i].audio = undefined;
+      var chan = /** @type {{ audio: (HTMLMediaElement|undefined) }} */ (SDL.channels[i]);
+      if (chan.audio) {
+        chan.audio.pause();
+        chan.audio = undefined;
       }
     }
-    if (SDL.music.audio) SDL.music.audio.pause();
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
+    if (audio) audio.pause();
     SDL.music.audio = undefined;
   },
 
@@ -1631,7 +1633,7 @@ var LibrarySDL = {
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;
-      if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
+      if (typeof CanvasPixelArray != 'undefined' && data instanceof CanvasPixelArray) {
         // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
         // not UInt8ClampedArray. These don't have buffers, so we need to revert
         // to copying a byte at a time. We do the undefined check because modern
@@ -1746,7 +1748,7 @@ var LibrarySDL = {
   SDL_WM_SetCaption__proxy: 'sync',
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
-    if (title && typeof setWindowTitle !== 'undefined') {
+    if (title && typeof setWindowTitle != 'undefined') {
       setWindowTitle(UTF8ToString(title));
     }
     icon = icon && UTF8ToString(icon);
@@ -1775,7 +1777,7 @@ var LibrarySDL = {
   SDL_GetKeyName__sig: 'ii',
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
-      SDL.keyName = allocate(intArrayFromString('unknown key'));
+      SDL.keyName = allocateUTF8('unknown key');
     }
     return SDL.keyName;
   },
@@ -1837,7 +1839,7 @@ var LibrarySDL = {
   SDL_GetError__sig: 'i',
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
-      SDL.errorMessage = allocate(intArrayFromString("unknown SDL-emscripten error"));
+      SDL.errorMessage = allocateUTF8("unknown SDL-emscripten error");
     }
     return SDL.errorMessage;
   },
@@ -2584,9 +2586,9 @@ var LibrarySDL = {
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
           // may not be able to mix that audio clip in immediately, and there may be subsequent jitter that might cause the stream to starve.
           var playtime = Math.max(curtime + SDL.audio.bufferingDelay, SDL.audio.nextPlayTime);
-          if (typeof source['start'] !== 'undefined') {
+          if (typeof source['start'] != 'undefined') {
             source['start'](playtime); // New Web Audio API: sound sources are started with a .start() call.
-          } else if (typeof source['noteOn'] !== 'undefined') {
+          } else if (typeof source['noteOn'] != 'undefined') {
             source['noteOn'](playtime); // Support old Web Audio API specification which had the .noteOn() API.
           }
           /*
@@ -2989,7 +2991,7 @@ var LibrarySDL = {
   Mix_HaltChannel__sig: 'ii',
   Mix_HaltChannel: function(channel) {
     function halt(channel) {
-      var info = SDL.channels[channel];
+      var info = /** @type {{ audio: HTMLMediaElement }} */ (SDL.channels[channel]);
       if (info.audio) {
         info.audio.pause();
         info.audio = null;
@@ -3070,7 +3072,7 @@ var LibrarySDL = {
   Mix_PauseMusic__proxy: 'sync',
   Mix_PauseMusic__sig: 'v',
   Mix_PauseMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) audio.pause();
   },
 
@@ -3084,7 +3086,7 @@ var LibrarySDL = {
   Mix_HaltMusic__proxy: 'sync',
   Mix_HaltMusic__sig: 'i',
   Mix_HaltMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) {
       audio.src = audio.src; // rewind <media> element
       audio.currentPosition = 0; // rewind Web Audio graph playback.
@@ -3135,6 +3137,7 @@ var LibrarySDL = {
       }
       return;
     }
+    /** @type {{ audio: HTMLMediaElement }} */
     var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
@@ -3195,17 +3198,17 @@ var LibrarySDL = {
       // like CI might be creating a context here but one that is not entirely
       // valid. Check that explicitly and fall back to a plain Canvas if we need
       // to. See https://github.com/emscripten-core/emscripten/issues/16242
-      if (typeof SDL.ttfContext.measureText !== 'function') {
+      if (typeof SDL.ttfContext.measureText != 'function') {
         throw 'bad context';
       }
     } catch (ex) {
-      var canvas = document.createElement('canvas');
+      var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
     }
 #if ASSERTIONS
     // Check the final context looks valid. See
     // https://github.com/emscripten-core/emscripten/issues/16242
-    assert(typeof SDL.ttfContext.measureText === 'function',
+    assert(typeof SDL.ttfContext.measureText == 'function',
            'context ' + SDL.ttfContext + 'must provide valid methods');
 #endif
     return 0;
@@ -3573,7 +3576,7 @@ var LibrarySDL = {
       if (SDL.joystickNamePool.hasOwnProperty(name)) {
         return SDL.joystickNamePool[name];
       }
-      return SDL.joystickNamePool[name] = allocate(intArrayFromString(name));
+      return SDL.joystickNamePool[name] = allocateUTF8(name);
     }
     return 0;
   },
@@ -3706,7 +3709,7 @@ var LibrarySDL = {
 
   SDL_GetNumAudioDrivers: function() { return 1 },
   SDL_GetCurrentAudioDriver: function() {
-    return allocate(intArrayFromString('Emscripten Audio'));
+    return allocateUTF8('Emscripten Audio');
   },
 
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],

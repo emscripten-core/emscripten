@@ -11,7 +11,7 @@
 #pragma once
 
 #include "file.h"
-#include "memory_file.h"
+#include "memory_backend.h"
 
 namespace wasmfs {
 // A backend (or modular backend) provides a base for the new file system to

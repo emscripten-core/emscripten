@@ -209,26 +209,26 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
-    if (typeof globalThis === 'object') {
+    if (typeof globalThis == 'object') {
       return globalThis;
     }
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
-      var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
+      var success = typeof $$$embind_global$$$ == 'object' && obj['$$$embind_global$$$'] == obj;
       if (!success) {
         delete obj['$$$embind_global$$$'];
       }
       return success;
     }
-    if (typeof $$$embind_global$$$ === 'object') {
+    if (typeof $$$embind_global$$$ == 'object') {
       return $$$embind_global$$$;
     }
-    if (typeof global === 'object' && testGlobal(global)) {
+    if (typeof global == 'object' && testGlobal(global)) {
       $$$embind_global$$$ = global;
-    } else if (typeof self === 'object' && testGlobal(self)) {
+    } else if (typeof self == 'object' && testGlobal(self)) {
       $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
     }
-    if (typeof $$$embind_global$$$ === 'object') {
+    if (typeof $$$embind_global$$$ == 'object') {
       return $$$embind_global$$$;
     }
     throw Error('unable to get global object.');
@@ -236,7 +236,7 @@ var LibraryEmVal = {
 #else
   // appease jshint (technically this code uses eval)
   $emval_get_global: function() {
-    if (typeof globalThis === 'object') {
+    if (typeof globalThis == 'object') {
       return globalThis;
     }
     return (function(){
@@ -491,13 +491,13 @@ var LibraryEmVal = {
   _emval_is_number__deps: ['$Emval'],
   _emval_is_number: function(handle) {
     handle = Emval.toValue(handle);
-    return typeof handle === 'number';
+    return typeof handle == 'number';
   },
 
   _emval_is_string__deps: ['$Emval'],
   _emval_is_string: function(handle) {
     handle = Emval.toValue(handle);
-    return typeof handle === 'string';
+    return typeof handle == 'string';
   },
 
   _emval_in__deps: ['$Emval'],
