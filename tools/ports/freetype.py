@@ -7,8 +7,8 @@ import os
 import shutil
 from pathlib import Path
 
-TAG = 'version_1'
-HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
+TAG = 'VER-2-11-1'
+HASH = '5e53276cf0248c61782c6410856230a287c583efdbb8959d4b1d25efdbe8c665ca45a9c952c33c710b595fcf76905375487d3803fb39c2b96dbe253c7664662c'
 
 
 def needed(settings):
@@ -16,12 +16,12 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
+  ports.fetch_project('freetype', 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/' + TAG + '/freetype-' + TAG + '.zip', 'freetype-' + TAG, sha512hash=HASH)
 
   def create(final):
     ports.clear_project_build('freetype')
 
-    source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'freetype', 'freetype-' + TAG)
     dest_path = os.path.join(ports.get_build_dir(), 'freetype')
     shared.try_delete(dest_path)
     os.makedirs(dest_path)
@@ -45,6 +45,7 @@ def get(ports, settings, shared):
             'src/base/ftgloadr.c',
             'src/base/ftglyph.c',
             'src/base/ftgxval.c',
+            'src/base/fthash.c',
             'src/base/ftinit.c',
             'src/base/ftlcdfil.c',
             'src/base/ftmm.c',
@@ -53,6 +54,7 @@ def get(ports, settings, shared):
             'src/base/ftoutln.c',
             'src/base/ftpatent.c',
             'src/base/ftpfr.c',
+            'src/base/ftpsprop.c',
             'src/base/ftrfork.c',
             'src/base/ftsnames.c',
             'src/base/ftstream.c',
@@ -76,6 +78,10 @@ def get(ports, settings, shared):
             'src/pshinter/pshinter.c',
             'src/psnames/psmodule.c',
             'src/raster/raster.c',
+            'src/sdf/ftbsdf.c',
+            'src/sdf/ftsdf.c',
+            'src/sdf/ftsdfcommon.c',
+            'src/sdf/ftsdfrend.c',
             'src/sfnt/sfnt.c',
             'src/smooth/smooth.c',
             'src/truetype/truetype.c',
