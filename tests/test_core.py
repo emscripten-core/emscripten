@@ -5578,6 +5578,10 @@ Module['onRuntimeInitialized'] = function() {
     orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if self.get_setting('WASMFS'):
+        if fs == 'NODEFS':
+          self.skipTest('TODO: wasmfs+node')
+        self.emcc_args += ['-sFORCE_FILESYSTEM']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
