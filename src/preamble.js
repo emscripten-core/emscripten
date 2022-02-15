@@ -137,6 +137,10 @@ function ccall(ident, returnType, argTypes, args, opts) {
       }
     }
   }
+#if ASYNCIFY
+  // Data for a previous async operation that was in flight before us.
+  var previousAsync = Asyncify.currData;
+#endif
   var ret = func.apply(null, cArgs);
   function onDone(ret) {
 #if ASYNCIFY
@@ -146,14 +150,18 @@ function ccall(ident, returnType, argTypes, args, opts) {
     return convertReturnValue(ret);
   }
 #if ASYNCIFY
+  // Keep the runtime alive through all calls. Note that this call might not be
+  // async, but for simplicity we push and pop in all calls.
   runtimeKeepalivePush();
-  var asyncMode = opts && opts.async;
-  // Check if we started an async operation just now.
-  if (Asyncify.currData) {
-    // If so, the WASM function ran asynchronous and unwound its stack.
+  // Whether we are a new async operation that just started. (If the async data
+  // is not changed, then we are a sync operation during an async one, which is
+  // fine.)
+  if (Asyncify.currData != previousAsync) {
+    // This is a new async operation. The wasm is paused and has unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
+    var asyncMode = opts && opts.async;
     assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
     return Asyncify.whenDone().then(onDone);
