@@ -91,4 +91,8 @@ long _wasmfs_chdir(char* path) { return __syscall_chdir((long)path); }
 void _wasmfs_symlink(char* old_path, char* new_path) {
   __syscall_symlink((long)old_path, (long)new_path);
 }
+
+long _wasmfs_chmod(char* path, mode_t mode) {
+  return __syscall_chmod((long)path, mode);
+}
 }

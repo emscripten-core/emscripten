@@ -113,6 +113,10 @@ var WasmFSLibrary = {
       var linkpathBuffer = allocateUTF8OnStack(linkpath);
       __wasmfs_symlink(targetBuffer, linkpathBuffer);
     },
+    chmod: (path, mode) => {
+      var buffer = allocateUTF8OnStack(path);
+      return __wasmfs_chmod(buffer, mode);
+    },
 #endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
