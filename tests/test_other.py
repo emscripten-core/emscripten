@@ -10992,6 +10992,8 @@ exec "$@"
         cmd.append('-fexceptions')
       if function.startswith('glfwGetMonitors'):
         cmd.append('-sUSE_GLFW=3')
+      if 'mmap' in function:
+        cmd.append('-sFORCE_FILESYSTEM')
       # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
       # calls that exist in the same function with setjmp are converted to some
       # code sequence that includes emscripten_longjmp. emscripten_longjmp is
