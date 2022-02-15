@@ -20,27 +20,35 @@ mergeInto(LibraryManager.library, {
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
-  // src/postamble_minimal.js brings this symbol in to the build, and calls this function.
+  // src/postamble_minimal.js brings this symbol in to the build, and calls this function synchronously
+  // from main JS file at the startup of each Worker.
   _wasm_worker_initializeRuntime__deps: ['_wasm_worker_delayedMessageQueue', '_wasm_worker_runPostMessage'],
   _wasm_worker_initializeRuntime: function() {
-    // Establish the stack space for this Wasm Worker:
-    let stackTop = Module["sb"] + Module["sz"];
+    let m = Module;
 #if ASSERTIONS
-    assert(stackTop % 16 == 0);
-    assert(Module["sb"] % 16 == 0);
+    assert(m['sb'] % 16 == 0);
+    assert(m['sz'] % 16 == 0);
 #endif
-    // TODO: Fuse these to the same function "emscripten_establish_stack".
-    _emscripten_stack_set_limits(stackTop, Module["sb"]);
-    stackRestore(stackTop);
+
+    // Run the C side Worker initialization for stack and TLS.
+    _emscripten_wasm_worker_initialize(m['sb'], m['sz']
+#if !WASM_WORKERS_NO_TLS
+      , m['tb'], m['tz']
+#endif
+    );
+    // The above function initializes the stack for this Worker, but C code cannot
+    // call to extern __set_stack_limits() function, or Binaryen breaks with
+    // "Fatal: Module::addFunction: __set_stack_limits already exists".
+    // So for now, invoke the function from JS side. TODO: remove this in the future.
 #if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
     // The Wasm Worker runtime is now up, so we can start processing
     // any postMessage function calls that have been received. Drop the temp
-    // message handler that appended incoming postMessage function calls to a queue ...
+    // message handler that queued any pending incoming postMessage function calls ...
     removeEventListener('message', __wasm_worker_appendToQueue);
-    // ... then flush whatever messages we may have gotten in the queue ...
+    // ... then flush whatever messages we may have already gotten in the queue ...
     __wasm_worker_delayedMessageQueue.forEach(__wasm_worker_runPostMessage);
     __wasm_worker_delayedMessageQueue = null;
     // ... and finally register the proper postMessage handler that immediately
@@ -63,10 +71,13 @@ mergeInto(LibraryManager.library, {
     + '_wasm_workers[0] = this;\n'
     + 'addEventListener("message", __wasm_worker_appendToQueue);\n'
     + '}\n',
-  _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize) {
+  _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize, tlsAddress, tlsSize) {
 #if ASSERTIONS
     assert(stackLowestAddress % 16 == 0);
     assert(stackSize % 16 == 0);
+#if !WASM_WORKERS_NO_TLS
+    assert(tlsAddress != 0 || tlsSize == 0);
+#endif
 #endif
     let worker = _wasm_workers[_wasm_workers_id] = new Worker(
 #if WASM_WORKERS == 2
@@ -81,11 +92,19 @@ mergeInto(LibraryManager.library, {
       'wasm': Module['wasm'],
       'js': Module['js'],
       'mem': wasmMemory,
-      'sb': stackLowestAddress,
-      'sz': stackSize,
+      'sb': stackLowestAddress, // sb = stack base
+      'sz': stackSize,          // sz = stack size
+#if !WASM_WORKERS_NO_TLS
+      'tb': tlsAddress,         // tb = TLS base
+      'tz': tlsSize             // tz = TLS size
+#endif
     });
     worker.addEventListener('message', __wasm_worker_runPostMessage);
     return _wasm_workers_id++;
+  },
+  _emscripten_create_wasm_worker_no_tls__deps: ['_emscripten_create_wasm_worker'],
+  _emscripten_create_wasm_worker_no_tls: function(stackLowestAddress, stackSize) {
+    return __emscripten_create_wasm_worker(stackLowestAddress, stackSize, 0, 0);
   },
 
   emscripten_terminate_wasm_worker: function(id) {

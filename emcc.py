@@ -2098,9 +2098,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
 
   if settings.WASM_WORKERS:
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
+    # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
+    #       instead of having to record them here.
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits', '_emscripten_wasm_worker_initialize']
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
-    # set location of Wasm Worker bootstrap .js
+    # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))

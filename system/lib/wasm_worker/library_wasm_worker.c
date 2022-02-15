@@ -1,15 +1,86 @@
+#include <assert.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
+#include <emscripten/heap.h>
+
+// Options:
+// #define WASM_WORKER_NO_TLS 0/1 : set to 1 to disable TLS compilation support for a small code size gain
+// #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
+emscripten_wasm_worker_t _emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
+void emscripten_stack_set_limits(uint32_t stackLowestAddress, uint32_t stackSize);
+void __wasm_init_tls(void *memory);
+void stackRestore(uint32_t stackBase);
+
+#if STACK_OVERFLOW_CHECK == 2
+// TODO:
+//void __set_stack_limits(uint32_t stackLowestAddress, uint32_t stackSize);
+#endif
+
+#if !WASM_WORKER_NO_TLS
+__attribute__((constructor(48)))
+static void emscripten_wasm_worker_main_thread_initialize() {
+	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+	__wasm_init_tls((void*)*sbrk_ptr);
+	*sbrk_ptr += __builtin_wasm_tls_size();
+}
+#endif
+
+// Called in the Wasm Worker thread context to set up the Worker stack space and TLS
+void emscripten_wasm_worker_initialize(void *stackLowestAddress, uint32_t stackSize
+#if !WASM_WORKER_NO_TLS
+	, void *tlsAddress, uint32_t tlsSize
+#endif
+	) {
+
+	assert((uintptr_t)stackLowestAddress % 16 == 0);
+	assert(stackSize % 16 == 0);
+
+#if !WASM_WORKER_NO_TLS
+	assert((uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
+	assert(tlsSize == __builtin_wasm_tls_size());
+	// Set up TLS
+	__wasm_init_tls(tlsAddress);
+#endif
+
+	// Set up stack
+	uint32_t stackTop = (uint32_t)stackLowestAddress + stackSize;
+	emscripten_stack_set_limits(stackTop, stackSize);
+	stackRestore(stackTop);
+#if STACK_OVERFLOW_CHECK == 2
+	// TODO: Cannot call this function from C code, Binaryen does not want to emit the function then
+	//__set_stack_limits((uint32_t)stackLowestAddress, stackSize);
+#endif
+}
+
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize)
 {
-	uintptr_t stackBase = ((uintptr_t)stackLowestAddress + 15) & -16;
-	stackSize = ((uintptr_t)stackLowestAddress + stackSize - stackBase) & -16;
-	return _emscripten_create_wasm_worker((void*)stackBase, stackSize);
+#if WASM_WORKER_NO_TLS
+	return emscripten_create_wasm_worker_no_tls(stackLowestAddress, stackSize);
+#else
+	assert((uintptr_t)stackLowestAddress % 16 == 0);
+	assert(stackSize % 16 == 0);
+	assert((uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
+	assert(tlsSize == __builtin_wasm_tls_size());
+	assert(tlsAddress != 0 || tlsSize == 0);
+	return _emscripten_create_wasm_worker((void*)stackLowestAddress, stackSize, tlsAddress, tlsSize);
+#endif
+}
+
+emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize)
+{
+#if !WASM_WORKER_NO_TLS
+	return emscripten_create_wasm_worker(stackLowestAddress, stackSize, 0, 0);
+#else
+	assert((uintptr_t)stackLowestAddress % 16 == 0);
+	assert(stackSize % 16 == 0);
+	assert(__builtin_wasm_tls_size() == 0 && "Cannot disable TLS with -sWASM_WORKERS_NO_TLS=1 when compiling code that does require TLS! Rebuild with -sWASM_WORKERS_NO_TLS=1 removed, or remove uses of TLS from the codebase.");
+	return _emscripten_create_wasm_worker_no_tls((void*)stackLowestAddress, stackSize);
+#endif
 }
 
 void emscripten_wasm_worker_sleep(int64_t nsecs)

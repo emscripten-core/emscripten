@@ -1029,9 +1029,34 @@ class libprintf_long_double(libc):
 
 
 class libwasm_workers(MTLibrary):
+  def __init__(self, **kwargs):
+    self.tls = kwargs.pop('tls')
+    self.stack_check = kwargs.pop('stack_check')
+    self.debug = kwargs.pop('debug')
+    super().__init__(**kwargs)
+
   name = 'libwasm_workers'
 
-  cflags = ['-Os', '-pthread']
+  def get_cflags(self):
+    return ['-pthread',
+            '-D_DEBUG' if self.debug else '-Oz',
+            '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0'),
+            '-DWASM_WORKER_NO_TLS=' + ('0' if self.tls else '1')]
+
+  def get_base_name(self):
+    name = 'libwasm_workers'
+    if not self.tls: name += '-notls'
+    if self.debug: name += '-debug'
+    if self.stack_check: name += '-stackcheck'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['tls', 'debug', 'stack_check']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS>=1, stack_check=settings.STACK_OVERFLOW_CHECK==2, **kwargs)
 
   def get_files(self):
     return files_in_path(
@@ -1105,7 +1130,7 @@ class crtbegin(Library):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and settings.USE_PTHREADS
+    return super().can_use() and (settings.USE_PTHREADS or settings.WASM_WORKERS)
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1741,7 +1766,7 @@ def get_libs_to_link(args, forced, only_forced):
     libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
   if '-nostartfiles' not in args:
-    if settings.USE_PTHREADS:
+    if settings.USE_PTHREADS or settings.WASM_WORKERS:
       add_library('crtbegin')
 
     if settings.STANDALONE_WASM:

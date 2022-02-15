@@ -1475,6 +1475,8 @@ var USE_PTHREADS = 0;
 // of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
+// Wasm Workers options:
+var WASM_WORKERS_NO_TLS = 0; // set to 1 to disable TLS for small code size gain when not using TLS.
 
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back

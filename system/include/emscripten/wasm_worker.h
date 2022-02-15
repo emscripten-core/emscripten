@@ -11,7 +11,7 @@ extern "C" {
 #define EMSCRIPTEN_WASM_WORKER_ID_PARENT 0
 
 // If not building with Wasm workers enabled (-s WASM_WORKERS=0), returns 0.
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
 
 // Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
 void emscripten_terminate_wasm_worker(emscripten_wasm_worker_t id);
