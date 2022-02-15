@@ -2961,16 +2961,26 @@ LibraryManager.library = {
   },
 #endif
 
-  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$syscallMmap2', '$setErrNo'],
   emscripten_builtin_mmap2__noleakcheck: true,
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
+    var rtn = syscallMmap2(addr, len, prot, flags, fd, off);
+    if (rtn < 0) {
+      setErrNo(-rtn);
+      return -1;
+    }
+    return rtn;
   },
 
-  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$syscallMunmap', '$setErrNo'],
   emscripten_builtin_munmap__noleakcheck: true,
   emscripten_builtin_munmap: function (addr, len) {
-    return syscallMunmap(addr, len);
+    var rtn = syscallMunmap(addr, len);
+    if (rtn < 0) {
+      setErrNo(-rtn);
+      return -1;
+    }
+    return rtn;
   },
 
   $readAsmConstArgsArray: '=[]',
