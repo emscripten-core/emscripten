@@ -6,12 +6,12 @@
  */
 
 #include <assert.h>
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
 #include <emscripten.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 int main() {
 #ifdef __EMSCRIPTEN_ASMFS__
@@ -54,7 +54,7 @@ int main() {
   }
 
   EM_ASM({FS.writeFile('filetorename',  'renametest');});
-  
+
   int rename_ret = rename("filetorename", "renamedfile");
   assert(rename_ret == 0);
 
