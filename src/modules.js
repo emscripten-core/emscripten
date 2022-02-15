@@ -38,19 +38,15 @@ global.LibraryManager = {
       'library.js',
       'library_formatString.js',
       'library_math.js',
-      'library_path.js'
-    ];
-    if (!WASMFS) {
-      libraries.push('library_syscall.js');
-    }
-    libraries = libraries.concat([
+      'library_path.js',
+      'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
       'library_int53.js',
       'library_dylink.js',
       'library_eventloop.js',
-    ]);
+    ];
 
     if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
       if (DISABLE_EXCEPTION_THROWING) {
