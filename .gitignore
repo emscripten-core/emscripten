@@ -2,6 +2,9 @@
 .emscripten
 .emscripten_backup
 
+# Emsdk generated version info
+.emsdk_version
+
 # vim/emacs temporary/backup files
 *~
 *.swp
