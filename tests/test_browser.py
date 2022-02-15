@@ -5166,11 +5166,17 @@ window.close = function() {
                expected='0',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
-  # Tests TLS variables in Wasm Workers
-  def test_wasm_worker_tls(self):
-    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_tls.c'),
+  # Tests direct Wasm Assembly .S file based TLS variables in Wasm Workers
+  def test_wasm_worker_tls_wasm_assembly(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_tls_wasm_assembly.c'),
                expected='42',
-               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', path_from_root('tests', 'wasm_worker', 'wasm_worker_tls.S')])
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', path_from_root('tests', 'wasm_worker', 'wasm_worker_tls_wasm_assembly.S')])
+
+  # Tests C++11 keyword thread_local for TLS in Wasm Workers
+  def test_wasm_worker_cpp11_thread_local(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'cpp11_thread_local.cpp'),
+               expected='42',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
   # Tests emscripten_wasm_worker_sleep()
   def test_wasm_worker_sleep(self):
