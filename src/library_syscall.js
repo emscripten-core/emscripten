@@ -324,10 +324,6 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_access: function(path, amode) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doAccess(path, amode);
-  },
   __syscall_rename: function(old_path, new_path) {
     old_path = SYSCALLS.getStr(old_path);
     new_path = SYSCALLS.getStr(new_path);
