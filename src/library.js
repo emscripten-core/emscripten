@@ -69,51 +69,6 @@ LibraryManager.library = {
     return cString;
   },
 
-  // ==========================================================================
-  // utime.h
-  // ==========================================================================
-
-#if FILESYSTEM
-  $setFileTime__deps: ['$FS', '$setErrNo'],
-  $setFileTime: function(path, time) {
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      setErrNo(e.errno);
-      return -1;
-    }
-  },
-#else
-  $setFileTime__deps: ['$setErrNo'],
-  $setFileTime: function(path, time) {
-    // No filesystem support; return an error as if the file does not exist
-    // (which it almost certainly does not, except for standard streams).
-    setErrNo({{{ cDefine('ENOENT') }}});
-    return -1;
-  },
-#endif
-
-  utimes__deps: ['$setFileTime'],
-  utimes__proxy: 'sync',
-  utimes__sig: 'iii',
-  utimes: function(path, times) {
-    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
-    // times[0] is the new access time (which we currently ignore)
-    // times[1] is the new modification time.
-    var time;
-    if (times) {
-      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
-      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
-      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
