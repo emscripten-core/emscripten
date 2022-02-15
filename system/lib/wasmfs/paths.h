@@ -21,7 +21,8 @@ namespace wasmfs {
 // an empty parent handle will be returned.
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
-                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+                         std::shared_ptr<File> forbiddenAncestor = nullptr,
+                         std::optional<__wasi_fd_t> baseFD = {});
 
 // Call getDir if one needs a parent directory of a file path.
 // TODO: Remove this when directory structure locking is refactored and use

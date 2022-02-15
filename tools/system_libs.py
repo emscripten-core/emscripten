@@ -1426,7 +1426,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
         path='system/lib/wasmfs/backends',
         filenames=['fetch_backend.cpp',
                    'js_file_backend.cpp',
-                   'memory_file_backend.cpp',
+                   'memory_backend.cpp',
                    'proxied_file_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',

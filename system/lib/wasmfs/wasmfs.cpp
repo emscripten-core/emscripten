@@ -8,7 +8,7 @@
 
 #include <emscripten/threading.h>
 
-#include "memory_file.h"
+#include "memory_backend.h"
 #include "paths.h"
 #include "streams.h"
 #include "wasmfs.h"
