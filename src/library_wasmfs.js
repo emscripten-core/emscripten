@@ -94,9 +94,10 @@ var WasmFSLibrary = {
 
 #if FORCE_FILESYSTEM
     // Full JS API support
-    mkdir: (path) => {
+    mkdir: (path, mode) => {
+      mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = allocateUTF8OnStack(path);
-      __wasmfs_mkdir(buffer);
+      __wasmfs_mkdir(buffer, mode);
     },
     chdir: (path) => {
       var buffer = allocateUTF8OnStack(path);
@@ -112,6 +113,10 @@ var WasmFSLibrary = {
       var targetBuffer = allocateUTF8OnStack(target);
       var linkpathBuffer = allocateUTF8OnStack(linkpath);
       __wasmfs_symlink(targetBuffer, linkpathBuffer);
+    },
+    chmod: (path, mode) => {
+      var buffer = allocateUTF8OnStack(path);
+      return __wasmfs_chmod(buffer, mode);
     },
 #endif
   },
