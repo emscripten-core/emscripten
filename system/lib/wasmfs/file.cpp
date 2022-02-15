@@ -19,24 +19,8 @@ size_t _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 namespace wasmfs {
 
 //
-// File
-//
-
-File::Handle File::locked() { return Handle(shared_from_this()); }
-std::optional<File::Handle> File::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
-}
-
-//
 // DataFile
 //
-
-DataFile::Handle DataFile::locked() { return Handle(shared_from_this()); }
 
 void DataFile::Handle::preloadFromJS(int index) {
   // TODO: Each Datafile type could have its own impl of file preloading.
@@ -55,8 +39,6 @@ void DataFile::Handle::preloadFromJS(int index) {
 //
 // Directory
 //
-
-Directory::Handle Directory::locked() { return Handle(shared_from_this()); }
 
 std::optional<Directory::Handle> Directory::maybeLocked() {
   auto handle = Handle(shared_from_this(), std::defer_lock);

@@ -253,4 +253,23 @@ public:
   std::vector<Directory::Entry> getEntries() { return getDir()->getEntries(); }
 };
 
+inline File::Handle File::locked() { return Handle(shared_from_this()); }
+
+inline std::optional<File::Handle> File::maybeLocked() {
+  auto handle = Handle(shared_from_this(), std::defer_lock);
+  if (handle.trylock()) {
+    return Handle(shared_from_this());
+  } else {
+    return {};
+  }
+}
+
+inline DataFile::Handle DataFile::locked() {
+  return Handle(shared_from_this());
+}
+
+inline Directory::Handle Directory::locked() {
+  return Handle(shared_from_this());
+}
+
 } // namespace wasmfs
