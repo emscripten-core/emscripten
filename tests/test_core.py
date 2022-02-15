@@ -5580,7 +5580,8 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
-          self.skipTest('TODO: wasmfs+node')
+          # TODO: NODEFS in WasmFS
+          continue
         self.emcc_args += ['-sFORCE_FILESYSTEM']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
@@ -5614,7 +5615,8 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
-          self.skipTest('TODO: wasmfs+node')
+          # TODO: NODEFS in WasmFS
+          continue
         self.emcc_args += ['-sFORCE_FILESYSTEM']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
