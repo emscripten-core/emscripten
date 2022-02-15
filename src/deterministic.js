@@ -11,7 +11,7 @@ Math.random = () => {
 };
 var TIME = 10000;
 Date.now = () => TIME++;
-if (typeof performance === 'object') performance.now = Date.now;
+if (typeof performance == 'object') performance.now = Date.now;
 if (ENVIRONMENT_IS_NODE) process['hrtime'] = Date.now;
 
 if (!Module) Module = {};

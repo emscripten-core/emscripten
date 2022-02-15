@@ -40,8 +40,8 @@ function escapeJSONKey(x) {
 }
 
 function stringifyWithFunctions(obj) {
-  if (typeof obj === 'function') return obj.toString();
-  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (typeof obj == 'function') return obj.toString();
+  if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
@@ -106,7 +106,7 @@ function ${name}(${args}) {
   var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
   }).apply(this, arguments);
-  if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret));
+  if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
     }
@@ -203,7 +203,7 @@ function ${name}(${args}) {
       }
       const isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
-        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) {
+        if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
           warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
         }
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
@@ -212,7 +212,7 @@ function ${name}(${args}) {
       });
       let isFunction = false;
 
-      if (typeof snippet === 'string') {
+      if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
           const target = LibraryManager.library[snippet];
           if (target) {
@@ -228,9 +228,9 @@ function ${name}(${args}) {
             libraryFunctions.push(finalName);
           }
         }
-      } else if (typeof snippet === 'object') {
+      } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
-      } else if (typeof snippet === 'function') {
+      } else if (typeof snippet == 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
         libraryFunctions.push(finalName);
@@ -251,7 +251,7 @@ function ${name}(${args}) {
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
-        if (typeof postset === 'function') {
+        if (typeof postset == 'function') {
           postset = postset();
         }
         if (postset && !addedLibraryItems[postsetId]) {
@@ -270,7 +270,7 @@ function ${name}(${args}) {
       }
       const identDependents = ident + "__deps: ['" + deps.join("','") + "']";
       function addDependency(dep) {
-        if (typeof dep !== 'function') {
+        if (typeof dep != 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
         }
         return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
@@ -284,7 +284,7 @@ function ${name}(${args}) {
             throw new Error(`Invalid proxyingMode ${ident}__proxy: '${proxyingMode}' specified!`);
           }
           const sync = proxyingMode === 'sync';
-          assert(typeof original === 'function');
+          assert(typeof original == 'function');
           contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   if (ENVIRONMENT_IS_PTHREAD)
@@ -303,7 +303,7 @@ function ${name}(${args}) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
+      } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
@@ -315,7 +315,7 @@ function ${name}(${args}) {
         //   foo: '=[value]'
         //  emits
         //   'var foo = [value];'
-        if (typeof snippet === 'string' && snippet[0] == '=') snippet = snippet.substr(1);
+        if (typeof snippet == 'string' && snippet[0] == '=') snippet = snippet.substr(1);
         contentText = `var ${finalName} = ${snippet};`;
       }
       const sig = LibraryManager.library[ident + '__sig'];

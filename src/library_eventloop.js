@@ -37,10 +37,10 @@ LibraryJSEventLoop = {
   $polyfillSetImmediate__postset:
     'var emSetImmediate;\n' +
     'var emClearImmediate;\n' +
-    'if (typeof setImmediate !== "undefined") {\n' +
+    'if (typeof setImmediate != "undefined") {\n' +
       'emSetImmediate = setImmediateWrapped;\n' +
       'emClearImmediate = clearImmediateWrapped;\n' +
-    '} else if (typeof addEventListener === "function") {\n' +
+    '} else if (typeof addEventListener == "function") {\n' +
       'var __setImmediate_id_counter = 0;\n' +
       'var __setImmediate_queue = [];\n' +
       'var __setImmediate_message_id = "_si";\n' +

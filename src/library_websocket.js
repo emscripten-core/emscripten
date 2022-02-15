@@ -248,7 +248,7 @@ var LibraryWebSocket = {
       err('websocket event "message": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
-      if (typeof e.data === 'string') {
+      if (typeof e.data == 'string') {
         var len = lengthBytesUTF8(e.data)+1;
         var buf = _malloc(len);
         stringToUTF8(e.data, buf, len);
@@ -285,7 +285,7 @@ var LibraryWebSocket = {
   emscripten_websocket_new__proxy: 'sync',
   emscripten_websocket_new__sig: 'ii',
   emscripten_websocket_new: function(createAttributes) {
-    if (typeof WebSocket === 'undefined') {
+    if (typeof WebSocket == 'undefined') {
 #if WEBSOCKET_DEBUG
       err('emscripten_websocket_new(): WebSocket API is not supported by current browser)');
 #endif
@@ -423,7 +423,7 @@ var LibraryWebSocket = {
   emscripten_websocket_is_supported__proxy: 'sync',
   emscripten_websocket_is_supported__sig: 'i',
   emscripten_websocket_is_supported: function() {
-    return typeof WebSocket !== 'undefined';
+    return typeof WebSocket != 'undefined';
   },
 
   emscripten_websocket_deinitialize__deps: ['$WS'],

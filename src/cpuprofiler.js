@@ -533,7 +533,7 @@ var emscriptenCpuProfiler = {
 
   detectWebGLContext: function() {
     if (Module['canvas'] && Module['canvas'].GLctxObject && Module['canvas'].GLctxObject.GLctx) return Module['canvas'].GLctxObject.GLctx;
-    else if (typeof GLctx !== 'undefined') return GLctx;
+    else if (typeof GLctx != 'undefined') return GLctx;
     else if (Module.ctx) return Module.ctx;
     return null;
   },
@@ -570,7 +570,7 @@ var emscriptenCpuProfiler = {
     document.getElementById("toggle_webgl_profile").style.background = '#E1E1E1';
 
     for (var f in glCtx) {
-      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
+      if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
       var realf = 'real_' + f;
       glCtx[f] = glCtx[realf];
       delete glCtx[realf];
@@ -603,8 +603,8 @@ var emscriptenCpuProfiler = {
   hookWebGL: function(glCtx) {
     if (!glCtx) glCtx = this.detectWebGLContext();
     if (!glCtx) return;
-    if (!((typeof WebGLRenderingContext !== 'undefined' && glCtx instanceof WebGLRenderingContext)
-     || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+    if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
+     || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
       document.getElementById("toggle_webgl_profile").disabled = true;
       return;
     }
@@ -619,7 +619,7 @@ var emscriptenCpuProfiler = {
     this.createSection(0, 'Hot GL', this.colorHotGLFunction, /*traceable=*/true);
     this.createSection(1, 'Cold GL', this.colorColdGLFunction, /*traceable=*/true);
     for (var f in glCtx) {
-      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
+      if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
       this.hookWebGLFunction(f, glCtx);
     }
     // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
@@ -671,4 +671,4 @@ setTimeout = (fn, delay) => {
 // Backwards compatibility with previously compiled code. Don't call this anymore!
 function cpuprofiler_add_hooks() { emscriptenCpuProfiler.initialize(); }
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined') emscriptenCpuProfiler.initialize();
+if (typeof Module != 'undefined' && typeof document != 'undefined') emscriptenCpuProfiler.initialize();

@@ -287,7 +287,7 @@ var screen = { // XXX these values may need to be adjusted
   availWidth: 2100,
   availHeight: 1283,
 };
-if (typeof console === "undefined") {
+if (typeof console == "undefined") {
   console = {
     log: function(x) {
       print(x);

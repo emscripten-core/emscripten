@@ -568,7 +568,7 @@ var LibraryEmbind = {
     var isUnsignedType = (name.includes('unsigned'));
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
-        if (typeof value !== "number" && typeof value !== "boolean") {
+        if (typeof value != "number" && typeof value != "boolean") {
             throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
         }
         if (value < minRange || value > maxRange) {
@@ -622,7 +622,7 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function (destructors, value) {
-            if (typeof value !== "bigint") {
+            if (typeof value != "bigint") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
@@ -653,7 +653,7 @@ var LibraryEmbind = {
         },
         'toWireType': function(destructors, value) {
 #if ASSERTIONS
-            if (typeof value !== "number" && typeof value !== "boolean") {
+            if (typeof value != "number" && typeof value != "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
 #endif
@@ -726,7 +726,7 @@ var LibraryEmbind = {
             }
 
             var getLength;
-            var valueIsOfTypeString = (typeof value === 'string');
+            var valueIsOfTypeString = (typeof value == 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
@@ -827,7 +827,7 @@ var LibraryEmbind = {
             return str;
         },
         'toWireType': function(destructors, value) {
-            if (!(typeof value === 'string')) {
+            if (!(typeof value == 'string')) {
                 throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
 
@@ -1175,7 +1175,7 @@ var LibraryEmbind = {
     }
 
     var fp = makeDynCaller();
-    if (typeof fp !== "function") {
+    if (typeof fp != "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
     }
     return fp;

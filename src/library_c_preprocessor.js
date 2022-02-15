@@ -150,7 +150,7 @@ mergeInto(LibraryManager.library, {
     function buildExprTree(tokens) {
       // Consume tokens array into a function tree until the tokens array is exhausted
       // to a single root node that evaluates it.
-      while(tokens.length > 1 || typeof(tokens[0]) != 'function') {
+      while (tokens.length > 1 || typeof tokens[0] != 'function') {
         tokens = (function(tokens) {
           // Find the index 'i' of the operator we should evaluate next:
           var i, j, p, operatorAndPriority = -2;
