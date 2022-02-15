@@ -1515,12 +1515,14 @@ var LibrarySDL = {
   SDL_AudioQuit__sig: 'v',
   SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
-      if (SDL.channels[i].audio) {
-        SDL.channels[i].audio.pause();
-        SDL.channels[i].audio = undefined;
+      var chan = /** @type {{ audio: (HTMLMediaElement|undefined) }} */ (SDL.channels[i]);
+      if (chan.audio) {
+        chan.audio.pause();
+        chan.audio = undefined;
       }
     }
-    if (SDL.music.audio) SDL.music.audio.pause();
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
+    if (audio) audio.pause();
     SDL.music.audio = undefined;
   },
 
@@ -1775,7 +1777,7 @@ var LibrarySDL = {
   SDL_GetKeyName__sig: 'ii',
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
-      SDL.keyName = allocate(intArrayFromString('unknown key'), ALLOC_NORMAL);
+      SDL.keyName = allocateUTF8('unknown key');
     }
     return SDL.keyName;
   },
@@ -1837,7 +1839,7 @@ var LibrarySDL = {
   SDL_GetError__sig: 'i',
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
-      SDL.errorMessage = allocate(intArrayFromString("unknown SDL-emscripten error"), ALLOC_NORMAL);
+      SDL.errorMessage = allocateUTF8("unknown SDL-emscripten error");
     }
     return SDL.errorMessage;
   },
@@ -2989,7 +2991,7 @@ var LibrarySDL = {
   Mix_HaltChannel__sig: 'ii',
   Mix_HaltChannel: function(channel) {
     function halt(channel) {
-      var info = SDL.channels[channel];
+      var info = /** @type {{ audio: HTMLMediaElement }} */ (SDL.channels[channel]);
       if (info.audio) {
         info.audio.pause();
         info.audio = null;
@@ -3070,7 +3072,7 @@ var LibrarySDL = {
   Mix_PauseMusic__proxy: 'sync',
   Mix_PauseMusic__sig: 'v',
   Mix_PauseMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) audio.pause();
   },
 
@@ -3084,7 +3086,7 @@ var LibrarySDL = {
   Mix_HaltMusic__proxy: 'sync',
   Mix_HaltMusic__sig: 'i',
   Mix_HaltMusic: function() {
-    var audio = SDL.music.audio;
+    var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
     if (audio) {
       audio.src = audio.src; // rewind <media> element
       audio.currentPosition = 0; // rewind Web Audio graph playback.
@@ -3135,6 +3137,7 @@ var LibrarySDL = {
       }
       return;
     }
+    /** @type {{ audio: HTMLMediaElement }} */
     var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
@@ -3191,11 +3194,23 @@ var LibrarySDL = {
     try {
       var offscreenCanvas = new OffscreenCanvas(0, 0);
       SDL.ttfContext = offscreenCanvas.getContext('2d');
+      // Firefox support for OffscreenCanvas is still experimental, and it seems
+      // like CI might be creating a context here but one that is not entirely
+      // valid. Check that explicitly and fall back to a plain Canvas if we need
+      // to. See https://github.com/emscripten-core/emscripten/issues/16242
+      if (typeof SDL.ttfContext.measureText !== 'function') {
+        throw 'bad context';
+      }
     } catch (ex) {
-      var canvas = document.createElement('canvas');
+      var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
     }
-
+#if ASSERTIONS
+    // Check the final context looks valid. See
+    // https://github.com/emscripten-core/emscripten/issues/16242
+    assert(typeof SDL.ttfContext.measureText === 'function',
+           'context ' + SDL.ttfContext + 'must provide valid methods');
+#endif
     return 0;
   },
 
@@ -3561,7 +3576,7 @@ var LibrarySDL = {
       if (SDL.joystickNamePool.hasOwnProperty(name)) {
         return SDL.joystickNamePool[name];
       }
-      return SDL.joystickNamePool[name] = allocate(intArrayFromString(name), ALLOC_NORMAL);
+      return SDL.joystickNamePool[name] = allocateUTF8(name);
     }
     return 0;
   },
@@ -3694,7 +3709,7 @@ var LibrarySDL = {
 
   SDL_GetNumAudioDrivers: function() { return 1 },
   SDL_GetCurrentAudioDriver: function() {
-    return allocate(intArrayFromString('Emscripten Audio'), ALLOC_NORMAL);
+    return allocateUTF8('Emscripten Audio');
   },
 
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],

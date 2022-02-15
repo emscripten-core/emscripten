@@ -1,18 +1,14 @@
-var WasmfsLibrary = {
-  $wasmFS$JSMemoryFiles : [],
-  $wasmFS$JSMemoryFreeList: [],
+var WasmFSLibrary = {
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
+#if USE_CLOSURE_COMPILER
+  // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
+  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
+#endif
   $FS__deps: [
     '$wasmFS$preloadedFiles',
     '$wasmFS$preloadedDirs',
-    '$wasmFS$JSMemoryFiles',
-    '$wasmFS$JSMemoryFreeList',
     '$asyncLoad',
-#if !MINIMAL_RUNTIME
-    // TODO: when preload-plugins are not used, we do not need this.
-    '$Browser',
-#endif
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -108,7 +104,7 @@ var WasmfsLibrary = {
     },
     writeFile: (path, data) => {
       var pathBuffer = allocateUTF8OnStack(path);
-      var dataBuffer = allocate(data);
+      var dataBuffer = _malloc(data);
       __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
       _free(dataBuffer);
     },
@@ -145,64 +141,128 @@ var WasmfsLibrary = {
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
-  _wasmfs_write_js_file: function(index, buffer, length, offset) {
-    try {
-      if (!wasmFS$JSMemoryFiles[index]) {
-        // Initialize typed array on first write operation.
-        wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
-      }
-
-      if (offset + length > wasmFS$JSMemoryFiles[index].length) {
-        // Resize the typed array if the length of the write buffer exceeds its capacity.
-        var oldContents = wasmFS$JSMemoryFiles[index];
-        var newContents = new Uint8Array(offset + length);
-        newContents.set(oldContents);
-        wasmFS$JSMemoryFiles[index] = newContents;
-      }
-
-      wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
-      return 0;
-    } catch (err) {
-      return {{{ cDefine('EIO') }}};
-    }
-  },
-  _wasmfs_read_js_file: function(index, buffer, length, offset) {
-    try {
-      HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
-      return 0;
-    } catch (err) {
-      return {{{ cDefine('EIO') }}};
-    }
-  },
-  _wasmfs_get_js_file_size: function(index) {
-    return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
-  },
-  _wasmfs_create_js_file: function() {
-    // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
-    // wasmFS$JSMemoryFiles.
-    if (wasmFS$JSMemoryFreeList.length) {
-      // Pop off the top of the free list.
-      var index = wasmFS$JSMemoryFreeList.pop();
-      return index;
-    }
-    wasmFS$JSMemoryFiles.push(null);
-    return wasmFS$JSMemoryFiles.length - 1;
-  },
-  _wasmfs_remove_js_file: function(index) {
-    wasmFS$JSMemoryFiles[index] = null;
-    // Add the index to the free list.
-    wasmFS$JSMemoryFreeList.push(index);
-  },
   _wasmfs_get_preloaded_file_size: function(index) {
     return wasmFS$preloadedFiles[index].fileData.length;
   },
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
   },
+
+  // Backend support. wasmFS$backends will contain a mapping of backend IDs to
+  // the JS code that implements them. This is the JS side of the JSImpl* class
+  // in C++, together with the js_impl calls defined right after it.
+  $wasmFS$backends: {},
+
+  // JSImpl
+
+  _wasmfs_jsimpl_alloc_file: function(backend, file) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].allocFile(file);
+  },
+
+  _wasmfs_jsimpl_free_file: function(backend, file) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].freeFile(file);
+  },
+
+  _wasmfs_jsimpl_write: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].write(file, buffer, length, offset);
+  },
+
+  _wasmfs_jsimpl_read: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].read(file, buffer, length, offset);
+  },
+
+  _wasmfs_jsimpl_get_size: function(backend, file) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].getSize(file);
+  },
+
+  // ProxiedAsyncJSImpl. Each function receives a function pointer and a
+  // parameter. We convert those into a convenient Promise API for the
+  // implementors of backends: the hooks we call should return Promises, which
+  // we then connect to the calling C++.
+
+  // TODO: arg is void*, which for MEMORY64 will be 64-bit. we need a way to
+  //       declare arg in the function signature here (like defineI64Param,
+  //       but that varies for wasm32/wasm64), and a way to do makeDynCall that
+  //       adds a 'p' signature type for pointer, or something like that
+  //       (however, dyncalls might also just work, given in MEMORY64 we assume
+  //       WASM_BIGINT so the pointer is just a single argument, just like in
+  //       wasm32).
+  _wasmfs_jsimpl_async_alloc_file: async function(backend, file, fptr, arg) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    await wasmFS$backends[backend].allocFile(file);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+  },
+
+  _wasmfs_jsimpl_async_free_file: async function(backend, file, fptr, arg) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    await wasmFS$backends[backend].freeFile(file);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+  },
+
+  _wasmfs_jsimpl_async_write: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    var size = await wasmFS$backends[backend].write(file, buffer, length, offset);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+  },
+
+  _wasmfs_jsimpl_async_read: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    var size = await wasmFS$backends[backend].read(file, buffer, length, offset);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+  },
+
+  _wasmfs_jsimpl_async_get_size: async function(backend, file, fptr, arg) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    {{{ runtimeKeepalivePush() }}}
+    var size = await wasmFS$backends[backend].getSize(file);
+    {{{ runtimeKeepalivePop() }}}
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
+    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
+    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+  },
 }
 
-mergeInto(LibraryManager.library, WasmfsLibrary);
+mergeInto(LibraryManager.library, WasmFSLibrary);
 
-if (WASMFS) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
-}
+DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');

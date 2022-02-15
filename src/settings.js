@@ -257,10 +257,11 @@ var INITIAL_TABLE = -1;
 // [link]
 var ALLOW_TABLE_GROWTH = 0;
 
-// where global data begins; the start of static memory. -1 means use the
-// default, any other value will be used as an override
+// Where global data begins; the start of static memory.
+// A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
+// enables the --low-memory-unused pass
 // [link]
-var GLOBAL_BASE = -1;
+var GLOBAL_BASE = 1024;
 
 // Whether closure compiling is being run on this output
 // [link]

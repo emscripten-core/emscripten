@@ -1056,9 +1056,9 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name + '_bigint';
+    return `/** @type {!BigInt} */ ${name}_bigint`;
   }
-  return name + '_low, ' + name + '_high';
+  return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {
@@ -1071,6 +1071,19 @@ function receiveI64ParamAsI32s(name) {
     return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
   }
   return '';
+}
+
+// TODO: use this in library_wasi.js and other places. but we need to add an
+//       error-handling hook here.
+function receiveI64ParamAsDouble(name) {
+  if (WASM_BIGINT) {
+    // Just convert the bigint into a double.
+    return `${name} = Number(${name});`;
+  }
+
+  // Combine the i32 params. Use an unsigned operator on low and shift high by
+  // 32 bits.
+  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {

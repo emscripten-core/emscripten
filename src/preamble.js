@@ -203,38 +203,9 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-var ALLOC_NORMAL = 0; // Tries to use _malloc()
-var ALLOC_STACK = 1; // Lives for the duration of the current function call
-
-// allocate(): This is for internal use. You can use it yourself as well, but the interface
-//             is a little tricky (see docs right below). The reason is that it is optimized
-//             for multiple syntaxes to save space in generated code. So you should
-//             normally not use allocate(), and instead allocate memory using _malloc(),
-//             initialize it with setValue(), and so forth.
-// @slab: An array of data.
-// @allocator: How to allocate memory, see ALLOC_*
-/** @type {function((Uint8Array|Array<number>), number)} */
-function allocate(slab, allocator) {
-  var ret;
-#if ASSERTIONS
-  assert(typeof allocator === 'number', 'allocate no longer takes a type argument')
-  assert(typeof slab !== 'number', 'allocate no longer takes a number as arg0')
+#if !STRICT
+#include "runtime_legacy.js"
 #endif
-
-  if (allocator == ALLOC_STACK) {
-    ret = stackAlloc(slab.length);
-  } else {
-    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
-  }
-
-  if (slab.subarray || slab.slice) {
-    HEAPU8.set(/** @type {!Uint8Array} */(slab), ret);
-  } else {
-    HEAPU8.set(new Uint8Array(slab), ret);
-  }
-  return ret;
-}
-
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -264,18 +235,19 @@ var HEAP,
   HEAPU32,
 /** @type {Float32Array} */
   HEAPF32,
+#if WASM_BIGINT
+/* BigInt64Array type is not correctly defined in closure
+/** not-@type {BigInt64Array} */
+  HEAP64,
+/* BigUInt64Array type is not correctly defined in closure
+/** not-t@type {BigUint64Array} */
+  HEAPU64,
+#endif
 /** @type {Float64Array} */
   HEAPF64;
 
 #if SUPPORT_BIG_ENDIAN
 var HEAP_DATA_VIEW;
-#endif
-
-#if WASM_BIGINT
-/** @type {BigInt64Array} */
-var HEAP64,
-/** @type {BigUint64Array} */
-    HEAPU64;
 #endif
 
 #if USE_PTHREADS
@@ -672,6 +644,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #include "URIUtils.js"
 
 #if ASSERTIONS
+/** @param {boolean=} fixedasm */
 function createExportWrapper(name, fixedasm) {
   return function() {
     var displayName = name;

@@ -1201,13 +1201,10 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
   post = handler + post;
 
-  if (pre) {
-    var bodyStart = t.indexOf('{') + 1;
-    t = t.substring(0, bodyStart) + pre + t.substring(bodyStart);
-  }
-  if (post) {
-    var bodyEnd = t.lastIndexOf('}');
-    t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
+  if (pre || post) {
+    t = modifyFunction(t, function(name, args, body) {
+      return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
+    });
   }
 
   if (MEMORY64 && !isWasi) {

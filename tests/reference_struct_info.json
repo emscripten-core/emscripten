@@ -372,6 +372,11 @@
         "__WASI_FILETYPE_SYMBOLIC_LINK": 7
     },
     "structs": {
+        "CallbackState": {
+            "__size__": 16,
+            "offset": 8,
+            "result": 0
+        },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
             "charging": 24,

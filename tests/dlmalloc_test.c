@@ -8,7 +8,7 @@
 // Emscripten tests
 
 #include <assert.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <stdlib.h>
 
 int main(int ac, char **av)
@@ -45,5 +45,5 @@ int main(int ac, char **av)
     c1 += first == last;
     c2 += first == newer;
   }
-  emscripten_log(EM_LOG_CONSOLE, "*%d,%d*\n", c1, c2);
+  emscripten_console_logf("*%d,%d*\n", c1, c2);
 }

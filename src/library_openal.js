@@ -2475,7 +2475,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -2696,7 +2696,7 @@ var LibraryOpenAL = {
       }
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -3108,7 +3108,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.stringCache[param] = ret;
     return ret;
   },
