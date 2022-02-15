@@ -403,6 +403,10 @@ var LibraryWebGPU = {
       'low-power',
       'high-performance',
     ],
+    PredefinedColorSpace: [
+      undefined,
+      'srgb',
+    ],
     PrimitiveTopology: [
       'point-list',
       'line-list',
@@ -436,6 +440,7 @@ var LibraryWebGPU = {
       'write-only',
     ],
     StoreOp: [
+      undefined,
       'store',
       'discard',
     ],
@@ -1847,9 +1852,9 @@ var LibraryWebGPU = {
     encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
   },
 
-  wgpuComputePassEncoderEndPass: function(passId) {
+  wgpuComputePassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["endPass"]();
+    pass["end"]();
   },
 
   // wgpuRenderPass
@@ -1981,9 +1986,9 @@ var LibraryWebGPU = {
     encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
   },
 
-  wgpuRenderPassEncoderEndPass: function(passId) {
+  wgpuRenderPassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["endPass"]();
+    pass["end"]();
   },
 
   // Render bundle encoder
