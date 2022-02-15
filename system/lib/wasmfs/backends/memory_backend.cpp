@@ -2,14 +2,17 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the memory file class of the new file system.
-// This should be the only backend file type defined in a header since it is the
-// default type. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "memory_file.h"
+// This file defines the memory file backend of the new file system.
+// Current Status: Work in Progress.
+// See https://github.com/emscripten-core/emscripten/issues/15041.
+
+#include "backend.h"
+#include "memory_backend.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
+
 __wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
     buffer.resize(offset + len);
@@ -27,4 +30,16 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 
   return __WASI_ERRNO_SUCCESS;
 }
+
+class MemoryFileBackend : public Backend {
+public:
+  std::shared_ptr<DataFile> createFile(mode_t mode) override {
+    return std::make_shared<MemoryFile>(mode, this);
+  }
+};
+
+backend_t createMemoryFileBackend() {
+  return wasmFS.addBackend(std::make_unique<MemoryFileBackend>());
+}
+
 } // namespace wasmfs
