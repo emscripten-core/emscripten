@@ -94,7 +94,7 @@ char stack[1024];
 int main()
 {
   assert(!emscripten_current_thread_is_wasm_worker());
-  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, v);
   emscripten_wasm_worker_post_function_vi(worker, vi, 1);
   emscripten_wasm_worker_post_function_vii(worker, vii, 2, 3);

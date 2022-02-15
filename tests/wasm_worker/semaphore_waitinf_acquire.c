@@ -78,14 +78,14 @@ int main()
   emscripten_semaphore_init(&threadsWaiting, 0);
 
   void *stack = malloc(1024);
-  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, 1024);
+  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, 1024);
   emscripten_wasm_worker_post_function_v(worker, control_thread);
 
 #define NUM_THREADS 6
   for(int i = 0; i < NUM_THREADS; ++i)
   {
     void *stack = malloc(1024);
-    emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, 1024);
+    emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, 1024);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
   }
 }

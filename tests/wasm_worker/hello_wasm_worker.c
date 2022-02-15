@@ -2,7 +2,7 @@
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
-// Test emscripten_create_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
+// Test emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
 
 EM_JS(void, console_log, (char* str), {
   console.log(UTF8ToString(str));
@@ -17,11 +17,9 @@ void worker_main()
 #endif
 }
 
-char stack[1024];
-
 int main()
 {
 	assert(!emscripten_current_thread_is_wasm_worker());
-	emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+	emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
 	emscripten_wasm_worker_post_function_v(worker, worker_main);
 }

@@ -35,6 +35,6 @@ int main()
 	assert(globalData == 1);
 	globalData = 2;
 	set_tls_variable(42);
-	emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+	emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, sizeof(stack));
 	emscripten_wasm_worker_post_function_v(worker, worker_main);
 }

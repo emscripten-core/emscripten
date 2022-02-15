@@ -35,7 +35,7 @@ int main()
 
   // Spawn a Worker to try to take the lock. It will succeed only after releaseLock()
   // gets called.
-  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 
   emscripten_set_timeout(releaseLock, 1000, 0);

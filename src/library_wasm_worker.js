@@ -62,16 +62,16 @@ mergeInto(LibraryManager.library, {
   _wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
 
-  _emscripten_create_wasm_worker__deps: ['wasm_workers', 'wasm_workers_id', '_wasm_worker_appendToQueue', '_wasm_worker_runPostMessage'
+  _emscripten_create_wasm_worker_with_tls__deps: ['wasm_workers', 'wasm_workers_id', '_wasm_worker_appendToQueue', '_wasm_worker_runPostMessage'
 #if WASM_WORKERS == 2
     , '_wasmWorkerBlobUrl'
 #endif
   ],
-  _emscripten_create_wasm_worker__postset: 'if (ENVIRONMENT_IS_WASM_WORKER) {\n'
+  _emscripten_create_wasm_worker_with_tls__postset: 'if (ENVIRONMENT_IS_WASM_WORKER) {\n'
     + '_wasm_workers[0] = this;\n'
     + 'addEventListener("message", __wasm_worker_appendToQueue);\n'
     + '}\n',
-  _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize, tlsAddress, tlsSize) {
+  _emscripten_create_wasm_worker_with_tls: function(stackLowestAddress, stackSize, tlsAddress, tlsSize) {
 #if ASSERTIONS
     assert(stackLowestAddress % 16 == 0);
     assert(stackSize % 16 == 0);
@@ -102,9 +102,9 @@ mergeInto(LibraryManager.library, {
     worker.addEventListener('message', __wasm_worker_runPostMessage);
     return _wasm_workers_id++;
   },
-  _emscripten_create_wasm_worker_no_tls__deps: ['_emscripten_create_wasm_worker'],
+  _emscripten_create_wasm_worker_no_tls__deps: ['_emscripten_create_wasm_worker_with_tls'],
   _emscripten_create_wasm_worker_no_tls: function(stackLowestAddress, stackSize) {
-    return __emscripten_create_wasm_worker(stackLowestAddress, stackSize, 0, 0);
+    return __emscripten_create_wasm_worker_with_tls(stackLowestAddress, stackSize, 0, 0);
   },
 
   emscripten_terminate_wasm_worker: function(id) {

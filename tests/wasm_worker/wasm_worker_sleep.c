@@ -19,6 +19,6 @@ char stack[1024];
 
 int main()
 {
-	emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+	emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, sizeof(stack));
 	emscripten_wasm_worker_post_function_v(worker, worker_main);
 }
