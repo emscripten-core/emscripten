@@ -5178,6 +5178,12 @@ window.close = function() {
                expected='42',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
+  # Tests C11 keyword _Thread_local for TLS in Wasm Workers
+  def test_wasm_worker_c11__Thread_local(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'c11__Thread_local.c'),
+               expected='42',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
+
   # Tests emscripten_wasm_worker_sleep()
   def test_wasm_worker_sleep(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_sleep.c'),
