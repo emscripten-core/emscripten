@@ -5587,7 +5587,8 @@ Module['onRuntimeInitialized'] = function() {
         self.emcc_args += ['-lnodefs.js']
       self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
-    if not WINDOWS:
+    # TODO: NODERAWFS in WasmFS
+    if not WINDOWS and not self.get_setting('WASMFS'):
       self.emcc_args = orig_compiler_opts
       self.set_setting('NODERAWFS')
       self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
