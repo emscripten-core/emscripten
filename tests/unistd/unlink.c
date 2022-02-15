@@ -131,22 +131,17 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
-// TODO: Remove this when access is implemented.
-#ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
-#endif
-#if !defined(NO_SYMLINK) && !defined(WASMFS)
+#if !defined(NO_SYMLINK)
   err = access("file1-link", F_OK);
   assert(err == -1);
 #endif
 
   err = unlink("file");
   assert(!err);
-#ifndef WASMFS
   err = access("file", F_OK);
   assert(err == -1);
-#endif
 
   // Should be able to delete a read-only file.
   err = unlink("file-readonly");
@@ -204,10 +199,8 @@ void test() {
 
   err = rmdir("dir-empty");
   assert(!err);
-#ifndef WASMFS
   err = access("dir-empty", F_OK);
   assert(err == -1);
-#endif
 
   puts("success");
 }
