@@ -5154,9 +5154,15 @@ window.close = function() {
   def test_system(self):
     self.btest_exit(test_file('system.c'))
 
-  # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
+  # Tests the hello_wasm_worker.c documentation example code.
   def test_wasm_worker_hello(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'hello_wasm_worker.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
+
+  # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
+  def test_wasm_worker_malloc(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_malloc.c'),
                expected='0',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
