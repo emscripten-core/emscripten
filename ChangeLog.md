@@ -38,7 +38,7 @@ See docs/process.md for more on how version tagging works.
   include `emscripten/version.h` (or `emscripten.h` which indirectly includes
   it). (#16147)
 
-3.1.3 - 31/01/2022
+3.1.3 - 01/31/2022
 ------------------
 - The file packager now supports embedding files directly into wasm memory and
   `emcc` now uses this mode when the `--embed-file` option is used.  If you
@@ -57,7 +57,7 @@ See docs/process.md for more on how version tagging works.
   clause. (Calling another function that calls `setjmp` is fine.)
   (#14976 and #16072)
 
-3.1.2 - 20/01/2022
+3.1.2 - 01/20/2022
 ------------------
 - A new setting, `POLYFILL`, was added which is on by default but can be disabled
   (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
@@ -72,7 +72,7 @@ See docs/process.md for more on how version tagging works.
   `coreX` to better reflect where they are defined.  The old suite names such
   as `wasm2` will continue to work for now as aliases.
 
-3.1.1 - 08/01/2022
+3.1.1 - 01/08/2022
 ------------------
 - Happy new year!
 - Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
