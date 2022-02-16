@@ -32,44 +32,44 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 }
 
 std::vector<Directory::Entry>::iterator
-MemoryDirectory::findChild(const std::string& name) {
-  return std::find_if(children.begin(), children.end(), [&](const auto& entry) {
+MemoryDirectory::findEntry(const std::string& name) {
+  return std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
     return entry.name == name;
   });
 }
 
 std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
-  if (auto child = findChild(name); child != children.end()) {
-    return child->file;
+  if (auto entry = findEntry(name); entry != entries.end()) {
+    return entry->file;
   }
   return nullptr;
 }
 
 bool MemoryDirectory::removeChild(const std::string& name) {
-  auto child = findChild(name);
-  if (child == children.end()) {
+  auto entry = findEntry(name);
+  if (entry == entries.end()) {
     return false;
   }
-  children.erase(child);
+  entries.erase(entry);
   return true;
 }
 
 std::shared_ptr<File> MemoryDirectory::insertChild(const std::string& name,
                                                    std::shared_ptr<File> file) {
-  if (auto child = findChild(name); child != children.end()) {
-    return child->file;
+  if (auto entry = findEntry(name); entry != entries.end()) {
+    return entry->file;
   }
-  children.push_back({name, file});
+  entries.push_back({name, file});
   return file;
 }
 
 std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
-  auto child =
-    std::find_if(children.begin(), children.end(), [&](const auto& child) {
-      return child.file == file;
+  auto entry =
+    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.file == file;
     });
-  if (child != children.end()) {
-    return child->name;
+  if (entry != entries.end()) {
+    return entry->name;
   }
   return {};
 }

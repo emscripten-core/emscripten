@@ -39,17 +39,17 @@ public:
 
 class MemoryDirectory : public Directory {
   // Use a vector instead of a map to save code size.
-  std::vector<Entry> children;
+  std::vector<Entry> entries;
 
-  std::vector<Entry>::iterator findChild(const std::string& name);
+  std::vector<Entry>::iterator findEntry(const std::string& name);
 
   std::shared_ptr<File> getChild(const std::string& name) override;
   bool removeChild(const std::string& name) override;
   std::shared_ptr<File> insertChild(const std::string& name,
                                     std::shared_ptr<File> file) override;
   std::string getName(std::shared_ptr<File> file) override;
-  size_t getNumEntries() override { return children.size(); }
-  std::vector<Directory::Entry> getEntries() override { return children; }
+  size_t getNumEntries() override { return entries.size(); }
+  std::vector<Directory::Entry> getEntries() override { return entries; }
 
 public:
   MemoryDirectory(mode_t mode, backend_t backend) : Directory(mode, backend) {}
