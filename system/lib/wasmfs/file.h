@@ -259,9 +259,4 @@ public:
   const std::string& getTarget() { return target; }
 };
 
-struct ParsedPath {
-  std::optional<Directory::Handle> parent;
-  std::shared_ptr<File> child;
-};
-
 } // namespace wasmfs
