@@ -3209,7 +3209,6 @@ Var: 42
       return data_exports
 
     self.do_core_test('test_dlfcn_self.c')
-    self.skipTest('temp disabled while https://reviews.llvm.org/D119902 rolls')
     data_exports = get_data_exports('test_dlfcn_self.wasm')
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
