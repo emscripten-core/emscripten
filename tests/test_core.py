@@ -353,7 +353,9 @@ class TestCoreBase(RunnerCore):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
 
   def can_use_closure(self):
-    return '-g' not in self.emcc_args and '--profiling' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args)
+    required = ('-O2', '-O3', '-Oz', '-Os')
+    prohibited = ('-g', '--profiling')
+    return all(f not in self.emcc_args for f in prohibited) and any(f in self.emcc_args for f in required)
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
