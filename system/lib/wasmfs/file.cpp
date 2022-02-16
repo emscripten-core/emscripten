@@ -40,15 +40,6 @@ void DataFile::Handle::preloadFromJS(int index) {
 // Directory
 //
 
-std::optional<Directory::Handle> Directory::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
-}
-
 bool Directory::Handle::removeEntry(const std::string& name) {
   auto entry = getEntry(name);
   if (entry == nullptr) {

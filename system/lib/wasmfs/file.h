@@ -273,4 +273,13 @@ inline Directory::Handle Directory::locked() {
   return Handle(shared_from_this());
 }
 
+inline std::optional<Directory::Handle> Directory::maybeLocked() {
+  auto handle = Handle(shared_from_this(), std::defer_lock);
+  if (handle.trylock()) {
+    return Handle(shared_from_this());
+  } else {
+    return {};
+  }
+}
+
 } // namespace wasmfs
