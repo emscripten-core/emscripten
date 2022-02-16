@@ -23,7 +23,6 @@ set(CMAKE_CROSSCOMPILING TRUE)
 set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
 set(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-sSIDE_MODULE")    # instead of -shared
 set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "-sSIDE_MODULE")  # instead of -shared
-set(CMAKE_STRIP FALSE)  # not supported
 set(BUILD_SHARED_LIBS OFF)  # default to static libs, even if we allow shared ones
 
 # Advertise Emscripten as a 32-bit platform (as opposed to
@@ -106,6 +105,10 @@ endif()
 
 if ("${CMAKE_RANLIB}" STREQUAL "")
   set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
+endif()
+
+if ("${CMAKE_STRIP}" STREQUAL "")
+  set(CMAKE_STRIP "${EMSCRIPTEN_ROOT_PATH}/llvm-strip" CACHE FILEPATH "Emscripten compatible strip command"))
 endif()
 
 if ("${CMAKE_C_COMPILER_AR}" STREQUAL "")
