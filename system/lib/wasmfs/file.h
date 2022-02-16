@@ -128,7 +128,8 @@ public:
 private:
   // Return the file with the given name or null if there is none.
   virtual std::shared_ptr<File> getEntry(const std::string& name) = 0;
-  // Remove the file with the given name, returning `true` on success.
+  // Remove the file with the given name, returning `true` on success or if the
+  // entry has already been removed.
   virtual bool removeEntry(const std::string& name) = 0;
   // Insert the given file with the given name if there is not already an entry
   // with the same name. Returns the inserted file or the preexisting file or
@@ -243,7 +244,7 @@ public:
   std::shared_ptr<File> getEntry(const std::string& name) {
     return getDir()->getEntry(name);
   }
-  std::shared_ptr<File> removeEntry(const std::string& name);
+  bool removeEntry(const std::string& name);
   std::shared_ptr<File> insertEntry(const std::string& name,
                                     std::shared_ptr<File> file);
   std::string getName(std::shared_ptr<File> file) {

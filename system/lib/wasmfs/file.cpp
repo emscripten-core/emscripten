@@ -49,19 +49,19 @@ std::optional<Directory::Handle> Directory::maybeLocked() {
   }
 }
 
-std::shared_ptr<File> Directory::Handle::removeEntry(const std::string& name) {
+bool Directory::Handle::removeEntry(const std::string& name) {
   auto entry = getEntry(name);
   if (entry == nullptr) {
-    return nullptr;
+    return true;
   }
   // Atomically remove the entry and clear its parent.
   auto lockedEntry = entry->locked();
   if (!getDir()->removeEntry(name)) {
-    return nullptr;
+    return false;
   }
   assert(lockedEntry.getParent() == getDir());
   lockedEntry.setParent(nullptr);
-  return entry;
+  return true;
 }
 
 std::shared_ptr<File>
