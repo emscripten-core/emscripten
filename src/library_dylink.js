@@ -33,6 +33,9 @@ var LibraryDylink = {
       sym = createInvokeFunction(symName.split('_')[1]);
     }
 
+    if(!sym && symName.startsWith("__cxa_find_matching_catch")){
+      sym = Module.___cxa_find_matching_catch;
+    }
     return sym;
   },
 
