@@ -346,7 +346,6 @@ long __syscall_lstat64(long path, long buf) {
 
 long __syscall_fstat64(long fd, long buf) {
   auto openFile = wasmFS.getLockedFileTable()[fd];
-
   if (!openFile) {
     return -EBADF;
   }
@@ -964,7 +963,6 @@ long __syscall_utimensat(int dirFD,
   assert(flags == 0);
 
   auto pathParts = splitPath(path);
-
   long err;
   auto parsedPath = getParsedPath(pathParts, err, nullptr, dirFD);
   if (!parsedPath.parent) {
