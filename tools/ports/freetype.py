@@ -8,15 +8,14 @@ import shutil
 from pathlib import Path
 
 TAG = 'VER-2-11-1'
-HASH = '5e53276cf0248c61782c6410856230a287c583efdbb8959d4b1d25efdbe8c665ca45a9c952c33c710b595fcf76905375487d3803fb39c2b96dbe253c7664662c'
-
+HASH = '07633e8ceae8150e983881396b420af60e64a46520d2abc16e0bf3d7909ae77a1a5ff3e5bdf3a85ee1067df8e493d612f2ed26fd33b6409bec0609eb72fd2e84'
 
 def needed(settings):
   return settings.USE_FREETYPE
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('freetype', 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/' + TAG + '/freetype-' + TAG + '.zip', 'freetype-' + TAG, sha512hash=HASH)
+  ports.fetch_project('freetype', 'https://github.com/freetype/freetype/archive/refs/tags/' + TAG + '.zip', 'freetype-' + TAG, sha512hash=HASH)
 
   def create(final):
     ports.clear_project_build('freetype')
