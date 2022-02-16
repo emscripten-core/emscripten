@@ -6,9 +6,9 @@
 
 {
   indexedDB: function() {
-    if (typeof indexedDB !== 'undefined') return indexedDB;
+    if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
-    if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     assert(ret, 'IDBStore used, but indexedDB not supported');
     return ret;
   },

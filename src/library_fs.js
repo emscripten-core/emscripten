@@ -249,7 +249,7 @@ FS.staticInit();` +
     },
     createNode: (parent, name, mode, rdev) => {
 #if ASSERTIONS
-      assert(typeof parent === 'object')
+      assert(typeof parent == 'object')
 #endif
       var node = new FS.FSNode(parent, name, mode, rdev);
 
@@ -305,7 +305,7 @@ FS.staticInit();` +
     // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
     modeStringToFlags: (str) => {
       var flags = FS.flagModes[str];
-      if (typeof flags === 'undefined') {
+      if (typeof flags == 'undefined') {
         throw new Error('Unknown file open mode: ' + str);
       }
       return flags;
@@ -481,7 +481,7 @@ FS.staticInit();` +
       return mounts;
     },
     syncfs: (populate, callback) => {
-      if (typeof(populate) === 'function') {
+      if (typeof populate == 'function') {
         callback = populate;
         populate = false;
       }
@@ -526,7 +526,7 @@ FS.staticInit();` +
     },
     mount: (type, opts, mountpoint) => {
 #if ASSERTIONS
-      if (typeof type === 'string') {
+      if (typeof type == 'string') {
         // The filesystem was not included, and instead we have an error
         // message stored in the variable.
         throw type;
@@ -668,7 +668,7 @@ FS.staticInit();` +
       }
     },
     mkdev: (path, mode, dev) => {
-      if (typeof(dev) === 'undefined') {
+      if (typeof dev == 'undefined') {
         dev = mode;
         mode = 438 /* 0666 */;
       }
@@ -888,7 +888,7 @@ FS.staticInit();` +
     },
     chmod: (path, mode, dontFollow) => {
       var node;
-      if (typeof path === 'string') {
+      if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
       } else {
@@ -914,7 +914,7 @@ FS.staticInit();` +
     },
     chown: (path, uid, gid, dontFollow) => {
       var node;
-      if (typeof path === 'string') {
+      if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
       } else {
@@ -943,7 +943,7 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var node;
-      if (typeof path === 'string') {
+      if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: true });
         node = lookup.node;
       } else {
@@ -988,15 +988,15 @@ FS.staticInit();` +
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
-      flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
-      mode = typeof mode === 'undefined' ? 438 /* 0666 */ : mode;
+      flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
+      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
         mode = (mode & {{{ cDefine('S_IALLUGO') }}}) | {{{ cDefine('S_IFREG') }}};
       } else {
         mode = 0;
       }
       var node;
-      if (typeof path === 'object') {
+      if (typeof path == 'object') {
         node = path;
       } else {
         path = PATH.normalize(path);
@@ -1147,7 +1147,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.read) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1185,7 +1185,7 @@ FS.staticInit();` +
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1280,7 +1280,7 @@ FS.staticInit();` +
     writeFile: (path, data, opts = {}) => {
       opts.flags = opts.flags || {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}};
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (typeof data === 'string') {
+      if (typeof data == 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
         FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
@@ -1547,7 +1547,7 @@ FS.staticInit();` +
       return ret;
     },
     createPath: (parent, path, canRead, canWrite) => {
-      parent = typeof parent === 'string' ? parent : FS.getPath(parent);
+      parent = typeof parent == 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();
       while (parts.length) {
         var part = parts.pop();
@@ -1563,20 +1563,20 @@ FS.staticInit();` +
       return current;
     },
     createFile: (parent, name, properties, canRead, canWrite) => {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       var path = name;
       if (parent) {
-        parent = typeof parent === 'string' ? parent : FS.getPath(parent);
+        parent = typeof parent == 'string' ? parent : FS.getPath(parent);
         path = name ? PATH.join2(parent, name) : parent;
       }
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
-        if (typeof data === 'string') {
+        if (typeof data == 'string') {
           var arr = new Array(data.length);
           for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
           data = arr;
@@ -1591,7 +1591,7 @@ FS.staticInit();` +
       return node;
     },
     createDevice: (parent, name, input, output) => {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -1648,7 +1648,7 @@ FS.staticInit();` +
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: (obj) => {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-      if (typeof XMLHttpRequest !== 'undefined') {
+      if (typeof XMLHttpRequest != 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else if (read_) {
         // Command-line.
@@ -1733,10 +1733,10 @@ FS.staticInit();` +
           var start = chunkNum * chunkSize;
           var end = (chunkNum+1) * chunkSize - 1; // including this byte
           end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
+          if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
             lazyArray.chunks[chunkNum] = doXHR(start, end);
           }
-          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
+          if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
           return lazyArray.chunks[chunkNum];
         });
 
@@ -1752,7 +1752,7 @@ FS.staticInit();` +
         this._chunkSize = chunkSize;
         this.lengthKnown = true;
       };
-      if (typeof XMLHttpRequest !== 'undefined') {
+      if (typeof XMLHttpRequest != 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
         Object.defineProperties(lazyArray, {

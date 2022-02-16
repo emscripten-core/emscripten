@@ -71,7 +71,7 @@ var Fetch = {
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
 #if FETCH_SUPPORT_INDEXEDDB
-    if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
+    if (typeof ENVIRONMENT_IS_FETCH_WORKER == 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
 #endif
   }
 }

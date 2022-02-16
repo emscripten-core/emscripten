@@ -9,9 +9,9 @@ mergeInto(LibraryManager.library, {
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
-      if (typeof indexedDB !== 'undefined') return indexedDB;
+      if (typeof indexedDB != 'undefined') return indexedDB;
       var ret = null;
-      if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       assert(ret, 'IDBFS used, but indexedDB not supported');
       return ret;
     },

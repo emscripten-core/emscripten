@@ -1181,6 +1181,7 @@
                 "label"
             ],
             "WGPUCompilationMessage": [
+                "nextInChain",
                 "message",
                 "type",
                 "lineNum",
@@ -1254,6 +1255,10 @@
                 "chain",
                 "clampDepth"
             ],
+            "WGPUPrimitiveDepthClipControl": [
+                "chain",
+                "unclippedDepth"
+            ],
             "WGPUPrimitiveState": [
                 "nextInChain",
                 "topology",
@@ -1279,7 +1284,9 @@
                 "colorFormatsCount",
                 "colorFormats",
                 "depthStencilFormat",
-                "sampleCount"
+                "sampleCount",
+                "depthReadOnly",
+                "stencilReadOnly"
             ],
             "WGPURenderPassDepthStencilAttachment": [
                 "view",
@@ -1407,6 +1414,7 @@
                 "alpha"
             ],
             "WGPUCompilationInfo": [
+                "nextInChain",
                 "messageCount",
                 "messages"
             ],
@@ -1493,6 +1501,7 @@
             ],
             "WGPUDeviceDescriptor": [
                 "nextInChain",
+                "label",
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits"

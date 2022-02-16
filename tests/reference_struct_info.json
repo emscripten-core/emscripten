@@ -828,18 +828,20 @@
             "nextInChain": 0
         },
         "WGPUCompilationInfo": {
-            "__size__": 8,
-            "messageCount": 0,
-            "messages": 4
+            "__size__": 12,
+            "messageCount": 4,
+            "messages": 8,
+            "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 40,
-            "length": 32,
-            "lineNum": 8,
-            "linePos": 16,
-            "message": 0,
-            "offset": 24,
-            "type": 4
+            "__size__": 48,
+            "length": 40,
+            "lineNum": 16,
+            "linePos": 24,
+            "message": 4,
+            "nextInChain": 0,
+            "offset": 32,
+            "type": 8
         },
         "WGPUComputePassDescriptor": {
             "__size__": 8,
@@ -874,11 +876,12 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 16,
+            "__size__": 20,
+            "label": 4,
             "nextInChain": 0,
-            "requiredFeatures": 8,
-            "requiredFeaturesCount": 4,
-            "requiredLimits": 12
+            "requiredFeatures": 12,
+            "requiredFeaturesCount": 8,
+            "requiredLimits": 16
         },
         "WGPUExtent3D": {
             "__size__": 12,
@@ -968,6 +971,11 @@
             "chain": 0,
             "clampDepth": 8
         },
+        "WGPUPrimitiveDepthClipControl": {
+            "__size__": 12,
+            "chain": 0,
+            "unclippedDepth": 8
+        },
         "WGPUPrimitiveState": {
             "__size__": 20,
             "cullMode": 16,
@@ -999,13 +1007,15 @@
             "nextInChain": 0
         },
         "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 24,
+            "__size__": 28,
             "colorFormats": 12,
             "colorFormatsCount": 8,
+            "depthReadOnly": 24,
             "depthStencilFormat": 16,
             "label": 4,
             "nextInChain": 0,
-            "sampleCount": 20
+            "sampleCount": 20,
+            "stencilReadOnly": 25
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 48,
