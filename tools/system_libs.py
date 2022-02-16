@@ -977,9 +977,12 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+      filenames=['emscripten_memcpy.c',
+                 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
-                 'emscripten_memmove.c'])
+                 'emscripten_memmove.c',
+                 'emscripten_mmap.c'
+                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
