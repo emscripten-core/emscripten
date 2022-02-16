@@ -73,7 +73,7 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     return 0;
   }
 
-  auto child = parsedPath.parent->getEntry(pathParts.back());
+  auto child = parsedPath.parent->getChild(pathParts.back());
   auto dataFile = child->dynCast<DataFile>();
 
   auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);

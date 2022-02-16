@@ -40,28 +40,28 @@ void DataFile::Handle::preloadFromJS(int index) {
 // Directory
 //
 
-bool Directory::Handle::removeEntry(const std::string& name) {
-  auto entry = getEntry(name);
-  if (entry == nullptr) {
+bool Directory::Handle::removeChild(const std::string& name) {
+  auto child = getChild(name);
+  if (child == nullptr) {
     return true;
   }
-  // Atomically remove the entry and clear its parent.
-  auto lockedEntry = entry->locked();
-  if (!getDir()->removeEntry(name)) {
+  // Atomically remove the child and clear its parent.
+  auto lockedChild = child->locked();
+  if (!getDir()->removeChild(name)) {
     return false;
   }
-  assert(lockedEntry.getParent() == getDir());
-  lockedEntry.setParent(nullptr);
+  assert(lockedChild.getParent() == getDir());
+  lockedChild.setParent(nullptr);
   return true;
 }
 
 std::shared_ptr<File>
-Directory::Handle::insertEntry(const std::string& name,
+Directory::Handle::insertChild(const std::string& name,
                                std::shared_ptr<File> file) {
   // Atomically add the entry and set its parent.
   auto lockedFile = file->locked();
   assert(lockedFile.getParent() == nullptr);
-  auto entry = getDir()->insertEntry(name, file);
+  auto entry = getDir()->insertChild(name, file);
   if (file == entry) {
     // The insertion succeeded; set the parent.
     lockedFile.setParent(getDir());
