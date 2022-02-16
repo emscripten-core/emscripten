@@ -10909,10 +10909,11 @@ exec "$@"
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
-    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMCC_CFLAGS to
-    # be injected which could cause it to fail.
+    # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
+    # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
+    # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
