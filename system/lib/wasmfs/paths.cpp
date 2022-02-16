@@ -51,22 +51,19 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #ifdef WASMFS_DEBUG
     curr->locked().printKeys();
 #endif
-    auto entry = curr->locked().getEntry(*pathPart);
+    auto child = curr->locked().getChild(*pathPart);
 
-    if (forbiddenAncestor) {
-      if (entry == forbiddenAncestor) {
-        err = -EINVAL;
-        return ParsedPath{{}, nullptr};
-      }
-    }
-
-    // An entry is defined in the current directory's entries vector.
-    if (!entry) {
+    if (!child) {
       err = -ENOENT;
       return ParsedPath{{}, nullptr};
     }
 
-    curr = entry->dynCast<Directory>();
+    if (child == forbiddenAncestor) {
+      err = -EINVAL;
+      return ParsedPath{{}, nullptr};
+    }
+
+    curr = child->dynCast<Directory>();
 
     // If file is nullptr, then the file was not a Directory.
     // TODO: Change this to accommodate symlinks
@@ -82,7 +79,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 
   // Lock the parent once.
   auto lockedCurr = curr->locked();
-  auto child = lockedCurr.getEntry(*(pathParts.end() - 1));
+  auto child = lockedCurr.getChild(*(pathParts.end() - 1));
   return ParsedPath{std::move(lockedCurr), child};
 }
 
@@ -114,7 +111,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
 #ifdef WASMFS_DEBUG
     directory->locked().printKeys();
 #endif
-    curr = directory->locked().getEntry(*it);
+    curr = directory->locked().getChild(*it);
 
     if (forbiddenAncestor) {
       if (curr == forbiddenAncestor) {

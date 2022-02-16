@@ -127,15 +127,15 @@ public:
 
 private:
   // Return the file with the given name or null if there is none.
-  virtual std::shared_ptr<File> getEntry(const std::string& name) = 0;
+  virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
   // Remove the file with the given name, returning `true` on success or if the
-  // entry has already been removed.
-  virtual bool removeEntry(const std::string& name) = 0;
+  // child has already been removed.
+  virtual bool removeChild(const std::string& name) = 0;
   // Insert the given file with the given name if there is not already an entry
   // with the same name. Returns the inserted file or the preexisting file or
   // null if the file could not be inserted and there was also no preexisting
   // file.
-  virtual std::shared_ptr<File> insertEntry(const std::string& name,
+  virtual std::shared_ptr<File> insertChild(const std::string& name,
                                             std::shared_ptr<File> file) = 0;
   // Return the name of the file if it is contained within this directory or an
   // empty string if it is not.
@@ -241,11 +241,11 @@ public:
   Handle(std::shared_ptr<File> directory, std::defer_lock_t)
     : File::Handle(directory, std::defer_lock) {}
 
-  std::shared_ptr<File> getEntry(const std::string& name) {
-    return getDir()->getEntry(name);
+  std::shared_ptr<File> getChild(const std::string& name) {
+    return getDir()->getChild(name);
   }
-  bool removeEntry(const std::string& name);
-  std::shared_ptr<File> insertEntry(const std::string& name,
+  bool removeChild(const std::string& name);
+  std::shared_ptr<File> insertChild(const std::string& name,
                                     std::shared_ptr<File> file);
   std::string getName(std::shared_ptr<File> file) {
     return getDir()->getName(file);

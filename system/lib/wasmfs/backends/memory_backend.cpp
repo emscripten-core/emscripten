@@ -32,44 +32,44 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 }
 
 std::vector<Directory::Entry>::iterator
-MemoryDirectory::findEntry(const std::string& name) {
-  return std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+MemoryDirectory::findChild(const std::string& name) {
+  return std::find_if(children.begin(), children.end(), [&](const auto& entry) {
     return entry.name == name;
   });
 }
 
-std::shared_ptr<File> MemoryDirectory::getEntry(const std::string& name) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->file;
+std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
+  if (auto child = findChild(name); child != children.end()) {
+    return child->file;
   }
   return nullptr;
 }
 
-bool MemoryDirectory::removeEntry(const std::string& name) {
-  auto entry = findEntry(name);
-  if (entry == entries.end()) {
+bool MemoryDirectory::removeChild(const std::string& name) {
+  auto child = findChild(name);
+  if (child == children.end()) {
     return false;
   }
-  entries.erase(entry);
+  children.erase(child);
   return true;
 }
 
-std::shared_ptr<File> MemoryDirectory::insertEntry(const std::string& name,
+std::shared_ptr<File> MemoryDirectory::insertChild(const std::string& name,
                                                    std::shared_ptr<File> file) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->file;
+  if (auto child = findChild(name); child != children.end()) {
+    return child->file;
   }
-  entries.push_back({name, file});
+  children.push_back({name, file});
   return file;
 }
 
 std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
-  auto entry =
-    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
-      return entry.file == file;
+  auto child =
+    std::find_if(children.begin(), children.end(), [&](const auto& child) {
+      return child.file == file;
     });
-  if (entry != entries.end()) {
-    return entry->name;
+  if (child != children.end()) {
+    return child->name;
   }
   return {};
 }
