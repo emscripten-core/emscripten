@@ -68,14 +68,12 @@ int main()
   GL_CALL( glGenSamplers( 1, &sampler ) );
   assert(sampler > 0);
 
-#if 0 // TODO: Disabled due to https://github.com/KhronosGroup/WebGL/issues/2006
   GL_CALL( glSamplerParameteri( sampler, GL_TEXTURE_MAX_ANISOTROPY_EXT, (int)maxAnisotropy ) );
 
   GLfloat maxAnisotropy2;
   GL_CALL( glGetSamplerParameterfv( sampler, GL_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy2 ) );
   printf("max anisotropy: %f\n", maxAnisotropy2);
   assert(maxAnisotropy2 == maxAnisotropy);
-#endif
 
   GL_CALL( glBindSampler( 0, sampler ) );
 
