@@ -294,11 +294,10 @@ self.onmessage = (e) => {
         Module['_emscripten_proxy_execute_queue'](e.data.queue);
       }
     } else if (e.data.cmd === 'custom') {
-      if (Module['onCustomMessage']) {
-        Module['onCustomMessage'](e.data);
-      } else {
-        throw 'Custom message received but worker Module.onCustomMessage not implemented.';
-      }
+#if ASSERTIONS
+      assert(Module['onCustomMessage'], 'Custom message received but worker Module.onCustomMessage not implemented.');
+#endif
+      Module['onCustomMessage'](e.data);
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
