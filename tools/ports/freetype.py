@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 
 TAG = '2.11.1'
-HASH = '5e53276cf0248c61782c6410856230a287c583efdbb8959d4b1d25efdbe8c665ca45a9c952c33c710b595fcf76905375487d3803fb39c2b96dbe253c7664662c'
+HASH = '610f2377e28cfa4b40db6155bec02b911a93171f0b37efc7d544787468e3e8193c588a381b4743c2206ffee74ea6cdd42ed949f1d7c474e3b123900d23db69e0'
 
 def needed(settings):
   return settings.USE_FREETYPE
