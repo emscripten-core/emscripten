@@ -21,8 +21,8 @@ set(CMAKE_CROSSCOMPILING TRUE)
 
 # shared library (side module) support
 set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
-set(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-s SIDE_MODULE=1")    # instead of -shared
-set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "-s SIDE_MODULE=1")  # instead of -shared
+set(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-sSIDE_MODULE")    # instead of -shared
+set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "-sSIDE_MODULE")  # instead of -shared
 set(CMAKE_STRIP FALSE)  # not supported
 set(BUILD_SHARED_LIBS OFF)  # default to static libs, even if we allow shared ones
 
