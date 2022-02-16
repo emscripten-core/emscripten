@@ -51,6 +51,18 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #ifdef WASMFS_DEBUG
     curr->locked().printKeys();
 #endif
+
+    if (*pathPart == ".") {
+      continue;
+    }
+
+    if (*pathPart == "..") {
+      if (curr != wasmFS.getRootDirectory()) {
+        curr = curr->locked().getParent()->cast<Directory>();
+      }
+      continue;
+    }
+
     auto entry = curr->locked().getEntry(*pathPart);
 
     if (forbiddenAncestor) {
@@ -82,7 +94,20 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 
   // Lock the parent once.
   auto lockedCurr = curr->locked();
-  auto child = lockedCurr.getEntry(*(pathParts.end() - 1));
+
+  std::shared_ptr<File> child;
+  auto& finalPart = *(pathParts.end() - 1);
+  if (finalPart == ".") {
+    child = curr;
+  } else if (finalPart == "..") {
+    if (curr != wasmFS.getRootDirectory()) {
+      child = curr->locked().getParent()->cast<Directory>();
+    } else {
+      child = curr;
+    }
+  } else {
+    child = lockedCurr.getEntry(finalPart);
+  }
   return ParsedPath{std::move(lockedCurr), child};
 }
 

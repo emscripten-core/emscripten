@@ -15,7 +15,7 @@ int main() {
   int f = open(".", O_RDONLY);
 
   int ret = fsync(f);
-  printf("fsync(opened): %d\n", ret);
+  printf("fsync(opened): %d %d\n", f, ret);
   printf("errno: %d\n", errno);
   assert(ret == 0);
   assert(errno == 0);

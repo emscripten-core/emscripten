@@ -260,15 +260,18 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
+EM_ASM({ console.log('syncey ' + $0) }, fd);
   auto openFile = wasmFS.getLockedFileTable()[fd];
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
+EM_ASM({ console.log('synce1') });
 
   auto dataFile = openFile.locked().getFile()->dynCast<DataFile>();
   if (!dataFile) {
     return __WASI_ERRNO_ISDIR;
   }
+EM_ASM({ console.log('synce2') });
 
   dataFile->locked().flush();
 
@@ -385,6 +388,7 @@ static __wasi_fd_t doOpen(char* pathname,
     ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
                  O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
+printf("path: %s\n", (char*)pathname);
   auto pathParts = splitPath(pathname);
 
   long err;
@@ -394,10 +398,12 @@ static __wasi_fd_t doOpen(char* pathname,
   if (!parsedPath.parent) {
     return err;
   }
+printf("open1\n");
 
   if (pathParts.back().size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
+printf("open2\n");
 
   // The requested node was not found.
   if (!parsedPath.child) {
@@ -428,16 +434,19 @@ static __wasi_fd_t doOpen(char* pathname,
       return -ENOENT;
     }
   }
+printf("open3\n");
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
   if (flags & O_DIRECTORY && !parsedPath.child->is<Directory>()) {
     return -ENOTDIR;
   }
+printf("open4\n");
 
   // Return an error if the file exists and O_CREAT and O_EXCL are specified.
   if (flags & O_EXCL && flags & O_CREAT) {
     return -EEXIST;
   }
+printf("open5\n");
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, parsedPath.child);
 
