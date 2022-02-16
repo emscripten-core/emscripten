@@ -834,8 +834,12 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = SDL.lookupKeyCodeForEvent(event);
-          // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it:
+#if !SAFE_HEAP
+          // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it.
+          // TODO(https://github.com/emscripten-core/emscripten/issues/16311):
+          // This is kind of ugly hack.  Perhaps we can find a better way?
           /** @suppress{checkTypes} */
+#endif
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
           SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL

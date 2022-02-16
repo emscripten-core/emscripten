@@ -1119,7 +1119,10 @@ var LibraryHTML5 = {
   $fillFullscreenChangeEventData: function(eventStruct) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
+#if !SAFE_HEAP
+    // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
+#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1715,7 +1718,10 @@ var LibraryHTML5 = {
   $fillPointerlockChangeEventData: function(eventStruct) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
-    /** @suppress {checkTypes} */
+#if !SAFE_HEAP
+    // Assigning a boolean to HEAP32 with expected type coercion.
+    /** @suppress{checkTypes} */
+#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
@@ -1974,8 +1980,10 @@ var LibraryHTML5 = {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
+#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
-    /** @suppress {checkTypes} */
+    /** @suppress{checkTypes} */
+#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -2186,8 +2194,10 @@ var LibraryHTML5 = {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       } else {
+#if !SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
+#endif
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
       }
     }
