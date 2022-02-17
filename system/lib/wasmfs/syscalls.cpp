@@ -253,6 +253,10 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   auto fileTable = wasmFS.getLockedFileTable();
 
+  if (!fileTable[fd]) {
+    return __WASI_ERRNO_BADF;
+  }
+
   // Remove openFileState entry from fileTable.
   fileTable[fd] = nullptr;
 
@@ -269,7 +273,8 @@ EM_ASM({ console.log('synce1') });
 
   auto dataFile = openFile.locked().getFile()->dynCast<DataFile>();
   if (!dataFile) {
-    return __WASI_ERRNO_ISDIR;
+    // Nothing to flush for a directory, but also not an error.
+    return __WASI_ERRNO_SUCCESS;
   }
 EM_ASM({ console.log('synce2') });
 
