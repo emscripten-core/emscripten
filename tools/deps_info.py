@@ -194,8 +194,6 @@ _deps_info = {
   'wgpuBufferGetMappedRange': ['malloc', 'free'],
   'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
-
-  '_wasm_worker_initializeRuntime': ['emscripten_wasm_worker_initialize'], # TODO: Once #15982 is resolved, this line is unnecessary.
 }
 
 
