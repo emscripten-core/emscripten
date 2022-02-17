@@ -4539,6 +4539,48 @@ res64 - external 64\n''', header='''
       }
       ''', expected=['side: caught 5.3\nmain: caught 3\n'])
 
+  @with_both_eh_sjlj
+  @needs_dylink
+  def test_dylink_exceptions_try_catch_3(self):
+    main =r'''
+      #include <dlfcn.h>
+      int main() {
+        void* handle = dlopen("liblib.so", RTLD_LAZY);
+        void (*side)(void) = (void (*)(void))dlsym(handle, "side");
+        (side)();
+        return 0;
+      }
+    '''
+    side=r'''
+      #include <stdio.h>
+      extern "C" void side() {
+        try {
+          throw 3;
+        } catch (int x){
+          printf("side: caught int %d\n", x); 
+        } catch (float x){
+          printf("side: caught float %f\n", x); 
+        }
+      }
+      '''
+      
+    create_file('liblib.cpp', side)
+    create_file('main.cpp', main)
+    self.maybe_closure()
+    # Same as dylink_test but takes source code as filenames on disc.
+    # side settings
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
+    out_file = self.build('liblib.cpp', js_outfile=False)
+    shutil.move(out_file, "liblib.so")
+
+    # main settings
+    self.set_setting('MAIN_MODULE', 1)
+    self.clear_setting('SIDE_MODULE')
+
+    expected = "side: caught int 3\n"
+    self.do_runf("main.cpp", expected)
+
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
