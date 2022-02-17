@@ -269,13 +269,12 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
     return __WASI_ERRNO_BADF;
   }
 
+  // Nothing to flush for anything but a data file, but also not an error either
+  // way.
   auto dataFile = openFile.locked().getFile()->dynCast<DataFile>();
-  if (!dataFile) {
-    // Nothing to flush for a directory, but also not an error.
-    return __WASI_ERRNO_SUCCESS;
+  if (dataFile) {
+    dataFile->locked().flush();
   }
-
-  dataFile->locked().flush();
 
   return __WASI_ERRNO_SUCCESS;
 }
