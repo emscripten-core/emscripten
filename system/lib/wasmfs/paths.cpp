@@ -9,6 +9,33 @@
 
 namespace wasmfs {
 
+std::string getAbsPath(std::shared_ptr<File> curr) {
+  std::string result = "";
+
+  while (curr != wasmFS.getRootDirectory()) {
+    auto parent = curr->locked().getParent();
+    // Check if the parent exists. The parent may not exist if the CWD or one
+    // of its ancestors has been unlinked.
+    if (!parent) {
+      return "unlinked";
+    }
+
+    auto parentDir = parent->dynCast<Directory>();
+
+    auto name = parentDir->locked().getName(curr);
+    result = '/' + name + result;
+    curr = parentDir;
+  }
+
+  // Check if the cwd is the root directory.
+  if (result.empty()) {
+    result = "/";
+  }
+
+  return result;
+}
+
+
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
                          std::shared_ptr<File> forbiddenAncestor,
@@ -43,6 +70,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       curr = openDir->dynCast<Directory>();
     } else {
       curr = wasmFS.getCWD();
+printf("waka0\n");
     }
   }
 
@@ -52,6 +80,8 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     curr->locked().printKeys();
 #endif
 
+printf("waka1, dir is %s\n", getAbsPath(curr).c_str());
+
     auto lockedCurr = curr->locked();
 
     // Find the relevant child for this path part.
@@ -59,7 +89,6 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     if (*pathPart == ".") {
       child = lockedCurr.unlocked();
     } else if (*pathPart == "..") {
-      child = lockedCurr.unlocked();
       if (curr != wasmFS.getRootDirectory()) {
         child = lockedCurr.getParent()->cast<Directory>();
       } else {
@@ -67,21 +96,28 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       }
     } else {
       child = lockedCurr.getChild(*pathPart);
+printf("waka2 %s %d\n", pathPart->c_str(), !!child);
     }
 
+printf("waka3\n");
     bool atFinalPart = pathPart == (pathParts.end() - 1);
     if (atFinalPart) {
+printf("waka4\n");
       if (!child) {
+printf("waka5\n");
         err = -ENOENT;
         return ParsedPath{{}, nullptr};
       }
+printf("waka6\n");
       return ParsedPath{std::move(lockedCurr), child};
     }
+printf("waka7\n");
 
     if (child == forbiddenAncestor) {
       err = -EINVAL;
       return ParsedPath{{}, nullptr};
     }
+printf("waka8\n");
 
     curr = child->dynCast<Directory>();
 
