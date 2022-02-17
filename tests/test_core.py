@@ -352,12 +352,16 @@ class TestCoreBase(RunnerCore):
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
 
-  def can_use_closure(self):
-    return '-g' not in self.emcc_args and '--profiling' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args)
+  def should_use_closure(self):
+    # Don't run closure in all test modes, just a couple, since it slows
+    # the tests down quite a bit.
+    required = ('-O2', '-Os')
+    prohibited = ('-g', '--profiling')
+    return all(f not in self.emcc_args for f in prohibited) and any(f in self.emcc_args for f in required)
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '--closure=1' not in self.emcc_args and self.can_use_closure():
+    if '--closure=1' not in self.emcc_args and self.should_use_closure():
       self.emcc_args += ['--closure=1']
       logger.debug('using closure compiler..')
       return True
