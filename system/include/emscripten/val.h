@@ -489,7 +489,7 @@ namespace emscripten {
 
         template<typename... Args>
         val new_(Args&&... args) const {
-            return internalCall(internal::_emval_new,std::forward<Args>(args)...);
+            return internalCall(internal::_emval_new, std::forward<Args>(args)...);
         }
 
         template<typename T>
@@ -500,6 +500,11 @@ namespace emscripten {
         template<typename K, typename V>
         void set(const K& key, const V& value) {
             internal::_emval_set_property(handle, val_ref(key).handle, val_ref(value).handle);
+        }
+
+        template<typename T>
+        bool delete_(const T& property) const {
+            return internal::_emval_delete(handle, val_ref(property).handle);
         }
 
         template<typename... Args>
@@ -572,11 +577,6 @@ namespace emscripten {
 
         bool in(const val& v) const {
             return internal::_emval_in(handle, v.handle);
-        }
-
-        template<typename T>
-        bool delete_(const T& property) const {
-            return internal::_emval_delete(handle, val(property).handle);
         }
 
         [[noreturn]] void throw_() const {
