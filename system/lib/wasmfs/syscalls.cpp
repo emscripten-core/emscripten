@@ -996,15 +996,13 @@ long __syscall_utimensat(int dirFD,
                          int flags) {
   // TODO: support flags here
   assert(flags == 0);
-printf("utime %s\n", path);
+
   auto pathParts = splitPath(path);
   long err;
   auto parsedPath = getParsedPath(pathParts, err, nullptr, dirFD);
   if (!parsedPath.parent) {
-printf("no parent\n");
     return err;
   }
-printf("yay\n");
 
   // TODO: tv_nsec (nanoseconds) as well? but time_t is seconds as an integer
   auto aSeconds = times[0].tv_sec;

@@ -9,6 +9,8 @@
 
 namespace wasmfs {
 
+#ifdef WASMFS_DEBUG
+// Print the absolute path of a file.
 std::string getAbsPath(std::shared_ptr<File> curr) {
   std::string result = "";
 
@@ -34,7 +36,7 @@ std::string getAbsPath(std::shared_ptr<File> curr) {
 
   return result;
 }
-
+#endif
 
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
@@ -70,7 +72,6 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       curr = openDir->dynCast<Directory>();
     } else {
       curr = wasmFS.getCWD();
-printf("waka0\n");
     }
   }
 
@@ -79,8 +80,6 @@ printf("waka0\n");
 #ifdef WASMFS_DEBUG
     curr->locked().printKeys();
 #endif
-
-printf("waka1, dir is %s\n", getAbsPath(curr).c_str());
 
     auto lockedCurr = curr->locked();
 
@@ -96,28 +95,17 @@ printf("waka1, dir is %s\n", getAbsPath(curr).c_str());
       }
     } else {
       child = lockedCurr.getChild(*pathPart);
-printf("waka2 %s %d\n", pathPart->c_str(), !!child);
     }
 
-printf("waka3\n");
     bool atFinalPart = pathPart == (pathParts.end() - 1);
     if (atFinalPart) {
-printf("waka4\n");
-      if (!child) {
-printf("waka5\n");
-        err = -ENOENT;
-        return ParsedPath{{}, nullptr};
-      }
-printf("waka6\n");
       return ParsedPath{std::move(lockedCurr), child};
     }
-printf("waka7\n");
 
     if (child == forbiddenAncestor) {
       err = -EINVAL;
       return ParsedPath{{}, nullptr};
     }
-printf("waka8\n");
 
     curr = child->dynCast<Directory>();
 
@@ -133,26 +121,8 @@ printf("waka8\n");
 #endif
   }
 
-  abort();
-#if 0
-  // Lock the parent once.
-  auto lockedCurr = curr->locked();
-
-  std::shared_ptr<File> child;
-  auto& finalPart = *(pathParts.end() - 1);
-  if (finalPart == ".") {
-    child = curr;
-  } else if (finalPart == "..") {
-    if (curr != wasmFS.getRootDirectory()) {
-      child = curr->locked().getParent()->cast<Directory>();
-    } else {
-      child = curr;
-    }
-  } else {
-    child = lockedCurr.getChild(finalPart);
-  }
-  return ParsedPath{std::move(lockedCurr), child};
-#endif
+  // There was no path path to process in the loop.
+  return ParsedPath{std::move(curr->locked()), nullptr};
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
