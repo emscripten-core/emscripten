@@ -30,7 +30,9 @@ const backend_t NullBackend = nullptr;
 
 class File : public std::enable_shared_from_this<File> {
 public:
-  enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
+  enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
+
+  const FileKind kind;
 
   template<class T> bool is() const {
     static_assert(std::is_base_of<File, T>::value,
@@ -83,8 +85,6 @@ protected:
   time_t mtime = 0; // Time when the file content was last modified.
   time_t atime = 0; // Time when the content was last accessed.
 
-  FileKind kind;
-
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
   // count is not incremented. This also ensures that there are no cyclic
@@ -122,7 +122,8 @@ class Directory : public File {
 public:
   struct Entry {
     std::string name;
-    std::shared_ptr<File> file;
+    FileKind kind;
+    ino_t ino;
   };
 
 private:

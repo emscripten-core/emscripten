@@ -705,7 +705,6 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   auto file = openFile.locked().getFile();
 
   auto directory = file->dynCast<Directory>();
-
   if (!directory) {
     return -ENOTDIR;
   }
@@ -728,20 +727,36 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   }
 
   // There are always two hardcoded directories "." and ".."
-  std::vector<Directory::Entry> entries = {{".", file}, {"..", dotdot}};
+  std::vector<Directory::Entry> entries = {{".", File::DirectoryKind},
+                                           {"..", File::DirectoryKind}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    auto curr = entries[index];
-    result->d_ino = curr.file->getIno();
+    auto& entry = entries[index];
+    result->d_ino = entry.ino;
     result->d_off = bytesRead + sizeof(dirent);
     result->d_reclen = sizeof(dirent);
-    result->d_type =
-      curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
-    assert(curr.name.size() + 1 <= sizeof(result->d_name));
-    strcpy(result->d_name, curr.name.c_str());
+    switch (entry.kind) {
+      case File::UnknownKind:
+        result->d_type = DT_UNKNOWN;
+        break;
+      case File::DataFileKind:
+        result->d_type = DT_REG;
+        break;
+      case File::DirectoryKind:
+        result->d_type = DT_DIR;
+        break;
+      case File::SymlinkKind:
+        result->d_type = DT_LNK;
+        break;
+      default:
+        result->d_type = DT_UNKNOWN;
+        break;
+    }
+    assert(entry.name.size() + 1 <= sizeof(result->d_name));
+    strcpy(result->d_name, entry.name.c_str());
     ++result;
     bytesRead += sizeof(dirent);
   }
