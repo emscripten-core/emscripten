@@ -2096,7 +2096,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.USE_PTHREADS:
     # memalign is used to ensure allocated thread stacks are aligned.
-    settings.REQUIRED_EXPORTS += ['memalign']
+    settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
 
     if settings.MINIMAL_RUNTIME:
       building.user_requested_exports.add('exit')

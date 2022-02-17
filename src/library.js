@@ -2961,18 +2961,6 @@ LibraryManager.library = {
   },
 #endif
 
-  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
-  emscripten_builtin_mmap2__noleakcheck: true,
-  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
-  },
-
-  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
-  emscripten_builtin_munmap__noleakcheck: true,
-  emscripten_builtin_munmap: function (addr, len) {
-    return syscallMunmap(addr, len);
-  },
-
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
@@ -3580,14 +3568,14 @@ LibraryManager.library = {
   // page-aligned size, and clears the allocated space.
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
   $mmapAlloc: function(size) {
-#if hasExportedFunction('_memalign')
+#if hasExportedFunction('_emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
-    var ptr = _memalign({{{ WASM_PAGE_SIZE }}}, size);
+    var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;
     zeroMemory(ptr, size);
     return ptr;
 #elif ASSERTIONS
-    abort('internal error: mmapAlloc called but `memalign` native symbol not exported');
+    abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else
     abort();
 #endif

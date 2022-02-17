@@ -753,6 +753,7 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+    self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
   def test_cmake_find_sdl2(self):
     os.mkdir('build')
@@ -4461,9 +4462,6 @@ int main() {
     self.assertContained('hello_world.c', stdout)
 
   def test_emit_llvm(self):
-    # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
-    # We shouldn't need to copy the file here but if we don't then emcc will
-    # internally clobber the hello_world.ll in tests.
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
@@ -10909,10 +10907,11 @@ exec "$@"
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
-    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMCC_CFLAGS to
-    # be injected which could cause it to fail.
+    # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
+    # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
+    # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
@@ -10992,6 +10991,8 @@ exec "$@"
         cmd.append('-fexceptions')
       if function.startswith('glfwGetMonitors'):
         cmd.append('-sUSE_GLFW=3')
+      if 'mmap' in function:
+        cmd.append('-sFORCE_FILESYSTEM')
       # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
       # calls that exist in the same function with setjmp are converted to some
       # code sequence that includes emscripten_longjmp. emscripten_longjmp is
