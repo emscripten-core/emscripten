@@ -8758,6 +8758,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  def test_pthread_dylink_exceptions(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-fexceptions')
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
+
+  @needs_dylink
+  @node_pthreads
   def test_pthread_dlopen(self):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
