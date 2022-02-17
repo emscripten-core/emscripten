@@ -46,25 +46,31 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     }
   }
 
-  for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
+  for (auto pathPart = begin; pathPart != pathParts.end(); ++pathPart) {
     // Find the next entry in the current directory entry
 #ifdef WASMFS_DEBUG
     curr->locked().printKeys();
 #endif
 
+    auto lockedCurr = curr->locked();
+
+    // Find the relevant child for this path part.
+    std::shared_ptr<File> child;
     if (*pathPart == ".") {
-      continue;
-    }
-
-    if (*pathPart == "..") {
+      child = lockedCurr.unlocked();
+    } else if (*pathPart == "..") {
+      child = lockedCurr.unlocked();
       if (curr != wasmFS.getRootDirectory()) {
-        curr = curr->locked().getParent()->cast<Directory>();
+        child = lockedCurr.getParent()->cast<Directory>();
+      } else {
+        child = lockedCurr.unlocked();
       }
-      continue;
+    } else {
+      child = lockedCurr.getChild(*pathPart);
     }
 
-    auto child = curr->locked().getChild(*pathPart);
-
+    bool atFinalPart = pathPart == (pathParts.end() - 1);
+    if (atFinalPart) {
     if (!child) {
       err = -ENOENT;
       return ParsedPath{{}, nullptr};
@@ -89,6 +95,8 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #endif
   }
 
+  abort();
+#if 0
   // Lock the parent once.
   auto lockedCurr = curr->locked();
 
@@ -106,6 +114,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     child = lockedCurr.getChild(finalPart);
   }
   return ParsedPath{std::move(lockedCurr), child};
+#endif
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
