@@ -40,64 +40,33 @@ void DataFile::Handle::preloadFromJS(int index) {
 // Directory
 //
 
-std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
-  auto found =
-    std::find_if(getDir()->entries.begin(),
-                 getDir()->entries.end(),
-                 [&](const auto& entry) { return entry.name == pathName; });
-
-  if (found != getDir()->entries.end()) {
-    return found->file;
+bool Directory::Handle::removeEntry(const std::string& name) {
+  auto entry = getEntry(name);
+  if (entry == nullptr) {
+    return true;
   }
-
-  return nullptr;
-}
-
-void Directory::Handle::setEntry(std::string pathName,
-                                 std::shared_ptr<File> inserted) {
-  // Hold the lock over both functions to cover the case in which two
-  // directories attempt to add the file.
-  auto lockedInserted = inserted->locked();
-  // Simultaneously, set the parent of the inserted node to be this Dir.
-  // inserted must be locked because we have to go through Handle.
-  // TODO: When rename is implemented, ensure that the source directory has
-  // been removed as a parent.
-  // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
-  assert(!lockedInserted.getParent());
-  lockedInserted.setParent(file);
-
-  // During testing, this will check that an existing file associated with
-  // pathName does not exist. For rename, the existing file must be unlinked
-  // first.
-  assert(!getEntry(pathName));
-  getDir()->entries.push_back({pathName, inserted});
-}
-
-void Directory::Handle::unlinkEntry(std::string pathName) {
-  // The file lock must be held for both operations. Removing the child file
-  // from the parent's entries and removing the parent pointer from the
-  // child should be atomic. The state should not be mutated in between.
-  auto unlinked = getEntry(pathName)->locked();
-  unlinked.setParent({});
-
-  getDir()->entries.erase(
-    std::remove_if(getDir()->entries.begin(),
-                   getDir()->entries.end(),
-                   [&](const auto& entry) { return entry.name == pathName; }),
-    getDir()->entries.end());
-}
-
-std::string Directory::Handle::getName(std::shared_ptr<File> target) {
-  auto found =
-    std::find_if(getDir()->entries.begin(),
-                 getDir()->entries.end(),
-                 [&](const auto& entry) { return entry.file == target; });
-
-  if (found != getDir()->entries.end()) {
-    return found->name;
+  // Atomically remove the entry and clear its parent.
+  auto lockedEntry = entry->locked();
+  if (!getDir()->removeEntry(name)) {
+    return false;
   }
+  assert(lockedEntry.getParent() == getDir());
+  lockedEntry.setParent(nullptr);
+  return true;
+}
 
-  return "";
+std::shared_ptr<File>
+Directory::Handle::insertEntry(const std::string& name,
+                               std::shared_ptr<File> file) {
+  // Atomically add the entry and set its parent.
+  auto lockedFile = file->locked();
+  assert(lockedFile.getParent() == nullptr);
+  auto entry = getDir()->insertEntry(name, file);
+  if (file == entry) {
+    // The insertion succeeded; set the parent.
+    lockedFile.setParent(getDir());
+  }
+  return entry;
 }
 
 //
