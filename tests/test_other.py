@@ -4461,9 +4461,6 @@ int main() {
     self.assertContained('hello_world.c', stdout)
 
   def test_emit_llvm(self):
-    # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
-    # We shouldn't need to copy the file here but if we don't then emcc will
-    # internally clobber the hello_world.ll in tests.
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
