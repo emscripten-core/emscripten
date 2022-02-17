@@ -398,7 +398,7 @@ static __wasi_fd_t doOpen(char* pathname,
       }
       auto created = backend->createFile(mode);
 
-      parsedPath.parent->insertEntry(pathParts.back(), created);
+      parsedPath.parent->insertChild(pathParts.back(), created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
       return wasmFS.getLockedFileTable().add(openFile);
@@ -474,7 +474,7 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   }
   // Create an empty in-memory directory.
   auto created = backend->createDirectory(mode);
-  parsedPath.parent->insertEntry(pathParts.back(), created);
+  parsedPath.parent->insertChild(pathParts.back(), created);
 
   // Update the times.
   auto lockedFile = created->locked();
@@ -676,7 +676,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   }
 
   // Input is valid, perform the unlink.
-  if (!parsedPath.parent->removeEntry(pathParts.back())) {
+  if (!parsedPath.parent->removeChild(pathParts.back())) {
     return -EPERM;
   }
   return 0;
@@ -844,7 +844,7 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   auto lockedNewParentDir = std::move(*maybeLockedNewParentDir);
-  auto newPath = lockedNewParentDir.getEntry(newBase);
+  auto newPath = lockedNewParentDir.getChild(newBase);
 
   // If old_path and new_path are the same, do nothing.
   if (newPath == oldParsedPath.child) {
@@ -887,17 +887,17 @@ long __syscall_rename(long old_path, long new_path) {
     } else {
       assert(false && "Unhandled file kind in rename");
     }
-    if (!lockedNewParentDir.removeEntry(newBase)) {
+    if (!lockedNewParentDir.removeChild(newBase)) {
       return -EPERM;
     }
   }
 
   // Unlink the oldpath and add the oldpath to the new parent dir.
-  if (!oldParsedPath.parent->removeEntry(oldPathParts.back())) {
+  if (!oldParsedPath.parent->removeChild(oldPathParts.back())) {
     // TODO: Put the file that was going to be overwritten back!
     return -EPERM;
   }
-  if (!lockedNewParentDir.insertEntry(newBase, oldParsedPath.child)) {
+  if (!lockedNewParentDir.insertChild(newBase, oldParsedPath.child)) {
     // TODO: Put all the removed files back!
     return -EPERM;
   }
@@ -925,7 +925,7 @@ long __syscall_symlink(char* old_path, char* new_path) {
 
   auto backend = parsedPath.parent->unlocked()->getBackend();
   auto created = backend->createSymlink(old_path);
-  if (!parsedPath.parent->insertEntry(pathParts.back(), created)) {
+  if (!parsedPath.parent->insertChild(pathParts.back(), created)) {
     return -EPERM;
   }
 

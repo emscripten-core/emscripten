@@ -38,14 +38,14 @@ MemoryDirectory::findEntry(const std::string& name) {
   });
 }
 
-std::shared_ptr<File> MemoryDirectory::getEntry(const std::string& name) {
+std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
   if (auto entry = findEntry(name); entry != entries.end()) {
     return entry->file;
   }
   return nullptr;
 }
 
-bool MemoryDirectory::removeEntry(const std::string& name) {
+bool MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
   if (entry == entries.end()) {
     return false;
@@ -54,7 +54,7 @@ bool MemoryDirectory::removeEntry(const std::string& name) {
   return true;
 }
 
-std::shared_ptr<File> MemoryDirectory::insertEntry(const std::string& name,
+std::shared_ptr<File> MemoryDirectory::insertChild(const std::string& name,
                                                    std::shared_ptr<File> file) {
   if (auto entry = findEntry(name); entry != entries.end()) {
     return entry->file;

@@ -43,9 +43,9 @@ class MemoryDirectory : public Directory {
 
   std::vector<Entry>::iterator findEntry(const std::string& name);
 
-  std::shared_ptr<File> getEntry(const std::string& name) override;
-  bool removeEntry(const std::string& name) override;
-  std::shared_ptr<File> insertEntry(const std::string& name,
+  std::shared_ptr<File> getChild(const std::string& name) override;
+  bool removeChild(const std::string& name) override;
+  std::shared_ptr<File> insertChild(const std::string& name,
                                     std::shared_ptr<File> file) override;
   std::string getName(std::shared_ptr<File> file) override;
   size_t getNumEntries() override { return entries.size(); }
