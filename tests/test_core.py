@@ -4557,13 +4557,13 @@ res64 - external 64\n''', header='''
         try {
           throw 3;
         } catch (int x){
-          printf("side: caught int %d\n", x); 
+          printf("side: caught int %d\n", x);
         } catch (float x){
-          printf("side: caught float %f\n", x); 
+          printf("side: caught float %f\n", x);
         }
       }
       '''
-      
+
     create_file('liblib.cpp', side)
     create_file('main.cpp', main)
     self.maybe_closure()
