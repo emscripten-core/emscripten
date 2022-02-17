@@ -753,6 +753,7 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+    self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
   def test_cmake_find_sdl2(self):
     os.mkdir('build')
