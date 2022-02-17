@@ -4539,6 +4539,48 @@ res64 - external 64\n''', header='''
       }
       ''', expected=['side: caught 5.3\nmain: caught 3\n'])
 
+  @with_both_eh_sjlj
+  @needs_dylink
+  def test_dylink_exceptions_try_catch_3(self):
+    main = r'''
+      #include <dlfcn.h>
+      int main() {
+        void* handle = dlopen("liblib.so", RTLD_LAZY);
+        void (*side)(void) = (void (*)(void))dlsym(handle, "side");
+        (side)();
+        return 0;
+      }
+    '''
+    side = r'''
+      #include <stdio.h>
+      extern "C" void side() {
+        try {
+          throw 3;
+        } catch (int x){
+          printf("side: caught int %d\n", x);
+        } catch (float x){
+          printf("side: caught float %f\n", x);
+        }
+      }
+      '''
+
+    create_file('liblib.cpp', side)
+    create_file('main.cpp', main)
+    self.maybe_closure()
+    # Same as dylink_test but takes source code as filenames on disc.
+    # side settings
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
+    out_file = self.build('liblib.cpp', js_outfile=False)
+    shutil.move(out_file, "liblib.so")
+
+    # main settings
+    self.set_setting('MAIN_MODULE', 1)
+    self.clear_setting('SIDE_MODULE')
+
+    expected = "side: caught int 3\n"
+    self.do_runf("main.cpp", expected)
+
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
@@ -8716,6 +8758,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  def test_pthread_dylink_exceptions(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-fexceptions')
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
+
+  @needs_dylink
+  @node_pthreads
   def test_pthread_dlopen(self):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
@@ -9023,6 +9074,13 @@ lto2 = make_run('lto2', emcc_args=['-flto', '-O2'])
 lto3 = make_run('lto3', emcc_args=['-flto', '-O3'])
 ltos = make_run('ltos', emcc_args=['-flto', '-Os'])
 ltoz = make_run('ltoz', emcc_args=['-flto', '-Oz'])
+
+thinlto0 = make_run('thinlto0', emcc_args=['-flto=thin', '-O0'])
+thinlto1 = make_run('thinlto1', emcc_args=['-flto=thin', '-O1'])
+thinlto2 = make_run('thinlto2', emcc_args=['-flto=thin', '-O2'])
+thinlto3 = make_run('thinlto3', emcc_args=['-flto=thin', '-O3'])
+thinltos = make_run('thinltos', emcc_args=['-flto=thin', '-Os'])
+thinltoz = make_run('thinltoz', emcc_args=['-flto=thin', '-Oz'])
 
 wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
 wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
