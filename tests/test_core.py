@@ -4542,7 +4542,7 @@ res64 - external 64\n''', header='''
   @with_both_eh_sjlj
   @needs_dylink
   def test_dylink_exceptions_try_catch_3(self):
-    main =r'''
+    main = r'''
       #include <dlfcn.h>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
@@ -4551,7 +4551,7 @@ res64 - external 64\n''', header='''
         return 0;
       }
     '''
-    side=r'''
+    side = r'''
       #include <stdio.h>
       extern "C" void side() {
         try {
