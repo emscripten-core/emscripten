@@ -88,7 +88,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestA
 emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize)
 {
 #if WASM_WORKER_NO_TLS
-	return emscripten_create_wasm_worker_no_tls(memalign(16, stackSize), stackSize, 0, 0);
+	return emscripten_create_wasm_worker_no_tls(memalign(16, stackSize), stackSize);
 #else
 	uint32_t tlsSize = __builtin_wasm_tls_size();
 	return emscripten_create_wasm_worker_with_tls(memalign(16, stackSize), stackSize, memalign(__builtin_wasm_tls_align(), tlsSize), tlsSize);

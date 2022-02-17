@@ -503,6 +503,7 @@ class MTLibrary(Library):
     # pthreads and Wasm workers are currently not supported together.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
+
 class DebugLibrary(Library):
   def __init__(self, **kwargs):
     self.is_debug = kwargs.pop('is_debug')
@@ -1045,9 +1046,12 @@ class libwasm_workers(MTLibrary):
 
   def get_base_name(self):
     name = 'libwasm_workers'
-    if not self.tls: name += '-notls'
-    if self.debug: name += '-debug'
-    if self.stack_check: name += '-stackcheck'
+    if not self.tls:
+      name += '-notls'
+    if self.debug:
+      name += '-debug'
+    if self.stack_check:
+      name += '-stackcheck'
     return name
 
   @classmethod
@@ -1056,7 +1060,7 @@ class libwasm_workers(MTLibrary):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS>=1, stack_check=settings.STACK_OVERFLOW_CHECK==2, **kwargs)
+    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
 
   def get_files(self):
     return files_in_path(
