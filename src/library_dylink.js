@@ -34,7 +34,7 @@ var LibraryDylink = {
     }
 
 #if !DISABLE_EXCEPTION_CATCHING
-    if(!sym && symName.startsWith("__cxa_find_matching_catch")){
+    if (!sym && symName.startsWith("__cxa_find_matching_catch")) {
       sym = Module["___cxa_find_matching_catch"];
     }
 #endif
