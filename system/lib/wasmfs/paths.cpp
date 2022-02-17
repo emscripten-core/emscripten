@@ -102,6 +102,11 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       return ParsedPath{std::move(lockedCurr), child};
     }
 
+    if (!child) {
+      err = -ENOENT;
+      return ParsedPath{{}, nullptr};
+    }
+
     if (child == forbiddenAncestor) {
       err = -EINVAL;
       return ParsedPath{{}, nullptr};
