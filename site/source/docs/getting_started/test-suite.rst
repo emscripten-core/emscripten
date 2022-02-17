@@ -4,9 +4,14 @@
 Emscripten Test Suite
 =====================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch. In addition to correctness tests, there are also benchmarks that you can run.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten
+functionality. These tests are an excellent resource for developers as they
+provide practical examples of most features, and are known to pass on the master
+branch. In addition to correctness tests, there are also benchmarks that you can
+run.
 
-This article explains how to run the test and benchmark suite, and provides an overview of what tests are available.
+This article explains how to run the test and benchmark suite, and provides an
+overview of what tests are available.
 
 Setting up
 ==========
@@ -24,7 +29,8 @@ Run the test suite runner (`tests/runner <https://github.com/emscripten-core/ems
 
     tests/runner
 
-The tests are divided into *modes*. You can run either an entire mode or an individual test, or use wildcards to run some tests in some modes. For example:
+The tests are divided into *modes*. You can run either an entire mode or an
+individual test, or use wildcards to run some tests in some modes. For example:
 
 .. code-block:: bash
 
@@ -37,7 +43,13 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
   # run all tests in a specific mode (here, wasm2gs -O1)
   tests/runner wasm2js1
 
-The *core* test modes (defined at the bottom of `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
+The *core* test modes (defined at the bottom of `tests/test_core.py
+<https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_)
+let you run a specific test in either asm.js or wasm, and with different
+optimization flags. There are also non-core test modes, that run tests in more
+special manner (in particular, in those tests it is not possible to say "run the
+test with a different optimization flag" - that is what the core tests are for).
+The non-core test modes include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -85,13 +97,25 @@ You can run a random subset of the test suite, using something like
 
     tests/runner random100
 
-Replace ``100`` with another number as you prefer. This will run that number of random tests, and tell you the statistical likelihood of almost all the test suite passing assuming those tests do. This works just like election surveys do - given a small sample, we can predict fairly well that so-and-so percent of the public will vote for candidate A. In our case, the "candidates" are pass or fail, and we can predict how much of the test suite will pass given that sample. Assuming the sample tests all pass, we can say with high likelihood that most of the test suite will in fact pass. (Of course, this is no guarantee, and even a single test failure is serious, however, this gives a quick estimate that your patch does not cause significant and obvious breakage.)
+Replace ``100`` with another number as you prefer. This will run that number of
+random tests, and tell you the statistical likelihood of almost all the test
+suite passing assuming those tests do. This works just like election surveys do
+- given a small sample, we can predict fairly well that so-and-so percent of the
+public will vote for candidate A. In our case, the "candidates" are pass or
+fail, and we can predict how much of the test suite will pass given that
+sample. Assuming the sample tests all pass, we can say with high likelihood that
+most of the test suite will in fact pass. (Of course, this is no guarantee, and
+even a single test failure is serious, however, this gives a quick estimate that
+your patch does not cause significant and obvious breakage.)
 
 Important Tests
 ===============
 
-Please see the bottom the file `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_ for the current test modes, as they may change slowly over time.
-When you want to run the entire test suite locally, these are currently the important commands:
+Please see the bottom the file `tests/test_core.py
+<https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_
+for the current test modes, as they may change slowly over time.  When you want
+to run the entire test suite locally, these are currently the important
+commands:
 
 .. code-block:: bash
 
@@ -155,7 +179,9 @@ you may want to modify include:
 Debugging test failures
 =======================
 
-Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emits debug output and intermediate files (the files go in **/tmp/emscripten_temp/**):
+Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it
+emits debug output and intermediate files (the files go in
+**/tmp/emscripten_temp/**):
 
 .. code-block:: bash
 
@@ -177,6 +203,5 @@ feature, and is useful for inspecting test outputs as well as temporary files
 generated by the test.  By default, the temporary directory will be cleaned
 between each test run, but you can add ``--no-clean`` to avoid this.
 
-
-The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code.
-
+The :ref:`Debugging` topic provides more guidance on how to debug
+Emscripten-generated code.
