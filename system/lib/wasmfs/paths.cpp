@@ -126,7 +126,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #endif
   }
 
-  // There was no path path to process in the loop.
+  // There was no path to process in the loop.
   return ParsedPath{std::move(curr->locked()), nullptr};
 }
 
