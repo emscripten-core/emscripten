@@ -270,7 +270,7 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   }
 
   // Nothing to flush for anything but a data file, but also not an error either
-  // way.
+  // way. TODO: in the future we may want syncing of directories.
   auto dataFile = openFile.locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
     dataFile->locked().flush();
