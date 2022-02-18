@@ -1023,6 +1023,12 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
       err('dlsym: ' + symbol + ' getting table slot for: ' + result);
 #endif
+
+#if ASYNCIFY
+      if(symbol in GOT && GOT[symbol].value != 0) {
+        return GOT[symbol].value 
+      }
+#endif
       // Insert the function into the wasm table.  If its a direct wasm function
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
