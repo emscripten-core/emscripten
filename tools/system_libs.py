@@ -615,7 +615,7 @@ class SjLjLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_wasm:
-      # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
+      # DISABLE_EXCEPTIOExceptionsN_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING=1',
@@ -1086,6 +1086,13 @@ class crtbegin(Library):
   def can_use(self):
     return super().can_use() and settings.USE_PTHREADS
 
+
+class libformatexception(Library):
+  name = 'libformatexception'
+  cflags = ['-Os']
+  src_dir = 'system/lib'
+  src_files = ['format_exception.cpp']
+  includes = ["system/lib/libcxxabi/src"]
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
@@ -1718,6 +1725,7 @@ def get_libs_to_link(args, forced, only_forced):
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
+  add_library('libformatexception')
   if '-nostartfiles' not in args:
     if settings.USE_PTHREADS:
       add_library('crtbegin')
