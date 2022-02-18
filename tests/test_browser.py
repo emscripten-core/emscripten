@@ -5190,6 +5190,12 @@ window.close = function() {
                expected='42',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
 
+  # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
+  def test_wasm_worker_gcc___thread(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'gcc___thread.c'),
+               expected='42',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', '-std=gnu11'])
+
   # Tests emscripten_wasm_worker_sleep()
   def test_wasm_worker_sleep(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_sleep.c'),
