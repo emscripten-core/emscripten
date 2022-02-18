@@ -42,6 +42,7 @@ void emscripten_wasm_worker_initialize(void *stackLowestAddress, uint32_t stackS
 	assert(stackSize % 16 == 0);
 
 #if !WASM_WORKER_NO_TLS
+	assert(__builtin_wasm_tls_align() != 0 || __builtin_wasm_tls_size() == 0); // Internal consistency check: Clang can report __builtin_wasm_tls_align to be zero.
 	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
 	assert(tlsSize == __builtin_wasm_tls_size());
 	// Set up TLS

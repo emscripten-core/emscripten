@@ -26,7 +26,9 @@ extern "C" {
 
    emscripten_create_wasm_worker_with_tls: Creates a Wasm Worker on given placed stack address and TLS area.
                                            Use the Wasm built-in functions __builtin_wasm_tls_align() and
-                                           __builtin_wasm_tls_size() to obtain the needed memory size for the TLS area.
+                                           __builtin_wasm_tls_size() to obtain the needed memory size for the TLS area
+                                           (though note that __builtin_wasm_tls_align() can return zero when the TLS size
+                                           is zero, so be careful to avoid a divide by zero if/when rounding to this alignment)
                                            Use this function to manually manage the memory that a Worker should use.
                                            This function does not use any dynamic memory allocation.
 
