@@ -198,7 +198,7 @@ var LibraryDylink = {
   },
 #endif
 
-#if MAIN_MODULE == 0
+#if !MAIN_MODULE
   _dlopen_js: function(filename, flag) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
@@ -208,6 +208,7 @@ var LibraryDylink = {
   _dlsym_js: function(handle, symbol) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
+  _dlinit: function() {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
@@ -671,15 +672,6 @@ var LibraryDylink = {
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     err('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
-    if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
-      LDSO.loadedLibsByName[lib] = {
-        refcount: Infinity,   // = nodelete
-        name:     '__main__',
-        module:   Module['asm'],
-        global:   true
-      };
-    }
-
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
     flags = flags || {global: true, nodelete: true}
@@ -969,6 +961,17 @@ var LibraryDylink = {
 #endif
     return result;
   },
+
+  _dlinit: function(main_dso_handle) {
+    var dso = {
+      refcount: Infinity,   // = nodelete
+      name:     '__main__',
+      module:   Module['asm'],
+      global:   true
+    };
+    LDSO.loadedLibsByName[dso.name] = dso;
+    LDSO.loadedLibsByHandle[main_dso_handle] = dso;
+  }
 #endif // MAIN_MODULE != 0
 };
 
