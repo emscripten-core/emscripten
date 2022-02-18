@@ -31,7 +31,7 @@ EM_JS(void, run_test, (), {
          break;
        }
        default: {
-           throw 'unknown custom message';
+         throw('unknown custom message');
        }
      }
    };
