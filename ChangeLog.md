@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.5
+3.1.6
 -----
+
+3.1.5 - 02/17/2022
+------------------
 - Emscripten no longer uses the `allocate()` runtime function.  For backwards
   compatabiliy with external JS code we still include this function by default
   but it will no longer be included in `-sSTRICT` mode.  Usages of this function
