@@ -53,7 +53,11 @@ var LibraryPThread = {
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
-        if (runtimeInitialized && !runtimeExited && typeof _pthread_self != 'undefined') {
+        if (runtimeInitialized && typeof _pthread_self != 'undefined'
+#if EXIT_RUNTIME
+        && !runtimeExited
+#endif
+        ) {
           t = _pthread_self();
         }
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
@@ -858,8 +862,13 @@ var LibraryPThread = {
     return 0;
   },
 
+#if PROXY_TO_PTHREAD
   __call_main__deps: ['exit', '$exitOnMainThread'],
   __call_main: function(argc, argv) {
+#if !EXIT_RUNTIME
+    // EXIT_RUNTIME==0 set, keeping main thread alive by default.
+    noExitRuntime = true;
+#endif
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -870,12 +879,12 @@ var LibraryPThread = {
       exitOnMainThread(returnCode);
     }
 #else
-    // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
 #if PTHREADS_DEBUG
     err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
