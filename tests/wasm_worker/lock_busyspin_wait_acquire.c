@@ -26,7 +26,7 @@ void test()
   success = emscripten_lock_busyspin_wait_acquire(&lock, 1000.0); // We already have the lock, and emscripten_lock is not recursive, so this should fail.
   t1 = emscripten_performance_now();
   assert(!success);
-  assert(t1 - t0 >= 1000); // We should have waited for the requested duration for the lock.
+  assert(t1 - t0 >= 900); // We should have waited for the requested duration for the lock.. apply some slack since timing can have some noise.
 
   emscripten_lock_release(&lock);
 }
