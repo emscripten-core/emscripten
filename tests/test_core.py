@@ -7639,6 +7639,7 @@ int main() {
     self.do_runf('main.c', 'HelloWorld!99')
 
   @require_v8
+  @no_memory64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
