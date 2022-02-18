@@ -5162,7 +5162,7 @@ window.close = function() {
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   def test_wasm_worker_malloc(self):
-    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_malloc.c'),
+    self.btest(path_from_root('tests', 'wasm_worker', 'malloc_wasm_worker.c'),
                expected='0',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
