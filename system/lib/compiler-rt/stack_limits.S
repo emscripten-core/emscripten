@@ -88,6 +88,9 @@ emscripten_wasm_worker_initialize:
 
   local.get 0
   local.get 1
+#ifdef __wasm64__
+  i64.extend_i32_u
+#endif
   PTR.add
   local.tee 0
   global.set __stack_base
