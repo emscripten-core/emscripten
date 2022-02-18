@@ -324,7 +324,7 @@ mergeInto(LibraryManager.library, {
       do {
         let val = Atomics.compareExchange(HEAPU32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        let wait = Atomics['waitAsync'](HEAPU32, lock >> 2, val, maxWaitMilliseconds);
+        var wait = Atomics['waitAsync'](HEAPU32, lock >> 2, val, maxWaitMilliseconds);
       } while(wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
