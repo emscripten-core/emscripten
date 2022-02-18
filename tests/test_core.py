@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
-from common import read_file, read_binary, require_node, require_v8
+from common import read_file, read_binary, require_v8
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
