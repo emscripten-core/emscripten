@@ -29,7 +29,7 @@ int test_builtins() {
   double d1 = 1.0101;
   double d2 = 0.10101;
   long double l1 = 12.0123L;
-  long double l2 = 21.3201L;
+  long double l2 = 3.3201L;
   TEST(fmax)
   TEST(fmin)
   TEST(fmod)
