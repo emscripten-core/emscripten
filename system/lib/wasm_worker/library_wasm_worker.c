@@ -42,7 +42,7 @@ void emscripten_wasm_worker_initialize(void *stackLowestAddress, uint32_t stackS
 	assert(stackSize % 16 == 0);
 
 #if !WASM_WORKER_NO_TLS
-	assert((uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
+	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
 	assert(tlsSize == __builtin_wasm_tls_size());
 	// Set up TLS
 	__wasm_init_tls(tlsAddress);
@@ -65,7 +65,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowes
 #else
 	assert((uintptr_t)stackLowestAddress % 16 == 0);
 	assert(stackSize % 16 == 0);
-	assert((uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0 && "TLS memory address not aligned in a call to emscripten_create_wasm_worker_with_tls()! Please allocate memory with alignment from __builtin_wasm_tls_align() when creating a Wasm Worker!");
+	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0 && "TLS memory address not aligned in a call to emscripten_create_wasm_worker_with_tls()! Please allocate memory with alignment from __builtin_wasm_tls_align() when creating a Wasm Worker!");
 	assert(tlsSize != 0 || __builtin_wasm_tls_size() == 0 && "Program code contains TLS: please use function emscripten_create_wasm_worker_with_tls() to create a Wasm Worker!");
 	assert(tlsSize == __builtin_wasm_tls_size() && "TLS size mismatch! Please reserve exactly __builtin_wasm_tls_size() TLS memory in a call to emscripten_create_wasm_worker_with_tls()");
 	assert(tlsAddress != 0 || tlsSize == 0);
