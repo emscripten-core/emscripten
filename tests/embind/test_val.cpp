@@ -389,14 +389,15 @@ int main()
   );
   ensure(val::global()["a"].as<int>() == 2);
   ensure_not(val::global()["a"].as<int>() == 3);
+  val k("a");
+  ensure(val::global()[k].as<int>() == 2);
+  ensure_not(val::global()[k].as<int>() == 3);
   
-  test("template<typename K> void set(const K& key, const val& v)");
+  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", val(2));
   ensure_js("a == 2");
   val::global().set("a", val(3));
   ensure_js("a == 3");
-  
-  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", NULL);
   ensure_js("a == 0");
   val::global().set("a", false);
@@ -405,6 +406,12 @@ int main()
   ensure_js("a == 2");
   val::global().set("a", "b");
   ensure_js("a == 'b'");
+  val::global().set(k, 1);
+  ensure_js("a == 1");
+  val v(3);
+  val::global().set(k, v);
+  ensure("a == 3");
+  ensure(val::global()[k].as<int>() == 3);
   
   test("template<typename... Args> val operator()(Args&&... args)");
   EM_ASM(
@@ -632,15 +639,6 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
 
-  test("property and reuse val");
-  val k("a key");
-  val::global("a").set(k, 1);
-  ensure(val::global("a")[k].as<int>() == 1);
-  val::global("a").set(k, 2);
-  ensure(val::global("a")[k].as<int>() == 2);
-  val v(3);
-  val::global("a").set(k, v);
-  ensure(val::global("a")[k].as<int>() == 3);
   printf("end\n");
   return 0;
 }
