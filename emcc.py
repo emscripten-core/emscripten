@@ -2307,7 +2307,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # a .mem file in most cases, since it is binary & compact). however, for
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
-    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.USE_SHARED_MEMORY
+    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
   else:
     # wasm includes the mem init in the wasm binary. The exception is
     # wasm2js, which behaves more like js.
