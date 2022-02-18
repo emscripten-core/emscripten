@@ -1214,9 +1214,10 @@ var LibraryBrowser = {
       _emscripten_get_window_title.buffer = _malloc(buflen);
     }
 
-    writeAsciiToMemory(
+    stringToUTF8(
       document.title.slice(0, buflen - 1),
-      _emscripten_get_window_title.buffer
+      _emscripten_get_window_title.buffer,
+      buflen
     );
 
     return _emscripten_get_window_title.buffer;
@@ -1225,7 +1226,7 @@ var LibraryBrowser = {
   emscripten_set_window_title__proxy: 'sync',
   emscripten_set_window_title__sig: 'vi',
   emscripten_set_window_title: function(title) {
-    setWindowTitle(AsciiToString(title));
+    setWindowTitle(UTF8ToString(title));
   },
 
   emscripten_get_screen_size__proxy: 'sync',

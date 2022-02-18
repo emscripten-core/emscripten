@@ -416,7 +416,7 @@ int main()
   ret = emscripten_set_webglcontextrestored_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextrestored_callback);
 
-  char *source_window_title = "test window title";
+  char *source_window_title = "test window title Äあ🙂";
   emscripten_set_window_title(source_window_title);
   char *current_window_title = emscripten_get_window_title();
   ret = (strcmp(source_window_title, current_window_title) == 0 \
