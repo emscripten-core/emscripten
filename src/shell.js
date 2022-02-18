@@ -309,6 +309,10 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
+      if (keepRuntimeAlive()) {
+        process['exitCode'] = status;
+        throw toThrow;
+      }
       logExceptionOnExit(toThrow);
       quit(status);
     };
