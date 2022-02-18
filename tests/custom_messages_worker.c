@@ -12,7 +12,7 @@
 
 EM_JS(void, run_test, (), {
    function sendMessageToMainThread(cmd, payload) {
-     self.postMessage({
+     postMessage({
        cmd: 'custom',
        customCmd: cmd,
        payload: payload,
