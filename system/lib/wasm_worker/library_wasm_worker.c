@@ -13,14 +13,7 @@
 emscripten_wasm_worker_t _emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
 emscripten_wasm_worker_t _emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
 
-void emscripten_stack_set_limits(uint32_t stackLowestAddress, uint32_t stackSize);
 void __wasm_init_tls(void *memory);
-void stackRestore(uint32_t stackBase);
-
-#if STACK_OVERFLOW_CHECK == 2
-// TODO:
-//void __set_stack_limits(uint32_t stackLowestAddress, uint32_t stackSize);
-#endif
 
 #if !WASM_WORKER_NO_TLS
 __attribute__((constructor(48)))
@@ -31,34 +24,6 @@ static void emscripten_wasm_worker_main_thread_initialize() {
 }
 #endif
 
-// Called in the Wasm Worker thread context to set up the Worker stack space and TLS
-void emscripten_wasm_worker_initialize(void *stackLowestAddress, uint32_t stackSize
-#if !WASM_WORKER_NO_TLS
-	, void *tlsAddress, uint32_t tlsSize
-#endif
-	) {
-
-	assert((uintptr_t)stackLowestAddress % 16 == 0);
-	assert(stackSize % 16 == 0);
-
-#if !WASM_WORKER_NO_TLS
-	assert(__builtin_wasm_tls_align() != 0 || __builtin_wasm_tls_size() == 0); // Internal consistency check: Clang can report __builtin_wasm_tls_align to be zero.
-	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0);
-	assert(tlsSize == __builtin_wasm_tls_size());
-	// Set up TLS
-	__wasm_init_tls(tlsAddress);
-#endif
-
-	// Set up stack
-	uint32_t stackTop = (uint32_t)stackLowestAddress + stackSize;
-	emscripten_stack_set_limits(stackTop, stackSize);
-	stackRestore(stackTop);
-#if STACK_OVERFLOW_CHECK == 2
-	// TODO: Cannot call this function from C code, Binaryen does not want to emit the function then
-	//__set_stack_limits((uint32_t)stackLowestAddress, stackSize);
-#endif
-}
-
 emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize)
 {
 #if WASM_WORKER_NO_TLS
@@ -66,6 +31,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowes
 #else
 	assert((uintptr_t)stackLowestAddress % 16 == 0);
 	assert(stackSize % 16 == 0);
+	assert(__builtin_wasm_tls_align() != 0 || __builtin_wasm_tls_size() == 0); // Internal consistency check: Clang can report __builtin_wasm_tls_align to be zero if there is no TLS used - double check it never reports zero if it is used.
 	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0 && "TLS memory address not aligned in a call to emscripten_create_wasm_worker_with_tls()! Please allocate memory with alignment from __builtin_wasm_tls_align() when creating a Wasm Worker!");
 	assert(tlsSize != 0 || __builtin_wasm_tls_size() == 0 && "Program code contains TLS: please use function emscripten_create_wasm_worker_with_tls() to create a Wasm Worker!");
 	assert(tlsSize == __builtin_wasm_tls_size() && "TLS size mismatch! Please reserve exactly __builtin_wasm_tls_size() TLS memory in a call to emscripten_create_wasm_worker_with_tls()");

@@ -99,7 +99,7 @@ int main()
 #define NUM_THREADS 10
   for(int i = 0; i < NUM_THREADS; ++i)
   {
-    void *stack = malloc(1024);
+    void *stack = memalign(16, 1024);
     emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(stack, 1024);
     emscripten_wasm_worker_post_function_vi(worker, (void (*)(int))schedule_work, 0);
   }

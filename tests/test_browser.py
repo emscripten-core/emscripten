@@ -5160,6 +5160,16 @@ window.close = function() {
                expected='0',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'])
 
+  # Tests Wasm Worker thread stack setup
+  @parameterized({
+    '': ([],),
+    'no_tls': (['-sWASM_WORKERS_NO_TLS=1'],),
+  })
+  def test_wasm_worker_thread_stack(self, args):
+    self.btest(path_from_root('tests', 'wasm_worker', 'thread_stack.c'),
+               expected='0',
+               args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1'] + args)
+
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   def test_wasm_worker_malloc(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'malloc_wasm_worker.c'),
