@@ -9680,6 +9680,20 @@ int main(void) {
     # Check an absolute code size as well, with some slack.
     self.assertLess(abs(changed - 4994), 150)
 
+  def test_INCOMING_MODULE_JS_API_missing(self):
+    create_file('pre.js', '''
+    Module['onRuntimeInitialized'] = () => console.log('initialized')
+    ''')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.do_runf(test_file('hello_world.c'), 'initialized')
+
+    # The INCOMING_MODULE_JS_API setting can limit the incoming module
+    # API, and we assert if the incoming module has a property that
+    # is ignored due to this setting.
+    self.set_setting('INCOMING_MODULE_JS_API', [])
+
+    self.do_runf(test_file('hello_world.c'), 'Aborted(`Module.onRuntimeInitialized` was supplied but `onRuntimeInitialized` not included in INCOMING_MODULE_JS_API)', assert_returncode=NON_ZERO)
+
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
     self.build('atomics.c')

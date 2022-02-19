@@ -340,6 +340,9 @@ def apply_settings(changes):
   settings object.
   """
 
+  # Stash a copy of all available incoming APIs before we possibly override it
+  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API
+
   def standardize_setting_change(key, value):
     # boolean NO_X settings are aliases for X
     # (note that *non*-boolean setting values have special meanings,
