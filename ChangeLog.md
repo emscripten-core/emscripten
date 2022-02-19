@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.6
 -----
+- Remove support for deprecated `EMMAKEN_COMPILER`, `EMMAKEN_CFLAGS`, and
+  `EMMAKEN_NO_SDK`  environment variables.  These are all legacy and redundant
+  in the face of other settings/flags:
+   - `EMMAKEN_COMPILER` -> `LLVM_ROOT` in the config settings
+   - `EMMAKEN_CFLAGS` -> `EMCC_CFLAGS`
+   - `EMMAKEN_NO_SDK` -> standard `-nostdlib` and `-nostdinc` flags
 
 3.1.5 - 02/17/2022
 ------------------
