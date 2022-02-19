@@ -198,10 +198,14 @@ public:
     : file(file), lock(file->mutex, std::defer_lock) {}
   bool trylock() { return lock.try_lock(); }
   size_t getSize() { return file->getSize(); }
-  mode_t& mode() { return file->mode; }
-  time_t& ctime() { return file->ctime; }
-  time_t& mtime() { return file->mtime; }
-  time_t& atime() { return file->atime; }
+  mode_t getMode() { return file->mode; }
+  void setMode(mode_t mode) { file->mode = mode; }
+  time_t getCTime() { return file->ctime; }
+  void setCTime(time_t time) { file->ctime = time; }
+  time_t getMTime() { return file->mtime; }
+  void setMTime(time_t time) { file->mtime = time; }
+  time_t getATime() { return file->atime; }
+  void setATime(time_t time) { file->atime = time; }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
   // specified by the parent weak_ptr.
