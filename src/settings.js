@@ -339,6 +339,13 @@ var EXCEPTION_DEBUG = 0;
 // [link]
 var DEMANGLE_SUPPORT = 0;
 
+// If 1, expose a formatException function that can be used to format a top
+// level C++ exception. If the thrown exception was
+// throw new std::runtime_error("a big problem occurred")
+// It returns a string like: "Cpp Exception std::runtime_error: A big problem occured."
+// [link]
+var FORMAT_EXCEPTION_SUPPORT = 0;
+
 // Print out when we enter a library call (library*.js). You can also unset
 // Runtime.debug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is

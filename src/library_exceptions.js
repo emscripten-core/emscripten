@@ -428,6 +428,17 @@ var LibraryExceptions = {
     catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
+
+  $formatException__deps: ["format_exception"],
+  $formatException: function(excPtr){
+    var stackTop = stackSave();
+    var result_ptr = stackAlloc(4);
+    {{{ exportedAsmFunc('_format_exception') }}}(result_ptr, excPtr);
+    var result = UTF8ToString({{{ makeGetValue('result_ptr', '0', '*') }}});
+    stackRestore(stackTop);
+    _free(result_ptr);
+    return result;
+  }
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.

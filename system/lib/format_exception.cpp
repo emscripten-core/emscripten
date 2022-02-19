@@ -1,11 +1,9 @@
-#define __USING_EMSCRIPTEN_EXCEPTIONS__
 #include "cxa_exception.h"
 #include "cxxabi.h"
 #include <stdio.h>
 #include <typeinfo>
 
 extern "C" {
-
 #define DEMANGLED_BUF_SIZE 100
 
 int __cxa_can_catch(const std::type_info* catchType,
