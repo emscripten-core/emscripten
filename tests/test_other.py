@@ -7204,7 +7204,7 @@ int main() {
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
     self.assertLess(ratio, size_slack)
 
-  def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, check_size=True,
+  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -7314,7 +7314,7 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal_main.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [])
+    self.run_metadce_test('minimal_main.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa

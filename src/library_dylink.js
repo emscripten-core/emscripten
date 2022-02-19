@@ -747,9 +747,8 @@ var LibraryDylink = {
     // libModule <- lib
     function getLibModule() {
       // lookup preloaded cache first
-      if (Module['preloadedWasm'] !== undefined &&
-          Module['preloadedWasm'][lib] !== undefined) {
-        var libModule = Module['preloadedWasm'][lib];
+      if (typeof preloadedWasm != 'undefined' && preloadedWasm[lib]) {
+        var libModule = preloadedWasm[lib];
         return flags.loadAsync ? Promise.resolve(libModule) : libModule;
       }
 
