@@ -1094,6 +1094,7 @@ class libformatexception(Library):
   includes = ['system/lib/libcxxabi/src']
   cflags = ['-Os', '-D__USING_EMSCRIPTEN_EXCEPTIONS__']
 
+
 class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
