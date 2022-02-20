@@ -430,14 +430,16 @@ var LibraryExceptions = {
   },
 
   $formatException__deps: ["format_exception", "$withStackSave"],
-  $formatException: withStackSave(function(excPtr){
-    var result_ptr = stackAlloc({{{ POINTER_SIZE }}});
-    _emscripten_format_exception(result_ptr, excPtr);
-    var utf8_addr = {{{ makeGetValue('result_ptr', '0', '*') }}};
-    var result = UTF8ToString(utf8_addr);
-    _free(utf_addr);
-    return result;
-  }),
+  $formatException: function(excPtr){
+      return withStackSave(function(){
+      var result_ptr = stackAlloc({{{ POINTER_SIZE }}});
+      _emscripten_format_exception(result_ptr, excPtr);
+      var utf8_addr = {{{ makeGetValue('result_ptr', '0', '*') }}};
+      var result = UTF8ToString(utf8_addr);
+      _free(utf_addr);
+      return result;
+    });
+  },
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
