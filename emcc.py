@@ -2074,6 +2074,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
+  if settings.FORMAT_EXCEPTION_SUPPORT:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$formatException']
+    settings.EXPORTED_FUNCTIONS += ["_emscripten_format_exception"]
+
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.
