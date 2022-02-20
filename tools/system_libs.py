@@ -1146,6 +1146,9 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
         'cxa_personality.cpp'
       ]
 
+    if settings.FORMAT_EXCEPTION_SUPPORT:
+      filenames += ["format_exception.cpp"]
+
     return files_in_path(
         path='system/lib/libcxxabi/src',
         filenames=filenames)
