@@ -2038,10 +2038,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # overrides that.
     default_setting(user_settings, 'ABORTING_MALLOC', 0)
 
-  if settings.SHARED_MEMORY:
-    # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
-    settings.TEXTDECODER = 0
-
   if settings.USE_PTHREADS:
     if settings.USE_PTHREADS == 2:
       exit_with_error('USE_PTHREADS=2 is no longer supported')
