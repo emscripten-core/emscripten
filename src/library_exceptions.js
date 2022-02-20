@@ -433,7 +433,7 @@ var LibraryExceptions = {
   $formatException: function(excPtr){
     var stackTop = stackSave();
     var result_ptr = stackAlloc(4);
-    {{{ exportedAsmFunc('_format_exception') }}}(result_ptr, excPtr);
+    _format_exception(result_ptr, excPtr);
     var result = UTF8ToString({{{ makeGetValue('result_ptr', '0', '*') }}});
     stackRestore(stackTop);
     _free(result_ptr);
