@@ -297,7 +297,7 @@ function ${name}(${args}) {
             // (since there is no automatic proxying architecture available)
             contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function "${name}" in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
   ${body}
 }\n`);
           }
