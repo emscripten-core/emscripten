@@ -433,8 +433,9 @@ var LibraryExceptions = {
   $formatException: withStackSave(function(excPtr){
     var result_ptr = stackAlloc(4);
     _format_exception(result_ptr, excPtr);
-    var result = UTF8ToString({{{ makeGetValue('result_ptr', '0', '*') }}});
-    _free(result_ptr);
+    var utf8_addr = {{{ makeGetValue('result_ptr', '0', '*') }}};
+    var result = UTF8ToString(utf8_addr);
+    _free(utf_addr);
     return result;
   }),
 };
