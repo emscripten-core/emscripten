@@ -1589,17 +1589,17 @@ int main(int argc, char **argv)
               try {
                   Module["_throw_exc"](i);
               } catch(p){
-                  console.log(Module["formatException"](p));
+                  console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
               }
             }
           });
       }
       """,
-      "Cpp Exception: The exception is an object of type 'int' at address 0x503868 which does not inherit from std::exception\n"
-      "Cpp Exception: The exception is an object of type 'char' at address 0x503880 which does not inherit from std::exception\n"
+      "Cpp Exception: The exception is an object of type 'int' at address xxx which does not inherit from std::exception\n"
+      "Cpp Exception: The exception is an object of type 'char' at address xxx which does not inherit from std::exception\n"
       "Cpp Exception std::runtime_error: abc\n"
       "Cpp Exception myexception: My exception happened\n"
-      "Cpp Exception: The exception is an object of type 'char const*' at address 0x5038e8 which does not inherit from std::exception\n"
+      "Cpp Exception: The exception is an object of type 'char const*' at address xxx which does not inherit from std::exception\n"
     )
 
   @with_both_eh_sjlj
