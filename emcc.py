@@ -2076,7 +2076,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.FORMAT_EXCEPTION_SUPPORT:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$formatException']
-    settings.EXPORTED_FUNCTIONS += ["_emscripten_format_exception"]
+    settings.EXPORTED_FUNCTIONS += ["_emscripten_format_exception", "_free"]
+    settings.EXPORTED_RUNTIME_METHODS += ["formatException"]
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage

@@ -429,7 +429,7 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
-  $formatException__deps: ["emscripten_format_exception", "$withStackSave"],
+  $formatException__deps: ["emscripten_format_exception", "$withStackSave", "free"],
   $formatException: function(excPtr){
       return withStackSave(function(){
       var result_ptr = stackAlloc({{{ POINTER_SIZE }}});

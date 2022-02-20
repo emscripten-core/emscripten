@@ -1544,6 +1544,65 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_both_eh_sjlj
+  def test_format_exception(self):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_throw_exc'])
+    self.set_setting('FORMAT_EXCEPTION_SUPPORT')
+    self.maybe_closure()
+    self.do_run(
+      """
+      #include <emscripten.h>
+      #include <exception>
+      #include <stdexcept>
+      using namespace std;
+
+      class myexception : public exception
+      {
+        virtual const char* what() const throw() { return "My exception happened"; }
+      } myex;
+
+      extern "C" void
+      throw_exc(int x)
+      {
+        if (x == 1) {
+          throw 1000;
+        }
+        if (x == 2) {
+          throw 'c';
+        }
+        if (x == 3) {
+          throw runtime_error("abc");
+        }
+        if (x == 4) {
+          throw myex;
+        }
+        if (x == 5) {
+          throw "abc";
+        }
+      }
+
+      int
+      main(){
+          EM_ASM({
+            for(let i = 1; i < 6; i++){
+              try {
+                  Module["_throw_exc"](i);
+              } catch(p){
+                  console.log(Module["formatException"](p));
+              }
+            }
+          });
+      }
+      """,
+      "Cpp Exception: The exception is an object of type 'int' at address 0x503868 which does not inherit from std::exception\n"
+      "Cpp Exception: The exception is an object of type 'char' at address 0x503880 which does not inherit from std::exception\n"
+      "Cpp Exception std::runtime_error: abc\n"
+      "Cpp Exception myexception: My exception happened\n"
+      "Cpp Exception: The exception is an object of type 'char const*' at address 0x5038e8 which does not inherit from std::exception\n"
+    )
+
+  @with_both_eh_sjlj
   def test_bad_typeid(self):
     self.do_run(r'''
 // exception example
