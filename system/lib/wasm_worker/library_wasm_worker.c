@@ -4,6 +4,10 @@
 #include <emscripten/heap.h>
 #include <malloc.h>
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
+#error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
+#endif
+
 // Options:
 // #define WASM_WORKER_NO_TLS 0/1 : set to 1 to disable TLS compilation support for a small code size gain
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
