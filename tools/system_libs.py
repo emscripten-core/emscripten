@@ -615,7 +615,7 @@ class SjLjLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_wasm:
-      # DISABLE_EXCEPTIOExceptionsN_THROWING=0 is the default, which is for Emscripten
+      # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING=1',
