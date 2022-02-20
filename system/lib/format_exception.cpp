@@ -10,7 +10,7 @@ int __cxa_can_catch(const std::type_info* catchType,
                     const std::type_info* excpType,
                     void** thrown);
 
-int format_exception(char** result, void* exc_ptr) {
+int emscripten_format_exception(char** result, void* exc_ptr) {
   __cxxabiv1::__cxa_exception* exc_info =
     (__cxxabiv1::__cxa_exception*)exc_ptr - 1;
   std::type_info* exc_type = exc_info->exceptionType;
