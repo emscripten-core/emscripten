@@ -1087,14 +1087,6 @@ class crtbegin(Library):
     return super().can_use() and settings.USE_PTHREADS
 
 
-class libformatexception(Library):
-  name = 'libformatexception'
-  src_dir = 'system/lib'
-  src_files = ['format_exception.cpp']
-  includes = ['system/lib/libcxxabi/src']
-  cflags = ['-Os', '-D__USING_EMSCRIPTEN_EXCEPTIONS__']
-
-
 class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
@@ -1787,8 +1779,6 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libc++abi')
     if settings.EXCEPTION_HANDLING:
       add_library('libunwind')
-  if settings.FORMAT_EXCEPTION_SUPPORT:
-    add_library("libformatexception")
 
   if settings.USE_ASAN:
     force_include.append('libasan_rt')
