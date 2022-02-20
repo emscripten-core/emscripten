@@ -5202,7 +5202,7 @@ window.close = function() {
 
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   def test_wasm_worker_gcc___thread(self):
-    self.btest(path_from_root('tests', 'wasm_worker', 'gcc___thread.c'),
+    self.btest(path_from_root('tests', 'wasm_worker', 'gcc___Thread.c'),
                expected='42',
                args=['-s', 'WASM_WORKERS=1', '-s', 'MINIMAL_RUNTIME=1', '-std=gnu11'])
 
