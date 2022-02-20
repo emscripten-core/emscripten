@@ -89,7 +89,7 @@ void emscripten_wasm_worker_post_function_sig(emscripten_wasm_worker_t id, void 
 // If the given memory address contains value 'expectedValue', puts the calling thread to sleep to wait for that address to be notified.
 // Returns one of the ATOMICS_WAIT_* return codes.
 // NOTE: This function takes in the wait value in int64_t nanosecond units. Pass in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait infinitely long.
-static inline __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i32(int32_t *address, int expectedValue, int64_t maxWaitNanoseconds)
+static __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i32(int32_t *address, int expectedValue, int64_t maxWaitNanoseconds)
 {
 	return __builtin_wasm_memory_atomic_wait32(address, expectedValue, maxWaitNanoseconds);
 }
@@ -98,7 +98,7 @@ static inline __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wa
 // If the given memory address contains value 'expectedValue', puts the calling thread to sleep to wait for that address to be notified.
 // Returns one of the ATOMICS_WAIT_* return codes.
 // NOTE: This function takes in the wait value in int64_t nanosecond units. Pass in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait infinitely long.
-static inline __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i64(int64_t *address, int64_t expectedValue, int64_t maxWaitNanoseconds)
+static __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i64(int64_t *address, int64_t expectedValue, int64_t maxWaitNanoseconds)
 {
 	return __builtin_wasm_memory_atomic_wait64(address, expectedValue, maxWaitNanoseconds);
 }
@@ -110,7 +110,7 @@ static inline __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wa
 // Pass count == EMSCRIPTEN_NOTIFY_ALL_WAITERS to notify all waiters on the given location.
 // Returns the number of threads that were woken up.
 // Note: this function is used to notify both waiters waiting on an i32 and i64 addresses.
-static inline __attribute__((always_inline)) int64_t emscripten_wasm_notify(int32_t *address, int64_t count)
+static __attribute__((always_inline)) int64_t emscripten_wasm_notify(int32_t *address, int64_t count)
 {
 	return __builtin_wasm_memory_atomic_notify(address, count);
 }
