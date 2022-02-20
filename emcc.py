@@ -1768,7 +1768,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '$mergeLibSymbols',
     ]
 
-  if settings.USE_PTHREADS: # or settings.WASM_WORKERS:
+  if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '$registerTlsInit',
     ]

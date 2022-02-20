@@ -50,6 +50,8 @@ def get_base_cflags(force_object_files=False):
     flags += ['-sRELOCATABLE']
   if settings.MEMORY64:
     flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
+  if settings.WASM_WORKERS:
+    flags += ['-sWASM_WORKERS']
   return flags
 
 
@@ -478,7 +480,7 @@ class MTLibrary(Library):
     if self.is_mt:
       cflags += ['-sUSE_PTHREADS']
     if self.is_ww:
-      cflags += ['-s', 'WASM_WORKERS=1']
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
@@ -1149,7 +1151,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -1234,7 +1236,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
