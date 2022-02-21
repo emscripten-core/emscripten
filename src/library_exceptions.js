@@ -429,6 +429,7 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
+#if !DISABLE_EXCEPTION_CATCHING
   $formatException__deps: ["emscripten_format_exception", "$withStackSave", "free"],
   $formatException: function(excPtr){
       return withStackSave(function(){
@@ -440,6 +441,7 @@ var LibraryExceptions = {
       return result;
     });
   },
+#endif
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
