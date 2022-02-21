@@ -5340,7 +5340,7 @@ Stack dump:
   @also_with_minimal_runtime
   def test_wasm_worker_no_proxied_js_functions(self):
     self.btest(path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.c'), expected='0',
-      args=['--js-library', path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+               args=['--js-library', path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
 
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime
