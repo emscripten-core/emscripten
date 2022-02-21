@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <typeinfo>
 
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+
 extern "C" {
 #define DEMANGLED_BUF_SIZE 100
 
@@ -41,3 +43,5 @@ int emscripten_format_exception(char** result, void* exc_ptr) {
   return ret;
 }
 }
+
+#endif // __USING_EMSCRIPTEN_EXCEPTIONS__
