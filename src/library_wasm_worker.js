@@ -80,18 +80,25 @@ mergeInto(LibraryManager.library, {
 #endif
 #endif
     let worker = _wasm_workers[_wasm_workers_id] = new Worker(
-#if WASM_WORKERS == 2
+#if WASM_WORKERS == 2 // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file as a Blob URL. (convenient, but not CSP security safe, since this is eval-like)
       __wasmWorkerBlobUrl
-#else
-      Module['wasmWorker']
+#elif MINIMAL_RUNTIME // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from the main HTML file in parallel to all other files for best performance
+      Module['$wb'] // $wb="Wasm worker Blob", abbreviated since not DCEable
+#else // default runtime loads the .ww.js file on demand.
+      locateFile('{{{ WASM_WORKER_FILE }}}')
 #endif
     );
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       '$ww': _wasm_workers_id, // Signal with a non-zero value that this Worker will be a Wasm Worker, and not the main browser thread.
       'wasm': Module['wasm'],
+#if MINIMAL_RUNTIME
       'js': Module['js'],
       'mem': wasmMemory,
+#else
+      'js': Module['mainScriptUrlOrBlob'] || _scriptDir,
+      'wasmMemory': wasmMemory,
+#endif
       'sb': stackLowestAddress, // sb = stack base
       'sz': stackSize,          // sz = stack size
 #if !WASM_WORKERS_NO_TLS

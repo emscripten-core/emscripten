@@ -13,7 +13,8 @@ volatile int threadsOk = 0;
 
 void test_stack(int i)
 {
-  EM_ASM(console.log(`In thread ${$0}, stack base=0x${$1.toString(16)}, end=0x${$2.toString(16)}`), i, emscripten_stack_get_base(), emscripten_stack_get_end());
+  EM_ASM(console.log(`In thread ${$0}, stack low addr=0x${$1.toString(16)}, emscripten_stack_get_base()=0x${$2.toString(16)}, emscripten_stack_get_end()=0x${$3.toString(16)}, THREAD_STACK_SIZE=0x${$4.toString(16)}`),
+    i, thread_stack[i], emscripten_stack_get_base(), emscripten_stack_get_end(), THREAD_STACK_SIZE);
   assert(emscripten_stack_get_base() == (uintptr_t)thread_stack[i] + THREAD_STACK_SIZE);
   assert(emscripten_stack_get_end() == (uintptr_t)thread_stack[i]);
 

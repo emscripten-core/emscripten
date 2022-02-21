@@ -65,12 +65,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Download wasm_worker file
   if settings.WASM_WORKERS:
     if settings.MODULARIZE:
-      if settings.WASM_WORKERS == 1:
-        modularize_imports += ['wasmWorker: URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }))' % len(files_to_load)]
+      if settings.WASM_WORKERS == 1: # '$wb': Wasm Worker Blob
+        modularize_imports += ['$wb: URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }))' % len(files_to_load)]
       modularize_imports += ['js: js']
     else:
       if settings.WASM_WORKERS == 1:
-        then_statements += ['%s.wasmWorker = URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }));' % (settings.EXPORT_NAME, len(files_to_load))]
+        then_statements += ['%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }));' % (settings.EXPORT_NAME, len(files_to_load))]
 
     if download_wasm and settings.WASM_WORKERS == 1:
       files_to_load += ["binary('%s')" % (target_basename + '.ww.js')]

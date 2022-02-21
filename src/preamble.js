@@ -48,10 +48,10 @@ if (typeof WebAssembly != 'object') {
 
 var wasmMemory;
 
-#if USE_PTHREADS
+#if SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
-#endif // USE_PTHREADS
+#endif // SHARED_MEMORY
 
 //========================================
 // Runtime essentials
@@ -352,6 +352,10 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
@@ -1064,9 +1068,13 @@ function createWasm() {
     // is in charge of programatically exporting them on the global object.
     exportAsmFunctions(exports);
 #endif
-#if USE_PTHREADS
+
+#if SHARED_MEMORY
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+
+#if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
