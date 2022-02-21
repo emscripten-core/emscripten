@@ -1543,12 +1543,12 @@ int main(int argc, char **argv)
     create_file('main.cpp', 'int main() { throw; }')
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
-  @with_both_eh_sjlj
   def test_format_exception(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_throw_exc'])
     self.set_setting('FORMAT_EXCEPTION_SUPPORT')
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
     self.do_run(
       """
