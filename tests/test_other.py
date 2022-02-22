@@ -7193,7 +7193,7 @@ int main() {
     expected_basename = os.path.splitext(filename)[0]
     expected_basename += args_to_filename(args)
 
-    self.run_process([compiler_for(filename), filename, '-g2'] + args)
+    self.run_process([compiler_for(filename), filename, '-g2'] + args + self.get_emcc_args())
     # find the imports we send from JS
     js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
@@ -7271,6 +7271,7 @@ int main() {
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
+    self.set_setting('INCOMING_MODULE_JS_API', [])
     self.run_metadce_test('minimal.c', *args)
 
   @node_pthreads
