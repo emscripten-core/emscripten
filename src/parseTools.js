@@ -938,8 +938,9 @@ function modifyFunction(text, func) {
 }
 
 function runOnMainThread(text) {
-  assert(!WASM_WORKERS || !USE_PTHREADS); // USE_PTHREADS and WASM_WORKERS not supported simultaneously.
-  if (WASM_WORKERS) {
+  if (WASM_WORKERS && USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else if (WASM_WORKERS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
   } else if (USE_PTHREADS) {
     return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';

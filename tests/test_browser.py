@@ -5197,6 +5197,12 @@ window.close = function() {
     self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'malloc_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
+  # Tests Wasm Worker+pthreads simultaneously
+  @also_with_minimal_runtime
+  def test_wasm_worker_and_pthreads(self):
+    self.skipTest('skipped to debug CI')
+    self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_and_pthread.c'), expected='0', args=['-sWASM_WORKERS', '-pthread'])
+
   # Tests emscripten_wasm_worker_self_id() function
   @also_with_minimal_runtime
   def test_wasm_worker_self_id(self):

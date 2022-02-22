@@ -2184,8 +2184,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       exit_with_error('TODO: -s MAIN_MODULE=1 is currently not supported with -s WASM_WORKERS!')
     if settings.PROXY_TO_WORKER:
       exit_with_error('--proxy-to-worker is not supported with -s WASM_WORKERS!')
-    if settings.USE_PTHREADS:
-      exit_with_error('TODO: -pthread and -s USE_PTHREADS=1 are currently not supported with -s WASM_WORKERS!')
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
