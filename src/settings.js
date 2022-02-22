@@ -853,8 +853,8 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // optimize.
 //
 // Setting this list to [], or at least a short and concise set of names you
-// actually use, can be very useful for reducing code size. By default the
-// list contains all the possible APIs.
+// actually use, can be very useful for reducing code size. By default, the
+// list contains a set of commonly used symbols.
 //
 // FIXME: should this just be  0  if we want everything?
 // [link]
