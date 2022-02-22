@@ -1546,7 +1546,6 @@ int main(int argc, char **argv)
   def test_format_exception(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_throw_exc'])
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException'])
     self.maybe_closure()
@@ -1560,7 +1559,7 @@ int main(int argc, char **argv)
         virtual const char* what() const throw() { return "My exception happened"; }
       } myex;
 
-      extern "C" void throw_exc(int x) {
+      EMSCRIPTEN_KEEPALIVE extern "C" void throw_exc(int x) {
         if (x == 1) {
           throw 1000;
         }

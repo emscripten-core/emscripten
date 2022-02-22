@@ -2075,7 +2075,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if (
-      "$formatException" in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or
+      '$formatException' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or
       settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING
   ):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$formatException']
