@@ -122,7 +122,10 @@ function ready() {
   if (!ENVIRONMENT_IS_WASM_WORKER) {
 #endif
     run();
-#if USE_PTHREADS || WASM_WORKERS
+#if USE_PTHREADS
+  }
+#endif
+#if WASM_WORKERS
   }
 #endif
 #else
