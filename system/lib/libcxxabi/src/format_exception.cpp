@@ -11,7 +11,7 @@ int __cxa_can_catch(const std::type_info* catchType,
                     const std::type_info* excpType,
                     void** thrown);
 
-int emscripten_format_exception(char** result, void* exc_ptr) {
+char* emscripten_format_exception(void* exc_ptr) {
   __cxxabiv1::__cxa_exception* exc_info =
     (__cxxabiv1::__cxa_exception*)exc_ptr - 1;
   std::type_info* exc_type = exc_info->exceptionType;
@@ -24,22 +24,22 @@ int emscripten_format_exception(char** result, void* exc_ptr) {
   }
 
   int can_catch = __cxa_can_catch(&typeid(std::exception), exc_type, &exc_ptr);
-  int ret;
+  char* result = NULL;
   if (can_catch) {
     const char* exc_what = ((std::exception*)exc_ptr)->what();
-    ret = asprintf(result, "Cpp Exception %s: %s", exc_name, exc_what);
+    asprintf(&result, "Cpp Exception %s: %s", exc_name, exc_what);
   } else {
-    ret = asprintf(result,
-                   "Cpp Exception: The exception is an object of type '%s' at "
-                   "address %p which does not inherit from std::exception",
-                   exc_name,
-                   exc_ptr);
+    asprintf(&result,
+             "Cpp Exception: The exception is an object of type '%s' at "
+             "address %p which does not inherit from std::exception",
+             exc_name,
+             exc_ptr);
   }
 
   if (demangled_buf) {
     free(demangled_buf);
   }
-  return ret;
+  return result;
 }
 }
 
