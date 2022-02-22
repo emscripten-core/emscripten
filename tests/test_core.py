@@ -1547,8 +1547,8 @@ int main(int argc, char **argv)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_throw_exc'])
-    self.set_setting('FORMAT_EXCEPTION_SUPPORT')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException'])
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
