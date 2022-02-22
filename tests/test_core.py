@@ -1590,13 +1590,13 @@ int main(int argc, char **argv)
           });
       }
     '''
-    expected = '''
+    expected = '''\
 Cpp Exception: The exception is an object of type 'int' at address xxx which does not inherit from std::exception
 Cpp Exception: The exception is an object of type 'char' at address xxx which does not inherit from std::exception
 Cpp Exception std::runtime_error: abc
 Cpp Exception myexception: My exception happened
 Cpp Exception: The exception is an object of type 'char const*' at address xxx which does not inherit from std::exception
-    '''.strip() + "\n"
+'''
 
     self.do_run(src, expected)
 

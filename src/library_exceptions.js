@@ -430,7 +430,7 @@ var LibraryExceptions = {
   },
 
 #if !DISABLE_EXCEPTION_CATCHING
-  $formatException__deps: ["emscripten_format_exception", "$withStackSave", "free"],
+  $formatException__deps: ['emscripten_format_exception', 'free'],
   $formatException: function(excPtr) {
     var utf8_addr = _emscripten_format_exception(excPtr);
     var result = UTF8ToString(utf8_addr);
