@@ -99,7 +99,20 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 
     bool atFinalPart = pathPart == (pathParts.end() - 1);
     if (atFinalPart) {
-      return ParsedPath{std::move(lockedCurr), child};
+      // We found the child to return, now compute the parent. Normally that is
+      // curr, but we must also handle the other cases of . and .. as well as
+      // the possible corner case of the child being moved or unlinked
+      // meanwhile.
+      auto parent = lockedCurr.getParent();
+      if (!parent) {
+        return ParsedPath{{}, child};
+      }
+      if (parent == curr) {
+        // We already have a lock on curr; use that.
+        return ParsedPath{std::move(lockedCurr), child};
+      }
+      // Take a new lock as this is something other than curr.
+      return ParsedPath{parent->cast<Directory>()->locked(), child};
     }
 
     if (!child) {
