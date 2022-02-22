@@ -102,7 +102,8 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       // We found the child to return, now compute the parent. Normally that is
       // curr, but we must also handle the other cases of . and .. as well as
       // the possible corner case of the child being moved or unlinked
-      // meanwhile.
+      // meanwhile (which can happen when . and .., as then we are not holding a
+      // lock on the parent).
       auto parent = lockedCurr.getParent();
       if (!parent) {
         return ParsedPath{{}, child};
@@ -111,7 +112,11 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
         // We already have a lock on curr; use that.
         return ParsedPath{std::move(lockedCurr), child};
       }
-      // Take a new lock as this is something other than curr.
+      // Take a new lock as this is something other than curr. However, we must
+      // free our lock on curr first, to avoid a potential deadlock.
+      {
+        auto releaser = std::move(lockedCurr);
+      }
       return ParsedPath{parent->cast<Directory>()->locked(), child};
     }
 
