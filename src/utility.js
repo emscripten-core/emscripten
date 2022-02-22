@@ -92,7 +92,18 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-function mergeInto(obj, other) {
+// forbidFuncRedefinition if is true, it shows error in case of function redefinition
+function mergeInto(obj, other, forbidFuncRedefinition = false) {
+  // looking for function redefinition
+  if (forbidFuncRedefinition) {
+    for (const key in other) {
+      if (obj[key] !== undefined) {
+        error ("JS function is defined more than once: " + key);
+        return;
+      }
+    }
+  }
+
   return Object.assign(obj, other);
 }
 
