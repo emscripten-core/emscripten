@@ -606,12 +606,6 @@ Environment variables
 
 *emcc* is affected by several environment variables, as listed below:
 
-   * "EMMAKEN_CFLAGS" [compile+link] Deprecated. Use "EMCC_CFLAGS"
-     instead.
-
-   * "EMMAKEN_COMPILER" [compile+link] Deprecated. Use "EM_LLVM_ROOT"
-     and/or "EM_COMPIELR_WRAPPER" instead.
-
    * "EMMAKEN_JUST_CONFIGURE" [other]
 
    * "EMCC_AUTODEBUG" [compile+link]

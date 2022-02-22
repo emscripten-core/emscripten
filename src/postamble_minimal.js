@@ -26,9 +26,10 @@ function run() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
+#endif
+
 #endif
 
 #if IN_TEST_HARNESS && hasExportedFunction('___stdio_exit')
@@ -39,11 +40,12 @@ function run() {
   ___stdio_exit();
 #endif
 
+#if EXIT_RUNTIME
+
 #if ASSERTIONS
   runtimeExited = true;
 #endif
 
-#if EXIT_RUNTIME
   _proc_exit(ret);
 #endif
 #endif // PROXY_TO_PTHREAD
@@ -64,6 +66,7 @@ function initRuntime(asm) {
     // Export needed variables that worker.js needs to Module.
     Module['HEAPU32'] = HEAPU32;
     Module['__emscripten_thread_init'] = __emscripten_thread_init;
+    Module['__emscripten_thread_exit'] = __emscripten_thread_exit;
     Module['_pthread_self'] = _pthread_self;
     return;
   }

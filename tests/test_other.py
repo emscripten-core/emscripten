@@ -7193,7 +7193,7 @@ int main() {
     expected_basename = os.path.splitext(filename)[0]
     expected_basename += args_to_filename(args)
 
-    self.run_process([compiler_for(filename), filename, '-g2'] + args)
+    self.run_process([compiler_for(filename), filename, '-g2'] + args + self.get_emcc_args())
     # find the imports we send from JS
     js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
@@ -7271,6 +7271,7 @@ int main() {
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
+    self.set_setting('INCOMING_MODULE_JS_API', [])
     self.run_metadce_test('minimal.c', *args)
 
   @node_pthreads
@@ -9679,6 +9680,20 @@ int main(void) {
     # Check an absolute code size as well, with some slack.
     self.assertLess(abs(changed - 4994), 150)
 
+  def test_INCOMING_MODULE_JS_API_missing(self):
+    create_file('pre.js', '''
+    Module['onRuntimeInitialized'] = () => console.log('initialized')
+    ''')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.do_runf(test_file('hello_world.c'), 'initialized')
+
+    # The INCOMING_MODULE_JS_API setting can limit the incoming module
+    # API, and we assert if the incoming module has a property that
+    # is ignored due to this setting.
+    self.set_setting('INCOMING_MODULE_JS_API', [])
+
+    self.do_runf(test_file('hello_world.c'), 'Aborted(`Module.onRuntimeInitialized` was supplied but `onRuntimeInitialized` not included in INCOMING_MODULE_JS_API)', assert_returncode=NON_ZERO)
+
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
     self.build('atomics.c')
@@ -10610,13 +10625,13 @@ int main () {
 
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_COMPILER` is no longer supported', stderr)
 
   @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
   def test_emmaken_cflags(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_CFLAGS` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_CFLAGS` is no longer supported', stderr)
 
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
@@ -11122,11 +11137,10 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @with_env_modify({'EMMAKEN_NO_SDK': '1'})
   def test_EMMAKEN_NO_SDK(self):
-    with env_modify({'EMMAKEN_NO_SDK': '1'}):
-      err = self.expect_fail([EMCC, test_file('hello_world.c')])
-      self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
-      self.assertContained("fatal error: 'stdio.h' file not found", err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')])
+    self.assertContained('emcc: error: EMMAKEN_NO_SDK is no longer supported', err)
 
   @parameterized({
     'default': ('', '2147483648'),

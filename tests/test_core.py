@@ -4364,30 +4364,27 @@ res64 - external 64\n''', header='''
     if assertions is not None:
       self.set_setting('ASSERTIONS', int(assertions))
 
-    passed = True
-    try:
-      with env_modify({'EMCC_FORCE_STDLIBS': syslibs, 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-        self.dylink_test(main=r'''
-          void side();
-          int main() {
-            side();
-            return 0;
-          }
-        ''', side=r'''
-          #include <iostream>
-          void side() { std::cout << "cout hello from side\n"; }
-        ''', expected=['cout hello from side\n'], need_reverse=need_reverse, main_module=1)
-    except Exception as e:
-      if expect_pass:
-        raise
-      print('(seeing expected fail)')
-      passed = False
-      assertion = 'build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment'
-      if self.get_setting('ASSERTIONS'):
-        self.assertContained(assertion, str(e))
+    if expect_pass:
+      expected = 'cout hello from side'
+      assert_returncode = 0
+    else:
+      if assertions:
+        expected = 'build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment'
       else:
-        self.assertNotContained(assertion, str(e))
-    assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
+        expected = 'Error'
+      assert_returncode = NON_ZERO
+
+    with env_modify({'EMCC_FORCE_STDLIBS': syslibs, 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+      self.dylink_test(main=r'''
+        void side();
+        int main() {
+          side();
+          return 0;
+        }
+      ''', side=r'''
+        #include <iostream>
+        void side() { std::cout << "cout hello from side\n"; }
+      ''', expected=expected, need_reverse=need_reverse, main_module=1, assert_returncode=assert_returncode)
 
   @needs_dylink
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})

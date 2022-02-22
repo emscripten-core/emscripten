@@ -209,6 +209,8 @@ LibraryManager.library = {
 #endif
     }
 
+    let alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
+
     // Loop through potential heap size increases. If we attempt a too eager
     // reservation that fails, cut down on the attempted size and reserve a
     // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)

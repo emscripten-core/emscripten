@@ -127,7 +127,8 @@ def main():
   parser = argparse.ArgumentParser(description=__doc__,
                                    formatter_class=argparse.RawDescriptionHelpFormatter,
                                    epilog=get_help())
-  parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
+  parser.add_argument('--lto', action='store_const', const='full', help='build bitcode object for LTO')
+  parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
   parser.add_argument('--pic', action='store_true',
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
@@ -151,7 +152,7 @@ def main():
   shared.check_sanity()
 
   if args.lto:
-    settings.LTO = "full"
+    settings.LTO = args.lto
 
   if args.verbose:
     shared.PRINT_STAGES = True
