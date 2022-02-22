@@ -82,12 +82,6 @@ function updateGlobalBufferAndViews(b) {
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB
-  var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
-#else
-  var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
-#endif
-
   wasmMemory =
 #if WASM_WORKERS
     Module['mem'] ||
@@ -95,7 +89,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
-    , 'maximum': wasmMaximumMemory
+    , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
 #endif
 #if SHARED_MEMORY
     , 'shared': true
