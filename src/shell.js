@@ -229,7 +229,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
   quit_ = (status, toThrow) => {
-    if (keepRuntimeAlive()) {
+    if (runtimeKeepaliveCounter) {
       process['exitCode'] = status;
       throw toThrow;
     }
