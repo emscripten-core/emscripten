@@ -15,11 +15,7 @@ function assert(condition, text) {
 
 /** @param {string|number=} what */
 function abort(what) {
-#if ASSERTIONS
-  throw new Error(what);
-#else
-  throw what;
-#endif
+  throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
 #if SAFE_HEAP
@@ -103,11 +99,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
 } else {
-#if MODULARIZE
-  updateGlobalBufferAndViews(Module.buffer);
-#else
-  updateGlobalBufferAndViews(wasmMemory.buffer);
-#endif
+  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
 #endif // USE_PTHREADS
 #endif // IMPORTED_MEMORY
