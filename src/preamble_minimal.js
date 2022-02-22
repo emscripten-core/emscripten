@@ -32,13 +32,6 @@ var tempRet0 = 0;
 var setTempRet0 = (value) => { tempRet0 = value };
 var getTempRet0 = () => tempRet0;
 
-function alignUp(x, multiple) {
-  if (x % multiple > 0) {
-    x += multiple - (x % multiple);
-  }
-  return x;
-}
-
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
 if (Module['doWasm2JS']) {
