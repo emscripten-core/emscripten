@@ -87,7 +87,10 @@ def read_response_file(response_filename):
   if len(components) > 1 and (encoding_suffix.startswith('utf') or encoding_suffix.startswith('cp') or encoding_suffix.startswith('iso') or encoding_suffix in ['ascii', 'latin-1']):
     guessed_encoding = encoding_suffix
   else:
-    guessed_encoding = 'utf-8'
+    # On windows, recent version of CMake emit rsp files containing
+    # a BOM.  Using 'utf-8-sig' works on files both with and without
+    # a BOM.
+    guessed_encoding = 'utf-8-sig'
 
   try:
     # First try with the guessed encoding
