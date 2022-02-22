@@ -867,7 +867,7 @@ function WebGLWorker() {
   };
   function duplicate(something) {
     // clone data properly: handles numbers, null, typed arrays, js arrays and array buffers
-    if (!something || typeof something === 'number') return something;
+    if (!something || typeof something == 'number') return something;
     if (something.slice) return something.slice(0); // ArrayBuffer or js array
     return new something.constructor(something); // typed array
   }

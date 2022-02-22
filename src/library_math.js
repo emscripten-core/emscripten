@@ -5,8 +5,8 @@ mergeInto(LibraryManager.library, {
   emscripten_math_pow: function(x, y) {
     return Math.pow(x, y);
   },
-  emscripten_math_random: function(x) {
-    return Math.random(x);
+  emscripten_math_random: function() {
+    return Math.random();
   },
   emscripten_math_sign: function(x) {
     return Math.sign(x);

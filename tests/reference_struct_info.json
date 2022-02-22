@@ -14,7 +14,9 @@
         "AT_FDCWD": -100,
         "AT_REMOVEDIR": 512,
         "AT_SYMLINK_NOFOLLOW": 256,
+        "AUDIO_F32": 33056,
         "AUDIO_S16LSB": 32784,
+        "AUDIO_U8": 8,
         "CLOCKS_PER_SEC": 1000000,
         "CLOCK_MONOTONIC": 1,
         "CLOCK_MONOTONIC_RAW": 4,
@@ -193,7 +195,6 @@
         "EM_LOG_NO_PATHS": 64,
         "EM_LOG_WARN": 2,
         "EM_PROXIED_CREATE_CONTEXT": 622854144,
-        "EM_PROXIED_JS_FUNCTION": -2126512128,
         "EM_PROXIED_PTHREAD_CREATE": 687865856,
         "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 657457152,
         "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
@@ -371,6 +372,11 @@
         "__WASI_FILETYPE_SYMBOLIC_LINK": 7
     },
     "structs": {
+        "CallbackState": {
+            "__size__": 16,
+            "offset": 8,
+            "result": 0
+        },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
             "charging": 24,
@@ -822,18 +828,20 @@
             "nextInChain": 0
         },
         "WGPUCompilationInfo": {
-            "__size__": 8,
-            "messageCount": 0,
-            "messages": 4
+            "__size__": 12,
+            "messageCount": 4,
+            "messages": 8,
+            "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 40,
-            "length": 32,
-            "lineNum": 8,
-            "linePos": 16,
-            "message": 0,
-            "offset": 24,
-            "type": 4
+            "__size__": 48,
+            "length": 40,
+            "lineNum": 16,
+            "linePos": 24,
+            "message": 4,
+            "nextInChain": 0,
+            "offset": 32,
+            "type": 8
         },
         "WGPUComputePassDescriptor": {
             "__size__": 8,
@@ -868,11 +876,12 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 16,
+            "__size__": 20,
+            "label": 4,
             "nextInChain": 0,
-            "requiredFeatures": 8,
-            "requiredFeaturesCount": 4,
-            "requiredLimits": 12
+            "requiredFeatures": 12,
+            "requiredFeaturesCount": 8,
+            "requiredLimits": 16
         },
         "WGPUExtent3D": {
             "__size__": 12,
@@ -962,6 +971,11 @@
             "chain": 0,
             "clampDepth": 8
         },
+        "WGPUPrimitiveDepthClipControl": {
+            "__size__": 12,
+            "chain": 0,
+            "unclippedDepth": 8
+        },
         "WGPUPrimitiveState": {
             "__size__": 20,
             "cullMode": 16,
@@ -993,13 +1007,15 @@
             "nextInChain": 0
         },
         "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 24,
+            "__size__": 28,
             "colorFormats": 12,
             "colorFormatsCount": 8,
+            "depthReadOnly": 24,
             "depthStencilFormat": 16,
             "label": 4,
             "nextInChain": 0,
-            "sampleCount": 20
+            "sampleCount": 20,
+            "stencilReadOnly": 25
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 48,

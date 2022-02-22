@@ -884,8 +884,15 @@ def run_closure_cmd(cmd, filename, env, pretty):
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
 
   for i in range(len(cmd)):
-    if cmd[i] == '--externs' or cmd[i] == '--js':
-      cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
+    for prefix in ('--externs', '--js'):
+      # Handle the case where the the flag and the value are two separate arguments.
+      if cmd[i] == prefix:
+        cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
+      # and the case where they are one argument, e.g. --externs=foo.js
+      elif cmd[i].startswith(prefix + '='):
+        # Replace the argument with a version that has a safe filename.
+        filename = cmd[i].split('=', 1)[1]
+        cmd[i] = '='.join([prefix, move_to_safe_7bit_ascii_filename(filename)])
 
   outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
@@ -1240,10 +1247,6 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
-
-  # Strip the non-debug sections out of the DWARF file
-  check_call([LLVM_OBJCOPY, wasm_file_with_dwarf, '--only-keep-debug',
-              '--keep-section', 'name'])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF

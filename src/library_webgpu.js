@@ -26,7 +26,7 @@
   global.gpu = {
     makeInitManager: function(type) {
       var mgr = 'WebGPU.mgr' + type
-      return mgr + ' = ' + mgr + ' || makeManager();';
+      return mgr + ' = ' + mgr + ' || new Manager();';
     },
 
     makeReferenceRelease: function(type) {
@@ -73,7 +73,7 @@
       return 'assert(' + str + ');';
     },
     makeCheckDefined: function(name) {
-      return this.makeCheck('typeof ' + name + ' !== "undefined"');
+      return this.makeCheck('typeof ' + name + ' != "undefined"');
     },
     makeCheckDescriptor: function(descriptor) {
       // Assert descriptor is non-null, then that its nextInChain is null.
@@ -91,6 +91,7 @@
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
+    WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
     AdapterType: {
       Unknown: 3,
     },
@@ -147,40 +148,39 @@ var LibraryWebGPU = {
     initManagers: function() {
       if (WebGPU.mgrDevice) return;
 
-      function makeManager() {
-        return {
-          objects: {},
-          nextId: 1,
-          create: function(object, wrapper /* = {} */) {
-            wrapper = wrapper || {};
+      /** @constructor */
+      function Manager() {
+        this.objects = {};
+        this.nextId = 1;
+        this.create = function(object, wrapper /* = {} */) {
+          wrapper = wrapper || {};
 
-            var id = this.nextId++;
-            {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
-            wrapper.refcount = 1;
-            wrapper.object = object;
-            this.objects[id] = wrapper;
-            return id;
-          },
-          get: function(id) {
-            if (!id) return undefined;
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            return o.object;
-          },
-          reference: function(id) {
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            o.refcount++;
-          },
-          release: function(id) {
-            var o = this.objects[id];
-            {{{ gpu.makeCheckDefined('o') }}}
-            {{{ gpu.makeCheck('o.refcount > 0') }}}
-            o.refcount--;
-            if (o.refcount <= 0) {
-              delete this.objects[id];
-            }
-          },
+          var id = this.nextId++;
+          {{{ gpu.makeCheck("typeof this.objects[id] == 'undefined'") }}}
+          wrapper.refcount = 1;
+          wrapper.object = object;
+          this.objects[id] = wrapper;
+          return id;
+        };
+        this.get = function(id) {
+          if (!id) return undefined;
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          return o.object;
+        };
+        this.reference = function(id) {
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          o.refcount++;
+        };
+        this.release = function(id) {
+          var o = this.objects[id];
+          {{{ gpu.makeCheckDefined('o') }}}
+          {{{ gpu.makeCheck('o.refcount > 0') }}}
+          o.refcount--;
+          if (o.refcount <= 0) {
+            delete this.objects[id];
+          }
         };
       }
 
@@ -350,6 +350,12 @@ var LibraryWebGPU = {
       'not-equal',
       'always',
     ],
+    CompilationInfoRequestStatus: [
+      'success',
+      'error',
+      'device-lost',
+      'unknown',
+    ],
     CullMode: [
       'none',
       'front',
@@ -359,17 +365,19 @@ var LibraryWebGPU = {
       'validation',
       'out-of-memory',
     ],
-    FeatureName: [
-      undefined,
-      'depth-clamping',
-      'depth24unorm-stencil8',
-      'depth32float-stencil8',
-      'timestamp-query',
-      'pipeline-statistics-query',
-      'texture-compression-bc',
-      'texture-compression-etc2',
-      'texture-compression-astc',
-    ],
+    FeatureName: {
+      0: undefined,
+      1: 'depth-clip-control',
+      2: 'depth24unorm-stencil8',
+      3: 'depth32float-stencil8',
+      4: 'timestamp-query',
+      5: 'pipeline-statistics-query',
+      6: 'texture-compression-bc',
+      7: 'texture-compression-etc2',
+      8: 'texture-compression-astc',
+      9: 'indirect-first-instance',
+      1000: 'depth-clamping',
+    },
     FilterMode: [
       'nearest',
       'linear',
@@ -391,6 +399,7 @@ var LibraryWebGPU = {
       'compute-shader-invocations',
     ],
     PowerPreference: [
+      undefined,
       'low-power',
       'high-performance',
     ],
@@ -488,7 +497,9 @@ var LibraryWebGPU = {
       'depth16unorm',
       'depth24plus',
       'depth24plus-stencil8',
+      'depth24unorm-stencil8',
       'depth32float',
+      'depth32float-stencil8',
       'bc1-rgba-unorm',
       'bc1-rgba-unorm-srgb',
       'bc2-rgba-unorm',
@@ -742,8 +753,8 @@ var LibraryWebGPU = {
         var OutOfMemory = 0x00000002;
         var type;
 #if ASSERTIONS
-        assert(typeof GPUValidationError !== 'undefined');
-        assert(typeof GPUOutOfMemoryError !== 'undefined');
+        assert(typeof GPUValidationError != 'undefined');
+        assert(typeof GPUOutOfMemoryError != 'undefined');
 #endif
         if (ev.error instanceof GPUValidationError) type = Validation;
         else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
@@ -1079,6 +1090,8 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.colorFormats, '*') }}}),
         "depthStencilFormat": WebGPU.TextureFormat[{{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.depthStencilFormat) }}}],
         "sampleCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.sampleCount) }}},
+        "depthReadOnly": {{{ gpu.makeGetBool('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.depthReadOnly) }}},
+        "stencilReadOnly": {{{ gpu.makeGetBool('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.stencilReadOnly) }}},
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -1599,6 +1612,10 @@ var LibraryWebGPU = {
 
   // wgpuShaderModule
 
+  wgpuShaderModuleGetCompilationInfo: function(shaderModuleId, callback, userdata) {
+    var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
+    abort('TODO: wgpuShaderModuleGetCompilationInfo unimplemented');
+  },
   wgpuShaderModuleSetLabel: function(shaderModuleId, labelPtr) {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     shaderModule.label = UTF8ToString(labelPtr);
@@ -1701,6 +1718,12 @@ var LibraryWebGPU = {
     bufferWrapper.mapMode = mode;
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
+
+    // Handle the defaulting of size required by WebGPU
+    // We want to check against gpu.WHOLE_MAP_SIZE but the size seems to come in as int32_t
+    if (size === -1) {
+      size = undefined;
+    }
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
@@ -2250,6 +2273,9 @@ var LibraryWebGPU = {
         setLimitU32IfDefined("maxComputeWorkgroupsPerDimension", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupsPerDimension }}});
         desc["requiredLimits"] = requiredLimits;
       }
+
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
 
     {{{ runtimeKeepalivePush() }}}

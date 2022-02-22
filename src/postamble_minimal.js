@@ -252,7 +252,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (typeof location !== 'undefined') {
+  if (typeof location != 'undefined') {
 #endif
     // WebAssembly compilation failed, try running the JS fallback instead.
     var search = location.search;

@@ -14,7 +14,7 @@ var Module = {};
 
 #if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
-var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
 if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
@@ -141,6 +141,10 @@ self.onmessage = (e) => {
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 
+#if PTHREADS_DEBUG
+      Module['workerID'] = e.data.workerID;
+#endif
+
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
@@ -152,9 +156,9 @@ self.onmessage = (e) => {
         Module = instance;
       });
 #else
-      if (typeof e.data.urlOrBlob === 'string') {
+      if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
-        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+        if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
           importScripts(p.createScriptURL('ignored'));
         } else
@@ -163,7 +167,7 @@ self.onmessage = (e) => {
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
 #if TRUSTED_TYPES
-        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+        if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
           importScripts(p.createScriptURL('ignored'));
         } else
@@ -285,6 +289,10 @@ self.onmessage = (e) => {
       if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();
       }
+    } else if (e.data.cmd === 'processProxyingQueue') {
+      if (Module['_pthread_self']()) { // If this thread is actually running?
+        Module['_emscripten_proxy_execute_queue'](e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
@@ -292,6 +300,9 @@ self.onmessage = (e) => {
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex && ex.stack) err(ex.stack);
+    if (Module['__emscripten_thread_crashed']) {
+      Module['__emscripten_thread_crashed']();
+    }
     throw ex;
   }
 };

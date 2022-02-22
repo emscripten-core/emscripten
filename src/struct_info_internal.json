@@ -47,5 +47,14 @@
               "name"
             ]
         }
+    },
+    {
+        "file": "async_callback.h",
+        "structs": {
+            "CallbackState": [
+                "result",
+                "offset"
+            ]
+        }
     }
 ]

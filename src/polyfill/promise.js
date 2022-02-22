@@ -46,7 +46,7 @@ var Promise = (function() {
   function Promise(fn) {
     if (!(this instanceof Promise))
       throw new TypeError('Promises must be constructed via new');
-    if (typeof fn !== 'function') throw new TypeError('not a function');
+    if (typeof fn != 'function') throw new TypeError('not a function');
     /** @type {!number} */
     this._state = 0;
     /** @type {!boolean} */
@@ -92,7 +92,7 @@ var Promise = (function() {
         throw new TypeError('A promise cannot be resolved with itself.');
       if (
         newValue &&
-        (typeof newValue === 'object' || typeof newValue === 'function')
+        (typeof newValue == 'object' || typeof newValue == 'function')
       ) {
         var then = newValue.then;
         if (newValue instanceof Promise) {
@@ -100,7 +100,7 @@ var Promise = (function() {
           self._value = newValue;
           finale(self);
           return;
-        } else if (typeof then === 'function') {
+        } else if (typeof then == 'function') {
           doResolve(bind(then, newValue), self);
           return;
         }
@@ -138,8 +138,8 @@ var Promise = (function() {
    * @constructor
    */
   function Handler(onFulfilled, onRejected, promise) {
-    this.onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : null;
-    this.onRejected = typeof onRejected === 'function' ? onRejected : null;
+    this.onFulfilled = typeof onFulfilled == 'function' ? onFulfilled : null;
+    this.onRejected = typeof onRejected == 'function' ? onRejected : null;
     this.promise = promise;
   }
 
@@ -195,9 +195,9 @@ var Promise = (function() {
 
       function res(i, val) {
         try {
-          if (val && (typeof val === 'object' || typeof val === 'function')) {
+          if (val && (typeof val == 'object' || typeof val == 'function')) {
             var then = val.then;
-            if (typeof then === 'function') {
+            if (typeof then == 'function') {
               then.call(
                 val,
                 function(val) {
@@ -224,7 +224,7 @@ var Promise = (function() {
   };
 
   Promise.resolve = function(value) {
-    if (value && typeof value === 'object' && value.constructor === Promise) {
+    if (value && typeof value == 'object' && value.constructor == Promise) {
       return value;
     }
 
@@ -254,7 +254,7 @@ var Promise = (function() {
   // Use polyfill for setImmediate for performance gains
   Promise._immediateFn =
     // @ts-ignore
-    (typeof setImmediate === 'function' &&
+    (typeof setImmediate == 'function' &&
       function(fn) {
         // @ts-ignore
         setImmediate(fn);
@@ -264,7 +264,7 @@ var Promise = (function() {
     };
 
   Promise._unhandledRejectionFn = function _unhandledRejectionFn(err) {
-    if (typeof console !== 'undefined' && console) {
+    if (typeof console != 'undefined' && console) {
       console.warn('Possible Unhandled Promise Rejection:', err); // eslint-disable-line no-console
     }
   };

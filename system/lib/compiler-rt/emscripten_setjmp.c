@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <threads.h>
 
 // 0 - Nothing thrown
 // 1 - Exception thrown
@@ -74,8 +75,7 @@ struct __WasmLongjmpArgs {
   int val;
 };
 
-// FIXME Make this thread local?
-struct __WasmLongjmpArgs __wasm_longjmp_args;
+thread_local struct __WasmLongjmpArgs __wasm_longjmp_args;
 
 // Wasm EH allows us to throw and catch multiple values, but that requires
 // multivalue support in the toolchain, whch is not reliable at the time.

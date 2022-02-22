@@ -11,3 +11,4 @@ int __munmap(void *start, size_t len)
 }
 
 weak_alias(__munmap, munmap);
+weak_alias(__munmap, emscripten_builtin_munmap);

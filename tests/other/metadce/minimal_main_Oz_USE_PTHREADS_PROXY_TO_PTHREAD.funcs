@@ -16,6 +16,7 @@ $__wasm_call_ctors
 $__wasm_init_memory
 $_do_call
 $_emscripten_do_dispatch_to_thread
+$_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
 $_emscripten_thread_init

@@ -6,12 +6,15 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "wasmfs.h"
-#include "memory_file.h"
-#include "streams.h"
 #include <emscripten/threading.h>
 
+#include "memory_backend.h"
+#include "paths.h"
+#include "streams.h"
+#include "wasmfs.h"
+
 namespace wasmfs {
+
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
 // compilation error about using a reserved init priority less than 101. This
@@ -22,9 +25,9 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 26 "wasmfs.cpp" 3
+# 29 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 28 "wasmfs.cpp"
+# 31 "wasmfs.cpp"
 
 // These helper functions will be linked in from library_wasmfs.js.
 extern "C" {
@@ -53,16 +56,16 @@ WasmFS::~WasmFS() {
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
-  rootDirectory->locked().setEntry("dev", devDirectory);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO, rootBackend);
+  rootDirectory->locked().insertChild("dev", devDirectory);
 
   auto dir = devDirectory->locked();
 
-  dir.setEntry("stdin", StdinFile::getSingleton());
-  dir.setEntry("stdout", StdoutFile::getSingleton());
-  dir.setEntry("stderr", StderrFile::getSingleton());
+  dir.insertChild("stdin", StdinFile::getSingleton());
+  dir.insertChild("stdout", StdoutFile::getSingleton());
+  dir.insertChild("stderr", StderrFile::getSingleton());
 
   return rootDirectory;
 }
@@ -117,7 +120,8 @@ void WasmFS::preloadFiles() {
 
     auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
-    parentDir->locked().setEntry(childName, created);
+    auto inserted = parentDir->locked().insertChild(childName, created);
+    assert(inserted && "TODO: handle preload insertion errors");
   }
 
   for (int i = 0; i < numFiles; i++) {
@@ -140,9 +144,11 @@ void WasmFS::preloadFiles() {
       abort();
     }
 
-    parentDir->locked().setEntry(base, created);
+    auto inserted = parentDir->locked().insertChild(base, created);
+    assert(inserted && "TODO: handle preload insertion errors");
 
     created->locked().preloadFromJS(i);
   }
 }
+
 } // namespace wasmfs

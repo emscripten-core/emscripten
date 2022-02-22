@@ -18,8 +18,28 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.4
+3.1.6
 -----
+- Remove support for deprecated `EMMAKEN_COMPILER`, `EMMAKEN_CFLAGS`, and
+  `EMMAKEN_NO_SDK`  environment variables.  These are all legacy and redundant
+  in the face of other settings/flags:
+   - `EMMAKEN_COMPILER` -> `LLVM_ROOT` in the config settings
+   - `EMMAKEN_CFLAGS` -> `EMCC_CFLAGS`
+   - `EMMAKEN_NO_SDK` -> standard `-nostdlib` and `-nostdinc` flags
+
+3.1.5 - 02/17/2022
+------------------
+- Emscripten no longer uses the `allocate()` runtime function.  For backwards
+  compatabiliy with external JS code we still include this function by default
+  but it will no longer be included in `-sSTRICT` mode.  Usages of this function
+  are generally best replaced with `_malloc`, `stackAlloc` or `allocateUTF8`.
+
+3.1.4 - 02/14/2022
+------------------
+- Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
+  that did not previously have any effect are now honored (e.g.
+  `-fnew-alignment` and `-fshort-wchar`).
+- llvm dependency updated to 15.0.0 to match upstream. (#16178)
 - The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
   macros are now available via the `emscripten/version.h` header file.  For the
   time being, unless you enable `-sSTRICT`, these are still also defined
@@ -27,7 +47,7 @@ See docs/process.md for more on how version tagging works.
   include `emscripten/version.h` (or `emscripten.h` which indirectly includes
   it). (#16147)
 
-3.1.3 - 31/01/2022
+3.1.3 - 01/31/2022
 ------------------
 - The file packager now supports embedding files directly into wasm memory and
   `emcc` now uses this mode when the `--embed-file` option is used.  If you
@@ -36,8 +56,17 @@ See docs/process.md for more on how version tagging works.
 - The `--bind` flag used to enable embind has been deprecated in favor of
   `-lembind`.  The semantics have not changed and the old flag continues to
   work. (#16087)
+- New setjmp/longjmp support using Wasm EH instructions is added, which is
+  faster and reduces code size. You need a browser that supports Wasm EH spec to
+  use it. The new SjLj support is enabled by `-sSUPPORT_LONGJMP=wasm`. This can
+  be used with Wasm exception support (`-fwasm-exceptions`), but not with
+  Emscripten exception support (`-fexceptions` or
+  `-sDISABLE_EXCEPTION_CATCHING=0`). When using Wasm EH with Wasm SjLj, there is
+  one restriction that you cannot directly call `setjmp` within a `catch`
+  clause. (Calling another function that calls `setjmp` is fine.)
+  (#14976 and #16072)
 
-3.1.2 - 20/01/2022
+3.1.2 - 01/20/2022
 ------------------
 - A new setting, `POLYFILL`, was added which is on by default but can be disabled
   (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
@@ -52,7 +81,7 @@ See docs/process.md for more on how version tagging works.
   `coreX` to better reflect where they are defined.  The old suite names such
   as `wasm2` will continue to work for now as aliases.
 
-3.1.1 - 08/01/2022
+3.1.1 - 01/08/2022
 ------------------
 - Happy new year!
 - Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
@@ -302,6 +331,7 @@ See docs/process.md for more on how version tagging works.
   wasm binary.
 - The experimental SPLIT_MODULE setting now expects the secondary module to be
   named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+- sendfile.h header removed from musl. (#14248)
 
 2.0.21: 05/18/2021
 ------------------

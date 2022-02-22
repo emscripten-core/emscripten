@@ -847,8 +847,10 @@ var LibraryGLEmulation = {
   $GLImmediate: {
     MapTreeLib: null,
     spawnMapTreeLib: function() {
-      /* A naive implementation of a map backed by an array, and accessed by
+      /**
+       * A naive implementation of a map backed by an array, and accessed by
        * naive iteration along the array. (hashmap with only one bucket)
+       * @constructor
        */
       function CNaiveListMap() {
         var list = [];
@@ -876,29 +878,32 @@ var LibraryGLEmulation = {
         };
       };
 
-      /* A tree of map nodes.
-        Uses `KeyView`s to allow descending the tree without garbage.
-        Example: {
-          // Create our map object.
-          var map = new ObjTreeMap();
-
-          // Grab the static keyView for the map.
-          var keyView = map.GetStaticKeyView();
-
-          // Let's make a map for:
-          // root: <undefined>
-          //   1: <undefined>
-          //     2: <undefined>
-          //       5: "Three, sir!"
-          //       3: "Three!"
-
-          // Note how we can chain together `Reset` and `Next` to
-          // easily descend based on multiple key fragments.
-          keyView.Reset().Next(1).Next(2).Next(5).Set("Three, sir!");
-          keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
-        }
-      */
+      /**
+       * A tree of map nodes.
+       * Uses `KeyView`s to allow descending the tree without garbage.
+       * Example: {
+       *   // Create our map object.
+       *   var map = new ObjTreeMap();
+       *
+       *   // Grab the static keyView for the map.
+       *   var keyView = map.GetStaticKeyView();
+       *
+       *   // Let's make a map for:
+       *   // root: <undefined>
+       *   //   1: <undefined>
+       *   //     2: <undefined>
+       *   //       5: "Three, sir!"
+       *   //       3: "Three!"
+       *
+       *   // Note how we can chain together `Reset` and `Next` to
+       *   // easily descend based on multiple key fragments.
+       *   keyView.Reset().Next(1).Next(2).Next(5).Set("Three, sir!");
+       *   keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
+       * }
+       * @constructor
+       */
       function CMapTree() {
+        /** @constructor */
         function CNLNode() {
           var map = new CNaiveListMap();
 
@@ -919,6 +924,7 @@ var LibraryGLEmulation = {
           };
         }
 
+        /** @constructor */
         function CKeyView(root) {
           var cur;
 
@@ -1160,6 +1166,7 @@ var LibraryGLEmulation = {
 
 
       // Classes:
+      /** @constructor */
       function CTexEnv() {
         this.mode = GL_MODULATE;
         this.colorCombiner = GL_MODULATE;
@@ -1263,6 +1270,7 @@ var LibraryGLEmulation = {
         }
       }
 
+      /** @constructor */
       function CTexUnit() {
         this.env = new CTexEnv();
         this.enabled_tex1D   = false;
@@ -2188,8 +2196,9 @@ var LibraryGLEmulation = {
         hasTextures = true;
       }
 
-      var ret = {
-        init: function init() {
+      /** @constructor */
+      function Renderer() {
+        this.init = function() {
           // For fixed-function shader generation.
           var uTexUnitPrefix = 'u_texUnit';
           var aTexCoordPrefix = 'a_texCoord';
@@ -2534,9 +2543,9 @@ var LibraryGLEmulation = {
           this.hasAlphaTest = GLEmulation.alphaTestEnabled;
           this.alphaTestRefLocation = GLctx.getUniformLocation(this.program, 'u_alphaTestRef');
 
-        },
+        };
 
-        prepare: function prepare() {
+        this.prepare = function() {
           // Calculate the array buffer
           var arrayBuffer;
           if (!GLctx.currentArrayBufferBinding) {
@@ -2577,7 +2586,7 @@ var LibraryGLEmulation = {
           if (canSkip) return;
           GLImmediate.lastRenderer = this;
           GLImmediate.lastProgram = GL.currProgram || this.program;
-          GLImmediate.lastStride == GLImmediate.stride;
+          GLImmediate.lastStride = GLImmediate.stride;
           GLImmediate.matricesModified = false;
 #endif
 
@@ -2726,9 +2735,9 @@ var LibraryGLEmulation = {
               GLctx.uniform1f(this.pointSizeLocation, GLEmulation.pointSize);
             }
           }
-        },
+        };
 
-        cleanup: function cleanup() {
+        this.cleanup = function() {
 #if !GL_FFP_ONLY
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
@@ -2760,9 +2769,10 @@ var LibraryGLEmulation = {
           GLImmediate.matricesModified = true;
 #endif
         }
-      };
-      ret.init();
-      return ret;
+
+        this.init();
+      }
+      return new Renderer();
     },
 
     setupFuncs: function() {
@@ -2804,7 +2814,8 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glDisable') }}}
 
-      var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
+      var glTexEnvf = (typeof _glTexEnvf != 'undefined') ? _glTexEnvf : () => {};
+      /** @suppress {checkTypes} */
       _glTexEnvf = _emscripten_glTexEnvf = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvf(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -2812,7 +2823,8 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glTexEnvf') }}}
 
-      var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
+      var glTexEnvi = (typeof _glTexEnvi != 'undefined') ? _glTexEnvi : () => {};
+      /** @suppress {checkTypes} */
       _glTexEnvi = _emscripten_glTexEnvi = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -2820,7 +2832,8 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glTexEnvi') }}}
 
-      var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
+      var glTexEnvfv = (typeof _glTexEnvfv != 'undefined') ? _glTexEnvfv : () => {};
+      /** @suppress {checkTypes} */
       _glTexEnvfv = _emscripten_glTexEnvfv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -3107,7 +3120,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  $GLImmediateSetup: {},
   $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GLImmediate.matrixLib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 

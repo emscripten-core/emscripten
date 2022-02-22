@@ -17,12 +17,17 @@ int main(int argc, char* argv[]) {
   assert(getpagesize() == 65536);
   assert(sysconf(_SC_PAGESIZE) == 65536);
 
+  int* maps[10];
   for (int i = 0; i < 10; i++) {
     int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
                           MAP_SHARED | MAP_ANON, -1, 0);
     assert(map != MAP_FAILED);
     assert(((long)map) % 65536 == 0); // aligned
-    assert(munmap(map, 5000) == 0);
+    maps[i] = map;
+  }
+
+  for (int i = 0; i < 10; i++) {
+    assert(munmap(maps[i], 5000) == 0);
   }
 
   const int NUM_BYTES = 8 * 1024 * 1024;
@@ -44,6 +49,6 @@ int main(int argc, char* argv[]) {
 
   assert(munmap(map, NUM_BYTES) == 0);
 
-  printf("hello,world");
+  printf("hello,world\n");
   return 0;
 }

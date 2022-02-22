@@ -17,7 +17,7 @@
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
-/*global finalizationGroup, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
+/*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
@@ -568,7 +568,7 @@ var LibraryEmbind = {
     var isUnsignedType = (name.includes('unsigned'));
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
-        if (typeof value !== "number" && typeof value !== "boolean") {
+        if (typeof value != "number" && typeof value != "boolean") {
             throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
         }
         if (value < minRange || value > maxRange) {
@@ -622,7 +622,7 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function (destructors, value) {
-            if (typeof value !== "bigint") {
+            if (typeof value != "bigint") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
@@ -653,7 +653,7 @@ var LibraryEmbind = {
         },
         'toWireType': function(destructors, value) {
 #if ASSERTIONS
-            if (typeof value !== "number" && typeof value !== "boolean") {
+            if (typeof value != "number" && typeof value != "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
 #endif
@@ -726,7 +726,7 @@ var LibraryEmbind = {
             }
 
             var getLength;
-            var valueIsOfTypeString = (typeof value === 'string');
+            var valueIsOfTypeString = (typeof value == 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
@@ -827,7 +827,7 @@ var LibraryEmbind = {
             return str;
         },
         'toWireType': function(destructors, value) {
-            if (!(typeof value === 'string')) {
+            if (!(typeof value == 'string')) {
                 throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
 
@@ -1175,7 +1175,7 @@ var LibraryEmbind = {
     }
 
     var fp = makeDynCaller();
-    if (typeof fp !== "function") {
+    if (typeof fp != "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
     }
     return fp;
@@ -1734,39 +1734,53 @@ var LibraryEmbind = {
     }
   },
 
-  $finalizationGroup: false,
+  $finalizationRegistry: false,
 
-  $detachFinalizer_deps: ['$finalizationGroup'],
+  $detachFinalizer_deps: ['$finalizationRegistry'],
   $detachFinalizer: function(handle) {},
 
-  $attachFinalizer__deps: ['$finalizationGroup', '$detachFinalizer',
-                           '$releaseClassHandle'],
+  $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
+                           '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
   $attachFinalizer: function(handle) {
-    if ('undefined' === typeof FinalizationGroup) {
+    if ('undefined' === typeof FinalizationRegistry) {
         attachFinalizer = (handle) => handle;
         return handle;
     }
-    // If the running environment has a FinalizationGroup (see
+    // If the running environment has a FinalizationRegistry (see
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
-    // for class handles.  We check for the presence of FinalizationGroup
+    // for class handles.  We check for the presence of FinalizationRegistry
     // at run-time, not build-time.
-    finalizationGroup = new FinalizationGroup(function (iter) {
-        for (var result = iter.next(); !result.done; result = iter.next()) {
-            var $$ = result.value;
-            if (!$$.ptr) {
-                console.warn('object already deleted: ' + $$.ptr);
-            } else {
-                releaseClassHandle($$);
-            }
-        }
+    finalizationRegistry = new FinalizationRegistry((info) => {
+#if ASSERTIONS
+        console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+#endif
+        releaseClassHandle(info.$$);
     });
     attachFinalizer = (handle) => {
-        finalizationGroup.register(handle, handle.$$, handle.$$);
+        var $$ = handle.$$;
+        var hasSmartPtr = !!$$.smartPtr;
+        if (hasSmartPtr) {
+            // We should not call the destructor on raw pointers in case other code expects the pointee to live
+            var info = { $$: $$ };
+#if ASSERTIONS
+            // Create a warning as an Error instance in advance so that we can store
+            // the current stacktrace and point to it when / if a leak is detected.
+            // This is more useful than the empty stacktrace of `FinalizationRegistry`
+            // callback.
+            var cls = $$.ptrType.registeredClass;
+            info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
+            "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
+            "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
+            "Originally allocated"); // `.stack` will add "at ..." after this sentence
+            if ('captureStackTrace' in Error) {
+                Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+            }
+ #endif
+            finalizationRegistry.register(handle, info, handle);
+        }
         return handle;
     };
-    detachFinalizer = (handle) => {
-        finalizationGroup.unregister(handle.$$);
-    };
+    detachFinalizer = (handle) => finalizationRegistry.unregister(handle);
     return attachFinalizer(handle);
   },
 

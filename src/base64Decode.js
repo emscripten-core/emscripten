@@ -37,7 +37,7 @@ base64ReverseLookup[47] = 63; // '/'
 /** @noinline */
 function base64Decode(b64) {
 #if ENVIRONMENT_MAY_BE_NODE
-  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+  if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
     var buf = Buffer.from(b64, 'base64');
     return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   }

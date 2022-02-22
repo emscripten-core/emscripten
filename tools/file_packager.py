@@ -755,20 +755,20 @@ def generate_js(data_target, data_files, metadata):
             return errback(e);
           }
           openRequest.onupgradeneeded = function(event) {
-            var db = event.target.result;
+            var db = /** @type {IDBDatabase} */ (event.target.result);
 
-            if(db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+            if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
               db.deleteObjectStore(PACKAGE_STORE_NAME);
             }
             var packages = db.createObjectStore(PACKAGE_STORE_NAME);
 
-            if(db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+            if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
               db.deleteObjectStore(METADATA_STORE_NAME);
             }
             var metadata = db.createObjectStore(METADATA_STORE_NAME);
           };
           openRequest.onsuccess = function(event) {
-            var db = event.target.result;
+            var db = /** @type {IDBDatabase} */ (event.target.result);
             callback(db);
           };
           openRequest.onerror = function(error) {

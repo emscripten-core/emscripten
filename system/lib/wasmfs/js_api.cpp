@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "file.h"
+#include "paths.h"
 
 using namespace wasmfs;
 
@@ -72,7 +73,7 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     return 0;
   }
 
-  auto child = parsedPath.parent->getEntry(pathParts.back());
+  auto child = parsedPath.parent->getChild(pathParts.back());
   auto dataFile = child->dynCast<DataFile>();
 
   auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);
@@ -90,5 +91,9 @@ long _wasmfs_chdir(char* path) { return __syscall_chdir((long)path); }
 
 void _wasmfs_symlink(char* old_path, char* new_path) {
   __syscall_symlink((long)old_path, (long)new_path);
+}
+
+long _wasmfs_chmod(char* path, mode_t mode) {
+  return __syscall_chmod((long)path, mode);
 }
 }

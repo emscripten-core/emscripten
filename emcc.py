@@ -758,9 +758,6 @@ def parse_s_args(args):
 
 
 def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
   library_paths = [
      shared.Cache.get_lib_dir(absolute=True)
   ]
@@ -899,7 +896,7 @@ def get_cflags(user_args):
 
   ports.add_cflags(cflags, settings)
 
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+  if '-nostdinc' in user_args:
     return cflags
 
   cflags += emsdk_cflags(user_args)
@@ -1043,9 +1040,6 @@ def run(args):
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if EMCC_CFLAGS:
     args += shlex.split(EMCC_CFLAGS)
-  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS:
-    args += shlex.split(EMMAKEN_CFLAGS)
 
   if DEBUG:
     logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
@@ -1123,10 +1117,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   options, newargs, settings_map = phase_parse_arguments(state)
 
   if 'EMMAKEN_NO_SDK' in os.environ:
-    diagnostics.warning('deprecated', 'We hope to deprecated EMMAKEN_NO_SDK.  See https://github.com/emscripten-core/emscripten/issues/14050 if use use this feature.')
+    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
+
+  if 'EMMAKEN_COMPILER' in os.environ:
+    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
-    diagnostics.warning('deprecated', '`EMMAKEN_CFLAGS` is deprecated, please use `EMCC_CFLAGS` instead.  See https://github.com/emscripten-core/emscripten/issues/15684')
+    exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
@@ -1807,6 +1805,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
 
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # Emulated casts forces a wasm ABI of (i64, i64, ...) in the table, which
+    # means all table functions are illegal for JS to call directly. Use
+    # dyncalls which call into the wasm, which then does an indirect call.
+    settings.DYNCALLS = 1
+
   if options.oformat != OFormat.OBJECT and final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
     diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
@@ -1827,13 +1831,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
     ]
 
   if settings.STACK_OVERFLOW_CHECK:
-    # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
-    # of the stack is.
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_end', 'emscripten_stack_get_free']
-    if settings.STACK_OVERFLOW_CHECK == 2:
-      # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
-      # stack.
-      settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base']
+    settings.REQUIRED_EXPORTS += [
+      'emscripten_stack_get_end',
+      'emscripten_stack_get_free',
+      'emscripten_stack_get_base'
+    ]
 
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
@@ -1932,6 +1934,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
         '_wasmfs_mkdir',
         '_wasmfs_chdir',
         '_wasmfs_symlink',
+        '_wasmfs_chmod',
       ]
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
@@ -1959,7 +1962,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
-  if settings.SIDE_MODULE and settings.GLOBAL_BASE != -1:
+  if settings.SIDE_MODULE and 'GLOBAL_BASE' in settings_map:
     exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
   # When building a side module we currently have to assume that any undefined
@@ -2040,6 +2043,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
       'emscripten_sync_run_in_main_thread_2',
       'emscripten_sync_run_in_main_thread_4',
     ]
+
+    if settings.MAIN_MODULE:
+      settings.REQUIRED_EXPORTS += ['_emscripten_thread_sync_code', '__dl_seterr']
+
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
     ]
@@ -2052,6 +2059,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     worker_imports = [
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
+      '__emscripten_thread_crashed',
       '_emscripten_tls_init',
       '_emscripten_current_thread_process_queued_calls',
       '_pthread_self',
@@ -2086,7 +2094,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.USE_PTHREADS:
     # memalign is used to ensure allocated thread stacks are aligned.
-    settings.REQUIRED_EXPORTS += ['memalign']
+    settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
 
     if settings.MINIMAL_RUNTIME:
       building.user_requested_exports.add('exit')
@@ -2342,7 +2350,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
 
-    if settings.GLOBAL_BASE != -1:
+    if 'GLOBAL_BASE' in settings_map:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
     # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
@@ -2389,12 +2397,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
-
-  if settings.GLOBAL_BASE == -1:
-    # default if nothing else sets it
-    # a higher global base is useful for optimizing load/store offsets, as it
-    # enables the --post-emscripten pass
-    settings.GLOBAL_BASE = 1024
 
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
@@ -2540,13 +2542,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
     CXX.insert(0, config.COMPILER_WRAPPER)
     CC.insert(0, config.COMPILER_WRAPPER)
-
-  if 'EMMAKEN_COMPILER' in os.environ:
-    diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
-                        'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
-                        'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
-    CXX = [os.environ['EMMAKEN_COMPILER']]
-    CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
   compile_args = [a for a in newargs if a and not is_link_flag(a)]
   system_libs.ensure_sysroot()

@@ -9,6 +9,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
+                   '$ptrToString',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -25,7 +26,27 @@ var LibraryPThread = {
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     tlsInitFunctions: [],
+#if PTHREADS_DEBUG
+    nextWorkerID: 1,
+    debugInit: function() {
+      function pthreadLogPrefix() {
+        var t = 0;
+        if (runtimeInitialized && !runtimeExited && typeof _pthread_self != 'undefined') {
+          t = _pthread_self();
+        }
+        return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
+      }
+
+      // When PTHREAD_DEBUG is enabled, prefix all err() messages with the calling
+      // thread ID.
+      var origErr = err;
+      err = (message) => origErr(pthreadLogPrefix() + message);
+    },
+#endif
     init: function() {
+#if PTHREADS_DEBUG
+      PThread.debugInit();
+#endif
       if (ENVIRONMENT_IS_PTHREAD) {
         PThread.initWorker();
       } else {
@@ -174,7 +195,7 @@ var LibraryPThread = {
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
-      if (typeof GL !== 'undefined') {
+      if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
@@ -186,7 +207,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
+      err('threadInit.');
 #endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
@@ -265,7 +286,7 @@ var LibraryPThread = {
         if (worker.pthread) {
           var pthread_ptr = worker.pthread.threadInfoStruct;
           if (pthread_ptr) {
-            message = 'Pthread 0x' + pthread_ptr.toString(16) + ' sent an error!';
+            message = 'Pthread ' + ptrToString(pthread_ptr) + ' sent an error!';
           }
         }
 #endif
@@ -324,6 +345,9 @@ var LibraryPThread = {
 #if MAIN_MODULE
         'dynamicLibraries': Module['dynamicLibraries'],
 #endif
+#if PTHREADS_DEBUG
+        'workerID': PThread.nextWorkerID++,
+#endif
       });
     },
 
@@ -340,7 +364,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
-        if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+        if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
           var p = trustedTypes.createPolicy(
             'emscripten#workerPolicy1',
             {
@@ -366,7 +390,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
         PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
       } else
@@ -399,10 +423,14 @@ var LibraryPThread = {
     }
   },
 
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
+  },
+
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    err('killThread 0x' + pthread_ptr.toString(16));
+    err('killThread ' + ptrToString(pthread_ptr));
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
@@ -454,11 +482,11 @@ var LibraryPThread = {
     }
   },
 
+#if MAIN_MODULE
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
     err("registerTlsInit: " + tlsInitFunc);
 #endif
-#if RELOCATABLE
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`emscripten_tls_init`) to relocate the TLS exports of the module
     // according to this new __tls_base.
@@ -490,10 +518,12 @@ var LibraryPThread = {
     if (runtimeInitialized) {
       tlsInitWrapper();
     }
-#else
-    PThread.tlsInitFunctions.push(tlsInitFunc);
-#endif
   },
+#else
+  $registerTlsInit: function(tlsInitFunc) {
+    PThread.tlsInitFunctions.push(tlsInitFunc);
+  },
+#endif
 
   $cancelThread: function(pthread_ptr) {
 #if ASSERTIONS
@@ -554,7 +584,7 @@ var LibraryPThread = {
   },
 
   emscripten_has_threading_support: function() {
-    return typeof SharedArrayBuffer !== 'undefined';
+    return typeof SharedArrayBuffer != 'undefined';
   },
 
   emscripten_num_logical_cores: function() {
@@ -592,12 +622,15 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'emscripten_sync_run_in_main_thread_4'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
-    if (typeof SharedArrayBuffer === 'undefined') {
+    if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
     }
+#if PTHREADS_DEBUG
+    err("createThread: " + ptrToString(pthread_ptr));
+#endif
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
     var transferList = [];
@@ -636,7 +669,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
+        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -771,7 +804,7 @@ var LibraryPThread = {
     if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
     if (thread === _emscripten_main_browser_thread_id()) {
       if (signal == 0) return 0; // signal == 0 is a no-op.
-      err('Main thread (id=0x' + thread.toString(16) + ') cannot be killed with pthread_kill!');
+      err('Main thread (id=' + ptrToString(thread) + ') cannot be killed with pthread_kill!');
       return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
@@ -780,7 +813,7 @@ var LibraryPThread = {
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
-      err('pthread_kill attempted on thread 0x' + thread.toString(16) + ', which does not point to a valid thread, or does not exist anymore!');
+      err('pthread_kill attempted on thread ' + ptrToString(thread) + ', which does not point to a valid thread, or does not exist anymore!');
       return {{{ cDefine('ESRCH') }}};
     }
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
@@ -800,14 +833,14 @@ var LibraryPThread = {
     if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
 #if PTHREADS_DEBUG
-      err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
+      err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
       exitOnMainThread(returnCode);
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
 #if PTHREADS_DEBUG
-    err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+    err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
@@ -864,7 +897,7 @@ var LibraryPThread = {
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
   #if WASM_BIGINT
-        if (typeof arg === 'bigint') {
+        if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
           HEAP64[b + 2*i] = BigInt(1);
           HEAP64[b + 2*i + 1] = arg;
@@ -921,12 +954,18 @@ var LibraryPThread = {
     return {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
   },
 
+#if STACK_OVERFLOW_CHECK >= 2 && MAIN_MODULE
+  $establishStackSpace__deps: ['$setDylinkStackLimits'],
+#endif
   $establishStackSpace__internal: true,
   $establishStackSpace: function() {
     var pthread_ptr = _pthread_self();
     var stackTop = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackMax = stackTop - stackSize;
+#if PTHREADS_DEBUG
+    err('establishStackSpace: ' + stackTop + ' -> ' + stackMax);
+#endif
 #if ASSERTIONS
     assert(stackTop != 0);
     assert(stackMax != 0);
@@ -939,6 +978,11 @@ var LibraryPThread = {
     // Set stack limits used by binaryen's `StackCheck` pass.
     // TODO(sbc): Can this be combined with the above.
     ___set_stack_limits(stackTop, stackMax);
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackTop, stackMax);
+#endif
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
@@ -952,6 +996,15 @@ var LibraryPThread = {
   },
 
   $invokeEntryPoint: function(ptr, arg) {
+#if PTHREADS_DEBUG
+    err('invokeEntryPoint: ' + ptrToString(ptr));
+#endif
+#if MAIN_MODULE
+    // Before we call the thread entry point, make sure any shared libraries
+    // have been loaded on this there.  Otherwise our table migth be not be
+    // in sync and might not contain the function pointer `ptr` at all.
+    __emscripten_thread_sync_code();
+#endif
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
@@ -974,6 +1027,25 @@ var LibraryPThread = {
         return /*0*/;
       }
       worker.postMessage({'cmd' : 'processThreadQueue'});
+    }
+    return 1;
+  },
+
+  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+    if (targetThreadId == currThreadId) {
+      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
+    } else if (ENVIRONMENT_IS_PTHREAD) {
+      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+    } else {
+      var pthread = PThread.pthreads[targetThreadId];
+      var worker = pthread && pthread.worker;
+      if (!worker) {
+#if ASSERTIONS
+        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
+#endif
+        return /*0*/;
+      }
+      worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
     }
     return 1;
   }

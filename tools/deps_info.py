@@ -152,7 +152,6 @@ _deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'gai_strerror': ['malloc'],
   'getaddrinfo': ['malloc', 'htonl', 'htons', 'ntohs'],
   'gethostbyaddr': ['malloc', 'htons'],
   'gethostbyname': ['malloc', 'htons'],
@@ -171,8 +170,6 @@ _deps_info = {
   'localtime': ['malloc'],
   'localtime_r': ['malloc'],
   'mktime': ['malloc'],
-  'mmap': ['memalign'],
-  'munmap': ['free'],
   'pthread_create': ['malloc', 'free', 'emscripten_main_thread_process_queued_calls'],
   'recv': ['htons'],
   'recvmsg': ['htons'],
@@ -213,6 +210,8 @@ def get_deps_info():
     _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch']
+  if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
+    _deps_info['mmap'] = ['emscripten_builtin_memalign']
   if settings.USE_PTHREADS and settings.OFFSCREEN_FRAMEBUFFER:
     # When OFFSCREEN_FRAMEBUFFER is defined these functions are defined in native code,
     # otherwise they are defined in src/library_html5_webgl.js.

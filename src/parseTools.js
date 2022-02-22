@@ -259,7 +259,7 @@ function splitI64(value, floatConversion) {
 function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent === 'number') {
+  if (typeof indent == 'number') {
     const len = indent;
     indent = '';
     for (let i = 0; i < len; i++) {
@@ -555,11 +555,11 @@ function getFastValue(a, op, b, type) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a === 'number') {
+  if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) aNumber = parseFloat(a);
-  if (typeof b === 'number') {
+  if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) bNumber = parseFloat(b);
@@ -896,7 +896,7 @@ function makeRetainedCompilerSettings() {
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
-        if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
+        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
           ret[x] = global[x];
         }
       } catch (e) {}
@@ -1056,9 +1056,9 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name + '_bigint';
+    return `/** @type {!BigInt} */ ${name}_bigint`;
   }
-  return name + '_low, ' + name + '_high';
+  return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {
@@ -1071,6 +1071,19 @@ function receiveI64ParamAsI32s(name) {
     return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
   }
   return '';
+}
+
+// TODO: use this in library_wasi.js and other places. but we need to add an
+//       error-handling hook here.
+function receiveI64ParamAsDouble(name) {
+  if (WASM_BIGINT) {
+    // Just convert the bigint into a double.
+    return `${name} = Number(${name});`;
+  }
+
+  // Combine the i32 params. Use an unsigned operator on low and shift high by
+  // 32 bits.
+  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {

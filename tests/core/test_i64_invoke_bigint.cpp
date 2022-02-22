@@ -1,4 +1,3 @@
-
 #include <emscripten.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -15,15 +14,19 @@ int64_t foobar(int64_t x, int y) {
   }
   return x + y; // use the int parameter too, to show they are all handled
 }
-  
+
 int main() {
   int64_t x;
   try {
     puts("try");
     x = foobar(big, 1);
-  } catch(int) {
-    puts("caught");
+    printf("ok: 0x%llx.\n", x);
+    x = foobar(1337, 1);
+    printf("should not get here\n");
+    __builtin_trap();
+  } catch(int e) {
+    printf("caught: %d\n", e);
   }
-  printf("ok: 0x%llx.\n", x);
+  printf("done");
+  return 0;
 }
-
