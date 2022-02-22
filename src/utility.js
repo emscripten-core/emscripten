@@ -98,7 +98,7 @@ function mergeInto(obj, other, forbidFuncRedefinition = false) {
   if (forbidFuncRedefinition) {
     for (const key in other) {
       if (obj[key] !== undefined) {
-        error ("JS function is defined more than once: " + key);
+        error('JS function is defined more than once: ' + key);
         return;
       }
     }
