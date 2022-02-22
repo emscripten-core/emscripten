@@ -11,6 +11,9 @@ onmessage = function(d) {
 #if !MODULARIZE
 	self.{{{ EXPORT_NAME }}} = d;
 #endif
+#if !MINIMAL_RUNTIME
+	d['instantiateWasm'] = (info, receiveInstance) => { var instance = new WebAssembly.Instance(d['wasm'], info); receiveInstance(instance, d['wasm']); return instance.exports; }
+#endif
 	importScripts(d.js);
 #if MODULARIZE
 	{{{ EXPORT_NAME }}}(d);

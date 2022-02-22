@@ -1,5 +1,6 @@
 {{{ (function() { global.captureModuleArg = function() { return MODULARIZE ? '' : 'self.Module=d;'; }; return null; })(); }}}
 {{{ (function() { global.instantiateModule = function() { return MODULARIZE ? `${EXPORT_NAME}(d);` : ''; }; return null; })(); }}}
+{{{ (function() { global.instantiateWasm = function() { return MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};'; }; return null; })(); }}}
 
 mergeInto(LibraryManager.library, {
   wasm_workers: {},
@@ -59,7 +60,7 @@ mergeInto(LibraryManager.library, {
 #if WASM_WORKERS == 2
   // In WASM_WORKERS == 2 build mode, we create the Wasm Worker global scope script from a string bundled in the main application JS file. This simplifies the number of deployed JS files with the app,
   // but has a downside that the generated build output will no longer be csp-eval compliant. https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_eval_expressions
-  _wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
+  _wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
 
   _emscripten_create_wasm_worker_with_tls__deps: ['wasm_workers', 'wasm_workers_id', '_wasm_worker_appendToQueue', '_wasm_worker_runPostMessage'
@@ -91,11 +92,12 @@ mergeInto(LibraryManager.library, {
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       '$ww': _wasm_workers_id, // Signal with a non-zero value that this Worker will be a Wasm Worker, and not the main browser thread.
-      'wasm': Module['wasm'],
 #if MINIMAL_RUNTIME
+      'wasm': Module['wasm'],
       'js': Module['js'],
       'mem': wasmMemory,
 #else
+      'wasm': wasmModule,
       'js': Module['mainScriptUrlOrBlob'] || _scriptDir,
       'wasmMemory': wasmMemory,
 #endif

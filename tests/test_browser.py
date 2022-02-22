@@ -5171,7 +5171,13 @@ window.close = function() {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
+    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
+  @also_with_minimal_runtime
+  def test_wasm_worker_embedded(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS=2'])
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime

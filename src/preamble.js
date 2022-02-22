@@ -1074,6 +1074,9 @@ function createWasm() {
     wasmModule = module;
 #endif
 
+#if WASM_WORKERS
+    if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
 #if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
@@ -1095,7 +1098,11 @@ function createWasm() {
     }
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
+#endif // ~USE_PTHREADS
+#if WASM_WORKERS
+    }
 #endif
+
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
@@ -1124,7 +1131,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS || RELOCATABLE
+#if SHARED_MEMORY || RELOCATABLE
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1245,6 +1252,7 @@ function createWasm() {
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this path.
   if (Module['instantiateWasm']) {
 #if USE_OFFSET_CONVERTER
 #if ASSERTIONS && USE_PTHREADS
