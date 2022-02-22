@@ -10610,13 +10610,13 @@ int main () {
 
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_COMPILER` is no longer supported', stderr)
 
   @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
   def test_emmaken_cflags(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_CFLAGS` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_CFLAGS` is no longer supported', stderr)
 
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
@@ -11122,11 +11122,10 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @with_env_modify({'EMMAKEN_NO_SDK': '1'})
   def test_EMMAKEN_NO_SDK(self):
-    with env_modify({'EMMAKEN_NO_SDK': '1'}):
-      err = self.expect_fail([EMCC, test_file('hello_world.c')])
-      self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
-      self.assertContained("fatal error: 'stdio.h' file not found", err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')])
+    self.assertContained('emcc: error: EMMAKEN_NO_SDK is no longer supported', err)
 
   @parameterized({
     'default': ('', '2147483648'),
