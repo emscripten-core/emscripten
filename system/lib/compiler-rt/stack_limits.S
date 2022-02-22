@@ -82,7 +82,7 @@ emscripten_stack_get_free:
 # __stack_base and __stack_end globals from a separate file as externs in order for that to work.
 .globl emscripten_wasm_worker_initialize
 emscripten_wasm_worker_initialize:
-  .functype emscripten_wasm_worker_initialize (PTR, i32, PTR, i32) -> ()
+  .functype emscripten_wasm_worker_initialize (PTR, i32, PTR) -> ()
 
   local.get 0
   global.set __stack_end

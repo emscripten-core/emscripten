@@ -34,7 +34,7 @@ mergeInto(LibraryManager.library, {
     // Run the C side Worker initialization for stack and TLS.
     _emscripten_wasm_worker_initialize(m['sb'], m['sz']
 #if !WASM_WORKERS_NO_TLS
-      , m['tb'], m['tz']
+      , m['tb']
 #endif
     );
     // The above function initializes the stack for this Worker, but C code cannot
@@ -72,13 +72,10 @@ mergeInto(LibraryManager.library, {
     + '_wasm_workers[0] = this;\n'
     + 'addEventListener("message", __wasm_worker_appendToQueue);\n'
     + '}\n',
-  _emscripten_create_wasm_worker_with_tls: function(stackLowestAddress, stackSize, tlsAddress, tlsSize) {
+  _emscripten_create_wasm_worker_with_tls: function(stackLowestAddress, stackSize, tlsAddress) {
 #if ASSERTIONS
     assert(stackLowestAddress % 16 == 0);
     assert(stackSize % 16 == 0);
-#if !WASM_WORKERS_NO_TLS
-    assert(tlsAddress != 0 || tlsSize == 0);
-#endif
 #endif
     let worker = _wasm_workers[_wasm_workers_id] = new Worker(
 #if WASM_WORKERS == 2 // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file as a Blob URL. (convenient, but not CSP security safe, since this is eval-like)
@@ -105,7 +102,6 @@ mergeInto(LibraryManager.library, {
       'sz': stackSize,          // sz = stack size
 #if !WASM_WORKERS_NO_TLS
       'tb': tlsAddress,         // tb = TLS base
-      'tz': tlsSize             // tz = TLS size
 #endif
     });
     worker.addEventListener('message', __wasm_worker_runPostMessage);

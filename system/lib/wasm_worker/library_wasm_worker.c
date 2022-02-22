@@ -14,7 +14,7 @@
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
+emscripten_wasm_worker_t _emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress);
 emscripten_wasm_worker_t _emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
 
 void __wasm_init_tls(void *memory);
@@ -40,7 +40,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowes
 	assert(tlsSize != 0 || __builtin_wasm_tls_size() == 0 && "Program code contains TLS: please use function emscripten_create_wasm_worker_with_tls() to create a Wasm Worker!");
 	assert(tlsSize == __builtin_wasm_tls_size() && "TLS size mismatch! Please reserve exactly __builtin_wasm_tls_size() TLS memory in a call to emscripten_create_wasm_worker_with_tls()");
 	assert(tlsAddress != 0 || tlsSize == 0);
-	return _emscripten_create_wasm_worker_with_tls((void*)stackLowestAddress, stackSize, tlsAddress, tlsSize);
+	return _emscripten_create_wasm_worker_with_tls((void*)stackLowestAddress, stackSize, tlsAddress);
 #endif
 }
 
@@ -62,7 +62,7 @@ emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize)
 	return emscripten_create_wasm_worker_no_tls(memalign(16, stackSize), stackSize);
 #else
 	uint32_t tlsSize = __builtin_wasm_tls_size();
-	return emscripten_create_wasm_worker_with_tls(memalign(16, stackSize), stackSize, memalign(__builtin_wasm_tls_align(), tlsSize), tlsSize);
+	return emscripten_create_wasm_worker_with_tls(memalign(16, stackSize), stackSize, tlsSize ? memalign(__builtin_wasm_tls_align(), tlsSize) : 0, tlsSize);
 #endif
 }
 
