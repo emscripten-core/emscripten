@@ -1544,8 +1544,6 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   def test_format_exception(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException'])
     self.maybe_closure()
