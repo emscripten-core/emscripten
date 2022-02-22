@@ -1550,21 +1550,17 @@ int main(int argc, char **argv)
     self.set_setting('FORMAT_EXCEPTION_SUPPORT')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
-    self.do_run(
-      """
+    self.do_run('''
       #include <emscripten.h>
       #include <exception>
       #include <stdexcept>
       using namespace std;
 
-      class myexception : public exception
-      {
+      class myexception : public exception {
         virtual const char* what() const throw() { return "My exception happened"; }
       } myex;
 
-      extern "C" void
-      throw_exc(int x)
-      {
+      extern "C" void throw_exc(int x) {
         if (x == 1) {
           throw 1000;
         }
@@ -1582,25 +1578,24 @@ int main(int argc, char **argv)
         }
       }
 
-      int
-      main(){
+      int main() {
           EM_ASM({
-            for(let i = 1; i < 6; i++){
+            for (let i = 1; i < 6; i++){
               try {
                   Module["_throw_exc"](i);
-              } catch(p){
+              } catch(p) {
                   console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
               }
             }
           });
       }
-      """,
-      "Cpp Exception: The exception is an object of type 'int' at address xxx which does not inherit from std::exception\n"
-      "Cpp Exception: The exception is an object of type 'char' at address xxx which does not inherit from std::exception\n"
-      "Cpp Exception std::runtime_error: abc\n"
-      "Cpp Exception myexception: My exception happened\n"
-      "Cpp Exception: The exception is an object of type 'char const*' at address xxx which does not inherit from std::exception\n"
-    )
+      ''', '''
+      Cpp Exception: The exception is an object of type 'int' at address xxx which does not inherit from std::exception
+      Cpp Exception: The exception is an object of type 'char' at address xxx which does not inherit from std::exception
+      Cpp Exception std::runtime_error: abc
+      Cpp Exception myexception: My exception happened
+      Cpp Exception: The exception is an object of type 'char const*' at address xxx which does not inherit from std::exception
+    ''')
 
   @with_both_eh_sjlj
   def test_bad_typeid(self):

@@ -431,8 +431,8 @@ var LibraryExceptions = {
 
 #if !DISABLE_EXCEPTION_CATCHING
   $formatException__deps: ["emscripten_format_exception", "$withStackSave", "free"],
-  $formatException: function(excPtr){
-      return withStackSave(function(){
+  $formatException: function(excPtr) {
+    return withStackSave(function(){
       var result_ptr = stackAlloc({{{ POINTER_SIZE }}});
       _emscripten_format_exception(result_ptr, excPtr);
       var utf8_addr = {{{ makeGetValue('result_ptr', '0', '*') }}};

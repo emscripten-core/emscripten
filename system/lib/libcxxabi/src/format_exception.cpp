@@ -6,7 +6,6 @@
 #ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
 
 extern "C" {
-#define DEMANGLED_BUF_SIZE 100
 
 int __cxa_can_catch(const std::type_info* catchType,
                     const std::type_info* excpType,
