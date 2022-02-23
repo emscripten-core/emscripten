@@ -368,16 +368,11 @@ function exportRuntime() {
     // if it is used, that they should export it
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
-      // (we could optimize this, but in ASSERTIONS mode code size doesn't
-      // matter anyhow)
-      let extra = '';
-      if (isExportedByForceFilesystem(name)) {
-        extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
-      }
-      if (!isNumber) {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = () => abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}");`;
+      const fssymbol = isExportedByForceFilesystem(name);
+      if (isNumber) {
+        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
       } else {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Object.defineProperty(Module, "${name}", { configurable: true, get: function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") } });`;
+        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
       }
     }
     return '';

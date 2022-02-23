@@ -333,6 +333,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
+  if settings.ASSERTIONS:
+    pre += "function checkIncomingModuleAPI() {\n"
+    for sym in settings.ALL_INCOMING_MODULE_JS_API:
+      if sym not in settings.INCOMING_MODULE_JS_API:
+        pre += f"  ignoredModuleProp('{sym}');\n"
+    pre += "}\n"
+
   exports = metadata['exports']
 
   if settings.ASYNCIFY:

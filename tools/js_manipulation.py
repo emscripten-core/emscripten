@@ -120,12 +120,11 @@ def make_invoke(sig):
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return BigInt(0);' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-  if settings.SUPPORT_LONGJMP:
-    rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
-  else:
-    rethrow = "if (e !== e+0) throw e;"
-
+  # Exceptions thrown from C++ exception will be integer numbers.
+  # longjmp will throw the number Infinity.
+  # Create a try-catch guard that rethrows the exception if anything else
+  # than a Number was thrown. To do that quickly and in a code size conserving
+  # manner, use the compact test "e !== e+0" to check if e was not a Number.
   ret = '''\
 function invoke_%s(%s) {
   var sp = stackSave();
@@ -133,9 +132,9 @@ function invoke_%s(%s) {
     %s
   } catch(e) {
     stackRestore(sp);
-    %s
+    if (e !== e+0) throw e;
     _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, rethrow, exceptional_ret)
+}''' % (sig, ','.join(args), body, exceptional_ret)
 
   return ret
