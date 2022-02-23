@@ -9099,7 +9099,7 @@ int main () {
   # Windows and Mac autorollers, despite the bot being correctly configured to
   # skip this test in all three platforms (Linux, Mac, and Windows).
   # The no_windows/no_mac decorators also solve that problem.
-  @no_windows("Code size is slightly different on Windows")
+#  @no_windows("Code size is slightly different on Windows")
   @no_mac("Code size is slightly different on Mac")
   @parameterized({
     'hello_world_wasm': ('hello_world', False, True),
@@ -9111,6 +9111,7 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
+    'hello_wasm_worker': ('hello_wasm_worker', False, True),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
@@ -9133,7 +9134,7 @@ int main () {
                                '-sNO_FILESYSTEM',
                                '--output_eol', 'linux',
                                '-Oz',
-                               '--closure=1',
+                               '--closure=0',
                                '-DNDEBUG',
                                '-ffast-math']
 
@@ -9151,13 +9152,15 @@ int main () {
                            '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
+    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
 
     sources = {
       'hello_world': hello_world_sources,
       'random_printf': random_printf_sources,
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
-      'hello_webgl2': hello_webgl2_sources}[test_name]
+      'hello_webgl2': hello_webgl2_sources,
+      'hello_wasm_worker': hello_wasm_worker_sources}[test_name]
 
     def print_percent(actual, expected):
       if actual == expected:
@@ -9285,6 +9288,7 @@ int main () {
         print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
       self.assertEqual(total_output_size, total_expected_size)
+
 
   # Tests the library_c_preprocessor.js functionality.
   def test_c_preprocessor(self):
