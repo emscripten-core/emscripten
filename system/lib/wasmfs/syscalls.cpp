@@ -1073,4 +1073,21 @@ long __syscall_truncate64(long path, long low, long high) {
 
   return 0;
 }
+
+long __syscall_ftruncate64(long fd, long low, long high) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+need error code, can fail to allocate
+  dataFile->locked().setSize(combineOffParts(low, high));
+
+  return 0;
+}
 }
