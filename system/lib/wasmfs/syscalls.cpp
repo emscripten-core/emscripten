@@ -1050,7 +1050,31 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
 }
 
 static off_t combineOffParts(long low, long high) {
-  return (off_t(low) << 32) | off_t(high);
+  return (off_t(high) << 32) | off_t(low);
+}
+
+long doTruncate(std::shared_ptr<File>& file, long low, long high) {
+  auto dataFile = file->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  auto size = combineOffParts(low, high);
+  if (size < 0) {
+    return -EINVAL;
+  }
+
+  // TODO: error handling for allocation errors. atm with exceptions disabled,
+  //       however, C++ backends using std::vector for storage have no way to
+  //       report that, and will abort in malloc.
+  locked.setSize(size);
+  return 0;
 }
 
 long __syscall_truncate64(long path, long low, long high) {
@@ -1063,15 +1087,7 @@ long __syscall_truncate64(long path, long low, long high) {
   if (!parsedPath.child) {
     return -ENOENT;
   }
-  auto dataFile = parsedPath.child->dynCast<DataFile>();
-  // TODO: support for symlinks.
-  if (!dataFile) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  dataFile->locked().setSize(combineOffParts(low, high));
-
-  return 0;
+  return doTruncate(parsedPath.child, low, high);
 }
 
 long __syscall_ftruncate64(long fd, long low, long high) {
@@ -1079,15 +1095,6 @@ long __syscall_ftruncate64(long fd, long low, long high) {
   if (!openFile) {
     return -EBADF;
   }
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
-  // TODO: support for symlinks.
-  if (!dataFile) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-need error code, can fail to allocate
-  dataFile->locked().setSize(combineOffParts(low, high));
-
-  return 0;
+  return doTruncate(openFile->locked().getFile(), low, high);
 }
 }
