@@ -153,6 +153,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
   // Keep the runtime alive through all calls. Note that this call might not be
   // async, but for simplicity we push and pop in all calls.
   runtimeKeepalivePush();
+  var asyncMode = opts && opts.async;
   // Whether we are a new async operation that just started. (If the async data
   // is not changed, then we are a sync operation during an async one, which is
   // fine.)
@@ -161,7 +162,6 @@ function ccall(ident, returnType, argTypes, args, opts) {
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
-    var asyncMode = opts && opts.async;
     assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
     return Asyncify.whenDone().then(onDone);
