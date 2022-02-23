@@ -83,7 +83,7 @@ COMPILE_TIME_SETTINGS = {
 
 class SettingsManager:
   attrs = {}
-  allowed_settings = []
+  allowed_settings = set()
   legacy_settings = {}
   alt_names = {}
   internal_settings = set()
@@ -138,7 +138,7 @@ class SettingsManager:
   def limit_settings(self, allowed):
     self.allowed_settings.clear()
     if allowed:
-      self.allowed_settings.extend(allowed)
+      self.allowed_settings.update(allowed)
 
   def __getattr__(self, attr):
     if self.allowed_settings:
@@ -173,12 +173,13 @@ class SettingsManager:
 
     if name not in self.attrs:
       msg = "Attempt to set a non-existent setting: '%s'\n" % name
-      suggestions = difflib.get_close_matches(name, list(self.attrs.keys()))
+      valid_keys = set(self.attrs.keys()).difference(self.internal_settings)
+      suggestions = difflib.get_close_matches(name, valid_keys)
       suggestions = [s for s in suggestions if s not in self.legacy_settings]
       suggestions = ', '.join(suggestions)
       if suggestions:
         msg += ' - did you mean one of %s?\n' % suggestions
-      msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+      msg += " - perhaps a typo in emcc's  -sX=Y  notation?\n"
       msg += ' - (see src/settings.js for valid values)'
       exit_with_error(msg)
 
