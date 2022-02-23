@@ -52,6 +52,11 @@ class ProxiedFile : public DataFile {
     return result;
   }
 
+  void setSize(size_t size) override {
+    // TODO
+    abort();
+  }
+
 public:
   // A file with the chosen destination backend is created on a thread via
   // the ProxiedFile's proxy.

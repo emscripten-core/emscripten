@@ -1048,4 +1048,29 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
 
   return 0;
 }
+
+static off_t combineOffParts(long low, long high) {
+  return (off_t(low) << 32) | off_t(high);
+}
+
+long __syscall_truncate64(long path, long low, long high) {
+  auto pathParts = splitPath((char*)path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  auto dataFile = parsedPath.child->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  dataFile->locked().setSize(combineOffParts(low, high));
+
+  return 0;
+}
 }

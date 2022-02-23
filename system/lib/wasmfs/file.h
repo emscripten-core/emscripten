@@ -103,6 +103,11 @@ class DataFile : public File {
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
+  // Sets the size of the file to a specific size. If new space is allocated, it
+  // should be zero-initialized (often backends have an efficient way to do this
+  // while doing the resizing).
+  virtual void setSize(size_t size) = 0;
+
   // TODO: Design a proper API for flushing files.
   virtual void flush() = 0;
 
@@ -227,6 +232,10 @@ public:
   }
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
+  }
+
+  void setSize(size_t size) {
+    return getFile()->setSize(size);
   }
 
   // TODO: Design a proper API for flushing files.

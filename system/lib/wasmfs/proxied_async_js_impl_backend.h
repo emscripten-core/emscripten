@@ -156,6 +156,11 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return state.offset;
   }
 
+  void setSize(size_t size) override {
+    // TODO
+    abort();
+  }
+
 public:
   ProxiedAsyncJSImplFile(mode_t mode,
                          backend_t backend,

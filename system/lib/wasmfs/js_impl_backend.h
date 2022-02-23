@@ -93,6 +93,11 @@ class JSImplFile : public DataFile {
     return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());
   }
 
+  void setSize(size_t size) override {
+    // TODO
+    abort();
+  }
+
 public:
   JSImplFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
     _wasmfs_jsimpl_alloc_file(getBackendIndex(), getFileIndex());
