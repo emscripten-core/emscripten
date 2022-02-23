@@ -1041,7 +1041,7 @@ class libwasm_workers(MTLibrary):
               '-D_DEBUG' if self.debug else '-Oz',
               '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0'),
               '-DWASM_WORKER_NO_TLS=' + ('0' if self.tls else '1')]
-    if self.is_ww:
+    if self.is_ww or self.is_mt:
       cflags += ['-sWASM_WORKERS']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
@@ -1049,7 +1049,7 @@ class libwasm_workers(MTLibrary):
 
   def get_base_name(self):
     name = 'libwasm_workers'
-    if not self.is_ww:
+    if not self.is_ww and not self.is_mt:
       name += '_stub'
     if not self.tls:
       name += '-notls'
