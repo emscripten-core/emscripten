@@ -46,6 +46,18 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
 Note that once the Module object is received by the main JavaScript file, it will look for ``Module['print']`` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
+Compilation settings
+====================
+
+The ``INCOMING_MODULE_JS_API`` compiler setting controls which ``Module``
+attributes are supported in the emitted JS. This list contains commonly-used
+things by default.
+
+Setting this to the smallest possible list for your application will save JS
+code size. For example, if you use no ``Module`` attributes, you can build
+with ``-sINCOMING_MODULE_JS_API=[]``. Or, if you use just a few, you can list
+them out, like this: ``-sINCOMING_MODULE_JS_API=print,printErr``.
+
 Affecting execution
 ===================
 
