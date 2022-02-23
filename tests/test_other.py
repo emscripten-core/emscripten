@@ -183,14 +183,16 @@ class other(RunnerCore):
     self.assertContained('Running sanity checks', proc.stderr)
 
   def test_emcc_generate_config(self):
-    for compiler in [EMCC, EMXX]:
-      config_path = './emscripten_config'
-      self.run_process([compiler, '--generate-config', config_path])
-      self.assertExists(config_path, 'A config file should have been created at %s' % config_path)
-      config_contents = read_file(config_path)
-      self.assertContained('EMSCRIPTEN_ROOT', config_contents)
-      self.assertContained('LLVM_ROOT', config_contents)
-      os.remove(config_path)
+    config_path = './emscripten_config'
+    with env_modify({'EM_CONFIG': config_path}):
+      for compiler in [EMCC, EMXX]:
+        self.assertNotExists(config_path)
+        self.run_process([compiler, '--generate-config'])
+        self.assertExists(config_path)
+        config_contents = read_file(config_path)
+        self.assertContained('EMSCRIPTEN_ROOT', config_contents)
+        self.assertContained('LLVM_ROOT', config_contents)
+        os.remove(config_path)
 
   def test_emcc_output_mjs(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', test_file('hello_world.c')])
@@ -753,6 +755,7 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
     self.run_process(['cmake', '--build', 'build2'])
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+    self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
   def test_cmake_find_sdl2(self):
     os.mkdir('build')
@@ -4461,9 +4464,6 @@ int main() {
     self.assertContained('hello_world.c', stdout)
 
   def test_emit_llvm(self):
-    # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
-    # We shouldn't need to copy the file here but if we don't then emcc will
-    # internally clobber the hello_world.ll in tests.
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
@@ -7195,7 +7195,7 @@ int main() {
     expected_basename = os.path.splitext(filename)[0]
     expected_basename += args_to_filename(args)
 
-    self.run_process([compiler_for(filename), filename, '-g2'] + args)
+    self.run_process([compiler_for(filename), filename, '-g2'] + args + self.get_emcc_args())
     # find the imports we send from JS
     js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
@@ -7273,6 +7273,7 @@ int main() {
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
+    self.set_setting('INCOMING_MODULE_JS_API', [])
     self.run_metadce_test('minimal.c', *args)
 
   @node_pthreads
@@ -7828,6 +7829,13 @@ end
     create_file("snowman freezes covid ☃ 🦠", ' ')
     rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
     building.emar('cr', 'libfoo.a', ['@' + rsp])
+
+  def test_response_file_bom(self):
+    # Modern CMake version create response fils in UTF-8 but with BOM
+    # at the begining.  Test that we can handle this.
+    # https://docs.python.org/3/library/codecs.html#encodings-and-unicode
+    create_file('test.rsp', b'\xef\xbb\xbf--version', binary=True)
+    self.run_process([EMCC, '@test.rsp'])
 
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
@@ -9679,7 +9687,21 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5150), 150)
+    self.assertLess(abs(changed - 4994), 150)
+
+  def test_INCOMING_MODULE_JS_API_missing(self):
+    create_file('pre.js', '''
+    Module['onRuntimeInitialized'] = () => console.log('initialized')
+    ''')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.do_runf(test_file('hello_world.c'), 'initialized')
+
+    # The INCOMING_MODULE_JS_API setting can limit the incoming module
+    # API, and we assert if the incoming module has a property that
+    # is ignored due to this setting.
+    self.set_setting('INCOMING_MODULE_JS_API', [])
+
+    self.do_runf(test_file('hello_world.c'), 'Aborted(`Module.onRuntimeInitialized` was supplied but `onRuntimeInitialized` not included in INCOMING_MODULE_JS_API)', assert_returncode=NON_ZERO)
 
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
@@ -10612,13 +10634,13 @@ int main () {
 
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_COMPILER` is no longer supported', stderr)
 
   @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
   def test_emmaken_cflags(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('warning: `EMMAKEN_CFLAGS` is deprecated', stderr)
+    stderr = self.expect_fail([EMCC, '-c', test_file('core/test_hello_world.c')])
+    self.assertContained('emcc: error: `EMMAKEN_CFLAGS` is no longer supported', stderr)
 
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
@@ -10909,10 +10931,11 @@ exec "$@"
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
-    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMCC_CFLAGS to
-    # be injected which could cause it to fail.
+    # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
+    # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
+    # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
@@ -10992,6 +11015,8 @@ exec "$@"
         cmd.append('-fexceptions')
       if function.startswith('glfwGetMonitors'):
         cmd.append('-sUSE_GLFW=3')
+      if 'mmap' in function:
+        cmd.append('-sFORCE_FILESYSTEM')
       # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
       # calls that exist in the same function with setjmp are converted to some
       # code sequence that includes emscripten_longjmp. emscripten_longjmp is
@@ -11121,11 +11146,10 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @with_env_modify({'EMMAKEN_NO_SDK': '1'})
   def test_EMMAKEN_NO_SDK(self):
-    with env_modify({'EMMAKEN_NO_SDK': '1'}):
-      err = self.expect_fail([EMCC, test_file('hello_world.c')])
-      self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
-      self.assertContained("fatal error: 'stdio.h' file not found", err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')])
+    self.assertContained('emcc: error: EMMAKEN_NO_SDK is no longer supported', err)
 
   @parameterized({
     'default': ('', '2147483648'),
@@ -11694,3 +11718,17 @@ void foo() {}
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
     self.set_setting('STRICT')
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'ReferenceError: allocate is not defined', assert_returncode=NON_ZERO)
+
+  def test_fetch_settings(self):
+    create_file('pre.js', '''
+    Module = {
+     fetchSettings: { cache: 'no-store' }
+    }''')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.do_runf(test_file('hello_world.c'), '`Module.fetchSettings` was supplied but `fetchSettings` not included in INCOMING_MODULE_JS_API', assert_returncode=NON_ZERO)
+
+    # Try again with INCOMING_MODULE_JS_API set
+    self.set_setting('INCOMING_MODULE_JS_API', 'fetchSettings')
+    self.do_runf(test_file('hello_world.c'), 'hello, world')
+    src = read_file('hello_world.js')
+    self.assertContained("fetch(wasmBinaryFile, Module['fetchSettings'] || ", src)

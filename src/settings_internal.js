@@ -224,3 +224,7 @@ var LINK_AS_CXX = 0;
 // minimum set of ES6 featurs.  This triggers transpilation to ES5
 // using closure compiler.
 var TRANSPILE_TO_ES5 = 0;
+
+// A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
+// include additional items).
+var ALL_INCOMING_MODULE_JS_API = []

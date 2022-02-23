@@ -259,7 +259,7 @@ function splitI64(value, floatConversion) {
 function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent === 'number') {
+  if (typeof indent == 'number') {
     const len = indent;
     indent = '';
     for (let i = 0; i < len; i++) {
@@ -555,11 +555,11 @@ function getFastValue(a, op, b, type) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a === 'number') {
+  if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) aNumber = parseFloat(a);
-  if (typeof b === 'number') {
+  if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) bNumber = parseFloat(b);
@@ -896,7 +896,7 @@ function makeRetainedCompilerSettings() {
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
-        if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
+        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
           ret[x] = global[x];
         }
       } catch (e) {}
@@ -952,22 +952,19 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return `
-if (!Object.getOwnPropertyDescriptor(Module, '${moduleName}')) {
-  Object.defineProperty(Module, '${moduleName}', {
-    configurable: true,
-    get: function() {
-      abort('Module.${moduleName} has been replaced with plain ${localName}\
- (the initial value can be provided on Module,\
- but after startup the value is only looked for on a local variable of that name)')
-    }
-  });
-}`;
+  return `legacyModuleProp('${moduleName}', '${localName}');`;
+}
+
+function checkReceiving(name) {
+  // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
+  // so calling makeModuleReceive* with a symbol not in this list is an error
+  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
 }
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
@@ -978,8 +975,18 @@ function makeModuleReceive(localName, moduleName) {
   return ret;
 }
 
+function makeModuleReceiveExpr(name, defaultValue) {
+  checkReceiving(name);
+  if (expectToReceiveOnModule(name)) {
+    return `Module['${name}'] || ${defaultValue}`;
+  } else {
+    return `${defaultValue}`;
+  }
+}
+
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = 'var ' + localName;
   if (!expectToReceiveOnModule(moduleName)) {
     if (defaultValue) {

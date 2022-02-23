@@ -16,7 +16,7 @@ function safeQuote(x) {
 function dump(item) {
   let funcData;
   try {
-    if (typeof item == 'object' && item !== null && item.funcData) {
+    if (typeof item == 'object' && item != null && item.funcData) {
       funcData = item.funcData;
       item.funcData = null;
     }
@@ -26,7 +26,7 @@ function dump(item) {
     for (const i in item) {
       if (Object.prototype.hasOwnProperty.call(item, i)) {
         const j = item[i];
-        if (typeof j === 'string' || typeof j === 'number') {
+        if (typeof j == 'string' || typeof j == 'number') {
           ret.push(i + ': ' + j);
         } else {
           ret.push(i + ': [?]');
@@ -98,7 +98,7 @@ function mergeInto(obj, other) {
 
 function isNumber(x) {
   // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x === 'NaN';
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 function isJsLibraryConfigIdentifier(ident) {

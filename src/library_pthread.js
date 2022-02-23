@@ -31,7 +31,7 @@ var LibraryPThread = {
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
-        if (runtimeInitialized && !runtimeExited && typeof _pthread_self !== 'undefined') {
+        if (runtimeInitialized && !runtimeExited && typeof _pthread_self != 'undefined') {
           t = _pthread_self();
         }
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
@@ -195,7 +195,7 @@ var LibraryPThread = {
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
-      if (typeof GL !== 'undefined') {
+      if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
@@ -364,7 +364,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
-        if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+        if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
           var p = trustedTypes.createPolicy(
             'emscripten#workerPolicy1',
             {
@@ -390,7 +390,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
         PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
       } else
@@ -584,7 +584,7 @@ var LibraryPThread = {
   },
 
   emscripten_has_threading_support: function() {
-    return typeof SharedArrayBuffer !== 'undefined';
+    return typeof SharedArrayBuffer != 'undefined';
   },
 
   emscripten_num_logical_cores: function() {
@@ -622,9 +622,9 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'emscripten_sync_run_in_main_thread_4'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
-    if (typeof SharedArrayBuffer === 'undefined') {
+    if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
     }
@@ -669,7 +669,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
+        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -897,7 +897,7 @@ var LibraryPThread = {
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
   #if WASM_BIGINT
-        if (typeof arg === 'bigint') {
+        if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
           HEAP64[b + 2*i] = BigInt(1);
           HEAP64[b + 2*i + 1] = arg;

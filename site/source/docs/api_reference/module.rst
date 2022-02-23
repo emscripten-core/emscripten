@@ -163,3 +163,8 @@ Other methods
 
   When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyWorker.js>`_).
 
+.. js:function:: Module.fetchSettings
+
+  Override the default settings object used when fetching the Wasm module from
+  the network.  This attribute is expected to be a string and it defaults to ``{
+  credentials: 'same-origin' }``.

@@ -56,16 +56,16 @@ WasmFS::~WasmFS() {
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
-  rootDirectory->locked().setEntry("dev", devDirectory);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO, rootBackend);
+  rootDirectory->locked().insertChild("dev", devDirectory);
 
   auto dir = devDirectory->locked();
 
-  dir.setEntry("stdin", StdinFile::getSingleton());
-  dir.setEntry("stdout", StdoutFile::getSingleton());
-  dir.setEntry("stderr", StderrFile::getSingleton());
+  dir.insertChild("stdin", StdinFile::getSingleton());
+  dir.insertChild("stdout", StdoutFile::getSingleton());
+  dir.insertChild("stderr", StderrFile::getSingleton());
 
   return rootDirectory;
 }
@@ -120,7 +120,8 @@ void WasmFS::preloadFiles() {
 
     auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
-    parentDir->locked().setEntry(childName, created);
+    auto inserted = parentDir->locked().insertChild(childName, created);
+    assert(inserted && "TODO: handle preload insertion errors");
   }
 
   for (int i = 0; i < numFiles; i++) {
@@ -143,7 +144,8 @@ void WasmFS::preloadFiles() {
       abort();
     }
 
-    parentDir->locked().setEntry(base, created);
+    auto inserted = parentDir->locked().insertChild(base, created);
+    assert(inserted && "TODO: handle preload insertion errors");
 
     created->locked().preloadFromJS(i);
   }

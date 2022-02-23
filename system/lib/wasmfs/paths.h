@@ -11,6 +11,11 @@
 
 namespace wasmfs {
 
+struct ParsedPath {
+  std::optional<Directory::Handle> parent;
+  std::shared_ptr<File> child;
+};
+
 // Call getParsedPath if one needs a locked handle to a parent dir and a
 // shared_ptr to its child file, given a file path.
 // TODO: When locking the directory structure is refactored, parent should be

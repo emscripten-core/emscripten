@@ -15,3 +15,6 @@ is included here because it is strongly tied to an exact `webgpu.h` revision.
 Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 - `library_webgpu_enum_tables.js`, which is pasted into [`library_webgpu.js`](../../../src/library_webgpu.js)
 - `webgpu_struct_info.json`, which is pasted into [`struct_info.json`](../../../src/struct_info.json).
+
+Once that's done, the following file also needs to be rebaselined:
+- [`reference_struct_info.json`](../../../tests/reference_struct_info.json): can be updated by running `tests/runner other.test_gen_struct_info --rebaseline`

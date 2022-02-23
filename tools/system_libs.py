@@ -55,11 +55,14 @@ def get_base_cflags(force_object_files=False):
 
 def clean_env():
   # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set.
+  # affected by things like EMCC_CFLAGS which the user may have set.
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
+              'EMCC_CFLAGS',
+              'EMCC_FORCE_STDLIBS',
+              'EMCC_ONLY_FORCED_STDLIBS']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -977,9 +980,12 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+      filenames=['emscripten_memcpy.c',
+                 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
-                 'emscripten_memmove.c'])
+                 'emscripten_memmove.c',
+                 'emscripten_mmap.c'
+                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
