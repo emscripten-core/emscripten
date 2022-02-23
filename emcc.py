@@ -2074,12 +2074,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
-  if (
-      '$formatException' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or
-      settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING
-  ):
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$formatException']
-    settings.EXPORTED_FUNCTIONS += ['formatException', '_emscripten_format_exception', '_free']
+  # TODO: Move this into the library JS file once it becomes possible.
+  # See https://github.com/emscripten-core/emscripten/pull/15982
+  if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
