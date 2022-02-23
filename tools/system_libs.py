@@ -468,13 +468,13 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
-    self.is_ww = kwargs.pop('is_ww')
+    self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-sUSE_PTHREADS']
+      cflags += ['-sUSE_PTHREADS', '-sWASM_WORKERS']
     if self.is_ww:
       cflags += ['-sWASM_WORKERS']
     return cflags
@@ -493,7 +493,7 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS and not settings.USE_PTHREADS, **kwargs)
 
   @classmethod
   def variations(cls):
