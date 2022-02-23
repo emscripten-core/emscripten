@@ -11718,3 +11718,17 @@ void foo() {}
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
     self.set_setting('STRICT')
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'ReferenceError: allocate is not defined', assert_returncode=NON_ZERO)
+
+  def test_fetch_settings(self):
+    create_file('pre.js', '''
+    Module = {
+     fetchSettings: { cache: 'no-store' }
+    }''')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.do_runf(test_file('hello_world.c'), '`Module.fetchSettings` was supplied but `fetchSettings` not included in INCOMING_MODULE_JS_API', assert_returncode=NON_ZERO)
+
+    # Try again with INCOMING_MODULE_JS_API set
+    self.set_setting('INCOMING_MODULE_JS_API', 'fetchSettings')
+    self.do_runf(test_file('hello_world.c'), 'hello, world')
+    src = read_file('hello_world.js')
+    self.assertContained("fetch(wasmBinaryFile, Module['fetchSettings'] || ", src)

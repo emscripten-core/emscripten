@@ -144,6 +144,11 @@ UBSAN_SANITIZERS = {
   'nullability',
 }
 
+# These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
+# default set.
+EXTRA_INCOMING_JS_API = [
+  'fetchSettings'
+]
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
@@ -340,8 +345,8 @@ def apply_settings(changes):
   settings object.
   """
 
-  # Stash a copy of all available incoming APIs before we possibly override it
-  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API
+  # Stash a copy of all available incoming APIs before the user can potentially override it
+  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
 
   def standardize_setting_change(key, value):
     # boolean NO_X settings are aliases for X
