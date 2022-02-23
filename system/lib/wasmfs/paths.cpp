@@ -87,13 +87,13 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     std::shared_ptr<File> child;
     std::shared_ptr<File> parent;
     if (*pathPart == ".") {
-      child = lockedCurr.unlocked();
+      child = curr;
       parent = lockedCurr.getParent();
     } else if (*pathPart == "..") {
-      if (curr != wasmFS.getRootDirectory()) {
-        child = lockedCurr.getParent()->cast<Directory>();
+      if (curr == wasmFS.getRootDirectory()) {
+        child = curr;
       } else {
-        child = lockedCurr.unlocked();
+        child = lockedCurr.getParent()->cast<Directory>();
       }
       parent = child->locked().getParent();
     } else {
