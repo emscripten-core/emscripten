@@ -873,8 +873,8 @@ window.close = function() {
              %s
             }
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-          self.compile_btest([test_file('sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main', '-lSDL', '-lGL'])
-          self.run_browser('page.html', '', '/report_result?223092870')
+          self.compile_btest([test_file('sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main', '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
+          self.run_browser('page.html', '', '/report_result?exit:223092870')
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
@@ -1359,7 +1359,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_memfs_fsync(self):
     args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
     secret = str(time.time())
-    self.btest(test_file('fs/test_memfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"'])
+    self.btest_exit(test_file('fs/test_memfs_fsync.c'), args=args + ['-DSECRET=\"' + secret + '\"'])
 
   def test_fs_workerfs_read(self):
     secret = 'a' * 10
@@ -1376,7 +1376,7 @@ keydown(100);keyup(100); // trigger the end
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest(test_file('fs/test_workerfs_read.c'), '1', args=['-lworkerfs.js', '--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit(test_file('fs/test_workerfs_read.c'), args=['-lworkerfs.js', '--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
@@ -1396,37 +1396,37 @@ keydown(100);keyup(100); // trigger the end
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
     assert os.path.getsize('file1.txt') + os.path.getsize(Path('subdir/file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     create_file('files.js', out, binary=True)
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
     print('    modularize')
-    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-sMODULARIZE=1'])
+    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-sMODULARIZE=1', '-sEXIT_RUNTIME'])
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
         Module()
       </script>
     ''')
-    self.run_browser('a.html', '.', '/report_result?2')
+    self.run_browser('a.html', '.', '/report_result?exit:2')
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-sCLOSURE_WARNINGS=quiet'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-sCLOSURE_WARNINGS=quiet'])
 
     '''# non-lz4 for comparison
     try:
@@ -1438,7 +1438,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file3.txt', Path('files/file3.txt'))
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     create_file('files.js', out, binary=True)
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'])'''
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js'])'''
 
   def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
@@ -4251,8 +4251,8 @@ window.close = function() {
   def test_main_thread_em_asm_blocking(self):
     create_file('page.html', read_file(test_file('browser/test_em_asm_blocking.html')))
 
-    self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
-    self.run_browser('page.html', '', '/report_result?8')
+    self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+    self.run_browser('page.html', '', '/report_result?exit:8')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):

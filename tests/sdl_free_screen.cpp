@@ -6,9 +6,7 @@
 #include <stdio.h>
 #include <SDL/SDL.h>
 
-
-extern "C" int main(int argc, char** argv) {
-
+int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(256, 256, 32, SDL_SWSURFACE);
   printf("freeing screen...\n");
