@@ -92,13 +92,13 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-// forbidFuncRedefinition if is true, it shows error in case of function redefinition
-function mergeInto(obj, other, forbidFuncRedefinition = false) {
-  // looking for function redefinition
-  if (forbidFuncRedefinition) {
-    for (const key in other) {
-      if (obj[key] !== undefined) {
-        error('JS function is defined more than once: ' + key);
+// if allowOverride is false, it shows error in case of symbol redefinition
+function mergeInto(obj, other, allowOverride = true) {
+  // check for unintended symbol redefinition
+  if (!allowOverride) {
+    for (const key of Object.keys(other)) {
+      if (obj.hasOwnProperty(key)) {
+        error('Symbol redefinition: ' + key);
         return;
       }
     }
