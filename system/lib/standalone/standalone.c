@@ -171,11 +171,6 @@ void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
 }
 
-__attribute__((__weak__))
-void* __cxa_allocate_exception(size_t thrown_size) {
-  abort();
-}
-
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
 
