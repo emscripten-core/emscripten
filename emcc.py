@@ -353,19 +353,7 @@ def apply_settings(user_settings):
   # Stash a copy of all available incoming APIs before the user can potentially override it
   settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
 
-  def standardize_setting_change(key, value):
-    # boolean NO_X settings are aliases for X
-    # (note that *non*-boolean setting values have special meanings,
-    # and we can't just flip them, so leave them as-is to be
-    # handled in a special way later)
-    if key.startswith('NO_') and value in ('0', '1'):
-      key = strip_prefix(key, 'NO_')
-      value = str(1 - int(value))
-    return key, value
-
   for key, value in user_settings.items():
-    key, value = standardize_setting_change(key, value)
-
     if key in settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
@@ -1233,6 +1221,17 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   return linker_args
 
 
+def normalize_boolean_setting(name, value):
+  # boolean NO_X settings are aliases for X
+  # (note that *non*-boolean setting values have special meanings,
+  # and we can't just flip them, so leave them as-is to be
+  # handled in a special way later)
+  if name.startswith('NO_') and value in ('0', '1'):
+    name = strip_prefix(name, 'NO_')
+    value = str(1 - int(value))
+  return name, value
+
+
 @ToolchainProfiler.profile_block('parse arguments')
 def phase_parse_arguments(state):
   """The first phase of the compiler.  Parse command line argument and
@@ -1263,6 +1262,7 @@ def phase_parse_arguments(state):
   user_settings = {}
   for s in settings_changes:
     key, value = s.split('=', 1)
+    key, value = normalize_boolean_setting(key, value)
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
