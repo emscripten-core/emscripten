@@ -7828,6 +7828,13 @@ end
     rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
     building.emar('cr', 'libfoo.a', ['@' + rsp])
 
+  def test_response_file_bom(self):
+    # Modern CMake version create response fils in UTF-8 but with BOM
+    # at the begining.  Test that we can handle this.
+    # https://docs.python.org/3/library/codecs.html#encodings-and-unicode
+    create_file('test.rsp', b'\xef\xbb\xbf--version', binary=True)
+    self.run_process([EMCC, '@test.rsp'])
+
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
     # archives (which inherently don't have indexes).
