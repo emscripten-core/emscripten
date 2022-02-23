@@ -9099,7 +9099,7 @@ int main () {
   # Windows and Mac autorollers, despite the bot being correctly configured to
   # skip this test in all three platforms (Linux, Mac, and Windows).
   # The no_windows/no_mac decorators also solve that problem.
-#  @no_windows("Code size is slightly different on Windows")
+  @no_windows("Code size is slightly different on Windows")
   @no_mac("Code size is slightly different on Mac")
   @parameterized({
     'hello_world_wasm': ('hello_world', False, True),
@@ -9134,7 +9134,7 @@ int main () {
                                '-sNO_FILESYSTEM',
                                '--output_eol', 'linux',
                                '-Oz',
-                               '--closure=0',
+                               '--closure=1',
                                '-DNDEBUG',
                                '-ffast-math']
 
