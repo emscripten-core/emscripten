@@ -63,7 +63,8 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     // directory if no base FD is given, or if the base FD is the special value
     // indicating the CWD.
     if (baseFD && *baseFD != AT_FDCWD) {
-      auto lockedOpenDir = wasmFS.getLockedFileTable()[*baseFD].locked();
+      auto lockedOpenDir =
+        wasmFS.getFileTable().locked().getEntry(*baseFD)->locked();
       auto openDir = lockedOpenDir.getFile();
       if (!openDir->is<Directory>()) {
         err = -EBADF;
