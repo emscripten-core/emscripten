@@ -2241,9 +2241,9 @@ void *getBindBuffer() {
 
   def test_sdl_canvas_palette_2(self):
     create_file('pre.js', '''
-      Module['preRun'].push(function() {
+      Module['preRun'] = () => {
         SDL.defaults.copyOnLock = false;
-      });
+      };
     ''')
 
     create_file('args-r.js', '''
@@ -2525,11 +2525,11 @@ void *getBindBuffer() {
       create_file('post.js', post_prep + post_test + post_hook)
       self.btest(filename, expected='600', args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
       print('sync startup, call too late')
-      create_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
+      create_file('post.js', post_prep + 'Module.postRun = () => { ' + post_test + ' };' + post_hook)
       self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
 
       print('sync, runtime still alive, so all good')
-      create_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
+      create_file('post.js', post_prep + 'expected_ok = true; Module.postRun = () => { ' + post_test + ' };' + post_hook)
       self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args + mode, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
@@ -2644,11 +2644,10 @@ void *getBindBuffer() {
 
   def test_doublestart_bug(self):
     create_file('pre.js', r'''
-if (!Module['preRun']) Module['preRun'] = [];
-Module["preRun"].push(function () {
+Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
   removeRunDependency('test_run_dependency');
-});
+};
 ''')
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js'], expected='1')
