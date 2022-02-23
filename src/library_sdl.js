@@ -17,13 +17,13 @@
 
 var LibrarySDL = {
   $SDL_unicode__docs: '/** @suppress{missingProperties} */',
-  $SDL_unicode: function() { return SDL.unicode},
+  $SDL_unicode: function() { return SDL.unicode; },
 
   $SDL_ttfContext__docs: '/** @suppress{missingProperties} */',
-  $SDL_ttfContext: function() { return SDL.ttfContext},
+  $SDL_ttfContext: function() { return SDL.ttfContext; },
 
   $SDL_audio__docs: '/** @suppress{missingProperties} */',
-  $SDL_audio: function() { return SDL.audio},
+  $SDL_audio: function() { return SDL.audio; },
 
   $SDL__deps: [
 #if FILESYSTEM
