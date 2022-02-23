@@ -154,10 +154,17 @@ function ccall(ident, returnType, argTypes, args, opts) {
   // async, but for simplicity we push and pop in all calls.
   runtimeKeepalivePush();
   var asyncMode = opts && opts.async;
-  // Whether we are a new async operation that just started. (If the async data
-  // is not changed, then we are a sync operation during an async one, which is
-  // fine.)
   if (Asyncify.currData != previousAsync) {
+#if ASSERTIONS
+    // A change in async operation happened. If there was already an async
+    // operation in flight before us, that is an error: we should not start
+    // another async operation while one is active, and we should not stop one
+    // either. The only valid combination is to have no change in the async
+    // data (so we either had one in flight and left it alone, or we didn't have
+    // one), or to have nothing in flight and to start one.
+    assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
+    assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
+#endif
     // This is a new async operation. The wasm is paused and has unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
