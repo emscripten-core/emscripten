@@ -106,7 +106,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       // We found the child to return, now compute the parent. Normally that is
       // curr, but we must also handle the other cases of . and .. as well as
       // the possible corner case of the child being moved or unlinked
-      // meanwhile (which can happen when . and .., as then we are not holding a
+      // meanwhile (which can happen with . and .., as then we are not holding a
       // lock on the parent).
       if (!parent) {
         return ParsedPath{{}, child};
