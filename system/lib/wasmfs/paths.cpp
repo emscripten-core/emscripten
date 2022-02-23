@@ -9,6 +9,35 @@
 
 namespace wasmfs {
 
+#ifdef WASMFS_DEBUG
+// Print the absolute path of a file.
+std::string getAbsPath(std::shared_ptr<File> curr) {
+  std::string result = "";
+
+  while (curr != wasmFS.getRootDirectory()) {
+    auto parent = curr->locked().getParent();
+    // Check if the parent exists. The parent may not exist if the CWD or one
+    // of its ancestors has been unlinked.
+    if (!parent) {
+      return "unlinked";
+    }
+
+    auto parentDir = parent->dynCast<Directory>();
+
+    auto name = parentDir->locked().getName(curr);
+    result = '/' + name + result;
+    curr = parentDir;
+  }
+
+  // Check if the cwd is the root directory.
+  if (result.empty()) {
+    result = "/";
+  }
+
+  return result;
+}
+#endif
+
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
                          std::shared_ptr<File> forbiddenAncestor,
@@ -46,12 +75,53 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
     }
   }
 
-  for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
+  for (auto pathPart = begin; pathPart != pathParts.end(); ++pathPart) {
     // Find the next entry in the current directory entry
 #ifdef WASMFS_DEBUG
     curr->locked().printKeys();
 #endif
-    auto child = curr->locked().getChild(*pathPart);
+
+    auto lockedCurr = curr->locked();
+
+    // Find the relevant child for this path part.
+    std::shared_ptr<File> child;
+    std::shared_ptr<File> parent;
+    if (*pathPart == ".") {
+      child = curr;
+      parent = lockedCurr.getParent();
+    } else if (*pathPart == "..") {
+      if (curr == wasmFS.getRootDirectory()) {
+        child = curr;
+      } else {
+        child = lockedCurr.getParent()->cast<Directory>();
+      }
+      parent = child->locked().getParent();
+    } else {
+      child = lockedCurr.getChild(*pathPart);
+      parent = curr;
+    }
+
+    bool atFinalPart = pathPart == (pathParts.end() - 1);
+    if (atFinalPart) {
+      // We found the child to return, now compute the parent. Normally that is
+      // curr, but we must also handle the other cases of . and .. as well as
+      // the possible corner case of the child being moved or unlinked
+      // meanwhile (which can happen with . and .., as then we are not holding a
+      // lock on the parent).
+      if (!parent) {
+        return ParsedPath{{}, child};
+      }
+      if (parent == curr) {
+        // We already have a lock on curr; use that.
+        return ParsedPath{std::move(lockedCurr), child};
+      }
+      // Take a new lock as this is something other than curr. However, we must
+      // free our lock on curr first, to avoid a potential deadlock.
+      {
+        auto releaser = std::move(lockedCurr);
+      }
+      return ParsedPath{parent->cast<Directory>()->locked(), child};
+    }
 
     if (!child) {
       err = -ENOENT;
@@ -77,10 +147,8 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #endif
   }
 
-  // Lock the parent once.
-  auto lockedCurr = curr->locked();
-  auto child = lockedCurr.getChild(*(pathParts.end() - 1));
-  return ParsedPath{std::move(lockedCurr), child};
+  // There was no path to process in the loop.
+  return ParsedPath{std::move(curr->locked()), nullptr};
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
