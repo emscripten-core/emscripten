@@ -85,16 +85,20 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 
     // Find the relevant child for this path part.
     std::shared_ptr<File> child;
+    std::shared_ptr<File> parent;
     if (*pathPart == ".") {
       child = lockedCurr.unlocked();
+      parent = lockedCurr.getParent();
     } else if (*pathPart == "..") {
       if (curr != wasmFS.getRootDirectory()) {
         child = lockedCurr.getParent()->cast<Directory>();
       } else {
         child = lockedCurr.unlocked();
       }
+      parent = child->locked().getParent();
     } else {
       child = lockedCurr.getChild(*pathPart);
+      parent = curr;
     }
 
     bool atFinalPart = pathPart == (pathParts.end() - 1);
@@ -104,7 +108,6 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       // the possible corner case of the child being moved or unlinked
       // meanwhile (which can happen when . and .., as then we are not holding a
       // lock on the parent).
-      auto parent = lockedCurr.getParent();
       if (!parent) {
         return ParsedPath{{}, child};
       }
