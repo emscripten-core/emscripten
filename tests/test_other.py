@@ -9289,7 +9289,6 @@ int main () {
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
       self.assertEqual(total_output_size, total_expected_size)
 
-
   # Tests the library_c_preprocessor.js functionality.
   def test_c_preprocessor(self):
     self.run_process([EMXX, test_file('test_c_preprocessor.c'), '--js-library', path_from_root('src/library_c_preprocessor.js'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$remove_cpp_comments_in_shaders,$preprocess_c_code'])
