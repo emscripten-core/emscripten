@@ -215,6 +215,7 @@ namespace wgpu {
     static_assert(sizeof(LoadOp) == sizeof(WGPULoadOp), "sizeof mismatch for LoadOp");
     static_assert(alignof(LoadOp) == alignof(WGPULoadOp), "alignof mismatch for LoadOp");
 
+    static_assert(static_cast<uint32_t>(LoadOp::Undefined) == WGPULoadOp_Undefined, "value mismatch for LoadOp::Undefined");
     static_assert(static_cast<uint32_t>(LoadOp::Clear) == WGPULoadOp_Clear, "value mismatch for LoadOp::Clear");
     static_assert(static_cast<uint32_t>(LoadOp::Load) == WGPULoadOp_Load, "value mismatch for LoadOp::Load");
 
@@ -237,6 +238,14 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(PowerPreference::Undefined) == WGPUPowerPreference_Undefined, "value mismatch for PowerPreference::Undefined");
     static_assert(static_cast<uint32_t>(PowerPreference::LowPower) == WGPUPowerPreference_LowPower, "value mismatch for PowerPreference::LowPower");
     static_assert(static_cast<uint32_t>(PowerPreference::HighPerformance) == WGPUPowerPreference_HighPerformance, "value mismatch for PowerPreference::HighPerformance");
+
+    // PredefinedColorSpace
+
+    static_assert(sizeof(PredefinedColorSpace) == sizeof(WGPUPredefinedColorSpace), "sizeof mismatch for PredefinedColorSpace");
+    static_assert(alignof(PredefinedColorSpace) == alignof(WGPUPredefinedColorSpace), "alignof mismatch for PredefinedColorSpace");
+
+    static_assert(static_cast<uint32_t>(PredefinedColorSpace::Undefined) == WGPUPredefinedColorSpace_Undefined, "value mismatch for PredefinedColorSpace::Undefined");
+    static_assert(static_cast<uint32_t>(PredefinedColorSpace::Srgb) == WGPUPredefinedColorSpace_Srgb, "value mismatch for PredefinedColorSpace::Srgb");
 
     // PresentMode
 
@@ -345,6 +354,7 @@ namespace wgpu {
     static_assert(sizeof(StoreOp) == sizeof(WGPUStoreOp), "sizeof mismatch for StoreOp");
     static_assert(alignof(StoreOp) == alignof(WGPUStoreOp), "alignof mismatch for StoreOp");
 
+    static_assert(static_cast<uint32_t>(StoreOp::Undefined) == WGPUStoreOp_Undefined, "value mismatch for StoreOp::Undefined");
     static_assert(static_cast<uint32_t>(StoreOp::Store) == WGPUStoreOp_Store, "value mismatch for StoreOp::Store");
     static_assert(static_cast<uint32_t>(StoreOp::Discard) == WGPUStoreOp_Discard, "value mismatch for StoreOp::Discard");
 
@@ -1730,14 +1740,14 @@ namespace wgpu {
     void ComputePassEncoder::BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const {
         wgpuComputePassEncoderBeginPipelineStatisticsQuery(Get(), querySet.Get(), queryIndex);
     }
-    void ComputePassEncoder::Dispatch(uint32_t x, uint32_t y, uint32_t z) const {
-        wgpuComputePassEncoderDispatch(Get(), x, y, z);
+    void ComputePassEncoder::Dispatch(uint32_t workgroupCountX, uint32_t workgroupCountY, uint32_t workgroupCountZ) const {
+        wgpuComputePassEncoderDispatch(Get(), workgroupCountX, workgroupCountY, workgroupCountZ);
     }
     void ComputePassEncoder::DispatchIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const {
         wgpuComputePassEncoderDispatchIndirect(Get(), indirectBuffer.Get(), indirectOffset);
     }
-    void ComputePassEncoder::EndPass() const {
-        wgpuComputePassEncoderEndPass(Get());
+    void ComputePassEncoder::End() const {
+        wgpuComputePassEncoderEnd(Get());
     }
     void ComputePassEncoder::EndPipelineStatisticsQuery() const {
         wgpuComputePassEncoderEndPipelineStatisticsQuery(Get());
@@ -2073,11 +2083,11 @@ namespace wgpu {
     void RenderPassEncoder::DrawIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const {
         wgpuRenderPassEncoderDrawIndirect(Get(), indirectBuffer.Get(), indirectOffset);
     }
+    void RenderPassEncoder::End() const {
+        wgpuRenderPassEncoderEnd(Get());
+    }
     void RenderPassEncoder::EndOcclusionQuery() const {
         wgpuRenderPassEncoderEndOcclusionQuery(Get());
-    }
-    void RenderPassEncoder::EndPass() const {
-        wgpuRenderPassEncoderEndPass(Get());
     }
     void RenderPassEncoder::EndPipelineStatisticsQuery() const {
         wgpuRenderPassEncoderEndPipelineStatisticsQuery(Get());
