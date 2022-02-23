@@ -24,7 +24,6 @@ class WasmFS {
 
   std::vector<std::unique_ptr<Backend>> backendTable;
   FileTable fileTable;
-  backend_t rootBackend;
   std::shared_ptr<Directory> rootDirectory;
   std::shared_ptr<Directory> cwd;
   std::mutex mutex;
@@ -39,9 +38,7 @@ class WasmFS {
 
 public:
   // Set up global data structures and preload files.
-  WasmFS()
-    : rootBackend(createMemoryFileBackend()),
-      rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
     preloadFiles();
   }
 

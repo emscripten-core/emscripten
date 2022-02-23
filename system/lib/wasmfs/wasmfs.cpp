@@ -54,7 +54,7 @@ WasmFS::~WasmFS() {
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  rootBackend = createMemoryFileBackend();
+  auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
     std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
   auto devDirectory =
