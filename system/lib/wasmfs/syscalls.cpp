@@ -252,21 +252,21 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   auto fileTable = wasmFS.getFileTable().locked();
   if (!fileTable.getEntry(fd)) {
-    return -EBADF;
+    return __WASI_ERRNO_BADF;
   }
   fileTable.setEntry(fd, nullptr);
   return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
   // Nothing to flush for anything but a data file, but also not an error either
   // way. TODO: in the future we may want syncing of directories.
-  auto dataFile = openFile.locked().getFile()->dynCast<DataFile>();
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
     dataFile->locked().flush();
   }
