@@ -40,9 +40,14 @@ emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize);
 emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
 emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
 
+// Terminates the given Wasm Worker some time after it has finished executing its current, or possibly some subsequent
+// posted functions. Note that this function is not C++ RAII safe, but you must manually coordinate to release any
+// resources from the given Worker that it may have allocated from the heap or may have stored on its TLS slots.
+// There are no TLS destructors that would execute.
 // Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
 void emscripten_terminate_wasm_worker(emscripten_wasm_worker_t id);
 
+// Note the comment on emscripten_terminate_wasm_worker(id) about thread destruction.
 // Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
 void emscripten_terminate_all_wasm_workers(void);
 
@@ -57,9 +62,9 @@ uint32_t emscripten_wasm_worker_self_id(void);
 
 /* emscripten_wasm_worker_post_function_*: Post a pointer to a C/C++ function to be executed on the
   target Wasm Worker (via sending a postMessage() to the target thread). Notes:
- - The target worker 'id' must have been created by the same thread that is calling this function. That is,
-   a Wasm Worker cannot send a message to another Worker via this function.
- - If running in a Wasm Worker context, specify worker ID 0 to pass a message to the parent thread.
+ - If running inside a Wasm Worker, specify worker ID 0 to pass a message to the parent thread.
+ - When specifying non-zero ID, the target worker must have been created by the calling thread. That is,
+   a Wasm Worker can only send a message to its parent or its children, but not to its siblings.
  - The target function pointer will be executed on the target Worker only after it yields back to its
    event loop. If the target Wasm Worker executes an infinite loop that never yields, then the function
    pointer will never be called.
