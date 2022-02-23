@@ -5171,7 +5171,6 @@ window.close = function() {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
@@ -5182,44 +5181,37 @@ window.close = function() {
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
   def test_wasm_worker_thread_stack(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'thread_stack.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker thread stack setup without TLS support active
   @also_with_minimal_runtime
   def test_wasm_worker_thread_stack_no_tls(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'thread_stack.c'), expected='0', args=['-sWASM_WORKERS', '-sWASM_WORKERS_NO_TLS'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'malloc_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
   def test_wasm_worker_and_pthreads(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_and_pthread.c'), expected='0', args=['-sWASM_WORKERS', '-pthread'])
 
   # Tests emscripten_wasm_worker_self_id() function
   @also_with_minimal_runtime
   def test_wasm_worker_self_id(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_self_id.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests direct Wasm Assembly .S file based TLS variables in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_tls_wasm_assembly(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_tls_wasm_assembly.c'),
                expected='42', args=['-sWASM_WORKERS', path_from_root('tests', 'wasm_worker', 'wasm_worker_tls_wasm_assembly.S')])
 
   # Tests C++11 keyword thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_cpp11_thread_local(self):
-    self.skipTest('skipped to debug CI')
     self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
@@ -5235,7 +5227,6 @@ Stack dump:
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    self.skipTest('skipped to debug CI')
     self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
@@ -5252,7 +5243,6 @@ Stack dump:
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    self.skipTest('skipped to debug CI')
     self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
@@ -5268,129 +5258,108 @@ Stack dump:
   # Tests emscripten_wasm_worker_sleep()
   @also_with_minimal_runtime
   def test_wasm_worker_sleep(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wasm_worker_sleep.c'), expected='1', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'terminate_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate_all(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'terminate_all_wasm_workers.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_post_function_*() API
   @also_with_minimal_runtime
   def test_wasm_worker_post_function(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'post_function.c'), expected='8', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
   # to send a message back from Worker to its parent thread.
   @also_with_minimal_runtime
   def test_wasm_worker_post_function_to_main_thread(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'post_function_to_main_thread.c'), expected='10', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_navigator_hardware_concurrency() and emscripten_atomics_is_lock_free()
   @also_with_minimal_runtime
   def test_wasm_worker_hardware_concurrency_is_lock_free(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'hardware_concurrency_is_lock_free.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_wait_i32() and emscripten_wasm_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wait32_notify.c'), expected='2', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wait64_notify.c'), expected='2', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'wait_async.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_wait_async(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'cancel_wait_async.c'), expected='1', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_all_wait_asyncs() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_all_wait_asyncs(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'cancel_all_wait_asyncs.c'), expected='1', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_all_wait_asyncs_at_address() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_all_wait_asyncs_at_address(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'cancel_all_wait_asyncs_at_address.c'), expected='1', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_init(), emscripten_lock_waitinf_acquire() and emscripten_lock_release()
   @also_with_minimal_runtime
   def test_wasm_worker_lock_waitinf(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_waitinf_acquire.c'), expected='4000', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_wait(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_wait_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_wait_acquire() between two Wasm Workers.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_wait2(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_wait_acquire2.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_wait(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_busyspin_wait_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_waitinf_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_waitinf(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'lock_busyspin_waitinf_acquire.c'), expected='1', args=['-sWASM_WORKERS'])
 
   # Tests that proxied JS functions cannot be called from Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_no_proxied_js_functions(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.c'), expected='0',
                args=['--js-library', path_from_root('tests', 'wasm_worker', 'no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
 
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_waitinf_acquire(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'semaphore_waitinf_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_semaphore_try_acquire() on the main thread
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
-    self.skipTest('skipped to debug CI')
     self.btest(path_from_root('tests', 'wasm_worker', 'semaphore_try_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   @no_firefox('no 4GB support yet')

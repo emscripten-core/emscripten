@@ -33,7 +33,7 @@ void worker_main()
   assert(emscripten_current_thread_is_wasm_worker());
   assert(emscripten_wasm_worker_self_id() != 0);
 
-  while(!emscripten_atomic_cas_u32((void*)pthread_ran, 0, 1))
+  while(!emscripten_atomic_cas_u32((void*)&pthread_ran, 0, 1))
     emscripten_wasm_worker_sleep(10);
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);

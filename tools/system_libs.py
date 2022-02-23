@@ -498,7 +498,7 @@ class MTLibrary(Library):
   @classmethod
   def variations(cls):
     combos = super(MTLibrary, cls).variations()
-    # pthreads and Wasm workers are currently not supported together.
+    # To save on # of variations, pthreads and Wasm workers when used together, just use pthreads variation.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 
@@ -1070,7 +1070,7 @@ class libwasm_workers(MTLibrary):
   def get_files(self):
     return files_in_path(
         path='system/lib/wasm_worker',
-        filenames=['library_wasm_worker.c' if self.is_ww else 'library_wasm_worker_stub.c'])
+        filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
