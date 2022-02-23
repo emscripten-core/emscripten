@@ -169,57 +169,54 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
+    default_config = config.embedded_config
+    output = self.do([EMCC, '-v'])
+    self.assertContained('emcc: error: config file not found: %s.  Please create one by hand or run `emcc --generate-config`' % default_config, output)
+
+    try:
+      temp_bin = tempfile.mkdtemp()
+
+      def make_new_executable(name):
+        open(os.path.join(temp_bin, name), 'w').close()
+        make_executable(os.path.join(temp_bin, name))
+
+      make_new_executable('llvm-dis')
+      make_new_executable('node')
+
+      with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
+        output = self.do([EMCC, '--generate-config'])
+    finally:
+      shutil.rmtree(temp_bin)
+      config_data = open(default_config).read()
+
+    self.assertContained('An Emscripten settings file has been generated at:', output)
+    self.assertContained(default_config, output)
+    self.assertContained('It contains our best guesses for the important paths, which are:', output)
+    self.assertContained('LLVM_ROOT', output)
+    self.assertContained('NODE_JS', output)
+    if platform.system() != 'Windows':
+      # os.chmod can't make files executable on Windows
+      self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
+      possible_nodes = [os.path.join(temp_bin, 'node')]
+      if os.path.exists('/usr/bin/nodejs'):
+        possible_nodes.append('/usr/bin/nodejs')
+      self.assertIdentical(possible_nodes, re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
+
+    template_data = Path(path_from_root('tools/config_template.py')).read_text()
+    self.assertNotContained('{{{', config_data)
+    self.assertNotContained('}}}', config_data)
+    self.assertContained('{{{', template_data)
+    self.assertContained('}}}', template_data)
+    for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+      self.assertContained(content, config_data)
+
+    # The guessed config should be ok
+    # XXX This depends on your local system! it is possible `which` guesses wrong
+    # try_delete('a.out.js')
+    # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
+    # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
+
     for command in commands:
-      wipe()
-
-      default_config = config.embedded_config
-
-      try:
-        temp_bin = tempfile.mkdtemp()
-
-        def make_new_executable(name):
-          open(os.path.join(temp_bin, name), 'w').close()
-          make_executable(os.path.join(temp_bin, name))
-
-        make_new_executable('llvm-dis')
-        make_new_executable('node')
-        with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
-          output = self.do(command)
-      finally:
-        shutil.rmtree(temp_bin)
-        config_data = open(default_config).read()
-        try_delete(default_config)
-
-      self.assertContained('Welcome to Emscripten!', output)
-      self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
-      self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (default_config, default_config), output)
-      self.assertContained('It contains our best guesses for the important paths, which are:', output)
-      self.assertContained('LLVM_ROOT', output)
-      self.assertContained('NODE_JS', output)
-      if platform.system() != 'Windows':
-        # os.chmod can't make files executable on Windows
-        self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
-        possible_nodes = [os.path.join(temp_bin, 'node')]
-        if os.path.exists('/usr/bin/nodejs'):
-          possible_nodes.append('/usr/bin/nodejs')
-        self.assertIdentical(possible_nodes, re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
-      self.assertContained('Please edit the file if any of those are incorrect', output)
-      self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
-      self.assertTrue(output.strip().endswith('============='))
-      template_data = Path(path_from_root('tools/config_template.py')).read_text()
-      self.assertNotContained('{{{', config_data)
-      self.assertNotContained('}}}', config_data)
-      self.assertContained('{{{', template_data)
-      self.assertContained('}}}', template_data)
-      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
-        self.assertContained(content, config_data)
-
-      # The guessed config should be ok
-      # XXX This depends on your local system! it is possible `which` guesses wrong
-      # try_delete('a.out.js')
-      # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
-      # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
-
       # Second run, with bad EM_CONFIG
       for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
         try:
