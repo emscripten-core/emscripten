@@ -7,6 +7,7 @@
 
 #include "backend.h"
 #include "file.h"
+#include "support.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -36,24 +37,31 @@ public:
 
   NodeFile(mode_t mode, backend_t backend, std::string path)
     : DataFile(mode, backend), path(path) {
-    // TODO: initialize node file
   }
 
 private:
   size_t getSize() override {
-    // TODO: getSize
-    return 0;
-  }
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // TODO: read
-    return 0;
-  }
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    // TODO: write
+    WASMFS_UNREACHABLE("TODO: implement NodeFile::getSize");
     return 0;
   }
 
-  void flush() override {}
+  void setSize(size_t size) override {
+    WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
+  }
+
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+    WASMFS_UNREACHABLE("TODO: implement NodeFile::read");
+    return 0;
+  }
+
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    WASMFS_UNREACHABLE("TODO: implement NodeFile::write");
+    return 0;
+  }
+
+  void flush() override {
+    WASMFS_UNREACHABLE("TODO: implement NodeFile::flush");
+  }
 };
 
 class NodeDirectory : public Directory {
@@ -90,7 +98,7 @@ private:
   }
 
   bool removeChild(const std::string& name) override {
-    // TODO
+    WASMFS_UNREACHABLE("TODO: implement NodeDirectory::removeChild");
     return false;
   }
 
@@ -122,7 +130,7 @@ private:
   }
 
   std::string getName(std::shared_ptr<File> file) override {
-    // TODO
+    WASMFS_UNREACHABLE("TODO: implement NodeDirectory::getName");
     return "";
   }
 
