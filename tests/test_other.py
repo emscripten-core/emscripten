@@ -11558,8 +11558,8 @@ void foo() {}
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
   @parameterized({
-    '': ('MEMORY',),
-    'node': ('NODE',),
+    '': ('WASMFS_MEMORY_BACKEND',),
+    'node': ('WASMFS_NODE_BACKEND',),
   })
   def test_wasmfs_getdents(self, backend):
     # TODO: update this test when /dev has been filled out.
