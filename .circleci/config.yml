@@ -45,6 +45,10 @@ commands:
     description: "npm ci"
     steps:
       - run: npm ci
+  pip-install:
+    description: "pip install"
+    steps:
+      - run: pip3 install -r requirements-dev.txt
   build:
     description: "Install emsdk"
     steps:
@@ -188,6 +192,7 @@ commands:
           command: git submodule update --init
       - emsdk-env
       - npm-install
+      - pip-install
       - run:
           name: download firefox
           command: |
@@ -246,6 +251,7 @@ commands:
           command: git submodule update --init
       - emsdk-env
       - npm-install
+      - pip-install
       - download-chrome
       - run:
           name: run tests
@@ -274,6 +280,7 @@ commands:
       - checkout
       - emsdk-env
       - npm-install
+      - pip-install
       - download-chrome
       - run:
           name: run sockets tests
@@ -295,7 +302,7 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install -r requirements-dev.txt
+      - pip-install
       - run: make -C site text
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
@@ -303,7 +310,7 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip3 install -r requirements-dev.txt
+      - pip-install
       - run: python3 -m flake8 --show-source --statistics
   eslint:
     executor: linux-node
