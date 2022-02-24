@@ -520,7 +520,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   auto lockedOpenFile = openFile->locked();
 
   if (!lockedOpenFile.getFile()->seekable()) {
-    return __WASI_ERRNO_PIPE;
+    return __WASI_ERRNO_SPIPE;
   }
 
   off_t position;
