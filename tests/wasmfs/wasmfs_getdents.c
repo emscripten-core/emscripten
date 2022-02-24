@@ -53,7 +53,7 @@ void print(const char* dir) {
 int main() {
   // Set up the test root with the given backend.
 #ifdef MEMORY
-  backend_t backend = wasmfs_get_backend_by_path("/");
+  backend_t backend = NULL;
 #else
 #ifdef NODE
   backend_t backend = wasmfs_create_node_backend(".");
