@@ -2087,7 +2087,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
-
   # TODO: Move this into the library JS file once it becomes possible.
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
