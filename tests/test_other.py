@@ -135,7 +135,7 @@ def wasmfs_all_backends(f):
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
-  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND'),
+  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
                             'node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
