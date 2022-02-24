@@ -421,7 +421,7 @@ static __wasi_fd_t doOpen(char* pathname,
   }
 
   // Check user read permissions
-  if (!(parsedPath.child->locked().getMode() & S_IRUSR)) {
+  if (!(parsedPath.child->locked().getMode() & WASMFS_PERM_READ)) {
     return -EACCES;
   }
 
