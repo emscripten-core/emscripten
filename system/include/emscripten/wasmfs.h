@@ -46,6 +46,8 @@ backend_t wasmfs_create_proxied_backend(backend_constructor_t create_backend,
 
 backend_t wasmfs_create_fetch_backend(char* base_url);
 
+backend_t wasmfs_create_node_backend(const char* root);
+
 #ifdef __cplusplus
 }
 #endif
