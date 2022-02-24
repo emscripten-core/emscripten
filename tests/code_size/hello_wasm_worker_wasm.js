@@ -33,7 +33,7 @@ new Uint16Array(q);
 m = new Float64Array(q);
 
 var r = {
-    1924: function() {
+    1908: function() {
         console.log("Hello from wasm worker!");
     }
 }, t = {}, u = 1;
