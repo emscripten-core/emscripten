@@ -11742,3 +11742,17 @@ void foo() {}
     self.do_runf(test_file('hello_world.c'), 'hello, world')
     src = read_file('hello_world.js')
     self.assertContained("fetch(wasmBinaryFile, Module['fetchSettings'] || ", src)
+
+  # Tests using the #warning directive in JS library files
+  def test_warning_in_js_libraries(self):
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
+    self.assertNotContained('This warning should not be present!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+
+  # Tests using the #error directive in JS library files
+  def test_error_in_js_libraries(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
+    self.assertNotContained('This error should not be present!', err)
+    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
+    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
