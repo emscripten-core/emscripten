@@ -54,6 +54,8 @@ class PipeFile : public DataFile {
 
 public:
   PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data) : DataFile(mode, backend), data(data) {}
+
+  bool seekable() const override { return false; }
 };
 
 class PipeBackend : public Backend {
