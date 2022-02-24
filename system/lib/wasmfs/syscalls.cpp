@@ -518,6 +518,10 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   }
   auto lockedOpenFile = openFile->locked();
 
+  if (!lockedOpenFile.getFile()->seekable()) {
+    return __WASI_ERRNO_PIPE;
+  }
+
   off_t position;
   if (whence == SEEK_SET) {
     position = offset;
@@ -1103,5 +1107,72 @@ long __syscall_ftruncate64(long fd, long low, long high) {
     ret = -EINVAL;
   }
   return ret;
+}
+
+namespace {
+// TODO: something more optimal.
+using PipeData = std::queue<uint8_t>;
+
+class PipeFile : public DataFile {
+  std::shared_ptr<PipeData> data;
+
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    // Writes must be at the end.
+    assert(offset == 0);
+
+    for (size_i i = 0; i < len; i++) {
+      data->push(buf[i]);
+    }
+
+    return __WASI_ERRNO_SUCCESS;
+  }
+
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+    // Reads must be at the beginning.
+    assert(offset == 0);
+
+    for (size_i i = 0; i < len; i++) {
+      if (data.empty()) {
+        return __WASI_ERRNO_INVAL;
+      }
+      buf[i] = data->pop();
+    }
+
+    return __WASI_ERRNO_SUCCESS;
+  }
+
+  void flush() override {}
+
+  size_t getSize() override { return data->size(); }
+
+  void setSize(size_t size) override {
+    // no-op
+  }
+
+public:
+  PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data) : DataFile(mode, backend), data(data) {}
+};
+
+class PipeBackend : public Backend {
+public:
+  std::shared_ptr<DataFile> createFile(mode_t mode) override {
+    WASM_UNREACHABLE("PipeBackend cannot create normal files");
+  }
+};
+} // anonymous namespace
+
+long __syscall_pipe(long fd) {
+  auto* fds = (__wasi_fd_t*)fd;
+
+  auto data = std::make_shared<PipeData>();
+  static auto backend = wasmFS.addBackend(std::make_unique<PipeBackend>());
+  auto reader = std::make_shared<PipeFile>(S_IRUGO, backend, data);
+  auto writer = std::make_shared<PipeFile>(S_IWUGO, backend, data);
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  fds[0] = fileTable.addEntry(reader);
+  fds[1] = fileTable.addEntry(writer);
+
+  return 0;
 }
 }

@@ -67,6 +67,12 @@ public:
 
   backend_t getBackend() { return backend; }
 
+  // By default files are seekable.
+  //
+  // Note that this is a property of the class, effectively, and not the
+  // instance, so we do not need to lock before calling this.
+  virtual bool seekable() const { return true; }
+
   class Handle;
   Handle locked();
   std::optional<Handle> maybeLocked();
