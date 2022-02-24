@@ -22,6 +22,7 @@ class MemoryFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
   void flush() override {}
   size_t getSize() override { return buffer.size(); }
+  void setSize(size_t size) override { return buffer.resize(size); }
 
 public:
   MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
