@@ -31,6 +31,7 @@ int _wasmfs_node_insert_directory(
 
 class NodeFile : public DataFile {
 public:
+  // The path to this file on the underlying Node file system.
   std::string path;
 
   NodeFile(mode_t mode, backend_t backend, std::string path)
@@ -57,6 +58,7 @@ private:
 
 class NodeDirectory : public Directory {
 public:
+  // The path to this directory on the underlying Node file system.
   std::string path;
 
   NodeDirectory(mode_t mode, backend_t backend, std::string path)
