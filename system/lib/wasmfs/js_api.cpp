@@ -67,7 +67,7 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   if (!parsedPath.child) {
     // Create a file here.
     wasmfs_create_file(
-      pathname, O_WRONLY, parsedPath.parent->getParent()->getBackend());
+      pathname, O_RDWR, parsedPath.parent->getParent()->getBackend());
   } else if (!parsedPath.child->is<DataFile>()) {
     // There is something here but it isn't a data file.
     return 0;

@@ -6633,7 +6633,7 @@ high = 1234
     self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-sCHEEZ'])
-    self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
+    self.assertContained("perhaps a typo in emcc\'s  -sX=Y  notation?", stderr)
     self.assertContained('(see src/settings.js for valid values)', stderr)
     # suggestions do not include renamed legacy settings
     stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-sZBINARYEN_ASYNC_COMPILATION'])

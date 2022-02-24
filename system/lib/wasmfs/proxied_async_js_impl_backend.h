@@ -11,6 +11,7 @@
 
 #include "async_callback.h"
 #include "backend.h"
+#include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
 
@@ -154,6 +155,10 @@ class ProxiedAsyncJSImplFile : public DataFile {
     });
 
     return state.offset;
+  }
+
+  void setSize(size_t size) override {
+    WASMFS_UNREACHABLE("TODO: ProxiedAsyncJSImplFile setSize");
   }
 
 public:

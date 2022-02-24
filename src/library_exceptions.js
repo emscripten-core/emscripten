@@ -428,6 +428,16 @@ var LibraryExceptions = {
     catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
+
+#if !DISABLE_EXCEPTION_CATCHING
+  $formatException__deps: ['emscripten_format_exception', 'free'],
+  $formatException: function(excPtr) {
+    var utf8_addr = _emscripten_format_exception(excPtr);
+    var result = UTF8ToString(utf8_addr);
+    _free(utf8_addr);
+    return result;
+  },
+#endif
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
