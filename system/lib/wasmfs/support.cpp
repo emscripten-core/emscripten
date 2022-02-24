@@ -19,12 +19,9 @@ void handle_unreachable(const char* msg, const char* file, unsigned line) {
     std::cerr << " at " << file << ":" << line;
   }
   std::cerr << "!\n";
-#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
-  __sanitizer_print_stack_trace();
+  // TODO: sanitizer integration, see binaryen's similar code
+#endif
   __builtin_trap();
-#endif
-#endif
-  abort();
 }
 
 } // namespace wasmfs
