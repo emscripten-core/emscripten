@@ -23,6 +23,7 @@
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
+#include "pipe_backend.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -1109,58 +1110,6 @@ long __syscall_ftruncate64(long fd, long low, long high) {
   return ret;
 }
 
-namespace {
-// TODO: something more optimal.
-using PipeData = std::queue<uint8_t>;
-
-class PipeFile : public DataFile {
-  std::shared_ptr<PipeData> data;
-
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    // Writes must be at the end.
-    assert(offset == 0);
-
-    for (size_i i = 0; i < len; i++) {
-      data->push(buf[i]);
-    }
-
-    return __WASI_ERRNO_SUCCESS;
-  }
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // Reads must be at the beginning.
-    assert(offset == 0);
-
-    for (size_i i = 0; i < len; i++) {
-      if (data.empty()) {
-        return __WASI_ERRNO_INVAL;
-      }
-      buf[i] = data->pop();
-    }
-
-    return __WASI_ERRNO_SUCCESS;
-  }
-
-  void flush() override {}
-
-  size_t getSize() override { return data->size(); }
-
-  void setSize(size_t size) override {
-    // no-op
-  }
-
-public:
-  PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data) : DataFile(mode, backend), data(data) {}
-};
-
-class PipeBackend : public Backend {
-public:
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    WASM_UNREACHABLE("PipeBackend cannot create normal files");
-  }
-};
-} // anonymous namespace
-
 long __syscall_pipe(long fd) {
   auto* fds = (__wasi_fd_t*)fd;
 
@@ -1170,8 +1119,8 @@ long __syscall_pipe(long fd) {
   auto writer = std::make_shared<PipeFile>(S_IWUGO, backend, data);
 
   auto fileTable = wasmFS.getFileTable().locked();
-  fds[0] = fileTable.addEntry(reader);
-  fds[1] = fileTable.addEntry(writer);
+  fds[0] = fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
+  fds[1] = fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
 
   return 0;
 }
