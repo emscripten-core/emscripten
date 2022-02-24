@@ -234,9 +234,7 @@ public:
     return getFile()->write(buf, len, offset);
   }
 
-  void setSize(size_t size) {
-    return getFile()->setSize(size);
-  }
+  void setSize(size_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
   void flush() { getFile()->flush(); }

@@ -7,9 +7,7 @@
 
 namespace wasmfs {
 
-void handle_unreachable(const char* msg,
-                        const char* file,
-                        unsigned line) {
+void handle_unreachable(const char* msg, const char* file, unsigned line) {
 #ifndef NDEBUG
   if (msg) {
     std::cerr << msg << "\n";
