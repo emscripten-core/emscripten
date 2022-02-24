@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.6
+3.1.7
 -----
+
+3.1.6 - 02/24/2022
+------------------
 - Remove support for deprecated `EMMAKEN_COMPILER`, `EMMAKEN_CFLAGS`, and
   `EMMAKEN_NO_SDK`  environment variables.  These are all legacy and redundant
   in the face of other settings/flags:
