@@ -141,17 +141,18 @@ private:
 };
 
 class NodeBackend : public Backend {
-  std::string rootPath;
+  // The underlying Node FS path of this backend's mount points.
+  std::string mountPath;
 
 public:
-  NodeBackend(const std::string& rootPath) : rootPath(rootPath) {}
+  NodeBackend(const std::string& mountPath) : mountPath(mountPath) {}
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<NodeFile>(mode, this, rootPath);
+    return std::make_shared<NodeFile>(mode, this, mountPath);
   }
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<NodeDirectory>(mode, this, rootPath);
+    return std::make_shared<NodeDirectory>(mode, this, mountPath);
   }
 };
 
