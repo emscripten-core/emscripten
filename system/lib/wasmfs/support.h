@@ -13,7 +13,7 @@ namespace wasmfs {
 void handle_unreachable(const char* msg, const char* file, unsigned line);
 }
 #define WASMFS_UNREACHABLE(msg)                                                \
-  wasms::handle_unreachable(msg, __FILE__, __LINE__)
+  wasmfs::handle_unreachable(msg, __FILE__, __LINE__)
 #else
 // In release builds trap in a compact manner.
 #define WASMFS_UNREACHABLE(msg) __builtin_trap()
