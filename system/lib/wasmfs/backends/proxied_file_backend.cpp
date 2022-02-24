@@ -9,6 +9,7 @@
 
 #include "backend.h"
 #include "file.h"
+#include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
 
@@ -53,8 +54,7 @@ class ProxiedFile : public DataFile {
   }
 
   void setSize(size_t size) override {
-    // TODO
-    abort();
+    WASMFS_UNREACHABLE("TODO: ProxiedFS setSize");
   }
 
 public:

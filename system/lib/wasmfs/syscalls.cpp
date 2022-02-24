@@ -1053,7 +1053,7 @@ static off_t combineOffParts(long low, long high) {
   return (off_t(high) << 32) | off_t(low);
 }
 
-long doTruncate(std::shared_ptr<File>& file, long low, long high) {
+static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
   auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
