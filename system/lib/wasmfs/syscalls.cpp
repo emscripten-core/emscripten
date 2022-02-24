@@ -409,12 +409,20 @@ static __wasi_fd_t doOpen(char* pathname,
     if (!backend) {
       backend = parsedPath.parent->unlocked()->getBackend();
     }
+
+    // TODO: Check write permissions on the parent directory
+
     auto created = backend->createFile(mode);
 
     parsedPath.parent->insertChild(pathParts.back(), created);
     auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
     return wasmFS.getFileTable().locked().addEntry(openFile);
+  }
+
+  // Check user read permissions
+  if (!(parsedPath.child->locked().getMode() & S_IRUSR)) {
+    return -EACCES;
   }
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
@@ -482,6 +490,9 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   if (!backend) {
     backend = parsedPath.parent->unlocked()->getBackend();
   }
+
+  // TODO: Check write permissions in the parent.
+
   // Create an empty in-memory directory.
   auto created = backend->createDirectory(mode);
   parsedPath.parent->insertChild(pathParts.back(), created);
@@ -735,8 +746,9 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   }
 
   // There are always two hardcoded directories "." and ".."
-  std::vector<Directory::Entry> entries = {{".", File::DirectoryKind},
-                                           {"..", File::DirectoryKind}};
+  std::vector<Directory::Entry> entries = {
+    {".", File::DirectoryKind, directory->getIno()},
+    {"..", File::DirectoryKind, dotdot->getIno()}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
@@ -744,7 +756,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
        index++) {
     auto& entry = entries[index];
     result->d_ino = entry.ino;
-    result->d_off = bytesRead + sizeof(dirent);
+    result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
     switch (entry.kind) {
       case File::UnknownKind:
