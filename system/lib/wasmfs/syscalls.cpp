@@ -1095,6 +1095,13 @@ long __syscall_ftruncate64(long fd, long low, long high) {
   if (!openFile) {
     return -EBADF;
   }
-  return doTruncate(openFile->locked().getFile(), low, high);
+  auto ret = doTruncate(openFile->locked().getFile(), low, high);
+  // XXX It is not clear from the docs why ftruncate would differ from
+  //     truncate here. However, on Linux this definitely happens, and the old
+  //     FS matches that as well, so do the same here.
+  if (ret == -EACCES) {
+    ret = -EINVAL;
+  }
+  return ret;
 }
 }
