@@ -126,7 +126,17 @@ def also_with_wasmfs(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasmfs': (True,)}
+  return metafunc
 
+
+def wasmfs_all_backends(f):
+  def metafunc(self, backend):
+    self.set_setting('WASMFS')
+    self.emcc_args.append(f'-D{backend}')
+    f(self)
+
+  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND'),
+                            'node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
@@ -11557,16 +11567,10 @@ void foo() {}
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
-  @parameterized({
-    '': ('WASMFS_MEMORY_BACKEND',),
-    'node': ('WASMFS_NODE_BACKEND',),
-  })
-  def test_wasmfs_getdents(self, backend):
+  @wasmfs_all_backends
+  def test_wasmfs_getdents(self):
     # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
-    self.set_setting('WASMFS')
-    self.emcc_args.append(f'-D{backend}')
-    self.emcc_args.append('-g')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   def test_wasmfs_readfile(self):
