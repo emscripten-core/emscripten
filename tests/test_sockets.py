@@ -189,7 +189,7 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest(test_file('sockets/test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
   def test_sockets_echo_pthreads(self, extra_args=[]):
     self.test_sockets_echo(['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
@@ -197,7 +197,7 @@ class sockets(BrowserCore):
   def test_sdl2_sockets_echo(self):
     harness = CompiledServerHarness('sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164)
     with harness:
-      self.btest('sdl2_net_client.c', expected='0', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit('sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
     sockets_include = '-I' + test_file('sockets')
@@ -216,11 +216,12 @@ class sockets(BrowserCore):
     for harness, datagram in harnesses:
       print('harness:', harness)
       with harness:
-        self.btest(test_file('sockets/test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
+        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
+        return
 
     # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
     print('expect fail')
-    self.btest(test_file('sockets/test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
+    self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
 
   def test_sockets_echo_bigdata(self):
     sockets_include = '-I' + test_file('sockets')
@@ -231,9 +232,8 @@ class sockets(BrowserCore):
       message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
-    input_filename = test_file('sockets/test_sockets_echo_client.c')
-    input = read_file(input_filename)
-    create_file('test_sockets_echo_bigdata.c', input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
+    src = read_file(test_file('sockets/test_sockets_echo_client.c'))
+    create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     harnesses = [
       (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49172), 0),
@@ -245,7 +245,7 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest('test_sockets_echo_bigdata.c', expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
+        self.btest_exit('test_sockets_echo_bigdata.c', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_partial(self):
@@ -263,7 +263,7 @@ class sockets(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191)
     ]:
       with harness:
-        self.btest(test_file('sockets/test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(test_file('sockets/test_sockets_select_server_down_client.c'), args=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_closes_connection_rw(self):
@@ -274,7 +274,7 @@ class sockets(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
     ]:
       with harness:
-        self.btest(test_file('sockets/test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(test_file('sockets/test_sockets_select_server_closes_connection_client_rw.c'), args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
@@ -290,7 +290,7 @@ class sockets(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210)
     ]:
       with harness:
-        self.btest(test_file('sockets/test_enet_client.c'), expected='0', args=enet + ['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(test_file('sockets/test_enet_client.c'), args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
@@ -354,7 +354,7 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   def test_websocket_send(self):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest(test_file('websocket/test_websocket_send.c'), expected='101', args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
+      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
@@ -369,4 +369,4 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest(test_file('websocket/tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+        self.btest_exit(test_file('websocket/tcp_echo_client.cpp'), args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])

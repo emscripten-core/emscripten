@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <enet/enet.h>
@@ -40,12 +41,8 @@ void main_loop() {
               (char*)event.peer -> data,
               event.channelID);
 
-      int result = strcmp("packetfoo", (char*)event.packet->data);
-#ifdef __EMSCRIPTEN__
-      REPORT_RESULT(result);
-#else
+      assert(strcmp("packetfoo", (char*)event.packet->data) == 0);
       exit(EXIT_SUCCESS);
-#endif
 
       /* Clean up the packet now that we're done using it. */
       enet_packet_destroy (event.packet);
