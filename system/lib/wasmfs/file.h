@@ -67,7 +67,7 @@ public:
 
   backend_t getBackend() const { return backend; }
 
-  bool getSeekable() const { return seekable; }
+  bool isSeekable() const { return seekable; }
 
   class Handle;
   Handle locked();
