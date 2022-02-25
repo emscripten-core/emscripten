@@ -19,9 +19,6 @@ class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    // Writes must be at the end.
-    assert(offset == 0);
-
     for (size_t i = 0; i < len; i++) {
       data->push(buf[i]);
     }
@@ -30,9 +27,6 @@ class PipeFile : public DataFile {
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // Reads must be at the beginning.
-    assert(offset == 0);
-
     for (size_t i = 0; i < len; i++) {
       if (data->empty()) {
         return __WASI_ERRNO_INVAL;

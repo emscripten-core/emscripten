@@ -11,6 +11,7 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -1123,5 +1124,25 @@ long __syscall_pipe(long fd) {
   fds[1] = fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
 
   return 0;
+}
+
+int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+  auto fileTable = wasmFS.getFileTable().locked();
+  long nonzero = 0;
+  for (nfds_t i = 0; i < nfds; i++) {
+    auto* pollfd = &fds[i];
+    auto fd = pollfd->fd;
+    auto events = pollfd->events;
+    auto mask = POLLNVAL;
+    auto openFile = fileTable.getEntry(fd);
+    if (openFile) {
+      mask =  POLLIN | POLLOUT;
+      // TODO: get mask from File dynamically using a poll() hook
+    }
+    mask &= events | POLLERR | POLLHUP;
+    if (mask) nonzero++;
+    pollfd->revents = mask;
+  }
+  return nonzero;
 }
 }
