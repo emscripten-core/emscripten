@@ -1132,12 +1132,26 @@ int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   for (nfds_t i = 0; i < nfds; i++) {
     auto* pollfd = &fds[i];
     auto fd = pollfd->fd;
+    if (fd < 0) {
+      // Negative FDs are ignored in poll().
+      continue;
+    }
     auto events = pollfd->events;
     auto mask = POLLNVAL;
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
-      mask =  POLLIN | POLLOUT;
-      // TODO: get mask from File dynamically using a poll() hook
+      mask = 0;
+      auto flags = openFile->getFlags();
+      if (flags == O_WRONLY || flags == O_RDWR) {
+        mask = POLLOUT;
+      }
+      if (flags == O_RDONLY || flags == O_RDWR) {
+        // If there is data in the file, then there is also the option to read.
+        if (openFile->locked().getFile()->locked().getSize() > 0) {
+          mask |= POLLIN;
+        }
+      }
+      // TODO: get mask from File dynamically using a poll() hook?
     }
     mask &= events | POLLERR | POLLHUP;
     if (mask) nonzero++;
