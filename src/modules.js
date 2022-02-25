@@ -95,6 +95,9 @@ global.LibraryManager = {
       }
     } else if (WASMFS) {
       libraries.push('library_wasmfs.js');
+      libraries.push('library_wasmfs_js_file.js');
+      libraries.push('library_wasmfs_fetch.js');
+      libraries.push('library_wasmfs_node.js');
     }
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
@@ -246,20 +249,20 @@ global.LibraryManager = {
         }
         continue;
       }
-      if (typeof lib[x] === 'string') {
+      if (typeof lib[x] == 'string') {
         let target = x;
-        while (typeof lib[target] === 'string') {
+        while (typeof lib[target] == 'string') {
           // ignore code and variable assignments, aliases are just simple names
           if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
           target = lib[target];
         }
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
-        if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
+        if (typeof lib[target] == 'undefined' || typeof lib[target] == 'function') {
           // When functions are aliased, a signature for the function must be
           // provided so that an efficient form of forwarding can be
           // implemented.
           function testStringType(sig) {
-            if (typeof lib[sig] !== 'undefined' && typeof typeof lib[sig] !== 'string') {
+            if (typeof lib[sig] != 'undefined' && typeof typeof lib[sig] != 'string') {
               error(`${sig} should be a string! (was ${typeof lib[sig]})`);
             }
           }
@@ -267,12 +270,12 @@ global.LibraryManager = {
           const targetSig = target + '__sig';
           testStringType(aliasSig);
           testStringType(targetSig);
-          if (typeof lib[aliasSig] === 'string' && typeof lib[targetSig] === 'string' && lib[aliasSig] != lib[targetSig]) {
+          if (typeof lib[aliasSig] == 'string' && typeof lib[targetSig] == 'string' && lib[aliasSig] != lib[targetSig]) {
             error(`${aliasSig} (${lib[aliasSig]}) differs from ${targetSig} (${lib[targetSig]})`);
           }
 
           const sig = lib[aliasSig] || lib[targetSig];
-          if (typeof sig !== 'string') {
+          if (typeof sig != 'string') {
             error(`Function ${x} aliases to target function ${target}, but neither the alias or the target provide a signature. Please add a ${targetSig}: 'vifj...' annotation or a ${aliasSig}: 'vifj...' annotation to describe the type of function forwarding that is needed!`);
           }
 
@@ -284,7 +287,7 @@ global.LibraryManager = {
             lib[targetSig] = lib[aliasSig];
           }
 
-          if (typeof lib[target] !== 'function') {
+          if (typeof lib[target] != 'function') {
             error(`no alias found for ${x}`);
           }
 
@@ -366,16 +369,11 @@ function exportRuntime() {
     // if it is used, that they should export it
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
-      // (we could optimize this, but in ASSERTIONS mode code size doesn't
-      // matter anyhow)
-      let extra = '';
-      if (isExportedByForceFilesystem(name)) {
-        extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
-      }
-      if (!isNumber) {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = () => abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}");`;
+      const fssymbol = isExportedByForceFilesystem(name);
+      if (isNumber) {
+        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
       } else {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Object.defineProperty(Module, "${name}", { configurable: true, get: function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") } });`;
+        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
       }
     }
     return '';

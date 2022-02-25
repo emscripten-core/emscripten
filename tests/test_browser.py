@@ -2205,7 +2205,7 @@ void *getBindBuffer() {
     self.btest('sdl_ttf_render_text_solid.c', reference='sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest('sdl_alloctext.c', expected='1', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
     self.btest('sdl_surface_refcount.c', args=['-lSDL'], expected='1')
@@ -3393,6 +3393,11 @@ window.close = function() {
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sMODULARIZE', '-sMINIMAL_RUNTIME'])
     self.run_browser('test.html', None, '/report_result?0')
 
+  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s EXPORT_NAME=Foo as well.
+  def test_minimal_runtime_export_name(self):
+    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
+    self.run_browser('test.html', None, '/report_result?0')
+
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [
@@ -3486,6 +3491,8 @@ window.close = function() {
   # when compiling with the --preload-file option
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
+    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
+    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
@@ -5079,6 +5086,8 @@ window.close = function() {
     self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-sENVIRONMENT=web', '-O3', '--closure=1'])
 
   def test_no_declare_asm_module_exports_asmjs(self):
+    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
+    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
     for minimal_runtime in [[], ['-sMINIMAL_RUNTIME']]:
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 
@@ -5178,6 +5187,21 @@ window.close = function() {
     test(['-sMALLOC=emmalloc-debug'])
     test(['-sMALLOC=emmalloc-memvalidate'])
     test(['-sMALLOC=emmalloc-memvalidate-verbose'])
+
+  @parameterized({
+    # the fetch backend works even on the main thread: we proxy to a background
+    # thread and busy-wait
+    'main_thread': (['-sPTHREAD_POOL_SIZE=1'],),
+    # using proxy_to_pthread also works, of course
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+  })
+  @requires_threads
+  def test_wasmfs_fetch_backend(self, args):
+    if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
+      return self.skipTest('ff hangs on the main_thread version. browser bug?')
+    create_file('data.dat', 'hello, fetch')
+    self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
+                    args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):

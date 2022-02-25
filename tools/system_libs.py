@@ -55,11 +55,14 @@ def get_base_cflags(force_object_files=False):
 
 def clean_env():
   # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set.
+  # affected by things like EMCC_CFLAGS which the user may have set.
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
+              'EMCC_CFLAGS',
+              'EMCC_FORCE_STDLIBS',
+              'EMCC_ONLY_FORCED_STDLIBS']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -803,7 +806,7 @@ class libc(MuslInternalLibrary,
     # individual files
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'res_query.c', 'res_querydomain.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', 'popen.c', 'pclose.c',
@@ -908,6 +911,7 @@ class libc(MuslInternalLibrary,
           'nanosleep.c',
           'clock_nanosleep.c',
           'ctime_r.c',
+          'utime.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -915,7 +919,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c'])
+        filenames=['getdents.c', 'gettid.c', 'utimes.c'])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/env',
         filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
@@ -976,9 +980,12 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+      filenames=['emscripten_memcpy.c',
+                 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
-                 'emscripten_memmove.c'])
+                 'emscripten_memmove.c',
+                 'emscripten_mmap.c'
+                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1120,7 +1127,8 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_exception.cpp',
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
-      'private_typeinfo.cpp'
+      'private_typeinfo.cpp',
+      'format_exception.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
@@ -1139,8 +1147,16 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
 class libcxx(NoExceptLibrary, MTLibrary):
   name = 'libc++'
 
-  cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
-            '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+    '-Oz',
+    '-DLIBCXX_BUILDING_LIBCXXABI=1',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    # TODO(sbc): clang recently introduced this new warning which is triggered
+    # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
+    '-Wno-unqualified-std-cast-call',
+    '-Wno-unknown-warning-option',
+  ]
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
@@ -1418,13 +1434,26 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
 
   cflags = ['-fno-exceptions', '-std=c++17']
 
+  includes = ['system/lib/wasmfs']
+
   def get_files(self):
-    return files_in_path(
+    backends = files_in_path(
+        path='system/lib/wasmfs/backends',
+        filenames=['fetch_backend.cpp',
+                   'js_file_backend.cpp',
+                   'memory_backend.cpp',
+                   'node_backend.cpp',
+                   'proxied_file_backend.cpp'])
+    return backends + files_in_path(
         path='system/lib/wasmfs',
-        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp',
-                   'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp',
-                   'js_file_backend.cpp', 'proxied_file_backend.cpp',
-                   'js_api.cpp'])
+        filenames=['file.cpp',
+                   'file_table.cpp',
+                   'js_api.cpp',
+                   'paths.cpp',
+                   'streams.cpp',
+                   'support.cpp',
+                   'syscalls.cpp',
+                   'wasmfs.cpp'])
 
   def can_use(self):
     return settings.WASMFS

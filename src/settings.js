@@ -257,10 +257,11 @@ var INITIAL_TABLE = -1;
 // [link]
 var ALLOW_TABLE_GROWTH = 0;
 
-// where global data begins; the start of static memory. -1 means use the
-// default, any other value will be used as an override
+// Where global data begins; the start of static memory.
+// A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
+// enables the --low-memory-unused pass
 // [link]
-var GLOBAL_BASE = -1;
+var GLOBAL_BASE = 1024;
 
 // Whether closure compiling is being run on this output
 // [link]
@@ -852,8 +853,8 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // optimize.
 //
 // Setting this list to [], or at least a short and concise set of names you
-// actually use, can be very useful for reducing code size. By default the
-// list contains all the possible APIs.
+// actually use, can be very useful for reducing code size. By default, the
+// list contains a set of commonly used symbols.
 //
 // FIXME: should this just be  0  if we want everything?
 // [link]

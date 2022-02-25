@@ -32,7 +32,7 @@ var Fetch = {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB upgrade needed. Clearing database.');
 #endif
-      var db = event.target.result;
+      var db = /** @type {IDBDatabase} */ (event.target.result);
       if (db.objectStoreNames.contains('FILES')) {
         db.deleteObjectStore('FILES');
       }
@@ -71,7 +71,7 @@ var Fetch = {
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
 #if FETCH_SUPPORT_INDEXEDDB
-    if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
+    if (typeof ENVIRONMENT_IS_FETCH_WORKER == 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
 #endif
   }
 }
@@ -191,7 +191,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
   }
 }
 
-function fetchCacheData(db, fetch, data, onsuccess, onerror) {
+function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     console.error('fetch: IndexedDB not available!');
@@ -277,7 +277,6 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
-  var overriddenMimeTypeStr = overriddenMimeType ? UTF8ToString(overriddenMimeType) : undefined;
 
   var xhr = new XMLHttpRequest();
   xhr.withCredentials = withCredentials;
@@ -294,6 +293,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   xhr.responseType = 'arraybuffer';
 
   if (overriddenMimeType) {
+    var overriddenMimeTypeStr = UTF8ToString(overriddenMimeType);
 #if FETCH_DEBUG
     console.log('fetch: xhr.overrideMimeType("' + overriddenMimeTypeStr + '");');
 #endif
@@ -335,7 +335,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
       ptr = _malloc(ptrLen);
-      HEAPU8.set(new Uint8Array(xhr.response), ptr);
+      HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
@@ -396,14 +396,15 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #endif
       // Allocate byte data in Emscripten heap for the streamed memory block (freed immediately after onprogress call)
       ptr = _malloc(ptrLen);
-      HEAPU8.set(new Uint8Array(xhr.response), ptr);
+      HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
+    // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (onprogress) onprogress(fetch, xhr, e);
@@ -458,14 +459,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     console.log('fetch: operation success. e: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(function() {
+    callUserCallback(() => {
       if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     }, fetchAttrSynchronous);
   };
 
   var reportProgress = (fetch, xhr, e) => {
-    callUserCallback(function() {
+    callUserCallback(() => {
       if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
     }, fetchAttrSynchronous);
@@ -476,7 +477,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     console.error('fetch: operation failed: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(function() {
+    callUserCallback(() => {
       if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
       else if (errorcb) errorcb(fetch);
     }, fetchAttrSynchronous);
@@ -486,7 +487,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
-    callUserCallback(function() {
+    callUserCallback(() => {
       if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
       else if (readystatechangecb) readystatechangecb(fetch);
     }, fetchAttrSynchronous);
@@ -509,7 +510,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       console.log('fetch: IndexedDB store succeeded.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callUserCallback(() => {
         if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
       }, fetchAttrSynchronous);
@@ -519,7 +520,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       console.error('fetch: IndexedDB store failed.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callUserCallback(() => {
         if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
       }, fetchAttrSynchronous);

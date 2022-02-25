@@ -80,13 +80,13 @@ var fs;
 var Buffer = function(var_args) {};
 
 /**
- * @param {ArrayBuffer|SharedArrayBuffer} arrayBuffer
- * @param {number=} byteOffset
+ * @param {ArrayBuffer|SharedArrayBuffer|string} arrayBufferOrString
+ * @param {number|string=} byteOffsetOrEncoding
  * @param {number=} length
  * @return {nodeBuffer.Buffer}
  * @nosideeffects
  */
-Buffer.from = function(arrayBuffer, byteOffset, length) {};
+Buffer.from = function(arrayBufferOrString, byteOffsetOrEncoding, length) {};
 
 /**
  * @param {number} size

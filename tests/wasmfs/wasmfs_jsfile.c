@@ -30,11 +30,16 @@ void write_and_read(const char* msg, int fd) {
   printf("%s\n", buf);
 }
 
-int main() {
+static backend_t make_js_file_backend(void* arg) {
+  return wasmfs_create_js_file_backend();
+}
 
-  backend_t backend = wasmfs_create_js_file_backend();
-#ifdef PROXYING
-  backend = wasmfs_create_proxied_backend(backend);
+int main() {
+  backend_t backend;
+#ifndef PROXYING
+  backend = make_js_file_backend(NULL);
+#else
+  backend = wasmfs_create_proxied_backend(make_js_file_backend, NULL);
 #endif
 
   // Create a new backend file under root.

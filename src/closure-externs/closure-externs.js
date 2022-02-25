@@ -71,8 +71,9 @@ var WebAssembly = {};
 /**
  * @constructor
  * @param {Object} globalDescriptor
+ * @param {*=} value
  */
-WebAssembly.Global = function(globalDescriptor) {};
+WebAssembly.Global = function(globalDescriptor, value) {};
 /**
  * @constructor
  * @param {Object} tagDescriptor

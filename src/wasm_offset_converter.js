@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+/** @constructor */
 function WasmOffsetConverter(wasmBytes, wasmModule) {
   // This class parses a WASM binary file, and constructs a mapping from
   // function indices to the start of their code in the binary file, as well

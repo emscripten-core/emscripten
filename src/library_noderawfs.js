@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
     },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      if (typeof flags === "string") {
+      if (typeof flags == "string") {
         flags = VFS.modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
@@ -131,7 +131,7 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.read(stream, buffer, offset, length, position);
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
@@ -147,7 +147,7 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesWritten = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
       // update position marker when non-seeking

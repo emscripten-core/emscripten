@@ -235,7 +235,7 @@ The parameters you pass to and receive from functions need to be primitive value
 
   - Integer and floating point numbers can be passed as-is.
   - Pointers can be passed as-is also, as they are simply integers in the generated code.
-  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocateUTF8(someString)``.
 
     .. note:: The conversion to a pointer allocates memory, which needs to be
       freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -

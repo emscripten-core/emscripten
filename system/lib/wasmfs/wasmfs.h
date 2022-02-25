@@ -37,26 +37,17 @@ class WasmFS {
   void preloadFiles();
 
 public:
-  // Files will be preloaded in this constructor.
-  // This global constructor has init_priority 100. Please see wasmfs.cpp.
-  // The current working directory is initialized to the root directory.
+  // Set up global data structures and preload files.
   WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
     preloadFiles();
   }
 
   ~WasmFS();
 
-  // This get method returns a locked file table.
-  // There is only ever one FileTable in the system.
-  FileTable::Handle getLockedFileTable() {
-    return FileTable::Handle(fileTable);
-  }
+  FileTable& getFileTable() { return fileTable; }
 
-  // Returns root directory defined on WasmFS singleton.
   std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
 
-  // For getting and setting cwd, a lock must be acquired. There is a chance
-  // that two threads could be mutating the cwd simultaneously.
   std::shared_ptr<Directory> getCWD() {
     const std::lock_guard<std::mutex> lock(mutex);
     return cwd;
@@ -67,7 +58,6 @@ public:
     cwd = directory;
   };
 
-  // Utility functions that can get and set a backend in the backendTable.
   backend_t addBackend(std::unique_ptr<Backend> backend) {
     const std::lock_guard<std::mutex> lock(mutex);
     backendTable.push_back(std::move(backend));

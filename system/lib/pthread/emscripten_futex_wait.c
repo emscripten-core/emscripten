@@ -120,15 +120,20 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return -EINVAL;
   }
 
-  // When a secondary thread crashes, we need to be able to interrupt the main
-  // thread even if it's in a blocking/looping on a mutex.  We want to avoid
-  // using the normal proxying mechanism to send this message since it can
-  // allocate (or otherwise itself crash) so use a low level atomic primitive
-  // for this signal.
-  if (emscripten_is_main_runtime_thread() && thread_crashed) {
-    // Return the event loop so we can handle the message from the crashed
-    // thread.
-    emscripten_unwind_to_js_event_loop();
+  if (emscripten_is_main_runtime_thread()) {
+    // When a secondary thread crashes, we need to be able to interrupt the main
+    // thread even if it's in a blocking/looping on a mutex.  We want to avoid
+    // using the normal proxying mechanism to send this message since it can
+    // allocate (or otherwise itself crash) so use a low level atomic primitive
+    // for this signal.
+    if (thread_crashed) {
+      // Return the event loop so we can handle the message from the crashed
+      // thread.
+      emscripten_unwind_to_js_event_loop();
+    }
+
+    // Assist other threads by executing proxied operations that are effectively singlethreaded.
+    emscripten_main_thread_process_queued_calls();
   }
 
   int ret;

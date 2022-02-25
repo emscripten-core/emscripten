@@ -69,68 +69,6 @@ LibraryManager.library = {
     return cString;
   },
 
-  // ==========================================================================
-  // utime.h
-  // ==========================================================================
-
-#if FILESYSTEM
-  $setFileTime__deps: ['$FS', '$setErrNo'],
-  $setFileTime: function(path, time) {
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      setErrNo(e.errno);
-      return -1;
-    }
-  },
-#else
-  $setFileTime__deps: ['$setErrNo'],
-  $setFileTime: function(path, time) {
-    // No filesystem support; return an error as if the file does not exist
-    // (which it almost certainly does not, except for standard streams).
-    setErrNo({{{ cDefine('ENOENT') }}});
-    return -1;
-  },
-#endif
-
-  utime__deps: ['$setFileTime'],
-  utime__proxy: 'sync',
-  utime__sig: 'iii',
-  utime: function(path, times) {
-    {{{ from64('times') }}};
-    // int utime(const char *path, const struct utimbuf *times);
-    // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
-    var time;
-    if (times) {
-      // NOTE: We don't keep track of access timestamps.
-      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
-  utimes__deps: ['$setFileTime'],
-  utimes__proxy: 'sync',
-  utimes__sig: 'iii',
-  utimes: function(path, times) {
-    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
-    // times[0] is the new access time (which we currently ignore)
-    // times[1] is the new modification time.
-    var time;
-    if (times) {
-      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
-      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
-      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
@@ -147,8 +85,10 @@ LibraryManager.library = {
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
-    // Handle the case of 4GB (which would wrap to 0 in the return value) by
-    // returning up to 4GB - one wasm page.
+    // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
+    // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
+    // for any code that deals with heap sizes, which would require special
+    // casing all heap size related code to treat 0 specially.
     return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
 #else // no growth
     return HEAPU8.length;
@@ -186,7 +126,7 @@ LibraryManager.library = {
       wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #if MEMORYPROFILER
-      if (typeof emscriptenMemoryProfiler !== 'undefined') {
+      if (typeof emscriptenMemoryProfiler != 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
       }
 #endif
@@ -201,15 +141,16 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_resize_heap' // Dummy depend on itself to allow following ','s to match up.
+  emscripten_resize_heap__deps: [
+    'emscripten_get_heap_max',
 #if ASSERTIONS == 2
-  , 'emscripten_get_now'
+    'emscripten_get_now',
 #endif
 #if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
+    '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
-  , '$emscripten_realloc_buffer'
+    '$emscripten_realloc_buffer',
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
@@ -222,13 +163,13 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
+    // With pthreads, races can happen (another thread might increase the size
+    // in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
     if (requestedSize <= oldSize) {
       return false;
     }
-#endif // USE_PTHREADS
-#if ASSERTIONS && !USE_PTHREADS
+#elif ASSERTIONS
     assert(requestedSize > oldSize);
 #endif
 
@@ -238,21 +179,25 @@ LibraryManager.library = {
 #endif
 
     // Memory resize rules:
-    // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
-    //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
-    //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
-    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 3. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
-    // 4. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
-    //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
+    // 1.  Always increase heap size to at least the requested size, rounded up
+    //     to next page multiple.
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap
+    //     geometrically: increase the heap size according to
+    //     MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%), At most
+    //     overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap
+    //     linearly: increase the heap size by at least
+    //     MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 3.  Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by
+    //     MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4.  If we were unable to allocate as much memory, it may be due to
+    //     over-eager decision to excessively reserve due to (3) above.
+    //     Hence if an allocation fails, cut down on the amount of excess
+    //     growth, in an attempt to succeed to perform a smaller allocation.
 
     // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    // In CAN_ADDRESS_2GB mode, stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate full 4GB Wasm memories, the size will wrap
-    // back to 0 bytes in Wasm side for any code that deals with heap sizes, which would require special casing all heap size related code to treat
-    // 0 specially.
-    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
+    var maxHeapSize = _emscripten_get_heap_max();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -264,8 +209,11 @@ LibraryManager.library = {
 #endif
     }
 
-    // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
-    // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+    let alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
+
+    // Loop through potential heap size increases. If we attempt a too eager
+    // reservation that fails, cut down on the attempted size and reserve a
+    // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
     for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
@@ -783,7 +731,7 @@ LibraryManager.library = {
     var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     function leadingSomething(value, digits, character) {
-      var str = typeof value === 'number' ? value.toString() : (value || '');
+      var str = typeof value == 'number' ? value.toString() : (value || '');
       while (str.length < digits) {
         str = character[0]+str;
       }
@@ -1128,7 +1076,7 @@ LibraryManager.library = {
 
     function initDate() {
       function fixup(value, min, max) {
-        return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
+        return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
         year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
@@ -1375,8 +1323,11 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+#if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
-  _emscripten_throw_longjmp: function() { throw 'longjmp'; },
+  _emscripten_throw_longjmp: function() { throw Infinity; },
+#endif
+
 #if !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
@@ -1392,6 +1343,7 @@ LibraryManager.library = {
   // built with SUPPORT_LONGJMP=1, the object file contains references of not
   // longjmp but _emscripten_throw_longjmp, which is called from
   // emscripten_longjmp.
+  _emscripten_throw_longjmp: function() { error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)'); },
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
@@ -1721,7 +1673,7 @@ LibraryManager.library = {
 
     offset = 0; z = 0;
     for (w=0; w < words.length; w++) {
-      if (typeof words[w] === 'string') {
+      if (typeof words[w] == 'string') {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
@@ -2232,48 +2184,6 @@ LibraryManager.library = {
 
     return 0;
   },
-  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
-  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
-  $GAI_ERRNO_MESSAGES: {},
-
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
-  gai_strerror: function(val) {
-    var buflen = 256;
-
-    // On first call to gai_strerror we initialise the buffer and populate the error messages.
-    if (!_gai_strerror.buffer) {
-        _gai_strerror.buffer = _malloc(buflen);
-
-        GAI_ERRNO_MESSAGES['0'] = 'Success';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_BADFLAGS') }}}] = 'Invalid value for \'ai_flags\' field';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_NONAME') }}}] = 'NAME or SERVICE is unknown';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_AGAIN') }}}] = 'Temporary failure in name resolution';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAIL') }}}] = 'Non-recoverable failure in name res';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAMILY') }}}] = '\'ai_family\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SOCKTYPE') }}}] = '\'ai_socktype\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SERVICE') }}}] = 'SERVICE not supported for \'ai_socktype\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_MEMORY') }}}] = 'Memory allocation failure';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SYSTEM') }}}] = 'System error returned in \'errno\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_OVERFLOW') }}}] = 'Argument buffer overflow';
-    }
-
-    var msg = 'Unknown error';
-
-    if (val in GAI_ERRNO_MESSAGES) {
-      if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
-        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above.
-      } else {
-        msg = GAI_ERRNO_MESSAGES[val];
-      }
-    }
-
-    writeAsciiToMemory(msg, _gai_strerror.buffer);
-    return _gai_strerror.buffer;
-  },
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
   // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html
@@ -2402,7 +2312,7 @@ LibraryManager.library = {
   // TODO: consider allowing the API to get a parameter for the number of
   // bytes.
   $getRandomDevice: function() {
-    if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
       var randomBuffer = new Uint8Array(1);
       return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
@@ -2511,12 +2421,12 @@ LibraryManager.library = {
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-                               "if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow != 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
+                               "if (typeof performance != 'undefined' && performance.now) {\n" +
                                "  _emscripten_get_now = () => performance.now();\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
@@ -2534,12 +2444,12 @@ LibraryManager.library = {
     } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-    if (typeof dateNow !== 'undefined') {
+    if (typeof dateNow != 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-    if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
+    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
@@ -2554,12 +2464,12 @@ LibraryManager.library = {
   // implementation is not :(
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
   emscripten_get_now_is_monotonic: `
-     ((typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+     ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      || (typeof dateNow !== 'undefined')
+      || (typeof dateNow != 'undefined')
 #endif
     );`,
 #else
@@ -2593,7 +2503,7 @@ LibraryManager.library = {
         str += ", ";
       }
       first = false;
-      if (typeof a === 'number' || typeof a === 'string') {
+      if (typeof a == 'number' || typeof a == 'string') {
         str += a;
       } else {
         str += '(' + typeof a + ')';
@@ -2627,7 +2537,7 @@ LibraryManager.library = {
     }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map === 'undefined') {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
       flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
@@ -2765,7 +2675,7 @@ LibraryManager.library = {
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret === 'number') return ret;
+    if (typeof ret == 'number') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
@@ -3041,9 +2951,9 @@ LibraryManager.library = {
                             ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: function (func) {
-    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
-    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
-    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
+    var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free != 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
@@ -3056,18 +2966,6 @@ LibraryManager.library = {
     }
   },
 #endif
-
-  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
-  emscripten_builtin_mmap2__noleakcheck: true,
-  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
-  },
-
-  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
-  emscripten_builtin_munmap__noleakcheck: true,
-  emscripten_builtin_munmap: function (addr, len) {
-    return syscallMunmap(addr, len);
-  },
 
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
@@ -3086,7 +2984,7 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
 #endif
       // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
@@ -3156,7 +3054,7 @@ LibraryManager.library = {
   $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process !== "undefined" ? global : this);
+    var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
 #else
@@ -3309,7 +3207,7 @@ LibraryManager.library = {
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
-    assert(typeof dynCalls !== 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
     assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
@@ -3376,7 +3274,7 @@ LibraryManager.library = {
         continue;
       }
       var func = callback.func;
-      if (typeof func === 'number') {
+      if (typeof func == 'number') {
         if (callback.arg === undefined) {
           {{{ makeDynCall('v', 'func') }}}();
         } else {
@@ -3461,7 +3359,7 @@ LibraryManager.library = {
   _emscripten_out__sig: 'vi',
   _emscripten_out: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     out(UTF8ToString(str));
   },
@@ -3469,7 +3367,7 @@ LibraryManager.library = {
   _emscripten_err__sig: 'vi',
   _emscripten_err: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     err(UTF8ToString(str));
   },
@@ -3480,8 +3378,8 @@ LibraryManager.library = {
   _emscripten_get_progname: function(str, len) {
   #if !MINIMAL_RUNTIME
   #if ASSERTIONS
-    assert(typeof str === 'number');
-    assert(typeof len === 'number');
+    assert(typeof str == 'number');
+    assert(typeof len == 'number');
   #endif
     stringToUTF8(thisProgram, str, len);
   #endif
@@ -3490,7 +3388,7 @@ LibraryManager.library = {
   emscripten_console_log__sig: 'vi',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.log(UTF8ToString(str));
   },
@@ -3498,7 +3396,7 @@ LibraryManager.library = {
   emscripten_console_warn__sig: 'vi',
   emscripten_console_warn: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.warn(UTF8ToString(str));
   },
@@ -3506,7 +3404,7 @@ LibraryManager.library = {
   emscripten_console_error__sig: 'vi',
   emscripten_console_error: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
   },
@@ -3517,7 +3415,7 @@ LibraryManager.library = {
 
   emscripten_throw_string: function(str) {
 #if ASSERTIONS
-    assert(typeof str === 'number');
+    assert(typeof str == 'number');
 #endif
     throw UTF8ToString(str);
   },
@@ -3648,7 +3546,6 @@ LibraryManager.library = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
-
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
@@ -3677,14 +3574,14 @@ LibraryManager.library = {
   // page-aligned size, and clears the allocated space.
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
   $mmapAlloc: function(size) {
-#if hasExportedFunction('_memalign')
+#if hasExportedFunction('_emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
-    var ptr = _memalign({{{ WASM_PAGE_SIZE }}}, size);
+    var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;
     zeroMemory(ptr, size);
     return ptr;
 #elif ASSERTIONS
-    abort('internal error: mmapAlloc called but `memalign` native symbol not exported');
+    abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else
     abort();
 #endif

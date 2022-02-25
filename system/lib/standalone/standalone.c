@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <malloc.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -16,6 +18,8 @@
 #include <emscripten/heap.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
+
+#include "lock.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -59,15 +63,16 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-long __map_file(int x, int y) {
+const unsigned char * __map_file(const char *pathname, size_t *size) {
+  errno = ENOSYS;
+  return NULL;
+}
+
+long _mmap_js(long addr, long length, long prot, long flags, long fd, long offset, int* allocated) {
   return -ENOSYS;
 }
 
-long __syscall_munmap(int x, int y) {
-  return -ENOSYS;
-}
-
-long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
+long _munmap_js(long addr, long length, long prot, long flags, long fd, long offset) {
   return -ENOSYS;
 }
 
