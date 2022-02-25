@@ -948,11 +948,13 @@ var SyscallsLibrary = {
     err('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
+    var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
+    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
 #if ASSERTIONS
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.chown(path, owner, group);
+    (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
   __syscall_fstatat64: function(dirfd, path, buf, flags) {
