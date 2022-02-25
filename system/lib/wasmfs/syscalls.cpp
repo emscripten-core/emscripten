@@ -186,7 +186,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   auto finish = [&] {
     *nread = currOffset - oldOffset;
     if (setOffset == OffsetHandling::OpenFileState &&
-      lockedOpenFile.getFile()->getSeekable()) {
+        lockedOpenFile.getFile()->getSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -1126,13 +1126,15 @@ long __syscall_pipe(long fd) {
   auto writer = std::make_shared<PipeFile>(S_IWUGO, backend, data);
 
   auto fileTable = wasmFS.getFileTable().locked();
-  fds[0] = fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
-  fds[1] = fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
+  fds[0] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
+  fds[1] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
 
   return 0;
 }
 
-int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
@@ -1165,7 +1167,9 @@ int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
     // Mask the relevant bits: the given events, and also the exceptional
     // conditions of error and hangup.
     mask &= pollfd->events | POLLERR | POLLHUP;
-    if (mask) nonzero++;
+    if (mask) {
+      nonzero++;
+    }
     pollfd->revents = mask;
   }
   return nonzero;

@@ -49,7 +49,8 @@ class PipeFile : public DataFile {
   }
 
 public:
-  PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data) : DataFile(mode, backend), data(data) {
+  PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data)
+    : DataFile(mode, backend), data(data) {
     // Reads are always from the front; writes always to the end.
     seekable = false;
   }
