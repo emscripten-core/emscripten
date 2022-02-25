@@ -20,8 +20,9 @@ class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-std::cout << "pipe write " << len << " to " << data.get() << '\n';
+//std::cout << "pipe write " << len << " to " << data.get() << '\n';
     for (size_t i = 0; i < len; i++) {
+//std::cout << "  pipe write " << int(buf[i]) << '\n';
       data->push(buf[i]);
     }
 
@@ -29,12 +30,13 @@ std::cout << "pipe write " << len << " to " << data.get() << '\n';
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-std::cout << "pipe read up to " << len << " from " << data.get() << " which has " << data->size() << '\n';
+//std::cout << "pipe read up to " << len << " from " << data.get() << " which has " << data->size() << '\n';
     for (size_t i = 0; i < len; i++) {
       if (data->empty()) {
         return __WASI_ERRNO_INVAL;
       }
-      buf[i] = data->back();
+      buf[i] = data->front();
+//std::cout << "  pipe read " << int(buf[i]) << '\n';
       data->pop();
     }
 
