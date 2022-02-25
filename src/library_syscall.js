@@ -759,11 +759,6 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
   },
-  __syscall_lchown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
-    return 0;
-  },
   __syscall_getuid32__sig: 'i',
   __syscall_getuid32__nothrow: true,
   __syscall_getuid32__proxy: false,
@@ -783,11 +778,6 @@ var SyscallsLibrary = {
   },
   __syscall_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
-    return 0;
-  },
-  __syscall_chown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group);
     return 0;
   },
   __syscall_getdents64: function(fd, dirp, count) {
