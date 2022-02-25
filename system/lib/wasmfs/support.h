@@ -8,7 +8,7 @@
 #include <stdnoreturn.h>
 
 #include <cstdlib>
- 
+
 #ifndef NDEBUG
 // In debug builds show a message.
 namespace wasmfs {

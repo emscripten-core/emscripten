@@ -118,7 +118,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   auto finish = [&] {
     *nwritten = currOffset - oldOffset;
     if (setOffset == OffsetHandling::OpenFileState &&
-        lockedOpenFile.getFile()->seekable()) {
+        lockedOpenFile.getFile()->getSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -186,7 +186,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   auto finish = [&] {
     *nread = currOffset - oldOffset;
     if (setOffset == OffsetHandling::OpenFileState &&
-      lockedOpenFile.getFile()->seekable()) {
+      lockedOpenFile.getFile()->getSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -522,7 +522,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   }
   auto lockedOpenFile = openFile->locked();
 
-  if (!lockedOpenFile.getFile()->seekable()) {
+  if (!lockedOpenFile.getFile()->getSeekable()) {
     return __WASI_ERRNO_SPIPE;
   }
 
@@ -1116,8 +1116,12 @@ long __syscall_ftruncate64(long fd, long low, long high) {
 long __syscall_pipe(long fd) {
   auto* fds = (__wasi_fd_t*)fd;
 
-  auto data = std::make_shared<PipeData>();
+  // A global singleton PipeBackend is used for all pipes.
   static auto backend = wasmFS.addBackend(std::make_unique<PipeBackend>());
+
+  // Make a pipe: Two PipeFiles that share a single data source between them, so
+  // that writing to one can be read in the other.
+  auto data = std::make_shared<PipeData>();
   auto reader = std::make_shared<PipeFile>(S_IRUGO, backend, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, backend, data);
 
@@ -1130,6 +1134,9 @@ long __syscall_pipe(long fd) {
 
 int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   auto fileTable = wasmFS.getFileTable().locked();
+
+  // Procses the list of FDs and compute their revents masks. Count the number
+  // of nonzero such masks, which is our return value.
   long nonzero = 0;
   for (nfds_t i = 0; i < nfds; i++) {
     auto* pollfd = &fds[i];
@@ -1138,7 +1145,7 @@ int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
       // Negative FDs are ignored in poll().
       continue;
     }
-    auto events = pollfd->events;
+    // Assume invalid, unless there is an open file.
     auto mask = POLLNVAL;
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
@@ -1148,14 +1155,16 @@ int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
         mask = POLLOUT;
       }
       if (flags == O_RDONLY || flags == O_RDWR) {
-        // If there is data in the file, then there is also the option to read.
+        // If there is data in the file, then there is also the ability to read.
         if (openFile->locked().getFile()->locked().getSize() > 0) {
           mask |= POLLIN;
         }
       }
       // TODO: get mask from File dynamically using a poll() hook?
     }
-    mask &= events | POLLERR | POLLHUP;
+    // Mask the relevant bits: the given events, and also the exceptional
+    // conditions of error and hangup.
+    mask &= pollfd->events | POLLERR | POLLHUP;
     if (mask) nonzero++;
     pollfd->revents = mask;
   }

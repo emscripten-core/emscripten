@@ -9157,7 +9157,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=['-O0', '-DWASMFS'], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})

@@ -65,13 +65,9 @@ public:
     return (ino_t)this;
   }
 
-  backend_t getBackend() { return backend; }
+  backend_t getBackend() const { return backend; }
 
-  // By default files are seekable.
-  //
-  // Note that this is a property of the class, effectively, and not the
-  // instance, so we do not need to lock before calling this.
-  virtual bool seekable() const { return true; }
+  bool getSeekable() const { return seekable; }
 
   class Handle;
   Handle locked();
@@ -100,6 +96,10 @@ protected:
 
   // This specifies which backend a file is associated with.
   backend_t backend;
+
+  // By default files are seekable. The rare exceptions are things like pipes
+  // and sockets.
+  bool seekable = true;
 };
 
 class DataFile : public File {
