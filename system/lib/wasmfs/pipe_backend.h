@@ -1,3 +1,4 @@
+#include <iostream>
 // Copyright 2022 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -19,6 +20,7 @@ class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+std::cout << "pipe write " << len << " to " << data.get() << '\n';
     for (size_t i = 0; i < len; i++) {
       data->push(buf[i]);
     }
@@ -27,6 +29,7 @@ class PipeFile : public DataFile {
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+std::cout << "pipe read up to " << len << " from " << data.get() << " which has " << data->size() << '\n';
     for (size_t i = 0; i < len; i++) {
       if (data->empty()) {
         return __WASI_ERRNO_INVAL;

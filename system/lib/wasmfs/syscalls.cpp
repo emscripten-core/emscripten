@@ -117,7 +117,8 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->seekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -184,7 +185,8 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+      lockedOpenFile.getFile()->seekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };

@@ -33,7 +33,9 @@ void test_write(int fd1, unsigned char *ch, int size)
 void test_read(int fd0, unsigned char *ch, int size)
 {
     memset(buf, 0, sizeof buf);
-    assert(read(fd0, buf, size) == size);
+    int num_read = read(fd0, buf, size);
+    printf("read %d\n", num_read);
+    assert(num_read == size);
     for(int i = 0; i < sizeof buf; ++i)
     {
         unsigned char correct_ch = (i < size) ? (*ch)++ : 0;
@@ -87,6 +89,7 @@ int main()
 
     for(int i = 1; i < 200; ++i) // write about 40 Kb of data
     {
+printf("loop %d\n", i);
         test_write(fd[1], &wchar, i + 2);
         test_poll(fd, TRUE);
         test_read (fd[0], &rchar, i);
@@ -108,10 +111,12 @@ int main()
     int bytes_to_write = 1 << 20;
     while(bytes_to_write > 0)
     {
+printf("later loop\n");
         test_write(fd[1], &wchar, sizeof buf);
         test_read (fd[0], &rchar, sizeof buf);
         bytes_to_write -= sizeof buf;
     }
+printf("much later\n");
 
     // Write large chunks of data (supposed to be larger than one internal buffer)
     test_write(fd[1], &wchar, 123);
