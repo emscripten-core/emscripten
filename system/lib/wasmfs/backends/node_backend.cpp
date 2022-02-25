@@ -62,7 +62,6 @@ private:
       // TODO: Make this fallible
       return 0;
     }
-    emscripten_console_logf("Got a size of %u for %s", size, path.c_str());
     return size_t(size);
   }
 
