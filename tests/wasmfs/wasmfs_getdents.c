@@ -91,7 +91,7 @@ int main() {
   assert(errno == EINVAL);
 
   // Try to read from a file.
-  int fileFd = open("/dev/stdout", O_WRONLY);
+  int fileFd = open("/dev/stdin", O_RDONLY);
   getdents(fileFd, &d, sizeof(d));
   printf("Errno: %s\n\n", strerror(errno));
   assert(errno == ENOTDIR);

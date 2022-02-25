@@ -423,12 +423,10 @@ static __wasi_fd_t doOpen(char* pathname,
   auto fileMode = parsedPath.child->locked().getMode();
   if ((accessMode == O_RDONLY || accessMode == O_RDWR) &&
       !(fileMode & WASMFS_PERM_READ)) {
-    emscripten_console_log("Missing read permissions");
     return -EACCES;
   }
   if ((accessMode == O_WRONLY || accessMode == O_RDWR) &&
       !(fileMode & WASMFS_PERM_WRITE)) {
-    emscripten_console_log("Missing write permissions");
     return -EACCES;
   }
 
