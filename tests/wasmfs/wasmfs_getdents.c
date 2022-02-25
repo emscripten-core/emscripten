@@ -19,6 +19,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "get_backend.h"
+
 void print_one(int fd) {
   struct dirent d;
   int nread = getdents(fd, &d, sizeof(d));
@@ -51,16 +53,7 @@ void print(const char* dir) {
 }
 
 int main() {
-  // Set up the test root with the given backend.
-#ifdef MEMORY
-  backend_t backend = NULL;
-#else
-#ifdef NODE
-  backend_t backend = wasmfs_create_node_backend(".");
-#endif
-#endif
-
-  int err = wasmfs_create_directory("/root", 0777, backend);
+  int err = wasmfs_create_directory("/root", 0777, get_backend());
 
   // Set up test directories.
   err = mkdir("/root/working", 0777);
