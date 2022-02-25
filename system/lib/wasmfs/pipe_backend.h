@@ -49,20 +49,12 @@ class PipeFile : public DataFile {
   }
 
 public:
-  PipeFile(mode_t mode, backend_t backend, std::shared_ptr<PipeData> data)
-    : DataFile(mode, backend), data(data) {
+  // PipeFiles do not have or need a backend. Pass nullptr to the parent for
+  // that.
+  PipeFile(mode_t mode, std::shared_ptr<PipeData> data)
+    : DataFile(mode, nullptr), data(data) {
     // Reads are always from the front; writes always to the end.
     seekable = false;
   }
 };
-
-// A trivial backend that cannot create files directly/implicitly. Files must be
-// created explicitly and given their shared PipeData (see pipe syscall).
-class PipeBackend : public Backend {
-public:
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    WASMFS_UNREACHABLE("PipeBackend cannot create normal files");
-  }
-};
-
 } // namespace wasmfs

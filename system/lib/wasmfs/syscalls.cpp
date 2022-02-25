@@ -1116,14 +1116,13 @@ long __syscall_ftruncate64(long fd, long low, long high) {
 long __syscall_pipe(long fd) {
   auto* fds = (__wasi_fd_t*)fd;
 
-  // A global singleton PipeBackend is used for all pipes.
-  static auto backend = wasmFS.addBackend(std::make_unique<PipeBackend>());
-
   // Make a pipe: Two PipeFiles that share a single data source between them, so
   // that writing to one can be read in the other.
+  //
+  // No backend is needed here, so pass in nullptr for that.
   auto data = std::make_shared<PipeData>();
-  auto reader = std::make_shared<PipeFile>(S_IRUGO, backend, data);
-  auto writer = std::make_shared<PipeFile>(S_IWUGO, backend, data);
+  auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
+  auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] =
