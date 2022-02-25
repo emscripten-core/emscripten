@@ -368,10 +368,9 @@ static __wasi_fd_t doOpen(char* pathname,
                           mode_t mode,
                           backend_t backend = NullBackend) {
   int accessMode = (flags & O_ACCMODE);
-  bool canWrite = false;
-
-  if (accessMode == O_WRONLY || accessMode == O_RDWR) {
-    canWrite = true;
+  if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
+      accessMode != O_RDWR) {
+    return -EINVAL;
   }
 
   // TODO: remove assert when all functionality is complete.
@@ -420,8 +419,16 @@ static __wasi_fd_t doOpen(char* pathname,
     return wasmFS.getFileTable().locked().addEntry(openFile);
   }
 
-  // Check user read permissions
-  if (!(parsedPath.child->locked().getMode() & WASMFS_PERM_READ)) {
+  // Check user permissions
+  auto fileMode = parsedPath.child->locked().getMode();
+  if ((accessMode == O_RDONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_READ)) {
+    emscripten_console_log("Missing read permissions");
+    return -EACCES;
+  }
+  if ((accessMode == O_WRONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_WRITE)) {
+    emscripten_console_log("Missing write permissions");
     return -EACCES;
   }
 
