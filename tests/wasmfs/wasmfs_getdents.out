@@ -1,16 +1,13 @@
-------------- Reading from /working Directory -------------
+------------- Reading from /root/working Directory -------------
 d.d_name = .
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
 d.d_name = ..
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
 d.d_name = test
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
@@ -18,108 +15,46 @@ Errno: Bad file descriptor
 Errno: Invalid argument
 Errno: Not a directory
 
-------------- Reading from root Directory -------------
-d.d_name = .
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
-d.d_name = ..
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
-d.d_name = dev
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
-d.d_name = working
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
 ------------- Reading from /dev Directory -------------
 d.d_name = .
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
 d.d_name = ..
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
+d.d_name = stderr
+d.d_reclen = 280
+d.d_type = regular
+
 d.d_name = stdin
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = regular
 
 d.d_name = stdout
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = regular
 
-d.d_name = stderr
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = regular
-
-/working file position is: 1
-------------- Reading from /working Directory -------------
+/root/working file position is: 1
+------------- Reading one from /root/working Directory -------------
 d.d_name = ..
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
-d.d_name = test
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
-/working file position is: 0
-------------- Reading from /working Directory -------------
+------------- Reading from /root/working Directory -------------
 d.d_name = .
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
 d.d_name = ..
-d.d_off = 280
-d.d_reclen = 280
-d.d_type = directory
-
-d.d_name = test
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = directory
 
 d.d_name = foobar
-d.d_off = 280
 d.d_reclen = 280
 d.d_type = regular
 
-pDirent->d_name: .
-pDirent->d_off: 280
-pDirent->d_reclen: 280
-pDirent->d_type: 4
-
-pDirent->d_name: ..
-pDirent->d_off: 560
-pDirent->d_reclen: 280
-pDirent->d_type: 4
-
-pDirent->d_name: stdin
-pDirent->d_off: 840
-pDirent->d_reclen: 280
-pDirent->d_type: 8
-
-pDirent->d_name: stdout
-pDirent->d_off: 1120
-pDirent->d_reclen: 280
-pDirent->d_type: 8
-
-pDirent->d_name: stderr
-pDirent->d_off: 1400
-pDirent->d_reclen: 280
-pDirent->d_type: 8
+d.d_name = test
+d.d_reclen = 280
+d.d_type = directory

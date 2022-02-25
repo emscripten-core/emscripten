@@ -2077,6 +2077,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
+  # TODO: Move this into the library JS file once it becomes possible.
+  # See https://github.com/emscripten-core/emscripten/pull/15982
+  if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.

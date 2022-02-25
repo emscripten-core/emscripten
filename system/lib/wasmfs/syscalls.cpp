@@ -1060,4 +1060,60 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
 
   return 0;
 }
+
+static off_t combineOffParts(long low, long high) {
+  return (off_t(high) << 32) | off_t(low);
+}
+
+static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
+  auto dataFile = file->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  auto size = combineOffParts(low, high);
+  if (size < 0) {
+    return -EINVAL;
+  }
+
+  // TODO: error handling for allocation errors. atm with exceptions disabled,
+  //       however, C++ backends using std::vector for storage have no way to
+  //       report that, and will abort in malloc.
+  locked.setSize(size);
+  return 0;
+}
+
+long __syscall_truncate64(long path, long low, long high) {
+  auto pathParts = splitPath((char*)path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  return doTruncate(parsedPath.child, low, high);
+}
+
+long __syscall_ftruncate64(long fd, long low, long high) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto ret = doTruncate(openFile->locked().getFile(), low, high);
+  // XXX It is not clear from the docs why ftruncate would differ from
+  //     truncate here. However, on Linux this definitely happens, and the old
+  //     FS matches that as well, so do the same here.
+  if (ret == -EACCES) {
+    ret = -EINVAL;
+  }
+  return ret;
+}
 }
