@@ -60,17 +60,17 @@ mergeInto(LibraryManager.library, {
         __wasmfs_node_record_dirent(vec, name, type);
       });
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
   _wasmfs_node_get_mode: function(path_p, mode_p) {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
     if (stat === undefined) {
-      return 0;
+      return 1;
     }
-    {{{ makeSetValue('mode_p', 0, 'stat.mode', 'i32') }}}
-    return 1;
+    {{{ makeSetValue('mode_p', 0, 'stat.mode', 'i32') }}};
+    // implicitly return 0
   },
 
   _wasmfs_node_insert_file__deps: ['$wasmfsNodeConvertNodeCode'],
@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
@@ -92,7 +92,56 @@ mergeInto(LibraryManager.library, {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }
-    // return 0;
+    // implicitly return 0
   },
 
+  _wasmfs_node_get_file_size__deps: ['$wasmfsNodeLstat'],
+  _wasmfs_node_get_file_size: function(path_p, size_p) {
+    let stat = wasmfsNodeLstat(UTF8ToString(path_p));
+    if (stat === undefined) {
+      return 1;
+    }
+    {{{ makeSetValue('size_p', 0, 'stat.size', 'i32') }}};
+    // implicitly return 0
+  },
+
+  _wasmfs_node_read__deps: ['$wasmfsNodeConvertNodeCode'],
+  _wasmfs_node_read: function(path_p, buf_p, len, pos, nread_p) {
+    let fd;
+    try {
+      // TODO: Cache open file descriptors to guarantee that opened files will
+      // still exist when we try to access them.
+      fd = fs.openSync(UTF8ToString(path_p));
+      let nread = fs.readSync(fd, HEAPU8, buf_p, len, pos);
+      {{{ makeSetValue('nread_p', 0, 'nread', 'i32') }}};
+    } catch (e) {
+      if (!e.code) throw e;
+      return wasmfsNodeConvertNodeCode(e);
+    } finally {
+      if (fd !== undefined) {
+        fs.closeSync(fd);
+      }
+    }
+    // implicitly return 0
+  },
+
+  _wasmfs_node_write__deps : ['$wasmfsNodeConvertNodeCode'],
+  _wasmfs_node_write : function(path_p, buf_p, len, pos, nwritten_p) {
+    let fd;
+    try {
+      // TODO: Cache open file descriptors to guarantee that opened files will
+      // still exist when we try to access them.
+      fd = fs.openSync(UTF8ToString(path_p), 'w');
+      let nwritten = fs.writeSync(fd, HEAPU8, buf_p, len, pos);
+      {{{ makeSetValue('nwritten_p', 0, 'nwritten', 'i32') }}};
+    } catch (e) {
+      if (!e.code) throw e;
+      return wasmfsNodeConvertNodeCode(e);
+    } finally {
+      if (fd !== undefined) {
+        fs.closeSync(fd);
+      }
+    }
+    // implicitly return 0
+  },
 });
