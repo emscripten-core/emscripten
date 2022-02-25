@@ -49,10 +49,10 @@ class PipeFile : public DataFile {
   }
 
 public:
-  // PipeFiles do not have or need a backend. Pass nullptr to the parent for
+  // PipeFiles do not have or need a backend. Pass NullBackend to the parent for
   // that.
   PipeFile(mode_t mode, std::shared_ptr<PipeData> data)
-    : DataFile(mode, nullptr), data(data) {
+    : DataFile(mode, NullBackend), data(data) {
     // Reads are always from the front; writes always to the end.
     seekable = false;
   }
