@@ -60,7 +60,7 @@ mergeInto(LibraryManager.library, {
         __wasmfs_node_record_dirent(vec, name, type);
       });
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
@@ -70,7 +70,7 @@ mergeInto(LibraryManager.library, {
       return 1;
     }
     {{{ makeSetValue('mode_p', 0, 'stat.mode', 'i32') }}};
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_insert_file__deps: ['$wasmfsNodeConvertNodeCode'],
@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
@@ -92,7 +92,7 @@ mergeInto(LibraryManager.library, {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_get_file_size__deps: ['$wasmfsNodeLstat'],
@@ -102,7 +102,7 @@ mergeInto(LibraryManager.library, {
       return 1;
     }
     {{{ makeSetValue('size_p', 0, 'stat.size', 'i32') }}};
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_read__deps: ['$wasmfsNodeConvertNodeCode'],
@@ -122,7 +122,7 @@ mergeInto(LibraryManager.library, {
         fs.closeSync(fd);
       }
     }
-    // return 0;
+    // implicitly return 0
   },
 
   _wasmfs_node_write__deps : ['$wasmfsNodeConvertNodeCode'],
@@ -142,6 +142,6 @@ mergeInto(LibraryManager.library, {
         fs.closeSync(fd);
       }
     }
-    // return 0;
+    // implicitly return 0
   },
 });
