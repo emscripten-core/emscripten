@@ -1135,7 +1135,7 @@ long __syscall_pipe(long fd) {
 int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   auto fileTable = wasmFS.getFileTable().locked();
 
-  // Procses the list of FDs and compute their revents masks. Count the number
+  // Process the list of FDs and compute their revents masks. Count the number
   // of nonzero such masks, which is our return value.
   long nonzero = 0;
   for (nfds_t i = 0; i < nfds; i++) {
