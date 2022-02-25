@@ -7,26 +7,33 @@
 
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/wasmfs.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "get_backend.h"
+
 int main() {
-  int fd = open("/test", O_CREAT, S_IRGRP);
+  int err = wasmfs_create_directory("/root", 0777, get_backend());
+  assert(err == 0);
+  int fd = open("/root/test", O_CREAT, S_IRUSR | S_IWUSR);
   const char* msg = "Success\n";
 
   errno = 0;
   write(fd, msg, strlen(msg));
+  assert(errno == 0);
+
   EM_ASM({
-    var output = FS.readFile("/test", {encoding : 'utf8'});
+    var output = FS.readFile("/root/test", {encoding : 'utf8'});
     out(output);
   });
 
   EM_ASM({
     try {
-      var output = FS.readFile("/no-exist", {encoding : 'utf8'});
+      var output = FS.readFile("/root/no-exist", {encoding : 'utf8'});
     } catch (err) {
     }
   });

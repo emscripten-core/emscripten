@@ -23,10 +23,24 @@ int _wasmfs_node_readdir(const char* path,
 int _wasmfs_node_get_mode(const char* path, mode_t* mode);
 
 // Create a new file system entry and return 0 or an error code.
-int _wasmfs_node_insert_file(const char* path,
-                             mode_t mode); // fs.openSync(name, flags, mode)
-int _wasmfs_node_insert_directory(
-  const char* path, mode_t mode); // fs.mkdirSync(name, { mode: ... })
+int _wasmfs_node_insert_file(const char* path, mode_t mode);
+int _wasmfs_node_insert_directory(const char* path, mode_t mode);
+
+// Write `size` and return 0 or an error code.
+int _wasmfs_node_get_file_size(const char* path, uint32_t* size);
+
+// Read up to `size` bytes into `buf` from position `pos` in the file, writing
+// the number of bytes read to `nread`. Return 0 on success or an error code.
+int _wasmfs_node_read(
+  const char* path, void* buf, uint32_t len, uint32_t pos, uint32_t* nread);
+
+// Write up to `size` bytes from `buf` at position `pos` in the file, writing
+// the number of bytes written to `nread`. Return 0 on success or an error code.
+int _wasmfs_node_write(const char* path,
+                       const void* buf,
+                       uint32_t len,
+                       uint32_t pos,
+                       uint32_t* nwritten);
 
 } // extern "C"
 
@@ -41,8 +55,15 @@ public:
 
 private:
   size_t getSize() override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::getSize");
-    return 0;
+    // TODO: This should really be using a 64-bit file size type rather than
+    // size_t.
+    uint32_t size;
+    if (_wasmfs_node_get_file_size(path.c_str(), &size)) {
+      // TODO: Make this fallible
+      return 0;
+    }
+    emscripten_console_logf("Got a size of %u for %s", size, path.c_str());
+    return size_t(size);
   }
 
   void setSize(size_t size) override {
@@ -50,13 +71,24 @@ private:
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::read");
-    return 0;
+    uint32_t nread;
+    if (auto err = _wasmfs_node_read(path.c_str(), buf, len, offset, &nread)) {
+      return err;
+    }
+    // TODO: Add a way to report the actual bytes read. We currently assume the
+    // available bytes can't change under us.
+    return __WASI_ERRNO_SUCCESS;
   }
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::write");
-    return 0;
+    uint32_t nwritten;
+    if (auto err =
+          _wasmfs_node_write(path.c_str(), buf, len, offset, &nwritten)) {
+      return err;
+    }
+    // TODO: Add a way to report the actual bytes written. We currently assume
+    // the write cannot be short.
+    return __WASI_ERRNO_SUCCESS;
   }
 
   void flush() override {
@@ -78,8 +110,7 @@ private:
     static_assert(std::is_same_v<mode_t, unsigned int>);
     // TODO: also retrieve and set ctime, atime, ino, etc.
     mode_t mode;
-    int exists = _wasmfs_node_get_mode(childPath.c_str(), &mode);
-    if (!exists) {
+    if (_wasmfs_node_get_mode(childPath.c_str(), &mode)) {
       return nullptr;
     }
     std::shared_ptr<File> child;

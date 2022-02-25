@@ -11573,8 +11573,8 @@ void foo() {}
     # Run only in WASMFS for now.
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
+  @wasmfs_all_backends
   def test_wasmfs_readfile(self):
-    self.set_setting('WASMFS')
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   def test_wasmfs_jsfile(self):
