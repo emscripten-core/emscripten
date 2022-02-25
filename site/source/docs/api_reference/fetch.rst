@@ -407,8 +407,6 @@ documenting:
  - Emscripten_fetch_attr_t allows setting custom HTTP request headers (e.g. for
    cache control)
  - Document HTTP simple auth fields in Emscripten_fetch_attr_t.
- - Document how to populate to a certain filesystem path location in IndexedB,
-   and e.g. fopen() it via ASMFS afterwards.
  - Document overriddenMimeType attribute in Emscripten_fetch_attr_t.
  - Reference documentation of the individual fields in Emscripten_fetch_attr_t,
    Emscripten_fetch_t and #defines.

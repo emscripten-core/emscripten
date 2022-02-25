@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.7
 -----
+- Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
+  settings.  The new wasmfs filesystem is far enough along that it seems clear
+  that ASMFS will not need to be revived.
 
 3.1.6 - 02/24/2022
 ------------------
