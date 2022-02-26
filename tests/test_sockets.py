@@ -9,7 +9,7 @@ import socket
 import shutil
 import sys
 import time
-from subprocess import Popen, PIPE
+from subprocess import Popen
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner sockets')
@@ -60,8 +60,7 @@ class WebsockifyServerHarness():
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      proc = run_process([CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, clang_native.get_clang_native_env(), stdout=PIPE, stderr=PIPE)
-      print('Socket server build: out:', proc.stdout, '/ err:', proc.stderr)
+      run_process([CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
