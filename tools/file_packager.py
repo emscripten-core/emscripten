@@ -288,8 +288,6 @@ def main():
     Module.expectedDataFileDownloads = 0;
   }
   Module.expectedDataFileDownloads++;
-  var ENVIRONMENT_IS_AUDIOWORKLET = typeof AudioWorkletGlobalScope === "function";
-  if(!ENVIRONMENT_IS_AUDIOWORKLET)
   (function() {
    var loadPackage = function(metadata) {
   '''
