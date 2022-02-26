@@ -16,4 +16,4 @@ sphinx==2.4.4
 docutils==0.17.1
 
 # Needed by tests/test_sockets.py
-websockify==0.8.0
+websockify==0.10.0
