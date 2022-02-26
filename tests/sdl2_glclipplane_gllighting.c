@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
 
   SDL_GL_SwapWindow(window);
 
-  SDL_Quit();
+  // Don't quit - we need to reftest the canvas! SDL_Quit();
 
   return 0;
 }

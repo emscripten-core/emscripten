@@ -26,7 +26,7 @@ int main() {
 
   // Test opening a file and calling fstat.
   struct stat file;
-  int fd = open("/dev/stdout/", O_RDONLY);
+  int fd = open("/dev/stdout/", O_WRONLY);
   assert(fd >= 0);
   assert(fstat(fd, &file) != -1);
 
@@ -45,7 +45,7 @@ int main() {
   close(fd);
 
   // Check to see if the previous inode number matches.
-  int newfd = open("/dev/stdout/", O_RDONLY);
+  int newfd = open("/dev/stdout/", O_WRONLY);
   struct stat newFile;
   assert(newfd >= 0);
   assert(fstat(newfd, &newFile) != -1);
@@ -124,8 +124,14 @@ int main() {
 #endif
   assert(statDirectory.st_blksize == 4096);
 
-  // Test calling stat with an empty pathname.
-  assert(stat("", &statFile) == -1);
+  // Test calling stat with an empty path.
+  errno = 0;
+  assert(stat("", &invalid));
+  assert(errno == ENOENT);
+
+  // Test calling stat with a non-existent path.
+  errno = 0;
+  assert(stat("/non-existent", &invalid));
   assert(errno == ENOENT);
 
   // Test calling lstat without opening a file.

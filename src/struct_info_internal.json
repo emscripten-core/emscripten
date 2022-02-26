@@ -31,7 +31,7 @@
             ]
         },
         "defines": [
-          "EM_THREAD_NAME_MAX"
+          "SIGCANCEL"
         ]
     },
     {
@@ -45,6 +45,15 @@
               "table_addr",
               "table_size",
               "name"
+            ]
+        }
+    },
+    {
+        "file": "async_callback.h",
+        "structs": {
+            "CallbackState": [
+                "result",
+                "offset"
             ]
         }
     }

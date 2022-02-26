@@ -148,11 +148,11 @@ var LibraryEmVal = {
     /*This function returns a new function that looks like this:
     function emval_allocator_3(constructor, argTypes, args) {
         var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0.readValueFromPointer(args);
+        var arg0 = argType0['readValueFromPointer'](args);
         var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1.readValueFromPointer(args + 8);
+        var arg1 = argType1['readValueFromPointer'](args + 8);
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2.readValueFromPointer(args + 16);
+        var arg2 = argType2['readValueFromPointer'](args + 16);
         var obj = new constructor(arg0, arg1, arg2);
         return Emval.toHandle(obj);
     } */
@@ -162,8 +162,8 @@ var LibraryEmVal = {
       argsList[0] = constructor;
       for (var i = 0; i < argCount; ++i) {
         var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
-        argsList[i + 1] = argType.readValueFromPointer(args);
-        args += argType.argPackAdvance;
+        argsList[i + 1] = argType['readValueFromPointer'](args);
+        args += argType['argPackAdvance'];
       }
       var obj = new (constructor.bind.apply(constructor, argsList));
       return Emval.toHandle(obj);
@@ -209,26 +209,26 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
-    if (typeof globalThis === 'object') {
+    if (typeof globalThis == 'object') {
       return globalThis;
     }
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
-      var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
+      var success = typeof $$$embind_global$$$ == 'object' && obj['$$$embind_global$$$'] == obj;
       if (!success) {
         delete obj['$$$embind_global$$$'];
       }
       return success;
     }
-    if (typeof $$$embind_global$$$ === 'object') {
+    if (typeof $$$embind_global$$$ == 'object') {
       return $$$embind_global$$$;
     }
-    if (typeof global === 'object' && testGlobal(global)) {
+    if (typeof global == 'object' && testGlobal(global)) {
       $$$embind_global$$$ = global;
-    } else if (typeof self === 'object' && testGlobal(self)) {
+    } else if (typeof self == 'object' && testGlobal(self)) {
       $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
     }
-    if (typeof $$$embind_global$$$ === 'object') {
+    if (typeof $$$embind_global$$$ == 'object') {
       return $$$embind_global$$$;
     }
     throw Error('unable to get global object.');
@@ -236,7 +236,7 @@ var LibraryEmVal = {
 #else
   // appease jshint (technically this code uses eval)
   $emval_get_global: function() {
-    if (typeof globalThis === 'object') {
+    if (typeof globalThis == 'object') {
       return globalThis;
     }
     return (function(){
@@ -397,11 +397,11 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
-    var invokerFunction = function(handle, name, destructors, args) {
+    var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
-        argN[i] = types[i + 1].readValueFromPointer(args + offset);
-        offset += types[i + 1].argPackAdvance;
+        argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
+        offset += types[i + 1]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
       for (var i = 0; i < argCount - 1; ++i) {
@@ -410,7 +410,7 @@ var LibraryEmVal = {
         }
       }
       if (!retType.isVoid) {
-        return retType.toWireType(destructors, rv);
+        return retType['toWireType'](destructors, rv);
       }
     };
 #else
@@ -491,13 +491,13 @@ var LibraryEmVal = {
   _emval_is_number__deps: ['$Emval'],
   _emval_is_number: function(handle) {
     handle = Emval.toValue(handle);
-    return typeof handle === 'number';
+    return typeof handle == 'number';
   },
 
   _emval_is_string__deps: ['$Emval'],
   _emval_is_string: function(handle) {
     handle = Emval.toValue(handle);
-    return typeof handle === 'string';
+    return typeof handle == 'string';
   },
 
   _emval_in__deps: ['$Emval'],

@@ -22,25 +22,25 @@ from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
+from tools import js_manipulation
 from tools import shared
 from tools import utils
 from tools import gen_struct_info
 from tools import webassembly
+from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root
-from tools.shared import WINDOWS, asmjs_mangle
+from tools.shared import DEBUG, WINDOWS, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
-
-WASM_INIT_FUNC = '__wasm_call_ctors'
 
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
+  exports_that_are_not_initializers = [x for x in exports if x not in building.WASM_CALL_CTORS]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
 
@@ -62,7 +62,7 @@ def write_output_file(outfile, module):
     outfile.write(module[i])
 
 
-def optimize_syscalls(declares, DEBUG):
+def optimize_syscalls(declares):
   """Disables filesystem if only a limited subset of syscalls is used.
 
   Our syscalls are static, and so if we see a very limited set of them - in particular,
@@ -80,16 +80,16 @@ def optimize_syscalls(declares, DEBUG):
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
     syscall_prefixes = ('__syscall_', 'fd_')
-    syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
+    syscalls = {d for d in declares if d.startswith(syscall_prefixes)}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
-    if set(syscalls).issubset(set([
+    if syscalls.issubset({
       '__syscall_ioctl',
       'fd_seek',
       'fd_write',
       'fd_close',
-    ])):
+    }):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
       settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -107,15 +107,19 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def update_settings_glue(metadata, DEBUG):
-  optimize_syscalls(metadata['declares'], DEBUG)
+def to_nice_ident(ident): # limited version of the JS function toNiceIdent
+  return ident.replace('%', '$').replace('@', '_').replace('.', '_')
+
+
+def update_settings_glue(metadata):
+  optimize_syscalls(metadata['declares'])
 
   # Integrate info from backend
   if settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
   else:
-    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata['declares']]
     syms = set(syms).difference(metadata['exports'])
     syms.update(metadata['globalImports'])
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
@@ -131,13 +135,6 @@ def update_settings_glue(metadata, DEBUG):
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
-
-  if settings.RELOCATABLE:
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # Instead we use __table_base to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
   settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
@@ -168,10 +165,15 @@ def compile_settings():
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
 
+  # Only the names of the legacy settings are used by the JS compiler
+  # so we can reduce the size of serialized json by simplifying this
+  # otherwise complex value.
+  settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
+
   # Save settings to a file to work around v8 issue 1579
-  with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
+  with shared.configuration.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(settings.dict(), s, sort_keys=True)
+      json.dump(settings.dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
     env = os.environ.copy()
@@ -279,7 +281,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
+def emscript(in_wasm, out_wasm, outfile_js, memfile):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -290,11 +292,11 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
   else:
     # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(out_wasm))
+    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
-  metadata = finalize_wasm(in_wasm, out_wasm, memfile, DEBUG)
+  metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
-  update_settings_glue(metadata, DEBUG)
+  update_settings_glue(metadata)
 
   if settings.SIDE_MODULE:
     if metadata['asmConsts']:
@@ -311,9 +313,16 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # memory and global initializers
 
   if settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm).mem_size)
+    dylink_sec = webassembly.parse_dylink_section(in_wasm)
+    static_bump = align_memory(dylink_sec.mem_size)
     set_memory(static_bump)
     logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
+
+    # When building relocatable output (e.g. MAIN_MODULE) the reported table
+    # size does not include the reserved slot at zero for the null pointer.
+    # So we need to offset the elements by 1.
+    if settings.INITIAL_TABLE == -1:
+      settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
   glue, forwarded_data = compile_settings()
   if DEBUG:
@@ -323,6 +332,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   forwarded_json = json.loads(forwarded_data)
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+
+  if settings.ASSERTIONS:
+    pre += "function checkIncomingModuleAPI() {\n"
+    for sym in settings.ALL_INCOMING_MODULE_JS_API:
+      if sym not in settings.INCOMING_MODULE_JS_API:
+        pre += f"  ignoredModuleProp('{sym}');\n"
+    pre += "}\n"
 
   exports = metadata['exports']
 
@@ -380,7 +396,65 @@ def remove_trailing_zeros(memfile):
   utils.write_binary(memfile, mem_data[:end])
 
 
-def finalize_wasm(infile, outfile, memfile, DEBUG):
+@ToolchainProfiler.profile()
+def get_metadata_binaryen(infile, outfile, modify_wasm, args):
+  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
+                                         infile=infile,
+                                         outfile=outfile if modify_wasm else None,
+                                         args=args,
+                                         stdout=subprocess.PIPE)
+  metadata = load_metadata_json(stdout)
+  return metadata
+
+
+@ToolchainProfiler.profile()
+def get_metadata_python(infile, outfile, modify_wasm, args):
+  metadata = extract_metadata.extract_metadata(infile)
+  if modify_wasm:
+    # In some cases we still need to modify the wasm file
+    # using wasm-emscripten-finalize.
+    building.run_binaryen_command('wasm-emscripten-finalize',
+                                  infile=infile,
+                                  outfile=outfile,
+                                  args=args,
+                                  stdout=subprocess.PIPE)
+    # When we do this we can generate new imports, so
+    # re-read parts of the metadata post-finalize
+    extract_metadata.update_metadata(outfile, metadata)
+  elif 'main' in metadata['exports']:
+    # Mimic a bug in wasm-emscripten-finalize where we don't correctly
+    # detect the presense of the main wrapper function unless we are
+    # modifying the binary.  This is because binaryen doesn't reaad
+    # the function bodies in this mode.
+    # TODO(sbc): Remove this once we make the switch away from
+    # binaryen metadata.
+    metadata['mainReadsParams'] = 1
+  return metadata
+
+
+# Test function for comparing binaryen vs python metadata.
+# Remove this once we go back to having just one method.
+def compare_metadata(metadata, pymetadata):
+  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
+    print(sorted(metadata.keys()))
+    print(sorted(pymetadata.keys()))
+    exit_with_error('metadata keys mismatch')
+  for key in metadata:
+    old = metadata[key]
+    new = pymetadata[key]
+    if key == 'features':
+      old = sorted(old)
+      new = sorted(new)
+    if old != new:
+      print(key)
+      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
+      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
+      print(pprint.pformat(old))
+      print(pprint.pformat(new))
+      exit_with_error('metadata mismatch')
+
+
+def finalize_wasm(infile, outfile, memfile):
   building.save_intermediate(infile, 'base.wasm')
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
@@ -435,11 +509,31 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=infile,
-                                         outfile=outfile if modify_wasm else None,
-                                         args=args,
-                                         stdout=subprocess.PIPE)
+
+  # Currently we have two different ways to extract the metadata from the
+  # wasm binary:
+  # 1. via wasm-emscripten-finalize (binaryen)
+  # 2. via local python code
+  # We also have a 'compare' mode that runs both extraction methods and
+  # checks that they produce identical results.
+  read_metadata = os.environ.get('EMCC_READ_METADATA', 'binaryen')
+  if read_metadata == 'binaryen':
+    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
+  elif read_metadata == 'python':
+    metadata = get_metadata_python(infile, outfile, modify_wasm, args)
+  elif read_metadata == 'compare':
+    shutil.copy2(infile, infile + '.bak')
+    if settings.GENERATE_SOURCE_MAP:
+      shutil.copy2(infile + '.map', infile + '.map.bak')
+    pymetadata = get_metadata_python(infile, outfile, modify_wasm, args)
+    shutil.move(infile + '.bak', infile)
+    if settings.GENERATE_SOURCE_MAP:
+      shutil.move(infile + '.map.bak', infile + '.map')
+    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
+    compare_metadata(metadata, pymetadata)
+  else:
+    assert False
+
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
@@ -454,7 +548,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     # the dynamic linking case, our loader zeros it out)
     remove_trailing_zeros(memfile)
 
-  return load_metadata_wasm(stdout, DEBUG)
+  return metadata
 
 
 def create_asm_consts(metadata):
@@ -691,7 +785,7 @@ def create_receiving(exports):
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
-  exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
+  exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
 
   receiving = []
 
@@ -752,7 +846,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   return module
 
 
-def load_metadata_wasm(metadata_raw, DEBUG):
+def load_metadata_json(metadata_raw):
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception:
@@ -762,8 +856,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   metadata = {
     'declares': [],
     'globalImports': [],
-    'staticBump': 0,
-    'tableSize': 0,
     'exports': [],
     'namedGlobals': {},
     'emJsFuncs': {},
@@ -772,30 +864,24 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
 
-  assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
-    if key in legacy_keys:
-      continue
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  # Support older metadata when asmConsts values were lists.  We only use the first element
-  # nowadays
-  # TODO(sbc): remove this once binaryen has been changed to only emit the single element
-  metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
-
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+
+  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
 
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
+  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
@@ -807,7 +893,7 @@ def create_invoke_wrappers(invoke_funcs):
   invoke_wrappers = ''
   for invoke in invoke_funcs:
     sig = strip_prefix(invoke, 'invoke_')
-    invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+    invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
 
 
@@ -832,7 +918,7 @@ def generate_struct_info():
   if settings.BOOTSTRAPPING_STRUCT_INFO:
     return
 
-  @ToolchainProfiler.profile_block('gen_struct_info')
+  @ToolchainProfiler.profile()
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
@@ -843,4 +929,4 @@ def generate_struct_info():
 def run(in_wasm, out_wasm, outfile_js, memfile):
   generate_struct_info()
 
-  emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)
+  emscript(in_wasm, out_wasm, outfile_js, memfile)

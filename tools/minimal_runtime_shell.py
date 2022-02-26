@@ -3,7 +3,9 @@ import sys
 import os
 import logging
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools import shared
 from tools import line_endings
@@ -48,7 +50,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     if settings.MODULARIZE:
       modularize_imports += ['mem: r[%d]' % len(files_to_load)]
     else:
-      then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
+      then_statements += ["%s.mem = r[%d];" % (settings.EXPORT_NAME, len(files_to_load))]
     files_to_load += ["binary('%s')" % (target_basename + '.mem')]
 
   # Download .wasm file
@@ -56,7 +58,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     if settings.MODULARIZE:
       modularize_imports += ['wasm: r[%d]' % len(files_to_load)]
     else:
-      then_statements += ["Module.wasm = r[%d];" % len(files_to_load)]
+      then_statements += ["%s.wasm = r[%d];" % (settings.EXPORT_NAME, len(files_to_load))]
     if download_wasm:
       files_to_load += [download_wasm]
 
@@ -68,7 +70,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     if settings.MODULARIZE:
       modularize_imports += ['wasm: supportsWasm ? r[%d] : 0' % len(files_to_load)]
     else:
-      then_statements += ["if (supportsWasm) Module.wasm = r[%d];" % len(files_to_load)]
+      then_statements += ["if (supportsWasm) %s.wasm = r[%d];" % (settings.EXPORT_NAME, len(files_to_load))]
     files_to_load += ["supportsWasm ? %s : script('%s')" % (download_wasm, target_basename + '.wasm.js')]
 
   # Execute compiled output when building with MODULARIZE

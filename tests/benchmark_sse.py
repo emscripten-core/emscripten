@@ -46,7 +46,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
 
     # Run emscripten build
     out_file = os.path.join(temp_dir, 'benchmark_sse_html.js')
-    cmd = [EMCC, benchmark_file, '-O3', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file] + build_args
+    cmd = [EMCC, benchmark_file, '-O3', '-sTOTAL_MEMORY=536870912', '-o', out_file] + build_args
     print('Building Emscripten version of the benchmark:')
     print(' '.join(cmd))
     run_process(cmd)

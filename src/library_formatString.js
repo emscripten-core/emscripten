@@ -239,9 +239,9 @@ mergeInto(LibraryManager.library, {
             var currAbsArg = Math.abs(currArg);
             var prefix = '';
             if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
-              argText = reSign(currArg, 8 * argSize, 1).toString(10);
+              argText = reSign(currArg, 8 * argSize).toString(10);
             } else if (next == {{{ charCode('u') }}}) {
-              argText = unSign(currArg, 8 * argSize, 1).toString(10);
+              argText = unSign(currArg, 8 * argSize).toString(10);
               currArg = Math.abs(currArg);
             } else if (next == {{{ charCode('o') }}}) {
               argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);

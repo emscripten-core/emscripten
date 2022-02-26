@@ -181,11 +181,11 @@ var LibraryOpenAL = {
 
           audioSrc.connect(src.gain);
 
-          if (typeof(audioSrc.start) !== 'undefined') {
+          if (typeof audioSrc.start != 'undefined') {
             // Sample the current time as late as possible to mitigate drift
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.start(startTime, startOffset);
-          } else if (typeof(audioSrc.noteOn) !== 'undefined') {
+          } else if (typeof audioSrc.noteOn != 'undefined') {
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
@@ -609,9 +609,12 @@ var LibraryOpenAL = {
       }
 
       if (panner.positionX) {
-        panner.positionX.value = posX;
-        panner.positionY.value = posY;
-        panner.positionZ.value = posZ;
+        // Assigning to panner.positionX/Y/Z unnecessarily seems to cause performance issues
+        // See https://github.com/emscripten-core/emscripten/issues/15847
+
+        if (posX != panner.positionX.value) panner.positionX.value = posX;
+        if (posY != panner.positionY.value) panner.positionY.value = posY;
+        if (posZ != panner.positionZ.value) panner.positionZ.value = posZ;
       } else {
 #if OPENAL_DEBUG
         warnOnce('Panner position attributes are not present, falling back to setPosition()');
@@ -619,9 +622,12 @@ var LibraryOpenAL = {
         panner.setPosition(posX, posY, posZ);
       }
       if (panner.orientationX) {
-        panner.orientationX.value = dirX;
-        panner.orientationY.value = dirY;
-        panner.orientationZ.value = dirZ;
+        // Assigning to panner.orientation/Y/Z unnecessarily seems to cause performance issues
+        // See https://github.com/emscripten-core/emscripten/issues/15847
+
+        if (dirX != panner.orientationX.value) panner.orientationX.value = dirX;
+        if (dirY != panner.orientationY.value) panner.orientationY.value = dirY;
+        if (dirZ != panner.orientationZ.value) panner.orientationZ.value = dirZ;
       } else {
 #if OPENAL_DEBUG
         warnOnce('Panner orientation attributes are not present, falling back to setOrientation()');
@@ -2073,7 +2079,7 @@ var LibraryOpenAL = {
       }
     }
 
-    if (typeof(AudioContext) !== 'undefined' || typeof(webkitAudioContext) !== 'undefined') {
+    if (typeof AudioContext != 'undefined' || typeof webkitAudioContext != 'undefined') {
       var deviceId = AL.newId();
       AL.deviceRefCounts[deviceId] = 0;
       return deviceId;
@@ -2196,7 +2202,7 @@ var LibraryOpenAL = {
     autoResumeAudioContext(ac);
 
     // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
-    if (typeof(ac.createGain) === 'undefined') {
+    if (typeof ac.createGain == 'undefined') {
       ac.createGain = ac.createGainNode;
     }
 
@@ -2422,16 +2428,16 @@ var LibraryOpenAL = {
       ret = 'Out of Memory';
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
-      if (typeof(AudioContext) !== 'undefined' ||
-          typeof(webkitAudioContext) !== 'undefined') {
+      if (typeof AudioContext != 'undefined' ||
+          typeof webkitAudioContext != 'undefined') {
         ret = AL.DEVICE_NAME;
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
-      if (typeof(AudioContext) !== 'undefined' ||
-          typeof(webkitAudioContext) !== 'undefined') {
+      if (typeof AudioContext != 'undefined' ||
+          typeof webkitAudioContext != 'undefined') {
         ret = AL.DEVICE_NAME.concat('\0');
       } else {
         ret = '\0';
@@ -2469,7 +2475,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -2690,7 +2696,7 @@ var LibraryOpenAL = {
       }
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -3102,7 +3108,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocate(intArrayFromString(ret), ALLOC_NORMAL);
+    ret = allocateUTF8(ret);
     AL.stringCache[param] = ret;
     return ret;
   },

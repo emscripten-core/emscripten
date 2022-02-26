@@ -56,7 +56,7 @@ the simple C++ ``lerp()`` :cpp:func:`function` to JavaScript.
 To compile the above example using *embind*, we invoke *emcc* with the
 :ref:`bind <emcc-bind>` option::
 
-   emcc --bind -o quick_example.js quick_example.cpp
+   emcc -lembind -o quick_example.js quick_example.cpp
 
 The resulting **quick_example.js** file can be loaded as a node module
 or via a ``<script>`` tag:
@@ -107,7 +107,7 @@ the object file.
 For example, to generate bindings for a hypothetical **library.a** compiled
 with Emscripten run *emcc* with ``--whole-archive`` compiler flag::
 
-   emcc --bind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
+   emcc -lembind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
 
 Classes
 =======
@@ -184,6 +184,8 @@ shown below:
 In order to prevent the closure compiler from renaming the symbols in the
 above example code it needs to be rewritten as follows:
 
+.. code:: javascript
+
    var instance = new Module["MyClass"](10, "hello");
    instance["incrementX"]();
    instance["x"]; // 11
@@ -200,12 +202,14 @@ to enable the closure compiler.
 Memory management
 =================
 
-JavaScript, specifically ECMA-262 Edition 5.1, does not support `finalizers`_
-or weak references with callbacks. Therefore there is no way for Emscripten
-to automatically call the destructors on C++ objects.
+JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
+Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
+offer any guarantees that the provided finalization callback will be called.
+Embind uses this for cleanup if available, but only for smart pointers,
+and only as a last resort.
 
-.. warning:: JavaScript code must explicitly delete any C++ object handles
-   it has received, or the Emscripten heap will grow indefinitely.
+.. warning:: It is strongly recommended that JavaScript code explicitly deletes
+    any C++ object handles it has received.
 
 The :js:func:`delete()` JavaScript method is provided to manually signal that
 a C++ object is no longer needed and can be deleted:
@@ -297,10 +301,10 @@ Consider the example below:
         int age;
     };
 
-	// Array fields are treated as if they were std::array<type,size>
-	struct ArrayInStruct {
-		int field[2];
-	};
+    // Array fields are treated as if they were std::array<type,size>
+    struct ArrayInStruct {
+        int field[2];
+    };
 
     PersonRecord findPersonAtLocation(Point2f);
 
@@ -315,15 +319,15 @@ Consider the example below:
             .field("age", &PersonRecord::age)
             ;
 
-		value_object<ArrayInStruct>("ArrayInStruct")
-			.field("field", &ArrayInStruct::field) // Need to register the array type
-			;
+	value_object<ArrayInStruct>("ArrayInStruct")
+            .field("field", &ArrayInStruct::field) // Need to register the array type
+            ;
 
-		// Register std::array<int, 2> because ArrayInStruct::field is interpreted as such
-		value_array<std::array<int, 2>>("array_int_2")
-			.element(index<0>())
-			.element(index<1>())
-			;
+	// Register std::array<int, 2> because ArrayInStruct::field is interpreted as such
+	value_array<std::array<int, 2>>("array_int_2")
+            .element(index<0>())
+            .element(index<1>())
+            ;
 
         function("findPersonAtLocation", &findPersonAtLocation);
     }
@@ -875,7 +879,7 @@ and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 
-   emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
+   emcc -O2 -Wall -Werror -lembind -o oscillator.html oscillator.cpp
 
 
 Built-in type conversions
@@ -1020,6 +1024,7 @@ real-world applications has proved to be more than acceptable.
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
+.. _FinalizationRegistry: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry
 .. _Reference Counting: https://en.wikipedia.org/wiki/Reference_counting
 .. _Boost.Python-like raw pointer policies: https://wiki.python.org/moin/boost.python/CallPolicy
 .. _Backbone.js: http://backbonejs.org/#Model-extend

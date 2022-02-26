@@ -73,7 +73,7 @@ var LibraryGLEW = {
           string = "Unknown error";
           error = 8; // prevent array from growing more than this
         }
-        GLEW.error[error] = allocate(intArrayFromString(string), ALLOC_NORMAL);
+        GLEW.error[error] = allocateUTF8(string);
       }
       return GLEW.error[error];
     },
@@ -93,7 +93,7 @@ var LibraryGLEW = {
         var string = GLEW.versionStringConstantFromCode(name);
         if (!string)
           return 0;
-        GLEW.version[name] = allocate(intArrayFromString(string), ALLOC_NORMAL);
+        GLEW.version[name] = allocateUTF8(string);
       }
       return GLEW.version[name];
     },

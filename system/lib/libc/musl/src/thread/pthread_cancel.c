@@ -14,6 +14,7 @@ long __cancel()
 	return -ECANCELED;
 }
 
+#ifndef __EMSCRIPTEN__
 long __syscall_cp_asm(volatile void *, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t);
@@ -66,6 +67,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 
 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
 }
+#endif
 
 void __testcancel()
 {
@@ -74,6 +76,7 @@ void __testcancel()
 		__cancel();
 }
 
+#ifndef __EMSCRIPTEN__
 static void init_cancellation()
 {
 	struct sigaction sa = {
@@ -83,14 +86,17 @@ static void init_cancellation()
 	memset(&sa.sa_mask, -1, _NSIG/8);
 	__libc_sigaction(SIGCANCEL, &sa, 0);
 }
+#endif
 
 int pthread_cancel(pthread_t t)
 {
+#ifndef __EMSCRIPTEN__
 	static int init;
 	if (!init) {
 		init_cancellation();
 		init = 1;
 	}
+#endif
 	a_store(&t->cancel, 1);
 	if (t == pthread_self()) {
 		if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)

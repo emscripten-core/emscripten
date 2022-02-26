@@ -653,14 +653,14 @@ struct __sanitizer_sigaction {
 #endif // !SANITIZER_ANDROID
 
 #if defined(__mips__)
-struct __sanitizer_kernel_sigset_t {
-  uptr sig[2];
-};
+#define __SANITIZER_KERNEL_NSIG 128
 #else
-struct __sanitizer_kernel_sigset_t {
-  u8 sig[8];
-};
+#define __SANITIZER_KERNEL_NSIG 64
 #endif
+
+struct __sanitizer_kernel_sigset_t {
+  uptr sig[__SANITIZER_KERNEL_NSIG / (sizeof(uptr) * 8)];
+};
 
 // Linux system headers define the 'sa_handler' and 'sa_sigaction' macros.
 #if SANITIZER_MIPS
@@ -986,7 +986,6 @@ extern unsigned struct_vt_mode_sz;
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID
 extern unsigned struct_ax25_parms_struct_sz;
-extern unsigned struct_cyclades_monitor_sz;
 extern unsigned struct_input_keymap_entry_sz;
 extern unsigned struct_ipx_config_data_sz;
 extern unsigned struct_kbdiacrs_sz;
@@ -1331,15 +1330,6 @@ extern unsigned IOCTL_VT_WAITACTIVE;
 #endif  // SANITIZER_LINUX
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID
-extern unsigned IOCTL_CYGETDEFTHRESH;
-extern unsigned IOCTL_CYGETDEFTIMEOUT;
-extern unsigned IOCTL_CYGETMON;
-extern unsigned IOCTL_CYGETTHRESH;
-extern unsigned IOCTL_CYGETTIMEOUT;
-extern unsigned IOCTL_CYSETDEFTHRESH;
-extern unsigned IOCTL_CYSETDEFTIMEOUT;
-extern unsigned IOCTL_CYSETTHRESH;
-extern unsigned IOCTL_CYSETTIMEOUT;
 extern unsigned IOCTL_EQL_EMANCIPATE;
 extern unsigned IOCTL_EQL_ENSLAVE;
 extern unsigned IOCTL_EQL_GETMASTRCFG;

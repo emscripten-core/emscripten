@@ -11,18 +11,16 @@ import re
 import json
 import shutil
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(1, __rootpath__)
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import path_from_root
 from tools import building, config, shared, utils
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
-
-
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
 
 
 ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.js')
@@ -124,7 +122,7 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
-@ToolchainProfiler.profile_block('chunkify')
+@ToolchainProfiler.profile()
 def chunkify(funcs, chunk_size):
   chunks = []
   # initialize reasonably, the rest of the funcs we need to split out

@@ -85,7 +85,9 @@ import argparse
 import tempfile
 import subprocess
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools import shared
 from tools import system_libs
@@ -266,13 +268,13 @@ def inspect_headers(headers, cflags):
                                '-Wno-format',
                                '-nostdlib',
                                compiler_rt,
-                               '-s', 'MEMORY64=' + str(settings.MEMORY64),
-                               '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                               '-s', 'LLD_REPORT_UNDEFINED=1',
-                               '-s', 'STRICT',
+                               '-sMEMORY64=' + str(settings.MEMORY64),
+                               '-sBOOTSTRAPPING_STRUCT_INFO=1',
+                               '-sLLD_REPORT_UNDEFINED=1',
+                               '-sSTRICT',
                                # Use SINGLE_FILE=1 so there is only a single
                                # file to cleanup.
-                               '-s', 'SINGLE_FILE']
+                               '-sSINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -427,6 +429,8 @@ def main(args):
   internal_cflags = [
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+    '-I' + utils.path_from_root('system/lib/pthread/'),
+    '-I' + utils.path_from_root('system/lib/wasmfs/'),
   ]
 
   cxxflags = [

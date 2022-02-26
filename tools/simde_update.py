@@ -15,7 +15,10 @@ import sys
 
 from os import path
 
-sys.path.insert(1, path.dirname(path.dirname(path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
+
 from tools.shared import get_emscripten_temp_dir
 
 tmpdir = get_emscripten_temp_dir()

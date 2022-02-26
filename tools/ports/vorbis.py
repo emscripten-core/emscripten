@@ -30,7 +30,7 @@ def get(ports, settings, shared):
     shutil.copytree(source_path, dest_path)
 
     ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
-                     ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
+                     ['-sUSE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
 
   return [shared.Cache.get_lib('libvorbis.a', create)]

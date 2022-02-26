@@ -14,10 +14,10 @@ int main()
 	char str[128] = {};
 	fread(str, 1, sizeof(str), handle);
 	printf("str: %s\n", str);
-	assert(!strcmp(str, "Hello!"));
+	const bool success = (strcmp(str, "Hello!") == 0);
+	assert(success);
 	printf("OK\n");
 #ifdef REPORT_RESULT
-	int result = EM_ASM_INT({return Module.manuallyDownloadedData;});
-	REPORT_RESULT(result);
+	REPORT_RESULT(success);
 #endif
 }

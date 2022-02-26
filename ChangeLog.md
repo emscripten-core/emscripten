@@ -18,8 +18,107 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.1
+3.1.7
 -----
+
+3.1.6 - 02/24/2022
+------------------
+- Remove support for deprecated `EMMAKEN_COMPILER`, `EMMAKEN_CFLAGS`, and
+  `EMMAKEN_NO_SDK`  environment variables.  These are all legacy and redundant
+  in the face of other settings/flags:
+   - `EMMAKEN_COMPILER` -> `LLVM_ROOT` in the config settings
+   - `EMMAKEN_CFLAGS` -> `EMCC_CFLAGS`
+   - `EMMAKEN_NO_SDK` -> standard `-nostdlib` and `-nostdinc` flags
+- emscripten will no longer automatically create a config file if it can't
+  find one in the configured location.  Instead, it will error out and point the
+  user to the `--generate-config` option, in case that is what they want.
+  (#13962)
+
+3.1.5 - 02/17/2022
+------------------
+- Emscripten no longer uses the `allocate()` runtime function.  For backwards
+  compatabiliy with external JS code we still include this function by default
+  but it will no longer be included in `-sSTRICT` mode.  Usages of this function
+  are generally best replaced with `_malloc`, `stackAlloc` or `allocateUTF8`.
+
+3.1.4 - 02/14/2022
+------------------
+- Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
+  that did not previously have any effect are now honored (e.g.
+  `-fnew-alignment` and `-fshort-wchar`).
+- llvm dependency updated to 15.0.0 to match upstream. (#16178)
+- The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
+  macros are now available via the `emscripten/version.h` header file.  For the
+  time being, unless you enable `-sSTRICT`, these are still also defined
+  directly on the command line.  If you use these macros please make sure you
+  include `emscripten/version.h` (or `emscripten.h` which indirectly includes
+  it). (#16147)
+
+3.1.3 - 01/31/2022
+------------------
+- The file packager now supports embedding files directly into wasm memory and
+  `emcc` now uses this mode when the `--embed-file` option is used.  If you
+  use `file_packager` directly it is recommended that you switch to the new mode
+  by adding `--obj-output` to the command line. (#16050)
+- The `--bind` flag used to enable embind has been deprecated in favor of
+  `-lembind`.  The semantics have not changed and the old flag continues to
+  work. (#16087)
+- New setjmp/longjmp support using Wasm EH instructions is added, which is
+  faster and reduces code size. You need a browser that supports Wasm EH spec to
+  use it. The new SjLj support is enabled by `-sSUPPORT_LONGJMP=wasm`. This can
+  be used with Wasm exception support (`-fwasm-exceptions`), but not with
+  Emscripten exception support (`-fexceptions` or
+  `-sDISABLE_EXCEPTION_CATCHING=0`). When using Wasm EH with Wasm SjLj, there is
+  one restriction that you cannot directly call `setjmp` within a `catch`
+  clause. (Calling another function that calls `setjmp` is fine.)
+  (#14976 and #16072)
+
+3.1.2 - 01/20/2022
+------------------
+- A new setting, `POLYFILL`, was added which is on by default but can be disabled
+  (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
+  For default browser targets, no polyfills are needed so this option only has
+  meaning when targeting older browsers.
+- `EVAL_CTORS` has been rewritten and improved. The main differences from before
+  are that it is much more capable (it can now eval parts of functions and not
+  just all or nothing, and it can eval more wasm constructs like globals). It is
+  no longer run by default, so to use it you should build with `-s EVAL_CTORS`.
+  See `settings.js` for more details. (#16011)
+- `wasmX` test suites that are defined in `test_core.py` have been renamed to
+  `coreX` to better reflect where they are defined.  The old suite names such
+  as `wasm2` will continue to work for now as aliases.
+
+3.1.1 - 01/08/2022
+------------------
+- Happy new year!
+- Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
+  includes all downstream patches and many upstream changes.
+- libc++ library updated to llvm-13. (#15901)
+- libc++-abi library updated to llvm-13. (#15904)
+- compiler-rt library updated to llvm-13. (#15906)
+- Added new internal/debugging related environment variable
+  EM_FORCE_RESPONSE_FILES that can be set to 0 to force disable the use of
+  response files, and to 1 to force enable response files. If not set,
+  response files will be used if command lines are long (> 8192 chars). (#15973)
+
+3.1.0 - 12/22/2021
+------------------
+- Emscripten in starting to use ES6 features in its core libraries (at last!).
+  For most users targeting the default set of browsers this is a code size win.
+  For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
+  emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
+  traspile any ES6 down to ES5.  When this automatic transpilation is performed
+  we generate a warning which can be disabled (using `-Wno-transpile`) or by
+  explicitly opting in-to or out-of closure using `--closure=1` or
+  `--closure=0`. (#15763).
+
+3.0.1 - 12/17/2021
+------------------
+- Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
+- Fixed an issue where user provided --js-library directives would not be
+  processed as the last item after all system provided JS libraries have been
+  added to the build. This fix enables overriding WebGL 2 symbols from user JS
+  libraries.
 
 3.0.0 - 11/22/2021
 ------------------
@@ -239,6 +338,7 @@ See docs/process.md for more on how version tagging works.
   wasm binary.
 - The experimental SPLIT_MODULE setting now expects the secondary module to be
   named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+- sendfile.h header removed from musl. (#14248)
 
 2.0.21: 05/18/2021
 ------------------

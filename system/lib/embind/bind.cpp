@@ -100,7 +100,12 @@ template <typename T> static void register_memory_view(const char* name) {
 } // namespace
 
 extern "C" {
-void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
+
+// Normal initialization, executed through a global constructor. This
+// happens on the main thread; pthreads will call it manually, so make
+// sure we also export it (via EMSCRIPTEN_KEEPALIVE).
+EMSCRIPTEN_KEEPALIVE __attribute__((constructor))
+void __embind_register_native_and_builtin_types() {
   using namespace emscripten::internal;
 
   _embind_register_void(TypeID<void>::get(), "void");
@@ -161,10 +166,5 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_memory_view<long double>("emscripten::memory_view<long double>");
 #endif
 }
-}
 
-EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
-  // Normal initialization, executed through a global constructor. This
-  // happens on the main thread; pthreads will call it manually.
-  __embind_register_native_and_builtin_types();
-}
+} // extern "C"

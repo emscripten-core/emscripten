@@ -375,20 +375,6 @@ nodeBuffer.SlowBuffer.prototype.slice = function(start, end) {};
  */
 nodeBuffer.SlowBuffer.prototype.toString = function() {};
 
-/**
- * @param {number} size
- * @param {(string|!Buffer|number)=} fill
- * @param {string=} encoding
- * @return {!Buffer}
- */
-nodeBuffer.Buffer.alloc;
-
-/**
- * @param {Array} aray
- * @return {!Buffer}
- */
-nodeBuffer.Buffer.from;
-
 //
 // Legacy
 //
@@ -434,3 +420,9 @@ nodeBuffer.Buffer.prototype.binaryWrite = function(string, offset) {};
  * @return {nodeBuffer.Buffer}
  */
 nodeBuffer.Buffer.prototype.asciiWrite = function(string, offset) {};
+
+/**
+ * @return {ArrayBuffer}
+ * @nosideeffects
+ */
+nodeBuffer.Buffer.prototype.buffer = function() {};

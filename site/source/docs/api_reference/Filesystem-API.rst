@@ -20,6 +20,19 @@ The automatic tests in `tests/test_core.py <https://github.com/emscripten-core/e
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`.
 
+New File System: WasmFS
+=======================
+
+.. note:: Current Status: Work in Progress
+
+WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
+
+The JavaScript-based file system was originally written before pthreads were supported and when it was more optimal to write code in JS. As a result it has overhead in pthreads builds because we must proxy to the main thread where all filesystem operations are done. WasmFS, instead, is compiled to Wasm and has full multithreading support. It also aims to be more modular and extensible.
+
+`Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
+
+`Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+
 Including File System Support
 =============================
 
@@ -63,6 +76,17 @@ NODEFS
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
 See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
+
+.. _filesystem-api-noderawfs:
+
+NODERAWFS
+---------
+
+.. note:: This file system is only for use when running inside :term:`node.js`.
+
+This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far. 
+ 
+See `this <https://github.com/emscripten-core/emscripten/blob/d936e807c4d7a6163827c1fdc4a8e87abe41db44/tests/fs/test_nodefs_rw.c#L31>`_ section on NODEFS, where you can see a mount operation - this is not needed in NODERAWFS.
 
 .. _filesystem-api-idbfs:
 

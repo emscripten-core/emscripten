@@ -41,15 +41,15 @@ def get(ports, settings, shared):
       defs.append('-DLOAD_' + fmt.upper())
 
     if 'png' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-s', 'USE_LIBPNG=1']
+      defs += ['-sUSE_LIBPNG=1']
 
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-s', 'USE_LIBJPEG=1']
+      defs += ['-sUSE_LIBJPEG=1']
 
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
       commands.append([shared.EMCC, '-c', os.path.join(src_dir, src),
-                       '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
+                       '-O2', '-sUSE_SDL=2', '-o', o, '-w'] + defs)
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)

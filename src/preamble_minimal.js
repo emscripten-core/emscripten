@@ -6,7 +6,7 @@
 
 #include "runtime_safe_heap.js"
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) throw text;
@@ -15,11 +15,7 @@ function assert(condition, text) {
 
 /** @param {string|number=} what */
 function abort(what) {
-#if ASSERTIONS
-  throw new Error(what);
-#else
-  throw what;
-#endif
+  throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
 #if SAFE_HEAP
@@ -29,19 +25,8 @@ var tempI64;
 #endif
 
 var tempRet0 = 0;
-var setTempRet0 = function(value) {
-  tempRet0 = value;
-}
-var getTempRet0 = function() {
-  return tempRet0;
-}
-
-function alignUp(x, multiple) {
-  if (x % multiple > 0) {
-    x += multiple - (x % multiple);
-  }
-  return x;
-}
+var setTempRet0 = (value) => { tempRet0 = value };
+var getTempRet0 = () => tempRet0;
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -107,11 +92,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
 } else {
-#if MODULARIZE
-  updateGlobalBufferAndViews(Module.buffer);
-#else
-  updateGlobalBufferAndViews(wasmMemory.buffer);
-#endif
+  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
 #endif // USE_PTHREADS
 #endif // IMPORTED_MEMORY

@@ -17,7 +17,7 @@
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
-/*global finalizationGroup, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
+/*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
@@ -50,13 +50,13 @@ var LibraryEmbind = {
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
 #if IN_TEST_HARNESS
+#if ASSERTIONS
+    Module['ASSERTIONS'] = true;
+#endif
 #if DYNAMIC_EXECUTION
     // Without dynamic execution, dynamically created functions will have no
     // names. This lets the test suite know that.
     Module['DYNAMIC_EXECUTION'] = true;
-#endif
-#if ASSERTIONS
-    Module['ASSERTIONS'] = true;
 #endif
 #if EMBIND_STD_STRING_IS_UTF8
     Module['EMBIND_STD_STRING_IS_UTF8'] = true;
@@ -303,9 +303,7 @@ var LibraryEmbind = {
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
   $registerType__docs: '/** @param {Object=} options */',
-  $registerType: function(rawType, registeredInstance, options) {
-    options = options || {};
-
+  $registerType: function(rawType, registeredInstance, options = {}) {
     if (!('argPackAdvance' in registeredInstance)) {
         throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
@@ -560,33 +558,42 @@ var LibraryEmbind = {
 
     var shift = getShiftFromSize(size);
 
-    var fromWireType = function(value) {
-        return value;
-    };
+    var fromWireType = (value) => value;
 
     if (minRange === 0) {
         var bitshift = 32 - 8*size;
-        fromWireType = function(value) {
-            return (value << bitshift) >>> bitshift;
-        };
+        fromWireType = (value) => (value << bitshift) >>> bitshift;
     }
 
     var isUnsignedType = (name.includes('unsigned'));
-
+    var checkAssertions = (value, toTypeName) => {
+#if ASSERTIONS
+        if (typeof value != "number" && typeof value != "boolean") {
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
+        }
+        if (value < minRange || value > maxRange) {
+            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        }
+#endif
+    }
+    var toWireType;
+    if (isUnsignedType) {
+        toWireType = function(destructors, value) {
+            checkAssertions(value, this.name);
+            return value >>> 0;
+        }
+    } else {
+        toWireType = function(destructors, value) {
+            checkAssertions(value, this.name);
+            // The VM will perform JS to Wasm value conversion, according to the spec:
+            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+            return value;
+        }
+    }
     registerType(primitiveType, {
         name: name,
         'fromWireType': fromWireType,
-        'toWireType': function(destructors, value) {
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
-            // avoid the following two if()s and assume value is of proper type.
-            if (typeof value !== "number" && typeof value !== "boolean") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-            }
-            if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-            }
-            return isUnsignedType ? (value >>> 0) : (value | 0);
-        },
+        'toWireType': toWireType,
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
         destructorFunction: null, // This type does not need a destructor
@@ -605,23 +612,23 @@ var LibraryEmbind = {
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-      // Use string because acorn does recognize bigint literals
-      maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
+        // Use string because acorn does recognize bigint literals
+        maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
     }
 
     registerType(primitiveType, {
         name: name,
         'fromWireType': function (value) {
-          return value;
+            return value;
         },
         'toWireType': function (destructors, value) {
-          if (typeof value !== "bigint") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-          }
-          if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-          }
-          return value;
+            if (typeof value != "bigint") {
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            }
+            if (value < minRange || value > maxRange) {
+                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+            }
+            return value;
         },
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
@@ -642,11 +649,11 @@ var LibraryEmbind = {
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
-            return value;
+             return value;
         },
         'toWireType': function(destructors, value) {
 #if ASSERTIONS
-            if (typeof value !== "number" && typeof value !== "boolean") {
+            if (typeof value != "number" && typeof value != "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
 #endif
@@ -719,15 +726,15 @@ var LibraryEmbind = {
             }
 
             var getLength;
-            var valueIsOfTypeString = (typeof value === 'string');
+            var valueIsOfTypeString = (typeof value == 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
             }
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = function() {return lengthBytesUTF8(value);};
+                getLength = () => lengthBytesUTF8(value);
             } else {
-                getLength = function() {return value.length;};
+                getLength = () => value.length;
             }
 
             // assumes 4-byte alignment
@@ -781,13 +788,13 @@ var LibraryEmbind = {
         decodeString = UTF16ToString;
         encodeString = stringToUTF16;
         lengthBytesUTF = lengthBytesUTF16;
-        getHeap = function() { return HEAPU16; };
+        getHeap = () => HEAPU16;
         shift = 1;
     } else if (charSize === 4) {
         decodeString = UTF32ToString;
         encodeString = stringToUTF32;
         lengthBytesUTF = lengthBytesUTF32;
-        getHeap = function() { return HEAPU32; };
+        getHeap = () => HEAPU32;
         shift = 2;
     }
     registerType(rawType, {
@@ -820,7 +827,7 @@ var LibraryEmbind = {
             return str;
         },
         'toWireType': function(destructors, value) {
-            if (!(typeof value === 'string')) {
+            if (!(typeof value == 'string')) {
                 throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
 
@@ -1168,7 +1175,7 @@ var LibraryEmbind = {
     }
 
     var fp = makeDynCaller();
-    if (typeof fp !== "function") {
+    if (typeof fp != "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
     }
     return fp;
@@ -1260,10 +1267,10 @@ var LibraryEmbind = {
             var setterArgumentType = elementTypes[i + elementsLength];
             var setter = elt.setter;
             var setterContext = elt.setterContext;
-            elt.read = function(ptr) {
+            elt.read = (ptr) => {
                 return getterReturnType['fromWireType'](getter(getterContext, ptr));
             };
-            elt.write = function(ptr, o) {
+            elt.write = (ptr, o) => {
                 var destructors = [];
                 setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
                 runDestructors(destructors);
@@ -1727,39 +1734,53 @@ var LibraryEmbind = {
     }
   },
 
-  $finalizationGroup: false,
+  $finalizationRegistry: false,
 
-  $detachFinalizer_deps: ['$finalizationGroup'],
+  $detachFinalizer_deps: ['$finalizationRegistry'],
   $detachFinalizer: function(handle) {},
 
-  $attachFinalizer__deps: ['$finalizationGroup', '$detachFinalizer',
-                           '$releaseClassHandle'],
+  $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
+                           '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
   $attachFinalizer: function(handle) {
-    if ('undefined' === typeof FinalizationGroup) {
-        attachFinalizer = function (handle) { return handle; };
+    if ('undefined' === typeof FinalizationRegistry) {
+        attachFinalizer = (handle) => handle;
         return handle;
     }
-    // If the running environment has a FinalizationGroup (see
+    // If the running environment has a FinalizationRegistry (see
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
-    // for class handles.  We check for the presence of FinalizationGroup
+    // for class handles.  We check for the presence of FinalizationRegistry
     // at run-time, not build-time.
-    finalizationGroup = new FinalizationGroup(function (iter) {
-        for (var result = iter.next(); !result.done; result = iter.next()) {
-            var $$ = result.value;
-            if (!$$.ptr) {
-                console.warn('object already deleted: ' + $$.ptr);
-            } else {
-                releaseClassHandle($$);
-            }
-        }
+    finalizationRegistry = new FinalizationRegistry((info) => {
+#if ASSERTIONS
+        console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+#endif
+        releaseClassHandle(info.$$);
     });
-    attachFinalizer = function(handle) {
-        finalizationGroup.register(handle, handle.$$, handle.$$);
+    attachFinalizer = (handle) => {
+        var $$ = handle.$$;
+        var hasSmartPtr = !!$$.smartPtr;
+        if (hasSmartPtr) {
+            // We should not call the destructor on raw pointers in case other code expects the pointee to live
+            var info = { $$: $$ };
+#if ASSERTIONS
+            // Create a warning as an Error instance in advance so that we can store
+            // the current stacktrace and point to it when / if a leak is detected.
+            // This is more useful than the empty stacktrace of `FinalizationRegistry`
+            // callback.
+            var cls = $$.ptrType.registeredClass;
+            info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
+            "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
+            "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
+            "Originally allocated"); // `.stack` will add "at ..." after this sentence
+            if ('captureStackTrace' in Error) {
+                Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+            }
+ #endif
+            finalizationRegistry.register(handle, info, handle);
+        }
         return handle;
     };
-    detachFinalizer = function(handle) {
-        finalizationGroup.unregister(handle.$$);
-    };
+    detachFinalizer = (handle) => finalizationRegistry.unregister(handle);
     return attachFinalizer(handle);
   },
 
@@ -2093,7 +2114,7 @@ var LibraryEmbind = {
         if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
             throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
         }
-        classType.registeredClass.constructor_body[argCount - 1] = function unboundTypeHandler() {
+        classType.registeredClass.constructor_body[argCount - 1] = () => {
             throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
         };
 
@@ -2250,11 +2271,11 @@ var LibraryEmbind = {
             configurable: true
         };
         if (setter) {
-            desc.set = function() {
+            desc.set = () => {
                 throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
             };
         } else {
-            desc.set = function(v) {
+            desc.set = (v) => {
                 throwBindingError(humanName + ' is a read-only property');
             };
         }
@@ -2377,11 +2398,11 @@ var LibraryEmbind = {
             configurable: true
         };
         if (setter) {
-            desc.set = function() {
+            desc.set = () => {
                 throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             };
         } else {
-            desc.set = function(v) {
+            desc.set = (v) => {
                 throwBindingError(humanName + ' is a read-only property');
             };
         }
@@ -2399,7 +2420,7 @@ var LibraryEmbind = {
 
             if (setter) {
                 setter = embind__requireFunction(setterSignature, setter);
-                desc.set = function(v) {
+                desc.set = (v) => {
                     var destructors = [];
                     setter(rawFieldPtr, fieldType['toWireType'](destructors, v));
                     runDestructors(destructors);

@@ -5,9 +5,9 @@
 
 import os
 
-TAG = 'version_24'
-HASH = '5a8181acdcce29cdda7e7a4cc876602740f5b9deebd366ecec71ae15c4bbf1f352da4dd0e3c5e0ba8160709dda0270566d64a6cd3892da894463ecf8502836aa'
-SUBDIR = 'SDL2-' + TAG
+TAG = 'release-2.0.20'
+HASH = '67e1abe1183b04836b35d724fd495c83c9559b4530d4a5c9bcc89648af0ac7cc51c02f7055a1664fe5f5f90953d22a6c431fa8bc5cdd77c94a97f107c47e2d62'
+SUBDIR = 'SDL-' + TAG
 
 
 def needed(settings):
@@ -20,7 +20,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
+  ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
@@ -31,8 +31,8 @@ def get(ports, settings, shared):
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c
     atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
     audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
-    dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c
-    events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
+    dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
+    events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
     joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
@@ -41,9 +41,10 @@ def get(ports, settings, shared):
     render/opengles2/SDL_render_gles2.c render/opengles2/SDL_shaders_gles2.c
     render/psp/SDL_render_psp.c render/software/SDL_blendfillrect.c render/software/SDL_blendline.c
     render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c
-    render/software/SDL_render_sw.c render/software/SDL_rotate.c sensor/SDL_sensor.c
-    stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
-    stdlib/SDL_stdlib.c stdlib/SDL_string.c thread/SDL_thread.c timer/SDL_timer.c
+    render/software/SDL_render_sw.c render/software/SDL_rotate.c render/software/SDL_triangle.c
+    sensor/SDL_sensor.c sensor/dummy/SDL_dummysensor.c
+    stdlib/SDL_crc32.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
+    stdlib/SDL_stdlib.c stdlib/SDL_string.c stdlib/SDL_strtokr.c thread/SDL_thread.c timer/SDL_timer.c
     video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c
     video/SDL_blit_N.c video/SDL_blit_auto.c video/SDL_blit_copy.c video/SDL_blit_slow.c
     video/SDL_bmp.c video/SDL_clipboard.c video/SDL_egl.c video/SDL_fillrect.c video/SDL_pixels.c
@@ -56,7 +57,8 @@ def get(ports, settings, shared):
     audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c
     power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c
     filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c
-    main/dummy/SDL_dummy_main.c'''.split()
+    main/dummy/SDL_dummy_main.c locale/SDL_locale.c locale/emscripten/SDL_syslocale.c misc/SDL_url.c
+    misc/dummy/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
     thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
@@ -71,7 +73,7 @@ def get(ports, settings, shared):
                  '-o', o, '-I' + ports.get_include_dir('SDL2'),
                  '-O2', '-w']
       if settings.USE_PTHREADS:
-        command += ['-s', 'USE_PTHREADS']
+        command += ['-sUSE_PTHREADS']
       commands.append(command)
       o_s.append(o)
     ports.run_commands(commands)

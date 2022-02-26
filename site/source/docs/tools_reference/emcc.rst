@@ -232,6 +232,13 @@ Options that are modified or new in *emcc* are listed below:
     - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
     - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
+``--closure-args=<args>``
+   [link]
+   Pass arguments to the :term:`Closure compiler`. This is an alternative to ``EMCC_CLOSURE_ARGS``.
+
+   For example, one might want to pass an externs file to avoid minifying JS functions defined in ``--pre-js`` or ``--post-js`` files.
+   To pass to Closure the ``externs.js`` file containing those public APIs that should not be minified, one would add the flag:
+   ``--closure-args=--externs=path/to/externs.js``
 
 .. _emcc-pre-js:
 
@@ -334,7 +341,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--bind``
   [link]
-  Compiles the source code using the :ref:`embind` bindings to connect C/C++ and JavaScript.
+  Links against embind library.  Deprecated: Use ``-lembind`` instead.
 
 ``--ignore-dynamic-linking``
   [link]
@@ -517,8 +524,6 @@ Environment variables
 =====================
 *emcc* is affected by several environment variables, as listed below:
 
-  - ``EMMAKEN_CFLAGS`` [compile+link]
-  - ``EMMAKEN_COMPILER`` [compile+link] Deprecated. Avoid using.
   - ``EMMAKEN_JUST_CONFIGURE`` [other]
   - ``EMCC_AUTODEBUG`` [compile+link]
   - ``EMCC_CFLAGS`` [compile+link]

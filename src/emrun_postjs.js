@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   var emrun_register_handlers = function() {
     // When C code exit()s, we may still have remaining stdout and stderr messages in flight. In that case, we can't close
     // the browser until all those XHRs have finished, so the following state variables track that all communication is done,
@@ -66,5 +66,5 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
     http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
   };
 
-  if (typeof Module !== 'undefined' && typeof document !== 'undefined') emrun_register_handlers();
+  if (typeof Module != 'undefined' && typeof document != 'undefined') emrun_register_handlers();
 }

@@ -143,7 +143,7 @@ mergeInto(LibraryManager.library, {
       createPeer: function(sock, addr, port) {
         var ws;
 
-        if (typeof addr === 'object') {
+        if (typeof addr == 'object') {
           ws = addr;
           addr = null;
           port = null;
@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
         // if this is a bound dgram socket, send the port number first to allow
         // us to override the ephemeral port reported to us by remotePort on the
         // remote end.
-        if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport !== 'undefined') {
+        if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport != 'undefined') {
 #if SOCKET_DEBUG
           out('websocket queuing port message (port ' + sock.sport + ')');
 #endif
@@ -300,7 +300,7 @@ mergeInto(LibraryManager.library, {
         };
 
         function handleMessage(data) {
-          if (typeof data === 'string') {
+          if (typeof data == 'string') {
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
@@ -444,7 +444,7 @@ mergeInto(LibraryManager.library, {
         return 0;
       },
       bind: function(sock, addr, port) {
-        if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
+        if (typeof sock.saddr != 'undefined' || typeof sock.sport != 'undefined') {
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});  // already bound
         }
         sock.saddr = addr;
@@ -478,7 +478,7 @@ mergeInto(LibraryManager.library, {
         // }
 
         // early out if we're already connected / in the middle of connecting
-        if (typeof sock.daddr !== 'undefined' && typeof sock.dport !== 'undefined') {
+        if (typeof sock.daddr != 'undefined' && typeof sock.dport != 'undefined') {
           var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
           if (dest) {
             if (dest.socket.readyState === dest.socket.CONNECTING) {
@@ -742,7 +742,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (event === 'error') {
           withStackSave(function() {
-            var msg = allocate(intArrayFromString(data[2]), ALLOC_STACK);
+            var msg = allocateUTF8OnStack(data[2]);
             {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {
@@ -752,7 +752,7 @@ mergeInto(LibraryManager.library, {
         if (e instanceof ExitStatus) {
           return;
         } else {
-          if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+          if (e && typeof e == 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
           throw e;
         }
       }

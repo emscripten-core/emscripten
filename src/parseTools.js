@@ -8,7 +8,7 @@
 // specific to Emscripten (and hence not in utility.js).
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
-const FLOAT_TYPES = set('float', 'double');
+const FLOAT_TYPES = new Set(['float', 'double']);
 
 let currentlyParsedFilename = '';
 
@@ -259,7 +259,7 @@ function splitI64(value, floatConversion) {
 function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent === 'number') {
+  if (typeof indent == 'number') {
     const len = indent;
     indent = '';
     for (let i = 0; i < len; i++) {
@@ -307,7 +307,7 @@ function asmEnsureFloat(value, type) {
     value = ensureDot(value);
     return 'Math.fround(' + value + ')';
   }
-  if (type in FLOAT_TYPES) {
+  if (FLOAT_TYPES.has(type)) {
     return ensureDot(value);
   }
   return value;
@@ -316,7 +316,7 @@ function asmEnsureFloat(value, type) {
 function asmCoercion(value, type, signedness) {
   if (type == 'void') {
     return value;
-  } else if (type in FLOAT_TYPES) {
+  } else if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
@@ -408,7 +408,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
+      return asmCoercion('SAFE_HEAP_LOAD' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
 
@@ -441,9 +441,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
   assert(!forcedAlign, 'forcedAlign is no longer supported');
-  sep = sep || ';';
 
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
@@ -486,7 +485,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return 'SAFE_HEAP_STORE' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
+      return 'SAFE_HEAP_STORE' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
 
@@ -499,13 +498,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
 const UNROLL_LOOP_MAX = 8;
 
-function makeCopyValues(dest, src, num, type, modifier, align, sep) {
-  sep = sep || ';';
+function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   function unroll(type, num, jump) {
     jump = jump || 1;
-    return range(num).map((i) => {
-      return makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type);
-    }).join(sep);
+    const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
+    return setValues.join(sep);
   }
   // If we don't know how to handle this at compile-time, or handling it is best
   // done in a large amount of code, call memcpy
@@ -558,11 +555,11 @@ function getFastValue(a, op, b, type) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a === 'number') {
+  if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) aNumber = parseFloat(a);
-  if (typeof b === 'number') {
+  if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) bNumber = parseFloat(b);
@@ -604,7 +601,7 @@ function getFastValue(a, op, b, type) {
   if (op === '*') {
     // We can't eliminate where a or b are 0 as that would break things for creating
     // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !(type in FLOAT_TYPES)) {
+    if ((aNumber === 0 || bNumber === 0) && !FLOAT_TYPES.has(type)) {
       return '0';
     } else if (aNumber === 1) {
       return b;
@@ -616,7 +613,7 @@ function getFastValue(a, op, b, type) {
         return `(${a}<<${shifts})`;
       }
     }
-    if (!(type in FLOAT_TYPES)) {
+    if (!FLOAT_TYPES.has(type)) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       // default is 32-bit multiply for things like getelementptr indexes
       const bits = getBits(type) || 32;
@@ -630,7 +627,7 @@ function getFastValue(a, op, b, type) {
     }
   } else if (op === '/') {
     // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !(type in FLOAT_TYPES)) {
+    if (a === '0' && !FLOAT_TYPES.has(type)) {
       return '0';
     } else if (b === 1) {
       return a;
@@ -888,19 +885,18 @@ function addAtExit(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = set('STRUCT_INFO');
+  const ignore = new Set(['STRUCT_INFO']);
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
-      const name = setting[0];
-      ignore[name] = 0;
+      ignore.add(setting);
     }
   }
 
   const ret = {};
   for (const x in global) {
-    if (!(x in ignore) && x[0] !== '_' && x == x.toUpperCase()) {
+    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
-        if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
+        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
           ret[x] = global[x];
         }
       } catch (e) {}
@@ -950,28 +946,25 @@ function runOnMainThread(text) {
 }
 
 function expectToReceiveOnModule(name) {
-  return name in INCOMING_MODULE_JS_API;
+  return INCOMING_MODULE_JS_API.has(name);
 }
 
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return `
-if (!Object.getOwnPropertyDescriptor(Module, '${moduleName}')) {
-  Object.defineProperty(Module, '${moduleName}', {
-    configurable: true,
-    get: function() {
-      abort('Module.${moduleName} has been replaced with plain ${localName}\
- (the initial value can be provided on Module,\
- but after startup the value is only looked for on a local variable of that name)')
-    }
-  });
-}`;
+  return `legacyModuleProp('${moduleName}', '${localName}');`;
+}
+
+function checkReceiving(name) {
+  // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
+  // so calling makeModuleReceive* with a symbol not in this list is an error
+  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
 }
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
@@ -982,8 +975,18 @@ function makeModuleReceive(localName, moduleName) {
   return ret;
 }
 
+function makeModuleReceiveExpr(name, defaultValue) {
+  checkReceiving(name);
+  if (expectToReceiveOnModule(name)) {
+    return `Module['${name}'] || ${defaultValue}`;
+  } else {
+    return `${defaultValue}`;
+  }
+}
+
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = 'var ' + localName;
   if (!expectToReceiveOnModule(moduleName)) {
     if (defaultValue) {
@@ -1053,16 +1056,16 @@ function _asmjsDemangle(symbol) {
 }
 
 function hasExportedFunction(func) {
-  return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
+  return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name + '_bigint';
+    return `/** @type {!BigInt} */ ${name}_bigint`;
   }
-  return name + '_low, ' + name + '_high';
+  return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {
@@ -1075,6 +1078,19 @@ function receiveI64ParamAsI32s(name) {
     return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
   }
   return '';
+}
+
+// TODO: use this in library_wasi.js and other places. but we need to add an
+//       error-handling hook here.
+function receiveI64ParamAsDouble(name) {
+  if (WASM_BIGINT) {
+    // Just convert the bigint into a double.
+    return `${name} = Number(${name});`;
+  }
+
+  // Combine the i32 params. Use an unsigned operator on low and shift high by
+  // 32 bits.
+  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {
@@ -1112,7 +1128,7 @@ function addReadyPromiseAssertions(promise) {
   //  var instance = Module();
   //  ...
   //  instance._main();
-  const properties = keys(EXPORTED_FUNCTIONS);
+  const properties = Array.from(EXPORTED_FUNCTIONS.values());
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');

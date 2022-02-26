@@ -83,7 +83,7 @@ void test() {
   //closedir(dir);
   //err = readdir_r(dir, NULL, &result);
   // XXX musl doesn't have enough error handling for this: assert(err == EBADF);
-  
+
   //
   // do a normal read with readdir
   //
@@ -93,9 +93,12 @@ void test() {
   for (i = 0; i < 3; i++) {
     errno = 0;
     ent = readdir(dir);
-    //printf("ent, errno: %p, %d\n", ent, errno);
-    assert(ent);
-    //printf("%d file: %s (%d : %d)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
+    if (ent) {
+      fprintf(stderr, "%d file: %s (%d : %lu)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
+    } else {
+      fprintf(stderr, "ent: %p, errno: %d\n", ent, errno);
+      assert(ent);
+    }
     assert(ent->d_reclen == sizeof(*ent));
     if (!seen[0] && !strcmp(ent->d_name, ".")) {
       assert(ent->d_type & DT_DIR);

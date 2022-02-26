@@ -33,6 +33,11 @@ var LibraryDylink = {
       sym = createInvokeFunction(symName.split('_')[1]);
     }
 
+#if !DISABLE_EXCEPTION_CATCHING
+    if (!sym && symName.startsWith("__cxa_find_matching_catch")) {
+      sym = Module["___cxa_find_matching_catch"];
+    }
+#endif
     return sym;
   },
 
@@ -102,25 +107,25 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
 #endif
-        if (typeof value === 'function') {
+        if (typeof value == 'function') {
           GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
-        } else if (typeof value === 'number') {
+        } else if (typeof value == 'number') {
           GOT[symName].value = value;
-        } else if (typeof value === 'bigint') {
+        } else if (typeof value == 'bigint') {
           GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
 #if DYLINK_DEBUG
-        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value);
+        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
 #endif
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
-        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + " " + value);
+        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
       }
 #endif
     }
@@ -132,6 +137,7 @@ var LibraryDylink = {
   // Applies relocations to exported things.
   $relocateExports__internal: true,
   $relocateExports__deps: ['$updateGOT'],
+  $relocateExports__docs: '/** @param {boolean=} replace */',
   $relocateExports: function(exports, memoryBase, replace) {
     var relocated = {};
 
@@ -144,12 +150,12 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value === 'object') {
+      if (typeof value == 'object') {
         // a breaking change in the wasm spec, globals are now objects
         // https://github.com/WebAssembly/mutable-global/issues/1
         value = value.value;
       }
-      if (typeof value === 'number') {
+      if (typeof value == 'number') {
         value += memoryBase;
       }
       relocated[e] = value;
@@ -173,12 +179,13 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
-        if (typeof value === 'function') {
+        if (typeof value == 'function') {
+          /** @suppress {checkTypes} */
           GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
-        } else if (typeof value === 'number') {
+        } else if (typeof value == 'number') {
           GOT[symName].value = value;
         } else {
           throw new Error('bad export type for `' + symName + '`: ' + (typeof value));
@@ -211,14 +218,14 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError: ['___dl_seterr',
+  $dlSetError__deps: ['__dl_seterr',
 #if MINIMAL_RUNTIME
    '$intArrayFromString'
 #endif
   ],
   $dlSetError: function(msg) {
     withStackSave(function() {
-      var cmsg = allocate(intArrayFromString(msg), ALLOC_STACK);
+      var cmsg = allocateUTF8OnStack(msg);
       ___dl_seterr(cmsg);
     });
   },
@@ -235,7 +242,10 @@ var LibraryDylink = {
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
       } catch(e) {
         stackRestore(sp);
-        if (e !== e+0 && e !== 'longjmp') throw e;
+        // Exceptions thrown from C++ exception will be integer numbers.
+        // longjmp will throw the number Infinity. Re-throw other types of
+        // exceptions using a compact and fast check.
+        if (e !== e+0) throw e;
         _setThrew(1, 0);
       }
     }
@@ -295,6 +305,7 @@ var LibraryDylink = {
       return UTF8ArrayToString(binary, offset - len, len);
     }
 
+    /** @param {string=} message */
     function failIf(condition, message) {
       if (condition) throw new Error(message);
     }
@@ -311,7 +322,12 @@ var LibraryDylink = {
       end = binary.length
     } else {
       var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-      failIf(int32View[0] != 0x6d736100, 'need to see wasm magic number'); // \0asm
+#if SUPPORT_BIG_ENDIAN
+      var magicNumberFound = int32View[0] == 0x6d736100 || int32View[0] == 0x0061736d;
+#else
+      var magicNumberFound = int32View[0] == 0x6d736100;
+#endif
+      failIf(!magicNumberFound, 'need to see wasm magic number'); // \0asm
       // we should see the dylink custom section right after the magic number and wasm version
       failIf(binary[8] !== 0, 'need the dylink section to be first')
       offset = 9;
@@ -331,8 +347,8 @@ var LibraryDylink = {
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
       for (var i = 0; i < neededDynlibsCount; ++i) {
-        var name = getString();
-        customSection.neededDynlibs.push(name);
+        var libname = getString();
+        customSection.neededDynlibs.push(libname);
       }
     } else {
       failIf(name !== 'dylink.0');
@@ -351,16 +367,16 @@ var LibraryDylink = {
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
           var neededDynlibsCount = getLEB();
           for (var i = 0; i < neededDynlibsCount; ++i) {
-            var name = getString();
-            customSection.neededDynlibs.push(name);
+            libname = getString();
+            customSection.neededDynlibs.push(libname);
           }
         } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
           var count = getLEB();
           while (count--) {
-            var name = getString();
+            var symname = getString();
             var flags = getLEB();
             if (flags & WASM_SYMBOL_TLS) {
-              customSection.tlsExports[name] = 1;
+              customSection.tlsExports[symname] = 1;
             }
           }
         } else {
@@ -407,7 +423,7 @@ var LibraryDylink = {
       else {
         var curr = asmLibraryArg[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
-        if (!(typeof curr === 'function' && typeof next === 'function')) {
+        if (!(typeof curr == 'function' && typeof next == 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
@@ -422,8 +438,16 @@ var LibraryDylink = {
     }
   },
 
+#if DYLINK_DEBUG
+  $dumpTable: function() {
+    for (var i = 0; i < wasmTable.length; i++)
+      err('table: ' + i + ' : ' + wasmTable.get(i));
+  },
+#endif
+
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
+  $loadWebAssemblyModule__docs: '/** @param {number=} handle */',
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
@@ -523,7 +547,7 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
             var resolved;
             stubs[prop] = function() {
-              if (!resolved) resolved = resolveSymbol(prop, true);
+              if (!resolved) resolved = resolveSymbol(prop);
               return resolved.apply(null, arguments);
             };
           }
@@ -550,7 +574,7 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
+        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
 #endif
 
         // initialize the module
@@ -607,6 +631,18 @@ var LibraryDylink = {
     return loadModule();
   },
 
+#if STACK_OVERFLOW_CHECK >= 2
+  $setDylinkStackLimits: function(stackTop, stackMax) {
+    for (var name in LDSO.loadedLibsByName) {
+#if DYLINK_DEBUG
+      err('setDylinkStackLimits[' + name + ']');
+#endif
+      var lib = LDSO.loadedLibsByName[name];
+      lib.module['__set_stack_limits'](stackTop, stackMax);
+    }
+  },
+#endif
+
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
   //
@@ -629,9 +665,11 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__docs: '/** @param {number=} handle */',
   $loadDynamicLibrary: function(lib, flags, handle) {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
+    err('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
     if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
       LDSO.loadedLibsByName[lib] = {
@@ -781,7 +819,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
+  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError', '$PATH'],
   $dlopenInternal: function(handle, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -790,9 +828,10 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('dlopenInternal: ' + filename);
 #endif
+    filename = PATH.normalize(filename);
     var searchpaths = [];
 
-    var isValidFile = function(filename) {
+    var isValidFile = (filename) => {
       var target = FS.findObject(filename);
       return target && !target.isFolder && !target.isDevice;
     };
@@ -864,6 +903,7 @@ var LibraryDylink = {
   ],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
+    /** @param {Object=} e */
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
@@ -915,15 +955,20 @@ var LibraryDylink = {
       result = lib.module[symbol];
     }
 
-    if (typeof result === 'function') {
+    if (typeof result == 'function') {
+#if DYLINK_DEBUG
+      err('dlsym: ' + symbol + ' getting table slot for: ' + result);
+#endif
       // Insert the function into the wasm table.  If its a direct wasm function
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
       // in library JS file.
-      return addFunction(result, result.sig);
-    } else {
-      return result;
+      result = addFunction(result, result.sig);
     }
+#if DYLINK_DEBUG
+    err('dlsym: ' + symbol + ' -> ' + result);
+#endif
+    return result;
   },
 #endif // MAIN_MODULE != 0
 };

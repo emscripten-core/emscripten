@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from subprocess import PIPE
 import atexit
 import binascii
-import base64
 import json
 import logging
 import os
@@ -47,7 +46,7 @@ from .settings import settings
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (4, 1, 1)
-EXPECTED_LLVM_VERSION = "14.0"
+EXPECTED_LLVM_VERSION = "15.0"
 PYTHON = sys.executable
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
@@ -72,6 +71,7 @@ diagnostics.add_warning('export-main')
 diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
+diagnostics.add_warning('transpile')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -172,6 +172,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
         std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
         if DEBUG:
           logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        print_compiler_stage(commands[i])
         processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
         if route_stdout_to_temp_files_suffix:
           std_outs += [(i, std_out.name)]
@@ -361,7 +362,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
-@ToolchainProfiler.profile_block('sanity')
+@ToolchainProfiler.profile()
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -581,134 +582,6 @@ def reconfigure_cache():
   Cache = cache.Cache(config.CACHE)
 
 
-class JS:
-  emscripten_license = '''\
-/**
- * @license
- * Copyright 2010 The Emscripten Authors
- * SPDX-License-Identifier: MIT
- */
-'''
-
-  # handle the above form, and also what closure can emit which is stuff like
-  #  /*
-  #
-  #   Copyright 2019 The Emscripten Authors
-  #   SPDX-License-Identifier: MIT
-  #
-  #   Copyright 2017 The Emscripten Authors
-  #   SPDX-License-Identifier: MIT
-  #  */
-  emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
-
-  @staticmethod
-  def handle_license(js_target):
-    # ensure we emit the license if and only if we need to, and exactly once
-    js = utils.read_file(js_target)
-    # first, remove the license as there may be more than once
-    processed_js = re.sub(JS.emscripten_license_regex, '', js)
-    if settings.EMIT_EMSCRIPTEN_LICENSE:
-      processed_js = JS.emscripten_license + processed_js
-    if processed_js != js:
-      utils.write_file(js_target, processed_js)
-
-  @staticmethod
-  def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-    return ident.replace('%', '$').replace('@', '_').replace('.', '_')
-
-  # Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
-  @staticmethod
-  def escape_for_js_string(s):
-    s = s.replace('\\', '/').replace("'", "\\'").replace('"', '\\"')
-    return s
-
-  # Returns the subresource location for run-time access
-  @staticmethod
-  def get_subresource_location(path, data_uri=None):
-    if data_uri is None:
-      data_uri = settings.SINGLE_FILE
-    if data_uri:
-      # if the path does not exist, then there is no data to encode
-      if not os.path.exists(path):
-        return ''
-      data = base64.b64encode(utils.read_binary(path))
-      return 'data:application/octet-stream;base64,' + data.decode('ascii')
-    else:
-      return os.path.basename(path)
-
-  @staticmethod
-  def legalize_sig(sig):
-    # with BigInt support all sigs are legal since we can use i64s.
-    if settings.WASM_BIGINT:
-      return sig
-    legal = [sig[0]]
-    # a return of i64 is legalized into an i32 (and the high bits are
-    # accessible on the side through getTempRet0).
-    if legal[0] == 'j':
-      legal[0] = 'i'
-    # a parameter of i64 is legalized into i32, i32
-    for s in sig[1:]:
-      if s != 'j':
-        legal.append(s)
-      else:
-        legal.append('i')
-        legal.append('i')
-    return ''.join(legal)
-
-  @staticmethod
-  def is_legal_sig(sig):
-    # with BigInt support all sigs are legal since we can use i64s.
-    if settings.WASM_BIGINT:
-      return True
-    return sig == JS.legalize_sig(sig)
-
-  @staticmethod
-  def isidentifier(name):
-    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
-    return name.replace('$', '_').isidentifier()
-
-  @staticmethod
-  def make_dynCall(sig, args):
-    # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if settings.DYNCALLS or not JS.is_legal_sig(sig):
-      args = ','.join(args)
-      if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
-        # Optimize dynCall accesses in the case when not building with dynamic
-        # linking enabled.
-        return 'dynCall_%s(%s)' % (sig, args)
-      else:
-        return 'Module["dynCall_%s"](%s)' % (sig, args)
-    else:
-      return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
-
-  @staticmethod
-  def make_invoke(sig, named=True):
-    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-    args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
-    ret = 'return ' if sig[0] != 'v' else ''
-    body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
-    # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    if settings.SUPPORT_LONGJMP:
-      rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
-    else:
-      rethrow = "if (e !== e+0) throw e;"
-
-    name = (' invoke_' + sig) if named else ''
-    ret = '''\
-function%s(%s) {
-  var sp = stackSave();
-  try {
-    %s
-  } catch(e) {
-    stackRestore(sp);
-    %s
-    _setThrew(1, 0);
-  }
-}''' % (name, ','.join(args), body, rethrow)
-
-    return ret
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
@@ -791,6 +664,13 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def get_llvm_target():
+  if settings.MEMORY64:
+    return 'wasm64-unknown-emscripten'
+  else:
+    return 'wasm32-unknown-emscripten'
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -817,6 +697,7 @@ LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_MC = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-mc')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))

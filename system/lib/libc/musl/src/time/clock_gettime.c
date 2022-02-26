@@ -59,10 +59,15 @@ _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "monotonic clock mus
 
 int __clock_gettime(clockid_t clk, struct timespec *ts) {
 	__wasi_timestamp_t timestamp;
+	// See https://github.com/bytecodealliance/wasmtime/issues/3714
+	if (clk > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk < 0) {
+		errno = EINVAL;
+		return -1;
+  }
 	if (__wasi_syscall_ret(__wasi_clock_time_get(clk, 1, &timestamp))) {
 		return -1;
 	}
-  *ts = __wasi_timestamp_to_timespec(timestamp);
+	*ts = __wasi_timestamp_to_timespec(timestamp);
 	return 0;
 }
 #else // __EMSCRIPTEN__

@@ -13,10 +13,9 @@
 #define SANITIZER_PLATFORM_H
 
 #if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
-  !defined(__APPLE__) && !defined(_WIN32) && \
-  !defined(__Fuchsia__) && !defined(__rtems__) && \
-  !(defined(__sun__) && defined(__svr4__)) && !defined(__EMSCRIPTEN__)
-# error "This operating system is not supported"
+    !defined(__APPLE__) && !defined(_WIN32) && !defined(__Fuchsia__) &&     \
+    !(defined(__sun__) && defined(__svr4__)) && !defined(__EMSCRIPTEN__)
+#  error "This operating system is not supported"
 #endif
 
 // Get __GLIBC__ on a glibc platform. Exclude Android: features.h includes C
@@ -59,6 +58,11 @@
 #if defined(__APPLE__)
 # define SANITIZER_MAC     1
 # include <TargetConditionals.h>
+# if TARGET_OS_OSX
+#  define SANITIZER_OSX    1
+# else
+#  define SANITIZER_OSX    0
+# endif
 # if TARGET_OS_IPHONE
 #  define SANITIZER_IOS    1
 # else
@@ -73,6 +77,7 @@
 # define SANITIZER_MAC     0
 # define SANITIZER_IOS     0
 # define SANITIZER_IOSSIM  0
+# define SANITIZER_OSX     0
 #endif
 
 #if defined(__APPLE__) && TARGET_OS_IPHONE && TARGET_OS_WATCH
@@ -109,12 +114,6 @@
 # define SANITIZER_FUCHSIA 1
 #else
 # define SANITIZER_FUCHSIA 0
-#endif
-
-#if defined(__rtems__)
-# define SANITIZER_RTEMS 1
-#else
-# define SANITIZER_RTEMS 0
 #endif
 
 #if defined(__EMSCRIPTEN__)
@@ -226,12 +225,6 @@
 # define SANITIZER_SOLARIS32 0
 #endif
 
-#if defined(__myriad2__)
-# define SANITIZER_MYRIAD2 1
-#else
-# define SANITIZER_MYRIAD2 0
-#endif
-
 #if defined(__riscv) && (__riscv_xlen == 64)
 #define SANITIZER_RISCV64 1
 #else
@@ -266,8 +259,12 @@
 #define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 38)
 #elif defined(__aarch64__)
 # if SANITIZER_MAC
-// Darwin iOS/ARM64 has a 36-bit VMA, 64GiB VM
-#  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 36)
+#  if SANITIZER_OSX || SANITIZER_IOSSIM
+#   define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 47)
+#  else
+    // Darwin iOS/ARM64 has a 36-bit VMA, 64GiB VM
+#   define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 36)
+#  endif
 # else
 #  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 48)
 # endif
@@ -370,9 +367,9 @@
 # define SANITIZER_CACHE_LINE_SIZE 64
 #endif
 
-// Enable offline markup symbolizer for Fuchsia and RTEMS.
-#if SANITIZER_FUCHSIA || SANITIZER_RTEMS
-#define SANITIZER_SYMBOLIZER_MARKUP 1
+// Enable offline markup symbolizer for Fuchsia.
+#if SANITIZER_FUCHSIA
+#  define SANITIZER_SYMBOLIZER_MARKUP 1
 #else
 #define SANITIZER_SYMBOLIZER_MARKUP 0
 #endif

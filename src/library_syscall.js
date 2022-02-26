@@ -15,8 +15,6 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
-    mappings: {},
-
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
@@ -222,81 +220,45 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
+  _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  $syscallMmap2: function(addr, len, prot, flags, fd, off) {
-    off <<= 12; // undo pgoffset
-    var ptr;
-    var allocated = false;
-
-    // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ WASM_PAGE_SIZE }}}) !== 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
-
-    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
-    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
-    // In this case fd argument is ignored.
-    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = mmapAlloc(len);
-      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      allocated = true;
-    } else {
+  _mmap_js: function(addr, len, prot, flags, fd, off, allocated, builtin) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-      var info = FS.getStream(fd);
-      if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, addr, len, off, prot, flags);
-      ptr = res.ptr;
-      allocated = res.allocated;
-#else // no filesystem support; report lack of support
-      return -{{{ cDefine('ENOSYS') }}};
-#endif
-    }
+    var info = FS.getStream(fd);
+    if (!info) return -{{{ cDefine('EBADF') }}};
+    var res = FS.mmap(info, addr, len, off, prot, flags);
+    var ptr = res.ptr;
+    {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, prot: prot, flags: flags, offset: off };
     return ptr;
+#else // no filesystem support; report lack of support
+    return -{{{ cDefine('ENOSYS') }}};
+#endif
   },
 
-  $syscallMunmap__deps: ['$SYSCALLS',
+  _munmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  $syscallMunmap: function(addr, len) {
+  _munmap_js: function(addr, len, prot, flags, fd, offset) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
 #endif
-    // TODO: support unmmap'ing parts of allocations
-    var info = SYSCALLS.mappings[addr];
-    if (len === 0 || !info) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
-    if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-      var stream = FS.getStream(info.fd);
-      if (stream) {
-        if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
-          SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
-        }
-        FS.munmap(stream);
+    var stream = FS.getStream(fd);
+    if (stream) {
+      if (prot & {{{ cDefine('PROT_WRITE') }}}) {
+        SYSCALLS.doMsync(addr, stream, len, flags, offset);
       }
-#else
-#if ASSERTIONS
-      // Without FS support, only anonymous mappings are supported.
-      assert(SYSCALLS.mappings[addr].flags & {{{ cDefine('MAP_ANONYMOUS') }}});
-#endif
-#endif
-      SYSCALLS.mappings[addr] = null;
-      if (info.allocated) {
-        _free(info.malloc);
-      }
+      FS.munmap(stream);
     }
-    return 0;
+#endif
   },
 
   __syscall_open: function(path, flags, varargs) {
@@ -323,10 +285,6 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
     return 0;
-  },
-  __syscall_access: function(path, amode) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doAccess(path, amode);
   },
   __syscall_rename: function(old_path, new_path) {
     old_path = SYSCALLS.getStr(old_path);
@@ -427,10 +385,6 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall_munmap__deps: ['$syscallMunmap'],
-  __syscall_munmap: function(addr, len) {
-    return syscallMunmap(addr, len);
-  },
   __syscall_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
     return 0;
@@ -447,6 +401,7 @@ var SyscallsLibrary = {
   },
   /** @param {boolean=} allowNull */
   $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
+  $getSocketAddress__docs: '/** @param {boolean=} allowNull */',
   $getSocketAddress: function(addrp, addrlen, allowNull) {
     if (allowNull && addrp === 0) return null;
     var info = readSockaddr(addrp, addrlen);
@@ -739,16 +694,14 @@ var SyscallsLibrary = {
       {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
       {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
     }
-    
+
     return total;
   },
-  __syscall_msync: function(addr, len, flags) {
+  _msync_js: function(addr, len, flags, fd) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
 #endif
-    var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
-    SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
+    SYSCALLS.doMsync(addr, FS.getStream(fd), len, flags, 0);
     return 0;
   },
   __syscall_fdatasync: function(fd) {
@@ -782,10 +735,6 @@ var SyscallsLibrary = {
     if (size < cwdLengthInBytes + 1) return -{{{ cDefine('ERANGE') }}};
     stringToUTF8(cwd, buf, size);
     return buf;
-  },
-  __syscall_mmap2__deps: ['$syscallMmap2'],
-  __syscall_mmap2: function(addr, len, prot, flags, fd, off) {
-    return syscallMmap2(addr, len, prot, flags, fd, off);
   },
   __syscall_truncate64: function(path, low, high) {
     path = SYSCALLS.getStr(path);
@@ -858,7 +807,7 @@ var SyscallsLibrary = {
       var type;
       var name = stream.getdents[idx];
       if (name === '.') {
-        id = stream.id;
+        id = stream.node.id;
         type = 4; // DT_DIR
       }
       else if (name === '..') {
@@ -867,7 +816,7 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else {
-        var child = FS.lookupNode(stream, name);
+        var child = FS.lookupNode(stream.node, name);
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -1133,7 +1082,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var t = library[x];
-  if (typeof t === 'string') return;
+  if (typeof t == 'string') return;
   t = t.toString();
 
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
@@ -1183,7 +1132,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     "} catch (e) {\n" +
-    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
+    "  if (typeof FS == 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
@@ -1200,13 +1149,10 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
   post = handler + post;
 
-  if (pre) {
-    var bodyStart = t.indexOf('{') + 1;
-    t = t.substring(0, bodyStart) + pre + t.substring(bodyStart);
-  }
-  if (post) {
-    var bodyEnd = t.lastIndexOf('}');
-    t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
+  if (pre || post) {
+    t = modifyFunction(t, function(name, args, body) {
+      return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
+    });
   }
 
   if (MEMORY64 && !isWasi) {

@@ -73,8 +73,9 @@ _deps_info = {
   'alcGetString': ['malloc'],
   'bind': ['ntohs', 'htons'],
   'connect': ['ntohs', 'htons'],
-  'ctime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'ctime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
+  'ctime': ['malloc'],
+  'gmtime': ['malloc'],
+  'ctime_r': ['malloc'],
   'dladdr': ['malloc'],
   'dlopen': ['__dl_seterr'],
   'dlsym': ['__dl_seterr'],
@@ -141,7 +142,6 @@ _deps_info = {
   'emscripten_set_visibilitychange_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_wheel_callback_on_thread': ['malloc', 'free'],
   'emscripten_webgl_create_context': ['malloc'],
-  'emscripten_webgl_destroy_context': ['emscripten_webgl_make_context_current', 'emscripten_webgl_get_current_context'],
   'emscripten_webgl_get_parameter_utf8': ['malloc'],
   'emscripten_webgl_get_program_info_log_utf8': ['malloc'],
   'emscripten_webgl_get_shader_info_log_utf8': ['malloc'],
@@ -152,7 +152,6 @@ _deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'gai_strerror': ['malloc'],
   'getaddrinfo': ['malloc', 'htonl', 'htons', 'ntohs'],
   'gethostbyaddr': ['malloc', 'htons'],
   'gethostbyname': ['malloc', 'htons'],
@@ -168,13 +167,9 @@ _deps_info = {
   'glfwInit': ['malloc', 'free'],
   'glfwSleep': ['sleep'],
   'glfwGetMonitors': ['malloc'],
-  'gmtime':  ['malloc'],
-  'gmtime_r':  ['malloc'],
-  'localtime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'localtime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'mktime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'mmap': ['memalign'],
-  'munmap': ['free'],
+  'localtime': ['malloc'],
+  'localtime_r': ['malloc'],
+  'mktime': ['malloc'],
   'pthread_create': ['malloc', 'free', 'emscripten_main_thread_process_queued_calls'],
   'recv': ['htons'],
   'recvmsg': ['htons'],
@@ -192,8 +187,8 @@ _deps_info = {
   'setprotoent': ['malloc'],
   'syslog': ['malloc', 'ntohs', 'htons'],
   'vsyslog': ['malloc', 'ntohs', 'htons'],
-  'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'tzset': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
+  'timegm': ['malloc'],
+  'tzset': ['malloc'],
   'uuid_compare': ['memcmp'],
   'uuid_copy': ['memcpy'],
   'wgpuBufferGetMappedRange': ['malloc', 'free'],
@@ -215,7 +210,13 @@ def get_deps_info():
     _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch']
+  if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
+    _deps_info['mmap'] = ['emscripten_builtin_memalign']
+  if settings.USE_PTHREADS and settings.OFFSCREEN_FRAMEBUFFER:
+    # When OFFSCREEN_FRAMEBUFFER is defined these functions are defined in native code,
+    # otherwise they are defined in src/library_html5_webgl.js.
+    _deps_info['emscripten_webgl_destroy_context'] = ['emscripten_webgl_make_context_current', 'emscripten_webgl_get_current_context']
   if settings.USE_PTHREADS:
-    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['_emscripten_call_on_thread']
-    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['_emscripten_call_on_thread', 'malloc', 'free']
+    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['emscripten_dispatch_to_thread_']
+    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['emscripten_dispatch_to_thread_', 'malloc', 'free']
   return _deps_info

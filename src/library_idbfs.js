@@ -8,10 +8,10 @@ mergeInto(LibraryManager.library, {
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
   $IDBFS: {
     dbs: {},
-    indexedDB: function() {
-      if (typeof indexedDB !== 'undefined') return indexedDB;
+    indexedDB: () => {
+      if (typeof indexedDB != 'undefined') return indexedDB;
       var ret = null;
-      if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       assert(ret, 'IDBFS used, but indexedDB not supported');
       return ret;
     },
@@ -21,11 +21,11 @@ mergeInto(LibraryManager.library, {
       // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
     },
-    syncfs: function(mount, populate, callback) {
-      IDBFS.getLocalSet(mount, function(err, local) {
+    syncfs: (mount, populate, callback) => {
+      IDBFS.getLocalSet(mount, (err, local) => {
         if (err) return callback(err);
 
-        IDBFS.getRemoteSet(mount, function(err, remote) {
+        IDBFS.getRemoteSet(mount, (err, remote) => {
           if (err) return callback(err);
 
           var src = populate ? remote : local;
@@ -35,7 +35,7 @@ mergeInto(LibraryManager.library, {
         });
       });
     },
-    getDB: function(name, callback) {
+    getDB: (name, callback) => {
       // check the cache first
       var db = IDBFS.dbs[name];
       if (db) {
@@ -51,8 +51,8 @@ mergeInto(LibraryManager.library, {
       if (!req) {
         return callback("Unable to connect to IndexedDB");
       }
-      req.onupgradeneeded = function(e) {
-        var db = e.target.result;
+      req.onupgradeneeded = (e) => {
+        var db = /** @type {IDBDatabase} */ (e.target.result);
         var transaction = e.target.transaction;
 
         var fileStore;
@@ -67,26 +67,26 @@ mergeInto(LibraryManager.library, {
           fileStore.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
-      req.onsuccess = function() {
-        db = req.result;
+      req.onsuccess = () => {
+        db = /** @type {IDBDatabase} */ (req.result);
 
         // add to the cache
         IDBFS.dbs[name] = db;
         callback(null, db);
       };
-      req.onerror = function(e) {
+      req.onerror = (e) => {
         callback(this.error);
         e.preventDefault();
       };
     },
-    getLocalSet: function(mount, callback) {
+    getLocalSet: (mount, callback) => {
       var entries = {};
 
       function isRealDir(p) {
         return p !== '.' && p !== '..';
       };
       function toAbsolute(root) {
-        return function(p) {
+        return (p) => {
           return PATH.join2(root, p);
         }
       };
@@ -112,15 +112,15 @@ mergeInto(LibraryManager.library, {
 
       return callback(null, { type: 'local', entries: entries });
     },
-    getRemoteSet: function(mount, callback) {
+    getRemoteSet: (mount, callback) => {
       var entries = {};
 
-      IDBFS.getDB(mount.mountpoint, function(err, db) {
+      IDBFS.getDB(mount.mountpoint, (err, db) => {
         if (err) return callback(err);
 
         try {
           var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
-          transaction.onerror = function(e) {
+          transaction.onerror = (e) => {
             callback(this.error);
             e.preventDefault();
           };
@@ -128,7 +128,7 @@ mergeInto(LibraryManager.library, {
           var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
           var index = store.index('timestamp');
 
-          index.openKeyCursor().onsuccess = function(event) {
+          index.openKeyCursor().onsuccess = (event) => {
             var cursor = event.target.result;
 
             if (!cursor) {
@@ -144,7 +144,7 @@ mergeInto(LibraryManager.library, {
         }
       });
     },
-    loadLocalEntry: function(path, callback) {
+    loadLocalEntry: (path, callback) => {
       var stat, node;
 
       try {
@@ -166,7 +166,7 @@ mergeInto(LibraryManager.library, {
         return callback(new Error('node type not supported'));
       }
     },
-    storeLocalEntry: function(path, entry, callback) {
+    storeLocalEntry: (path, entry, callback) => {
       try {
         if (FS.isDir(entry['mode'])) {
           FS.mkdirTree(path, entry['mode']);
@@ -184,7 +184,7 @@ mergeInto(LibraryManager.library, {
 
       callback(null);
     },
-    removeLocalEntry: function(path, callback) {
+    removeLocalEntry: (path, callback) => {
       try {
         var lookup = FS.lookupPath(path);
         var stat = FS.stat(path);
@@ -200,36 +200,36 @@ mergeInto(LibraryManager.library, {
 
       callback(null);
     },
-    loadRemoteEntry: function(store, path, callback) {
+    loadRemoteEntry: (store, path, callback) => {
       var req = store.get(path);
-      req.onsuccess = function(event) { callback(null, event.target.result); };
-      req.onerror = function(e) {
+      req.onsuccess = (event) => { callback(null, event.target.result); };
+      req.onerror = (e) => {
         callback(this.error);
         e.preventDefault();
       };
     },
-    storeRemoteEntry: function(store, path, entry, callback) {
+    storeRemoteEntry: (store, path, entry, callback) => {
       try {
         var req = store.put(entry, path);
       } catch (e) {
         callback(e);
         return;
       }
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
+      req.onsuccess = () => { callback(null); };
+      req.onerror = (e) => {
         callback(this.error);
         e.preventDefault();
       };
     },
-    removeRemoteEntry: function(store, path, callback) {
+    removeRemoteEntry: (store, path, callback) => {
       var req = store.delete(path);
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
+      req.onsuccess = () => { callback(null); };
+      req.onerror = (e) => {
         callback(this.error);
         e.preventDefault();
       };
     },
-    reconcile: function(src, dst, callback) {
+    reconcile: (src, dst, callback) => {
       var total = 0;
 
       var create = [];
@@ -266,12 +266,12 @@ mergeInto(LibraryManager.library, {
         }
       };
 
-      transaction.onerror = function(e) {
+      transaction.onerror = (e) => {
         done(this.error);
         e.preventDefault();
       };
 
-      transaction.oncomplete = function(e) {
+      transaction.oncomplete = (e) => {
         if (!errored) {
           callback(null);
         }
@@ -279,14 +279,14 @@ mergeInto(LibraryManager.library, {
 
       // sort paths in ascending order so directory entries are created
       // before the files inside them
-      create.sort().forEach(function (path) {
+      create.sort().forEach((path) => {
         if (dst.type === 'local') {
-          IDBFS.loadRemoteEntry(store, path, function (err, entry) {
+          IDBFS.loadRemoteEntry(store, path, (err, entry) => {
             if (err) return done(err);
             IDBFS.storeLocalEntry(path, entry, done);
           });
         } else {
-          IDBFS.loadLocalEntry(path, function (err, entry) {
+          IDBFS.loadLocalEntry(path, (err, entry) => {
             if (err) return done(err);
             IDBFS.storeRemoteEntry(store, path, entry, done);
           });
@@ -295,7 +295,7 @@ mergeInto(LibraryManager.library, {
 
       // sort paths in descending order so files are deleted before their
       // parent directories
-      remove.sort().reverse().forEach(function(path) {
+      remove.sort().reverse().forEach((path) => {
         if (dst.type === 'local') {
           IDBFS.removeLocalEntry(path, done);
         } else {

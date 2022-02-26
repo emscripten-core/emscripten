@@ -1,41 +1,12 @@
-Test with a new JS file
+Test with a new backend file
 
-Uint8Array(24) [
-   84, 101, 115, 116, 32, 119, 105,
-  116, 104,  32,  97, 32, 110, 101,
-  119,  32,  74,  83, 32, 102, 105,
-  108, 101,  10
-]
-Test with a new JS file
+Test with a new backend file
 
-Uint8Array(24) [
-   84, 101, 115, 116, 32, 119, 105,
-  116, 104,  32,  97, 32, 110, 101,
-  119,  32,  74,  83, 32, 102, 105,
-  108, 101,  10
-]
-Test with a new JS file
-Test with a new JS file
+Test with a new backend file
+Test with a new backend file
 
-Expect null: null
-Test with a JS file created under a JS directory
+Test with a backend file created under a backend directory
 
-Uint8Array(49) [
-   84, 101, 115, 116,  32, 119, 105, 116, 104,
-   32,  97,  32,  74,  83,  32, 102, 105, 108,
-  101,  32,  99, 114, 101,  97, 116, 101, 100,
-   32, 117, 110, 100, 101, 114,  32,  97,  32,
-   74,  83,  32, 100, 105, 114, 101,  99, 116,
-  111, 114, 121,  10
-]
-Test with an in-memory file created under a JS directory
+Test with an in-memory file created under a backend directory
 
-\0\0\0\0\0\0\0\0\0\0Test with a JS file created under root
-
-Uint8Array(49) [
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-   84, 101, 115, 116,  32, 119, 105, 116, 104,  32,
-   97,  32,  74,  83,  32, 102, 105, 108, 101,  32,
-   99, 114, 101,  97, 116, 101, 100,  32, 117, 110,
-  100, 101, 114,  32, 114, 111, 111, 116,  10
-]
+\0\0\0\0\0\0\0\0\0\0Test with a backend file created under root
