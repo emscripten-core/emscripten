@@ -120,11 +120,11 @@ function preprocess(text, filenameHint) {
               showStack.pop();
             } else if (first === '#warning') {
               if (showCurrentLine()) {
-                printErr(`${filenameHint}:${i+1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+                printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
               }
             } else if (first === '#error') {
               if (showCurrentLine()) {
-                error(`${filenameHint}:${i+1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+                error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
               }
             } else {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
