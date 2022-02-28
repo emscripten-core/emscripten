@@ -16,7 +16,6 @@ int fchown(int fd, uid_t uid, gid_t gid)
 #else
 	if (ret != -EBADF || __syscall(SYS_fcntl, fd, F_GETFD) < 0)
 		return __syscall_ret(ret);
-#endif
 
 	char buf[15+3*sizeof(int)];
 	__procfdname(buf, fd);
@@ -25,5 +24,5 @@ int fchown(int fd, uid_t uid, gid_t gid)
 #else
 	return syscall(SYS_fchownat, AT_FDCWD, buf, uid, gid, 0);
 #endif
-
+#endif // EMSCRIPTEN
 }
