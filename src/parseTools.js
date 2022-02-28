@@ -58,7 +58,6 @@ function preprocess(text, filenameHint) {
   const lines = text.split('\n');
   let ret = '';
   let emptyLine = false;
-  let errorCount = 0;
 
   try {
     for (let i = 0; i < lines.length; i++) {
@@ -125,8 +124,7 @@ function preprocess(text, filenameHint) {
               }
             } else if (first === '#error') {
               if (showCurrentLine()) {
-                printErr(`${filenameHint}:${i+1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-                ++errorCount;
+                error(`${filenameHint}:${i+1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
               }
             } else {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
@@ -157,7 +155,6 @@ function preprocess(text, filenameHint) {
     }
     assert(showStack.length == 0, `preprocessing error in file ${filenameHint}, \
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
-    if (errorCount > 0) throw `${errorCount} errors found.\nAborting compilation due to previous errors`;
     return ret;
   } finally {
     currentlyParsedFilename = null;
