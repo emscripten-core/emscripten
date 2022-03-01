@@ -1194,6 +1194,9 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     }
     pollfd->revents = mask;
   }
+  // TODO: This should block based on the timeout. The old FS did not do so due
+  //       to web limitations, which we should perhaps revisit (especially with
+  //       pthreads and asyncify).
   return nonzero;
 }
 }
