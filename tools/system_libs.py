@@ -1416,19 +1416,6 @@ class libstb_image(Library):
     return [utils.path_from_root('system/lib/stb_image.c')]
 
 
-class libasmfs(MTLibrary):
-  name = 'libasmfs'
-  never_force = True
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/fetch/asmfs.cpp')]
-
-  def can_build(self):
-    # ASMFS is looking for a maintainer
-    # https://github.com/emscripten-core/emscripten/issues/9534
-    return True
-
-
 class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 

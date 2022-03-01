@@ -1916,13 +1916,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
     exit_with_error('-s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -s GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
-  if settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
-    state.forced_stdlibs.append('libasmfs')
-    settings.FILESYSTEM = 0
-    settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
-    settings.FETCH = 1
-    settings.JS_LIBRARIES.append((0, 'library_asmfs.js'))
-
   if settings.WASMFS:
     state.forced_stdlibs.append('libwasmfs')
     settings.FILESYSTEM = 0
@@ -2087,15 +2080,14 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # may need, including filesystem usage from standalone file packager output (i.e.
     # file packages not built together with emcc, but that are loaded at runtime
     # separately, and they need emcc's output to contain the support they need)
-    if not settings.ASMFS:
-      settings.EXPORTED_RUNTIME_METHODS += [
-        'FS_createPath',
-        'FS_createDataFile',
-        'FS_createPreloadedFile',
-        'FS_createLazyFile',
-        'FS_createDevice',
-        'FS_unlink'
-      ]
+    settings.EXPORTED_RUNTIME_METHODS += [
+      'FS_createPath',
+      'FS_createDataFile',
+      'FS_createPreloadedFile',
+      'FS_createLazyFile',
+      'FS_createDevice',
+      'FS_unlink'
+    ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
       'addRunDependency',
@@ -2432,7 +2424,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
      settings.LEGACY_GL_EMULATION or \
      not settings.DISABLE_EXCEPTION_CATCHING or \
      settings.ASYNCIFY or \
-     settings.ASMFS or \
      settings.WASMFS or \
      settings.DEMANGLE_SUPPORT or \
      settings.FORCE_FILESYSTEM or \
