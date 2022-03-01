@@ -1161,6 +1161,7 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     auto fd = pollfd->fd;
     if (fd < 0) {
       // Negative FDs are ignored in poll().
+      pollfd->revents = 0;
       continue;
     }
     // Assume invalid, unless there is an open file.
