@@ -1175,6 +1175,9 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
       }
       if (flags == O_RDONLY || flags == O_RDWR) {
         // If there is data in the file, then there is also the ability to read.
+        // TODO: Does this need to consider the position as well? That is, if
+        //       the position is at the end, we can't read from the current
+        //       position at least.
         if (openFile->locked().getFile()->locked().getSize() > 0) {
           mask |= POLLIN;
         }
