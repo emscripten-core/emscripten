@@ -8079,9 +8079,7 @@ end
     self.assertContained('block "main" took', stderr)
 
   def test_noderawfs(self):
-    fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
-    create_file('main.cpp', fopen_write)
-    self.run_process([EMXX, 'main.cpp', '-sNODERAWFS'])
+    self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'])
     self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
 
     # NODERAWFS should directly write on OS file system
