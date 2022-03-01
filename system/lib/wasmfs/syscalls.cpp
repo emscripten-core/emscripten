@@ -1186,6 +1186,8 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     }
     // Mask the relevant bits: the given events, and also the exceptional
     // conditions of error and hangup.
+    // TODO: set the state based on the state of the other end of the pipe, for
+    //       pipes.
     mask &= pollfd->events | POLLERR | POLLHUP;
     if (mask) {
       nonzero++;
