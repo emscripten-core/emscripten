@@ -83,7 +83,7 @@ exceptions from the other side and automatically converting them. That is, you
 cannot expect a C++ try-catch to catch a JS exception. C++ can only catch C++
 exceptions. JS *can* catch C++ exceptions, but only because such exceptions
 are converted by the VM automatically (their actual form then depends on whether
-you are using the older JavaScript-based exceptions module or the newer
+you are using the older JavaScript-based exceptions model or the newer
 WebAssembly exception handling proposal).
 
 The reason for this is that handling and converting expections by Emscripten
