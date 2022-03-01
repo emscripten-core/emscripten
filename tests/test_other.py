@@ -1713,6 +1713,22 @@ int f() {
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
     self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
 
+  @node_pthreads
+  def test_dylink_pthread_bigint_em_asm(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['-Wno-experimental']
+    self.do_runf(test_file('hello_world_em_asm.c'), 'hello, world')
+
+  @node_pthreads
+  def test_dylink_pthread_bigint_em_js(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['-Wno-experimental']
+    self.do_runf(test_file('core/test_em_js.cpp'))
+
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
       #include <stdio.h>
