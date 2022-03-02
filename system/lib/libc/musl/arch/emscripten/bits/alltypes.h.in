@@ -1,3 +1,4 @@
+#define _REDIR_TIME64 1
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
@@ -14,8 +15,8 @@ TYPEDEF float float_t;
 TYPEDEF double double_t;
 
 TYPEDEF struct { long long __ll; long double __ld; } max_align_t;
-TYPEDEF long time_t;
-TYPEDEF long suseconds_t;
+TYPEDEF long long time_t;
+TYPEDEF long long suseconds_t;
 
 TYPEDEF struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
 TYPEDEF struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;

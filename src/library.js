@@ -397,21 +397,6 @@ LibraryManager.library = {
     return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
 
-  time__sig: 'ii',
-  time: function(ptr) {
-    {{{ from64('ptr') }}};
-    var ret = (Date.now()/1000)|0;
-    if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
-    }
-    return ret;
-  },
-
-  difftime__sig: 'dii',
-  difftime: function(time1, time0) {
-    return time1 - time0;
-  },
-
   _mktime_js__sig: 'ii',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -1275,7 +1260,8 @@ LibraryManager.library = {
       setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    // struct timespec { time_t tv_sec; long tv_nsec; };
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, 'Math.floor(now/1000)', 'i64') }}}; // seconds
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
@@ -1293,7 +1279,8 @@ LibraryManager.library = {
       setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
+    // struct timespec { time_t tv_sec; long tv_nsec; };
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, 'Math.floor(nsec/1000000000)', 'i64') }}};
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
@@ -1301,8 +1288,9 @@ LibraryManager.library = {
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
+    // struct timeval { time_t tv_sec; suseconds_t tv_usec; };
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, 'Math.floor(now/1000)', 'i64') }}}; // seconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, 'Math.floor((now % 1000)*1000)', 'i64') }}}; // microseconds
     return 0;
   },
 
@@ -1312,7 +1300,8 @@ LibraryManager.library = {
 
   ftime: function(p) {
     var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
+    // struct timeb { time_t time; unsigned short millitm; short timezone; short dstflag; };
+    {{{ makeSetValue('p', C_STRUCTS.timeb.time, 'Math.floor(millis/1000)', 'i64') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
     {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
