@@ -641,7 +641,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   // It is invalid for rmdir paths to end in "."
   if (unlinkMode == UnlinkMode::Rmdir && childName == ".") {
     // TODO: Test this case.
-    return unlinkMode == -EINVAL;
+    return -EINVAL;
   }
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
