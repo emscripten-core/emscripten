@@ -18,7 +18,8 @@ namespace wasmfs::path {
 using Error = long;
 
 // The parent directory and the name of an entry within it. The returned string
-// view is usually backed by the same memory as the original path.
+// view is either backed by the same memory as the view passed to `parseParent`
+// or is a view into a static string.
 using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
 
 struct ParsedParent {
