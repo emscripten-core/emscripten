@@ -166,7 +166,7 @@ FS.staticInit();` +
             var link = FS.readlink(current_path);
             current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
-            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
+            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count + 1 });
             current = lookup.node;
 
             if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
