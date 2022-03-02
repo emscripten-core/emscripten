@@ -640,7 +640,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   std::string childName(childNameView);
   if (childName == ".") {
     // TODO: Test this case.
-    return -EINVAL;
+    return unlinkMode == UnlinkMode::Rmdir ? -EINVAL : -EISDIR;
   }
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
@@ -798,7 +798,7 @@ long __syscall_rename(long old_path, long new_path) {
     return -ENAMETOOLONG;
   }
 
-  // Lock both directories. TODO: Avoid deadlocks here.
+  // Lock both directories.
   auto lockedOldParent = oldParent->locked();
   auto lockedNewParent = newParent->locked();
 
