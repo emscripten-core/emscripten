@@ -65,7 +65,9 @@ public:
     return (ino_t)this;
   }
 
-  backend_t getBackend() { return backend; }
+  backend_t getBackend() const { return backend; }
+
+  bool isSeekable() const { return seekable; }
 
   class Handle;
   Handle locked();
@@ -92,8 +94,13 @@ protected:
   // each other. This prevents the case in which an uncollectable cycle occurs.
   std::weak_ptr<File> parent;
 
-  // This specifies which backend a file is associated with.
+  // This specifies which backend a file is associated with. It may be null
+  // (NullBackend) if there is no particular backend associated with the file.
   backend_t backend;
+
+  // By default files are seekable. The rare exceptions are things like pipes
+  // and sockets.
+  bool seekable = true;
 };
 
 class DataFile : public File {
