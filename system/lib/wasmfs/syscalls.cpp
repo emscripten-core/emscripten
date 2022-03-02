@@ -638,9 +638,10 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   }
   auto& [parent, childNameView] = parsed.getParentChild();
   std::string childName(childNameView);
-  if (childName == ".") {
+  // It is invalid for rmdir paths to end in "."
+  if (unlinkMode == UnlinkMode::Rmdir && childName == ".") {
     // TODO: Test this case.
-    return unlinkMode == UnlinkMode::Rmdir ? -EINVAL : -EISDIR;
+    return unlinkMode == -EINVAL;
   }
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
