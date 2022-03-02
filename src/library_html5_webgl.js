@@ -47,9 +47,20 @@ var LibraryHtml5WebGL = {
 
   _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
-// In offscreen framebuffer mode, we implement these functions in C so that they enable
-// the proxying of GL commands. Otherwise, they are implemented here in JS.
-#if !(USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
+  // In offscreen framebuffer mode, we implement a proxied version of the
+  // emscripten_webgl_create_context() function in JS.
+  emscripten_webgl_create_context_proxied__proxy: 'sync',
+  emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_do_create_context'],
+  emscripten_webgl_create_context_proxied: function(target, attributes) {
+    return _emscripten_webgl_do_create_context(target, attributes);
+  },
+
+  // The other proxied GL commands are defined in C (guarded by the
+  // __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ definition).
+#else
+  // When not in offscreen framebuffer mode, these functions are implemented
+  // in JS and forwarded without any proxying.
   emscripten_webgl_create_context__sig: 'iii',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
 
@@ -58,16 +69,10 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_commit_frame__sig: 'i',
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
-#else
-  emscripten_webgl_create_context_proxied__proxy: 'sync',
-  emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_do_create_context'],
-  emscripten_webgl_create_context_proxied: function(target, attributes) {
-    return _emscripten_webgl_do_create_context(target, attributes);
-  },
 #endif
 
-  // This code is called from the main proxying logic, which has a big switch
-  // for all the messages, one of which is this GL-using one. This won't be
+  // This code is called from emscripten_webgl_create_context() and proxied
+  // to the main thread when in offscreen framebuffer mode. This won't be
   // called if GL is not linked in, but also make sure to not add a dep on
   // GL unnecessarily from here, as that would cause a linker error.
   emscripten_webgl_do_create_context__deps: [
