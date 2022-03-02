@@ -70,7 +70,7 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     child = lockedParent.getChild(childName);
     if (!child) {
       // Lookup failed; try creating the file.
-      child = lockedParent.unlocked()->getBackend()->createFile(0777);
+      child = parent->getBackend()->createFile(0777);
       child = lockedParent.insertChild(childName, child);
       if (!child) {
         // File creation failed; nothing else to do.
