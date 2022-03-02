@@ -5814,6 +5814,11 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
+      if self.get_setting('WASMFS'):
+        if fs == 'NODEFS':
+          # TODO: NODEFS in WasmFS
+          continue
+        self.emcc_args += ['-sFORCE_FILESYSTEM']
       self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')

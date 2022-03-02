@@ -11,6 +11,7 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -23,6 +24,7 @@
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
+#include "pipe_backend.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -115,7 +117,8 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -182,7 +185,8 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -513,6 +517,10 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
     return __WASI_ERRNO_BADF;
   }
   auto lockedOpenFile = openFile->locked();
+
+  if (!lockedOpenFile.getFile()->isSeekable()) {
+    return __WASI_ERRNO_SPIPE;
+  }
 
   off_t position;
   if (whence == SEEK_SET) {
@@ -1014,6 +1022,75 @@ long __syscall_ftruncate64(long fd, long low, long high) {
     ret = -EINVAL;
   }
   return ret;
+}
+
+long __syscall_pipe(long fd) {
+  auto* fds = (__wasi_fd_t*)fd;
+
+  // Make a pipe: Two PipeFiles that share a single data source between them, so
+  // that writing to one can be read in the other.
+  //
+  // No backend is needed here, so pass in nullptr for that.
+  auto data = std::make_shared<PipeData>();
+  auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
+  auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  fds[0] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
+  fds[1] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
+
+  return 0;
+}
+
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  auto fileTable = wasmFS.getFileTable().locked();
+
+  // Process the list of FDs and compute their revents masks. Count the number
+  // of nonzero such masks, which is our return value.
+  long nonzero = 0;
+  for (nfds_t i = 0; i < nfds; i++) {
+    auto* pollfd = &fds[i];
+    auto fd = pollfd->fd;
+    if (fd < 0) {
+      // Negative FDs are ignored in poll().
+      pollfd->revents = 0;
+      continue;
+    }
+    // Assume invalid, unless there is an open file.
+    auto mask = POLLNVAL;
+    auto openFile = fileTable.getEntry(fd);
+    if (openFile) {
+      mask = 0;
+      auto flags = openFile->getFlags();
+      auto readBit = pollfd->events & POLLOUT;
+      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+        mask |= readBit;
+      }
+      auto writeBit = pollfd->events & POLLIN;
+      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+        // If there is data in the file, then there is also the ability to read.
+        // TODO: Does this need to consider the position as well? That is, if
+        //       the position is at the end, we can't read from the current
+        //       position at least.
+        if (openFile->locked().getFile()->locked().getSize() > 0) {
+          mask |= writeBit;
+        }
+      }
+      // TODO: get mask from File dynamically using a poll() hook?
+    }
+    // TODO: set the state based on the state of the other end of the pipe, for
+    //       pipes (POLLERR | POLLHUP)
+    if (mask) {
+      nonzero++;
+    }
+    pollfd->revents = mask;
+  }
+  // TODO: This should block based on the timeout. The old FS did not do so due
+  //       to web limitations, which we should perhaps revisit (especially with
+  //       pthreads and asyncify).
+  return nonzero;
 }
 
 } // extern "C"
