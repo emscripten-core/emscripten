@@ -149,7 +149,7 @@ void test() {
   assert(err == -1);
   assert(errno == EINVAL);
 
-  // Even if it not a direct ancestor.
+  // Even if it is not a direct ancestor.
   err = rename("dir", "dir/subdir/noexist");
   assert(err == -1);
   assert(errno == EINVAL);
