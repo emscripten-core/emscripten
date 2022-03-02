@@ -71,11 +71,41 @@ int main() {
   if (readdir(d) != NULL || errno != 0) {
     return 1;
   }
-  // Check that we *cannot* create a child
+  // Check that we *cannot* create a child.
   if (openat(dirfd(d), filename, O_CREAT | O_WRONLY, S_IRWXU) != -1) {
     return 1;
   }
+  printf("%s\n", strerror(errno));
+#ifdef __EMSCRIPTEN__
+  // Linux allows "." and ".." to be accessed on unlinked directories, but this
+  // is inconsistent with the result of getdents and would unnecessarily
+  // complicate the file system implementation.
+  // TODO: Consider supporting "." on unlinked files, if not ".."
 
+  // Check that we cannot still access "."
+  if (openat(dirfd(d), ".", O_DIRECTORY | O_RDONLY) != -1) {
+    return 1;
+  }
+#ifdef WASMFS
+  // Check that we cannot still access ".." on WasmFS.
+  if (openat(dirfd(d), "..", O_DIRECTORY | O_RDONLY) != -1) {
+    return 1;
+  }
+#endif
+#else
+  // Check that we can still access "." on Linux.
+  int self = openat(dirfd(d), ".", O_DIRECTORY | O_RDONLY);
+  if (self == -1) {
+    return 1;
+  }
+  close(self);
+  // Check that we can still access ".." on Linux.
+  int parent = openat(dirfd(d), "..", O_DIRECTORY | O_RDONLY);
+  if (parent == -1) {
+    return 1;
+  }
+  close(parent);
+#endif
   closedir(d);
 
   printf("ok\n");

@@ -262,8 +262,10 @@ public:
     : File::Handle(directory, std::defer_lock) {}
 
   std::shared_ptr<File> getChild(const std::string& name) {
-    // TODO: Unlinked directories should be entirely empty and not even expose
-    // "." or "..".
+    // Unlinked directories must be empty, without even "." or ".."
+    if (!getParent()) {
+      return nullptr;
+    }
     if (name == ".") {
       return file;
     }
