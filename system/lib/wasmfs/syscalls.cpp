@@ -1170,25 +1170,24 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     if (openFile) {
       mask = 0;
       auto flags = openFile->getFlags();
-      if (flags == O_WRONLY || flags == O_RDWR) {
-        mask = POLLOUT;
+      auto readBit = pollfd->events & POLLOUT;
+      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+        mask |= readBit;
       }
-      if (flags == O_RDONLY || flags == O_RDWR) {
+      auto writeBit = pollfd->events & POLLIN;
+      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
         //       the position is at the end, we can't read from the current
         //       position at least.
         if (openFile->locked().getFile()->locked().getSize() > 0) {
-          mask |= POLLIN;
+          mask |= writeBit;
         }
       }
       // TODO: get mask from File dynamically using a poll() hook?
     }
-    // Mask the relevant bits: the given events, and also the exceptional
-    // conditions of error and hangup.
     // TODO: set the state based on the state of the other end of the pipe, for
-    //       pipes.
-    mask &= pollfd->events | POLLERR | POLLHUP;
+    //       pipes (POLLERR | POLLHUP)
     if (mask) {
       nonzero++;
     }

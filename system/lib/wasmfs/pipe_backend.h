@@ -13,7 +13,8 @@
 namespace wasmfs {
 
 // The data shared between the two sides of a pipe.
-// TODO: something more optimal?
+// TODO: Consider switching to a ring buffer for performance and code size if we
+//       don't need unbounded pipes.
 using PipeData = std::queue<uint8_t>;
 
 // A PipeFile is a simple file that has a reference to a PipeData that it
