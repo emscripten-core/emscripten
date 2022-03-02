@@ -123,7 +123,7 @@ private:
       // Unrecognized file kind not made visible to WasmFS.
       return nullptr;
     }
-    child->locked().setParent(shared_from_this());
+    child->locked().setParent(shared_from_this()->cast<Directory>());
     return child;
   }
 

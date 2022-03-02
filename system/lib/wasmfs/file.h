@@ -23,6 +23,8 @@ namespace wasmfs {
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
 class Backend;
+class Directory;
+
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
 using backend_t = Backend*;
@@ -90,7 +92,7 @@ protected:
   // count is not incremented. This also ensures that there are no cyclic
   // dependencies where the parent and child have shared_ptrs that reference
   // each other. This prevents the case in which an uncollectable cycle occurs.
-  std::weak_ptr<File> parent;
+  std::weak_ptr<Directory> parent;
 
   // This specifies which backend a file is associated with.
   backend_t backend;
@@ -201,7 +203,6 @@ public:
   Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
     : file(file), lock(file->mutex, std::defer_lock) {}
-  bool trylock() { return lock.try_lock(); }
   size_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) { file->mode = mode; }
@@ -214,8 +215,8 @@ public:
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
   // specified by the parent weak_ptr.
-  std::shared_ptr<File> getParent() { return file->parent.lock(); }
-  void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+  std::shared_ptr<Directory> getParent() { return file->parent.lock(); }
+  void setParent(std::shared_ptr<Directory> parent) { file->parent = parent; }
 
   std::shared_ptr<File> unlocked() { return file; }
 };
@@ -254,6 +255,14 @@ public:
     : File::Handle(directory, std::defer_lock) {}
 
   std::shared_ptr<File> getChild(const std::string& name) {
+    // TODO: Unlinked directories should be entirely empty and not even expose
+    // "." or "..".
+    if (name == ".") {
+      return file;
+    }
+    if (name == "..") {
+      return getParent();
+    }
     return getDir()->getChild(name);
   }
   bool removeChild(const std::string& name);
@@ -268,30 +277,12 @@ public:
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }
 
-inline std::optional<File::Handle> File::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
-}
-
 inline DataFile::Handle DataFile::locked() {
   return Handle(shared_from_this());
 }
 
 inline Directory::Handle Directory::locked() {
   return Handle(shared_from_this());
-}
-
-inline std::optional<Directory::Handle> Directory::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
 }
 
 } // namespace wasmfs
