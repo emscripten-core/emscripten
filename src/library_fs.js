@@ -124,11 +124,7 @@ FS.staticInit();` +
         follow_mount: true,
         recurse_count: 0
       };
-      for (var key in defaults) {
-        if (opts[key] === undefined) {
-          opts[key] = defaults[key];
-        }
-      }
+      opts = Object.assign(defaults, opts)
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
