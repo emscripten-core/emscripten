@@ -84,9 +84,11 @@ int main() {
 #endif
   errno = 0;
 
+  // FS.lookupPath should notice the symlink loop and return ELOOP,
+  // not go into an infinite recurse.
   int result = access("/linkX", F_OK);
   assert(result == -1);
-  assert(errno == 32);
+  assert(errno == ELOOP);
   errno = 0;
 
   return 0;
