@@ -7,9 +7,9 @@
 #if !USE_PTHREADS
 #error Internal error! USE_PTHREADS should be enabled when including library_pthread.js.
 #endif
-#if !SHARED_MEMORY
-#error Internal error! SHARED_MEMORY should be enabled when including library_pthread.js.
-#endif
+//#if !SHARED_MEMORY
+//#error Internal error! SHARED_MEMORY should be enabled when including library_pthread.js.
+//#endif
 #if USE_PTHREADS == 2
 #error USE_PTHREADS=2 is no longer supported
 #endif
