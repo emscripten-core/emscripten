@@ -6,6 +6,7 @@
 #include <syscall_arch.h>
 #include <unistd.h>
 
+#include "backend.h"
 #include "file.h"
 #include "paths.h"
 
@@ -56,25 +57,33 @@ void* _wasmfs_read_file(char* path) {
 // Writes to a file, possibly creating it, and returns the number of bytes
 // written successfully.
 long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
-  auto pathParts = splitPath(pathname);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-  if (!parsedPath.parent) {
+  auto parsedParent = path::parseParent(pathname);
+  if (parsedParent.getError()) {
     return 0;
   }
+  auto& [parent, childNameView] = parsedParent.getParentChild();
+  std::string childName(childNameView);
 
-  if (!parsedPath.child) {
-    // Create a file here.
-    wasmfs_create_file(
-      pathname, O_RDWR, parsedPath.parent->getParent()->getBackend());
-  } else if (!parsedPath.child->is<DataFile>()) {
+  std::shared_ptr<File> child;
+  {
+    auto lockedParent = parent->locked();
+    child = lockedParent.getChild(childName);
+    if (!child) {
+      // Lookup failed; try creating the file.
+      child = parent->getBackend()->createFile(0777);
+      child = lockedParent.insertChild(childName, child);
+      if (!child) {
+        // File creation failed; nothing else to do.
+        return 0;
+      }
+    }
+  }
+
+  auto dataFile = child->dynCast<DataFile>();
+  if (!dataFile) {
     // There is something here but it isn't a data file.
     return 0;
   }
-
-  auto child = parsedPath.parent->getChild(pathParts.back());
-  auto dataFile = child->dynCast<DataFile>();
 
   auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);
   if (result != __WASI_ERRNO_SUCCESS) {
