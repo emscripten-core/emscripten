@@ -632,17 +632,25 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 enum class UnlinkMode { Rmdir, Unlink };
 
 static long doUnlink(char* path, UnlinkMode unlinkMode) {
+  // It is invalid for rmdir paths to end in ".", but we need to distinguish
+  // this case from the case of `parseParent` returning (root, '.') when parsing
+  // "/", so we need to find the invalid "/." manually.
+  if (unlinkMode == UnlinkMode::Rmdir) {
+    std::string_view p(path);
+    // Ignore trailing '/'.
+    while (!p.empty() && p.back() == '/') {
+      p.remove_suffix(1);
+    }
+    if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+      return -EINVAL;
+    }
+  }
   auto parsed = path::parseParent(path);
   if (auto err = parsed.getError()) {
     return err;
   }
   auto& [parent, childNameView] = parsed.getParentChild();
   std::string childName(childNameView);
-  // It is invalid for rmdir paths to end in "."
-  if (unlinkMode == UnlinkMode::Rmdir && childName == ".") {
-    // TODO: Test this case.
-    return -EINVAL;
-  }
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
   if (!file) {
