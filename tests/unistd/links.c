@@ -22,6 +22,9 @@ int main() {
     FS.symlink('../test/../there!', 'link');
     FS.writeFile('file', 'test');
     FS.mkdir('folder');
+
+    FS.symlink("linkX/inside","/linkX");
+    FS.lookupPath("/linkX", {follow:true});
   );
 
   char* files[] = {"link", "file", "folder"};
