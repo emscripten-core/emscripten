@@ -82,7 +82,6 @@ function updateGlobalBufferAndViews(b) {
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-#endif
   wasmMemory = new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
