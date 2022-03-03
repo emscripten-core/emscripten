@@ -260,6 +260,18 @@ var SyscallsLibrary = {
     }
 #endif
   },
+
+  __syscall_open: function(path, flags, varargs) {
+    var pathname = SYSCALLS.getStr(path);
+    var mode = varargs ? SYSCALLS.get() : 0;
+    var stream = FS.open(pathname, flags, mode);
+    return stream.fd;
+  },
+  __syscall_unlink: function(path) {
+    path = SYSCALLS.getStr(path);
+    FS.unlink(path);
+    return 0;
+  },
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
@@ -283,6 +295,11 @@ var SyscallsLibrary = {
   __syscall_mkdir: function(path, mode) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doMkdir(path, mode);
+  },
+  __syscall_rmdir: function(path) {
+    path = SYSCALLS.getStr(path);
+    FS.rmdir(path);
+    return 0;
   },
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
@@ -912,6 +929,9 @@ var SyscallsLibrary = {
     return 0; // your advice is important to us (but we can't use it)
   },
   __syscall_openat: function(dirfd, path, flags, varargs) {
+#if SYSCALL_DEBUG
+    err('warning: untested syscall');
+#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? SYSCALLS.get() : 0;

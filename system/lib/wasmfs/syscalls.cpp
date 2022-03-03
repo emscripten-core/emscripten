@@ -692,6 +692,14 @@ long __syscall_unlinkat(long dirfd, long path, long flags) {
   return 0;
 }
 
+long __syscall_rmdir(long path) {
+  return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
+}
+
+long __syscall_unlink(long path) {
+  return __syscall_unlinkat(AT_FDCWD, path, 0);
+}
+
 long __syscall_getdents64(long fd, long dirp, long count) {
   dirent* result = (dirent*)dirp;
 

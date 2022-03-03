@@ -404,23 +404,23 @@ static inline long __alt_socketcall(int sys, int sock, int cp, long a, long b, l
 #define SIOCGSTAMPNS_OLD 0x8907
 #endif
 
+#ifndef __EMSCRIPTEN__
 #ifdef SYS_open
 #define __sys_open2(x,pn,fl) __syscall2(SYS_open, pn, (fl)|O_LARGEFILE)
 #define __sys_open3(x,pn,fl,mo) __syscall3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
 #define __sys_open_cp2(x,pn,fl) __syscall_cp2(SYS_open, pn, (fl)|O_LARGEFILE)
 #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
 #else
-#ifndef __EMSCRIPTEN__
 #define __sys_open2(x,pn,fl) __syscall3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
 #define __sys_open3(x,pn,fl,mo) __syscall4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #define __sys_open_cp2(x,pn,fl) __syscall_cp3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
 #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
-#else // __EMSCRIPTEN__
-#define __sys_open2(x,pn,fl) __syscall_openat(AT_FDCWD, __scc(pn), (fl)|O_LARGEFILE)
-#define __sys_open3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, __scc(pn), (fl)|O_LARGEFILE, __scc(mo))
-#define __sys_open_cp2(x,pn,fl) __syscall_openat(AT_FDCWD, __scc(pn), (fl)|O_LARGEFILE)
-#define __sys_open_cp3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, __scc(pn), (fl)|O_LARGEFILE, __scc(mo))
 #endif
+#else // __EMSCRIPTEN__
+#define __sys_open2(x,pn,fl) __syscall_open(__scc(pn), __scc((fl)|O_LARGEFILE))
+#define __sys_open3(x,pn,fl,mo) __syscall_open(__scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
+#define __sys_open_cp2(x,pn,fl) __syscall_open(__scc(pn), __scc((fl)|O_LARGEFILE))
+#define __sys_open_cp3(x,pn,fl,mo) __syscall_open(__scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
 #endif
 
 #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)
