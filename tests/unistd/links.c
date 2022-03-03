@@ -24,7 +24,6 @@ int main() {
     FS.mkdir('folder');
 
     FS.symlink("linkX/inside","/linkX");
-    FS.lookupPath("/linkX", {follow:true});
   );
 
   char* files[] = {"link", "file", "folder"};
@@ -83,6 +82,11 @@ int main() {
 #else
   assert(strcmp(buffer, "/the**ng/folder/new-nonexistent-path") == 0);
 #endif
+  errno = 0;
+
+  int result = access("/linkX", F_OK);
+  assert(result == -1);
+  assert(errno == 32);
   errno = 0;
 
   return 0;
