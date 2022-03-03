@@ -5097,6 +5097,14 @@ window.close = function() {
   def test_system(self):
     self.btest_exit(test_file('system.c'))
 
+  # Tests building with -sSHARED_MEMORY
+  @also_with_minimal_runtime
+  def test_shared_memory(self):
+    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='0', args=[])
+    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sSHARED_MEMORY'])
+    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sWASM_WORKERS'])
+    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-pthread'])
+
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
@@ -5141,7 +5149,8 @@ window.close = function() {
   # Tests C++11 keyword thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_cpp11_thread_local(self):
-    self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
  #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
@@ -5156,7 +5165,8 @@ Stack dump:
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
  #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
@@ -5172,7 +5182,8 @@ Stack dump:
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
  #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)

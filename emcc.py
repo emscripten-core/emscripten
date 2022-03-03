@@ -308,7 +308,7 @@ def setup_environment_settings():
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
     exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and (settings.USE_PTHREADS or settings.WASM_WORKERS):
+  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.SHARED_MEMORY:
     exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
@@ -1438,7 +1438,11 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
-  if (settings.USE_PTHREADS or settings.WASM_WORKERS) and '-pthread' not in newargs:
+  # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
+  if settings.USE_PTHREADS or settings.WASM_WORKERS:
+    settings.SHARED_MEMORY = 1
+
+  if settings.SHARED_MEMORY and '-pthread' not in newargs:
     newargs += ['-pthread']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
@@ -1597,10 +1601,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
-
-  # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
-  if settings.USE_PTHREADS or settings.WASM_WORKERS:
-    settings.SHARED_MEMORY = 1
 
   if (options.oformat == OFormat.WASM or settings.PURE_WASI) and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -2165,18 +2165,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
   elif settings.PROXY_TO_PTHREAD:
     exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
-
-  if settings.WASM_WORKERS:
-    if settings.SINGLE_FILE:
-      exit_with_error('TODO: -s SINGLE_FILE=1 is currently not supported with -s WASM_WORKERS!')
-    if settings.LINKABLE:
-      exit_with_error('TODO: -s LINKABLE=1 is currently not supported with -s WASM_WORKERS!')
-    if settings.SIDE_MODULE:
-      exit_with_error('TODO: -s SIDE_MODULE=1 is currently not supported with -s WASM_WORKERS!')
-    if settings.MAIN_MODULE:
-      exit_with_error('TODO: -s MAIN_MODULE=1 is currently not supported with -s WASM_WORKERS!')
-    if settings.PROXY_TO_WORKER:
-      exit_with_error('--proxy-to-worker is not supported with -s WASM_WORKERS!')
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
@@ -2866,6 +2854,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       write_file(worker_output, minified_worker)
 
+  # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
     worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
     with open(worker_output, 'w') as f:
