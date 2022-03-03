@@ -443,6 +443,16 @@ int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
 }
 
+long __syscall_open(long path, long flags, ...) {
+  mode_t mode = 0;
+  va_list v1;
+  va_start(v1, flags);
+  mode = va_arg(v1, int);
+  va_end(v1);
+
+  return doOpen(path::parseParent((char*)path), flags, mode);
+}
+
 long __syscall_openat(long dirfd, long path, long flags, ...) {
   mode_t mode = 0;
   va_list v1;
