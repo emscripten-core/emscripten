@@ -4,6 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if !USE_PTHREADS
+#error Internal error! USE_PTHREADS should be enabled when including library_pthread.js.
+#endif
+#if !SHARED_MEMORY
+#error Internal error! SHARED_MEMORY should be enabled when including library_pthread.js.
+#endif
+
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
