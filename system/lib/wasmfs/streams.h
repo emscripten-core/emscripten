@@ -29,8 +29,15 @@ class StdinFile : public DataFile {
 
   size_t getSize() override { return 0; }
 
+  void setSize(size_t size) override {
+    // no-op
+  }
+
 public:
-  StdinFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {}
+  StdinFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {
+    seekable = false;
+  }
+
   static std::shared_ptr<StdinFile> getSingleton();
 };
 
@@ -46,8 +53,14 @@ protected:
   // /dev/stdout|stderr reports a size of 0 in the terminal.
   size_t getSize() override { return 0; }
 
+  void setSize(size_t size) override {
+    // no-op
+  }
+
 public:
-  WritingStdFile() : DataFile(S_IWUGO, NullBackend, S_IFCHR) {}
+  WritingStdFile() : DataFile(S_IWUGO, NullBackend, S_IFCHR) {
+    seekable = false;
+  }
 };
 
 class StdoutFile : public WritingStdFile {

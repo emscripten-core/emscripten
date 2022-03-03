@@ -1545,7 +1545,7 @@ int main(int argc, char **argv)
 
   def test_format_exception(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'formatException', '_emscripten_format_exception', '_free'])
     self.maybe_closure()
     src = '''
@@ -1582,7 +1582,13 @@ int main(int argc, char **argv)
               try {
                   Module["_throw_exc"](i);
               } catch(p) {
+                  // Because we are catching and handling the exception in JS, the normal
+                  // exception catching C++ code doesn't kick in, so we need to make sure we free
+                  // the exception, if necessary. By incrementing and decrementing the refcount
+                  // we trigger the free'ing of the exception if its refcount was zero.
+                  ___cxa_increment_exception_refcount(p);
                   console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
+                  ___cxa_decrement_exception_refcount(p);
               }
             }
           });
@@ -5808,6 +5814,11 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
+      if self.get_setting('WASMFS'):
+        if fs == 'NODEFS':
+          # TODO: NODEFS in WasmFS
+          continue
+        self.emcc_args += ['-sFORCE_FILESYSTEM']
       self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')

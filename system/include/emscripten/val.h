@@ -489,22 +489,22 @@ namespace emscripten {
 
         template<typename... Args>
         val new_(Args&&... args) const {
-            return internalCall(internal::_emval_new,std::forward<Args>(args)...);
+            return internalCall(internal::_emval_new, std::forward<Args>(args)...);
         }
 
         template<typename T>
         val operator[](const T& key) const {
-            return val(internal::_emval_get_property(handle, val(key).handle));
-        }
-
-        template<typename K>
-        void set(const K& key, const val& v) {
-            internal::_emval_set_property(handle, val(key).handle, v.handle);
+            return val(internal::_emval_get_property(handle, val_ref(key).handle));
         }
 
         template<typename K, typename V>
         void set(const K& key, const V& value) {
-            internal::_emval_set_property(handle, val(key).handle, val(value).handle);
+            internal::_emval_set_property(handle, val_ref(key).handle, val_ref(value).handle);
+        }
+
+        template<typename T>
+        bool delete_(const T& property) const {
+            return internal::_emval_delete(handle, val_ref(property).handle);
         }
 
         template<typename... Args>
@@ -579,11 +579,6 @@ namespace emscripten {
             return internal::_emval_in(handle, v.handle);
         }
 
-        template<typename T>
-        bool delete_(const T& property) const {
-            return internal::_emval_delete(handle, val(property).handle);
-        }
-
         [[noreturn]] void throw_() const {
             internal::_emval_throw(handle);
         }
@@ -613,6 +608,15 @@ namespace emscripten {
                     argList.getCount(),
                     argList.getTypes(),
                     argv));
+        }
+
+        template<typename T>
+        val val_ref(const T& v) const {
+            return val(v);
+        }
+
+        const val& val_ref(const val& v) const {
+            return v;
         }
 
         EM_VAL handle;

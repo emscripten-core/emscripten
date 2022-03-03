@@ -47,13 +47,13 @@ int main() {
 
   // Try to create an existing file with O_EXCL and O_CREAT.
   errno = 0;
-  int fd2 = open("/dev/stdin", O_RDWR | O_CREAT | O_EXCL);
+  int fd2 = open("/test", O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
   printf("Errno: %s\n", strerror(errno));
   assert(errno == EEXIST);
 
   // Try to open a file with O_DIRECTORY.
   errno = 0;
-  int fd3 = open("/dev/stdin", O_RDWR | O_DIRECTORY);
+  int fd3 = open("/test", O_RDWR | O_DIRECTORY);
   printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOTDIR);
 
@@ -65,7 +65,7 @@ int main() {
 
   // Test zero size reads and writes.
   char buf2[100] = {};
-  int fd5 = open("/newFile", O_RDWR | O_CREAT);
+  int fd5 = open("/newFile", O_RDWR | O_CREAT, S_IRWXU);
   errno = 0;
   printf("Read %zi bytes\n", read(fd5, buf2, 0));
   assert(errno == 0);
@@ -74,7 +74,7 @@ int main() {
 
   // Test large size reads and writes multiple times.
   char buf3[100] = {};
-  int fd6 = open("/testFile", O_RDWR | O_CREAT);
+  int fd6 = open("/testFile", O_RDWR | O_CREAT, S_IRWXU);
   errno = 0;
   printf("Wrote %zi bytes\n", write(fd6, msg, strlen(msg) + 20));
   printf("Wrote %zi bytes\n", write(fd6, msg, strlen(msg)));

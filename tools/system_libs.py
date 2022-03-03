@@ -1202,8 +1202,16 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
 class libcxx(NoExceptLibrary, MTLibrary):
   name = 'libc++'
 
-  cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
-            '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+    '-Oz',
+    '-DLIBCXX_BUILDING_LIBCXXABI=1',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    # TODO(sbc): clang recently introduced this new warning which is triggered
+    # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
+    '-Wno-unqualified-std-cast-call',
+    '-Wno-unknown-warning-option',
+  ]
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
@@ -1463,19 +1471,6 @@ class libstb_image(Library):
     return [utils.path_from_root('system/lib/stb_image.c')]
 
 
-class libasmfs(MTLibrary):
-  name = 'libasmfs'
-  never_force = True
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/fetch/asmfs.cpp')]
-
-  def can_build(self):
-    # ASMFS is looking for a maintainer
-    # https://github.com/emscripten-core/emscripten/issues/9534
-    return True
-
-
 class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 
@@ -1489,6 +1484,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
         filenames=['fetch_backend.cpp',
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
+                   'node_backend.cpp',
                    'proxied_file_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',
@@ -1497,6 +1493,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'js_api.cpp',
                    'paths.cpp',
                    'streams.cpp',
+                   'support.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp'])
 

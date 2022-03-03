@@ -65,7 +65,9 @@ public:
     return (ino_t)this;
   }
 
-  backend_t getBackend() { return backend; }
+  backend_t getBackend() const { return backend; }
+
+  bool isSeekable() const { return seekable; }
 
   class Handle;
   Handle locked();
@@ -92,8 +94,13 @@ protected:
   // each other. This prevents the case in which an uncollectable cycle occurs.
   std::weak_ptr<File> parent;
 
-  // This specifies which backend a file is associated with.
+  // This specifies which backend a file is associated with. It may be null
+  // (NullBackend) if there is no particular backend associated with the file.
   backend_t backend;
+
+  // By default files are seekable. The rare exceptions are things like pipes
+  // and sockets.
+  bool seekable = true;
 };
 
 class DataFile : public File {
@@ -102,6 +109,11 @@ class DataFile : public File {
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
+
+  // Sets the size of the file to a specific size. If new space is allocated, it
+  // should be zero-initialized (often backends have an efficient way to do this
+  // while doing the resizing).
+  virtual void setSize(size_t size) = 0;
 
   // TODO: Design a proper API for flushing files.
   virtual void flush() = 0;
@@ -228,6 +240,8 @@ public:
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
+
+  void setSize(size_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
   void flush() { getFile()->flush(); }

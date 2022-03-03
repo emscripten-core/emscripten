@@ -10,6 +10,7 @@
 #pragma once
 
 #include "backend.h"
+#include "support.h"
 #include "wasmfs.h"
 
 //
@@ -91,6 +92,10 @@ class JSImplFile : public DataFile {
 
   size_t getSize() override {
     return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());
+  }
+
+  void setSize(size_t size) override {
+    WASMFS_UNREACHABLE("TODO: JSImpl setSize");
   }
 
 public:

@@ -126,7 +126,17 @@ def also_with_wasmfs(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasmfs': (True,)}
+  return metafunc
 
+
+def wasmfs_all_backends(f):
+  def metafunc(self, backend):
+    self.set_setting('WASMFS')
+    self.emcc_args.append(f'-D{backend}')
+    f(self)
+
+  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
+                            'node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
@@ -1702,6 +1712,22 @@ int f() {
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
     self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
+
+  @node_pthreads
+  def test_dylink_pthread_bigint_em_asm(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['-Wno-experimental']
+    self.do_runf(test_file('hello_world_em_asm.c'), 'hello, world')
+
+  @node_pthreads
+  def test_dylink_pthread_bigint_em_js(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['-Wno-experimental']
+    self.do_runf(test_file('core/test_em_js.cpp'))
 
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
@@ -8069,9 +8095,7 @@ end
     self.assertContained('block "main" took', stderr)
 
   def test_noderawfs(self):
-    fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
-    create_file('main.cpp', fopen_write)
-    self.run_process([EMXX, 'main.cpp', '-sNODERAWFS'])
+    self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'])
     self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
 
     # NODERAWFS should directly write on OS file system
@@ -11560,14 +11584,14 @@ void foo() {}
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
+  @wasmfs_all_backends
   def test_wasmfs_getdents(self):
     # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
-    self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
+  @wasmfs_all_backends
   def test_wasmfs_readfile(self):
-    self.set_setting('WASMFS')
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   def test_wasmfs_jsfile(self):
@@ -11735,3 +11759,17 @@ void foo() {}
     self.do_runf(test_file('hello_world.c'), 'hello, world')
     src = read_file('hello_world.js')
     self.assertContained("fetch(wasmBinaryFile, Module['fetchSettings'] || ", src)
+
+  # Tests using the #warning directive in JS library files
+  def test_warning_in_js_libraries(self):
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
+    self.assertNotContained('This warning should not be present!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+
+  # Tests using the #error directive in JS library files
+  def test_error_in_js_libraries(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
+    self.assertNotContained('This error should not be present!', err)
+    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
+    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)

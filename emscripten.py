@@ -456,9 +456,7 @@ def compare_metadata(metadata, pymetadata):
 
 def finalize_wasm(infile, outfile, memfile):
   building.save_intermediate(infile, 'base.wasm')
-  # tell binaryen to look at the features section, and if there isn't one, to use MVP
-  # (which matches what llvm+lld has given us)
-  args = ['--minimize-wasm-changes']
+  args = []
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
@@ -466,6 +464,13 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
+    modify_wasm = True
+  if settings.USE_PTHREADS and settings.RELOCATABLE:
+    # HACK: When settings.USE_PTHREADS and settings.RELOCATABLE are set finalize needs to scan
+    # more than just the start function for memory.init instructions.  This means it can't run
+    # with setSkipFunctionBodies() enabled.  Currently the only way to force this is to set an
+    # output file.
+    # TODO(sbc): Find a better way to do this.
     modify_wasm = True
   if settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map', outfile)

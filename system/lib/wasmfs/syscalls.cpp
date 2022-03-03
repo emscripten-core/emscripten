@@ -11,6 +11,7 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -23,6 +24,7 @@
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
+#include "pipe_backend.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -115,7 +117,8 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -182,7 +185,8 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
       lockedOpenFile.setPosition(currOffset);
     }
   };
@@ -368,10 +372,9 @@ static __wasi_fd_t doOpen(char* pathname,
                           mode_t mode,
                           backend_t backend = NullBackend) {
   int accessMode = (flags & O_ACCMODE);
-  bool canWrite = false;
-
-  if (accessMode == O_WRONLY || accessMode == O_RDWR) {
-    canWrite = true;
+  if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
+      accessMode != O_RDWR) {
+    return -EINVAL;
   }
 
   // TODO: remove assert when all functionality is complete.
@@ -409,12 +412,26 @@ static __wasi_fd_t doOpen(char* pathname,
     if (!backend) {
       backend = parsedPath.parent->unlocked()->getBackend();
     }
+
+    // TODO: Check write permissions on the parent directory
+
     auto created = backend->createFile(mode);
 
     parsedPath.parent->insertChild(pathParts.back(), created);
     auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
     return wasmFS.getFileTable().locked().addEntry(openFile);
+  }
+
+  // Check user permissions
+  auto fileMode = parsedPath.child->locked().getMode();
+  if ((accessMode == O_RDONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_READ)) {
+    return -EACCES;
+  }
+  if ((accessMode == O_WRONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_WRITE)) {
+    return -EACCES;
   }
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
@@ -482,6 +499,9 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   if (!backend) {
     backend = parsedPath.parent->unlocked()->getBackend();
   }
+
+  // TODO: Check write permissions in the parent.
+
   // Create an empty in-memory directory.
   auto created = backend->createDirectory(mode);
   parsedPath.parent->insertChild(pathParts.back(), created);
@@ -517,6 +537,10 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
     return __WASI_ERRNO_BADF;
   }
   auto lockedOpenFile = openFile->locked();
+
+  if (!lockedOpenFile.getFile()->isSeekable()) {
+    return __WASI_ERRNO_SPIPE;
+  }
 
   off_t position;
   if (whence == SEEK_SET) {
@@ -735,8 +759,9 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   }
 
   // There are always two hardcoded directories "." and ".."
-  std::vector<Directory::Entry> entries = {{".", File::DirectoryKind},
-                                           {"..", File::DirectoryKind}};
+  std::vector<Directory::Entry> entries = {
+    {".", File::DirectoryKind, directory->getIno()},
+    {"..", File::DirectoryKind, dotdot->getIno()}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
@@ -744,7 +769,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
        index++) {
     auto& entry = entries[index];
     result->d_ino = entry.ino;
-    result->d_off = bytesRead + sizeof(dirent);
+    result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
     switch (entry.kind) {
       case File::UnknownKind:
@@ -1047,5 +1072,130 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   }
 
   return 0;
+}
+
+static off_t combineOffParts(long low, long high) {
+  return (off_t(high) << 32) | off_t(low);
+}
+
+static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
+  auto dataFile = file->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  auto size = combineOffParts(low, high);
+  if (size < 0) {
+    return -EINVAL;
+  }
+
+  // TODO: error handling for allocation errors. atm with exceptions disabled,
+  //       however, C++ backends using std::vector for storage have no way to
+  //       report that, and will abort in malloc.
+  locked.setSize(size);
+  return 0;
+}
+
+long __syscall_truncate64(long path, long low, long high) {
+  auto pathParts = splitPath((char*)path);
+  long err;
+  auto parsedPath = getParsedPath(pathParts, err);
+  if (!parsedPath.parent) {
+    return err;
+  }
+  if (!parsedPath.child) {
+    return -ENOENT;
+  }
+  return doTruncate(parsedPath.child, low, high);
+}
+
+long __syscall_ftruncate64(long fd, long low, long high) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto ret = doTruncate(openFile->locked().getFile(), low, high);
+  // XXX It is not clear from the docs why ftruncate would differ from
+  //     truncate here. However, on Linux this definitely happens, and the old
+  //     FS matches that as well, so do the same here.
+  if (ret == -EACCES) {
+    ret = -EINVAL;
+  }
+  return ret;
+}
+
+long __syscall_pipe(long fd) {
+  auto* fds = (__wasi_fd_t*)fd;
+
+  // Make a pipe: Two PipeFiles that share a single data source between them, so
+  // that writing to one can be read in the other.
+  //
+  // No backend is needed here, so pass in nullptr for that.
+  auto data = std::make_shared<PipeData>();
+  auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
+  auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  fds[0] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
+  fds[1] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
+
+  return 0;
+}
+
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  auto fileTable = wasmFS.getFileTable().locked();
+
+  // Process the list of FDs and compute their revents masks. Count the number
+  // of nonzero such masks, which is our return value.
+  long nonzero = 0;
+  for (nfds_t i = 0; i < nfds; i++) {
+    auto* pollfd = &fds[i];
+    auto fd = pollfd->fd;
+    if (fd < 0) {
+      // Negative FDs are ignored in poll().
+      pollfd->revents = 0;
+      continue;
+    }
+    // Assume invalid, unless there is an open file.
+    auto mask = POLLNVAL;
+    auto openFile = fileTable.getEntry(fd);
+    if (openFile) {
+      mask = 0;
+      auto flags = openFile->getFlags();
+      auto readBit = pollfd->events & POLLOUT;
+      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+        mask |= readBit;
+      }
+      auto writeBit = pollfd->events & POLLIN;
+      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+        // If there is data in the file, then there is also the ability to read.
+        // TODO: Does this need to consider the position as well? That is, if
+        //       the position is at the end, we can't read from the current
+        //       position at least.
+        if (openFile->locked().getFile()->locked().getSize() > 0) {
+          mask |= writeBit;
+        }
+      }
+      // TODO: get mask from File dynamically using a poll() hook?
+    }
+    // TODO: set the state based on the state of the other end of the pipe, for
+    //       pipes (POLLERR | POLLHUP)
+    if (mask) {
+      nonzero++;
+    }
+    pollfd->revents = mask;
+  }
+  // TODO: This should block based on the timeout. The old FS did not do so due
+  //       to web limitations, which we should perhaps revisit (especially with
+  //       pthreads and asyncify).
+  return nonzero;
 }
 }

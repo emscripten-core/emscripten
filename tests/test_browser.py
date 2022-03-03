@@ -165,17 +165,6 @@ def requires_threads(f):
   return decorated
 
 
-def requires_asmfs(f):
-  assert callable(f)
-
-  def decorated(self, *args, **kwargs):
-    # https://github.com/emscripten-core/emscripten/issues/9534
-    self.skipTest('ASMFS is looking for a maintainer')
-    return f(self, *args, **kwargs)
-
-  return decorated
-
-
 def also_with_threads(f):
   def decorated(self, *args, **kwargs):
     f(self)
@@ -4685,66 +4674,6 @@ window.close = function() {
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_hello_file(self):
-    # Test basic file loading and the valid character set for files.
-    ensure_dir('dirrey')
-    shutil.copyfile(test_file('asmfs/hello_file.txt'), Path('dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
-    self.btest_exit('asmfs/hello_file.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_read_file_twice(self):
-    shutil.copyfile(test_file('asmfs/hello_file.txt'), 'hello_file.txt')
-    self.btest_exit('asmfs/read_file_twice.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_fopen_write(self):
-    self.btest_exit('asmfs/fopen_write.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_mkdir_create_unlink_rmdir(self):
-    self.btest_exit('cstdio/test_remove.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_dirent_test_readdir(self):
-    self.btest_exit('dirent/test_readdir.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_dirent_test_readdir_empty(self):
-    self.btest_exit('dirent/test_readdir_empty.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_close(self):
-    self.btest_exit(test_file('unistd/close.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_access(self):
-    self.btest_exit(test_file('unistd/access.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_unlink(self):
-    # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
-    self.btest_exit(test_file('unistd/unlink.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-DNO_SYMLINK=1'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_test_fcntl_open(self):
-    self.btest_exit('fcntl/test_fcntl_open.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_relative_paths(self):
-    self.btest_exit('asmfs/relative_paths.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
 
   @requires_threads
   def test_pthread_locale(self):

@@ -14,3 +14,6 @@ sphinx==2.4.4
 
 # Pin docutils because newer versions are not compatible with sphinx 2.4.4
 docutils==0.17.1
+
+# Needed by tests/test_sockets.py
+websockify==0.10.0
