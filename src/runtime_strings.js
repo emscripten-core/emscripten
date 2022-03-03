@@ -9,7 +9,7 @@
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
-#if USE_PTHREADS && TEXTDECODER
+#if SHARED_MEMORY && TEXTDECODER
 /**
  * UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
  * https://github.com/whatwg/encoding/issues/172
@@ -36,10 +36,10 @@ function TextDecoderWrapper(encoding) {
 #endif
 
 #if TEXTDECODER == 2
-var UTF8Decoder = new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8');
+var UTF8Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8');
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8') : undefined;
+var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8') : undefined;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 

@@ -1465,7 +1465,11 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [other]
 var IN_TEST_HARNESS = 0;
 
-// If true, enables support for pthreads.
+// If 1, target compiling a shared Wasm Memory.
+// [compile+link] - affects user code at compile and system libraries at link.
+var SHARED_MEMORY = 0;
+
+// If true, enables support for pthreads. This implies SHARED_MEMORY.
 // This setting is equivalent to `-pthread`, which should be preferred.
 // [compile+link] - affects user code at compile and system libraries at link.
 var USE_PTHREADS = 0;

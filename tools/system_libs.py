@@ -1084,7 +1084,7 @@ class crtbegin(Library):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and settings.USE_PTHREADS
+    return super().can_use() and settings.SHARED_MEMORY
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1717,7 +1717,7 @@ def get_libs_to_link(args, forced, only_forced):
     libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
   if '-nostartfiles' not in args:
-    if settings.USE_PTHREADS:
+    if settings.SHARED_MEMORY:
       add_library('crtbegin')
 
     if settings.STANDALONE_WASM:

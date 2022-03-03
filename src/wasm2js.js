@@ -74,7 +74,7 @@ WebAssembly = {
       then: function(ok) {
         var module = new WebAssembly.Module(binary);
         ok({
-#if USE_PTHREADS
+#if SHARED_MEMORY
           'module': module,
 #endif
           'instance': new WebAssembly.Instance(module)

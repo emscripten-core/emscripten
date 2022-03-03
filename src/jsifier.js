@@ -285,12 +285,14 @@ function ${name}(${args}) {
           }
           const sync = proxyingMode === 'sync';
           assert(typeof original == 'function');
-          contentText = modifyFunction(snippet, (name, args, body) => `
+          if (USE_PTHREADS) {
+            contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   if (ENVIRONMENT_IS_PTHREAD)
     return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
   ${body}
 }\n`);
+          }
           proxiedFunctionTable.push(finalName);
         } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
           contentText = modifyFunction(snippet, (name, args, body) => `

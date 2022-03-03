@@ -308,7 +308,7 @@ def setup_environment_settings():
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
     exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.USE_PTHREADS:
+  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.SHARED_MEMORY:
     exit_with_error('When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
 
 
@@ -829,6 +829,9 @@ def get_cflags(user_args):
 
   if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
+
+  if settings.SHARED_MEMORY:
+    cflags.append('-D__EMSCRIPTEN_SHARED_MEMORY__=1')
 
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -1432,7 +1435,10 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
-  if settings.USE_PTHREADS and '-pthread' not in newargs:
+  if settings.USE_PTHREADS:
+    settings.SHARED_MEMORY = 1
+
+  if settings.SHARED_MEMORY and '-pthread' not in newargs:
     newargs += ['-pthread']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
@@ -1687,7 +1693,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.USE_PTHREADS and \
+  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting(user_settings, 'TEXTDECODER', 2)
 
@@ -2223,7 +2229,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.LEGALIZE_JS_FFI = 0
 
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
-  if settings.USE_PTHREADS or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
 
   if settings.WASM_BIGINT:
@@ -2258,9 +2264,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # can use a .mem file like asm.js used to.
     # generally we follow what the options tell us to do (which is to use
     # a .mem file in most cases, since it is binary & compact). however, for
-    # pthreads we must keep the memory segments in the wasm as they will be
-    # passive segments which the .mem format cannot handle.
-    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.USE_PTHREADS
+    # shared memory builds we must keep the memory segments in the wasm as
+    # they will be passive segments which the .mem format cannot handle.
+    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
   else:
     # wasm includes the mem init in the wasm binary. The exception is
     # wasm2js, which behaves more like js.
