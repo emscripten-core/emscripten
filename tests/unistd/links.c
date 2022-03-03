@@ -22,8 +22,6 @@ int main() {
     FS.symlink('../test/../there!', 'link');
     FS.writeFile('file', 'test');
     FS.mkdir('folder');
-
-    FS.symlink("linkX/inside","/linkX");
   );
 
   char* files[] = {"link", "file", "folder"};
@@ -86,6 +84,9 @@ int main() {
 
   // FS.lookupPath should notice the symlink loop and return ELOOP,
   // not go into an infinite recurse.
+  EM_ASM(
+    FS.symlink("linkX/inside","/linkX");
+  );
   int result = access("/linkX", F_OK);
   assert(result == -1);
   assert(errno == ELOOP);
