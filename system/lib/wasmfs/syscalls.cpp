@@ -351,7 +351,7 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile->locked().getFile(), buffer);
 }
 
-static __wasi_fd_t doOpen(char* pathname,
+static __wasi_fd_t doOpen(path::ParsedParent parsed,
                           long flags,
                           mode_t mode,
                           backend_t backend = NullBackend) {
@@ -366,11 +366,10 @@ static __wasi_fd_t doOpen(char* pathname,
     ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
                  O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
-  auto parsedParent = path::parseParent(pathname);
-  if (auto err = parsedParent.getError()) {
+  if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childName] = parsedParent.getParentChild();
+  auto& [parent, childName] = parsed.getParentChild();
   if (childName.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
@@ -385,6 +384,11 @@ static __wasi_fd_t doOpen(char* pathname,
       // If O_DIRECTORY is also specified, still create a regular file:
       // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
       if (!(flags & O_CREAT)) {
+        return -ENOENT;
+      }
+
+      // Inserting into an unlinked directory is not allowed.
+      if (!lockedParent.getParent()) {
         return -ENOENT;
       }
 
@@ -436,18 +440,27 @@ static __wasi_fd_t doOpen(char* pathname,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(pathname, O_CREAT, mode, backend);
+  return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
-  // Since mode is optional, mode is specified using varargs.
+long __syscall_open(long path, long flags, ...) {
   mode_t mode = 0;
-  va_list vl;
-  va_start(vl, flags);
-  mode = va_arg(vl, int);
-  va_end(vl);
+  va_list v1;
+  va_start(v1, flags);
+  mode = va_arg(v1, int);
+  va_end(v1);
 
-  return doOpen((char*)pathname, flags, mode);
+  return doOpen(path::parseParent((char*)path), flags, mode);
+}
+
+long __syscall_openat(long dirfd, long path, long flags, ...) {
+  mode_t mode = 0;
+  va_list v1;
+  va_start(v1, flags);
+  mode = va_arg(v1, int);
+  va_end(v1);
+
+  return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
 static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
@@ -628,15 +641,15 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-// This enum specifies whether rmdir or unlink is being performed.
-enum class UnlinkMode { Rmdir, Unlink };
-
-static long doUnlink(char* path, UnlinkMode unlinkMode) {
+long __syscall_unlinkat(long dirfd, long path, long flags) {
+  if (flags != 0 && flags != AT_REMOVEDIR) {
+    return -EINVAL;
+  }
   // It is invalid for rmdir paths to end in ".", but we need to distinguish
   // this case from the case of `parseParent` returning (root, '.') when parsing
   // "/", so we need to find the invalid "/." manually.
-  if (unlinkMode == UnlinkMode::Rmdir) {
-    std::string_view p(path);
+  if (flags == AT_REMOVEDIR) {
+    std::string_view p((char*)path);
     // Ignore trailing '/'.
     while (!p.empty() && p.back() == '/') {
       p.remove_suffix(1);
@@ -645,7 +658,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
       return -EINVAL;
     }
   }
-  auto parsed = path::parseParent(path);
+  auto parsed = path::parseParent((char*)path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -663,7 +676,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
 
   auto lockedFile = file->locked();
   if (auto dir = file->dynCast<Directory>()) {
-    if (unlinkMode == UnlinkMode::Unlink) {
+    if (flags != AT_REMOVEDIR) {
       return -EISDIR;
     }
     // A directory can only be removed if it has no entries.
@@ -672,7 +685,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     }
   } else {
     // A normal file or symlink.
-    if (unlinkMode == UnlinkMode::Rmdir) {
+    if (flags == AT_REMOVEDIR) {
       return -ENOTDIR;
     }
   }
@@ -690,11 +703,11 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
 }
 
 long __syscall_rmdir(long path) {
-  return doUnlink((char*)path, UnlinkMode::Rmdir);
+  return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
 long __syscall_unlink(long path) {
-  return doUnlink((char*)path, UnlinkMode::Unlink);
+  return __syscall_unlinkat(AT_FDCWD, path, 0);
 }
 
 long __syscall_getdents64(long fd, long dirp, long count) {
@@ -711,34 +724,29 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   }
   auto lockedOpenFile = openFile->locked();
 
-  auto directory = lockedOpenFile.getFile()->dynCast<Directory>();
-  if (!directory) {
+  auto dir = lockedOpenFile.getFile()->dynCast<Directory>();
+  if (!dir) {
     return -ENOTDIR;
   }
-  auto lockedDir = directory->locked();
+  auto lockedDir = dir->locked();
 
-  off_t bytesRead = 0;
   // A directory's position corresponds to the index in its entries vector.
   int index = lockedOpenFile.getPosition();
 
   // In the root directory, ".." refers to itself.
-  auto dotdot = lockedOpenFile.getFile() == wasmFS.getRootDirectory()
-                  ? lockedOpenFile.getFile()
-                  : lockedDir.getParent();
+  auto parent = lockedDir.getParent();
 
-  // If the directory is unlinked then the parent pointer should be null.
-  // TODO: verify that this should be an error.
-  if (!dotdot) {
-    return -ENOENT;
+  // If the directory is unlinked then it should report being completely empty,
+  // but otherwise there is always "." and "..".
+  std::vector<Directory::Entry> entries;
+  if (parent) {
+    entries = {{".", File::DirectoryKind, dir->getIno()},
+               {"..", File::DirectoryKind, parent->getIno()}};
   }
-
-  // There are always two hardcoded directories "." and ".."
-  std::vector<Directory::Entry> entries = {
-    {".", File::DirectoryKind, directory->getIno()},
-    {"..", File::DirectoryKind, dotdot->getIno()}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
+  off_t bytesRead = 0;
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
     auto& entry = entries[index];
