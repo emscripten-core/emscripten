@@ -10,6 +10,8 @@
 #ifndef REPORT_RESULT_H_
 #define REPORT_RESULT_H_
 
+#ifndef __ASSEMBLER__ // Emit this file only to C/C++ language headers and not when preprocessing .S files
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +35,8 @@ void _MaybeReportResult(int result, int sync);
   #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
   #define MAYBE_REPORT_RESULT(result) _MaybeReportResult((result), 0)
   #define MAYBE_REPORT_RESULT_SYNC(result) _MaybeReportResult((result), 1)
+#endif
+
 #endif
 
 #endif // REPORT_RESULT_H_
