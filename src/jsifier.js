@@ -279,7 +279,7 @@ function ${name}(${args}) {
       if (isFunction) {
         // Emit the body of a JS library function.
         const proxyingMode = LibraryManager.library[ident + '__proxy'];
-        if (USE_PTHREADS && proxyingMode) {
+        if (SHARED_MEMORY && proxyingMode) {
           if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
             throw new Error(`Invalid proxyingMode ${ident}__proxy: '${proxyingMode}' specified!`);
           }
