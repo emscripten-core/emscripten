@@ -314,7 +314,7 @@ class Library:
       if ext in ('.s', '.S'):
         # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
         # assembly files that define wasm globals.
-        cmd = list(filter(lambda arg: arg != '-g', cmd))
+        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
