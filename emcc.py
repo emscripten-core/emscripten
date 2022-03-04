@@ -882,13 +882,6 @@ def get_cflags(user_args):
   # data and other nice fixes.
   cflags += ['-D_LIBCPP_ABI_VERSION=2']
 
-  if not settings.USE_PTHREADS:
-    # There is no point in using thread safe static inits in code that cannot
-    # be part of a multi-threaded program.
-    # TODO(sbc): Remove this if/when upstream clang takes care of this
-    # automatically: https://reviews.llvm.org/D118571.
-    cflags += ['-fno-threadsafe-statics']
-
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
