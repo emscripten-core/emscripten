@@ -121,7 +121,7 @@ if (Module['ENVIRONMENT']) {
 var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 #endif
 
-#if USE_PTHREADS && !MODULARIZE
+#if SHARED_MEMORY && !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 #if EXPORT_ES6

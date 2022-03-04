@@ -35,6 +35,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
+from common import also_with_minimal_runtime
 from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
@@ -11771,3 +11772,12 @@ void foo() {}
     self.assertNotContained('This error should not be present!', err)
     self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
     self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
+
+  # Tests building with -sSHARED_MEMORY
+  @also_with_minimal_runtime
+  def test_shared_memory(self):
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '0', emcc_args=[])
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sSHARED_MEMORY'])
+#    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sWASM_WORKERS'])
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-pthread'])

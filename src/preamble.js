@@ -48,10 +48,10 @@ if (typeof WebAssembly != 'object') {
 
 var wasmMemory;
 
-#if USE_PTHREADS
+#if SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
-#endif // USE_PTHREADS
+#endif // SHARED_MEMORY
 
 //========================================
 // Runtime essentials
@@ -1079,7 +1079,8 @@ function createWasm() {
     // is in charge of programatically exporting them on the global object.
     exportAsmFunctions(exports);
 #endif
-#if USE_PTHREADS
+
+#if USE_PTHREADS// || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
@@ -1131,7 +1132,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS || RELOCATABLE
+#if SHARED_MEMORY || RELOCATABLE
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1252,6 +1253,7 @@ function createWasm() {
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this path.
   if (Module['instantiateWasm']) {
 #if USE_OFFSET_CONVERTER
 #if ASSERTIONS && USE_PTHREADS

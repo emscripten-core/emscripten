@@ -287,7 +287,7 @@ def lld_flags_for_executable(external_symbols):
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
 
-  if settings.USE_PTHREADS:
+  if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')
 
   if settings.MEMORY64:

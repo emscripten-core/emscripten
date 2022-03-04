@@ -57,7 +57,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 
 
 function updateGlobalBufferAndViews(b) {
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && SHARED_MEMORY
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
   buffer = b;
@@ -84,10 +84,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   wasmMemory = new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
-#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
+#if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
     , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
 #endif
-#if USE_PTHREADS
+#if SHARED_MEMORY
     , 'shared': true
 #endif
     });
