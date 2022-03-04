@@ -85,6 +85,7 @@ Pthreads and Wasm Workers share several similarities:
 
  * Both can use emscripten_atomic_* Atomics API,
  * Both can use GCC __sync_* Atomics API,
+ * Both can use C11 and C++11 Atomics APIs,
  * Both types of threads have a local stack.
  * Both types of threads have thread-local storage (TLS) support via ``thread_local`` (C++11),
    ``_Thread_local`` (C11) and ``__thread`` (GNU11) keywords.
