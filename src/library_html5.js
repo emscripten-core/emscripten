@@ -2416,11 +2416,17 @@ var LibraryHTML5 = {
   },
 
 #if USE_PTHREADS
-  emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '$findCanvasEventTarget'],
+  emscripten_set_canvas_element_size_calling_thread__deps: [
+    '$JSEvents',
+#if OFFSCREENCANVAS_SUPPORT
+    'emscripten_set_offscreencanvas_size_on_target_thread',
+#endif
+    '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size_calling_thread: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
+#if OFFSCREENCANVAS_SUPPORT
     if (canvas.canvasSharedPtr) {
       // N.B. We hold the canvasSharedPtr info structure as the authoritative source for specifying the size of a canvas
       // since the actual canvas size changes are asynchronous if the canvas is owned by an OffscreenCanvas on another thread.
@@ -2430,6 +2436,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('canvas.canvasSharedPtr', 0, 'width', 'i32') }}};
       {{{ makeSetValue('canvas.canvasSharedPtr', 4, 'height', 'i32') }}};
     }
+#endif
 
     if (canvas.offscreenCanvas || !canvas.controlTransferredOffscreen) {
       if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
@@ -2453,10 +2460,12 @@ var LibraryHTML5 = {
         // but this can be quite disruptive.
         canvas.GLctxObject.GLctx.viewport(0, 0, width, height);
       }
+#if OFFSCREENCANVAS_SUPPORT
     } else if (canvas.canvasSharedPtr) {
       var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, 'i32') }}};
       _emscripten_set_offscreencanvas_size_on_target_thread(targetThread, target, width, height);
       return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}}; // This will have to be done asynchronously
+#endif
     } else {
 #if GL_DEBUG
       err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
@@ -2468,6 +2477,10 @@ var LibraryHTML5 = {
 #endif
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
+
+#if OFFSCREENCANVAS_SUPPORT
+  emscripten_set_offscreencanvas_size__sig: 'iiii',
+  emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
   emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
@@ -2493,6 +2506,15 @@ var LibraryHTML5 = {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
     _emscripten_set_offscreencanvas_size_on_target_thread_js(targetThread, targetCanvas, width, height);
   },
+#else
+  emscripten_set_offscreencanvas_size__sig: 'iiii',
+  emscripten_set_offscreencanvas_size: function(target, width, height) {
+#if ASSERTIONS
+    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
+#endif
+    return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+  },
+#endif
 
   emscripten_set_canvas_element_size_main_thread__proxy: 'sync',
   emscripten_set_canvas_element_size_main_thread__sig: 'iiii',
@@ -2555,6 +2577,7 @@ var LibraryHTML5 = {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
+#if OFFSCREENCANVAS_SUPPORT
     if (canvas.canvasSharedPtr) {
       // N.B. Reading the size of the Canvas takes priority from our shared state structure, which is not the actual size.
       // However if is possible that there is a canvas size set event pending on an OffscreenCanvas owned by another thread,
@@ -2563,7 +2586,9 @@ var LibraryHTML5 = {
       var h = {{{ makeGetValue('canvas.canvasSharedPtr', 4, 'i32') }}};
       {{{ makeSetValue('width', 0, 'w', 'i32') }}};
       {{{ makeSetValue('height', 0, 'h', 'i32') }}};
-    } else if (canvas.offscreenCanvas) {
+    } else
+#endif
+    if (canvas.offscreenCanvas) {
       {{{ makeSetValue('width', 0, 'canvas.offscreenCanvas.width', 'i32') }}};
       {{{ makeSetValue('height', 0, 'canvas.offscreenCanvas.height', 'i32') }}};
     } else if (!canvas.controlTransferredOffscreen) {
