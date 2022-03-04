@@ -470,6 +470,7 @@ long __syscall_open(long path, long flags, ...) {
   return doOpen(path::parseParent((char*)path), flags, mode);
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_openat(long dirfd, long path, long flags, ...) {
   mode_t mode = 0;
   va_list v1;
@@ -534,6 +535,7 @@ int wasmfs_create_directory(char* path, long mode, backend_t backend) {
   return doMkdir(path::parseParent(path), mode, backend);
 }
 
+// TODO: Test this.
 long __syscall_mkdirat(long dirfd, long path, long mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
 }
@@ -674,6 +676,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_unlinkat(long dirfd, long path, long flags) {
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
@@ -816,6 +819,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   return bytesRead;
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_renameat(long olddirfd,
                         long oldpath,
                         long newdirfd,
@@ -931,6 +935,7 @@ long __syscall_rename(long oldpath, long newpath) {
   return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_symlinkat(long target, long newdirfd, long linkpath) {
   auto parsed = path::parseParent((char*)linkpath, newdirfd);
   if (auto err = parsed.getError()) {
@@ -959,6 +964,7 @@ long __syscall_symlink(long target, long linkpath) {
   return __syscall_symlinkat(target, AT_FDCWD, linkpath);
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
   auto parsed = path::parseFile((char*)path, dirfd);
   if (auto err = parsed.getError()) {
@@ -978,6 +984,7 @@ long __syscall_readlink(long path, long buf, size_t bufSize) {
   return __syscall_readlinkat(AT_FDCWD, path, buf, bufSize);
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_utimensat(int dirFD,
                          char* path,
                          const struct timespec times[2],
@@ -1007,6 +1014,7 @@ long __syscall_utimensat(int dirFD,
   return 0;
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_fchmodat(long dirfd, long path, long mode, ...) {
   int flags = 0;
   va_list v1;
@@ -1031,6 +1039,7 @@ long __syscall_chmod(long path, long mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
+// TODO: Test this with non-AT_FDCWD values.
 long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
