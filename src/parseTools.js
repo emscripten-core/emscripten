@@ -834,9 +834,9 @@ Please update to new syntax.`);
     if (DYNCALLS) {
       if (!hasExportedFunction(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
-          return `(function() { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+          return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
         } else {
-          return `(function() { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+          return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
         }
       }
       return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
@@ -848,9 +848,9 @@ Please update to new syntax.`);
   if (DYNCALLS) {
     if (!hasExportedFunction(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
-        return `(function() { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+        return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
       } else {
-        return `(function() { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+        return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
       }
     }
 
