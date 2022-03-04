@@ -522,27 +522,30 @@ def cxx_to_c_compiler(cxx):
   return os.path.join(dirname, basename)
 
 
-def get_binaryen_passes():
+def should_run_binaryen_optimizer():
   # run the binaryen optimizer in -O2+. in -O0 we don't need it obviously, while
   # in -O1 we don't run it as the LLVM optimizer has been run, and it does the
   # great majority of the work; not running the binaryen optimizer in that case
   # keeps -O1 mostly-optimized while compiling quickly and without rewriting
   # DWARF etc.
-  run_binaryen_optimizer = settings.OPT_LEVEL >= 2
+  return settings.OPT_LEVEL >= 2
 
+
+def get_binaryen_passes():
   passes = []
+  optimizing = should_run_binaryen_optimizer()
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
-  if run_binaryen_optimizer:
+  if optimizing:
     passes += ['--post-emscripten']
-  if run_binaryen_optimizer:
+  if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass)
-  if run_binaryen_optimizer and settings.GLOBAL_BASE >= 1024:
+  if optimizing and settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
@@ -595,7 +598,7 @@ def get_binaryen_passes():
   # the one exception is dynamic linking of a side module: the main module is ok
   # as it is loaded first, but the side module may be assigned memory that was
   # previously used.
-  if run_binaryen_optimizer and not settings.SIDE_MODULE:
+  if optimizing and not settings.SIDE_MODULE:
     passes += ['--zero-filled-memory']
 
   if settings.BINARYEN_EXTRA_PASSES:
@@ -3289,6 +3292,9 @@ def phase_binaryen(target, options, wasm_target):
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY:
       intermediate_debug_info -= 1
+    if intermediate_debug_info and should_run_binaryen_optimizer():
+      # See https://github.com/emscripten-core/emscripten/issues/15269
+      diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     building.run_wasm_opt(wasm_target,
                           wasm_target,
                           args=passes,

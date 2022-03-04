@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.8
 -----
+- A warning (limited-postlink-optimizations) was added that gets shown when
+  binaryen optimizations are limited due to DWARF information being requested.
+  Several binaryen passed are not compatible with the preservation of DWARF
+  information. (#16428)
 
 3.1.7 - 05/01/2022
 -------------------
