@@ -1,1 +1,3 @@
-// empty
+// Set the LIBCPP ABI version 2 under emscripten so that we get nicely aligned string
+// data and other nice fixes.
+#define _LIBCPP_ABI_VERSION 2

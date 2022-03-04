@@ -878,10 +878,6 @@ def get_cflags(user_args):
     for a in building.llvm_backend_args():
       cflags += ['-mllvm', a]
 
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  cflags += ['-D_LIBCPP_ABI_VERSION=2']
-
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
