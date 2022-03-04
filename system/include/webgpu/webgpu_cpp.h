@@ -4,7 +4,7 @@
 #include "webgpu/webgpu.h"
 
 #include <type_traits>
-#include <math.h>
+#include <cmath>
 
 namespace wgpu {
 
