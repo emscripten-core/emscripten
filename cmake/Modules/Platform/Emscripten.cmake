@@ -108,7 +108,7 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 endif()
 
 if ("${CMAKE_STRIP}" STREQUAL "")
-  set(CMAKE_STRIP "${EMSCRIPTEN_ROOT_PATH}/llvm-strip" CACHE FILEPATH "Emscripten compatible strip command"))
+  set(CMAKE_STRIP "${EMSCRIPTEN_ROOT_PATH}/llvm-strip" CACHE FILEPATH "Emscripten compatible strip command")
 endif()
 
 if ("${CMAKE_C_COMPILER_AR}" STREQUAL "")
