@@ -230,6 +230,20 @@ def with_env_modify(updates):
   return decorated
 
 
+def also_with_minimal_runtime(f):
+  assert callable(f)
+
+  def metafunc(self, with_minimal_runtime):
+    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if with_minimal_runtime:
+      self.set_setting('MINIMAL_RUNTIME', 1)
+    f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'minimal_runtime': (True,)}
+  return metafunc
+
+
 def ensure_dir(dirname):
   dirname = Path(dirname)
   dirname.mkdir(parents=True, exist_ok=True)

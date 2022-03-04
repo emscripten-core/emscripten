@@ -1080,7 +1080,7 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 
-#if SHARED_MEMORY
+#if USE_PTHREADS// || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.

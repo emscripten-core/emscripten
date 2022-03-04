@@ -104,20 +104,6 @@ def also_with_wasm2js(f):
   return metafunc
 
 
-def also_with_minimal_runtime(f):
-  assert callable(f)
-
-  def metafunc(self, with_minimal_runtime):
-    assert self.get_setting('MINIMAL_RUNTIME') is None
-    if with_minimal_runtime:
-      self.set_setting('MINIMAL_RUNTIME', 1)
-    f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'minimal_runtime': (True,)}
-  return metafunc
-
-
 def shell_with_script(shell_file, output_file, replacement):
   shell = read_file(path_from_root('src', shell_file))
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
@@ -5096,14 +5082,6 @@ window.close = function() {
 
   def test_system(self):
     self.btest_exit(test_file('system.c'))
-
-  # Tests building with -sSHARED_MEMORY
-  @also_with_minimal_runtime
-  def test_shared_memory(self):
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='0', args=[])
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sSHARED_MEMORY'])
-#    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sWASM_WORKERS'])
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-pthread'])
 
   @no_firefox('no 4GB support yet')
   @require_v8
