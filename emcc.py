@@ -2028,12 +2028,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     default_setting(user_settings, 'ABORTING_MALLOC', 0)
 
   if settings.USE_PTHREADS:
-    if settings.USE_PTHREADS == 2:
-      exit_with_error('USE_PTHREADS=2 is no longer supported')
     if settings.ALLOW_MEMORY_GROWTH:
       diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-    if settings.BUILD_AS_WORKER:
-      exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     # Functions needs to be exported from the module since they are used in worker.js
     settings.REQUIRED_EXPORTS += [
@@ -2144,9 +2140,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
         diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
       elif settings.LINKABLE:
         diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
-
-    if settings.PROXY_TO_WORKER:
-      exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
   elif settings.PROXY_TO_PTHREAD:
     exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
@@ -2220,8 +2213,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.STANDALONE_WASM:
-    if settings.USE_PTHREADS:
-      exit_with_error('STANDALONE_WASM does not support pthreads yet')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
     # the wasm must be runnable without the JS, so there cannot be anything that
@@ -2242,8 +2233,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM2JS:
       # code size/memory and correctness issues TODO
       exit_with_error('EVAL_CTORS is not compatible with wasm2js yet')
-    elif settings.USE_PTHREADS:
-      exit_with_error('EVAL_CTORS is not compatible with pthreads yet (passive segments)')
     elif settings.RELOCATABLE:
       exit_with_error('EVAL_CTORS is not compatible with relocatable yet (movable segments)')
     elif settings.ASYNCIFY:

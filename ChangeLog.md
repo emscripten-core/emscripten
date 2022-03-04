@@ -23,6 +23,9 @@ See docs/process.md for more on how version tagging works.
 - Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
   settings.  The new wasmfs filesystem is far enough along that it seems clear
   that ASMFS will not need to be revived.
+- Fix deadlock in `munmap` that was introduced in 3.1.5.  The deadlock would
+  occur in multi-threaded programs when a partial unmap was requested (which
+  emscripten does not support). (#16413)
 
 3.1.6 - 02/24/2022
 ------------------

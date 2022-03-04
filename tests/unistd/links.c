@@ -82,5 +82,19 @@ int main() {
 #endif
   errno = 0;
 
+#ifndef WASMFS
+  // FS.lookupPath should notice the symlink loop and return ELOOP, not go into
+  // an infinite recurse.
+  //
+  // This test doesn't work in wasmfs -- probably because access sees the
+  // symlink and returns true without bothering to chase the symlink
+  symlink("./linkX/inside","./linkX");
+  int result = access("linkX", F_OK);
+  assert(result == -1);
+  printf("errno: %d\n", errno);
+  assert(errno == ELOOP);
+  errno = 0;
+#endif
+
   return 0;
 }

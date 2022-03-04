@@ -46,12 +46,15 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 
-var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
-var wasmMemory, buffer, wasmTable;
-
-#if SUPPORT_BIG_ENDIAN
-var HEAP_DATA_VIEW;
+var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
+#if WASM_BIGINT
+  HEAP64, HEAPU64,
 #endif
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW,
+#endif
+  wasmMemory, buffer, wasmTable;
+
 
 function updateGlobalBufferAndViews(b) {
 #if ASSERTIONS && SHARED_MEMORY
@@ -69,21 +72,20 @@ function updateGlobalBufferAndViews(b) {
   HEAPU32 = new Uint32Array(b);
   HEAPF32 = new Float32Array(b);
   HEAPF64 = new Float64Array(b);
+#if WASM_BIGINT
+  HEAP64 = new BigInt64Array(b);
+  HEAPU64 = new BigUint64Array(b);
+#endif
 }
 
 #if IMPORTED_MEMORY
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB
-  var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
-#else
-  var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
-#endif
   wasmMemory = new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
-    , 'maximum': wasmMaximumMemory
+    , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
 #endif
 #if SHARED_MEMORY
     , 'shared': true
