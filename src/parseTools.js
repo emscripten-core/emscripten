@@ -442,6 +442,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  *             'null' means, in the context of SAFE_HEAP, that we should accept all types;
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
  * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
+ * @param {bool} unsigned Indicating signed-ness
  * @param {bool} ignore: legacy, ignored.
  * @param {number} align: TODO
  * @param {bool} noSafe: TODO
@@ -449,17 +450,17 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, unsigned, ignore, align, noSafe, sep = ';', forcedAlign) {
   assert(!forcedAlign, 'forcedAlign is no longer supported');
 
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, unsigned, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, unsigned, ignore, align, noSafe, ',') + ')';
   } else if (!WASM_BIGINT && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, unsigned, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, unsigned, ignore, align, noSafe, ',') + ')';
   }
 
   const bits = getBits(type);
@@ -473,17 +474,17 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
           ret += 'tempBigInt=' + value + sep;
-          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2, noSafe) + sep;
-          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2, noSafe);
+          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, unsigned, ignore, 2, noSafe) + sep;
+          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, unsigned, ignore, 2, noSafe);
         } else {
           ret += 'tempBigInt=' + value + sep;
           for (let i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1, noSafe);
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, unsigned, ignore, 1, noSafe);
             if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8, noSafe, null, true) + sep;
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, unsigned, ignore, 8, noSafe, null, true) + sep;
         ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
       }
       return ret;
@@ -497,7 +498,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     }
   }
 
-  const slab = getHeapForType(type);
+  const slab = getHeapForType(type, unsigned);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
     value = `BigInt(${value})`;
   }
