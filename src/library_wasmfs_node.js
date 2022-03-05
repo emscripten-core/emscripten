@@ -30,22 +30,24 @@ mergeInto(LibraryManager.library, {
   $wasmfsNodeLstat: function(path) {
     let stat;
     try {
-      return wasmfsNodeFixStat(fs.lstatSync(path));
+      stat = fs.lstatSync(path);
     } catch (e) {
       if (!e.code) throw e;
       return undefined;
     }
+    return wasmfsNodeFixStat(stat);
   },
 
   $wasmfsNodeFstat__deps: ['$wasmfsNodeFixStat'],
   $wasmfsNodeFstat: function(fd) {
     let stat;
     try {
-      return wasmfsNodeFixStat(fs.fstatSync(fd));
+      stat = fs.fstatSync(fd);
     } catch (e) {
       if (!e.code) throw e;
       return undefined;
     }
+    return wasmfsNodeFixStat(stat);
   },
 
   _wasmfs_node_readdir__deps: ['$wasmfsNodeConvertNodeCode'],

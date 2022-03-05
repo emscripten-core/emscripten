@@ -130,9 +130,6 @@ def also_with_wasmfs(f):
   return metafunc
 
 
-WASMFS_BACKEND_MAP = {'': 'WASMFS_MEMORY_BACKEND',
-                      'node': 'WASMFS_NODE_BACKEND'}
-
 def wasmfs_all_backends(f):
   def metafunc(self, backend):
     self.set_setting('WASMFS')
@@ -140,13 +137,14 @@ def wasmfs_all_backends(f):
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
-  metafunc._parameterize = {k: (v,) for k, v in WASMFS_BACKEND_MAP.items()}
+  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
+                            'node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
 def also_with_wasmfs_all_backends(f):
-  def metafunc(self, wasmfs, backend):
-    if wasmfs:
+  def metafunc(self, backend):
+    if backend:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
       self.emcc_args.append(f'-D{backend}')
@@ -154,9 +152,9 @@ def also_with_wasmfs_all_backends(f):
     else:
       f(self)
 
-  metafunc._parameterize = {'' : (False, None)}
-  for k, v in WASMFS_BACKEND_MAP.items():
-    metafunc._parameterize[f'wasmfs_{k}' if k else 'wasmfs'] = (True, v)
+  metafunc._parameterize = {'': (None,),
+                            'wasmfs': ('WASMFS_MEMORY_BACKEND',),
+                            'wasmfs_node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
