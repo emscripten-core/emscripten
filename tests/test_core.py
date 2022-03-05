@@ -8130,6 +8130,39 @@ Module['onRuntimeInitialized'] = function() {
       }
     ''', '42 42', header='void my_sleep(int);')
 
+  @needs_dylink
+  @no_memory64('TODO: asyncify for wasm64')
+  def test_asyncify_dlfcn(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.emcc_args += ['-sASYNCIFY_IGNORE_INDIRECT=0']
+    self.dylink_test(r'''
+      #include <iostream>
+      #include <dlfcn.h>
+
+      typedef int (*func_t)();
+
+      int main(int argc, char **argv)
+      {
+        void *_dlHandle = dlopen("liblib.so", RTLD_NOW | RTLD_LOCAL);
+        func_t my_func = (func_t)dlsym(_dlHandle, "side_module_run");
+        printf("%d\n", my_func());
+        return 0;
+      }
+    ''', r'''
+      #include <iostream>
+      #include <emscripten/emscripten.h>
+
+      extern "C"
+      {
+        int side_module_run()
+        {
+          emscripten_sleep(1000);
+          return 42;
+        }
+      }
+    ''', '42', need_reverse=False)
+
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
