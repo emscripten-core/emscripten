@@ -43,7 +43,17 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
 
 public:
   OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
-    : position(position), flags(flags), file(file) {}
+    : position(position), flags(flags), file(file) {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().open();
+    }
+  }
+
+  ~OpenFileState() {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().close();
+    }
+  }
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;

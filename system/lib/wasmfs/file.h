@@ -106,6 +106,13 @@ protected:
 };
 
 class DataFile : public File {
+  // Notify the backend when this file is opened or closed. The backend is
+  // responsible for keeping files accessible as long as they are open, even if
+  // they are unlinked.
+  // TODO: Report errors.
+  virtual void open() = 0;
+  virtual void close() = 0;
+
   // TODO: Allow backends to override the version of read with multiple iovecs
   // to make it possible to implement pipes. See #16269.
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
@@ -234,6 +241,9 @@ class DataFile::Handle : public File::Handle {
 public:
   Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
   Handle(Handle&&) = default;
+
+  void open() { getFile()->open(); }
+  void close() { getFile()->close(); }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);

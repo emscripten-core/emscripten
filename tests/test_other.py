@@ -130,14 +130,33 @@ def also_with_wasmfs(f):
   return metafunc
 
 
+WASMFS_BACKEND_MAP = {'': 'WASMFS_MEMORY_BACKEND',
+                      'node': 'WASMFS_NODE_BACKEND'}
+
 def wasmfs_all_backends(f):
   def metafunc(self, backend):
     self.set_setting('WASMFS')
+    self.emcc_args.append('-DWASMFS')
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
-  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
-                            'node': ('WASMFS_NODE_BACKEND',)}
+  metafunc._parameterize = {k: (v,) for k, v in WASMFS_BACKEND_MAP.items()}
+  return metafunc
+
+
+def also_with_wasmfs_all_backends(f):
+  def metafunc(self, wasmfs, backend):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      self.emcc_args.append(f'-D{backend}')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'' : (False, None)}
+  for k, v in WASMFS_BACKEND_MAP.items():
+    metafunc._parameterize[f'wasmfs_{k}' if k else 'wasmfs'] = (True, v)
   return metafunc
 
 
@@ -4100,7 +4119,7 @@ int main() {
     self.run_process([EMXX, 'src.cpp'])
     self.assertContained('read: 0\nfile size is 104\n', self.run_js('a.out.js'))
 
-  @also_with_wasmfs
+  @also_with_wasmfs_all_backends
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 

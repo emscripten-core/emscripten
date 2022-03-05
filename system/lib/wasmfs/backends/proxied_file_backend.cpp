@@ -21,6 +21,20 @@ class ProxiedFile : public DataFile {
   emscripten::SyncToAsync& proxy;
   std::shared_ptr<DataFile> baseFile;
 
+  void open() override {
+    proxy.invoke([&](auto resume) {
+      baseFile->locked().open();
+      (*resume)();
+    });
+  }
+
+  void close() override {
+    proxy.invoke([&](auto resume) {
+      baseFile->locked().close();
+      (*resume)();
+    });
+  }
+
   // Read and write operations are forwarded via the proxying mechanism.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     __wasi_errno_t result;
