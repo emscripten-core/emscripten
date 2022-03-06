@@ -881,17 +881,6 @@ def get_cflags(user_args):
     for a in building.llvm_backend_args():
       cflags += ['-mllvm', a]
 
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  cflags += ['-D_LIBCPP_ABI_VERSION=2']
-
-  if not settings.USE_PTHREADS:
-    # There is no point in using thread safe static inits in code that cannot
-    # be part of a multi-threaded program.
-    # TODO(sbc): Remove this if/when upstream clang takes care of this
-    # automatically: https://reviews.llvm.org/D118571.
-    cflags += ['-fno-threadsafe-statics']
-
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
@@ -2032,12 +2021,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     default_setting(user_settings, 'ABORTING_MALLOC', 0)
 
   if settings.USE_PTHREADS:
-    if settings.USE_PTHREADS == 2:
-      exit_with_error('USE_PTHREADS=2 is no longer supported')
     if settings.ALLOW_MEMORY_GROWTH:
       diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-    if settings.BUILD_AS_WORKER:
-      exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     # Functions needs to be exported from the module since they are used in worker.js
     settings.REQUIRED_EXPORTS += [
@@ -2160,9 +2145,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
         diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
       elif settings.LINKABLE:
         diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
-
-    if settings.PROXY_TO_WORKER:
-      exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
   elif settings.PROXY_TO_PTHREAD:
     exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
@@ -2258,8 +2240,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM2JS:
       # code size/memory and correctness issues TODO
       exit_with_error('EVAL_CTORS is not compatible with wasm2js yet')
-    elif settings.USE_PTHREADS:
-      exit_with_error('EVAL_CTORS is not compatible with pthreads yet (passive segments)')
     elif settings.RELOCATABLE:
       exit_with_error('EVAL_CTORS is not compatible with relocatable yet (movable segments)')
     elif settings.ASYNCIFY:

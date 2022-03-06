@@ -6189,6 +6189,15 @@ void* operator new(size_t size) {
 
     self.do_core_test('test_mmap.c')
 
+  @node_pthreads
+  def test_mmap_pthreads(self):
+    # Same test with threading enabled so give is some basic sanity
+    # checks of the locking on the internal data structures.
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '64mb')
+    self.do_core_test('test_mmap.c')
+
   def test_mmap_file(self):
     for extra_args in [[]]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args

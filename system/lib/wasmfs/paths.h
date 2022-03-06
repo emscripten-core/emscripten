@@ -5,44 +5,72 @@
 
 #pragma once
 
-#include <vector>
+#include <cassert>
+#include <fcntl.h>
+#include <memory>
+#include <string_view>
+#include <variant>
 
 #include "file.h"
 
-namespace wasmfs {
+namespace wasmfs::path {
 
-struct ParsedPath {
-  std::optional<Directory::Handle> parent;
-  std::shared_ptr<File> child;
+// Typically -ENOTDIR or -ENOENT.
+using Error = long;
+
+// The parent directory and the name of an entry within it. The returned string
+// view is either backed by the same memory as the view passed to `parseParent`
+// or is a view into a static string.
+using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
+
+struct ParsedParent {
+private:
+  std::variant<Error, ParentChild> val;
+
+public:
+  ParsedParent(Error err) : val(err) {}
+  ParsedParent(ParentChild pair) : val(pair) {}
+  // Always ok to call, returns 0 if there is no error.
+  long getError() {
+    if (auto* err = std::get_if<Error>(&val)) {
+      assert(*err != 0 && "Unexpected zero error value");
+      return *err;
+    }
+    return 0;
+  }
+  // Call only after checking for an error.
+  ParentChild& getParentChild() {
+    auto* ptr = std::get_if<ParentChild>(&val);
+    assert(ptr && "Unhandled path parsing error!");
+    return *ptr;
+  }
 };
 
-// Call getParsedPath if one needs a locked handle to a parent dir and a
-// shared_ptr to its child file, given a file path.
-// TODO: When locking the directory structure is refactored, parent should be
-// returned as a pointer, similar to child.
-// Will return an empty handle if the parent is not a directory.
-// Will error if the forbiddenAncestor is encountered while processing.
-// If the forbiddenAncestor is encountered, err will be set to EINVAL and
-// an empty parent handle will be returned.
-ParsedPath getParsedPath(std::vector<std::string> pathParts,
-                         long& err,
-                         std::shared_ptr<File> forbiddenAncestor = nullptr,
-                         std::optional<__wasi_fd_t> baseFD = {});
+ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
 
-// Call getDir if one needs a parent directory of a file path.
-// TODO: Remove this when directory structure locking is refactored and use
-// getParsedPath instead. Obtains parent directory of a given pathname.
-// Will return a nullptr if the parent is not a directory. Will error if the
-// forbiddenAncestor is encountered while processing. If the forbiddenAncestor
-// is encountered, err will be set to EINVAL and nullptr will be returned.
-std::shared_ptr<Directory>
-getDir(std::vector<std::string>::iterator begin,
-       std::vector<std::string>::iterator end,
-       long& err,
-       std::shared_ptr<File> forbiddenAncestor = nullptr);
+struct ParsedFile {
+private:
+  std::variant<Error, std::shared_ptr<File>> val;
 
-// Return a vector of the '/'-delimited components of a path. The first
-// element will be "/" iff the path is an absolute path.
-std::vector<std::string> splitPath(char* pathname);
+public:
+  ParsedFile(Error err) : val(err) {}
+  ParsedFile(std::shared_ptr<File> file) : val(std::move(file)) {}
+  // Always ok to call. Returns 0 if there is no error.
+  long getError() {
+    if (auto* err = std::get_if<Error>(&val)) {
+      assert(*err != 0 && "Unexpected zero error value");
+      return *err;
+    }
+    return 0;
+  }
+  // Call only after checking for an error.
+  std::shared_ptr<File>& getFile() {
+    auto* ptr = std::get_if<std::shared_ptr<File>>(&val);
+    assert(ptr && "Unhandled path parsing error!");
+    return *ptr;
+  }
+};
 
-} // namespace wasmfs
+ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
+
+} // namespace wasmfs::path

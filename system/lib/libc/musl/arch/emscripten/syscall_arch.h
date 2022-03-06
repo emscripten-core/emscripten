@@ -101,7 +101,7 @@ long __syscall_unlinkat(long dirfd, long path, long flags);
 long __syscall_renameat(long olddirfd, long oldpath, long newdirfd, long newpath);
 long __syscall_linkat(long olddirfd, long oldpath, long newdirfd, long newpath, long flags);
 long __syscall_symlinkat(long target, long newdirfd, long linkpath);
-long __syscall_readlinkat(long dirfd, long path, long bug, long bufsize);
+long __syscall_readlinkat(long dirfd, long path, long buf, long bufsize);
 long __syscall_fchmodat(long dirfd, long path, long mode, ...);
 long __syscall_faccessat(long dirfd, long path, long amode, long flags);
 long __syscall_pselect6(long nfds, long readfds, long writefds, long exceptfds, long timeout, long sigmaks);

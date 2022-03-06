@@ -314,7 +314,7 @@ class Library:
       if ext in ('.s', '.S'):
         # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
         # assembly files that define wasm globals.
-        cmd = list(filter(lambda arg: arg != '-g', cmd))
+        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
@@ -1139,7 +1139,7 @@ class crtbegin(Library):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and (settings.USE_PTHREADS or settings.WASM_WORKERS)
+    return super().can_use() and settings.SHARED_MEMORY
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1772,7 +1772,7 @@ def get_libs_to_link(args, forced, only_forced):
     libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
   if '-nostartfiles' not in args:
-    if settings.USE_PTHREADS or settings.WASM_WORKERS:
+    if settings.SHARED_MEMORY:
       add_library('crtbegin')
 
     if settings.STANDALONE_WASM:
