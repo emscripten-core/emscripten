@@ -3276,8 +3276,13 @@ LibraryManager.library = {
       var func = callback.func;
       if (typeof func == 'number') {
         if (callback.arg === undefined) {
+          // Run the wasm function ptr with signature 'v'. If no function
+          // with such signature was exported, this call does not need
+          // to be emitted (and would confuse Closure)
           {{{ makeDynCall('v', 'func') }}}();
         } else {
+          // If any function with signature 'vi' was exported, run
+          // the callback with that signature.
           {{{ makeDynCall('vi', 'func') }}}(callback.arg);
         }
       } else {
