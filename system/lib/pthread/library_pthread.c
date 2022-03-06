@@ -177,20 +177,12 @@ void emscripten_async_waitable_close(em_queued_call* call) {
 
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
-extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
 static void _do_call(void* arg) {
   em_queued_call* q = (em_queued_call*)arg;
   // C function pointer
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
-    case EM_PROXIED_PTHREAD_CREATE:
-      q->returnValue.i =
-        __pthread_create_js(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-      break;
-    case EM_PROXIED_CREATE_CONTEXT:
-      q->returnValue.i = emscripten_webgl_create_context(q->args[0].cp, q->args[1].vp);
-      break;
     case EM_PROXIED_RESIZE_OFFSCREENCANVAS:
       q->returnValue.i =
         emscripten_set_canvas_element_size(q->args[0].cp, q->args[1].i, q->args[2].i);

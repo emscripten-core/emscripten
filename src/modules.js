@@ -67,11 +67,6 @@ global.LibraryManager = {
       libraries.push('library_wget.js');
     }
 
-    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
-      libraries.push('library_webgl.js');
-      libraries.push('library_html5_webgl.js');
-    }
-
     if (EMSCRIPTEN_TRACING) {
       libraries.push('library_memoryprofiler.js');
     }
