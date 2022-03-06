@@ -26,6 +26,10 @@ See docs/process.md for more on how version tagging works.
 - Fix deadlock in `munmap` that was introduced in 3.1.5.  The deadlock would
   occur in multi-threaded programs when a partial unmap was requested (which
   emscripten does not support). (#16413)
+- Added new compiler+linker option -sSHARED_MEMORY=1, which enables targeting
+  a shared WebAssembly.Memory. (#16419)
+- Added new API "Wasm Workers", which is an alternative to pthreads for building
+  multithreaded applications, enabled via -sWASM_WORKERS=1 (#12833)
 
 3.1.6 - 02/24/2022
 ------------------
