@@ -1541,5 +1541,13 @@
                 "fragment"
             ]
         }
+    },
+    {
+        "file": "emscripten/nativefs.h",
+        "defines": [
+            "NATIVEFS_SEEK_SET",
+            "NATIVEFS_SEEK_CUR",
+            "NATIVEFS_SEEK_END"
+        ]
     }
 ]

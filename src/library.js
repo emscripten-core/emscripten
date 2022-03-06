@@ -3015,7 +3015,14 @@ LibraryManager.library = {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
 #endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
+#if EMSCRIPTEN_NATIVE_FS
+    if ( code === - 1 ) {
+        var args = 0;
+    }
+    else {
+        var args = readAsmConstArgs(sigPtr, argbuf);
+    }
+#endif
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer

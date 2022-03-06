@@ -742,6 +742,14 @@ If manually bisecting:
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins'
     ])
 
+  def test_nativefs_read(self):
+    src = test_file('browser/nativefs/nativefs_read.c')
+    self.btest_exit(src, args=['-s', 'USE_PTHREADS', '-s', 'EMSCRIPTEN_NATIVE_FS', '-s', 'PTHREAD_POOL_SIZE'])
+
+  def test_nativefs_seek(self):
+    src = test_file('browser/nativefs/nativefs_seek.c')
+    self.btest_exit(src, args=['-s', 'USE_PTHREADS', '-s', 'EMSCRIPTEN_NATIVE_FS', '-s', 'PTHREAD_POOL_SIZE'])
+    
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
