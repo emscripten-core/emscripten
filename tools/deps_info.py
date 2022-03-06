@@ -107,6 +107,7 @@ _deps_info = {
   'emscripten_run_script_string': ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
   'emscripten_set_batterychargingchange_callback_on_thread': ['malloc'],
   'emscripten_set_batterylevelchange_callback_on_thread': ['malloc'],
+  'emscripten_set_beforeunload_callback_on_thread': ['malloc'],
   'emscripten_set_blur_callback_on_thread': ['malloc'],
   'emscripten_set_click_callback_on_thread': ['malloc'],
   'emscripten_set_dblclick_callback_on_thread': ['malloc'],
@@ -128,8 +129,10 @@ _deps_info = {
   'emscripten_set_mouseout_callback_on_thread': ['malloc'],
   'emscripten_set_mouseover_callback_on_thread': ['malloc'],
   'emscripten_set_mouseup_callback_on_thread': ['malloc'],
+  'emscripten_set_offscreencanvas_size_on_target_thread_js': ['malloc'],
   'emscripten_set_orientationchange_callback_on_thread': ['malloc'],
   'emscripten_set_pointerlockchange_callback_on_thread': ['malloc'],
+  'emscripten_set_pointerlockerror_callback_on_thread': ['malloc'],
   'emscripten_set_resize_callback_on_thread': ['malloc'],
   'emscripten_set_scroll_callback_on_thread': ['malloc'],
   'emscripten_set_touchcancel_callback_on_thread': ['malloc'],
@@ -167,7 +170,7 @@ _deps_info = {
   'localtime': ['malloc'],
   'localtime_r': ['malloc'],
   'mktime': ['malloc'],
-  'pthread_create': ['emscripten_main_thread_process_queued_calls'],
+  'pthread_create': ['malloc', 'emscripten_main_thread_process_queued_calls'],
   'recv': ['htons'],
   'recvmsg': ['htons'],
   'accept': ['htons'],
@@ -213,9 +216,7 @@ def get_deps_info():
     # When OFFSCREEN_FRAMEBUFFER is defined these functions are defined in native code,
     # otherwise they are defined in src/library_html5_webgl.js.
     _deps_info['emscripten_webgl_destroy_context'] = ['emscripten_webgl_make_context_current', 'emscripten_webgl_get_current_context']
-  if settings.USE_PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
-    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['emscripten_dispatch_to_thread_', 'malloc', 'free']
-    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread_js'] = ['malloc']
   if settings.USE_PTHREADS:
     _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['emscripten_dispatch_to_thread_']
+    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['emscripten_dispatch_to_thread_', 'malloc', 'free']
   return _deps_info

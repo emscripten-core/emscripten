@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <emscripten/html5.h>  // for EMSCRIPTEN_RESULT
+#include <emscripten/html5.h>
 #include <emscripten/atomic.h>
 
 #ifdef __cplusplus

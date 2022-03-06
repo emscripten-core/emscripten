@@ -11033,7 +11033,7 @@ exec "$@"
         cmd.append('-sMAIN_MODULE=2')
       if function.startswith('emscripten_idb') or function.startswith('emscripten_wget_'):
         cmd.append('-sASYNCIFY')
-      if function.startswith('emscripten_webgl_') or 'offscreencanvas' in function:
+      if function.startswith('emscripten_webgl_'):
         cmd.append('-sOFFSCREENCANVAS_SUPPORT')
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
