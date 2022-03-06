@@ -2029,8 +2029,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       'emscripten_main_thread_process_queued_calls',
       'emscripten_run_in_main_runtime_thread_js',
       'emscripten_stack_set_limits',
-      'emscripten_sync_run_in_main_thread_2',
-      'emscripten_sync_run_in_main_thread_4',
     ]
 
     if settings.MAIN_MODULE:
