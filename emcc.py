@@ -2218,8 +2218,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.STANDALONE_WASM:
-    if settings.SHARED_MEMORY:
-      exit_with_error('STANDALONE_WASM does not support shared memories yet')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
     # the wasm must be runnable without the JS, so there cannot be anything that
