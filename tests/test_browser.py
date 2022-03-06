@@ -22,7 +22,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, require_v8
+from common import read_file, require_v8, also_with_minimal_runtime
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
@@ -101,20 +101,6 @@ def also_with_wasm2js(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
-  return metafunc
-
-
-def also_with_minimal_runtime(f):
-  assert callable(f)
-
-  def metafunc(self, with_minimal_runtime):
-    assert self.get_setting('MINIMAL_RUNTIME') is None
-    if with_minimal_runtime:
-      self.set_setting('MINIMAL_RUNTIME', 1)
-    f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'minimal_runtime': (True,)}
   return metafunc
 
 
