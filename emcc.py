@@ -1432,7 +1432,7 @@ def phase_setup(options, state, newargs, user_settings):
     settings.SHARED_MEMORY = 1
 
   if settings.SHARED_MEMORY and '-pthread' not in newargs:
-    newargs += ['-pthread']
+    newargs += ['-matomics', '-mbulk-memory']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED

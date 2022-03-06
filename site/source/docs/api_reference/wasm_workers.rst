@@ -300,8 +300,8 @@ table.
     <td class='cellborder'>Compile and link with -sWASM_WORKERS=1</td></tr>
 
     <tr><td class='cellborder'>Preprocessor directives</td>
-    <td class='cellborder'>__EMSCRIPTEN_PTHREADS__=1 and __EMSCRIPTEN_SHARED_MEMORY__=1 are active</td>
-    <td class='cellborder'>__EMSCRIPTEN_PTHREADS__=1, __EMSCRIPTEN_SHARED_MEMORY__=1 and __EMSCRIPTEN_WASM_WORKERS__=1 are active</td></tr>
+    <td class='cellborder'>__EMSCRIPTEN_SHARED_MEMORY__=1 and __EMSCRIPTEN_PTHREADS__=1 are active</td>
+    <td class='cellborder'>__EMSCRIPTEN_SHARED_MEMORY__=1 and __EMSCRIPTEN_WASM_WORKERS__=1 are active</td></tr>
 
     <tr><td class='cellborder'>JS library directives</td>
     <td class='cellborder'>USE_PTHREADS=1 and SHARED_MEMORY=1 are active</td>
