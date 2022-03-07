@@ -1439,7 +1439,6 @@ def phase_setup(options, state, newargs, user_settings):
     if '-mbulk-memory' not in newargs:
       newargs += ['-mbulk-memory']
 
-
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
