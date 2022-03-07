@@ -2480,9 +2480,9 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  _emscripten_set_offscreencanvas_size__sig: 'iiii',
 #if OFFSCREENCANVAS_SUPPORT
-  emscripten_set_offscreencanvas_size__sig: 'iiii',
-  emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
+  _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
   emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
@@ -2509,8 +2509,7 @@ var LibraryHTML5 = {
     _emscripten_set_offscreencanvas_size_on_target_thread_js(targetThread, targetCanvas, width, height);
   },
 #else
-  emscripten_set_offscreencanvas_size__sig: 'iiii',
-  emscripten_set_offscreencanvas_size: function(target, width, height) {
+  _emscripten_set_offscreencanvas_size: function(target, width, height) {
 #if ASSERTIONS
     err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
 #endif
