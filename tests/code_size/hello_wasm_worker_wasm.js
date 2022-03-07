@@ -1,102 +1,75 @@
-var e = Module;
+var b = Module;
 
-var f = e.$ww, g = new function(a) {
-    var c = new TextDecoder(a);
-    this.l = b => {
-        b.buffer instanceof SharedArrayBuffer && (b = new Uint8Array(b));
-        return c.decode.call(c, b);
-    };
+var c = b.$ww;
+
+new function(a) {
+    new TextDecoder(a);
 }("utf8");
 
-function h(a) {
-    if (!a) return "";
-    for (var c = a + NaN, b = a; !(b >= c) && k[b]; ) ++b;
-    return g.l(k.subarray(a, b));
-}
+var e, f;
 
-var l, k, m, n, p;
-
-n = e.mem || new WebAssembly.Memory({
+e = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
 });
 
-var q = n.buffer;
+var g = e.buffer;
 
-l = new Int32Array(q);
+var h = {}, k = 1;
 
-k = new Uint8Array(q);
-
-new Uint16Array(q);
-
-m = new Float64Array(q);
-
-var r = {
-    1908: function() {
-        console.log("Hello from wasm worker!");
-    }
-}, t = {}, u = 1;
-
-function v(a) {
-    w.push(a);
+function l(a) {
+    m.push(a);
 }
 
-function x(a) {
+function n(a) {
     a = a.data;
-    let c = a._wsc;
-    c && p.get(c)(...a.x);
+    let d = a._wsc;
+    d && f.get(d)(...a.x);
 }
 
-var w = [], y = [];
+var m = [];
 
-f && (t[0] = this, addEventListener("message", v));
+c && (h[0] = this, addEventListener("message", l));
 
-var z, A;
+var p, q;
 
-WebAssembly.instantiate(e.wasm, {
+WebAssembly.instantiate(b.wasm, {
     a: {
-        b: function(a, c, b, d) {
-            throw "Assertion failed: " + h(a) + ",at: " + [ c ? h(c) : "unknown filename", b, d ? h(d) : "unknown function" ];
-        },
-        c: function(a, c, b) {
-            let d = t[u] = new Worker(e.$wb);
-            d.postMessage({
-                $ww: u,
-                wasm: e.wasm,
-                js: e.js,
-                mem: n,
+        b: function(a, d, t) {
+            let r = h[k] = new Worker(b.$wb);
+            r.postMessage({
+                $ww: k,
+                wasm: b.wasm,
+                js: b.js,
+                mem: e,
                 sb: a,
-                sz: c,
-                tb: b
+                sz: d,
+                tb: t
             });
-            d.addEventListener("message", x);
-            return u++;
+            r.addEventListener("message", n);
+            return k++;
         },
-        f: function(a, c, b) {
-            y.length = 0;
-            var d;
-            for (b >>= 2; d = k[c++]; ) (d = 105 > d) && b & 1 && b++, y.push(d ? m[b++ >> 1] : l[b]), 
-            ++b;
-            return r[a].apply(null, y);
-        },
-        d: function() {
+        c: function() {
             return !1;
         },
-        e: function(a, c) {
-            t[a].postMessage({
-                _wsc: c,
+        d: function(a, d) {
+            h[a].postMessage({
+                _wsc: d,
                 x: []
             });
         },
-        a: n
+        e: function() {
+            console.log("Hello from wasm worker!");
+        },
+        a: e
     }
 }).then((function(a) {
     a = a.instance.exports;
-    z = a.h;
-    A = a.j;
-    p = a.i;
-    f ? (a = e, A(a.sb, a.sz, a.tb), removeEventListener("message", v), w.forEach(x), 
-    w = null, addEventListener("message", x)) : a.g();
-    f || z();
+    p = a.g;
+    q = a.i;
+    f = a.h;
+    c ? (a = b, q(a.sb, a.sz, a.tb), removeEventListener("message", l), m = m.forEach(n), 
+    addEventListener("message", n)) : a.f();
+    c || p();
 }));

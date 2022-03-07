@@ -3,9 +3,13 @@
 
 // This file contains an absolute minimal sized Wasm Worker example, to keep a check on generated code size.
 
+EM_JS(void, hello, (void), {
+  console.log("Hello from wasm worker!");
+});
+
 void run_in_worker()
 {
-  EM_ASM(console.log("Hello from wasm worker!"));
+  hello();
 }
 
 int main()
