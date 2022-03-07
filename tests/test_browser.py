@@ -5083,14 +5083,6 @@ window.close = function() {
   def test_system(self):
     self.btest_exit(test_file('system.c'))
 
-  # Tests building with -sSHARED_MEMORY
-  @also_with_minimal_runtime
-  def test_shared_memory(self):
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='0', args=[])
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sSHARED_MEMORY'])
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-sWASM_WORKERS'])
-    self.btest(path_from_root('tests', 'wasm_worker', 'shared_memory.c'), expected='1', args=['-pthread'])
-
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
