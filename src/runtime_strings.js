@@ -39,11 +39,12 @@ var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_
 #endif
 
 /**
+ * @param {Uint8Array|Array<number>} heapOrArray
  * @param {number} idx
  * @param {number=} maxBytesToRead
  * @return {string}
  */
-function UTF8ArrayToString(heap, idx, maxBytesToRead) {
+function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
 #if CAN_ADDRESS_2GB
   idx >>>= 0;
 #endif
@@ -53,15 +54,15 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
   // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
-  while (heap[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+  while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
-  return UTF8Decoder.decode(heap.subarray(idx, endPtr));
+  return UTF8Decoder.decode(heapOrArray.buffer ? heapOrArray.subarray(idx, endPtr) : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
   if (endPtr - idx > 16 && UTF8Decoder) {
-    return UTF8Decoder.decode(heap.subarray(idx, endPtr));
+    return UTF8Decoder.decode(heapOrArray.buffer ? heapOrArray.subarray(idx, endPtr) : new Uint8Array(heapOrArray.slice(idx, endPtr)));
   } else {
 #endif // TEXTDECODER
     var str = '';
@@ -75,23 +76,23 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
-      var u0 = heap[idx++];
+      var u0 = heapOrArray[idx++];
 #if !TEXTDECODER
       // If not building with TextDecoder enabled, we don't know the string length, so scan for \0 byte.
       // If building with TextDecoder, we know exactly at what byte index the string ends, so checking for nulls here would be redundant.
       if (!u0) return str;
 #endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      var u1 = heap[idx++] & 63;
+      var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      var u2 = heap[idx++] & 63;
+      var u2 = heapOrArray[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
 #if ASSERTIONS
         if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
 #endif
-        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heap[idx++] & 63);
+        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
       }
 
       if (u0 < 0x10000) {
