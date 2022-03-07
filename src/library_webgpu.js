@@ -112,12 +112,14 @@
       Fifo: 2,
     },
     LoadOp: {
-      Clear: 0,
-      Load: 1,
+      Undefined: 0,
+      Clear: 1,
+      Load: 2,
     },
     StoreOp: {
-      Store: 0,
-      Discard: 1,
+      Undefined: 0,
+      Store: 1,
+      Discard: 2,
     },
     MapMode: {
       None: 0,
@@ -394,6 +396,11 @@ var LibraryWebGPU = {
       undefined,
       'uint16',
       'uint32',
+    ],
+    LoadOp: [
+      undefined,
+      'clear',
+      'load',
     ],
     PipelineStatisticName: [
       'vertex-shader-invocations',
@@ -1495,12 +1502,12 @@ var LibraryWebGPU = {
     function makeColorAttachment(caPtr) {
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
-          assert(loadOpInt === {{{ gpu.LoadOp.Clear }}} || loadOpInt === {{{ gpu.LoadOp.Load }}});
+          assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
       #endif
 
       var storeOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.storeOp) }}};
       #if ASSERTIONS
-          assert(storeOpInt === {{{ gpu.StoreOp.Store }}} || storeOpInt === {{{ gpu.StoreOp.Discard }}});
+          assert(storeOpInt !== {{{ gpu.StoreOp.Undefined }}});
       #endif
 
       return {
