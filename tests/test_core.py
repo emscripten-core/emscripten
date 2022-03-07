@@ -5494,7 +5494,7 @@ main( int argv, char ** argc ) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    for decoder_mode in [False, True]:
+    for decoder_mode in [0, 1]:
       self.set_setting('TEXTDECODER', decoder_mode)
       print(str(decoder_mode))
       self.do_runf(test_file('utf8_invalid.cpp'), 'OK.')
