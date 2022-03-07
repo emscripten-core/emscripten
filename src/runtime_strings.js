@@ -62,12 +62,10 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
-  return UTF8Decoder.decode(
-    heap.subarray ? heap.subarray(idx, endPtr) : new Uint8Array(heap.slice(idx, endPtr))
-  );
+  return UTF8Decoder.decode(heap.subarray(idx, endPtr));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-  if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
+  if (endPtr - idx > 16 && UTF8Decoder) {
     return UTF8Decoder.decode(heap.subarray(idx, endPtr));
   } else {
 #endif // TEXTDECODER
