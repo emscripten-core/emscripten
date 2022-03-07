@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.7
+3.1.8
 -----
+
+3.1.7 - 05/01/2022
+-------------------
 - Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
   settings.  The new wasmfs filesystem is far enough along that it seems clear
   that ASMFS will not need to be revived.
