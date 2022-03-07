@@ -702,6 +702,7 @@ LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
+LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMCC = bat_suffix(path_from_root('emcc'))
