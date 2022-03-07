@@ -23,7 +23,7 @@ void _MaybeReportResult(int result, int sync);
 }
 #endif
 
-#if defined __EMSCRIPTEN__ && defined __EMSCRIPTEN_PTHREADS__
+#if defined __EMSCRIPTEN__ && defined __EMSCRIPTEN_PTHREADS__ && !defined(__EMSCRIPTEN_WASM_WORKERS__)
   #include <emscripten.h>
   #include <emscripten/threading.h>
   #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)

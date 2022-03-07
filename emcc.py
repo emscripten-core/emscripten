@@ -833,6 +833,9 @@ def get_cflags(user_args):
   if settings.SHARED_MEMORY:
     cflags.append('-D__EMSCRIPTEN_SHARED_MEMORY__=1')
 
+  if settings.WASM_WORKERS:
+    cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
+
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -1424,11 +1427,17 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
-  if settings.USE_PTHREADS:
+  # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
+  if settings.USE_PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
-  if settings.SHARED_MEMORY and '-pthread' not in newargs:
+  if settings.USE_PTHREADS and '-pthread' not in newargs:
     newargs += ['-pthread']
+  elif settings.SHARED_MEMORY:
+    if '-matomics' not in newargs:
+      newargs += ['-matomics']
+    if '-mbulk-memory' not in newargs:
+      newargs += ['-mbulk-memory']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
@@ -2063,6 +2072,18 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+
+  if settings.WASM_WORKERS:
+    # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
+    #       instead of having to record them here.
+    wasm_worker_imports = ['_emscripten_wasm_worker_initialize']
+    settings.EXPORTED_FUNCTIONS += wasm_worker_imports
+    building.user_requested_exports.update(wasm_worker_imports)
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
+    # set location of Wasm Worker bootstrap JS file
+    if settings.WASM_WORKERS == 1:
+      settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
+    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -2803,8 +2824,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
   # write_file(final_js, src)
 
+  target_dir = os.path.dirname(os.path.abspath(target))
   if settings.USE_PTHREADS:
-    target_dir = os.path.dirname(os.path.abspath(target))
     worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
     contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
     write_file(worker_output, contents)
@@ -2813,6 +2834,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       write_file(worker_output, minified_worker)
+
+  # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
+  if settings.WASM_WORKERS == 1:
+    worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
+    with open(worker_output, 'w') as f:
+      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'wasm_worker.js'), expand_macros=True))
+
+    # Minify the wasm_worker.js file in optimized builds
+    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
+      open(worker_output, 'w').write(minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []

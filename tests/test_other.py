@@ -9137,6 +9137,7 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
+    'hello_wasm_worker': ('hello_wasm_worker', False, True),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
@@ -9177,13 +9178,15 @@ int main () {
                            '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
+    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
 
     sources = {
       'hello_world': hello_world_sources,
       'random_printf': random_printf_sources,
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
-      'hello_webgl2': hello_webgl2_sources}[test_name]
+      'hello_webgl2': hello_webgl2_sources,
+      'hello_wasm_worker': hello_wasm_worker_sources}[test_name]
 
     def print_percent(actual, expected):
       if actual == expected:
@@ -11787,5 +11790,15 @@ void foo() {}
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '0', emcc_args=[])
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sSHARED_MEMORY'])
-#    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sWASM_WORKERS'])
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sWASM_WORKERS'])
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-pthread'])
+
+  # Tests C preprocessor flags with -sSHARED_MEMORY
+  @also_with_minimal_runtime
+  def test_shared_memory_preprocessor_flags(self):
+    self.run_process([EMCC, '-c', test_file('wasm_worker/shared_memory_preprocessor_flags.c'), '-sSHARED_MEMORY'])
+
+  # Tests C preprocessor flags with -sWASM_WORKERS
+  @also_with_minimal_runtime
+  def test_wasm_worker_preprocessor_flags(self):
+    self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])

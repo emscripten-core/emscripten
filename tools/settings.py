@@ -66,6 +66,7 @@ COMPILE_TIME_SETTINGS = {
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
+    'WASM_WORKERS',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',

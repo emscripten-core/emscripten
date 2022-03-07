@@ -468,27 +468,38 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
+    self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-sUSE_PTHREADS']
+      cflags += ['-sUSE_PTHREADS', '-sWASM_WORKERS']
+    if self.is_ww:
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
+    if self.is_ww:
+      name += '-ww'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt']
+    return super().vary_on() + ['is_mt', 'is_ww']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS and not settings.USE_PTHREADS, **kwargs)
+
+  @classmethod
+  def variations(cls):
+    combos = super(MTLibrary, cls).variations()
+    # To save on # of variations, pthreads and Wasm workers when used together, just use pthreads variation.
+    return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 
 class DebugLibrary(Library):
@@ -1016,6 +1027,54 @@ class libprintf_long_double(libc):
     return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
 
 
+class libwasm_workers(MTLibrary):
+  def __init__(self, **kwargs):
+    self.tls = kwargs.pop('tls')
+    self.stack_check = kwargs.pop('stack_check')
+    self.debug = kwargs.pop('debug')
+    super().__init__(**kwargs)
+
+  name = 'libwasm_workers'
+
+  def get_cflags(self):
+    cflags = ['-pthread',
+              '-D_DEBUG' if self.debug else '-Oz',
+              '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0'),
+              '-DWASM_WORKER_NO_TLS=' + ('0' if self.tls else '1')]
+    if not self.debug:
+      cflags += ['-DNDEBUG']
+    if self.is_ww or self.is_mt:
+      cflags += ['-sWASM_WORKERS']
+    if settings.MAIN_MODULE:
+      cflags += ['-fPIC']
+    return cflags
+
+  def get_base_name(self):
+    name = 'libwasm_workers'
+    if not self.is_ww and not self.is_mt:
+      name += '_stub'
+    if not self.tls:
+      name += '-notls'
+    if self.debug:
+      name += '-debug'
+    if self.stack_check:
+      name += '-stackcheck'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['tls', 'debug', 'stack_check']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasm_worker',
+        filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
+
+
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
@@ -1097,7 +1156,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -1190,7 +1249,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
@@ -1799,6 +1858,9 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.USE_WEBGPU:
     add_library('libwebgpu_cpp')
+
+  if settings.WASM_WORKERS:
+    add_library('libwasm_workers')
 
   return libs_to_link
 

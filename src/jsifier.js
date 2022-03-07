@@ -292,6 +292,14 @@ function ${name}(${args}) {
     return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
   ${body}
 }\n`);
+          } else if (WASM_WORKERS && ASSERTIONS) {
+            // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
+            // (since there is no automatic proxying architecture available)
+            contentText = modifyFunction(snippet, (name, args, body) => `
+function ${name}(${args}) {
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  ${body}
+}\n`);
           }
           proxiedFunctionTable.push(finalName);
         } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {

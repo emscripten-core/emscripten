@@ -263,6 +263,15 @@ function run(args) {
   }
 #endif
 
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) {
+#if MODULARIZE
+    readyPromiseResolve(Module);
+#endif // MODULARIZE
+    return initRuntime();
+  }
+#endif
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE

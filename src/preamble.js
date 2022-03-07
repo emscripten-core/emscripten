@@ -368,6 +368,10 @@ function initRuntime() {
 #endif
   runtimeInitialized = true;
 
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
@@ -1080,9 +1084,15 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 
-#if USE_PTHREADS// || WASM_WORKERS
+#if USE_PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+
+#if WASM_WORKERS
+    if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
+#if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
@@ -1103,7 +1113,11 @@ function createWasm() {
     }
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
+#endif // ~USE_PTHREADS
+#if WASM_WORKERS
+    }
 #endif
+
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
