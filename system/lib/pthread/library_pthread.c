@@ -175,6 +175,7 @@ void emscripten_async_waitable_close(em_queued_call* call) {
   em_queued_call_free(call);
 }
 
+extern EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 
@@ -185,7 +186,7 @@ static void _do_call(void* arg) {
   switch (q->functionEnum) {
     case EM_PROXIED_RESIZE_OFFSCREENCANVAS:
       q->returnValue.i =
-        emscripten_set_canvas_element_size(q->args[0].cp, q->args[1].i, q->args[2].i);
+        _emscripten_set_offscreencanvas_size(q->args[0].cp, q->args[1].i, q->args[2].i);
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
