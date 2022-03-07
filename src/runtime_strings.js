@@ -37,11 +37,9 @@ function TextDecoderWrapper(encoding) {
 
 #if TEXTDECODER == 2
 var UTF8Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
+#elif TEXTDECODER == 1
 var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
+#endif
 
 /**
  * @param {number} idx
