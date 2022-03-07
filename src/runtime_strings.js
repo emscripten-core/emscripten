@@ -39,7 +39,7 @@ var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_
 #endif
 
 /**
- * @param {Uint8Array|Array<number>} heapOrArray
+ * heapOrArray is either a regular array, or a JavaScript typed array view.
  * @param {number} idx
  * @param {number=} maxBytesToRead
  * @return {string}
