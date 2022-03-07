@@ -30,7 +30,7 @@ function TextDecoderWrapper(encoding) {
     if (data.buffer instanceof SharedArrayBuffer) {
       data = new Uint8Array(data);
     }
-    return textDecoder.decode.call(textDecoder, data);
+    return textDecoder.decode(data);
   };
 }
 #endif
