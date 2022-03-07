@@ -75,7 +75,7 @@ mergeInto(LibraryManager.library, {
     removeEventListener('message', __wasm_worker_appendToQueue);
     // ... then flush whatever messages we may have already gotten in the queue ...
     __wasm_worker_delayedMessageQueue.forEach(__wasm_worker_runPostMessage);
-    __wasm_worker_delayedMessageQueue = null;
+    __wasm_worker_delayedMessageQueue = 0;
     // ... and finally register the proper postMessage handler that immediately
     // dispatches incoming function calls without queueing them.
     addEventListener('message', __wasm_worker_runPostMessage);
