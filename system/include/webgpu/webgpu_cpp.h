@@ -1373,12 +1373,10 @@ namespace wgpu {
         TextureView view;
         LoadOp depthLoadOp = LoadOp::Undefined;
         StoreOp depthStoreOp = StoreOp::Undefined;
-        float clearDepth = NAN;
         float depthClearValue = 0;
         bool depthReadOnly = false;
         LoadOp stencilLoadOp = LoadOp::Undefined;
         StoreOp stencilStoreOp = StoreOp::Undefined;
-        uint32_t clearStencil = 0;
         uint32_t stencilClearValue = 0;
         bool stencilReadOnly = false;
     };
@@ -1568,7 +1566,6 @@ namespace wgpu {
         TextureView resolveTarget = nullptr;
         LoadOp loadOp;
         StoreOp storeOp;
-        Color clearColor = { NAN, NAN, NAN, NAN };
         Color clearValue;
     };
 

@@ -1292,12 +1292,10 @@
                 "view",
                 "depthLoadOp",
                 "depthStoreOp",
-                "clearDepth",
                 "depthClearValue",
                 "depthReadOnly",
                 "stencilLoadOp",
                 "stencilStoreOp",
-                "clearStencil",
                 "stencilClearValue",
                 "stencilReadOnly"
             ],
@@ -1457,7 +1455,6 @@
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
-                "clearColor",
                 "clearValue"
             ],
             "WGPURequiredLimits": [

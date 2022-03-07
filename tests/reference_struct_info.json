@@ -1018,26 +1018,23 @@
             "stencilReadOnly": 25
         },
         "WGPURenderPassColorAttachment": {
-            "__size__": 80,
-            "clearColor": 16,
-            "clearValue": 48,
+            "__size__": 48,
+            "clearValue": 16,
             "loadOp": 8,
             "resolveTarget": 4,
             "storeOp": 12,
             "view": 0
         },
         "WGPURenderPassDepthStencilAttachment": {
-            "__size__": 44,
-            "clearDepth": 12,
-            "clearStencil": 32,
-            "depthClearValue": 16,
+            "__size__": 36,
+            "depthClearValue": 12,
             "depthLoadOp": 4,
-            "depthReadOnly": 20,
+            "depthReadOnly": 16,
             "depthStoreOp": 8,
-            "stencilClearValue": 36,
-            "stencilLoadOp": 24,
-            "stencilReadOnly": 40,
-            "stencilStoreOp": 28,
+            "stencilClearValue": 28,
+            "stencilLoadOp": 20,
+            "stencilReadOnly": 32,
+            "stencilStoreOp": 24,
             "view": 0
         },
         "WGPURenderPassDescriptor": {
