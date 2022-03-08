@@ -33,11 +33,9 @@ function stringToAscii(str, outPtr) {
 
 #if TEXTDECODER == 2
 var UTF16Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf-16le');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
+#elif TEXTDECODER == 1
 var UTF16Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf-16le') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
+#endif
 
 function UTF16ToString(ptr, maxBytesToRead) {
 #if ASSERTIONS
