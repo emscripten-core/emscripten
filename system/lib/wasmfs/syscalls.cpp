@@ -100,6 +100,8 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_BADF;
   }
 
+  // TODO: Check open file access mode for write permissions.
+
   auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
@@ -167,6 +169,8 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
+
+  // TODO: Check open file access mode for read permissions.
 
   auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
