@@ -1205,3 +1205,23 @@ function runtimeKeepalivePop() {
   if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
   return 'runtimeKeepalivePop();';
 }
+
+// Some web functions like TextDecoder.decode() may not work with a view of a
+// SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
+// To avoid that, this function allows obtaining an unshared copy of an
+// ArrayBuffer.
+function getUnsharedTextDecoderView(heap, start, end) {
+  let shared = `${heap}.slice(${start}, ${end})`;
+  let unshared = `${heap}.subarray(${start}, ${end})`;
+
+  // No need to worry about this in non-shared memory builds
+  if (!SHARED_MEMORY) return unshared;
+
+  // If asked to get an unshared view to what we know will be a shared view, or if in -Oz,
+  // then unconditionally do a .slice() for smallest code size.
+  if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
+
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
+  // or can use .subarray() otherwise.
+  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+}
