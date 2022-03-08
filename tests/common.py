@@ -418,7 +418,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
     # We want to be strict about closure warnings in our test code.
     # TODO(sbc): Remove this if we make it the default for `-Werror`:
     # https://github.com/emscripten-core/emscripten/issues/16205):

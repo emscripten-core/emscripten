@@ -72,6 +72,7 @@ diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
+diagnostics.add_warning('limited-postlink-optimizations')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
