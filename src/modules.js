@@ -441,7 +441,7 @@ function exportRuntime() {
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident)) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
       runtimeElements.push(ident.substr(1));
     }
   }
