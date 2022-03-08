@@ -61,7 +61,7 @@ if (typeof window === 'object' && window) {
       xhr.send();
     }
   }
-  window.addEventListener('error', report_error);
+  window.addEventListener('error', event => report_error(event.error));
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 

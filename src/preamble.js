@@ -301,11 +301,13 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #endif
 
 #if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
+// Test runs in browsers should always be free from uncaught exceptions. If an
+// uncaught exception is thrown, we fail browser test execution in the
+// REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
     if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
+    console.error('Page threw an error: ' + e.error.message);
     Module['pageThrewException'] = true;
   });
 }
