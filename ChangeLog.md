@@ -25,7 +25,7 @@ See docs/process.md for more on how version tagging works.
   Several binaryen passed are not compatible with the preservation of DWARF
   information. (#16428)
 
-3.1.7 - 05/01/2022
+3.1.7 - 03/07/2022
 -------------------
 - Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
   settings.  The new wasmfs filesystem is far enough along that it seems clear
