@@ -10447,8 +10447,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   })
   def test_support_errno(self, args):
     self.emcc_args += args
-    src = test_file('core/test_support_errno.c')
-    output = test_file('core/test_support_errno.out')
+    src = test_file('other/test_support_errno.c')
+    output = test_file('other/test_support_errno.out')
 
     self.do_run_from_file(src, output)
     size_default = os.path.getsize('test_support_errno.js')
@@ -10456,7 +10456,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
     self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    output = test_file('core/test_support_errno_disabled.out')
+    output = test_file('other/test_support_errno_disabled.out')
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
