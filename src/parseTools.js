@@ -1211,8 +1211,8 @@ function runtimeKeepalivePop() {
 // To avoid that, this function allows obtaining an unshared copy of an
 // ArrayBuffer.
 function getUnsharedTextDecoderView(heap, start, end) {
-  let shared = `${heap}.slice(${start}, ${end})`;
-  let unshared = `${heap}.subarray(${start}, ${end})`;
+  const shared = `${heap}.slice(${start}, ${end})`;
+  const unshared = `${heap}.subarray(${start}, ${end})`;
 
   // No need to worry about this in non-shared memory builds
   if (!SHARED_MEMORY) return unshared;
