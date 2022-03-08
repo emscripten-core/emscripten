@@ -21,9 +21,9 @@ class ProxiedFile : public DataFile {
   emscripten::SyncToAsync& proxy;
   std::shared_ptr<DataFile> baseFile;
 
-  void open() override {
+  void open(oflags_t flags) override {
     proxy.invoke([&](auto resume) {
-      baseFile->locked().open();
+      baseFile->locked().open(flags);
       (*resume)();
     });
   }

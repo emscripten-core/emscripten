@@ -23,7 +23,7 @@ using PipeData = std::queue<uint8_t>;
 class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
-  void open() override {}
+  void open(oflags_t) override {}
   void close() override {}
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {

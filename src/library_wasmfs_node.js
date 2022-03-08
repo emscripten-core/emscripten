@@ -154,9 +154,14 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
-  _wasmfs_node_open__deps: [],
-  _wasmfs_node_open: function(path_p) {
-    return fs.openSync(UTF8ToString(path_p), 'r+');
+  _wasmfs_node_open__deps: ['$wasmfsNodeConvertNodeCode'],
+  _wasmfs_node_open: function(path_p, mode_p) {
+    try {
+      return fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p));
+    } catch (e) {
+      if (!e.code) throw e;
+      return wasmfsNodeConvertNodeCode(e);
+    }
   },
 
   _wasmfs_node_close__deps: [],

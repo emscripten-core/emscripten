@@ -16,7 +16,7 @@
 namespace wasmfs {
 
 class StdinFile : public DataFile {
-  void open() override {}
+  void open(oflags_t) override {}
   void close() override {}
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
@@ -48,7 +48,7 @@ class WritingStdFile : public DataFile {
 protected:
   std::vector<char> writeBuffer;
 
-  void open() override {}
+  void open(oflags_t) override {}
   void close() override {}
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {

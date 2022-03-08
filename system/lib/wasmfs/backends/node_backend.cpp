@@ -35,7 +35,7 @@ int _wasmfs_node_unlink(const char* path);
 int _wasmfs_node_rmdir(const char* path);
 
 // Open the file and return the underlying file descriptor.
-int _wasmfs_node_open(const char* path);
+int _wasmfs_node_open(const char* path, const char* mode);
 
 // Close the underlying file descriptor.
 int _wasmfs_node_close(int fd);
@@ -66,9 +66,21 @@ public:
     return fd;
   }
   bool isOpen() { return openCount > 0; }
-  void open() {
+  void open(oflags_t flags) {
     if (openCount++ == 0) {
-      fd = _wasmfs_node_open(path.c_str());
+      switch (flags) {
+        case O_RDONLY:
+          fd = _wasmfs_node_open(path.c_str(), "r");
+          break;
+        case O_WRONLY:
+          fd = _wasmfs_node_open(path.c_str(), "w");
+          break;
+        case O_RDWR:
+          fd = _wasmfs_node_open(path.c_str(), "r+");
+          break;
+        default:
+          WASMFS_UNREACHABLE("Unexpected open access mode");
+      }
     }
   }
   void close() {
@@ -107,7 +119,7 @@ private:
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 
-  void open() override { state.open(); }
+  void open(oflags_t flags) override { state.open(flags); }
   void close() override { state.close(); }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
