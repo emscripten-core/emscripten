@@ -11,83 +11,29 @@ const assert = require('assert');
 const path = require('path');
 const terser = require('../third_party/terser');
 
-// Finds the list of child AST nodes of the given node, that can contain other code (and are relevant for size computation)
-function getChildNodes(node) {
-  assert(node && !Array.isArray(node));
-  let children = [];
-  function addChild(child) {
-    assert(child && !Array.isArray(child));
-    children.push(child);
-  }
-  function maybeChild(child) {
-    if (child) {
-      assert(!Array.isArray(child));
-      children.push(child);
-    }
-  }
-  function addChildArray(childArray) {
-    assert(Array.isArray(childArray));
-    children = children.concat(childArray);
+// Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
+// that are of any of the type contained in array 'types'.
+function visitNodes(root, types, func) {
+  // Visit the given node if it is of desired type.
+  if (types.includes(root.type)) {
+    let continueTraversal = func(root);
+    if (continueTraversal === false) return false;
   }
 
-  if (['BlockStatement', 'Program'].includes(node.type)) {
-    addChildArray(node.body);
-  } else if (['IfStatement'].includes(node.type)) {
-    addChild(node.test); addChild(node.consequent); maybeChild(node.alternate);
-  } else if (['BinaryStatement', 'BinaryExpression', 'LogicalExpression', 'AssignmentExpression'].includes(node.type)) {
-    addChild(node.left); addChild(node.right);
-  } else if (['MemberExpression'].includes(node.type)) {
-    addChild(node.object); addChild(node.property);
-  } else if (['Property'].includes(node.type)) {
-    addChild(node.key); addChild(node.value);
-  } else if (['TryStatement'].includes(node.type)) {
-    addChild(node.block); maybeChild(node.handler);
-  } else if (['CatchClause'].includes(node.type)) {
-    /* addChild(node.param);*/ addChild(node.body);
-  } else if (['FunctionDeclaration'].includes(node.type)) {
-    addChild(node.body);
-  } else if (['FunctionExpression', 'ArrowFunctionExpression'].includes(node.type)) {
-    addChild(node.body);
-  } else if (['ThrowStatement', 'ReturnStatement'].includes(node.type)) {
-    maybeChild(node.argument);
-  } else if (['UnaryExpression', 'UpdateExpression'].includes(node.type)) {
-    addChild(node.argument);
-  } else if (['CallExpression', 'NewExpression'].includes(node.type)) {
-    addChild(node.callee); addChildArray(node.arguments);
-  } else if (['VariableDeclaration'].includes(node.type)) {
-    addChildArray(node.declarations);
-  } else if (['ArrayExpression'].includes(node.type)) {
-    addChildArray(node.elements);
-  } else if (['VariableDeclarator'].includes(node.type)) {
-    maybeChild(node.init);
-  } else if (['ObjectExpression'].includes(node.type)) {
-    addChildArray(node.properties);
-  } else if (['ExpressionStatement'].includes(node.type)) {
-    addChild(node.expression);
-  } else if (['BreakStatement'].includes(node.type)) {/* maybeChild(node.label);*/} else if (['LabeledStatement'].includes(node.type)) {
-    addChild(node.body); /* addChild(node.label);*/
-  } else if (['SwitchStatement'].includes(node.type)) {
-    addChild(node.discriminant); addChildArray(node.cases);
-  } else if (['SwitchCase'].includes(node.type)) {
-    addChildArray(node.consequent); maybeChild(node.test);
-  } else if (['SequenceExpression'].includes(node.type)) {
-    addChildArray(node.expressions);
-  } else if (['ConditionalExpression'].includes(node.type)) {
-    addChild(node.test); addChild(node.consequent); addChild(node.alternate);
-  } else if (['ForStatement'].includes(node.type)) {
-    maybeChild(node.init); maybeChild(node.test); maybeChild(node.update); addChild(node.body);
-  } else if (['WhileStatement', 'DoWhileStatement'].includes(node.type)) {
-    addChild(node.test); addChild(node.body);
-  } else if (['ForInStatement'].includes(node.type)) {
-    addChild(node.left); addChild(node.right); addChild(node.body);
-  } else if (['Identifier', 'Literal', 'ThisExpression', 'EmptyStatement', 'DebuggerStatement', 'ContinueStatement', 'SpreadElement'].includes(node.type)) {
-    // no children
-  } else {
-    console.error('Internal error! Unhandled node:');
-    console.error(node);
-    assert(false);
+  // Traverse all children of this node to find nodes of desired type.
+  for(let member in root) {
+    if (Array.isArray(root[member])) {
+      for(let elem of root[member]) {
+        if (elem.type) {
+          let continueTraversal = visitNodes(elem, types, func);
+          if (continueTraversal === false) return false;
+        }
+      }
+    } else if (root[member] && root[member].type) {
+      let continueTraversal = visitNodes(root[member], types, func);
+      if (continueTraversal === false) return false;
+    }
   }
-  return children;
 }
 
 function dump(nodeArray) {
@@ -98,136 +44,149 @@ function dump(nodeArray) {
 
 // Closure integration of the Module object generates an awkward "var b; b || (b = Module);" code.
 // 'b || (b = Module)' -> 'b = Module'.
-function optPassSimplifyModuleInitialization(nodeArray) {
-  for (const n of nodeArray) {
-    if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||' &&
-      n.expression.left.name == n.expression.right.left.name && n.expression.right.right.name == 'Module') {
-      n.expression = n.expression.right;
-      // There is only one Module assignment, so can finish the pass here.
-      return;
-    }
-  }
-}
-
-// Merges empty VariableDeclarators to previous VariableDeclarations.
-// 'var a,b; ...; var c,d;'' -> 'var a,b,c,d; ...;'
-function optPassMergeEmptyVarDeclarators(nodeArray) {
-  for (let i = 0; i < nodeArray.length; ++i) {
-    const n = nodeArray[i];
-    if (n.type != 'VariableDeclaration') continue;
-    // Look back to find a preceding VariableDeclaration that empty declarators from this declaration could be fused to.
-    for (let j = i - 1; j >= 0; --j) {
-      const p = nodeArray[j];
-      if (p.type == 'VariableDeclaration') {
-        for (let k = 0; k < n.declarations.length; ++k) {
-          if (!n.declarations[k].init) {
-            p.declarations.push(n.declarations[k]);
-            n.declarations.splice(k--, 1);
-          }
-        }
-
-        if (n.declarations.length == 0) nodeArray.splice(i--, 1);
-        break;
+function optPassSimplifyModuleInitialization(ast) {
+  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
+    for (const n of node.body) {
+      if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||' &&
+        n.expression.left.name == n.expression.right.left.name && n.expression.right.right.name == 'Module') {
+        // Clear out the logical operator.
+        n.expression = n.expression.right;
+        // There is only one Module assignment, so can finish the pass here.
+        return false;
       }
     }
-  }
-}
-
-// Finds multiple consecutive VariableDeclaration nodes, and fuses them together.
-// 'var a = 1; var b = 2;' -> 'var a = 1, b = 2;'
-function optPassMergeVarDeclarations(nodeArray) {
-  let progress = false;
-  for (let i = 0; i < nodeArray.length; ++i) {
-    const n = nodeArray[i];
-    if (n.type != 'VariableDeclaration') continue;
-    // Look back to find if there is a preceding VariableDeclaration that this declaration could be fused to.
-    for (let j = i - 1; j >= 0; --j) {
-      const p = nodeArray[j];
-      if (p.type == 'VariableDeclaration') {
-        p.declarations = p.declarations.concat(n.declarations);
-        nodeArray.splice(i--, 1);
-        progress = true;
-        break;
-      } else if (!['FunctionDeclaration'].includes(p.type)) {
-        break;
-      }
-    }
-  }
-  return progress;
+  });
 }
 
 // Finds redundant operator new statements that are not assigned anywhere.
 // (we aren't interested in side effects of the calls if no assignment)
-function optPassRemoveRedundantOperatorNews(nodeArray) {
-  let progress = false;
-  // Delete operator news that don't have any meaning.
-  for (let i = 0; i < nodeArray.length; ++i) {
-    const n = nodeArray[i];
-    if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
-      nodeArray.splice(i--, 1);
-      progress = true;
-    } else {
-      for (const c of getChildNodes(n)) {
-        if (c.type == 'BlockStatement') optPassRemoveRedundantOperatorNews(c.body);
-        else optPassRemoveRedundantOperatorNews([c]);
+function optPassRemoveRedundantOperatorNews(ast) {
+  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
+    let nodeArray = node.body;
+    // Delete operator news that don't have any meaning.
+    for (let i = 0; i < nodeArray.length; ++i) {
+      const n = nodeArray[i];
+      if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
+        nodeArray.splice(i--, 1);
       }
     }
-  }
+  });
+}
+
+// Merges empty VariableDeclarators to previous VariableDeclarations.
+// 'var a,b; ...; var c,d;'' -> 'var a,b,c,d; ...;'
+function optPassMergeEmptyVarDeclarators(ast) {
+  let progress = false;
+
+  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
+    let nodeArray = node.body;
+    for (let i = 0; i < nodeArray.length; ++i) {
+      const n = nodeArray[i];
+      if (n.type != 'VariableDeclaration') continue;
+      // Look back to find a preceding VariableDeclaration that empty declarators from this declaration could be fused to.
+      for (let j = i - 1; j >= 0; --j) {
+        const p = nodeArray[j];
+        if (p.type == 'VariableDeclaration') {
+          for (let k = 0; k < n.declarations.length; ++k) {
+            if (!n.declarations[k].init) {
+              p.declarations.push(n.declarations[k]);
+              n.declarations.splice(k--, 1);
+              progress = true;
+            }
+          }
+
+          if (n.declarations.length == 0) nodeArray.splice(i--, 1);
+          break;
+        }
+      }
+    }
+  });
+  return progress;
+}
+
+// Finds multiple consecutive VariableDeclaration nodes, and fuses them together.
+// 'var a = 1; var b = 2;' -> 'var a = 1, b = 2;'
+function optPassMergeVarDeclarations(ast) {
+  let progress = false;
+
+  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
+    let nodeArray = node.body;
+    for (let i = 0; i < nodeArray.length; ++i) {
+      const n = nodeArray[i];
+      if (n.type != 'VariableDeclaration') continue;
+      // Look back to find if there is a preceding VariableDeclaration that this declaration could be fused to.
+      for (let j = i - 1; j >= 0; --j) {
+        const p = nodeArray[j];
+        if (p.type == 'VariableDeclaration') {
+          p.declarations = p.declarations.concat(n.declarations);
+          nodeArray.splice(i--, 1);
+          progress = true;
+          break;
+        } else if (!['FunctionDeclaration'].includes(p.type)) {
+          break;
+        }
+      }
+    }
+  });
   return progress;
 }
 
 // Merges "var a,b;a = ...;" to "var b, a = ...;"
-function optPassMergeVarInitializationAssignments(nodeArray) {
+function optPassMergeVarInitializationAssignments(ast) {
   // Tests if the assignment expression at nodeArray[i] is the first assignment to the given variable, and it was undefined before that.
   function isUndefinedBeforeThisAssignment(nodeArray, i) {
     const name = nodeArray[i].expression.left.name;
     for (let j = i - 1; j >= 0; --j) {
       const n = nodeArray[j];
       if (n.type == 'ExpressionStatement' && n.expression.type == 'AssignmentExpression' && n.expression.left.name == name) {
-        return null;
+        return [null, null];
       }
       if (n.type == 'VariableDeclaration') {
         for (let k = n.declarations.length - 1; k >= 0; --k) {
           const d = n.declarations[k];
           if (d.id.name == name) {
-            if (d.init) return null;
+            if (d.init) return [null, null];
             else return [n, k];
           }
         }
       }
     }
+    return [null, null];
   }
 
   // Find all assignments that are preceded by a variable declaration.
   let progress = false;
-  for (let i = 1; i < nodeArray.length; ++i) {
-    const n = nodeArray[i];
-    if (n.type != 'ExpressionStatement' || n.expression.type != 'AssignmentExpression') continue;
-    if (nodeArray[i - 1].type != 'VariableDeclaration') continue;
-    const [declaration, declarationIndex] = isUndefinedBeforeThisAssignment(nodeArray, i);
-    if (!declaration) continue;
-    const declarator = declaration.declarations[declarationIndex];
-    declarator.init = n.expression.right;
-    declaration.declarations.splice(declarationIndex, 1);
-    nodeArray[i - 1].declarations.push(declarator);
-    nodeArray.splice(i--, 1);
-    progress = true;
-  }
+  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
+    let nodeArray = node.body;
+    for (let i = 1; i < nodeArray.length; ++i) {
+      const n = nodeArray[i];
+      if (n.type != 'ExpressionStatement' || n.expression.type != 'AssignmentExpression') continue;
+      if (nodeArray[i - 1].type != 'VariableDeclaration') continue;
+      const [declaration, declarationIndex] = isUndefinedBeforeThisAssignment(nodeArray, i);
+      if (!declaration) continue;
+      const declarator = declaration.declarations[declarationIndex];
+      declarator.init = n.expression.right;
+      declaration.declarations.splice(declarationIndex, 1);
+      nodeArray[i - 1].declarations.push(declarator);
+      nodeArray.splice(i--, 1);
+      progress = true;
+    }
+  });
   return progress;
 }
 
 function runOnJsText(js, pretty = false) {
   const ast = acorn.parse(js, {ecmaVersion: 6});
 
-  optPassSimplifyModuleInitialization(ast.body);
-  optPassRemoveRedundantOperatorNews(ast.body);
+  optPassSimplifyModuleInitialization(ast);
+  optPassRemoveRedundantOperatorNews(ast);
 
   let progress = true;
   while (progress) {
     progress = false;
-    progress = progress || optPassMergeVarDeclarations(ast.body);
-    progress = progress || optPassMergeVarInitializationAssignments(ast.body);
-    progress = progress || optPassMergeEmptyVarDeclarators(ast.body);
+    progress = progress || optPassMergeVarDeclarations(ast);
+    progress = progress || optPassMergeVarInitializationAssignments(ast);
+    progress = progress || optPassMergeEmptyVarDeclarators(ast);
   }
 
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
@@ -255,6 +214,7 @@ function test(input, expected) {
 function runTests() {
   // optPassSimplifyModuleInitialization:
   test('b || (b = Module);', 'b=Module;');
+  test('function foo(){b || (b = Module);}', 'function foo(){b=Module}');
 
   // optPassRemoveRedundantOperatorNews:
   test('new Uint16Array(a);', '');
