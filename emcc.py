@@ -2861,6 +2861,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # by processing steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0 and not settings.SINGLE_FILE:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
+    # to run in advanced mode)
+    final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.

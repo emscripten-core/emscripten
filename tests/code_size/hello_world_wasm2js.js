@@ -5,41 +5,36 @@ var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
     maximum: 256
 }), h = f.buffer, d = new Uint8Array(h), k = {
     a: function(a) {
-        var g = console, m = g.log;
+        var n = console, e = n.log;
         if (a) {
-            for (var n = a + void 0, e = a; !(e >= n) && d[e]; ) ++e;
-            a = c.decode(d.subarray(a, e));
+            for (var g = a + void 0, m = a; !(m >= g) && d[m]; ) ++m;
+            a = c.decode(d.subarray(a, m));
         } else a = "";
-        m.call(g, a);
+        e.call(n, a);
     },
     memory: f
 }, p = (new function() {
-    this.exports = function instantiate(v) {
-        function c(d) {
-            d.set = function(a, b) {
-                this[a] = b;
+    this.exports = function(a) {
+        function n(e) {
+            e.set = function(g, m) {
+                this[g] = m;
             };
-            d.get = function(a) {
-                return this[a];
+            e.get = function(g) {
+                return this[g];
             };
-            return d;
+            return e;
         }
-        function t(u) {
-            var e = Math.imul, f = Math.fround, g = Math.abs, h = Math.clz32, i = Math.min, j = Math.max, k = Math.floor, l = Math.ceil, m = Math.trunc, n = Math.sqrt, o = u.abort, p = NaN, q = Infinity, r = u.a, s = c([]);
-            function x(a, b) {
-                a = a | 0;
-                b = b | 0;
-                r(1024);
-                return 0;
-            }
-            function w() {}
+        return function(e) {
+            var g = e.a;
             return {
-                b: w,
-                c: x,
-                d: s
+                b: function() {},
+                c: function(m, q) {
+                    g(1024);
+                    return 0;
+                },
+                d: n([])
             };
-        }
-        return t(v);
+        }(a);
     }(k);
 }).exports, l = p.c;
 
