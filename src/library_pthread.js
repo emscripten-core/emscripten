@@ -1054,25 +1054,6 @@ var LibraryPThread = {
       worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
     }
     return 1;
-  },
-
-  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
-    if (targetThreadId == currThreadId) {
-      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
-    } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
-    } else {
-      var pthread = PThread.pthreads[targetThreadId];
-      var worker = pthread && pthread.worker;
-      if (!worker) {
-#if ASSERTIONS
-        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
-#endif
-        return /*0*/;
-      }
-      worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
-    }
-    return 1;
   }
 };
 
