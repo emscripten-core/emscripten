@@ -506,7 +506,10 @@ void emscripten_main_thread_process_queued_calls() {
     return;
 
   // Recursion guard to avoid infinite recursion when we arrive here from the
-  // pthread calls inside `emscripten_proxy_execute_queue`.
+  // pthread_lock calls inside `emscripten_proxy_execute_queue`. This isn't
+  // caught by the queue's own recursion guard because the lock has to be
+  // acquired before that recursion guard can be checked. `static` rather than
+  // thread_local because this function is only ever called on the main thread.
   static bool processing = 0;
   if (processing) {
     return;
