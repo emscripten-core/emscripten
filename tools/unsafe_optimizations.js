@@ -1,3 +1,10 @@
+#!/usr/bin/env node
+
+/** Implements a set of potentially unsafe JavaScript AST optimizations for aggressive code size optimizations.
+    Enabled when building with -sMINIMAL_RUNTIME=2 linker flag. */
+
+'use strict';
+
 const acorn = require('acorn');
 const fs = require('fs');
 const assert = require('assert');
@@ -23,45 +30,44 @@ function getChildNodes(node) {
     children = children.concat(childArray);
   }
 
-  if (['BlockStatement', 'Program'].indexOf(node.type) != -1) { addChildArray(node.body); }
-  else if (['IfStatement'].indexOf(node.type) != -1) { addChild(node.test); addChild(node.consequent); maybeChild(node.alternate); }
-  else if (['BinaryStatement', 'BinaryExpression', 'LogicalExpression', 'AssignmentExpression'].indexOf(node.type) != -1) { addChild(node.left); addChild(node.right); }
-  else if (['MemberExpression'].indexOf(node.type) != -1) { addChild(node.object); addChild(node.property); }
-  else if (['Property'].indexOf(node.type) != -1) { addChild(node.key); addChild(node.value); }
-  else if (['TryStatement'].indexOf(node.type) != -1) { addChild(node.block); maybeChild(node.handler); }
-  else if (['CatchClause'].indexOf(node.type) != -1) { /*addChild(node.param);*/ addChild(node.body); }
-  else if (['FunctionDeclaration'].indexOf(node.type) != -1) { addChild(node.body); }
-  else if (['FunctionExpression', 'ArrowFunctionExpression'].indexOf(node.type) != -1) { addChild(node.body); }
-  else if (['ThrowStatement', 'ReturnStatement'].indexOf(node.type) != -1) { maybeChild(node.argument); }
-  else if (['UnaryExpression', 'UpdateExpression'].indexOf(node.type) != -1) { addChild(node.argument); }
-  else if (['CallExpression', 'NewExpression'].indexOf(node.type) != -1) { addChild(node.callee); addChildArray(node.arguments); }
-  else if (['VariableDeclaration'].indexOf(node.type) != -1) { addChildArray(node.declarations); }
-  else if (['ArrayExpression'].indexOf(node.type) != -1) { addChildArray(node.elements); }
-  else if (['VariableDeclarator'].indexOf(node.type) != -1) { maybeChild(node.init); }
-  else if (['ObjectExpression'].indexOf(node.type) != -1) { addChildArray(node.properties); }
-  else if (['ExpressionStatement'].indexOf(node.type) != -1) { addChild(node.expression); }
-  else if (['BreakStatement'].indexOf(node.type) != -1) { /*maybeChild(node.label);*/ }
-  else if (['LabeledStatement'].indexOf(node.type) != -1) { addChild(node.body); /*addChild(node.label);*/ }
-  else if (['SwitchStatement'].indexOf(node.type) != -1) { addChild(node.discriminant); addChildArray(node.cases); }
-  else if (['SwitchCase'].indexOf(node.type) != -1) { addChildArray(node.consequent); maybeChild(node.test); }
-  else if (['SequenceExpression'].indexOf(node.type) != -1) { addChildArray(node.expressions); }
-  else if (['ConditionalExpression'].indexOf(node.type) != -1) { addChild(node.test); addChild(node.consequent); addChild(node.alternate); }
-  else if (['ForStatement'].indexOf(node.type) != -1) { maybeChild(node.init); maybeChild(node.test); maybeChild(node.update); addChild(node.body); }
-  else if (['WhileStatement', 'DoWhileStatement'].indexOf(node.type) != -1) { addChild(node.test); addChild(node.body); }
-  else if (['ForInStatement'].indexOf(node.type) != -1) { addChild(node.left); addChild(node.right); addChild(node.body); }
-  else if (['Identifier', 'Literal', 'ThisExpression', 'EmptyStatement', 'DebuggerStatement', 'ContinueStatement', 'SpreadElement'].indexOf(node.type) != -1) {
+  if (['BlockStatement', 'Program'].includes(node.type)) { addChildArray(node.body); }
+  else if (['IfStatement'].includes(node.type)) { addChild(node.test); addChild(node.consequent); maybeChild(node.alternate); }
+  else if (['BinaryStatement', 'BinaryExpression', 'LogicalExpression', 'AssignmentExpression'].includes(node.type)) { addChild(node.left); addChild(node.right); }
+  else if (['MemberExpression'].includes(node.type)) { addChild(node.object); addChild(node.property); }
+  else if (['Property'].includes(node.type)) { addChild(node.key); addChild(node.value); }
+  else if (['TryStatement'].includes(node.type)) { addChild(node.block); maybeChild(node.handler); }
+  else if (['CatchClause'].includes(node.type)) { /*addChild(node.param);*/ addChild(node.body); }
+  else if (['FunctionDeclaration'].includes(node.type)) { addChild(node.body); }
+  else if (['FunctionExpression', 'ArrowFunctionExpression'].includes(node.type)) { addChild(node.body); }
+  else if (['ThrowStatement', 'ReturnStatement'].includes(node.type)) { maybeChild(node.argument); }
+  else if (['UnaryExpression', 'UpdateExpression'].includes(node.type)) { addChild(node.argument); }
+  else if (['CallExpression', 'NewExpression'].includes(node.type)) { addChild(node.callee); addChildArray(node.arguments); }
+  else if (['VariableDeclaration'].includes(node.type)) { addChildArray(node.declarations); }
+  else if (['ArrayExpression'].includes(node.type)) { addChildArray(node.elements); }
+  else if (['VariableDeclarator'].includes(node.type)) { maybeChild(node.init); }
+  else if (['ObjectExpression'].includes(node.type)) { addChildArray(node.properties); }
+  else if (['ExpressionStatement'].includes(node.type)) { addChild(node.expression); }
+  else if (['BreakStatement'].includes(node.type)) { /*maybeChild(node.label);*/ }
+  else if (['LabeledStatement'].includes(node.type)) { addChild(node.body); /*addChild(node.label);*/ }
+  else if (['SwitchStatement'].includes(node.type)) { addChild(node.discriminant); addChildArray(node.cases); }
+  else if (['SwitchCase'].includes(node.type)) { addChildArray(node.consequent); maybeChild(node.test); }
+  else if (['SequenceExpression'].includes(node.type)) { addChildArray(node.expressions); }
+  else if (['ConditionalExpression'].includes(node.type)) { addChild(node.test); addChild(node.consequent); addChild(node.alternate); }
+  else if (['ForStatement'].includes(node.type)) { maybeChild(node.init); maybeChild(node.test); maybeChild(node.update); addChild(node.body); }
+  else if (['WhileStatement', 'DoWhileStatement'].includes(node.type)) { addChild(node.test); addChild(node.body); }
+  else if (['ForInStatement'].includes(node.type)) { addChild(node.left); addChild(node.right); addChild(node.body); }
+  else if (['Identifier', 'Literal', 'ThisExpression', 'EmptyStatement', 'DebuggerStatement', 'ContinueStatement', 'SpreadElement'].includes(node.type)) {
     // no children
   } else {
-    console.error('----NODE----');
+    console.error('Internal error! Unhandled node:');
     console.error(node);
-    console.error('----ENDNODE----');
     assert(false);
   }
   return children;
 }
 
 function dump(nodeArray) {
-  for(let node of nodeArray) {
+  for (let node of nodeArray) {
     console.dir(node);
   }
 }
@@ -69,7 +75,7 @@ function dump(nodeArray) {
 // Closure integration of the Module object generates an awkward "var b; b || (b = Module);" code.
 // 'b || (b = Module)' -> 'b = Module'.
 function optPassSimplifyModuleInitialization(nodeArray) {
-  for(let n of nodeArray) {
+  for (let n of nodeArray) {
     if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||'
       && n.expression.left.name == n.expression.right.left.name && n.expression.right.right.name == 'Module') {
 
@@ -83,14 +89,14 @@ function optPassSimplifyModuleInitialization(nodeArray) {
 // Merges empty VariableDeclarators to previous VariableDeclarations.
 // 'var a,b; ...; var c,d;'' -> 'var a,b,c,d; ...;'
 function optPassMergeEmptyVarDeclarators(nodeArray) {
-  for(let i = 0; i < nodeArray.length; ++i) {
+  for (let i = 0; i < nodeArray.length; ++i) {
     let n = nodeArray[i];
     if (n.type != 'VariableDeclaration') continue;
     // Look back to find a preceding VariableDeclaration that empty declarators from this declaration could be fused to.
-    for(let j = i-1; j >= 0; --j) {
+    for (let j = i-1; j >= 0; --j) {
       let p = nodeArray[j];
       if (p.type == 'VariableDeclaration') {
-        for(let k = 0; k < n.declarations.length; ++k) {
+        for (let k = 0; k < n.declarations.length; ++k) {
           if (!n.declarations[k].init) {
             p.declarations.push(n.declarations[k]);
             n.declarations.splice(k--, 1);
@@ -108,11 +114,11 @@ function optPassMergeEmptyVarDeclarators(nodeArray) {
 // 'var a = 1; var b = 2;' -> 'var a = 1, b = 2;'
 function optPassMergeVarDeclarations(nodeArray) {
   let progress = false;
-  for(let i = 0; i < nodeArray.length; ++i) {
+  for (let i = 0; i < nodeArray.length; ++i) {
     let n = nodeArray[i];
     if (n.type != 'VariableDeclaration') continue;
     // Look back to find if there is a preceding VariableDeclaration that this declaration could be fused to.
-    for(let j = i-1; j >= 0; --j) {
+    for (let j = i-1; j >= 0; --j) {
       let p = nodeArray[j];
       if (p.type == 'VariableDeclaration') {
         p.declarations = p.declarations.concat(n.declarations);
@@ -133,13 +139,13 @@ function optPassMergeVarDeclarations(nodeArray) {
 function optPassRemoveRedundantOperatorNews(nodeArray) {
   let progress = false;
   // Delete operator news that don't have any meaning.
-  for(let i = 0; i < nodeArray.length; ++i) {
+  for (let i = 0; i < nodeArray.length; ++i) {
     let n = nodeArray[i];
     if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
       nodeArray.splice(i--, 1);
       progress = true;
     } else {
-      for(let c of getChildNodes(n)) {
+      for (let c of getChildNodes(n)) {
         if (c.type == 'BlockStatement') optPassRemoveRedundantOperatorNews(c.body);
         else optPassRemoveRedundantOperatorNews([c]);
       }
@@ -153,13 +159,13 @@ function optPassMergeVarInitializationAssignments(nodeArray) {
   // Tests if the assignment expression at nodeArray[i] is the first assignment to the given variable, and it was undefined before that.
   function isUndefinedBeforeThisAssignment(nodeArray, i) {
     let name = nodeArray[i].expression.left.name;
-    for(let j = i-1; j >= 0; --j) {
+    for (let j = i-1; j >= 0; --j) {
       let n = nodeArray[j];
       if (n.type == 'ExpressionStatement' && n.expression.type == 'AssignmentExpression' && n.expression.left.name == name) {
         return null;
       }
       if (n.type == 'VariableDeclaration') {
-        for(let k = n.declarations.length -1; k >= 0; --k) {
+        for (let k = n.declarations.length -1; k >= 0; --k) {
           let d = n.declarations[k];
           if (d.id.name == name) {
             if (d.init) return null;
@@ -172,7 +178,7 @@ function optPassMergeVarInitializationAssignments(nodeArray) {
 
   // Find all assignments that are preceded by a variable declaration.
   let progress = false;
-  for(let i = 1; i < nodeArray.length; ++i) {
+  for (let i = 1; i < nodeArray.length; ++i) {
     let n = nodeArray[i];
     if (n.type != 'ExpressionStatement' || n.expression.type != 'AssignmentExpression') continue;
     if (nodeArray[i-1].type != 'VariableDeclaration') continue;
@@ -251,7 +257,7 @@ let args = process['argv'].slice(2);
 
 function readBool(arg) {
   let ret = false;
-  for(;;) {
+  for (;;) {
     let i = args.indexOf(arg);
     if (i >= 0) {
       args.splice(i, 1);
@@ -264,7 +270,7 @@ function readBool(arg) {
 
 function readArg(arg) {
   let ret = null;
-  for(;;) {
+  for (;;) {
     let i = args.indexOf(arg);
     if (i >= 0) {
       ret = args[i+1];
