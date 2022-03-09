@@ -45,7 +45,7 @@ function dump(nodeArray) {
 function optPassSimplifyModularizeFunction(ast) {
   visitNodes(ast, ['FunctionExpression'], (node) => {
     if (node.params.length == 1 && node.params[0].name == 'Module') {
-      let body = node.body.body;
+      const body = node.body.body;
       // Nuke 'Module = Module || {};'
       if (body[0].type == 'ExpressionStatement' && body[0].expression.type == 'AssignmentExpression' && body[0].expression.left.name == 'Module') {
         body.splice(0, 1);
@@ -198,15 +198,13 @@ function optPassMergeVarInitializationAssignments(ast) {
 
 function runOnJsText(js, pretty = false) {
   const ast = acorn.parse(js, {ecmaVersion: 6});
-//  console.log(JSON.stringify(ast));
 
   optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
 
   let progress = true;
   while (progress) {
-    progress = false;
-    progress = progress || optPassMergeVarDeclarations(ast);
+    progress = optPassMergeVarDeclarations(ast);
     progress = progress || optPassMergeVarInitializationAssignments(ast);
     progress = progress || optPassMergeEmptyVarDeclarators(ast);
   }
@@ -262,7 +260,7 @@ function runTests() {
   test('var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);', 'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);');
 
   // Terser suboptimality! Should produce:
-  //test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{}');
+  // test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{}');
   // but instead produces:
   test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=(()=>{});');
 }
