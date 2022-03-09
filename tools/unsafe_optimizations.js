@@ -16,21 +16,21 @@ const terser = require('../third_party/terser');
 function visitNodes(root, types, func) {
   // Visit the given node if it is of desired type.
   if (types.includes(root.type)) {
-    let continueTraversal = func(root);
+    const continueTraversal = func(root);
     if (continueTraversal === false) return false;
   }
 
   // Traverse all children of this node to find nodes of desired type.
-  for(let member in root) {
+  for (const member in root) {
     if (Array.isArray(root[member])) {
-      for(let elem of root[member]) {
+      for (const elem of root[member]) {
         if (elem.type) {
-          let continueTraversal = visitNodes(elem, types, func);
+          const continueTraversal = visitNodes(elem, types, func);
           if (continueTraversal === false) return false;
         }
       }
     } else if (root[member] && root[member].type) {
-      let continueTraversal = visitNodes(root[member], types, func);
+      const continueTraversal = visitNodes(root[member], types, func);
       if (continueTraversal === false) return false;
     }
   }
@@ -62,7 +62,7 @@ function optPassSimplifyModuleInitialization(ast) {
 // (we aren't interested in side effects of the calls if no assignment)
 function optPassRemoveRedundantOperatorNews(ast) {
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    let nodeArray = node.body;
+    const nodeArray = node.body;
     // Delete operator news that don't have any meaning.
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
@@ -79,7 +79,7 @@ function optPassMergeEmptyVarDeclarators(ast) {
   let progress = false;
 
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    let nodeArray = node.body;
+    const nodeArray = node.body;
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
       if (n.type != 'VariableDeclaration') continue;
@@ -110,7 +110,7 @@ function optPassMergeVarDeclarations(ast) {
   let progress = false;
 
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    let nodeArray = node.body;
+    const nodeArray = node.body;
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
       if (n.type != 'VariableDeclaration') continue;
@@ -157,7 +157,7 @@ function optPassMergeVarInitializationAssignments(ast) {
   // Find all assignments that are preceded by a variable declaration.
   let progress = false;
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    let nodeArray = node.body;
+    const nodeArray = node.body;
     for (let i = 1; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
       if (n.type != 'ExpressionStatement' || n.expression.type != 'AssignmentExpression') continue;
