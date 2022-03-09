@@ -25,20 +25,7 @@ var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
             return d;
         }
         function t(u) {
-            var e = Math.imul;
-            var f = Math.fround;
-            var g = Math.abs;
-            var h = Math.clz32;
-            var i = Math.min;
-            var j = Math.max;
-            var k = Math.floor;
-            var l = Math.ceil;
-            var m = Math.trunc;
-            var n = Math.sqrt;
-            var o = u.abort;
-            var p = NaN;
-            var q = Infinity;
-            var r = u.a;
+            var e = Math.imul, f = Math.fround, g = Math.abs, h = Math.clz32, i = Math.min, j = Math.max, k = Math.floor, l = Math.ceil, m = Math.trunc, n = Math.sqrt, o = u.abort, p = NaN, q = Infinity, r = u.a, s = c([]);
             function x(a, b) {
                 a = a | 0;
                 b = b | 0;
@@ -46,7 +33,6 @@ var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
                 return 0;
             }
             function w() {}
-            var s = c([]);
             return {
                 b: w,
                 c: x,
