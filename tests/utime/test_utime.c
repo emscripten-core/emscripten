@@ -44,12 +44,14 @@ void test() {
   assert(s.st_mtime == t.modtime);
 
   // NULL sets atime and mtime to current time.
+  int now = time(NULL);
   rv = utime("writeable", NULL);
   assert(rv == 0);
   memset(&s, 0, sizeof s);
   stat("writeable", &s);
   assert(s.st_atime == s.st_mtime);
-  assert(s.st_atime == time(NULL));
+  assert((s.st_atime >= now - 5));
+  assert((s.st_atime <= now + 5));
 
   // write permissions aren't checked when setting node
   // attributes unless the user uid isn't the owner (so
