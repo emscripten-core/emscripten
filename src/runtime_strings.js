@@ -6,38 +6,14 @@
 
 // runtime_strings.js: Strings related runtime functions that are part of both MINIMAL_RUNTIME and regular runtime.
 
+#if TEXTDECODER == 2
+var UTF8Decoder = new TextDecoder('utf8');
+#elif TEXTDECODER == 1
+var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined;
+#endif
+
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
-
-#if SHARED_MEMORY && TEXTDECODER
-/**
- * UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
- * https://github.com/whatwg/encoding/issues/172
- * To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
- * which can still be much faster than creating a string character by
- * character.
- * @constructor
- */
-function TextDecoderWrapper(encoding) {
-  var textDecoder = new TextDecoder(encoding);
-  this.decode = (data) => {
-#if ASSERTIONS
-    assert(data instanceof Uint8Array);
-#endif
-    // While we compile with pthreads, this method can be called on side buffers
-    // as well, such as the stdout buffer in the filesystem code. Only copy when
-    // we have to.
-    return textDecoder.decode(data.buffer instanceof SharedArrayBuffer ? new Uint8Array(data) : data);
-  };
-}
-#endif
-
-#if TEXTDECODER == 2
-var UTF8Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8');
-#elif TEXTDECODER == 1
-var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8') : undefined;
-#endif
-
 /**
  * heapOrArray is either a regular array, or a JavaScript typed array view.
  * @param {number} idx
@@ -58,11 +34,11 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
-  return UTF8Decoder.decode(heapOrArray.buffer ? heapOrArray.subarray(idx, endPtr) : new Uint8Array(heapOrArray.slice(idx, endPtr)));
+  return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
   if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
-    return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
+    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
   } else {
 #endif // TEXTDECODER
     var str = '';
@@ -133,7 +109,7 @@ function UTF8ToString(ptr, maxBytesToRead) {
   if (!ptr) return '';
   var maxPtr = ptr + maxBytesToRead;
   for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
-  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+  return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
 #else
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 #endif

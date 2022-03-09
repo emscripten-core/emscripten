@@ -1,12 +1,6 @@
 var b = Module;
 
-var c = b.$ww;
-
-new function(a) {
-    new TextDecoder(a);
-}("utf8");
-
-var e, f;
+var c = b.$ww, e, f;
 
 e = b.mem || new WebAssembly.Memory({
     initial: 256,
