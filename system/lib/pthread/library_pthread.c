@@ -653,7 +653,7 @@ int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
     q->calleeDelete = 1;
 
     // Schedule the call to run later on this thread.
-    emscripten_set_timeout(_do_call, 0, args);
+    emscripten_set_timeout(_do_call, 0, q);
     return 0;
   }
 

@@ -739,9 +739,6 @@ class libc(MuslInternalLibrary,
              '-Wno-string-plus-int',
              '-Wno-pointer-sign']
 
-  # Include internal proxying header.
-  cflags += [f'-I{utils.path_from_root("system/lib/pthread")}']
-
   def __init__(self, **kwargs):
     self.non_lto_files = self.get_non_lto_files()
     super().__init__(**kwargs)
