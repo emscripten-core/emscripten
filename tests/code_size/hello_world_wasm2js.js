@@ -1,19 +1,9 @@
-var b = Module;
-
-var c = new TextDecoder("utf8"), d, f;
-
-f = new function(a) {
+var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
     this.buffer = new ArrayBuffer(65536 * a.initial);
 }({
     initial: 256,
     maximum: 256
-});
-
-var h = f.buffer;
-
-d = new Uint8Array(h);
-
-var k = {
+}), h = f.buffer, d = new Uint8Array(h), k = {
     a: function(a) {
         var g = console, m = g.log;
         if (a) {
@@ -23,7 +13,7 @@ var k = {
         m.call(g, a);
     },
     memory: f
-}, l, p = (new function() {
+}, p = (new function() {
     this.exports = function instantiate(v) {
         function c(d) {
             d.set = function(a, b) {
@@ -65,9 +55,7 @@ var k = {
         }
         return t(v);
     }(k);
-}).exports;
-
-l = p.c;
+}).exports, l = p.c;
 
 d.set(new Uint8Array(b.mem), 1024);
 

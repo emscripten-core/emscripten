@@ -31,7 +31,7 @@ function getChildNodes(node) {
   else if (['TryStatement'].indexOf(node.type) != -1) { addChild(node.block); addChild(node.handler); }
   else if (['CatchClause'].indexOf(node.type) != -1) { /*addChild(node.param);*/ addChild(node.body); }
   else if (['FunctionDeclaration'].indexOf(node.type) != -1) { addChild(node.body); }
-  else if (['FunctionExpression'].indexOf(node.type) != -1) { addChild(node.body); }
+  else if (['FunctionExpression', 'ArrowFunctionExpression'].indexOf(node.type) != -1) { addChild(node.body); }
   else if (['ThrowStatement', 'ReturnStatement'].indexOf(node.type) != -1) { maybeChild(node.argument); }
   else if (['UnaryExpression', 'UpdateExpression'].indexOf(node.type) != -1) { addChild(node.argument); }
   else if (['CallExpression', 'NewExpression'].indexOf(node.type) != -1) { addChild(node.callee); addChildArray(node.arguments); }
