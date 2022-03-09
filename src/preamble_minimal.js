@@ -18,11 +18,9 @@ function abort(what) {
   throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
-#if SAFE_HEAP
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
-#endif
 
 var tempRet0 = 0;
 var setTempRet0 = (value) => { tempRet0 = value };

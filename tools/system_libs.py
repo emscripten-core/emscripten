@@ -917,6 +917,8 @@ class libc(MuslInternalLibrary,
           'ctime.c',
           'gmtime.c',
           'localtime.c',
+          'difftime.c',
+          'time.c',
           'nanosleep.c',
           'clock_nanosleep.c',
           'ctime_r.c',
@@ -1644,13 +1646,11 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__year_to_secs.c',
                    'clock.c',
                    'clock_gettime.c',
-                   'difftime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
                    'mktime.c',
-                   'timegm.c',
-                   'time.c'])
+                   'timegm.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     files += files_in_path(
