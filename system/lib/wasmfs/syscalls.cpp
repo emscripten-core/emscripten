@@ -100,6 +100,8 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_BADF;
   }
 
+  // TODO: Check open file access mode for write permissions.
+
   auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
@@ -167,6 +169,8 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
+
+  // TODO: Check open file access mode for read permissions.
 
   auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
@@ -770,16 +774,16 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   // A directory's position corresponds to the index in its entries vector.
   int index = lockedOpenFile.getPosition();
 
-  // In the root directory, ".." refers to itself.
+  // If this directory has been unlinked and has no parent, then it is
+  // completely empty.
   auto parent = lockedDir.getParent();
-
-  // If the directory is unlinked then it should report being completely empty,
-  // but otherwise there is always "." and "..".
-  std::vector<Directory::Entry> entries;
-  if (parent) {
-    entries = {{".", File::DirectoryKind, dir->getIno()},
-               {"..", File::DirectoryKind, parent->getIno()}};
+  if (!parent) {
+    return 0;
   }
+
+  std::vector<Directory::Entry> entries = {
+    {".", File::DirectoryKind, dir->getIno()},
+    {"..", File::DirectoryKind, parent->getIno()}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 

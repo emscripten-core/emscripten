@@ -29,9 +29,6 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
-// Access mode, file creation and file status flags for open.
-using oflags_t = uint32_t;
-
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position;
@@ -43,7 +40,17 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
 
 public:
   OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
-    : position(position), flags(flags), file(file) {}
+    : position(position), flags(flags), file(file) {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().open(flags & O_ACCMODE);
+    }
+  }
+
+  ~OpenFileState() {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().close();
+    }
+  }
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;
