@@ -28,7 +28,7 @@ function getChildNodes(node) {
   else if (['BinaryStatement', 'BinaryExpression', 'LogicalExpression', 'AssignmentExpression'].indexOf(node.type) != -1) { addChild(node.left); addChild(node.right); }
   else if (['MemberExpression'].indexOf(node.type) != -1) { addChild(node.object); addChild(node.property); }
   else if (['Property'].indexOf(node.type) != -1) { addChild(node.key); addChild(node.value); }
-  else if (['TryStatement'].indexOf(node.type) != -1) { addChild(node.block); addChild(node.handler); }
+  else if (['TryStatement'].indexOf(node.type) != -1) { addChild(node.block); maybeChild(node.handler); }
   else if (['CatchClause'].indexOf(node.type) != -1) { /*addChild(node.param);*/ addChild(node.body); }
   else if (['FunctionDeclaration'].indexOf(node.type) != -1) { addChild(node.body); }
   else if (['FunctionExpression', 'ArrowFunctionExpression'].indexOf(node.type) != -1) { addChild(node.body); }
