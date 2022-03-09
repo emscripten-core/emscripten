@@ -1046,8 +1046,8 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
-    if (times === 0) {
-      var atime = Date.now() / 1000;
+    if (!times) {
+      var atime = Date.now()/1000;
       var mtime = atime;
     } else {
       var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
