@@ -391,25 +391,9 @@ LibraryManager.library = {
   // time.h
   // ==========================================================================
 
-  clock__sig: 'i',
-  clock: function() {
-    if (_clock.start === undefined) _clock.start = Date.now();
-    return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
-  },
-
-  time__sig: 'ii',
-  time: function(ptr) {
-    {{{ from64('ptr') }}};
-    var ret = (Date.now()/1000)|0;
-    if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
-    }
-    return ret;
-  },
-
-  difftime__sig: 'dii',
-  difftime: function(time1, time0) {
-    return time1 - time0;
+  _emscripten_date_now__sig: 'j',
+  _emscripten_date_now: function() {
+    return Date.now();
   },
 
   _mktime_js__sig: 'ii',
@@ -547,11 +531,6 @@ LibraryManager.library = {
     var ret = f();
     stackRestore(stack);
     return ret;
-  },
-
-  dysize: function(year) {
-    var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
-    return leap ? 366 : 365;
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
@@ -1244,66 +1223,6 @@ LibraryManager.library = {
   strptime_l__deps: ['strptime'],
   strptime_l: function(buf, format, tm) {
     return _strptime(buf, format, tm); // no locale support yet
-  },
-
-  timespec_get__deps: ['clock_gettime', '$setErrNo'],
-  timespec_get: function(ts, base) {
-    //int timespec_get(struct timespec *ts, int base);
-    if (base !== {{{ cDefine('TIME_UTC') }}}) {
-      // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return 0;
-    }
-    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
-    return ret < 0 ? 0 : base;
-  },
-
-  // ==========================================================================
-  // sys/time.h
-  // ==========================================================================
-
-  clock_gettime__sig: 'iii',
-  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_gettime: function(clk_id, tp) {
-    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    var now;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      now = Date.now();
-    } else if ((clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} || clk_id === {{{ cDefine('CLOCK_MONOTONIC_RAW') }}}) && _emscripten_get_now_is_monotonic) {
-      now = _emscripten_get_now();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
-    return 0;
-  },
-  __clock_gettime__sig: 'iii',
-  __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_getres: function(clk_id, res) {
-    // int clock_getres(clockid_t clk_id, struct timespec *res);
-    var nsec;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
-      nsec = _emscripten_get_now_res();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
-    return 0;
-  },
-  gettimeofday__sig: 'iii',
-  // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
-  gettimeofday: function(ptr) {
-    var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
-    return 0;
   },
 
   // ==========================================================================
@@ -2463,8 +2382,9 @@ LibraryManager.library = {
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
+  $nowIsMonotonic__internal: true,
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-  emscripten_get_now_is_monotonic: `
+  $nowIsMonotonic: `
      ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
@@ -2475,8 +2395,14 @@ LibraryManager.library = {
     );`,
 #else
   // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-  emscripten_get_now_is_monotonic: 'true;',
+  $nowIsMonotonic: 'true;',
 #endif
+
+  _emscripten_get_now_is_monotonic__internal: true,
+  _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
+  _emscripten_get_now_is_monotonic: function() {
+    return nowIsMonotonic;
+  },
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
