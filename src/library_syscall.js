@@ -1052,11 +1052,11 @@ var SyscallsLibrary = {
     } else {
       var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      var atime = seconds + (nanoseconds/(1000*1000*1000));
+      atime = seconds + (nanoseconds/(1000*1000*1000));
       times += {{{ C_STRUCTS.timespec.__size__ }}};
       seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      var mtime = seconds + (nanoseconds/(1000*1000*1000));
+      mtime = seconds + (nanoseconds/(1000*1000*1000));
     }
     FS.utime(path, atime, mtime);
     return 0;
