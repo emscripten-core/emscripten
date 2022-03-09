@@ -296,7 +296,10 @@ var LibraryPThread = {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
           }
-        } else {
+        } else if (cmd) {
+          // The received message looks like something that should be handled by this message
+          // handler, (since there is a e.data.cmd field present), but is not one of the
+          // recognized commands:
           err("worker sent an unknown command " + cmd);
         }
         PThread.currentProxiedOperationCallerThread = undefined;

@@ -133,11 +133,28 @@ def also_with_wasmfs(f):
 def wasmfs_all_backends(f):
   def metafunc(self, backend):
     self.set_setting('WASMFS')
+    self.emcc_args.append('-DWASMFS')
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
   metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
                             'node': ('WASMFS_NODE_BACKEND',)}
+  return metafunc
+
+
+def also_with_wasmfs_all_backends(f):
+  def metafunc(self, backend):
+    if backend:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      self.emcc_args.append(f'-D{backend}')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (None,),
+                            'wasmfs': ('WASMFS_MEMORY_BACKEND',),
+                            'wasmfs_node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
@@ -4100,7 +4117,8 @@ int main() {
     self.run_process([EMXX, 'src.cpp'])
     self.assertContained('read: 0\nfile size is 104\n', self.run_js('a.out.js'))
 
-  @also_with_wasmfs
+  @no_mac("TODO: investigate different FS semantics on Mac")
+  @also_with_wasmfs_all_backends
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
