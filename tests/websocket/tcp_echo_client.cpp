@@ -79,7 +79,7 @@ int main(int argc , char *argv[])
   if (sock == -1)
   {
     printf("Could not create socket");
-    exit(1);
+    return 1;
   }
   printf("Socket created: %d\n", sock);
 
@@ -116,8 +116,5 @@ int main(int argc , char *argv[])
   }
 
   close(sock);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(101);
-#endif
   return 0;
 }
