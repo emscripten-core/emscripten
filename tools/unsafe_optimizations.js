@@ -66,7 +66,7 @@ function dump(nodeArray) {
   }
 }
 
-// Closure integration of the Module object generates an awkward "var b; b || b || (b = Module);" code.
+// Closure integration of the Module object generates an awkward "var b; b || (b = Module);" code.
 // 'b || (b = Module)' -> 'b = Module'.
 function optPassSimplifyModuleInitialization(nodeArray) {
   for(let n of nodeArray) {
