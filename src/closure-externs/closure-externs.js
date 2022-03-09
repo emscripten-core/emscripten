@@ -70,125 +70,29 @@ Atomics.store = function() {};
 var WebAssembly = {};
 /**
  * @constructor
- * @param {!BufferSource} bytes
+ * @param {Object} globalDescriptor
+ * @param {*=} value
  */
-WebAssembly.Module = function(bytes) {};
+WebAssembly.Global = function(globalDescriptor, value) {};
 /**
  * @constructor
- * @param {!WebAssembly.Module} moduleObject
- * @param {Object=} importObject
- */
-WebAssembly.Instance = function(moduleObject, importObject) {};
-/**
- * @constructor
- * @param {MemoryDescriptor} memoryDescriptor
- */
-WebAssembly.Memory = function(memoryDescriptor) {};
-/**
- * @constructor
- * @param {TableDescriptor} tableDescriptor
- */
-WebAssembly.Table = function(tableDescriptor) {};
-/**
- * @constructor
- * @param {GlobalDescriptotr} globalDescriptor
- */
-WebAssembly.Global = function(globalDescriptor) {};
-/**
- * @constructor
- * @param {TagDescriptotr} tagDescriptor
+ * @param {Object} tagDescriptor
  */
 WebAssembly.Tag = function(tagDescriptor) {};
-/**
- * @constructor
- * @extends {Error}
- */
-WebAssembly.CompileError = function() {};
-/**
- * @constructor
- * @extends {Error}
- */
-WebAssembly.LinkError = function() {};
-/**
- * @constructor
- * @param {string=} message
- * @param {string=} fileName
- * @param {number=} lineNumber
- * @extends {Error}
- */
-WebAssembly.RuntimeError = function(message, fileName, lineNumber) {};
 /**
  * Note: Closure compiler does not support function overloading, omit this overload for now.
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
  */
-/**
- * @param {!BufferSource} moduleObject
- * @param {Object=} importObject
- * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
- */
-WebAssembly.instantiate = function(moduleObject, importObject) {};
-/**
- * @param {!Promise<!Response>|!Response} source
- * @param {Object=} importObject
- * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
- */
-WebAssembly.instantiateStreaming = function(source, importObject) {};
-/**
- * @param {!BufferSource} bytes
- * @return {!Promise<!WebAssembly.Module>}
- */
-WebAssembly.compile = function(bytes) {};
-/**
- * @param {!BufferSource} bytes
- * @return {boolean}
- */
-WebAssembly.validate = function(bytes) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @return {!Array<{name:string, kind:string}>}
- */
-WebAssembly.Module.exports = function(moduleObject) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @return {!Array<{module:string, name:string, kind:string}>}
- */
-WebAssembly.Module.imports = function(moduleObject) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @param {string} sectionName
- * @return {!Array<!ArrayBuffer>}
- */
-WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
 WebAssembly.Instance.prototype.exports;
-/**
- * @param {number} delta
- * @return {number}
- */
-WebAssembly.Memory.prototype.grow = function(delta) {};
 /**
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
 /**
- * @param {number} delta
- * @return {number}
- */
-WebAssembly.Table.prototype.grow = function(delta) {};
-/**
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
-/**
- * @param {number} index
- * @return {function(...)}
- */
-WebAssembly.Table.prototype.get = function(index) {};
-/**
- * @param {number} index
- * @param {?function(...)} value
- */
-WebAssembly.Table.prototype.set = function(index, value) {};
 
 /**
  * @suppress {undefinedVars}
@@ -286,9 +190,6 @@ var devicePixelRatio;
 // the names need to match:
 /** @suppress {duplicate} */
 var noExitRuntime;
-
-/** @type {?AudioWorklet} */
-BaseAudioContext.prototype.audioWorklet;
 
 /*
  * AudioWorkletGlobalScope globals

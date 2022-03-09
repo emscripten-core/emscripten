@@ -111,28 +111,30 @@ def make_dynCall(sig, args):
     return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
 
 
-def make_invoke(sig, named=True):
+def make_invoke(sig):
   legal_sig = legalize_sig(sig) # TODO: do this in extcall, jscall?
   args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
   ret = 'return ' if sig[0] != 'v' else ''
+  # For function that needs to return a genuine i64 (i.e. if legal_sig[0] is 'j')
+  # we need to return an actual BigInt, even in the exceptional case because
+  # wasm won't implicitly convert undefined to 0 in this case.
+  exceptional_ret = '\n    return BigInt(0);' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-  if settings.SUPPORT_LONGJMP:
-    rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
-  else:
-    rethrow = "if (e !== e+0) throw e;"
-
-  name = (' invoke_' + sig) if named else ''
+  # Exceptions thrown from C++ exception will be integer numbers.
+  # longjmp will throw the number Infinity.
+  # Create a try-catch guard that rethrows the exception if anything else
+  # than a Number was thrown. To do that quickly and in a code size conserving
+  # manner, use the compact test "e !== e+0" to check if e was not a Number.
   ret = '''\
-function%s(%s) {
-var sp = stackSave();
-try {
-  %s
-} catch(e) {
-  stackRestore(sp);
-  %s
-  _setThrew(1, 0);
-}
-}''' % (name, ','.join(args), body, rethrow)
+function invoke_%s(%s) {
+  var sp = stackSave();
+  try {
+    %s
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);%s
+  }
+}''' % (sig, ','.join(args), body, exceptional_ret)
 
   return ret

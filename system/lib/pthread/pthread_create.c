@@ -23,9 +23,9 @@
 // See musl's pthread_create.c
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void _emscripten_thread_init(int, int, int, int);
+extern void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 extern int _emscripten_default_pthread_stack_size();
-extern void __pthread_detached_exit();
+extern void __emscripten_thread_cleanup(pthread_t thread);
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
 
@@ -139,10 +139,22 @@ int __pthread_create(pthread_t* restrict res,
     new->stack_owned = 1;
   }
 
+#ifndef NDEBUG
+  _emscripten_thread_profiler_init(new);
+#endif
+
   //printf("start __pthread_create: %p\n", self);
+
+  // Set libc.need_locks before calling __pthread_create_js since
+  // by the time it returns the thread could be running and we
+  // want libc.need_locks to be set from the moment it starts.
+  if (!libc.threads_minus_1++) libc.need_locks = 1;
+
   int rtn = __pthread_create_js(new, attrp, entry, arg);
-  if (rtn != 0)
+  if (rtn != 0) {
+    if (!--libc.threads_minus_1) libc.need_locks = 0;
     return rtn;
+  }
 
   // TODO(sbc): Implement circular list of threads
   /*
@@ -166,9 +178,11 @@ int __pthread_create(pthread_t* restrict res,
  * that is no longer running.
  */
 void _emscripten_thread_free_data(pthread_t t) {
+#ifndef NDEBUG
   if (t->profilerBlock) {
     emscripten_builtin_free(t->profilerBlock);
   }
+#endif
   if (t->stack_owned) {
     emscripten_builtin_free(((char*)t->stack) - t->stack_size);
   }
@@ -203,6 +217,8 @@ void _emscripten_thread_exit(void* result) {
 
   free_tls_data();
 
+  if (!--libc.threads_minus_1) libc.need_locks = 0;
+
   // TODO(sbc): Implement circular list of threads
   /*
   __tl_lock();
@@ -225,22 +241,20 @@ void _emscripten_thread_exit(void* result) {
   self->tsd = NULL;
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
-  _emscripten_thread_init(0, 0, 0, 1);
+  __set_thread_state(NULL, 0, 0, 1);
 
   /* This atomic potentially competes with a concurrent pthread_detach
    * call; the loser is responsible for freeing thread resources. */
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
-  // Mark the thread as no longer running.
-  // When we publish this, the main thread is free to deallocate the thread
-  // object and we are done.
   if (state == DT_DETACHED) {
-    self->detach_state = DT_EXITED;
-    __pthread_detached_exit();
+    __emscripten_thread_cleanup(self);
   } else {
-    self->detach_state = DT_EXITING;
-    // wake any threads that might be waiting for us to exit
-    emscripten_futex_wake(&self->detach_state, INT_MAX);
+    // Mark the thread as no longer running, so it can be joined.
+    // Once we publish this, any threads that are waiting to join with us can
+    // proceed and this worker can be recycled and used on another thread.
+    a_store(&self->detach_state, DT_EXITED);
+    __wake(&self->detach_state, 1, 1); // Wake any joiner.
   }
 }
 

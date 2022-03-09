@@ -4,6 +4,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 
@@ -37,8 +39,8 @@ function load(f) {
   globalEval(read(f));
 }
 
-assert = function(x, message) {
-  if (!x) throw new Errror(message);
+global.assert = function(x, message) {
+  if (!x) throw new Error(message);
 };
 
 // Redirect console.log message from MiniLZ4 to stderr since stdout is

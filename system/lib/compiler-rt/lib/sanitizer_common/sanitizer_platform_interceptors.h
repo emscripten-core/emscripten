@@ -114,12 +114,6 @@
 #define SI_NOT_FUCHSIA 1
 #endif
 
-#if SANITIZER_RTEMS
-#define SI_NOT_RTEMS 0
-#else
-#define SI_NOT_RTEMS 1
-#endif
-
 #if SANITIZER_SOLARIS
 #define SI_SOLARIS 1
 #else
@@ -470,7 +464,7 @@
 #define SANITIZER_INTERCEPT_CTERMID_R (SI_MAC || SI_FREEBSD || SI_SOLARIS)
 
 #define SANITIZER_INTERCEPTOR_HOOKS \
-  (SI_LINUX || SI_MAC || SI_WINDOWS || SI_NETBSD || SI_SOLARIS)
+  (SI_LINUX || SI_MAC || SI_WINDOWS || SI_FREEBSD || SI_NETBSD || SI_SOLARIS)
 #define SANITIZER_INTERCEPT_RECV_RECVFROM SI_POSIX
 #define SANITIZER_INTERCEPT_SEND_SENDTO SI_POSIX
 #define SANITIZER_INTERCEPT_EVENTFD_READ_WRITE SI_LINUX
@@ -494,13 +488,12 @@
 #define SANITIZER_INTERCEPT_MMAP SI_POSIX
 #define SANITIZER_INTERCEPT_MMAP64 SI_LINUX_NOT_ANDROID
 #define SANITIZER_INTERCEPT_MALLOPT_AND_MALLINFO (SI_GLIBC || SI_ANDROID || SI_EMSCRIPTEN)
-#define SANITIZER_INTERCEPT_MEMALIGN \
-  (!SI_FREEBSD && !SI_MAC && !SI_NETBSD && SI_NOT_RTEMS)
+#define SANITIZER_INTERCEPT_MEMALIGN (!SI_FREEBSD && !SI_MAC && !SI_NETBSD)
 #define SANITIZER_INTERCEPT___LIBC_MEMALIGN SI_GLIBC
 #define SANITIZER_INTERCEPT_PVALLOC (SI_GLIBC || SI_ANDROID)
-#define SANITIZER_INTERCEPT_CFREE SI_GLIBC
+#define SANITIZER_INTERCEPT_CFREE (SI_GLIBC && !SANITIZER_RISCV64)
 #define SANITIZER_INTERCEPT_REALLOCARRAY SI_POSIX
-#define SANITIZER_INTERCEPT_ALIGNED_ALLOC (!SI_MAC && SI_NOT_RTEMS)
+#define SANITIZER_INTERCEPT_ALIGNED_ALLOC (!SI_MAC)
 #define SANITIZER_INTERCEPT_MALLOC_USABLE_SIZE (!SI_MAC && !SI_NETBSD)
 #define SANITIZER_INTERCEPT_MCHECK_MPROBE SI_LINUX_NOT_ANDROID
 #define SANITIZER_INTERCEPT_WCSCAT SI_POSIX
@@ -596,5 +589,27 @@
   (SI_POSIX && !(SANITIZER_MAC && SANITIZER_I386))
 #define SANITIZER_INTERCEPT_UNAME (SI_POSIX && !SI_FREEBSD)
 #define SANITIZER_INTERCEPT___XUNAME SI_FREEBSD
+#define SANITIZER_INTERCEPT_FLOPEN SI_FREEBSD
+
+// This macro gives a way for downstream users to override the above
+// interceptor macros irrespective of the platform they are on. They have
+// to do two things:
+// 1. Build compiler-rt with -DSANITIZER_OVERRIDE_INTERCEPTORS.
+// 2. Provide a header file named sanitizer_intercept_overriders.h in the
+//    include path for their compiler-rt build.
+// An example of an overrider for strlen interceptor that one can list in
+// sanitizer_intercept_overriders.h is as follows:
+//
+// #ifdef SANITIZER_INTERCEPT_STRLEN
+// #undef SANITIZER_INTERCEPT_STRLEN
+// #define SANITIZER_INTERCEPT_STRLEN <value of choice>
+// #endif
+//
+// This "feature" is useful for downstream users who do not want some of
+// their libc funtions to be intercepted. They can selectively disable
+// interception of those functions.
+#ifdef SANITIZER_OVERRIDE_INTERCEPTORS
+#include <sanitizer_intercept_overriders.h>
+#endif
 
 #endif  // #ifndef SANITIZER_PLATFORM_INTERCEPTORS_H

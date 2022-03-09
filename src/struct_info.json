@@ -706,6 +706,8 @@
     {
         "file": "SDL/SDL_audio.h",
         "defines": [
+            "AUDIO_U8",
+            "AUDIO_F32",
             "AUDIO_S16LSB"
         ],
         "structs": {
@@ -995,17 +997,8 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_PTHREAD_CREATE",
-            "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_PROXIED_JS_FUNCTION",
             "EM_QUEUED_JS_CALL_MAX_ARGS",
-            "EM_THREAD_STATUS_NOTSTARTED",
-            "EM_THREAD_STATUS_RUNNING",
-            "EM_THREAD_STATUS_SLEEPING",
-            "EM_THREAD_STATUS_WAITFUTEX",
-            "EM_THREAD_STATUS_WAITPROXY",
-            "EM_THREAD_STATUS_FINISHED",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",
             "EM_FUNC_SIG_VII",
@@ -1020,7 +1013,22 @@
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
-            ]
+        ]
+    },
+    {
+        "file": "emscripten/emscripten.h",
+        "defines": [
+            "EM_LOG_CONSOLE",
+            "EM_LOG_WARN",
+            "EM_LOG_ERROR",
+            "EM_LOG_C_STACK",
+            "EM_LOG_JS_STACK",
+            "EM_LOG_DEMANGLE",
+            "EM_LOG_NO_PATHS",
+            "EM_LOG_FUNC_PARAMS",
+            "EM_LOG_DEBUG",
+            "EM_LOG_INFO"
+        ]
     },
     {
         "file": "wasi/api.h",
@@ -1171,6 +1179,7 @@
                 "label"
             ],
             "WGPUCompilationMessage": [
+                "nextInChain",
                 "message",
                 "type",
                 "lineNum",
@@ -1244,6 +1253,10 @@
                 "chain",
                 "clampDepth"
             ],
+            "WGPUPrimitiveDepthClipControl": [
+                "chain",
+                "unclippedDepth"
+            ],
             "WGPUPrimitiveState": [
                 "nextInChain",
                 "topology",
@@ -1269,7 +1282,9 @@
                 "colorFormatsCount",
                 "colorFormats",
                 "depthStencilFormat",
-                "sampleCount"
+                "sampleCount",
+                "depthReadOnly",
+                "stencilReadOnly"
             ],
             "WGPURenderPassDepthStencilAttachment": [
                 "view",
@@ -1397,6 +1412,7 @@
                 "alpha"
             ],
             "WGPUCompilationInfo": [
+                "nextInChain",
                 "messageCount",
                 "messages"
             ],
@@ -1483,6 +1499,7 @@
             ],
             "WGPUDeviceDescriptor": [
                 "nextInChain",
+                "label",
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits"

@@ -57,7 +57,7 @@ void setup() {
 }
 
 void cleanup() {
-  // we're hulk-smashing and removing original + renamed files to
+  // We're hulk-smashing and removing original + renamed files to
   // make sure we get it all regardless of anything failing
   unlink("file");
   unlink("dir/file");
@@ -92,31 +92,31 @@ void cleanup() {
 void test() {
   int err;
 
-  // can't rename something that doesn't exist
+  // Can't rename something that doesn't exist
   err = rename("noexist", "dir");
   assert(err == -1);
   assert(errno == ENOENT);
 
-  // can't overwrite a folder with a file
+  // Can't overwrite a folder with a file
   err = rename("file", "dir");
   assert(err == -1);
   assert(errno == EISDIR);
 
-  // can't overwrite a file with a folder
+  // Can't overwrite a file with a folder
   err = rename("dir", "file");
   assert(err == -1);
   assert(errno == ENOTDIR);
 
-  // can't overwrite a non-empty folder
+  // Can't overwrite a non-empty folder
   err = rename("dir", "dir-nonempty");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
 
-  // can't create anything in a read-only directory
+  // Can't create anything in a read-only directory
   err = rename("dir", "dir-readonly/dir");
   assert(err == -1);
   assert(errno == EACCES);
-  
+
   // Can't move from a read-only directory.
   err = rename("dir-readonly2/somename", "dir");
   assert(err == -1);
@@ -133,7 +133,7 @@ void test() {
 
   assert(errno == ENAMETOOLONG);
 #endif
-  
+
   // Can't use an empty path for oldpath.
   err = rename("", "test");
   assert(err == -1);
@@ -144,55 +144,35 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
-  // source should not be ancestor of target
+  // Source should not be ancestor of target.
   err = rename("dir", "dir/somename");
+  assert(err == -1);
+  assert(errno == EINVAL);
+
+  // Even if it is not a direct ancestor.
+  err = rename("dir", "dir/subdir/noexist");
   assert(err == -1);
   assert(errno == EINVAL);
 
   // After changing the current working directory and using a relative path to
   // the target, we should still detect that the source is an ancestor of the
   // target.
-  // TODO: WasmFS needs to traverse up the directory tree from the target to
-  // detect this case. To do that safely, we will need to globally lock the
-  // directory structure to prevent concurrent modifications during the
-  // traversal. In this test, providing the new path as a relative path from the
-  // cwd means the ancestor will not be encountered during traversal from root.
-  // As a result, this ancestor is unlinked and forms a cycle which is no longer
-  // reachable from root.
   chdir("dir/rename-dir/subdir");
   err = rename("/dir/rename-dir", "subsubdir");
-#ifdef WASMFS
-  assert(err == 0);
-#else
   assert(err == -1);
   assert(errno == EINVAL);
-#endif
   chdir("/");
 
-  err = rename("dir", "dir/somename/noexist");
-  assert(err == -1);
-  // In the JS file system, this returns ENOENT rather than detecting that dir
-  // is an ancestor.
-#ifdef WASMFS
-  assert(errno == EINVAL);
-#else
-  assert(errno == ENOENT);
-#endif
-
-  err = rename("dir", "dir/subdir");
-  assert(err == -1);
-  assert(errno == EINVAL);
-
-  // target should not be an ancestor of source
+  // Target should not be an ancestor of source
   err = rename("dir/subdir", "dir");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
-  
+
   err = rename("dir/subdir/subsubdir", "dir");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
 
-  // do some valid renaming
+  // Do some valid renaming
   err = rename("dir/file", "dir/file1");
   assert(!err);
   err = rename("dir/file1", "dir/file2");
@@ -218,18 +198,19 @@ void test() {
 #endif
   assert(!err);
 
-  // test that non-existant parent during rename generates the correct error code
+  // Test that non-existant parent during rename generates the correct error
+  // code.
   err = rename("dir/hicsuntdracones/empty", "dir/hicsuntdracones/renamed");
   assert(err == -1);
   assert(errno == ENOENT);
-  
+
   err = rename("dir/subdir4/", "dir/subdir5/");
   assert(!err);
 
   // Test renaming the same directory.
   err = rename("dir/file2", "dir/file2");
   assert(!err);
-  
+
   // Test renaming a directory with a subdirectory with a common ancestor.
   err = rename("dir/a", "dir/b/c");
   assert(!err);
@@ -247,7 +228,11 @@ void test() {
   // Test renaming a directory with root.
   err = rename("dir/file2", "/");
   assert(err == -1);
+#ifdef WASMFS
+  assert(errno == EBUSY);
+#else
   assert(errno == ENOTEMPTY);
+#endif
 
   puts("success");
 }

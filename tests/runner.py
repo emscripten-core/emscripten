@@ -15,7 +15,7 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engined to test all engines!
+# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engines to test all engines!
 
 import argparse
 import atexit
@@ -45,14 +45,16 @@ sys.path.append(utils.path_from_root('third_party/websockify'))
 logger = logging.getLogger("runner")
 
 
-# The core test modes
-core_test_modes = [
-  'wasm0',
-  'wasm1',
-  'wasm2',
-  'wasm3',
-  'wasms',
-  'wasmz',
+# Test modes from 'core' that fully pass all tests. When running a random
+# selection of tests (e.g. "random100" runs 100 random tests) they will be
+# chosen from here.
+passing_core_test_modes = [
+  'core0',
+  'core1',
+  'core2',
+  'core3',
+  'cores',
+  'corez',
   'strict',
   'wasm2js0',
   'wasm2js1',
@@ -60,26 +62,31 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'wasm64'
+  'asan',
+  'lsan',
 ]
 
 # The default core test mode, used when none is specified
-default_core_test_mode = 'wasm0'
+default_core_test_mode = 'core0'
 
-# The non-core test modes
-non_core_test_modes = [
+# All test modes aside from passing_core_test_modes. These modes might be wip
+# and not all pass yet, or they might be non-'core' (e.g., if they open a
+# browser window or otherwise have custom functionality). Random tests are not
+# picked from here, but you can force them to be, using something like
+# randombrowser10 (which runs 10 random tests from 'browser').
+misc_test_modes = [
   'other',
   'browser',
   'sanity',
   'sockets',
   'interactive',
   'benchmark',
-  'asan',
-  'lsan',
   'wasm2ss',
   'posixtest',
   'posixtest_browser',
   'minimal0',
+  'wasmfs',
+  'wasm64',
 ]
 
 
@@ -106,7 +113,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = core_test_modes + non_core_test_modes
+  suites = passing_core_test_modes + misc_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -174,7 +181,7 @@ def args_for_random_tests(args, modules):
 def get_random_test_parameters(arg):
   num_tests = 1
   base_module = default_core_test_mode
-  relevant_modes = core_test_modes
+  relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
     if arg.startswith('other'):
@@ -225,8 +232,21 @@ def print_random_test_statistics(num_tests):
   atexit.register(show)
 
 
+def replace_legacy_suite_names(args):
+  newargs = []
+
+  for a in args:
+    if a.startswith('wasm') and not a.startswith('wasm2js') and not a.startswith('wasmfs'):
+      print('warning: test suites in test_core.py have been renamed from `wasm` to `core`. Please use the new names')
+      a = a.replace('wasm', 'core', 1)
+    newargs.append(a)
+
+  return newargs
+
+
 def load_test_suites(args, modules):
   loader = unittest.TestLoader()
+  args = replace_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
   for m in modules:

@@ -6,7 +6,6 @@
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
 #define SYS_pause		 __syscall_pause
-#define SYS_access		 __syscall_access
 #define SYS_nice		 __syscall_nice
 #define SYS_sync		 __syscall_sync
 #define SYS_rename		 __syscall_rename

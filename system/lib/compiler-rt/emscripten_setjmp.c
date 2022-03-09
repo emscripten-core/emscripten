@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <threads.h>
 
 // 0 - Nothing thrown
 // 1 - Exception thrown
@@ -21,7 +22,6 @@ typedef struct TableEntry {
 
 extern void setTempRet0(uint32_t value);
 extern void setThrew(uintptr_t threw, int value);
-extern void _emscripten_throw_longjmp(); // defined in src/library.js
 
 TableEntry* saveSetjmp(uintptr_t* env, uint32_t label, TableEntry* table, uint32_t size) {
   // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
@@ -62,10 +62,15 @@ uint32_t testSetjmp(uintptr_t id, TableEntry* table, uint32_t size) {
   return 0;
 }
 
+#ifndef __USING_WASM_SJLJ__
+
+extern void _emscripten_throw_longjmp(); // defined in src/library.js
+
 void emscripten_longjmp(uintptr_t env, int val) {
   setThrew(env, val);
   _emscripten_throw_longjmp();
 }
+#endif
 
 #ifdef __USING_WASM_SJLJ__
 
@@ -74,8 +79,7 @@ struct __WasmLongjmpArgs {
   int val;
 };
 
-// FIXME Make this thread local?
-struct __WasmLongjmpArgs __wasm_longjmp_args;
+thread_local struct __WasmLongjmpArgs __wasm_longjmp_args;
 
 // Wasm EH allows us to throw and catch multiple values, but that requires
 // multivalue support in the toolchain, whch is not reliable at the time.

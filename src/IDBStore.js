@@ -6,9 +6,9 @@
 
 {
   indexedDB: function() {
-    if (typeof indexedDB !== 'undefined') return indexedDB;
+    if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
-    if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     assert(ret, 'IDBStore used, but indexedDB not supported');
     return ret;
   },
@@ -29,7 +29,7 @@
       return callback(e);
     }
     req.onupgradeneeded = function(e) {
-      var db = e.target.result;
+      var db = /** @type {IDBDatabase} */ (e.target.result);
       var transaction = e.target.transaction;
       var fileStore;
       if (db.objectStoreNames.contains(IDBStore.DB_STORE_NAME)) {
@@ -39,7 +39,7 @@
       }
     };
     req.onsuccess = function() {
-      db = req.result;
+      db = /** @type {IDBDatabase} */ (req.result);
       // add to the cache
       IDBStore.dbs[name] = db;
       callback(null, db);

@@ -15,6 +15,7 @@ import hashlib
 import logging
 import multiprocessing
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -229,6 +230,20 @@ def with_env_modify(updates):
   return decorated
 
 
+def also_with_minimal_runtime(f):
+  assert callable(f)
+
+  def metafunc(self, with_minimal_runtime):
+    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if with_minimal_runtime:
+      self.set_setting('MINIMAL_RUNTIME', 1)
+    f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'minimal_runtime': (True,)}
+  return metafunc
+
+
 def ensure_dir(dirname):
   dirname = Path(dirname)
   dirname.mkdir(parents=True, exist_ok=True)
@@ -403,7 +418,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
+    # We want to be strict about closure warnings in our test code.
+    # TODO(sbc): Remove this if we make it the default for `-Werror`:
+    # https://github.com/emscripten-core/emscripten/issues/16205):
+    self.ldflags = ['-sCLOSURE_WARNINGS=error']
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
@@ -533,8 +552,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
-  def get_emcc_args(self, main_file=False):
+  def get_emcc_args(self, main_file=False, ldflags=True):
     args = self.serialize_settings() + self.emcc_args
+    if ldflags:
+      args += self.ldflags
     if not main_file:
       for i, arg in enumerate(args):
         if arg in ('--pre-js', '--post-js'):
@@ -641,6 +662,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
+
+  def measure_wasm_code_lines(self, wasm):
+    wat_lines = self.get_wasm_text(wasm).splitlines()
+    non_data_lines = [line for line in wat_lines if '(data ' not in line]
+    return len(non_data_lines)
 
   def run_js(self, filename, engine=None, args=[],
              output_nicerizer=None,
@@ -821,7 +847,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    emcc_args = self.get_emcc_args()
+    # get_library() is used to compile libraries, and not link executables,
+    # so we don't want to pass linker flags here (emscripten warns if you
+    # try to pass linker settings when compiling).
+    emcc_args = self.get_emcc_args(ldflags=False)
 
     hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
@@ -843,7 +872,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Avoid += so we don't mutate the default arg
       configure = configure + configure_args
 
-    cflags = ' '.join(self.get_emcc_args())
+    cflags = ' '.join(emcc_args)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
     return build_library(name, build_dir, output_dir, generated_libs, configure,
@@ -958,7 +987,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-s', 'SIDE_MODULE'] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_emcc_args()
       cmdv += linkto
       self.run_process(cmdv)
 
@@ -1059,6 +1088,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
                      interleaved_output=True,
+                     regex=False,
                      output_basename=None):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -1101,12 +1131,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
-          elif assert_all:
+          elif assert_all or len(expected_output) == 1:
             for o in expected_output:
-              self.assertContained(o, js_output)
+              if regex:
+                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (regex, js_output))
+              else:
+                self.assertContained(o, js_output)
           else:
-            self.assertContained(expected_output, js_output)
-            if check_for_error:
+            if regex:
+              match_any = any(re.search(o, js_output) for o in expected_output)
+              self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (expected_output, js_output))
+            else:
+              self.assertContained(expected_output, js_output)
+            if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
@@ -1494,42 +1531,48 @@ class BrowserCore(RunnerCore):
         img.src = '%s';
       };
 
-      // Automatically trigger the reftest?
-      if (!%s) {
-        // Yes, automatically
+      /** @suppress {uselessCode} */
+      function setupRefTest() {
+        // Automatically trigger the reftest?
+        if (!%s) {
+          // Yes, automatically
 
-        Module['postRun'] = doReftest;
+          Module['postRun'] = doReftest;
 
-        if (typeof WebGLClient !== 'undefined') {
-          // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
-          var realRAF = window.requestAnimationFrame;
-          window.requestAnimationFrame = /** @suppress{checkTypes} */ (function(func) {
-            realRAF(function() {
-              func();
-              realRAF(doReftest);
-            });
-          });
+          if (typeof WebGLClient !== 'undefined') {
+            // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
+            var realRAF = window.requestAnimationFrame;
+            /** @suppress{checkTypes} */
+            window.requestAnimationFrame = function(func) {
+              return realRAF(function() {
+                func();
+                realRAF(doReftest);
+              });
+            };
 
-          // trigger reftest from canvas render too, for workers not doing GL
-          var realWOM = worker.onmessage;
-          worker.onmessage = function(event) {
-            realWOM(event);
-            if (event.data.target === 'canvas' && event.data.op === 'render') {
-              realRAF(doReftest);
-            }
+            // trigger reftest from canvas render too, for workers not doing GL
+            var realWOM = worker.onmessage;
+            worker.onmessage = function(event) {
+              realWOM(event);
+              if (event.data.target === 'canvas' && event.data.op === 'render') {
+                realRAF(doReftest);
+              }
+            };
+          }
+
+        } else {
+          // Manually trigger the reftest.
+
+          // The user will call it.
+          // Add an event loop iteration to ensure rendering, so users don't need to bother.
+          var realDoReftest = doReftest;
+          doReftest = function() {
+            setTimeout(realDoReftest, 1);
           };
         }
-
-      } else {
-        // Manually trigger the reftest.
-
-        // The user will call it.
-        // Add an event loop iteration to ensure rendering, so users don't need to bother.
-        var realDoReftest = doReftest;
-        doReftest = function() {
-          setTimeout(realDoReftest, 1);
-        };
       }
+
+      setupRefTest();
 ''' % (reporting, basename, int(manually_trigger)))
 
   def compile_btest(self, args, reporting=Reporting.FULL):
@@ -1537,17 +1580,17 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS']
+    args += ['-sIN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
                '--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
-        # also compile in report_result.cpp and forice-include report_result.h
+        # also compile in report_result.c and forice-include report_result.h
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
-                 test_file('report_result.cpp')]
+                 test_file('report_result.c')]
     if EMTEST_BROWSER == 'node':
       args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)
@@ -1584,7 +1627,7 @@ class BrowserCore(RunnerCore):
       expected = [str(i) for i in range(0, reference_slack + 1)]
       self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
+        args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
     outfile = 'test.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
@@ -1607,7 +1650,7 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
+                 original_args + ['-sWASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1618,7 +1661,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-sGL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################

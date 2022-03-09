@@ -17,8 +17,9 @@ WebAssembly = {
   // Note that we do not use closure quoting (this['buffer'], etc.) on these
   // functions, as they are just meant for internal use. In other words, this is
   // not a fully general polyfill.
+  /** @constructor */
   Memory: function(opts) {
-#if USE_PTHREADS
+#if SHARED_MEMORY
     this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #else
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
@@ -60,6 +61,7 @@ WebAssembly = {
     // the main JS
   },
 
+  /** @constructor */
   Instance: function(module, info) {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
@@ -72,7 +74,7 @@ WebAssembly = {
       then: function(ok) {
         var module = new WebAssembly.Module(binary);
         ok({
-#if USE_PTHREADS
+#if SHARED_MEMORY
           'module': module,
 #endif
           'instance': new WebAssembly.Instance(module)

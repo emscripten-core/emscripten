@@ -341,7 +341,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--bind``
   [link]
-  Compiles the source code using the :ref:`embind` bindings to connect C/C++ and JavaScript.
+  Links against embind library.  Deprecated: Use ``-lembind`` instead.
 
 ``--ignore-dynamic-linking``
   [link]
@@ -524,8 +524,6 @@ Environment variables
 =====================
 *emcc* is affected by several environment variables, as listed below:
 
-  - ``EMMAKEN_CFLAGS`` [compile+link] Deprecated. Use ``EMCC_CFLAGS`` instead.
-  - ``EMMAKEN_COMPILER`` [compile+link] Deprecated. Use ``EM_LLVM_ROOT`` and/or ``EM_COMPIELR_WRAPPER`` instead.
   - ``EMMAKEN_JUST_CONFIGURE`` [other]
   - ``EMCC_AUTODEBUG`` [compile+link]
   - ``EMCC_CFLAGS`` [compile+link]

@@ -520,7 +520,7 @@ var LibraryGL = {
       var numArgs = glCtx[realf].length;
       if (numArgs === undefined) console.warn('Unexpected WebGL function ' + f + ' when binding TRACE_WEBGL_CALLS');
       var contextHandle = glCtx.canvas.GLctxObject.handle;
-      var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };
+      var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : function() { return 1; };
       // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
       switch (numArgs) {
         case 0: glCtx[f] = function webgl_0() { var ret = glCtx[realf](); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '() -> ' + ret); return ret; }; break;
@@ -542,8 +542,8 @@ var LibraryGL = {
     hookWebGL: function(glCtx) {
       if (!glCtx) glCtx = this.detectWebGLContext();
       if (!glCtx) return;
-      if (!((typeof WebGLRenderingContext !== 'undefined' && glCtx instanceof WebGLRenderingContext)
-       || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+      if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
+       || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
         return;
       }
 
@@ -553,7 +553,7 @@ var LibraryGL = {
       // Hot GL functions are ones that you'd expect to find during render loops (render calls, dynamic resource uploads), cold GL functions are load time functions (shader compilation, texture/mesh creation)
       // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
       for (var f in glCtx) {
-        if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
+        if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
         this.hookWebGLFunction(f, glCtx);
       }
       // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
@@ -569,10 +569,22 @@ var LibraryGL = {
         var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
         return ret;
       };
+      glCtx['bufferData'] = function(a1, a2, a3, a4, a5) {
+          // WebGL1/2 versions have different parameters (not just extra ones)
+          var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+          return ret;
+      };
+      const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
+      for (const f of matrixFuncs) {
+          glCtx[f] = function(a1, a2, a3, a4, a5) {
+              // WebGL2 version has 2 extra optional parameters, ensure we forward them
+              return glCtx['real_' + f](a1, a2, a3, a4, a5);
+          }
+      }
     },
 #endif
     // Returns the context handle to the new context.
-    createContext: function(canvas, webGLContextAttributes) {
+    createContext: function(/** @type {HTMLCanvasElement} */ canvas, webGLContextAttributes) {
 #if OFFSCREEN_FRAMEBUFFER
       // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
       // try to detect when it's ok to discard contents of the rendered backbuffer.
@@ -610,7 +622,7 @@ var LibraryGL = {
       if (Module['preinitializedWebGLContext']) {
         var ctx = Module['preinitializedWebGLContext'];
 #if MAX_WEBGL_VERSION >= 2
-        webGLContextAttributes.majorVersion = (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
+        webGLContextAttributes.majorVersion = (typeof WebGL2RenderingContext != 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
 #else
         webGLContextAttributes.majorVersion = 1;
 #endif
@@ -625,10 +637,12 @@ var LibraryGL = {
       // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari version field in above check.
       if (!canvas.getContextSafariWebGL2Fixed) {
         canvas.getContextSafariWebGL2Fixed = canvas.getContext;
-        canvas.getContext = function(ver, attrs) {
+        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (Object|null)} */
+        function fixedGetContext(ver, attrs) {
           var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
           return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
         }
+        canvas.getContext = fixedGetContext;
       }
 #endif
 
@@ -1002,7 +1016,7 @@ var LibraryGL = {
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-      if (typeof webGLContextAttributes.enableExtensionsByDefault === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+      if (typeof webGLContextAttributes.enableExtensionsByDefault == 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
         GL.initExtensions(context);
       }
 #endif
@@ -1051,7 +1065,7 @@ var LibraryGL = {
 
     deleteContext: function(contextHandle) {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
-      if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
+      if (typeof JSEvents == 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
 #if USE_PTHREADS
       _free(GL.contexts[contextHandle].handle);
@@ -1282,7 +1296,7 @@ var LibraryGL = {
 
     if (ret === undefined) {
       var result = GLctx.getParameter(name_);
-      switch (typeof(result)) {
+      switch (typeof result) {
         case "number":
           ret = result;
           break;
@@ -2061,7 +2075,7 @@ var LibraryGL = {
 
       // If an integer, we have not yet bound the location, so do it now. The integer value specifies the array index
       // we should bind to.
-      if (typeof webglLoc === 'number') {
+      if (typeof webglLoc == 'number') {
         p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? '[' + webglLoc + ']' : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
@@ -4154,17 +4168,17 @@ var glFuncs = [[0, 'finish flush'],
  [10, '']];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach(function(data) {
-    var num = data[0];
-    var names = data[1];
-    var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-    var plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
-    var returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
-    var sigEnd = range(num).map(function() { return 'i' }).join('');
-    names.split(' ').forEach(function(name) {
+  funcs.forEach((data) => {
+    const num = data[0];
+    const names = data[1];
+    const args = range(num).map((i) => 'x' + i ).join(', ');
+    const plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
+    const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
+    const sigEnd = range(num).map(() => 'i').join('');
+    names.split(' ').forEach((name) => {
       if (name.length == 0) return;
-      var stub = plainStub;
-      var sig;
+      let stub = plainStub;
+      let sig;
       if (name[name.length-1] == '*') {
         name = name.substr(0, name.length-1);
         stub = returnStub;
@@ -4172,12 +4186,12 @@ function createGLPassthroughFunctions(lib, funcs) {
       } else {
         sig = 'v' + sigEnd;
       }
-      var cName = name;
+      let cName = name;
       if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.substr(0, cName.length-1);
       }
-      var cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
+      cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       if (!lib[cName + '__sig']) lib[cName + '__sig'] = sig;
@@ -4199,20 +4213,20 @@ function copyLibEntry(lib, a, b) {
 
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
-  Object.keys(lib).forEach(function(x) {
+  Object.keys(lib).forEach((x) => {
     if (isJsLibraryConfigIdentifier(x)) return;
     if (x.substr(0, 2) != 'gl') return;
-    while (typeof lib[x] === 'string') {
+    while (typeof lib[x] == 'string') {
       // resolve aliases right here, simpler for fastcomp
       copyLibEntry(lib, x, lib[x]);
     }
-    var y = 'emscripten_' + x;
-    lib[x + '__deps'] = (lib[x + '__deps'] || []).map(function(dep) {
+    const y = 'emscripten_' + x;
+    lib[x + '__deps'] = (lib[x + '__deps'] || []).map((dep) => {
       // prefix dependencies as well
-      if (typeof dep === 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
-        var orig = dep;
+      if (typeof dep == 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
+        const orig = dep;
         dep = 'emscripten_' + dep;
-        var fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
+        let fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
         // `function` is 8 characters, add space and an explicit name after if there isn't one already
         if (fixed.startsWith('function(') || fixed.startsWith('function (')) {
           fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);

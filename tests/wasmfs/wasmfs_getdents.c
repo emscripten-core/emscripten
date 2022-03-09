@@ -7,9 +7,11 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <emscripten/wasmfs.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,33 +19,55 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-void print(struct dirent d, int fd) {
-  for (;;) {
-    int nread = getdents(fd, &d, sizeof(d));
-    if (nread == 0) {
-      break;
-    }
-    printf("d.d_name = %s\n", d.d_name);
-    printf("d.d_off = %lld\n", d.d_off);
-    printf("d.d_reclen = %hu\n", d.d_reclen);
-    printf("d.d_type = %s\n\n",
-           (d.d_type == DT_REG)   ? "regular"
-           : (d.d_type == DT_DIR) ? "directory"
-                                  : "???");
+#include "get_backend.h"
+
+void print_one(int fd) {
+  struct dirent d;
+  int nread = getdents(fd, &d, sizeof(d));
+  assert(nread != -1);
+  if (nread == 0) {
+    return;
   }
+  printf("d.d_name = %s\n", d.d_name);
+  printf("d.d_reclen = %hu\n", d.d_reclen);
+  printf("d.d_type = %s\n\n",
+         (d.d_type == DT_REG)   ? "regular"
+         : (d.d_type == DT_DIR) ? "directory"
+                                : "???");
+}
+
+void print(const char* dir) {
+  struct dirent** entries;
+  int nentries = scandir(dir, &entries, NULL, alphasort);
+  assert(nentries != -1);
+  for (int i = 0; i < nentries; i++) {
+    printf("d.d_name = %s\n", entries[i]->d_name);
+    printf("d.d_reclen = %hu\n", entries[i]->d_reclen);
+    printf("d.d_type = %s\n\n",
+           (entries[i]->d_type == DT_REG)   ? "regular"
+           : (entries[i]->d_type == DT_DIR) ? "directory"
+                                            : "???");
+    free(entries[i]);
+  }
+  free(entries);
 }
 
 int main() {
+  int err = wasmfs_create_directory("/root", 0777, get_backend());
+
   // Set up test directories.
-  assert(mkdir("working", 0777) != -1);
-  assert(mkdir("/working/test", 0777) != -1);
+  err = mkdir("/root/working", 0777);
+  assert(err != -1);
+  err = mkdir("/root/working/test", 0777);
+  assert(err != -1);
 
   struct dirent d;
 
   // Try opening the directory that was just created.
-  int fd = open("/working", O_RDONLY | O_DIRECTORY);
-  printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
+  printf("------------- Reading from /root/working Directory -------------\n");
+  print("/root/working");
+
+  int fd = open("/root/working", O_RDONLY | O_DIRECTORY);
 
   // Try reading an invalid fd.
   errno = 0;
@@ -60,46 +84,31 @@ int main() {
   assert(errno == EINVAL);
 
   // Try to read from a file.
-  int fileFd = open("/dev/stdout", O_RDONLY);
+  int fileFd = open("/dev/stdin", O_RDONLY);
   getdents(fileFd, &d, sizeof(d));
   printf("Errno: %s\n\n", strerror(errno));
   assert(errno == ENOTDIR);
+  close(fileFd);
 
-  // Try opening the root directory and read its contents.
-  fd = open("/", O_RDONLY | O_DIRECTORY);
-
-  printf("------------- Reading from root Directory -------------\n");
-  print(d, fd);
+  close(fd);
 
   // Try opening the dev directory and read its contents.
-  fd = open("/dev", O_RDONLY | O_DIRECTORY);
   printf("------------- Reading from /dev Directory -------------\n");
-  print(d, fd);
+  print("/dev");
 
   // Try to advance the offset of the directory.
   // Expect that '.' will be skipped.
-  fd = open("/working", O_RDONLY | O_DIRECTORY);
-  printf("/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
-  printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
+  fd = open("/root/working", O_RDONLY | O_DIRECTORY);
+  printf("/root/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
+  printf(
+    "------------- Reading one from /root/working Directory -------------\n");
+  print_one(fd);
+  close(fd);
 
   // Try to add a file to the /working directory.
-  assert(open("/working/foobar", O_CREAT, S_IRGRP) != -1);
-  printf("/working file position is: %lli\n", lseek(fd, 0, SEEK_SET));
-  printf("------------- Reading from /working Directory -------------\n");
-  print(d, fd);
-
-  // The musl implementation of readdir relies on getdents.
-  DIR* pDir;
-  struct dirent* pDirent;
-  pDir = opendir("/dev");
-  assert(pDir != NULL);
-
-  while ((pDirent = readdir(pDir)) != NULL) {
-    printf("pDirent->d_name: %s\n", pDirent->d_name);
-    printf("pDirent->d_off: %lld\n", pDirent->d_off);
-    printf("pDirent->d_reclen: %hu\n", pDirent->d_reclen);
-    printf("pDirent->d_type: %hhu\n\n", pDirent->d_type);
-  }
-  closedir(pDir);
+  fd = open("/root/working/foobar", O_CREAT, S_IRGRP);
+  assert(fd != -1);
+  close(fd);
+  printf("------------- Reading from /root/working Directory -------------\n");
+  print("/root/working");
 }

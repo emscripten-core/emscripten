@@ -16,11 +16,11 @@ void __attribute__((noinline)) InteropString(char *staticBuffer)
     for (var i = 0; i < 15; ++i) {
       str = str + str;
     }
-    allocate(intArrayFromString(str), ALLOC_STACK);
+    allocateUTF8OnStack(str);
 #else
     // allocate as many times as we need to overflow
     for (var i = 0; i < 1024 * 1024; i++) {
-      allocate(intArrayFromString(str), ALLOC_STACK);
+      allocateUTF8OnStack(str);
     }
     abort("we should never get here!");
 #endif

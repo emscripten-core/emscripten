@@ -6,12 +6,15 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "wasmfs.h"
-#include "memory_file.h"
-#include "streams.h"
 #include <emscripten/threading.h>
 
+#include "memory_backend.h"
+#include "paths.h"
+#include "streams.h"
+#include "wasmfs.h"
+
 namespace wasmfs {
+
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
 // compilation error about using a reserved init priority less than 101. This
@@ -22,33 +25,55 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 26 "wasmfs.cpp" 3
+# 29 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 28 "wasmfs.cpp"
+# 31 "wasmfs.cpp"
 
 // These helper functions will be linked in from library_wasmfs.js.
 extern "C" {
-int _emscripten_get_num_preloaded_files();
-int _emscripten_get_num_preloaded_dirs();
-int _emscripten_get_preloaded_file_mode(int index);
-void _emscripten_get_preloaded_parent_path(int index, char* parentPath);
-void _emscripten_get_preloaded_path_name(int index, char* fileName);
-void _emscripten_get_preloaded_child_path(int index, char* childName);
+int _wasmfs_get_num_preloaded_files();
+int _wasmfs_get_num_preloaded_dirs();
+int _wasmfs_get_preloaded_file_mode(int index);
+void _wasmfs_get_preloaded_parent_path(int index, char* parentPath);
+void _wasmfs_get_preloaded_path_name(int index, char* fileName);
+void _wasmfs_get_preloaded_child_path(int index, char* childName);
+}
+
+WasmFS::~WasmFS() {
+  // Flush musl libc streams.
+  // TODO: Integrate musl exit() which would call this for us. That might also
+  //       help with destructor priority - we need to happen last.
+  fflush(0);
+
+  // Flush our own streams. TODO: flush all possible streams.
+  // Note that we lock here, although strictly speaking it is unnecessary given
+  // that we are in the destructor of WasmFS: nothing can possibly be running
+  // on files at this time.
+  StdoutFile::getSingleton()->locked().flush();
+  StderrFile::getSingleton()->locked().flush();
+
+  // Break the reference cycle caused by the root directory being its own
+  // parent.
+  rootDirectory->locked().setParent(nullptr);
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
+  auto lockedRoot = rootDirectory->locked();
+
+  // The root directory is its own parent.
+  lockedRoot.setParent(rootDirectory);
+
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
-  rootDirectory->locked().setEntry("dev", devDirectory);
+    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO, rootBackend);
+  lockedRoot.insertChild("dev", devDirectory);
+  auto lockedDev = devDirectory->locked();
 
-  auto dir = devDirectory->locked();
-
-  dir.setEntry("stdin", StdinFile::getSingleton());
-  dir.setEntry("stdout", StdoutFile::getSingleton());
-  dir.setEntry("stderr", StderrFile::getSingleton());
+  lockedDev.insertChild("stdin", StdinFile::getSingleton());
+  lockedDev.insertChild("stdout", StdoutFile::getSingleton());
+  lockedDev.insertChild("stderr", StderrFile::getSingleton());
 
   return rootDirectory;
 }
@@ -71,8 +96,8 @@ void WasmFS::preloadFiles() {
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
-  auto numFiles = _emscripten_get_num_preloaded_files();
-  auto numDirs = _emscripten_get_num_preloaded_dirs();
+  auto numFiles = _wasmfs_get_num_preloaded_files();
+  auto numDirs = _wasmfs_get_num_preloaded_dirs();
 
   // If there are no preloaded files, exit early.
   if (numDirs == 0 && numFiles == 0) {
@@ -83,52 +108,43 @@ void WasmFS::preloadFiles() {
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
     char parentPath[PATH_MAX] = {};
-    _emscripten_get_preloaded_parent_path(i, parentPath);
+    _wasmfs_get_preloaded_parent_path(i, parentPath);
 
-    auto pathParts = splitPath(parentPath);
-
-    // TODO: Improvement - cache parent pathnames instead of looking up the
-    // directory every iteration.
-    long err;
-    auto parentDir = getDir(pathParts.begin(), pathParts.end(), err);
-
-    if (!parentDir) {
+    auto parsed = path::parseFile(parentPath);
+    std::shared_ptr<Directory> parentDir;
+    if (parsed.getError() ||
+        !(parentDir = parsed.getFile()->dynCast<Directory>())) {
       emscripten_console_error(
         "Fatal error during directory creation in file preloading.");
       abort();
     }
 
     char childName[PATH_MAX] = {};
-    _emscripten_get_preloaded_child_path(i, childName);
+    _wasmfs_get_preloaded_child_path(i, childName);
 
     auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
-
-    parentDir->locked().setEntry(childName, created);
+    auto inserted = parentDir->locked().insertChild(childName, created);
+    assert(inserted && "TODO: handle preload insertion errors");
   }
 
   for (int i = 0; i < numFiles; i++) {
     char fileName[PATH_MAX] = {};
-    _emscripten_get_preloaded_path_name(i, fileName);
+    _wasmfs_get_preloaded_path_name(i, fileName);
 
-    auto mode = _emscripten_get_preloaded_file_mode(i);
+    auto mode = _wasmfs_get_preloaded_file_mode(i);
 
-    auto pathParts = splitPath(fileName);
-
-    auto base = pathParts.back();
-
-    auto created = rootBackend->createFile((mode_t)mode);
-
-    long err;
-    auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
-
-    if (!parentDir) {
+    auto parsed = path::parseParent(fileName);
+    if (parsed.getError()) {
       emscripten_console_error("Fatal error during file preloading");
       abort();
     }
-
-    parentDir->locked().setEntry(base, created);
-
+    auto& [parent, childName] = parsed.getParentChild();
+    auto created = rootBackend->createFile((mode_t)mode);
+    auto inserted =
+      parent->locked().insertChild(std::string(childName), created);
+    assert(inserted && "TODO: handle preload insertion errors");
     created->locked().preloadFromJS(i);
   }
 }
+
 } // namespace wasmfs

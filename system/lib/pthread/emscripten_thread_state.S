@@ -24,9 +24,9 @@ __get_tp:
   global.get thread_ptr
   end_function
 
-.globl _emscripten_thread_init
-_emscripten_thread_init:
-  .functype _emscripten_thread_init (PTR, i32, i32, i32) -> ()
+.globl __set_thread_state
+__set_thread_state:
+  .functype __set_thread_state (PTR, i32, i32, i32) -> ()
   local.get 0
   global.set thread_ptr
   local.get 1

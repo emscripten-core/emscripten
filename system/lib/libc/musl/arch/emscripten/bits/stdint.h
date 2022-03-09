@@ -23,11 +23,11 @@ typedef uint32_t uint_fast32_t;
 
 #else
 
-#define INTPTR_MIN      INT32_MIN
-#define INTPTR_MAX      INT32_MAX
-#define UINTPTR_MAX     UINT32_MAX
-#define PTRDIFF_MIN     INT32_MIN
-#define PTRDIFF_MAX     INT32_MAX
-#define SIZE_MAX        UINT32_MAX
+#define INTPTR_MIN      (-1-__INTPTR_MAX__)
+#define INTPTR_MAX      __INTPTR_MAX__
+#define UINTPTR_MAX     __UINTPTR_MAX__
+#define PTRDIFF_MIN     (-1-__PTRDIFF_MAX__)
+#define PTRDIFF_MAX     __PTRDIFF_MAX__
+#define SIZE_MAX        __SIZE_MAX__
 
 #endif

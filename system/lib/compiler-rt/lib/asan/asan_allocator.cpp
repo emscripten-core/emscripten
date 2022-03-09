@@ -476,7 +476,7 @@ struct Allocator {
       return false;
     if (m->Beg() != addr) return false;
     AsanThread *t = GetCurrentThread();
-    m->SetAllocContext(t ? t->tid() : 0, StackDepotPut(*stack));
+    m->SetAllocContext(t ? t->tid() : kMainTid, StackDepotPut(*stack));
     return true;
   }
 
@@ -570,7 +570,7 @@ struct Allocator {
     m->SetUsedSize(size);
     m->user_requested_alignment_log = user_requested_alignment_log;
 
-    m->SetAllocContext(t ? t->tid() : 0, StackDepotPut(*stack));
+    m->SetAllocContext(t ? t->tid() : kMainTid, StackDepotPut(*stack));
 
     uptr size_rounded_down_to_granularity =
         RoundDownTo(size, SHADOW_GRANULARITY);
@@ -852,12 +852,12 @@ struct Allocator {
     quarantine.PrintStats();
   }
 
-  void ForceLock() {
+  void ForceLock() ACQUIRE(fallback_mutex) {
     allocator.ForceLock();
     fallback_mutex.Lock();
   }
 
-  void ForceUnlock() {
+  void ForceUnlock() RELEASE(fallback_mutex) {
     fallback_mutex.Unlock();
     allocator.ForceUnlock();
   }
@@ -1081,11 +1081,9 @@ uptr asan_mz_size(const void *ptr) {
   return instance.AllocationSize(reinterpret_cast<uptr>(ptr));
 }
 
-void asan_mz_force_lock() {
-  instance.ForceLock();
-}
+void asan_mz_force_lock() NO_THREAD_SAFETY_ANALYSIS { instance.ForceLock(); }
 
-void asan_mz_force_unlock() {
+void asan_mz_force_unlock() NO_THREAD_SAFETY_ANALYSIS {
   instance.ForceUnlock();
 }
 

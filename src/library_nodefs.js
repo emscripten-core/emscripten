@@ -9,7 +9,7 @@ mergeInto(LibraryManager.library, {
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { requireNodeFS(); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
-    staticInit: function() {
+    staticInit: () => {
       NODEFS.isWindows = !!process.platform.match(/^win/);
       var flags = process["binding"]("constants");
       // Node.js 4 compatibility: it has no namespaces for constants
@@ -34,20 +34,20 @@ mergeInto(LibraryManager.library, {
       assert(NODEFS.flagsForNodeMap["0"] === 0);
 #endif
     },
-    convertNodeCode: function(e) {
+    convertNodeCode: (e) => {
       var code = e.code;
 #if ASSERTIONS
       assert(code in ERRNO_CODES, 'unexpected node error code: ' + code + ' (' + e + ')');
 #endif
       return ERRNO_CODES[code];
     },
-    mount: function (mount) {
+    mount: (mount) => {
 #if ASSERTIONS
       assert(ENVIRONMENT_IS_NODE);
 #endif
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
-    createNode: function (parent, name, mode, dev) {
+    createNode: (parent, name, mode, dev) => {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
@@ -56,7 +56,7 @@ mergeInto(LibraryManager.library, {
       node.stream_ops = NODEFS.stream_ops;
       return node;
     },
-    getMode: function (path) {
+    getMode: (path) => {
       var stat;
       try {
         stat = fs.lstatSync(path);
@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
       }
       return stat.mode;
     },
-    realPath: function (node) {
+    realPath: (node) => {
       var parts = [];
       while (node.parent !== node) {
         parts.push(node.name);
@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
     },
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
-    flagsForNode: function(flags) {
+    flagsForNode: (flags) => {
       flags &= ~{{{ cDefine('O_PATH') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~{{{ cDefine('O_NONBLOCK') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~{{{ cDefine('O_LARGEFILE') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
@@ -103,7 +103,7 @@ mergeInto(LibraryManager.library, {
       }
     },
     node_ops: {
-      getattr: function(node) {
+      getattr: (node) => {
         var path = NODEFS.realPath(node);
         var stat;
         try {
@@ -136,7 +136,7 @@ mergeInto(LibraryManager.library, {
           blocks: stat.blocks
         };
       },
-      setattr: function(node, attr) {
+      setattr: (node, attr) => {
         var path = NODEFS.realPath(node);
         try {
           if (attr.mode !== undefined) {
@@ -156,12 +156,12 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      lookup: function (parent, name) {
+      lookup: (parent, name) => {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         var mode = NODEFS.getMode(path);
         return NODEFS.createNode(parent, name, mode);
       },
-      mknod: function (parent, name, mode, dev) {
+      mknod: (parent, name, mode, dev) => {
         var node = NODEFS.createNode(parent, name, mode, dev);
         // create the backing node for this in the fs root as well
         var path = NODEFS.realPath(node);
@@ -177,7 +177,7 @@ mergeInto(LibraryManager.library, {
         }
         return node;
       },
-      rename: function (oldNode, newDir, newName) {
+      rename: (oldNode, newDir, newName) => {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
         try {
@@ -188,7 +188,7 @@ mergeInto(LibraryManager.library, {
         }
         oldNode.name = newName;
       },
-      unlink: function(parent, name) {
+      unlink: (parent, name) => {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.unlinkSync(path);
@@ -197,7 +197,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      rmdir: function(parent, name) {
+      rmdir: (parent, name) => {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.rmdirSync(path);
@@ -206,7 +206,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      readdir: function(node) {
+      readdir: (node) => {
         var path = NODEFS.realPath(node);
         try {
           return fs.readdirSync(path);
@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      symlink: function(parent, newName, oldPath) {
+      symlink: (parent, newName, oldPath) => {
         var newPath = PATH.join2(NODEFS.realPath(parent), newName);
         try {
           fs.symlinkSync(oldPath, newPath);
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      readlink: function(node) {
+      readlink: (node) => {
         var path = NODEFS.realPath(node);
         try {
           path = fs.readlinkSync(path);
@@ -240,7 +240,7 @@ mergeInto(LibraryManager.library, {
       },
     },
     stream_ops: {
-      open: function (stream) {
+      open: (stream) => {
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      close: function (stream) {
+      close: (stream) => {
         try {
           if (FS.isFile(stream.node.mode) && stream.nfd) {
             fs.closeSync(stream.nfd);
@@ -261,7 +261,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      read: function (stream, buffer, offset, length, position) {
+      read: (stream, buffer, offset, length, position) => {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
@@ -270,14 +270,14 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      write: function (stream, buffer, offset, length, position) {
+      write: (stream, buffer, offset, length, position) => {
         try {
           return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      llseek: function (stream, offset, whence) {
+      llseek: (stream, offset, whence) => {
         var position = offset;
         if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
@@ -298,7 +298,7 @@ mergeInto(LibraryManager.library, {
 
         return position;
       },
-      mmap: function(stream, address, length, position, prot, flags) {
+      mmap: (stream, address, length, position, prot, flags) => {
         if (address !== 0) {
           // We don't currently support location hints for the address of the mapping
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
@@ -312,7 +312,7 @@ mergeInto(LibraryManager.library, {
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
         return { ptr: ptr, allocated: true };
       },
-      msync: function(stream, buffer, offset, length, mmapFlags) {
+      msync: (stream, buffer, offset, length, mmapFlags) => {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }

@@ -167,12 +167,15 @@ test:
 template<typename T> val operator[](const T& key)
 pass
 pass
-test:
-template<typename K> void set(const K& key, const val& v)
 pass
 pass
 test:
 template<typename K, typename V> void set(const K& key, const V& value)
+pass
+pass
+pass
+pass
+pass
 pass
 pass
 pass
@@ -249,6 +252,9 @@ template<typename T> std::vector<T> vecFromJSArray(const val& v)
 pass
 pass
 pass
+pass
+test:
+template<typename T> std::vector<T *> vecFromJSArray(const val& v)
 pass
 test:
 template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)

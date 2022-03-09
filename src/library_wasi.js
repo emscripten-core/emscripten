@@ -21,7 +21,7 @@ var WasiLibrary = {
       // Default values.
 #if !DETERMINISTIC
       // Browser language detection #8751
-      var lang = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
 #else
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
@@ -183,7 +183,9 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-    if (typeof _fflush !== 'undefined') _fflush({{{ pointerT(0) }}});
+#if hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
+#endif
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});

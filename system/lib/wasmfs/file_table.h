@@ -35,7 +35,7 @@ using oflags_t = uint32_t;
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position;
-  oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
+  const oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
@@ -55,13 +55,19 @@ public:
 
     std::shared_ptr<File>& getFile() { return openFileState->file; };
 
-    off_t& position() { return openFileState->position; };
+    off_t getPosition() { return openFileState->position; };
+    void setPosition(off_t pos) { openFileState->position = pos; };
   };
+
+  Handle locked() { return Handle(shared_from_this()); }
+
+  // Return the flags we were created with. This does not require a lock as the
+  // flags never change after creation.
+  oflags_t getFlags() const { return flags; }
 };
 
 class FileTable {
-  // FileTable's constructor is private so WasmFS must be a friend class to
-  // allow a global FileTable singleton to be defined in the WasmFS object.
+  // Allow WasmFS to construct the FileTable singleton.
   friend class WasmFS;
 
   std::vector<std::shared_ptr<OpenFileState>> entries;
@@ -70,16 +76,8 @@ class FileTable {
   FileTable();
 
 public:
-  class Entry;
-
-  // Handle represents an RAII wrapper object. Access to the global FileTable
-  // must go through a Handle. A Handle holds the single global FileTable's lock
-  // for the duration of its lifetime. This is necessary because a FileTable may
-  // have atomic operations where the lock must be held across multiple methods.
-  // By providing access through the handle, callers of file table methods do
-  // not need to remember to take a lock for every access.
+  // Access to the FileTable must go through a Handle, which holds its lock.
   class Handle {
-  protected:
     FileTable& fileTable;
     std::unique_lock<std::recursive_mutex> lock;
 
@@ -87,48 +85,12 @@ public:
     Handle(FileTable& fileTable)
       : fileTable(fileTable), lock(fileTable.mutex) {}
 
-    Entry operator[](__wasi_fd_t fd);
-
-    __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
+    std::shared_ptr<OpenFileState> getEntry(__wasi_fd_t fd);
+    void setEntry(__wasi_fd_t fd, std::shared_ptr<OpenFileState> openFile);
+    __wasi_fd_t addEntry(std::shared_ptr<OpenFileState> openFileState);
   };
+
+  Handle locked() { return Handle(*this); }
 };
 
-// The Entry class abstracts over the list of entries, providing a simple
-// and safe interface that looks much like accessing a std::map, in that
-// table[x] = y will allocate a new entry if one is not already present
-// there. One minor difference from std::map is that table[x] does not
-// return a reference, and can be used to check for the lack of an item
-// there without allocation (similar to how table[x] works on a JS object),
-// which keeps syntax concise.
-class FileTable::Entry : public FileTable::Handle {
-  // Handle must be a friend to access the private constructor of Entry.
-  friend FileTable::Handle;
-
-public:
-  operator std::shared_ptr<OpenFileState>() const;
-
-  Entry& operator=(std::shared_ptr<OpenFileState> ptr);
-
-  Entry& operator=(Entry& entry) {
-    return *this = std::shared_ptr<OpenFileState>(entry);
-  }
-
-  // Return a locked Handle to access OpenFileState members.
-  OpenFileState::Handle locked() {
-    assert(fd < fileTable.entries.size() && fd >= 0);
-    return OpenFileState::Handle(unlocked());
-  }
-
-  // Return an OpenFileState without member access.
-  std::shared_ptr<OpenFileState> unlocked();
-
-  // Check whether the entry exists (i.e. contains an OpenFileState).
-  operator bool() const;
-
-private:
-  __wasi_fd_t fd;
-
-  Entry(FileTable& fileTable, __wasi_fd_t fd)
-    : FileTable::Handle(fileTable), fd(fd) {}
-};
 } // namespace wasmfs

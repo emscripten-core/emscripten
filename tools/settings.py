@@ -11,7 +11,7 @@ from .utils import path_from_root, exit_with_error
 from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
-MEM_SIZE_SETTINGS = (
+MEM_SIZE_SETTINGS = {
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
@@ -19,9 +19,9 @@ MEM_SIZE_SETTINGS = (
     'GL_MAX_TEMP_BUFFER_SIZE',
     'MAXIMUM_MEMORY',
     'DEFAULT_PTHREAD_STACK_SIZE'
-)
+}
 
-PORTS_SETTINGS = (
+PORTS_SETTINGS = {
     # All port-related settings are valid at compile time
     'USE_SDL',
     'USE_LIBPNG',
@@ -47,11 +47,11 @@ PORTS_SETTINGS = (
     'USE_FREETYPE',
     'SDL2_MIXER_FORMATS',
     'SDL2_IMAGE_FORMATS',
-)
+}
 
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
-COMPILE_TIME_SETTINGS = (
+COMPILE_TIME_SETTINGS = {
     'MEMORY64',
     'INLINING_LIMIT',
     'DISABLE_EXCEPTION_CATCHING',
@@ -62,9 +62,11 @@ COMPILE_TIME_SETTINGS = (
     'STRICT',
     'EMSCRIPTEN_TRACING',
     'USE_PTHREADS',
+    'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
+    'WASM_WORKERS',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
@@ -78,12 +80,12 @@ COMPILE_TIME_SETTINGS = (
     # TODO: should not be here
     'AUTO_ARCHIVE_INDEXES',
     'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
-) + PORTS_SETTINGS
+}.union(PORTS_SETTINGS)
 
 
 class SettingsManager:
   attrs = {}
-  allowed_settings = []
+  allowed_settings = set()
   legacy_settings = {}
   alt_names = {}
   internal_settings = set()
@@ -96,18 +98,15 @@ class SettingsManager:
     self.allowed_settings.clear()
 
     # Load the JS defaults into python.
-    with open(path_from_root('src/settings.js')) as fh:
-      settings = fh.read().replace('//', '#')
-    settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-    # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
-    # so must pass it there explicitly.
-    exec(settings, {'attrs': self.attrs})
+    def read_js_settings(filename, attrs):
+      with open(filename) as fh:
+        settings = fh.read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      exec(settings, {'attrs': attrs})
 
-    with open(path_from_root('src/settings_internal.js')) as fh:
-      settings = fh.read().replace('//', '#')
-    settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
     internal_attrs = {}
-    exec(settings, {'attrs': internal_attrs})
+    read_js_settings(path_from_root('src/settings.js'), self.attrs)
+    read_js_settings(path_from_root('src/settings_internal.js'), internal_attrs)
     self.attrs.update(internal_attrs)
 
     if 'EMCC_STRICT' in os.environ:
@@ -141,7 +140,7 @@ class SettingsManager:
   def limit_settings(self, allowed):
     self.allowed_settings.clear()
     if allowed:
-      self.allowed_settings.extend(allowed)
+      self.allowed_settings.update(allowed)
 
   def __getattr__(self, attr):
     if self.allowed_settings:
@@ -176,12 +175,13 @@ class SettingsManager:
 
     if name not in self.attrs:
       msg = "Attempt to set a non-existent setting: '%s'\n" % name
-      suggestions = difflib.get_close_matches(name, list(self.attrs.keys()))
+      valid_keys = set(self.attrs.keys()).difference(self.internal_settings)
+      suggestions = difflib.get_close_matches(name, valid_keys)
       suggestions = [s for s in suggestions if s not in self.legacy_settings]
       suggestions = ', '.join(suggestions)
       if suggestions:
         msg += ' - did you mean one of %s?\n' % suggestions
-      msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+      msg += " - perhaps a typo in emcc's  -sX=Y  notation?\n"
       msg += ' - (see src/settings.js for valid values)'
       exit_with_error(msg)
 

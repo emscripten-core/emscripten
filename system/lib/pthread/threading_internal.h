@@ -71,3 +71,52 @@ typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
 typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
 typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
 typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
+
+#define EM_THREAD_NAME_MAX 32
+
+#define EM_THREAD_STATUS int
+#define EM_THREAD_STATUS_NOTSTARTED 0
+#define EM_THREAD_STATUS_RUNNING    1
+#define EM_THREAD_STATUS_SLEEPING   2 // Performing an unconditional sleep (usleep, etc.)
+#define EM_THREAD_STATUS_WAITFUTEX  3 // Waiting for an explicit low-level futex (emscripten_futex_wait)
+#define EM_THREAD_STATUS_WAITMUTEX  4 // Waiting for a pthread_mutex_t
+#define EM_THREAD_STATUS_WAITPROXY  5 // Waiting for a proxied operation to finish.
+#define EM_THREAD_STATUS_FINISHED   6
+#define EM_THREAD_STATUS_NUMFIELDS  7
+
+typedef struct thread_profiler_block {
+  // One of THREAD_STATUS_*
+  _Atomic int threadStatus;
+  // Wallclock time denoting when the current thread state was entered in.
+  double currentStatusStartTime;
+  // Accumulated duration times denoting how much time has been spent in each
+  // state, in msecs.
+  double timeSpentInStatus[EM_THREAD_STATUS_NUMFIELDS];
+  // A human-readable name for this thread.
+  char name[EM_THREAD_NAME_MAX];
+} thread_profiler_block;
+
+void __emscripten_init_main_thread_js(void* tb);
+void _emscripten_thread_profiler_enable();
+
+#ifdef NDEBUG
+#define emscripten_set_current_thread_status(newStatus)
+#define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
+#else
+// Allocate the thread profile block for the given thread.
+void _emscripten_thread_profiler_init(pthread_t thread);
+
+// Sets the profiler status of the calling thread. This is a no-op if thread
+// profiling is not active.
+// This is an internal function and generally not intended for user code.
+// When thread profiler is not enabled (not building with --threadprofiler),
+// this is a no-op.
+void emscripten_set_current_thread_status(EM_THREAD_STATUS newStatus);
+
+// Sets the profiler status of the calling thread, but only if it was in the
+// expected status beforehand.
+// This is an internal function and generally not intended for user code.
+// When thread profiler is not enabled (not building with --threadprofiler),
+// this is a no-op.
+void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedStatus, EM_THREAD_STATUS newStatus);
+#endif

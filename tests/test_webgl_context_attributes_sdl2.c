@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 					   SDL_WINDOWPOS_UNDEFINED,
 					   WINDOWS_SIZE, WINDOWS_SIZE,
 					   SDL_WINDOW_OPENGL);
-    SDL_Renderer *sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
+
     SDL_GLContext context = SDL_GL_CreateContext(sdlWindow);
 
     glewInit();

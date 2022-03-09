@@ -23,7 +23,7 @@ function runMemoryInitializer() {
     HEAPU8.set(data, {{{ GLOBAL_BASE }}});
   } else {
     addRunDependency('memory initializer');
-    var applyMemoryInitializer = function(data) {
+    var applyMemoryInitializer = (data) => {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
@@ -37,7 +37,7 @@ function runMemoryInitializer() {
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     };
-    var doBrowserLoad = function() {
+    var doBrowserLoad = () => {
       readAsync(memoryInitializer, applyMemoryInitializer, function() {
         var e = new Error('could not load memory initializer ' + memoryInitializer);
 #if MODULARIZE
@@ -55,7 +55,7 @@ function runMemoryInitializer() {
 #endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
-      var useRequest = function() {
+      var useRequest = () => {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
@@ -263,6 +263,15 @@ function run(args) {
   }
 #endif
 
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) {
+#if MODULARIZE
+    readyPromiseResolve(Module);
+#endif // MODULARIZE
+    return initRuntime();
+  }
+#endif
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
@@ -357,15 +366,15 @@ function checkUnflushedContent() {
   var oldOut = out;
   var oldErr = err;
   var has = false;
-  out = err = function(x) {
+  out = err = (x) => {
     has = true;
   }
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
     if (flush) flush();
-#elif hasExportedFunction('_fflush')
-    _fflush(0);
+#elif hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
@@ -397,11 +406,13 @@ function checkUnflushedContent() {
 function exit(status, implicit) {
   EXITSTATUS = status;
 
-#if ASSERTIONS
-#if EXIT_RUNTIME == 0
-  checkUnflushedContent();
-#endif // EXIT_RUNTIME
-#endif // ASSERTIONS
+#if ASSERTIONS && !EXIT_RUNTIME
+  // Skip this check if the runtime is being kept alive deliberately.
+  // For example if `exit_with_live_runtime` is called.
+  if (!runtimeKeepaliveCounter) {
+    checkUnflushedContent();
+  }
+#endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
   if (!implicit) {
@@ -446,6 +457,9 @@ function exit(status, implicit) {
 }
 
 function procExit(code) {
+#if RUNTIME_DEBUG
+  err('procExit: ' + code);
+#endif
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
 #if USE_PTHREADS
@@ -482,20 +496,6 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #endif // HAS_MAIN
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // The default behaviour for pthreads is always to exit once they return
-  // from their entry point (or call pthread_exit).  If we set noExitRuntime
-  // to true here on pthreads they would never complete and attempt to
-  // pthread_join to them would block forever.
-  // pthreads can still choose to set `noExitRuntime` explicitly, or
-  // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-  // their main function.  See comment in src/worker.js for more.
-  noExitRuntime = false;
-  PThread.initWorker();
-}
-#endif
-
 run();
 
 #if BUILD_AS_WORKER
@@ -523,7 +523,7 @@ var workerResponded = false, workerCallbackId = -1;
     }
   }
 
-  onmessage = function onmessage(msg) {
+  onmessage = (msg) => {
     // if main has not yet been called (mem init file, other async things), buffer messages
     if (!runtimeInitialized) {
       if (!messageBuffer) {

@@ -32,28 +32,17 @@ static void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   mkdir("working", 0777);
 #ifdef __EMSCRIPTEN__
-
-#ifdef __EMSCRIPTEN_ASMFS__
-  mkdir("working", 0777);
-#else
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
 #endif
-#endif
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
-#ifdef WASMFS
-  create_file("file-readonly", "test", 0555);
-#else
-  // Prefer to create the file as readable and then
-  // use chmod.  See:
-  // https://github.com/emscripten-core/emscripten/pull/15455
+  // create the file as readable and then use chmod
   create_file("file-readonly", "test", 0777);
-#endif
 #ifndef NO_SYMLINK
   symlink("file1", "file1-link");
 #endif
@@ -61,18 +50,11 @@ void setup() {
 #ifndef NO_SYMLINK
   symlink("dir-empty", "dir-empty-link");
 #endif
-// TODO: delete this when chmod is implemented.
-#ifndef WASMFS
   mkdir("dir-readonly", 0777);
-#else
-  mkdir("dir-readonly", 0555);
-#endif
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
-#ifndef WASMFS
   chmod("dir-readonly", 0555);
   chmod("file-readonly", 0555);
-#endif
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
 }
@@ -87,10 +69,8 @@ void cleanup() {
 #ifndef NO_SYMLINK
   unlink("dir-empty-link");
 #endif
-#ifndef WASMFS
   chmod("dir-readonly", 0777);
   chmod("file-readonly", 0777);
-#endif
   unlink("file-readonly");
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
@@ -135,6 +115,7 @@ void test() {
 
 #ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
+  printf("err: %d %d\n", err, errno);
   assert(err == -1);
   assert(errno == EACCES);
 #endif
@@ -145,22 +126,17 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
-// TODO: Remove this when access is implemented.
-#ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
-#endif
-#ifndef NO_SYMLINK
+#if !defined(NO_SYMLINK)
   err = access("file1-link", F_OK);
   assert(err == -1);
 #endif
 
   err = unlink("file");
   assert(!err);
-#ifndef WASMFS
   err = access("file", F_OK);
   assert(err == -1);
-#endif
 
   // Should be able to delete a read-only file.
   err = unlink("file-readonly");
@@ -218,10 +194,8 @@ void test() {
 
   err = rmdir("dir-empty");
   assert(!err);
-#ifndef WASMFS
   err = access("dir-empty", F_OK);
   assert(err == -1);
-#endif
 
   puts("success");
 }

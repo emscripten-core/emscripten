@@ -129,6 +129,9 @@ var WASM_BINARY_FILE = '';
 // name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
+// name of the file containing the Wasm Worker *.ww.js, if relevant
+var WASM_WORKER_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
@@ -224,3 +227,7 @@ var LINK_AS_CXX = 0;
 // minimum set of ES6 featurs.  This triggers transpilation to ES5
 // using closure compiler.
 var TRANSPILE_TO_ES5 = 0;
+
+// A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
+// include additional items).
+var ALL_INCOMING_MODULE_JS_API = []

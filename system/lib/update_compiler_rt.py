@@ -10,6 +10,8 @@ import sys
 import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
+emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 local_src = os.path.join(script_dir, 'compiler-rt')
 
 copy_dirs = [
@@ -38,7 +40,11 @@ def clear(dirname):
 
 
 def main():
-  upstream_dir = os.path.join(os.path.abspath(sys.argv[1]), 'compiler-rt')
+  if len(sys.argv) > 1:
+    llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
+  else:
+    llvm_dir = default_llvm_dir
+  upstream_dir = os.path.join(llvm_dir, 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
   upstream_include = os.path.join(upstream_dir, 'include', 'sanitizer')

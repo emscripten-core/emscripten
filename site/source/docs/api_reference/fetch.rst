@@ -87,7 +87,7 @@ attributes:
   }
 
 For a full example, see the file
-tests/fetch/example_async_xhr_to_memory_via_indexeddb.cpp.
+tests/fetch/example_async_xhr_to_memory_via_indexeddb.c.
 
 Persisting data bytes from memory
 ---------------------------------
@@ -389,7 +389,7 @@ be dealt with separately.
     strcpy(attr.requestMethod, "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     // Make a Range request to only fetch bytes 10 to 20
-    const char* headers[] = {"Range", "bytes=10-20"};
+    const char* headers[] = {"Range", "bytes=10-20", NULL};
     attr.requestHeaders = headers;
     attr.onsuccess = downloadSucceeded;
     attr.onerror = downloadFailed;
@@ -407,8 +407,6 @@ documenting:
  - Emscripten_fetch_attr_t allows setting custom HTTP request headers (e.g. for
    cache control)
  - Document HTTP simple auth fields in Emscripten_fetch_attr_t.
- - Document how to populate to a certain filesystem path location in IndexedB,
-   and e.g. fopen() it via ASMFS afterwards.
  - Document overriddenMimeType attribute in Emscripten_fetch_attr_t.
  - Reference documentation of the individual fields in Emscripten_fetch_attr_t,
    Emscripten_fetch_t and #defines.

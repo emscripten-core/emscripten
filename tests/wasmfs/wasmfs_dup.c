@@ -124,6 +124,7 @@ int main() {
   printf("f2,f3: %d\n", f2 == f3);
   printf("close(f1): %d\n", close(f));
   printf("close(f2): %d\n", close(f2));
+  // f3 is identical to f2, so this will error.
   printf("close(f3): %d\n", close(f3));
   errno = 0;
 

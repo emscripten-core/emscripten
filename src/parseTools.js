@@ -118,6 +118,14 @@ function preprocess(text, filenameHint) {
             } else if (first === '#endif') {
               assert(showStack.length > 0);
               showStack.pop();
+            } else if (first === '#warning') {
+              if (showCurrentLine()) {
+                printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              }
+            } else if (first === '#error') {
+              if (showCurrentLine()) {
+                error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              }
             } else {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
             }
@@ -259,7 +267,7 @@ function splitI64(value, floatConversion) {
 function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent === 'number') {
+  if (typeof indent == 'number') {
     const len = indent;
     indent = '';
     for (let i = 0; i < len; i++) {
@@ -441,9 +449,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
   assert(!forcedAlign, 'forcedAlign is no longer supported');
-  sep = sep || ';';
 
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
@@ -499,8 +506,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
 const UNROLL_LOOP_MAX = 8;
 
-function makeCopyValues(dest, src, num, type, modifier, align, sep) {
-  sep = sep || ';';
+function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   function unroll(type, num, jump) {
     jump = jump || 1;
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
@@ -557,11 +563,11 @@ function getFastValue(a, op, b, type) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a === 'number') {
+  if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) aNumber = parseFloat(a);
-  if (typeof b === 'number') {
+  if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) bNumber = parseFloat(b);
@@ -826,6 +832,13 @@ New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
     if (DYNCALLS) {
+      if (!hasExportedFunction(`dynCall_${sig}`)) {
+        if (ASSERTIONS) {
+          return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+        } else {
+          return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+        }
+      }
       return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
     } else {
       return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
@@ -833,6 +846,14 @@ Please update to new syntax.`);
   }
 
   if (DYNCALLS) {
+    if (!hasExportedFunction(`dynCall_${sig}`)) {
+      if (ASSERTIONS) {
+        return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+      } else {
+        return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+      }
+    }
+
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
       return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
@@ -890,8 +911,7 @@ function makeRetainedCompilerSettings() {
   const ignore = new Set(['STRUCT_INFO']);
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
-      const name = setting[0];
-      ignore.add(name);
+      ignore.add(setting);
     }
   }
 
@@ -899,7 +919,7 @@ function makeRetainedCompilerSettings() {
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
-        if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
+        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
           ret[x] = global[x];
         }
       } catch (e) {}
@@ -941,7 +961,11 @@ function modifyFunction(text, func) {
 }
 
 function runOnMainThread(text) {
-  if (USE_PTHREADS) {
+  if (WASM_WORKERS && USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else if (WASM_WORKERS) {
+    return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
+  } else if (USE_PTHREADS) {
     return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else {
     return text;
@@ -955,22 +979,19 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return `
-if (!Object.getOwnPropertyDescriptor(Module, '${moduleName}')) {
-  Object.defineProperty(Module, '${moduleName}', {
-    configurable: true,
-    get: function() {
-      abort('Module.${moduleName} has been replaced with plain ${localName}\
- (the initial value can be provided on Module,\
- but after startup the value is only looked for on a local variable of that name)')
-    }
-  });
-}`;
+  return `legacyModuleProp('${moduleName}', '${localName}');`;
+}
+
+function checkReceiving(name) {
+  // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
+  // so calling makeModuleReceive* with a symbol not in this list is an error
+  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
 }
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
@@ -981,8 +1002,18 @@ function makeModuleReceive(localName, moduleName) {
   return ret;
 }
 
+function makeModuleReceiveExpr(name, defaultValue) {
+  checkReceiving(name);
+  if (expectToReceiveOnModule(name)) {
+    return `Module['${name}'] || ${defaultValue}`;
+  } else {
+    return `${defaultValue}`;
+  }
+}
+
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
   if (!moduleName) moduleName = localName;
+  checkReceiving(moduleName);
   let ret = 'var ' + localName;
   if (!expectToReceiveOnModule(moduleName)) {
     if (defaultValue) {
@@ -1046,6 +1077,9 @@ function _asmjsDemangle(symbol) {
   if (symbol in WASM_SYSTEM_EXPORTS) {
     return symbol;
   }
+  if (symbol.startsWith('dynCall_')) {
+    return symbol;
+  }
   // Strip leading "_"
   assert(symbol.startsWith('_'));
   return symbol.substr(1);
@@ -1059,9 +1093,9 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name + '_bigint';
+    return `/** @type {!BigInt} */ ${name}_bigint`;
   }
-  return name + '_low, ' + name + '_high';
+  return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {
@@ -1074,6 +1108,19 @@ function receiveI64ParamAsI32s(name) {
     return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
   }
   return '';
+}
+
+// TODO: use this in library_wasi.js and other places. but we need to add an
+//       error-handling hook here.
+function receiveI64ParamAsDouble(name) {
+  if (WASM_BIGINT) {
+    // Just convert the bigint into a double.
+    return `${name} = Number(${name});`;
+  }
+
+  // Combine the i32 params. Use an unsigned operator on low and shift high by
+  // 32 bits.
+  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {

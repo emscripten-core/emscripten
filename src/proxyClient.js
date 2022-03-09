@@ -6,7 +6,7 @@
 
 // proxy to/from worker
 
-if (typeof Module === 'undefined') {
+if (typeof Module == 'undefined') {
   console.warn('no Module object defined - cannot proxy canvas rendering and input events, etc.');
   Module = {
     print: function(x) {
@@ -262,8 +262,7 @@ worker.onmessage = function worker_onmessage(event) {
   }
 };
 
-function postCustomMessage(data, options) {
-  options = options || {};
+function postCustomMessage(data, options = {}) {
   worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
 }
 
@@ -272,7 +271,7 @@ function cloneObject(event) {
   for (var x in event) {
     if (x == x.toUpperCase()) continue;
     var prop = event[x];
-    if (typeof prop === 'number' || typeof prop === 'string') ret[x] = prop;
+    if (typeof prop == 'number' || typeof prop == 'string') ret[x] = prop;
   }
   return ret;
 };

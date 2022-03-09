@@ -92,11 +92,17 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
+#ifndef SANITIZER_EMSCRIPTEN
+    // Emscripten's fake mmap doesn't support partial unmapping
     UnmapOrDie((void*)map_res, res - map_res);
+#endif
   }
+#ifndef SANITIZER_EMSCRIPTEN
+  // Emscripten's fake mmap doesn't support partial unmapping
   uptr end = res + size;
   if (end != map_end)
     UnmapOrDie((void*)end, map_end - end);
+#endif
   return (void*)res;
 }
 
@@ -290,8 +296,8 @@ bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
   // and thus always fails.
 #else
   MemoryMappingLayout proc_maps(/*cache_enabled*/false);
-  InternalScopedString buff(kMaxPathLength);
-  MemoryMappedSegment segment(buff.data(), kMaxPathLength);
+  InternalMmapVector<char> buff(kMaxPathLength);
+  MemoryMappedSegment segment(buff.data(), buff.size());
   while (proc_maps.Next(&segment)) {
     if (segment.IsExecutable() &&
         internal_strcmp(module, segment.filename) == 0) {

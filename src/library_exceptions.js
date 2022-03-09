@@ -21,6 +21,7 @@ var LibraryExceptions = {
   // purpose, it references the primary exception.
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
+  $ExceptionInfo__docs: '/** @constructor */',
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
@@ -73,7 +74,7 @@ var LibraryExceptions = {
     }
 
     this.add_ref = function() {
-#if USE_PTHREADS
+#if SHARED_MEMORY
       Atomics.add(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
       var value = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
@@ -83,7 +84,7 @@ var LibraryExceptions = {
 
     // Returns true if last reference released.
     this.release_ref = function() {
-#if USE_PTHREADS
+#if SHARED_MEMORY
       var prev = Atomics.sub(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
       var prev = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
@@ -96,6 +97,11 @@ var LibraryExceptions = {
     };
   },
 
+  $CatchInfo__docs: `
+  /**
+   * @constructor
+   * @param {number=} ptr
+   */`,
   $CatchInfo__deps: ['$ExceptionInfo', '__cxa_is_pointer_type'],
   // This native structure is returned from __cxa_find_matching_catch, and serves as catching
   // context, i.e. stores information required to proceed with a specific selected catch. It stores
@@ -422,6 +428,16 @@ var LibraryExceptions = {
     catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
+
+#if !DISABLE_EXCEPTION_CATCHING
+  $formatException__deps: ['emscripten_format_exception', 'free'],
+  $formatException: function(excPtr) {
+    var utf8_addr = _emscripten_format_exception(excPtr);
+    var result = UTF8ToString(utf8_addr);
+    _free(utf8_addr);
+    return result;
+  },
+#endif
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.

@@ -6,7 +6,7 @@
 
 #include "runtime_safe_heap.js"
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) throw text;
@@ -15,11 +15,7 @@ function assert(condition, text) {
 
 /** @param {string|number=} what */
 function abort(what) {
-#if ASSERTIONS
-  throw new Error(what);
-#else
-  throw what;
-#endif
+  throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
 #if SAFE_HEAP
@@ -31,13 +27,6 @@ var tempI64;
 var tempRet0 = 0;
 var setTempRet0 = (value) => { tempRet0 = value };
 var getTempRet0 = () => tempRet0;
-
-function alignUp(x, multiple) {
-  if (x % multiple > 0) {
-    x += multiple - (x % multiple);
-  }
-  return x;
-}
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -57,15 +46,18 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 
-var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
-var wasmMemory, buffer, wasmTable;
-
-#if SUPPORT_BIG_ENDIAN
-var HEAP_DATA_VIEW;
+var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
+#if WASM_BIGINT
+  HEAP64, HEAPU64,
 #endif
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW,
+#endif
+  wasmMemory, buffer, wasmTable;
+
 
 function updateGlobalBufferAndViews(b) {
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && SHARED_MEMORY
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
   buffer = b;
@@ -80,34 +72,33 @@ function updateGlobalBufferAndViews(b) {
   HEAPU32 = new Uint32Array(b);
   HEAPF32 = new Float32Array(b);
   HEAPF64 = new Float64Array(b);
+#if WASM_BIGINT
+  HEAP64 = new BigInt64Array(b);
+  HEAPU64 = new BigUint64Array(b);
+#endif
 }
 
 #if IMPORTED_MEMORY
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB
-  var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
-#else
-  var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
+  wasmMemory =
+#if WASM_WORKERS
+    Module['mem'] ||
 #endif
-  wasmMemory = new WebAssembly.Memory({
+    new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
-#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
-    , 'maximum': wasmMaximumMemory
+#if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
+    , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
 #endif
-#if USE_PTHREADS
+#if SHARED_MEMORY
     , 'shared': true
 #endif
     });
   updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
 } else {
-#if MODULARIZE
-  updateGlobalBufferAndViews(Module.buffer);
-#else
-  updateGlobalBufferAndViews(wasmMemory.buffer);
-#endif
+  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
 #endif // USE_PTHREADS
 #endif // IMPORTED_MEMORY

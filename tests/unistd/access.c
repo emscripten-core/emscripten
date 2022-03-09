@@ -5,22 +5,15 @@
  * found in the LICENSE file.
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
+#include <assert.h>
 #include <emscripten.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 int main() {
-#ifdef __EMSCRIPTEN_ASMFS__
-  mkdir("working", 0777);
-  chdir("working");
-  close(open("forbidden", O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0000));
-  close(open("readable", O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0444));
-  close(open("writeable", O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0222));
-  close(open("allaccess", O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0777));
-#else
   EM_ASM(
     FS.mkdir('working');
 #if NODEFS
@@ -32,7 +25,7 @@ int main() {
     FS.writeFile('writeable', ""); FS.chmod('writeable', 0o222);
     FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0o777);
   );
-#endif
+
   // Empty path checks #9136 fix
   char* files[] = {"readable", "writeable",
                    "allaccess", "forbidden", "nonexistent", ""};
@@ -53,8 +46,9 @@ int main() {
   }
 
   EM_ASM({FS.writeFile('filetorename',  'renametest');});
-  
-  rename("filetorename", "renamedfile");
+
+  int rename_ret = rename("filetorename", "renamedfile");
+  assert(rename_ret == 0);
 
   errno = 0;
   printf("F_OK(%s): %d\n", "filetorename", access("filetorename", F_OK));
@@ -71,7 +65,6 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
   printf("errno: %d\n", errno);
 
-#ifndef __EMSCRIPTEN_ASMFS__
   // Restore full permissions on all created files so that python test runner rmtree
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
   // will fail if any of the files are read-only.
@@ -81,7 +74,6 @@ int main() {
     FS.chmod('writeable', 0o777);
     FS.chmod('allaccess', 0o777);
   );
-#endif
 
   return 0;
 }

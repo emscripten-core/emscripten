@@ -11352,7 +11352,7 @@ _SOKOL_PRIVATE void _sg_wgpu_end_pass(void) {
     SOKOL_ASSERT(_sg.wgpu.in_pass);
     SOKOL_ASSERT(_sg.wgpu.pass_enc);
     _sg.wgpu.in_pass = false;
-    wgpuRenderPassEncoderEndPass(_sg.wgpu.pass_enc);
+    wgpuRenderPassEncoderEnd(_sg.wgpu.pass_enc);
     wgpuRenderPassEncoderRelease(_sg.wgpu.pass_enc);
     _sg.wgpu.pass_enc = 0;
 }

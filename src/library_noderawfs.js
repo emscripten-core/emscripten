@@ -6,14 +6,33 @@
 
 mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc'],
-  $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
-    'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
-    'var VFS = Object.assign({}, FS);' +
-    'for (var _key in NODERAWFS) FS[_key] = _wrapNodeError(NODERAWFS[_key]);' +
-    '}' +
-    'else { throw new Error("NODERAWFS is currently only supported on Node.js environment.") }',
+  $NODERAWFS__postset: `
+    if (ENVIRONMENT_IS_NODE) {
+      var _wrapNodeError = function(func) {
+        return function() {
+          try {
+            return func.apply(this, arguments)
+          } catch (e) {
+            if (e.code) {
+              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+            }
+            throw e;
+          }
+        }
+      };
+      var VFS = Object.assign({}, FS);
+      for (var _key in NODERAWFS) {
+        FS[_key] = _wrapNodeError(NODERAWFS[_key]);
+      }
+    } else {
+      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+    }`,
   $NODERAWFS: {
     lookup: function(parent, name) {
+#if ASSERTIONS
+      assert(parent)
+      assert(parent.path)
+#endif
       return FS.lookupPath(parent.path + '/' + name).node;
     },
     lookupPath: function(path, opts) {
@@ -23,7 +42,7 @@ mergeInto(LibraryManager.library, {
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
-      return { path: path, node: { id: st.ino, mode: mode }};
+      return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
@@ -64,7 +83,7 @@ mergeInto(LibraryManager.library, {
     },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      if (typeof flags === "string") {
+      if (typeof flags == "string") {
         flags = VFS.modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
@@ -75,7 +94,8 @@ mergeInto(LibraryManager.library, {
       }
       var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: newMode, node_ops: NODERAWFS, seekable: true };
+      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },
@@ -111,7 +131,7 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.read(stream, buffer, offset, length, position);
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
@@ -127,7 +147,7 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
-      var seeking = typeof position !== 'undefined';
+      var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesWritten = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
       // update position marker when non-seeking

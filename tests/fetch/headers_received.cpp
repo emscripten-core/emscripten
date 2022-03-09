@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <emscripten/fetch.h>
@@ -35,10 +36,6 @@ void readyStateChange(emscripten_fetch_t *fetch)
   printf("Finished receiving %d headers from URL %s.\n", numHeaders, fetch->url);
 
   emscripten_fetch_free_unpacked_response_headers(responseHeaders);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
 }
 
 void success(emscripten_fetch_t *fetch)
@@ -58,4 +55,5 @@ int main()
   attr.onreadystatechange = readyStateChange;
   attr.timeoutMSecs = 2*60;
   emscripten_fetch(&attr, "myfile.dat");
+  return 0;
 }

@@ -14,7 +14,8 @@ var Module = {};
 
 #if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
-if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
   var nodeWorkerThreads = require('worker_threads');
@@ -25,7 +26,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     onmessage({ data: data });
   });
 
-  var nodeFS = require('fs');
+  var fs = require('fs');
 
   Object.assign(global, {
     self: global,
@@ -36,7 +37,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
-      (0, eval)(nodeFS.readFileSync(f, 'utf8'));
+      (0, eval)(fs.readFileSync(f, 'utf8'));
     },
     postMessage: function(msg) {
       parentPort.postMessage(msg);
@@ -63,6 +64,13 @@ function assert(condition, text) {
 
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
+#if ENVIRONMENT_MAY_BE_NODE
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    fs.writeSync(2, text + '\n');
+    return;
+  }
+#endif
   console.error(text);
 }
 function threadAlert() {
@@ -73,15 +81,13 @@ function threadAlert() {
 // We don't need out() for now, but may need to add it if we want to use it
 // here. Or, if this code all moves into the main JS, that problem will go
 // away. (For now, adding it here increases code size for no benefit.)
-var out = function() {
-  throw 'out() is not defined in worker.js.';
-}
+var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
 
 #if !MINIMAL_RUNTIME
-Module['instantiateWasm'] = function(info, receiveInstance) {
+Module['instantiateWasm'] = (info, receiveInstance) => {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
@@ -96,12 +102,15 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
   return instance.exports;
-};
+}
 #endif
 
-self.onmessage = function(e) {
+self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if PTHREADS_DEBUG
+      err('worker.js: loading module')
+#endif
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
@@ -132,6 +141,10 @@ self.onmessage = function(e) {
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 
+#if PTHREADS_DEBUG
+      Module['workerID'] = e.data.workerID;
+#endif
+
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
@@ -143,9 +156,9 @@ self.onmessage = function(e) {
         Module = instance;
       });
 #else
-      if (typeof e.data.urlOrBlob === 'string') {
+      if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
-        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+        if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
           importScripts(p.createScriptURL('ignored'));
         } else
@@ -154,7 +167,7 @@ self.onmessage = function(e) {
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
 #if TRUSTED_TYPES
-        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+        if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
           importScripts(p.createScriptURL('ignored'));
         } else
@@ -276,6 +289,10 @@ self.onmessage = function(e) {
       if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_proxy_execute_queue'](e.data.queue);
       }
+    } else if (e.data.cmd === 'processProxyingQueue') {
+      if (Module['_pthread_self']()) { // If this thread is actually running?
+        Module['_emscripten_proxy_execute_queue'](e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
@@ -283,6 +300,9 @@ self.onmessage = function(e) {
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex && ex.stack) err(ex.stack);
+    if (Module['__emscripten_thread_crashed']) {
+      Module['__emscripten_thread_crashed']();
+    }
     throw ex;
   }
 };

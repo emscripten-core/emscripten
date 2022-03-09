@@ -16,7 +16,18 @@ int __clock_nanosleep(clockid_t clk, int flags, const struct timespec *req, stru
 	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) {
 		return EINVAL;
 	}
-	emscripten_thread_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
+	struct timespec sleep_for = *req;
+	if (flags & TIMER_ABSTIME) {
+		struct timespec now;
+		clock_gettime(clk, &now);
+		if (now.tv_sec > req->tv_sec || (now.tv_sec == req->tv_sec && now.tv_nsec >= req->tv_nsec)) {
+			// The requested time has already passed
+			return 0;
+		}
+		sleep_for.tv_sec = req->tv_sec - now.tv_sec;
+		sleep_for.tv_nsec = req->tv_nsec - now.tv_nsec;
+	}
+	emscripten_thread_sleep(sleep_for.tv_sec * 1000.0 + sleep_for.tv_nsec / 1e6);
 	return 0;
 #else
 #ifdef SYS_clock_nanosleep_time64

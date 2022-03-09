@@ -39,7 +39,7 @@ void abort_message(const char* format, ...)
         // even minimal logging for them, as we'll have a proper call stack, which
         // will show a call into "abort_message", and can help debugging. (In a
         // debug build that won't be inlined.)
-        __builtin_trap();
+        abort();
 #else
         fprintf(stderr, "libc++abi: ");
         va_list list;
