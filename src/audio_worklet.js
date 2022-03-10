@@ -96,9 +96,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Call out to Wasm callback to perform audio processing
-      didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData);
-
-      if (didProduceAudio) {
+      if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset, srcTypedArray, srcOffset, count) would sure be handy..
         //  but web does not have one, so manually copy all bytes in)
