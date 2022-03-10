@@ -105,7 +105,7 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 }
 #endif
 
-self.onmessage = (e) => {
+self.addEventListener('message', (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if PTHREADS_DEBUG
@@ -305,4 +305,4 @@ self.onmessage = (e) => {
     }
     throw ex;
   }
-};
+});
