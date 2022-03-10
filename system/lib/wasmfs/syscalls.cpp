@@ -1006,10 +1006,15 @@ long __syscall_utimensat(int dirFD,
 
   // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
-  // TODO: Handle NULL times.
   // TODO: Check for write access to the file (see man page for specifics).
-  auto aSeconds = times[0].tv_sec;
-  auto mSeconds = times[1].tv_sec;
+  time_t aSeconds, mSeconds;
+  if (times == NULL) {
+    aSeconds = time(NULL);
+    mSeconds = aSeconds;
+  } else {
+    aSeconds = times[0].tv_sec;
+    mSeconds = times[1].tv_sec;
+  }
 
   auto locked = parsed.getFile()->locked();
   locked.setATime(aSeconds);
