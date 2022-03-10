@@ -242,7 +242,7 @@ var LibraryPThread = {
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: function(worker, onFinishedLoading) {
-      worker.onmessage = (e) => {
+      worker.addEventListener('message', (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
         // Sometimes we need to backproxy events to the calling thread (e.g.
@@ -303,7 +303,7 @@ var LibraryPThread = {
           err("worker sent an unknown command " + cmd);
         }
         PThread.currentProxiedOperationCallerThread = undefined;
-      };
+      });
 
       worker.onerror = (e) => {
         var message = 'worker sent an error!';
