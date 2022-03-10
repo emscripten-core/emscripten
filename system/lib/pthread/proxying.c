@@ -208,16 +208,16 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
 
   // Recursion guard to avoid infinite recursion when we arrive here from the
-  // pthread_lock calls below that execute the system queue. The per-task_queue
-  // recursion lock below can't catch these recursions because it can only be
-  // checked after the lock has been acquired.
-  thread_local bool executing_system_queue = false;
-  bool is_system_queue = q == &system_proxying_queue;
+  // pthread_lock call below that executes the system queue. The per-task_queue
+  // recursion lock can't catch these recursions because it can only be checked
+  // after the lock has been acquired.
+  static _Thread_local int executing_system_queue = 0;
+  int is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     if (executing_system_queue) {
       return;
     }
-    executing_system_queue = true;
+    executing_system_queue = 1;
   }
 
   pthread_mutex_lock(&q->mutex);
@@ -244,7 +244,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 end:
   pthread_mutex_unlock(&q->mutex);
   if (is_system_queue) {
-    executing_system_queue = false;
+    executing_system_queue = 0;
   }
 }
 
