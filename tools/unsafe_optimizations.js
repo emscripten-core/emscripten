@@ -82,12 +82,24 @@ function optPassSimplifyModuleInitialization(ast) {
 // Finds redundant operator new statements that are not assigned anywhere.
 // (we aren't interested in side effects of the calls if no assignment)
 function optPassRemoveRedundantOperatorNews(ast) {
+  // Remove standalone operator new statements that don't have any meaning.
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
     const nodeArray = node.body;
-    // Delete operator news that don't have any meaning.
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
       if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
+        nodeArray.splice(i--, 1);
+      }
+    }
+  });
+
+  // Remove comma sequence chained operator news ('new foo(), new foo();')
+  visitNodes(ast, ['SequenceExpression'], (node) => {
+    const nodeArray = node.expressions;
+    // Delete operator news that don't have any meaning.
+    for (let i = 0; i < nodeArray.length; ++i) {
+      const n = nodeArray[i];
+      if (n.type == 'NewExpression') {
         nodeArray.splice(i--, 1);
       }
     }
@@ -224,10 +236,13 @@ function runOnFile(input, pretty = false, output = null) {
   else console.log(js);
 }
 
+let numTestFailures = 0;
+
 function test(input, expected) {
   const observed = runOnJsText(input);
   if (observed != expected) {
     console.error(`Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
+    ++numTestFailures;
   } else {
     console.log(`OK: ${input} -> ${expected}`);
   }
@@ -243,6 +258,7 @@ function runTests() {
 
   // optPassRemoveRedundantOperatorNews:
   test('new Uint16Array(a);', '');
+  test('new Uint16Array(a),new Uint16Array(a);', ';');
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
   test('WebAssembly.instantiate(c.wasm,{}).then(function(a){new Int8Array(b);});', 'WebAssembly.instantiate(c.wasm,{}).then(function(a){});');
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
@@ -263,6 +279,8 @@ function runTests() {
   // test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{}');
   // but instead produces:
   test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=(()=>{});');
+
+  process.exit(numTestFailures);
 }
 
 const args = process['argv'].slice(2);

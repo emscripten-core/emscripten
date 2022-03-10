@@ -11827,3 +11827,7 @@ void foo() {}
 
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))
+
+  # Tests the internal test suite of tools/unsafe_optimizations.js
+  def test_unsafe_optimizations(self):
+    self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])

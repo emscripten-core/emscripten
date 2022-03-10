@@ -2857,9 +2857,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   module_export_name_substitution()
 
-  # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
+  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
   # by processing steps that occurred after Closure.
-  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0 and not settings.SINGLE_FILE:
+  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
     # to run in advanced mode)
