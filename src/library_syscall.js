@@ -1046,13 +1046,18 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
-    var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var atime = (seconds*1000) + (nanoseconds/(1000*1000));
-    times += {{{ C_STRUCTS.timespec.__size__ }}};
-    seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    if (!times) {
+      var atime = Date.now();
+      var mtime = atime;
+    } else {
+      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      times += {{{ C_STRUCTS.timespec.__size__ }}};
+      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    }
     FS.utime(path, atime, mtime);
     return 0;
   },

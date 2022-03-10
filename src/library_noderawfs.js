@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
       }
       fs.ftruncateSync.apply(void 0, arguments);
     },
-    utime: function() { fs.utimesSync.apply(void 0, arguments); },
+    utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags == "string") {
         flags = VFS.modeStringToFlags(flags)
