@@ -121,7 +121,9 @@ let LibraryWebAudio = {
 
 #if ASSERTIONS
     assert(stackLowestAddress != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS!');
+    assert(stackLowestAddress % 16, 'AudioWorklet stack should be aligned to 16 bytes! Use e.g. memalign(16, stackSize) to align the stack!');
     assert(stackSize != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS!');
+    assert(stackSize % 16, 'AudioWorklet stack size should be a multiple of 16 bytes!');
     assert(!audioContext.audioWorkletInitialized, 'emscripten_create_wasm_audio_worklet() was already called for AudioContext ' + contextHandle + '! Only call this function once per AudioContext!');
     audioContext.audioWorkletInitialized = 1;
 #endif
@@ -159,17 +161,26 @@ let LibraryWebAudio = {
 #if WASM_WORKERS
           '$ww': _wasm_workers_id++, // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that it can utilized its own TLS slots, and it is recognized to not be the main browser thread.
 #endif
+#if MINIMAL_RUNTIME
           'wasm': Module['wasm'],
           'mem': wasmMemory,
-          'sb': stackLowestAddress,
-          'sz': stackSize,
+#else
+          'wasm': wasmModule,
+          'wasmMemory': wasmMemory,
+#endif
+          'sb': stackLowestAddress, // sb = stack base
+          'sz': stackSize,          // sz = stack size
         }
       });
       audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;
 
       // AudioWorklets do not have a importScripts() function like Web Workers do (and AudioWorkletGlobalScope does not allow dynamic import() either),
       // but instead, the main thread must load all JS code into the worklet scope. Send the application main JS script to the audio worklet.
+#if MINIMAL_RUNTIME
       return audioWorklet.addModule(Module['js']);
+#else
+      return audioWorklet.addModule(Module['mainScriptUrlOrBlob'] || _scriptDir);
+#endif
     }).then(() => {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
