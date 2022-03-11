@@ -36,7 +36,7 @@ int main()
   for(int i = 0; i < NUM_THREADS; ++i)
   {
     thread_stack[i] = memalign(16, THREAD_STACK_SIZE);
-    emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_no_tls(thread_stack[i], THREAD_STACK_SIZE);
+    emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(thread_stack[i], THREAD_STACK_SIZE);
     EM_ASM(console.log(`Created thread ${$0} with stack ptr=0x${$1.toString(16)}, size=0x${$2.toString(16)}`), i, thread_stack[i], THREAD_STACK_SIZE);
     emscripten_wasm_worker_post_function_vi(worker, test_stack, i);
   }

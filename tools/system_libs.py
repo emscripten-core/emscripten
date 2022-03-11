@@ -1031,7 +1031,6 @@ class libprintf_long_double(libc):
 
 class libwasm_workers(MTLibrary):
   def __init__(self, **kwargs):
-    self.tls = kwargs.pop('tls')
     self.stack_check = kwargs.pop('stack_check')
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
@@ -1041,8 +1040,7 @@ class libwasm_workers(MTLibrary):
   def get_cflags(self):
     cflags = ['-pthread',
               '-D_DEBUG' if self.debug else '-Oz',
-              '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0'),
-              '-DWASM_WORKER_NO_TLS=' + ('0' if self.tls else '1')]
+              '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0')]
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
@@ -1055,8 +1053,6 @@ class libwasm_workers(MTLibrary):
     name = 'libwasm_workers'
     if not self.is_ww and not self.is_mt:
       name += '_stub'
-    if not self.tls:
-      name += '-notls'
     if self.debug:
       name += '-debug'
     if self.stack_check:
@@ -1065,11 +1061,11 @@ class libwasm_workers(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['tls', 'debug', 'stack_check']
+    return super().vary_on() + ['debug', 'stack_check']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
+    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
 
   def get_files(self):
     return files_in_path(

@@ -82,11 +82,13 @@ emscripten_stack_get_free:
 # __stack_base and __stack_end globals from a separate file as externs in order for that to work.
 .globl emscripten_wasm_worker_initialize
 emscripten_wasm_worker_initialize:
-  .functype emscripten_wasm_worker_initialize (PTR, i32, PTR) -> ()
+  .functype emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
 
+  // __stack_end = stackLowestAddress;
   local.get 0
   global.set __stack_end
 
+  // __stack_base = stackLowestAddress + stackSize;
   local.get 0
   local.get 1
 #ifdef __wasm64__
@@ -96,13 +98,23 @@ emscripten_wasm_worker_initialize:
   local.tee 0
   global.set __stack_base
 
+  // __stack_pointer = __stack_base;
   local.get 0
   global.set __stack_pointer
 
-  local.get 2
-  .functype __wasm_init_tls (PTR) -> ()
-  call __wasm_init_tls
+  // __wasm_init_tls(__stack_end);
+  // __stack_end += __builtin_wasm_tls_size();
+  global.get __stack_end
+  global.get __stack_end
+  .functype wasm_worker_init_tls (PTR) -> (i32)
+  call wasm_worker_init_tls
+#ifdef __wasm64__
+  i64.extend_i32_u
+#endif
+  PTR.add
+  global.set __stack_end
 
+  i32.const 0
   end_function
 #endif
 

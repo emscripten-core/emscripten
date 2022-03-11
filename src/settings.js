@@ -1480,12 +1480,6 @@ var USE_PTHREADS = 0;
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
-// Wasm Worker option: set to 1 to disable TLS for small code size gain when
-// not using TLS. This setting can be used to verify that there is no leftover
-// state stored in a Worker when manually implementing thread pooling in Workers.
-// [link]
-var WASM_WORKERS_NO_TLS = 0;
-
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
 // to the browser event loop for Worker initialization to occur.

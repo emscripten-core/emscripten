@@ -73,7 +73,7 @@ void terminate_worker(void *userData)
 
 int main()
 {
-  worker = emscripten_create_wasm_worker_no_tls(stack, sizeof(stack));
+  worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 
   // Terminate the worker after a small delay
