@@ -21,9 +21,6 @@ em_proxying_queue* proxy_queue = NULL;
 // Whether `looper` should exit.
 _Atomic int should_quit = 0;
 
-// Whether `returner` has spun up.
-_Atomic int has_begun = 0;
-
 void* looper_main(void* arg) {
   while (!should_quit) {
     emscripten_proxy_execute_queue(proxy_queue);
@@ -33,7 +30,8 @@ void* looper_main(void* arg) {
 }
 
 void* returner_main(void* arg) {
-  has_begun = 1;
+  // Process the queue in case any work came in while we were starting up.
+  emscripten_proxy_execute_queue(proxy_queue);
   emscripten_exit_with_live_runtime();
 }
 
@@ -329,11 +327,6 @@ int main(int argc, char* argv[]) {
 
   pthread_create(&looper, NULL, looper_main, NULL);
   pthread_create(&returner, NULL, returner_main, NULL);
-
-  // `returner` can't process its queue until it starts up.
-  while (!has_begun) {
-    sched_yield();
-  }
 
   test_proxy_async();
   test_proxy_sync();

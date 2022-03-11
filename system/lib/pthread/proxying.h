@@ -117,10 +117,9 @@ public:
     }
   }
 
-  class ProxyingCtx {
-    em_proxying_ctx* ctx;
-
-  public:
+  struct ProxyingCtx {
+    em_proxying_ctx* ctx = nullptr;
+    ProxyingCtx() = default;
     ProxyingCtx(em_proxying_ctx* ctx) : ctx(ctx) {}
     void finish() { emscripten_proxy_finish(ctx); }
   };

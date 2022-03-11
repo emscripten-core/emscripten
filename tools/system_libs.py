@@ -1480,7 +1480,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
 
   cflags = ['-fno-exceptions', '-std=c++17']
 
-  includes = ['system/lib/wasmfs']
+  includes = ['system/lib/wasmfs', 'system/lib/pthread']
 
   def get_files(self):
     backends = files_in_path(
