@@ -186,9 +186,9 @@ class sockets(BrowserCore):
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
+        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram] + extra_args)
 
-  def test_sockets_echo_pthreads(self, extra_args=[]):
+  def test_sockets_echo_pthreads(self):
     self.test_sockets_echo(['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   def test_sdl2_sockets_echo(self):
