@@ -4,6 +4,9 @@
 #if AUDIO_WORKLET && TEXTDECODER == 2
 #error "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope! Use e.g. -sTEXTDECODER=1 when building with -sAUDIO_WORKLET"
 #endif
+#if AUDIO_WORKLET && SINGLE_FILE
+#error "-sAUDIO_WORKLET does not support -sSINGLE_FILE"
+#endif
 
 let LibraryWebAudio = {
   $EmAudio: {},
