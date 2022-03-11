@@ -263,9 +263,9 @@ var LibraryPThread = {
           return;
         }
 
-        if (cmd === 'processQueuedMainThreadWork') {
+        if (cmd === 'processProxyingQueue') {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-          _emscripten_main_thread_process_queued_calls();
+          _emscripten_proxy_execute_queue(d['queue']);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -1038,29 +1038,6 @@ var LibraryPThread = {
     __emscripten_thread_sync_code();
 #endif
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
-  },
-
-  // This function is called internally to notify target thread ID that it has messages it needs to
-  // process in its message queue inside the Wasm heap. As a helper, the caller must also pass the
-  // ID of the main browser thread to this function, to avoid needlessly ping-ponging between JS and
-  // Wasm boundaries.
-  _emscripten_notify_thread_queue: function(targetThreadId, mainThreadId) {
-    if (targetThreadId == mainThreadId) {
-      postMessage({'cmd' : 'processQueuedMainThreadWork'});
-    } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread': targetThreadId, 'cmd': 'processThreadQueue'});
-    } else {
-      var pthread = PThread.pthreads[targetThreadId];
-      var worker = pthread && pthread.worker;
-      if (!worker) {
-#if ASSERTIONS
-        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
-#endif
-        return /*0*/;
-      }
-      worker.postMessage({'cmd' : 'processThreadQueue'});
-    }
-    return 1;
   },
 
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
