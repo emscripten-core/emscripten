@@ -11826,3 +11826,13 @@ void foo() {}
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
     self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+
+  @require_v8
+  def test_extended_const(self):
+    self.v8_args = ['--experimental-wasm-extended-const']
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-mextended-const', '-sMAIN_MODULE=2'])
+    wat = self.get_wasm_text('hello_world.wasm')
+    # Test that extended-const expressions are used in the data segments.
+    self.assertTrue(re.search(r'\(data \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+    # Test that extended-const expressions are used in at least one global initializer.
+    self.assertTrue(re.search(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
