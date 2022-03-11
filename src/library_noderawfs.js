@@ -90,6 +90,7 @@ mergeInto(LibraryManager.library, {
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
+        fs.closeSync(nfd);
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       var newMode = NODEFS.getMode(pathTruncated);
