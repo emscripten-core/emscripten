@@ -1,3 +1,7 @@
+#if AUDIO_WORKLET && !WASM_WORKERS
+#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS!"
+#endif
+
 let LibraryWebAudio = {
   $EmAudio: {},
   $EmAudioCounter: 0,
@@ -89,6 +93,7 @@ let LibraryWebAudio = {
     EmAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
   },
 
+#if AUDIO_WORKLET
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
 #if WASM_WORKERS
     'wasm_workers_id',
@@ -244,6 +249,7 @@ let LibraryWebAudio = {
 #endif
     return emscriptenRegisterAudioObject(new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts));
   },
+#endif // ~AUDIO_WORKLET
 
   emscripten_current_thread_is_audio_worklet: function() {
     return typeof AudioWorkletGlobalScope !== 'undefined';
