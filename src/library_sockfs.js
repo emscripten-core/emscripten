@@ -563,6 +563,9 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         var newsock = listensock.pending.shift();
+        if (!newsock) {
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        }
         newsock.stream.flags = listensock.stream.flags;
         return newsock;
       },
