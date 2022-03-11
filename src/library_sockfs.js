@@ -559,13 +559,10 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept: function(listensock) {
-        if (!listensock.server) {
+        if (!listensock.server || !listensock.pending.length) {
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         var newsock = listensock.pending.shift();
-        if (!newsock) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
-        }
         newsock.stream.flags = listensock.stream.flags;
         return newsock;
       },
