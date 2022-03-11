@@ -182,7 +182,7 @@ class sockets(BrowserCore):
   })
   def test_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
-      self.skipTest('requires native clange')
+      self.skipTest('requires native clang')
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port] + args)
@@ -204,7 +204,7 @@ class sockets(BrowserCore):
   })
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
-      self.skipTest('requires native clange')
+      self.skipTest('requires native clang')
 
     args.append('-DTEST_ASYNC=1')
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
@@ -222,7 +222,7 @@ class sockets(BrowserCore):
   })
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
-      self.skipTest('requires native clange')
+      self.skipTest('requires native clang')
     sockets_include = '-I' + test_file('sockets')
 
     # generate a large string literal to use as our message
@@ -284,7 +284,7 @@ class sockets(BrowserCore):
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
-      self.skipTest('requires native clange')
+      self.skipTest('requires native clang')
 
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
