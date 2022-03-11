@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cassert>
+#include <fcntl.h>
 #include <memory>
 #include <string_view>
 #include <variant>
@@ -45,8 +46,7 @@ public:
   }
 };
 
-ParsedParent parseParent(std::string_view path,
-                         std::optional<__wasi_fd_t> baseFD = {});
+ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
 
 struct ParsedFile {
 private:
@@ -71,7 +71,6 @@ public:
   }
 };
 
-ParsedFile parseFile(std::string_view path,
-                     std::optional<__wasi_fd_t> baseFD = {});
+ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
 
 } // namespace wasmfs::path

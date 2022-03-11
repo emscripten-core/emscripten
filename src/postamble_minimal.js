@@ -72,6 +72,10 @@ function initRuntime(asm) {
   }
 #endif
 
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
+
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();

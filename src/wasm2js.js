@@ -19,7 +19,7 @@ WebAssembly = {
   // not a fully general polyfill.
   /** @constructor */
   Memory: function(opts) {
-#if USE_PTHREADS
+#if SHARED_MEMORY
     this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #else
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
@@ -74,7 +74,7 @@ WebAssembly = {
       then: function(ok) {
         var module = new WebAssembly.Module(binary);
         ok({
-#if USE_PTHREADS
+#if SHARED_MEMORY
           'module': module,
 #endif
           'instance': new WebAssembly.Instance(module)

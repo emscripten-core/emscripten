@@ -11,35 +11,6 @@
 
 namespace wasmfs::path {
 
-#ifdef WASMFS_DEBUG
-// Print the absolute path of a file.
-std::string getAbsPath(std::shared_ptr<File> curr) {
-  std::string result = "";
-
-  while (curr != wasmFS.getRootDirectory()) {
-    auto parent = curr->locked().getParent();
-    // Check if the parent exists. The parent may not exist if the CWD or one
-    // of its ancestors has been unlinked.
-    if (!parent) {
-      return "unlinked";
-    }
-
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
-    result = '/' + name + result;
-    curr = parentDir;
-  }
-
-  // Check if the cwd is the root directory.
-  if (result.empty()) {
-    result = "/";
-  }
-
-  return result;
-}
-#endif
-
 static ParsedFile getChild(std::shared_ptr<Directory> dir,
                            std::string_view name) {
   auto child = dir->locked().getChild(std::string(name));
@@ -50,8 +21,7 @@ static ParsedFile getChild(std::shared_ptr<Directory> dir,
   return child;
 }
 
-ParsedParent parseParent(std::string_view path,
-                         std::optional<__wasi_fd_t> baseFD) {
+ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd) {
   // Empty paths never exist.
   if (path.empty()) {
     return {-ENOENT};
@@ -62,8 +32,10 @@ ParsedParent parseParent(std::string_view path,
   if (path.front() == '/') {
     curr = wasmFS.getRootDirectory();
     path.remove_prefix(1);
-  } else if (baseFD && *baseFD != AT_FDCWD) {
-    auto openFile = wasmFS.getFileTable().locked().getEntry(*baseFD);
+  } else if (basefd == AT_FDCWD) {
+    curr = wasmFS.getCWD();
+  } else {
+    auto openFile = wasmFS.getFileTable().locked().getEntry(basefd);
     if (!openFile) {
       return -EBADF;
     }
@@ -71,8 +43,6 @@ ParsedParent parseParent(std::string_view path,
     if (!curr) {
       return {-ENOTDIR};
     }
-  } else {
-    curr = wasmFS.getCWD();
   }
 
   // Ignore trailing '/'.
@@ -114,8 +84,8 @@ ParsedParent parseParent(std::string_view path,
   }
 }
 
-ParsedFile parseFile(std::string_view path, std::optional<__wasi_fd_t> baseFD) {
-  auto parsed = parseParent(path, baseFD);
+ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd) {
+  auto parsed = parseParent(path, basefd);
   if (auto err = parsed.getError()) {
     return {err};
   }

@@ -74,7 +74,7 @@ var LibraryExceptions = {
     }
 
     this.add_ref = function() {
-#if USE_PTHREADS
+#if SHARED_MEMORY
       Atomics.add(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
       var value = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
@@ -84,7 +84,7 @@ var LibraryExceptions = {
 
     // Returns true if last reference released.
     this.release_ref = function() {
-#if USE_PTHREADS
+#if SHARED_MEMORY
       var prev = Atomics.sub(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
       var prev = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};

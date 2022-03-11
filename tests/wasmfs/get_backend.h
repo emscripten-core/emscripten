@@ -9,6 +9,10 @@
 // command lines. Test programs should call `get_backend()` to get the backend
 // to use when setting up their test file systems.
 
+#pragma once
+
+#include <emscripten/wasmfs.h>
+
 static backend_t get_backend() {
 #ifdef WASMFS_MEMORY_BACKEND
   return NULL;

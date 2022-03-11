@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
       }
       fs.ftruncateSync.apply(void 0, arguments);
     },
-    utime: function() { fs.utimesSync.apply(void 0, arguments); },
+    utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags == "string") {
         flags = VFS.modeStringToFlags(flags)
@@ -90,6 +90,7 @@ mergeInto(LibraryManager.library, {
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
+        fs.closeSync(nfd);
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       var newMode = NODEFS.getMode(pathTruncated);

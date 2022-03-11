@@ -35,6 +35,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
+from common import also_with_minimal_runtime
 from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
@@ -132,11 +133,28 @@ def also_with_wasmfs(f):
 def wasmfs_all_backends(f):
   def metafunc(self, backend):
     self.set_setting('WASMFS')
+    self.emcc_args.append('-DWASMFS')
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
   metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
                             'node': ('WASMFS_NODE_BACKEND',)}
+  return metafunc
+
+
+def also_with_wasmfs_all_backends(f):
+  def metafunc(self, backend):
+    if backend:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      self.emcc_args.append(f'-D{backend}')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (None,),
+                            'wasmfs': ('WASMFS_MEMORY_BACKEND',),
+                            'wasmfs_node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
 
 
@@ -4099,7 +4117,9 @@ int main() {
     self.run_process([EMXX, 'src.cpp'])
     self.assertContained('read: 0\nfile size is 104\n', self.run_js('a.out.js'))
 
-  @also_with_wasmfs
+  @no_mac("TODO: investigate different Node FS semantics on Mac")
+  @no_windows("TODO: investigate different Node FS semantics on Windows")
+  @also_with_wasmfs_all_backends
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
@@ -9136,6 +9156,7 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
+    'hello_wasm_worker': ('hello_wasm_worker', False, True),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
@@ -9176,13 +9197,15 @@ int main () {
                            '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
+    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
 
     sources = {
       'hello_world': hello_world_sources,
       'random_printf': random_printf_sources,
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
-      'hello_webgl2': hello_webgl2_sources}[test_name]
+      'hello_webgl2': hello_webgl2_sources,
+      'hello_wasm_worker': hello_wasm_worker_sources}[test_name]
 
     def print_percent(actual, expected):
       if actual == expected:
@@ -10443,8 +10466,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   })
   def test_support_errno(self, args):
     self.emcc_args += args
-    src = test_file('core/test_support_errno.c')
-    output = test_file('core/test_support_errno.out')
+    src = test_file('other/test_support_errno.c')
+    output = test_file('other/test_support_errno.out')
 
     self.do_run_from_file(src, output)
     size_default = os.path.getsize('test_support_errno.js')
@@ -10452,7 +10475,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
     self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    output = test_file('core/test_support_errno_disabled.out')
+    output = test_file('other/test_support_errno_disabled.out')
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
@@ -10814,6 +10837,14 @@ exec "$@"
     err = self.run_process([EMCC, test_file('test_old_dyncall_format.c'), '--js-library', test_file('library_test_old_dyncall_format.js')], stderr=PIPE).stderr
     self.assertContained('syntax for makeDynCall has changed', err)
 
+  # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
+  @parameterized({
+    'plain': [[]],
+    'asyncify': [['-sASYNCIFY']],
+    'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
+  def test_closure_safe(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
+
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
@@ -11032,7 +11063,7 @@ exec "$@"
         cmd.append('-sMAIN_MODULE=2')
       if function.startswith('emscripten_idb') or function.startswith('emscripten_wget_'):
         cmd.append('-sASYNCIFY')
-      if function.startswith('emscripten_webgl_'):
+      if function.startswith('emscripten_webgl_') or 'offscreencanvas' in function:
         cmd.append('-sOFFSCREENCANVAS_SUPPORT')
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
@@ -11771,3 +11802,29 @@ void foo() {}
     self.assertNotContained('This error should not be present!', err)
     self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
     self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
+
+  # Tests building with -sSHARED_MEMORY
+  @also_with_minimal_runtime
+  def test_shared_memory(self):
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '0', emcc_args=[])
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sSHARED_MEMORY'])
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sWASM_WORKERS'])
+    self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-pthread'])
+
+  # Tests C preprocessor flags with -sSHARED_MEMORY
+  @also_with_minimal_runtime
+  def test_shared_memory_preprocessor_flags(self):
+    self.run_process([EMCC, '-c', test_file('wasm_worker/shared_memory_preprocessor_flags.c'), '-sSHARED_MEMORY'])
+
+  # Tests C preprocessor flags with -sWASM_WORKERS
+  @also_with_minimal_runtime
+  def test_wasm_worker_preprocessor_flags(self):
+    self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
+
+  def test_debug_opt_warning(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
+    self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
+
+  def test_clock_nanosleep(self):
+    self.do_runf(test_file('other/test_clock_nanosleep.c'))
