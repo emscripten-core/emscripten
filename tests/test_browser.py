@@ -5088,7 +5088,7 @@ window.close = function() {
   def test_wasm_worker_hello(self):
     self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
-  # Tests the hello_wasm_worker.c documentation example code.
+  # Tests Wasm Workers build in Wasm2JS mode.
   @also_with_minimal_runtime
   def test_wasm_worker_hello_wasm2js(self):
     self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
