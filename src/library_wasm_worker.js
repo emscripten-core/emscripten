@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
 
 #if AUDIO_WORKLET
     // Audio Worklets do not have postMessage()ing capabilities.
-    if (!ENVIRONMENT_IS_AUDIO_WORKLET) {
+    if (typeof AudioWorkletGlobalScope === 'undefined') {
 #endif
       // The Wasm Worker runtime is now up, so we can start processing
       // any postMessage function calls that have been received. Drop the temp

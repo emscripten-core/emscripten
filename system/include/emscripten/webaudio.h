@@ -103,6 +103,10 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.
 EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData);
 
+// Returns EM_TRUE if the current thread is executing a Wasm AudioWorklet, EM_FALSE otherwise.
+// Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
+// so avoid calling it in hot paths.
+EM_BOOL emscripten_current_thread_is_audio_worklet(void);
 
 #ifdef __cplusplus
 } // ~extern "C"
