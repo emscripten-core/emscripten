@@ -27,8 +27,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = Module['wasmTable'].get(opts.callback);
-      this.userData = opts.userData;
+      this.callbackFunction = Module['wasmTable'].get(opts['cb']);
+      this.userData = opts['ud'];
     }
 
     static get parameterDescriptors() {

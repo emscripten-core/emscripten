@@ -3536,7 +3536,7 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME and not (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
+  if settings.MINIMAL_RUNTIME and not (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')) and not settings.AUDIO_WORKLET:
     # In MINIMAL_RUNTIME web-only builds, the Module object is always present to provide the .wasm content
     replacement = settings.EXPORT_NAME
   else:
