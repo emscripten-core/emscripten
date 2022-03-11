@@ -11,7 +11,12 @@
 var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
+#else
 var Module = {{{ EXPORT_NAME }}};
+#endif
+
 #endif // USE_CLOSURE_COMPILER
 
 #else
