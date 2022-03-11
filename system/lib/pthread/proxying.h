@@ -67,5 +67,82 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    void* arg);
 
 #ifdef __cplusplus
-}
-#endif
+} // extern "C"
+
+#if __cplusplus < 201103L
+#warning "C++ ProxyingQueue support requires building with -std=c++11 or newer!"
+#else
+
+#include <functional>
+#include <thread>
+#include <utility>
+
+namespace emscripten {
+
+// A thin C++ wrapper around the underlying C API.
+class ProxyingQueue {
+  em_proxying_queue* queue = nullptr;
+
+  static void runAndFree(void* arg) {
+    auto f = (std::function<void()>*)arg;
+    (*f)();
+    delete f;
+  }
+
+  static void run(void* arg) {
+    auto f = *(std::function<void()>*)arg;
+    f();
+  }
+
+  static void runWithCtx(em_proxying_ctx* ctx, void* arg) {
+    auto f = *(std::function<void(ProxyingCtx)>*)arg;
+    f(ProxyingCtx{ctx});
+  }
+
+public:
+  ProxyingQueue() { queue = em_proxying_queue_create(); }
+  // ProxyingQueue can be moved but not copied. It is not valid to call any
+  // methods on ProxyingQueues that have been moved out of.
+  ProxyingQueue& operator=(const ProxyingQueue&) = delete;
+  ProxyingQueue& operator=(ProxyingQueue&& other) {
+    queue = other.queue;
+    other.queue = nullptr;
+    return *this;
+  }
+  ProxyingQueue(const ProxyingQueue&) = delete;
+  ProxyingQueue(ProxyingQueue&& other) { *this = std::move(other); }
+  ~ProxyingQueue() {
+    if (queue) {
+      em_proxying_queue_destroy(queue);
+    }
+  }
+
+  class ProxyingCtx {
+    em_proxying_ctx* ctx;
+
+  public:
+    ProxyingCtx(em_proxying_ctx* ctx) : ctx(ctx) {}
+    void finish() { emscripten_proxy_finish(ctx); }
+  };
+
+  void execute() { emscripten_proxy_execute_queue(queue); }
+
+  // Return true if the work was successfully enqueued, false otherwise.
+  bool proxyAsync(pthread_t target, std::function<void()>&& func) {
+    std::function<void()>* arg = new std::function<void()>(std::move(func));
+    return emscripten_proxy_async(queue, target, runAndFree, (void*)arg);
+  }
+  bool proxySync(const pthread_t target, const std::function<void()>& func) {
+    return emscripten_proxy_sync(queue, target, run, (void*)&func);
+  }
+  bool proxySyncWithCtx(const pthread_t target,
+                        const std::function<void(ProxyingCtx)>& func) {
+    return emscripten_proxy_sync_with_ctx(
+      queue, target, runWithCtx, (void*)&func);
+  }
+};
+
+} // namespace emscripten
+
+#endif // __cplusplus < 201103L
+#endif // __cplusplus
