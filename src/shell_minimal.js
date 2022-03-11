@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if !AUDIO_WORKLET && (MIN_CHROME_VERSION < 71 || MIN_EDGE_VERSION < 79 || MIN_FIREFOX_VERSION < 65 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 120100 /*|| MIN_NODE_VERSION < 120000*/)
+
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -11,6 +13,11 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
+
+#else
+// Use 'globalThis' to refer to the global scope Module variable.
+var Module = globalThis.{{{ EXPORT_NAME }}} || {};
+#endif
 
 #if MODULARIZE && EXPORT_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
