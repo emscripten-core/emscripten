@@ -1,6 +1,9 @@
 #if AUDIO_WORKLET && !WASM_WORKERS
 #error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS!"
 #endif
+#if AUDIO_WORKLET && TEXTDECODER == 2
+#error "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope! Use e.g. -sTEXTDECODER=1 when building with -sAUDIO_WORKLET"
+#endif
 
 let LibraryWebAudio = {
   $EmAudio: {},
