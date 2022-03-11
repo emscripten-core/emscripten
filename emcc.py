@@ -3536,20 +3536,13 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
+  if settings.MINIMAL_RUNTIME and not (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
+    # In MINIMAL_RUNTIME web-only builds, the Module object is always present to provide the .wasm content
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  # For Node.js and other shell environments, create an unminified Module object so that
-  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    # Do not let the Module object defined in an Audio Worklet get clobbered.
-    if settings.AUDIO_WORKLET:
-      src = 'if(typeof Module==="undefined"){var Module=globalThis.Module||{};}\n' + src
-    else:
-      src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
+
   write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
