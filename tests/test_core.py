@@ -7948,7 +7948,7 @@ Module['onRuntimeInitialized'] = function() {
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
-      wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
+      wat = self.get_wasm_text(name)
       lines = wat.splitlines()
       wat = None
       for i in range(len(lines)):
