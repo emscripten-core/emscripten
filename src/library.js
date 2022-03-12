@@ -3274,16 +3274,16 @@ LibraryManager.library = {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
-#if EXIT_RUNTIME == 0
-#if ASSERTIONS
+#if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
-#endif
 #endif
 #if MINIMAL_RUNTIME
     _exit(status);
 #else
     noExitRuntime = false;
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
+#endif
     exit(status);
 #endif
   },
@@ -3372,20 +3372,24 @@ LibraryManager.library = {
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: function() {
+#if EXIT_RUNTIME
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
@@ -3403,7 +3407,11 @@ LibraryManager.library = {
   ],
   $callUserCallback__docs: '/** @param {boolean=} synchronous */',
   $callUserCallback: function(func, synchronous) {
+#if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
+#else
+    if (ABORT) {
+#endif
 #if ASSERTIONS
       err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
@@ -3433,6 +3441,7 @@ LibraryManager.library = {
 #endif
   ],
   $maybeExit: function() {
+#if EXIT_RUNTIME
 #if RUNTIME_DEBUG
     err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3450,6 +3459,7 @@ LibraryManager.library = {
         handleException(e);
       }
     }
+#endif // EXIT_RUNTIME
   },
 #else
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
