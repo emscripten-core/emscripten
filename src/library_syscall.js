@@ -261,17 +261,6 @@ var SyscallsLibrary = {
 #endif
   },
 
-  __syscall_open: function(path, flags, varargs) {
-    var pathname = SYSCALLS.getStr(path);
-    var mode = varargs ? SYSCALLS.get() : 0;
-    var stream = FS.open(pathname, flags, mode);
-    return stream.fd;
-  },
-  __syscall_unlink: function(path) {
-    path = SYSCALLS.getStr(path);
-    FS.unlink(path);
-    return 0;
-  },
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
@@ -380,10 +369,6 @@ var SyscallsLibrary = {
     linkpath = SYSCALLS.getStr(linkpath);
     FS.symlink(target, linkpath);
     return 0;
-  },
-  __syscall_readlink: function(path, buf, bufsize) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doReadlink(path, buf, bufsize);
   },
   __syscall_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
@@ -929,9 +914,6 @@ var SyscallsLibrary = {
     return 0; // your advice is important to us (but we can't use it)
   },
   __syscall_openat: function(dirfd, path, flags, varargs) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -965,7 +947,7 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall_fstatat64: function(dirfd, path, buf, flags) {
+  __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
     var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
@@ -989,9 +971,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
     oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
@@ -1013,9 +992,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
