@@ -8991,6 +8991,9 @@ ok.
   def test_getprotobyname(self):
     self.do_runf(test_file('sockets/test_getprotobyname.c'), 'success')
 
+  def test_create_socket(self):
+    self.do_runf(test_file('sockets/test_create_socket.c'), 'success')
+
   def test_socketpair(self):
     self.do_run(r'''
       #include <sys/socket.h>
