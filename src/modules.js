@@ -48,6 +48,10 @@ global.LibraryManager = {
       'library_eventloop.js',
     ];
 
+    if (!PROXY_POSIX_SOCKETS) {
+      libraries.push('library_sockets.js');
+    }
+
     if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
       if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
@@ -78,8 +82,11 @@ global.LibraryManager = {
         'library_memfs.js',
         'library_tty.js',
         'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
-        'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
       ]);
+
+      if (!PROXY_POSIX_SOCKETS) {
+        libraries.push('library_sockfs.js');
+      }
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
