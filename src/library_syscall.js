@@ -749,23 +749,6 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
     return 0;
   },
-  __syscall_getuid32__sig: 'i',
-  __syscall_getuid32__nothrow: true,
-  __syscall_getuid32__proxy: false,
-  __syscall_getuid32: '__syscall_getegid32',
-  __syscall_getgid32__sig: 'i',
-  __syscall_getgid32__nothrow: true,
-  __syscall_getgid32__proxy: false,
-  __syscall_getgid32: '__syscall_getegid32',
-  __syscall_geteuid32__sig: 'i',
-  __syscall_geteuid32__nothrow: true,
-  __syscall_geteuid32__proxy: false,
-  __syscall_geteuid32: '__syscall_getegid32',
-  __syscall_getegid32__nothrow: true,
-  __syscall_getegid32__proxy: false,
-  __syscall_getegid32: function() {
-    return 0;
-  },
   __syscall_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
     return 0;
