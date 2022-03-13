@@ -27,7 +27,7 @@ Quick Example
     emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   }
 
-Build the code by passing the Emscripten flag ``-sWASM_WORKERS=1`` at both compile
+Build the code by passing the Emscripten flag ``-sWASM_WORKERS`` at both compile
 and link steps. The example code creates a new Worker on the main browser thread,
 which shares the same WebAssembly.Module and WebAssembly.Memory object. Then a
 ``postMessage()`` is passed to the Worker to ask it to execute the function
@@ -97,7 +97,7 @@ Pthreads and Wasm Workers share several similarities:
  * Both can use ``EM_ASM`` and ``EM_JS`` API to execute JS code on the calling thread.
  * Both can call out to JS library functions (linked in with ``--js-library`` directive) to
    execute JS code on the calling thread.
- * Neither pthreads nor Wasm Workers can be used in conjunction with ``-sSINGLE_FILE=1`` linker flag.
+ * Neither pthreads nor Wasm Workers can be used in conjunction with ``-sSINGLE_FILE`` linker flag.
 
 However, the differences are more notable.
 
@@ -297,15 +297,15 @@ table.
 
     <tr><td class='cellborder'>Build flags</td>
     <td class='cellborder'>Compile and link with -pthread</td>
-    <td class='cellborder'>Compile and link with -sWASM_WORKERS=1</td></tr>
+    <td class='cellborder'>Compile and link with -sWASM_WORKERS</td></tr>
 
     <tr><td class='cellborder'>Preprocessor directives</td>
     <td class='cellborder'>__EMSCRIPTEN_SHARED_MEMORY__=1 and __EMSCRIPTEN_PTHREADS__=1 are active</td>
     <td class='cellborder'>__EMSCRIPTEN_SHARED_MEMORY__=1 and __EMSCRIPTEN_WASM_WORKERS__=1 are active</td></tr>
 
     <tr><td class='cellborder'>JS library directives</td>
-    <td class='cellborder'>USE_PTHREADS=1 and SHARED_MEMORY=1 are active</td>
-    <td class='cellborder'>USE_PTHREADS=1, SHARED_MEMORY=1 and WASM_WORKERS=1 are active</td></tr>
+    <td class='cellborder'>USE_PTHREADS and SHARED_MEMORY are active</td>
+    <td class='cellborder'>USE_PTHREADS, SHARED_MEMORY and WASM_WORKER are active</td></tr>
 
     <tr><td class='cellborder'>Atomics API</td>
     <td colspan=2>Supported, use any of <a href="https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html">__atomic_* API</a>, <a href="https://llvm.org/docs/Atomics.html#libcalls-sync">__sync_* API</a> or <a href="https://en.cppreference.com/w/cpp/atomic/atomic">C++11 std::atomic API</a>.</td></tr>
@@ -335,7 +335,7 @@ table.
     <td class='cellborder'><pre>emscripten_lock_busyspin*</pre></td></tr>
 
     <tr><td class='cellborder'>WebGL Offscreen Framebuffer</td>
-    <td class='cellborder'><pre>Supported with -sOFFSCREEN_FRAMEBUFFER=1</pre></td>
+    <td class='cellborder'><pre>Supported with -sOFFSCREEN_FRAMEBUFFER</pre></td>
     <td class='cellborder'><pre>Not supported.</pre></td></tr>
 
   </table>
@@ -345,10 +345,10 @@ Limitations
 
 The following build options are not supported at the moment with Wasm Workers:
 
-- -sSINGLE_FILE=1
-- Dynamic linking (-sLINKABLE=1, -sMAIN_MODULE=1, -sSIDE_MODULE=1)
-- -sPROXY_TO_WORKER=1
-- -sPROXY_TO_PTHREAD=1
+- -sSINGLE_FILE
+- Dynamic linking (-sLINKABLE, -sMAIN_MODULE, -sSIDE_MODULE)
+- -sPROXY_TO_WORKER
+- -sPROXY_TO_PTHREAD
 
 Example Code
 ============

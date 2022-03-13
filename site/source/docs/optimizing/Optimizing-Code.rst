@@ -48,19 +48,19 @@ those modes Emscripten focuses on faster iteration times. (Note that it is ok
 to link with those flags even if the source files were compiled with a different
 optimization level.)
 
-To also skip non-optimization work at link time, link with ``-s WASM_BIGINT``.
+To also skip non-optimization work at link time, link with ``-sWASM_BIGINT``.
 Enabling BigInt support removes the need for Emscripten to "legalize" the wasm
 to handle ``i64`` values on the JS/Wasm boundary (as with BigInts ``i64`` values
 are legal, and require no extra processing).
 
 Some link flags add additional work at the link stage that can slow things down.
-For example ``-g`` enables DWARF support, flags like ``-s SAFE_HEAP`` will require
-JS post-processing, and flags like ``-s ASYNCIFY`` will require wasm
+For example ``-g`` enables DWARF support, flags like ``-sSAFE_HEAP`` will require
+JS post-processing, and flags like ``-sASYNCIFY`` will require wasm
 post-processing. To ensure your flags allow the fastest possible link, in which
 the wasm is not modified after ``wasm-ld``, build with
-``-s ERROR_ON_WASM_CHANGES_AFTER_LINK``. With that option you will get an error
+``-sERROR_ON_WASM_CHANGES_AFTER_LINK``. With that option you will get an error
 during link if Emscripten must perform changes to the Wasm. For example, if you
-didn't pass ``-s WASM_BIGINT`` then it will tell you that legalization forces
+didn't pass ``-sWASM_BIGINT`` then it will tell you that legalization forces
 it to change the Wasm. You will also get an error if you build with ``-O2`` or
 above, as the Binaryen optimizer would normally be run.
 
@@ -73,7 +73,7 @@ There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>
 WebAssembly
 ===========
 
-Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
+Emscripten will emit WebAssembly by default. You can switch that off with ``-sWASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
 
 .. _optimizing-code-size:
 
@@ -102,8 +102,8 @@ In addition to the above, the following tips can help to reduce code size:
 
 The following compiler settings can help (see ``src/settings.js`` for more details):
 
-- Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
-- You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
+- Disable inlining when possible, using ``-sINLINING_LIMIT``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
+- You can use the ``-sFILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc. This prevents the compiler from emitting code to support all possible runtime environments, saving ~2KB.
 
 LTO
@@ -193,7 +193,7 @@ C++ exceptions
 
 Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how WebAssembly currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
 
-To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_).
+To re-enable exceptions in optimized code, run *emcc* with ``-sDISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_).
 
 .. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
 
@@ -207,7 +207,7 @@ C++ run-time type info support (dynamic casts, etc.) adds overhead that is somet
 Memory Growth
 -------------
 
-Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need.
+Building with ``-sALLOW_MEMORY_GROWTH`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need.
 
 Viewing code optimization passes
 --------------------------------
