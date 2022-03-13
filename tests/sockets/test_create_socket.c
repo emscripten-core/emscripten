@@ -5,32 +5,16 @@
  * found in the LICENSE file.
  */
 
-
 #include <assert.h>
 #include <errno.h>
 #include <netdb.h>
-#include <arpa/inet.h>
 #include <sys/socket.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-int sockfd = -1;
-
-void cleanup() {
-  if (sockfd != -1) {
-    close(sockfd);
-    sockfd = -1;
-  }
-}
-
 int main() {
-  atexit(cleanup);
-  signal(SIGTERM, cleanup);
-
-  sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   assert(sockfd >= 0);
   close(sockfd);
 
