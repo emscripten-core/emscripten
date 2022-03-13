@@ -48,7 +48,6 @@ emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 emprofile = shared.bat_suffix(path_from_root('emprofile'))
-wasm_dis = Path(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
 
@@ -90,30 +89,6 @@ def uses_canonical_tmp(func):
       shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
-
-
-def parse_wasm(filename):
-  wat = shared.run_process([wasm_dis, filename], stdout=PIPE).stdout
-  imports = []
-  exports = []
-  funcs = []
-  for line in wat.splitlines():
-    line = line.strip()
-    if line.startswith('(import '):
-      line = line.strip('()')
-      parts = line.split()
-      module = parts[1].strip('"')
-      name = parts[2].strip('"')
-      imports.append('%s.%s' % (module, name))
-    if line.startswith('(export '):
-      line = line.strip('()')
-      name = line.split()[1].strip('"')
-      exports.append(name)
-    if line.startswith('(func '):
-      line = line.strip('()')
-      name = line.split()[1].strip('"')
-      funcs.append(name)
-  return imports, exports, funcs
 
 
 def also_with_wasmfs(f):
@@ -183,6 +158,29 @@ class other(RunnerCore):
     finally:
       os.close(master)
       os.close(slave)
+
+  def parse_wasm(self, filename):
+    wat = self.get_wasm_text(filename)
+    imports = []
+    exports = []
+    funcs = []
+    for line in wat.splitlines():
+      line = line.strip()
+      if line.startswith('(import '):
+        line = line.strip('()')
+        parts = line.split()
+        module = parts[1].strip('"')
+        name = parts[2].strip('"')
+        imports.append('%s.%s' % (module, name))
+      if line.startswith('(export '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        exports.append(name)
+      if line.startswith('(func '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        funcs.append(name)
+    return imports, exports, funcs
 
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
@@ -3936,7 +3934,7 @@ EM_ASM({ _middle() });
         out = self.run_js('a.out.js')
         self.assertContained(stack_trace_reference, out)
         # make sure there are no symbols in the wasm itself
-        wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
+        wat = self.get_wasm_text('a.out.wasm')
         for func_start in ('(func $middle', '(func $_middle'):
           self.assertNotContained(func_start, wat)
 
@@ -7077,7 +7075,7 @@ int main() {
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-sINITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
+      wat = self.get_wasm_text('a.out.wasm')
       memories = [l for l in wat.splitlines() if '(memory ' in l]
       self.assertEqual(len(memories), 2)
       line = memories[0]
@@ -7269,7 +7267,7 @@ int main() {
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)
 
-    imports, exports, funcs = parse_wasm('a.out.wasm')
+    imports, exports, funcs = self.parse_wasm('a.out.wasm')
     imports.sort()
     exports.sort()
     funcs.sort()
@@ -7428,12 +7426,10 @@ int main() {
         continue
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wat')
       cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = read_file('a.out.wat')
+      text = self.get_wasm_text('a.out.wasm')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7473,13 +7469,11 @@ int main() {
       ]:
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wat')
       with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
         cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = read_file('a.out.wat')
+      text = self.get_wasm_text('a.out.wasm')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7542,7 +7536,7 @@ int main() {
         if target.endswith('.wasm'):
           # only wasm requested
           self.assertNotExists('out.js')
-        wat = self.run_process([wasm_dis, 'out.wasm'], stdout=PIPE).stdout
+        wat = self.get_wasm_text('out.wasm')
         wat_lines = wat.split('\n')
         exports = [line.strip().split(' ')[1].replace('"', '') for line in wat_lines if "(export " in line]
         imports = [line.strip().split(' ')[2].replace('"', '') for line in wat_lines if "(import " in line]
@@ -11001,8 +10995,8 @@ exec "$@"
     # Building with RELOCATABLE + LINKABLE should include and export all of the standard library
     self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-sLINKABLE', '-o', 'out_linkable.wasm'])
 
-    exports = parse_wasm('out.wasm')[1]
-    exports_linkable = parse_wasm('out_linkable.wasm')[1]
+    exports = self.parse_wasm('out.wasm')[1]
+    exports_linkable = self.parse_wasm('out_linkable.wasm')[1]
 
     self.assertLess(len(exports), 20)
     self.assertGreater(len(exports_linkable), 1000)
