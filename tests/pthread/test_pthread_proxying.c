@@ -29,9 +29,9 @@ void* looper_main(void* arg) {
   return NULL;
 }
 
-void* returner_main(void* arg) {
+void* returner_main(void* queue) {
   // Process the queue in case any work came in while we were starting up.
-  emscripten_proxy_execute_queue(proxy_queue);
+  emscripten_proxy_execute_queue(queue);
   emscripten_exit_with_live_runtime();
 }
 
@@ -284,8 +284,8 @@ void test_proxying_queue_growth(void) {
   arg.queue = em_proxying_queue_create();
   assert(arg.queue != NULL);
 
-  pthread_create(&arg.a, NULL, returner_main, NULL);
-  pthread_create(&arg.b, NULL, returner_main, NULL);
+  pthread_create(&arg.a, NULL, returner_main, arg.queue);
+  pthread_create(&arg.b, NULL, returner_main, arg.queue);
 
   arg.work_count = 0;
 
@@ -326,7 +326,7 @@ int main(int argc, char* argv[]) {
   assert(proxy_queue != NULL);
 
   pthread_create(&looper, NULL, looper_main, NULL);
-  pthread_create(&returner, NULL, returner_main, NULL);
+  pthread_create(&returner, NULL, returner_main, proxy_queue);
 
   test_proxy_async();
   test_proxy_sync();
