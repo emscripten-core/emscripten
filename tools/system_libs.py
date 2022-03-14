@@ -1097,7 +1097,7 @@ class libsockets_proxy(MTLibrary):
   cflags = ['-Os']
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.cpp')]
+    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
     return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
