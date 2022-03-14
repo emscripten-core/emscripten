@@ -84,8 +84,18 @@ emscripten_stack_get_free:
 emscripten_wasm_worker_initialize:
   .functype emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
 
-  // __stack_end = stackLowestAddress;
+  // __stack_end = stackLowestAddress + (__builtin_wasm_tls_size() + 15) & -16;
   local.get 0
+  .globaltype __tls_size, PTR, immutable
+  global.get __tls_size
+#ifdef __wasm64__
+  i64.extend_i32_u
+#endif
+  PTR.add
+  PTR.const 0xf
+  PTR.add
+  PTR.const -0x10
+  PTR.and
   global.set __stack_end
 
   // __stack_base = stackLowestAddress + stackSize;
@@ -95,26 +105,21 @@ emscripten_wasm_worker_initialize:
   i64.extend_i32_u
 #endif
   PTR.add
-  local.tee 0
   global.set __stack_base
 
-  // __stack_pointer = __stack_base;
+  // __wasm_init_tls(stackLowestAddress);
   local.get 0
+  .functype __wasm_init_tls (PTR) -> ()
+  call __wasm_init_tls
+
+  // N.b. The function __wasm_init_tls above does not need
+  // __stack_pointer initialized, and it destroys the value it was set to.
+  // So we must initialize __stack_pointer only *after* completing __wasm_init_tls:
+
+  // __stack_pointer = __stack_base;
+  global.get __stack_base
   global.set __stack_pointer
 
-  // __wasm_init_tls(__stack_end);
-  // __stack_end += __builtin_wasm_tls_size();
-  global.get __stack_end
-  global.get __stack_end
-  .functype wasm_worker_init_tls (PTR) -> (i32)
-  call wasm_worker_init_tls
-#ifdef __wasm64__
-  i64.extend_i32_u
-#endif
-  PTR.add
-  global.set __stack_end
-
-  i32.const 0
   end_function
 #endif
 

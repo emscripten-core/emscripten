@@ -25,15 +25,6 @@ static void emscripten_wasm_worker_main_thread_initialize() {
 	*sbrk_ptr += __builtin_wasm_tls_size();
 }
 
-// TODO: If it is possible to directly access __builtin_wasm_tls_size() and __builtin_wasm_tls_align()
-// from system/lib/compiler-rt/stack_limits.S, then this function can be merged into there.
-uint32_t wasm_worker_init_tls(void *stackLowestAddress) {
-  size_t alignedTlsSize = (__builtin_wasm_tls_size() + 15) & -16;
-  assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)stackLowestAddress % __builtin_wasm_tls_align() == 0);
-  __wasm_init_tls(stackLowestAddress);
-  return alignedTlsSize;
-}
-
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
 {
 	assert(stackLowestAddress != 0);
@@ -43,7 +34,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress,
 
 	// Guard against a programming oopsie: The target Worker's stack cannot be part of the calling
 	// thread's stack.
-	assert(emscripten_stack_get_base() <= stackLowestAddress || emscripten_stack_get_end() >= stackLowestAddress + stackSize
+	assert(emscripten_stack_get_base() <= (uintptr_t)stackLowestAddress || emscripten_stack_get_end() >= (uintptr_t)stackLowestAddress + stackSize
 		&& "When creating a Wasm Worker, its stack should be located either in global data or on the heap, not on the calling thread's own stack!");
 
 	// The Worker's TLS area will be spliced off from the stack region.
