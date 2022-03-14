@@ -14,18 +14,11 @@ from subprocess import Popen
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner sockets')
 
-try:
-  import websockify
-except Exception:
-  # websockify won't successfully import on Windows under Python3, because socketserver.py doesn't export ForkingMixIn.
-  # (On python2, ForkingMixIn was exported but it didn't actually work on Windows).
-  # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
-  # which is the same behavior as before.
-  pass
 import clang_native
+import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
 from tools import shared, config, utils
-from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
+from tools.shared import PYTHON, EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
 
@@ -63,6 +56,8 @@ class WebsockifyServerHarness():
       run_process([CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
+
+    import websockify
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -181,7 +176,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49160), 0)]
 
     for harness, datagram in harnesses:
@@ -205,7 +200,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49169), 0)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_ASYNC=1'], 49166), 0)]
 
     for harness, datagram in harnesses:
@@ -235,7 +230,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1'], 49173), 1)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49171), 0)]
 
     for harness, datagram in harnesses:
@@ -295,7 +290,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1'], 59164), 1)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59160), 0)]
 
     # Basic test of node client against both a Websockified and compiled echo server.
@@ -304,7 +299,7 @@ class sockets(BrowserCore):
         expected = 'do_msg_read: read 14 bytes'
         self.do_runf(test_file('sockets/test_sockets_echo_client.c'), expected, emcc_args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
       # server because as long as the subprotocol list contains binary it will configure itself to accept binary
       # This test also checks that the connect url contains the correct subprotocols.
