@@ -3991,7 +3991,13 @@ EM_ASM({ _middle() });
     self.assertExists('hello_world.o')
     self.assertExists('hello_world.bc')
 
-  def test_bad_function_pointer_cast(self):
+  @parameterized({
+    '': (True, False),
+    'safe_heap': (True, True),
+    'wasm2js': (False, False),
+    'wasm2js_safe_heap': (False, True),
+  })
+  def test_bad_function_pointer_cast(self, wasm, safe):
     create_file('src.cpp', r'''
 #include <stdio.h>
 
@@ -4010,33 +4016,31 @@ int main() {
 ''')
 
     for opts in [0, 1, 2]:
-      for safe in [0, 1]:
-        for emulate_casts in [0, 1]:
-          for relocatable in [0, 1]:
-            for wasm in [0, 1]:
-              # wasm2js is not compatible with relocatable mode
-              if wasm == 0 and relocatable:
-                continue
-              cmd = [EMXX, 'src.cpp', '-O' + str(opts)]
-              if not wasm:
-                cmd += ['-sWASM=0']
-              if safe:
-                cmd += ['-sSAFE_HEAP']
-              if emulate_casts:
-                cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-              if relocatable:
-                cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
-              print(cmd)
-              self.run_process(cmd)
-              returncode = 0 if emulate_casts or wasm == 0 else NON_ZERO
-              output = self.run_js('a.out.js', assert_returncode=returncode)
-              if emulate_casts or wasm == 0:
-                # success!
-                self.assertContained('Hello, world.', output)
-              else:
-                # otherwise, the error depends on the mode we are in
-                # wasm trap raised by the vm
-                self.assertContained('function signature mismatch', output)
+      for emulate_casts in [0, 1]:
+        for relocatable in [0, 1]:
+          # wasm2js is not compatible with relocatable mode
+          if not wasm and relocatable:
+            continue
+          cmd = [EMXX, 'src.cpp', '-O' + str(opts)]
+          if not wasm:
+            cmd += ['-sWASM=0']
+          if safe:
+            cmd += ['-sSAFE_HEAP']
+          if emulate_casts:
+            cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
+          if relocatable:
+            cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
+          print(cmd)
+          self.run_process(cmd)
+          returncode = 0 if emulate_casts or not wasm else NON_ZERO
+          output = self.run_js('a.out.js', assert_returncode=returncode)
+          if emulate_casts or wasm == 0:
+            # success!
+            self.assertContained('Hello, world.', output)
+          else:
+            # otherwise, the error depends on the mode we are in
+            # wasm trap raised by the vm
+            self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
     for m in ['', ' ']:
