@@ -12,8 +12,8 @@ network requests can be run either synchronously or asynchronously as desired.
 
 .. note::
 
-  In order to use the Fetch API, you would need to compile your code with ``-s
-  FETCH=1``.
+  In order to use the Fetch API, you would need to compile your code with
+  ``-sFETCH``.
 
 Introduction
 ============
@@ -195,9 +195,9 @@ emscripten_fetch() returns.
   - **No flags**: Only asynchronous Fetch operations are available.
   - ``--proxy-to-worker``: Synchronous Fetch operations are allowed for fetches
     that only do an XHR but do not interact with IndexedDB.
-  - ``-s USE_PTHREADS=1``: Synchronous Fetch operations are available on
+  - ``-sUSE_PTHREADS``: Synchronous Fetch operations are available on
     pthreads, but not on the main thread.
-  - ``--proxy-to-worker`` + ``-s USE_PTHREADS=1``: Synchronous Fetch operations
+  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Synchronous Fetch operations
     are available both on the main thread and pthreads.
 
 Waitable Fetches
@@ -242,9 +242,9 @@ issuing thread can perform some other work until the fetch completes.
   Waitable fetches are available only in certain build modes:
 
   - **No flags** or ``--proxy-to-worker``: Waitable fetches are not available.
-  - ``-s USE_PTHREADS=1``: Waitable fetches are available on pthreads, but not
+  - ``-sUSE_PTHREADS``: Waitable fetches are available on pthreads, but not
     on the main thread.
-  - ``--proxy-to-worker`` + ``-s USE_PTHREADS=1``: Waitable fetches are
+  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Waitable fetches are
     available on all threads.
 
 Tracking Progress
