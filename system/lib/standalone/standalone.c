@@ -83,7 +83,7 @@ long _munmap_js(long addr, long length, long prot, long flags, long fd, long off
 // Mark this as weak so that wasmfs does not collide with it. That is, if wasmfs
 // is in use, we want to use that and not this.
 __attribute__((__weak__))
-long __syscall_open(const char* path, long flags, ...) {
+long __syscall_openat(int dirfd, const char* path, long flags, ...) {
   if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
   if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
   if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;

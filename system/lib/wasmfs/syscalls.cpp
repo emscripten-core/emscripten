@@ -464,16 +464,6 @@ int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
 }
 
-long __syscall_open(long path, long flags, ...) {
-  mode_t mode = 0;
-  va_list v1;
-  va_start(v1, flags);
-  mode = va_arg(v1, int);
-  va_end(v1);
-
-  return doOpen(path::parseParent((char*)path), flags, mode);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 long __syscall_openat(long dirfd, long path, long flags, ...) {
   mode_t mode = 0;
@@ -747,10 +737,6 @@ long __syscall_rmdir(long path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-long __syscall_unlink(long path) {
-  return __syscall_unlinkat(AT_FDCWD, path, 0);
-}
-
 long __syscall_getdents64(long fd, long dirp, long count) {
   dirent* result = (dirent*)dirp;
 
@@ -984,10 +970,6 @@ long __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
   return bytes;
 }
 
-long __syscall_readlink(long path, long buf, size_t bufSize) {
-  return __syscall_readlinkat(AT_FDCWD, path, buf, bufSize);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 long __syscall_utimensat(int dirFD,
                          char* path,
@@ -1006,10 +988,15 @@ long __syscall_utimensat(int dirFD,
 
   // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
-  // TODO: Handle NULL times.
   // TODO: Check for write access to the file (see man page for specifics).
-  auto aSeconds = times[0].tv_sec;
-  auto mSeconds = times[1].tv_sec;
+  time_t aSeconds, mSeconds;
+  if (times == NULL) {
+    aSeconds = time(NULL);
+    mSeconds = aSeconds;
+  } else {
+    aSeconds = times[0].tv_sec;
+    mSeconds = times[1].tv_sec;
+  }
 
   auto locked = parsed.getFile()->locked();
   locked.setATime(aSeconds);

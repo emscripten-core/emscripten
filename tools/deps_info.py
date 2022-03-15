@@ -167,7 +167,6 @@ _deps_info = {
   'localtime': ['malloc'],
   'localtime_r': ['malloc'],
   'mktime': ['malloc'],
-  'pthread_create': ['emscripten_main_thread_process_queued_calls'],
   'recv': ['htons'],
   'recvmsg': ['htons'],
   'accept': ['htons'],

@@ -82,26 +82,43 @@ emscripten_stack_get_free:
 # __stack_base and __stack_end globals from a separate file as externs in order for that to work.
 .globl emscripten_wasm_worker_initialize
 emscripten_wasm_worker_initialize:
-  .functype emscripten_wasm_worker_initialize (PTR, i32, PTR) -> ()
+  .functype emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
 
+  // __stack_end = stackLowestAddress + (__builtin_wasm_tls_size() + 15) & -16;
   local.get 0
+  .globaltype __tls_size, PTR, immutable
+  global.get __tls_size
+#ifdef __wasm64__
+  i64.extend_i32_u
+#endif
+  PTR.add
+  PTR.const 0xf
+  PTR.add
+  PTR.const -0x10
+  PTR.and
   global.set __stack_end
 
+  // __stack_base = stackLowestAddress + stackSize;
   local.get 0
   local.get 1
 #ifdef __wasm64__
   i64.extend_i32_u
 #endif
   PTR.add
-  local.tee 0
   global.set __stack_base
 
+  // __wasm_init_tls(stackLowestAddress);
   local.get 0
-  global.set __stack_pointer
-
-  local.get 2
   .functype __wasm_init_tls (PTR) -> ()
   call __wasm_init_tls
+
+  // N.b. The function __wasm_init_tls above does not need
+  // __stack_pointer initialized, and it destroys the value it was set to.
+  // So we must initialize __stack_pointer only *after* completing __wasm_init_tls:
+
+  // __stack_pointer = __stack_base;
+  global.get __stack_base
+  global.set __stack_pointer
 
   end_function
 #endif

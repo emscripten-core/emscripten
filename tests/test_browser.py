@@ -4366,7 +4366,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5609), 100)
+    self.assertLess(abs(size - 5500), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -5088,6 +5088,11 @@ window.close = function() {
   def test_wasm_worker_hello(self):
     self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
+  # Tests Wasm Workers build in Wasm2JS mode.
+  @also_with_minimal_runtime
+  def test_wasm_worker_hello_wasm2js(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
+
   # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
   @also_with_minimal_runtime
   def test_wasm_worker_embedded(self):
@@ -5097,11 +5102,6 @@ window.close = function() {
   @also_with_minimal_runtime
   def test_wasm_worker_thread_stack(self):
     self.btest(test_file('wasm_worker/thread_stack.c'), expected='0', args=['-sWASM_WORKERS'])
-
-  # Tests Wasm Worker thread stack setup without TLS support active
-  @also_with_minimal_runtime
-  def test_wasm_worker_thread_stack_no_tls(self):
-    self.btest(test_file('wasm_worker/thread_stack.c'), expected='0', args=['-sWASM_WORKERS', '-sWASM_WORKERS_NO_TLS'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime

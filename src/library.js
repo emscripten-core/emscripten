@@ -853,23 +853,8 @@ LibraryManager.library = {
         return date.tm_wday || 7;
       },
       '%U': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Sunday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year+1900, 0, 1);
-        var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Sunday?
-        if (compareByDay(firstSunday, endDate) < 0) {
-          // calculate difference in days between first Sunday and endDate
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstSundayUntilEndJanuary = 31-firstSunday.getDate();
-          var days = firstSundayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-
-        return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - date.tm_wday;
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%V': function(date) {
         // Replaced by the week number of the year (Monday as the first day of the week)
@@ -910,21 +895,8 @@ LibraryManager.library = {
         return date.tm_wday;
       },
       '%W': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Monday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year, 0, 1);
-        var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Monday?
-        if (compareByDay(firstMonday, endDate) < 0) {
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstMondayUntilEndJanuary = 31-firstMonday.getDate();
-          var days = firstMondayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-        return compareByDay(firstMonday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%y': function(date) {
         // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
@@ -3274,16 +3246,16 @@ LibraryManager.library = {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
-#if EXIT_RUNTIME == 0
-#if ASSERTIONS
+#if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
-#endif
 #endif
 #if MINIMAL_RUNTIME
     _exit(status);
 #else
     noExitRuntime = false;
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
+#endif
     exit(status);
 #endif
   },
@@ -3372,20 +3344,24 @@ LibraryManager.library = {
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: function() {
+#if EXIT_RUNTIME
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
@@ -3403,7 +3379,11 @@ LibraryManager.library = {
   ],
   $callUserCallback__docs: '/** @param {boolean=} synchronous */',
   $callUserCallback: function(func, synchronous) {
+#if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
+#else
+    if (ABORT) {
+#endif
 #if ASSERTIONS
       err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
@@ -3433,6 +3413,7 @@ LibraryManager.library = {
 #endif
   ],
   $maybeExit: function() {
+#if EXIT_RUNTIME
 #if RUNTIME_DEBUG
     err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3450,6 +3431,7 @@ LibraryManager.library = {
         handleException(e);
       }
     }
+#endif // EXIT_RUNTIME
   },
 #else
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
