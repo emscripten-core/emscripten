@@ -5135,50 +5135,16 @@ window.close = function() {
   # Tests C++11 keyword thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_cpp11_thread_local(self):
-    if not WINDOWS:
-      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
-PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
-Stack dump:
- #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
- #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
-#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
-#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
-#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
-#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
-#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
     self.btest(test_file('wasm_worker/cpp11_thread_local.cpp'), expected='42', args=['-sWASM_WORKERS'])
 
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    if not WINDOWS:
-      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
-PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
-Stack dump:
- #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
- #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
-#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
-#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
-#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
-#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
-#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
-
     self.btest(test_file('wasm_worker/c11__Thread_local.c'), expected='42', args=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
 
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    if not WINDOWS:
-      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
-PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
-Stack dump:
- #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
- #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
-#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
-#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
-#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
-#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
-#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
     self.btest(test_file('wasm_worker/gcc___Thread.c'), expected='42', args=['-sWASM_WORKERS', '-std=gnu11'])
 
   # Tests emscripten_wasm_worker_sleep()
