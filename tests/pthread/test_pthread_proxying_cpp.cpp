@@ -155,5 +155,4 @@ int main(int argc, char* argv[]) {
   returner.join();
 
   std::cout << "done\n";
-  emscripten_force_exit(0);
 }
