@@ -305,7 +305,8 @@ def env_with_node_in_path():
 def check_node_version():
   try:
     actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = actual.replace('v', '').replace('-pre', '').split('.')
+    version = actual.replace('v', '')
+    version = version.split('-')[0].split('.')
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
