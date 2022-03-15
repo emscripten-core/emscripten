@@ -5022,7 +5022,7 @@ window.close = function() {
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
-    for mode in [1,2]:
+    for mode in [1, 2]:
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', f'-sMINIMAL_RUNTIME={mode}'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
