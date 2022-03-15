@@ -2857,13 +2857,13 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   module_export_name_substitution()
 
-  # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
+  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
   # by processing steps that occurred after Closure.
-  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0 and not settings.SINGLE_FILE:
-    # Process .js runtime file. Note that we need to handle the license text
-    # here, so that it will not confuse the hacky script.
-    js_manipulation.handle_license(final_js)
-    shared.run_process([shared.PYTHON, utils.path_from_root('tools/hacky_postprocess_around_closure_limitations.py'), final_js])
+  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
+    # to run in advanced mode)
+    final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
@@ -3528,7 +3528,7 @@ def module_export_name_substitution():
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   # For Node.js and other shell environments, create an unminified Module object so that
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
+  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)

@@ -4716,12 +4716,13 @@ window.close = function() {
     for modularize in [[], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
       self.btest_exit(test_file('pthread/hello_thread.c'), args=['-sUSE_PTHREADS'] + modularize + opts)
 
-  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
+  # Tests that a pthreads build of -s MINIMAL_RUNTIME works well in different build modes
   @parameterized({
     '': ([],),
     'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
     'O3': (['-O3'],),
     'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+    'O3_modularize_MINIMAL_RUNTIME_2': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sMINIMAL_RUNTIME=2'],),
   })
   def test_minimal_runtime_hello_thread(self, opts):
     self.btest_exit(test_file('pthread/hello_thread.c'), args=['--closure=1', '-sMINIMAL_RUNTIME', '-sUSE_PTHREADS'] + opts)
@@ -5021,7 +5022,8 @@ window.close = function() {
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
-    self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sMINIMAL_RUNTIME'])
+    for mode in [1, 2]:
+      self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', f'-sMINIMAL_RUNTIME={mode}'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   def test_minimal_runtime_loader_shell(self):
@@ -5087,6 +5089,9 @@ window.close = function() {
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
     self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  def test_wasm_worker_hello_minimal_runtime_2(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
   # Tests Wasm Workers build in Wasm2JS mode.
   @also_with_minimal_runtime

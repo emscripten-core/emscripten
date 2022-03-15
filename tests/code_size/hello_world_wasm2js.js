@@ -1,73 +1,42 @@
-var b = Module;
-
-var c = new TextDecoder("utf8"), d, f;
-
-f = new function(a) {
+var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
     this.buffer = new ArrayBuffer(65536 * a.initial);
 }({
     initial: 256,
     maximum: 256
-});
-
-var h = f.buffer;
-
-d = new Uint8Array(h);
-
-var k = {
+}), h = f.buffer, d = new Uint8Array(h), k = {
     a: function(a) {
-        var g = console, m = g.log;
+        var n = console, e = n.log;
         if (a) {
-            for (var n = a + void 0, e = a; !(e >= n) && d[e]; ) ++e;
-            a = c.decode(d.subarray(a, e));
+            for (var g = a + void 0, m = a; !(m >= g) && d[m]; ) ++m;
+            a = c.decode(d.subarray(a, m));
         } else a = "";
-        m.call(g, a);
+        e.call(n, a);
     },
     memory: f
-}, l, p = (new function() {
-    this.exports = function instantiate(v) {
-        function c(d) {
-            d.set = function(a, b) {
-                this[a] = b;
+}, p = (new function() {
+    this.exports = function(a) {
+        function n(e) {
+            e.set = function(g, m) {
+                this[g] = m;
             };
-            d.get = function(a) {
-                return this[a];
+            e.get = function(g) {
+                return this[g];
             };
-            return d;
+            return e;
         }
-        function t(u) {
-            var e = Math.imul;
-            var f = Math.fround;
-            var g = Math.abs;
-            var h = Math.clz32;
-            var i = Math.min;
-            var j = Math.max;
-            var k = Math.floor;
-            var l = Math.ceil;
-            var m = Math.trunc;
-            var n = Math.sqrt;
-            var o = u.abort;
-            var p = NaN;
-            var q = Infinity;
-            var r = u.a;
-            function x(a, b) {
-                a = a | 0;
-                b = b | 0;
-                r(1024);
-                return 0;
-            }
-            function w() {}
-            var s = c([]);
+        return function(e) {
+            var g = e.a;
             return {
-                b: w,
-                c: x,
-                d: s
+                b: function() {},
+                c: function(m, q) {
+                    g(1024);
+                    return 0;
+                },
+                d: n([])
             };
-        }
-        return t(v);
+        }(a);
     }(k);
-}).exports;
-
-l = p.c;
+}).exports, l = p.c;
 
 d.set(new Uint8Array(b.mem), 1024);
 

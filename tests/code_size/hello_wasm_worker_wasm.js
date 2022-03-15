@@ -1,16 +1,8 @@
-var b = Module;
-
-var c = b.$ww, e, f;
-
-e = b.mem || new WebAssembly.Memory({
+var b = Module, c = b.$ww, f, e = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-});
-
-var g = e.buffer;
-
-var h = {}, k = 1;
+}), g = e.buffer, h = {}, k = 1, m = [], p, q;
 
 function l(a) {
     m.push(a);
@@ -22,11 +14,7 @@ function n(a) {
     d && f.get(d)(...a.x);
 }
 
-var m = [];
-
 c && (h[0] = this, addEventListener("message", l));
-
-var p, q;
 
 WebAssembly.instantiate(b.wasm, {
     a: {

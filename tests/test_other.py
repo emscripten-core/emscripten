@@ -9140,13 +9140,6 @@ int main () {
         test(['-sWASM=0'], closure, opt)
         test(['-sWASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  # TODO: Debug why the code size is different on Windows and Mac. Also, for
-  # some unknown reason (at time of writing), this test is not skipped on the
-  # Windows and Mac autorollers, despite the bot being correctly configured to
-  # skip this test in all three platforms (Linux, Mac, and Windows).
-  # The no_windows/no_mac decorators also solve that problem.
-  @no_windows("Code size is slightly different on Windows")
-  @no_mac("Code size is slightly different on Mac")
   @parameterized({
     'hello_world_wasm': ('hello_world', False, True),
     'hello_world_wasm2js': ('hello_world', True, True),
@@ -11829,3 +11822,7 @@ void foo() {}
 
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))
+
+  # Tests the internal test suite of tools/unsafe_optimizations.js
+  def test_unsafe_optimizations(self):
+    self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
