@@ -121,10 +121,9 @@ public:
 
   // Simple wrapper around `em_proxying_ctx*` providing a `finish` method as an
   // alternative to `emscripten_proxy_finish`.
-  class ProxyingCtx {
+  struct ProxyingCtx {
     em_proxying_ctx* ctx;
 
-  public:
     ProxyingCtx(em_proxying_ctx* ctx) : ctx(ctx) {}
     void finish() { emscripten_proxy_finish(ctx); }
   };
