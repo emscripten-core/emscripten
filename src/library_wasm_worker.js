@@ -56,10 +56,10 @@ mergeInto(LibraryManager.library, {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-    // The above function initializes the stack for this Worker, but C code cannot
-    // call to extern __set_stack_limits() function, or Binaryen breaks with
-    // "Fatal: Module::addFunction: __set_stack_limits already exists".
-    // So for now, invoke the function from JS side. TODO: remove this in the future.
+    // _emscripten_wasm_worker_initialize() initializes the stack for this Worker,
+    // but it cannot call to extern __set_stack_limits() function, or Binaryen breaks
+    // with "Fatal: Module::addFunction: __set_stack_limits already exists".
+    // So for now, invoke this function from JS side. TODO: remove this in the future.
     // Note that this call is not exactly correct, since this limit will include
     // the TLS slot, that will be part of the region between m['sb'] and m['sz'],
     // so we need to fix up the call below.
