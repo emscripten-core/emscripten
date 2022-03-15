@@ -69,7 +69,7 @@ function optPassSimplifyModuleInitialization(ast) {
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
     for (const n of node.body) {
       if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||' &&
-        n.expression.left.name == n.expression.right.left.name && n.expression.right.right.name == 'Module') {
+        n.expression.left.name === n.expression.right.left?.name && n.expression.right.right.name == 'Module') {
         // Clear out the logical operator.
         n.expression = n.expression.right;
         // There is only one Module assignment, so can finish the pass here.
