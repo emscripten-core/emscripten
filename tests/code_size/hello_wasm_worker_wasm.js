@@ -30,7 +30,7 @@ var p, q;
 
 WebAssembly.instantiate(b.wasm, {
     a: {
-        b: function(a, d, t) {
+        b: function(a, d) {
             let r = h[k] = new Worker(b.$wb);
             r.postMessage({
                 $ww: k,
@@ -38,8 +38,7 @@ WebAssembly.instantiate(b.wasm, {
                 js: b.js,
                 mem: e,
                 sb: a,
-                sz: d,
-                tb: t
+                sz: d
             });
             r.addEventListener("message", n);
             return k++;
@@ -63,7 +62,7 @@ WebAssembly.instantiate(b.wasm, {
     p = a.g;
     q = a.i;
     f = a.h;
-    c ? (a = b, q(a.sb, a.sz, a.tb), removeEventListener("message", l), m = m.forEach(n), 
+    c ? (a = b, q(a.sb, a.sz), removeEventListener("message", l), m = m.forEach(n), 
     addEventListener("message", n)) : a.f();
     c || p();
 }));

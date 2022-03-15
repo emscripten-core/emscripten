@@ -56,11 +56,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
     // Run the C side Worker initialization for stack and TLS.
-    _emscripten_wasm_worker_initialize(m['sb'], m['sz']
-#if !WASM_WORKERS_NO_TLS
-      , m['tb']
-#endif
-    );
+    _emscripten_wasm_worker_initialize(m['sb'], m['sz']);
     // The above function initializes the stack for this Worker, but C code cannot
     // call to extern __set_stack_limits() function, or Binaryen breaks with
     // "Fatal: Module::addFunction: __set_stack_limits already exists".
@@ -87,20 +83,16 @@ mergeInto(LibraryManager.library, {
   _wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
 
-  _emscripten_create_wasm_worker_with_tls__deps: ['wasm_workers', 'wasm_workers_id', '_wasm_worker_appendToQueue', '_wasm_worker_runPostMessage'
+  _emscripten_create_wasm_worker__deps: ['wasm_workers', 'wasm_workers_id', '_wasm_worker_appendToQueue', '_wasm_worker_runPostMessage'
 #if WASM_WORKERS == 2
     , '_wasmWorkerBlobUrl'
 #endif
   ],
-  _emscripten_create_wasm_worker_with_tls__postset: 'if (ENVIRONMENT_IS_WASM_WORKER) {\n'
+  _emscripten_create_wasm_worker__postset: 'if (ENVIRONMENT_IS_WASM_WORKER) {\n'
     + '_wasm_workers[0] = this;\n'
     + 'addEventListener("message", __wasm_worker_appendToQueue);\n'
     + '}\n',
-  _emscripten_create_wasm_worker_with_tls: function(stackLowestAddress, stackSize, tlsAddress) {
-#if ASSERTIONS
-    assert(stackLowestAddress % 16 == 0);
-    assert(stackSize % 16 == 0);
-#endif
+  _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize) {
     let worker = _wasm_workers[_wasm_workers_id] = new Worker(
 #if WASM_WORKERS == 2 // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file as a Blob URL. (convenient, but not CSP security safe, since this is eval-like)
       __wasmWorkerBlobUrl
@@ -122,18 +114,11 @@ mergeInto(LibraryManager.library, {
       'js': Module['mainScriptUrlOrBlob'] || _scriptDir,
       'wasmMemory': wasmMemory,
 #endif
-      'sb': stackLowestAddress, // sb = stack base
+      'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
-#if !WASM_WORKERS_NO_TLS
-      'tb': tlsAddress,         // tb = TLS base
-#endif
     });
     worker.addEventListener('message', __wasm_worker_runPostMessage);
     return _wasm_workers_id++;
-  },
-  _emscripten_create_wasm_worker_no_tls__deps: ['_emscripten_create_wasm_worker_with_tls'],
-  _emscripten_create_wasm_worker_no_tls: function(stackLowestAddress, stackSize) {
-    return __emscripten_create_wasm_worker_with_tls(stackLowestAddress, stackSize, 0, 0);
   },
 
   emscripten_terminate_wasm_worker: function(id) {

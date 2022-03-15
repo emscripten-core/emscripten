@@ -33,9 +33,8 @@ which shares the same WebAssembly.Module and WebAssembly.Memory object. Then a
 ``postMessage()`` is passed to the Worker to ask it to execute the function
 ``run_in_worker()`` to print a string.
 
-For more complex threading scenarios, see the functions ``emscripten_create_wasm_worker_with_tls()``
-and ``emscripten_create_wasm_worker_no_tls()`` on how to manage the memory resources that
-the thread will use.
+To explicitly control the memory allocation placement when creating a worker, use the
+function ``emscripten_create_wasm_worker()``.
 
 Introduction
 ============
