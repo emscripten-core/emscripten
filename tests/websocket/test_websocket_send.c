@@ -35,10 +35,7 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
 	if (e->isText)
 	{
 		printf("text data: \"%s\"\n", e->data);
-#ifdef REPORT_RESULT
-		if (!!strcmp((const char*)e->data, "hello on the other side")) REPORT_RESULT(-1);
-		passed += 1;
-#endif
+		assert(strcmp((const char*)e->data, "hello on the other side") == 0);
 	}
 	else
 	{
@@ -46,19 +43,13 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
 		for(int i = 0; i < e->numBytes; ++i)
 		{
 			printf(" %02X", e->data[i]);
-#ifdef REPORT_RESULT
-			if (e->data[i] != i) REPORT_RESULT(-2);
-#endif
+			assert(e->data[i] == i);
 		}
 		printf("\n");
-		passed += 100;
 
 		emscripten_websocket_close(e->socket, 0, 0);
 		emscripten_websocket_delete(e->socket);
-#ifdef REPORT_RESULT
-		printf("%d\n", passed);
-		REPORT_RESULT(passed);
-#endif
+		emscripten_force_exit(0);
 	}
 	return 0;
 }
@@ -123,4 +114,6 @@ int main()
 	emscripten_websocket_set_onclose_callback(socket, (void*)43, WebSocketClose);
 	emscripten_websocket_set_onerror_callback(socket, (void*)44, WebSocketError);
 	emscripten_websocket_set_onmessage_callback(socket, (void*)45, WebSocketMessage);
+	emscripten_exit_with_live_runtime();
+	return 0;
 }

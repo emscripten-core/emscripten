@@ -300,17 +300,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
        'JS engine does not provide full typed array support');
 #endif
 
-#if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
-  window.addEventListener('error', function(e) {
-    if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
-    Module['pageThrewException'] = true;
-  });
-}
-#endif
-
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
@@ -335,12 +324,19 @@ var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
+
+#if EXIT_RUNTIME
 var runtimeExited = false;
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
+#else
+function keepRuntimeAlive() {
+  return noExitRuntime;
+}
+#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -399,6 +395,7 @@ function preMain() {
 }
 #endif
 
+#if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
   err('exitRuntime');
@@ -413,18 +410,17 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-#if EXIT_RUNTIME
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
+#endif
 
 function postRun() {
 #if STACK_OVERFLOW_CHECK
@@ -665,7 +661,9 @@ function createExportWrapper(name, fixedasm) {
       asm = Module['asm'];
     }
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+#if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+#endif
     if (!asm[name]) {
       assert(asm[name], 'exported native function `' + displayName + '` not found');
     }

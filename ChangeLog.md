@@ -24,8 +24,10 @@ See docs/process.md for more on how version tagging works.
   binaryen optimizations are limited due to DWARF information being requested.
   Several binaryen passed are not compatible with the preservation of DWARF
   information. (#16428)
+- Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
+  the vertical scroll amount for GLFW 3. (#16480)
 
-3.1.7 - 05/01/2022
+3.1.7 - 03/07/2022
 -------------------
 - Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
   settings.  The new wasmfs filesystem is far enough along that it seems clear

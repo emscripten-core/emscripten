@@ -30,6 +30,9 @@ class Directory;
 using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
 
+// Access mode, file creation and file status flags for open.
+using oflags_t = uint32_t;
+
 class File : public std::enable_shared_from_this<File> {
 public:
   enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
@@ -106,6 +109,13 @@ protected:
 };
 
 class DataFile : public File {
+  // Notify the backend when this file is opened or closed. The backend is
+  // responsible for keeping files accessible as long as they are open, even if
+  // they are unlinked.
+  // TODO: Report errors.
+  virtual void open(oflags_t flags) = 0;
+  virtual void close() = 0;
+
   // TODO: Allow backends to override the version of read with multiple iovecs
   // to make it possible to implement pipes. See #16269.
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
@@ -234,6 +244,9 @@ class DataFile::Handle : public File::Handle {
 public:
   Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
   Handle(Handle&&) = default;
+
+  void open(oflags_t flags) { getFile()->open(flags); }
+  void close() { getFile()->close(); }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);

@@ -915,11 +915,13 @@ class libc(MuslInternalLibrary,
           'asctime_r.c',
           'asctime.c',
           'ctime.c',
+          'difftime.c',
           'gmtime.c',
           'localtime.c',
           'nanosleep.c',
           'clock_nanosleep.c',
           'ctime_r.c',
+          'timespec_get.c',
           'utime.c',
         ])
     libc_files += files_in_path(
@@ -1029,8 +1031,6 @@ class libprintf_long_double(libc):
 
 class libwasm_workers(MTLibrary):
   def __init__(self, **kwargs):
-    self.tls = kwargs.pop('tls')
-    self.stack_check = kwargs.pop('stack_check')
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
@@ -1038,9 +1038,7 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = ['-pthread',
-              '-D_DEBUG' if self.debug else '-Oz',
-              '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0'),
-              '-DWASM_WORKER_NO_TLS=' + ('0' if self.tls else '1')]
+              '-D_DEBUG' if self.debug else '-Oz']
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
@@ -1053,21 +1051,17 @@ class libwasm_workers(MTLibrary):
     name = 'libwasm_workers'
     if not self.is_ww and not self.is_mt:
       name += '_stub'
-    if not self.tls:
-      name += '-notls'
     if self.debug:
       name += '-debug'
-    if self.stack_check:
-      name += '-stackcheck'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['tls', 'debug', 'stack_check']
+    return super().vary_on() + ['debug']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(tls=not settings.WASM_WORKERS_NO_TLS, debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
+    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, **kwargs)
 
   def get_files(self):
     return files_in_path(
@@ -1095,7 +1089,7 @@ class libsockets_proxy(MTLibrary):
   cflags = ['-Os']
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.cpp')]
+    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
     return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
@@ -1644,7 +1638,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__year_to_secs.c',
                    'clock.c',
                    'clock_gettime.c',
-                   'difftime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',

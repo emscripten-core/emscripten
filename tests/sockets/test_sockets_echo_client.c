@@ -45,18 +45,19 @@ int echo_read;
 int echo_wrote;
 
 void finish(int result) {
+  printf("finish: %d\n", result);
   if (server.fd) {
     close(server.fd);
     server.fd = 0;
   }
 #ifdef __EMSCRIPTEN__
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+#if TEST_ASYNC
   emscripten_force_exit(result);
 #else
-  exit(result);
+  emscripten_cancel_main_loop();
 #endif
+#endif
+  exit(result);
 }
 
 void main_loop() {

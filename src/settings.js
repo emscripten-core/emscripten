@@ -1480,12 +1480,6 @@ var USE_PTHREADS = 0;
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
-// Wasm Worker option: set to 1 to disable TLS for small code size gain when
-// not using TLS. This setting can be used to verify that there is no leftover
-// state stored in a Worker when manually implementing thread pooling in Workers.
-// [link]
-var WASM_WORKERS_NO_TLS = 0;
-
 // If true, enables targeting Wasm Web Audio AudioWorklets.
 // [link]
 var AUDIO_WORKLET = 0;

@@ -13,9 +13,6 @@ function reportResultToServer(result, sync, port) {
     out('RESULT: ' + result);
   } else {
     var xhr = new XMLHttpRequest();
-    if (hasModule && Module['pageThrewException']) {
-      result = 'pageThrewException';
-    }
     xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
     xhr.send();
     if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
@@ -56,12 +53,13 @@ if (typeof window === 'object' && window) {
       console.error(status);
       maybeReportResultToServer('exit:' + status);
     } else {
+      if (hasModule) Module['pageThrewException'] = true;
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', encodeURI('http://localhost:8888?exception=' + e.message + ' / ' + e.stack));
+      xhr.open('GET', encodeURI('http://localhost:8888?exception=' + message + ' / ' + e.stack));
       xhr.send();
     }
   }
-  window.addEventListener('error', report_error);
+  window.addEventListener('error', event => report_error(event));
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 
