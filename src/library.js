@@ -862,34 +862,28 @@ LibraryManager.library = {
         // or more days in the new year, then it is considered week 1.
         // Otherwise, it is the last week of the previous year, and the next week is week 1.
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
-        var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        var endDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
-          // if given date is before this years first week, then it belongs to the 53rd week of last year
-          return '53';
+        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
+        // If 1 Jan is just 1-3 days past Monday, the previous week
+        // is also in this year.
+        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
+          val++;
         }
-
-        if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
-          // if given date is after next years first week, then it belongs to the 01th week of next year
-          return '01';
+        if (!val) {
+          val = 52;
+          // If 31 December of prev year a Thursday, or Friday of a
+          // leap year, then the prev year has 53 weeks.
+          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
+          if (dec31 == 4 || (dec31 == 5 && __isLeapYear(date.tm_year%400-1))) {
+            val++;
+          }
+        } else if (val == 53) {
+          // If 1 January is not a Thursday, and not a Wednesday of a
+          // leap year, then this year has only 52 weeks.
+          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
+          if (jan1 != 4 && (jan1 != 3 || !__isLeapYear(date.tm_year)))
+            val = 1;
         }
-
-        // given date is in between CW 01..53 of this calendar year
-        var daysDifference;
-        if (firstWeekStartThisYear.getFullYear() < date.tm_year+1900) {
-          // first CW of this year starts last year
-          daysDifference = date.tm_yday+32-firstWeekStartThisYear.getDate()
-        } else {
-          // first CW of this year starts this year
-          daysDifference = date.tm_yday+1-firstWeekStartThisYear.getDate();
-        }
-        return leadingNulls(Math.ceil(daysDifference/7), 2);
+        return leadingNulls(val, 2);
       },
       '%w': function(date) {
         return date.tm_wday;
