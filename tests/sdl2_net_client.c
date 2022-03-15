@@ -46,11 +46,9 @@ void finish(int result) {
     SDLNet_Quit();
   }
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT(result);
-  emscripten_force_exit(result);
-#else
-  exit(result);
+  emscripten_cancel_main_loop();
 #endif
+  exit(result);
 }
 
 char *msgs[] = {

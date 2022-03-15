@@ -97,6 +97,10 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return js_index_t(this);
   }
 
+  // TODO: Notify the JS about open and close events?
+  void open(oflags_t) override {}
+  void close() override {}
+
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     CppCallbackState state;
 

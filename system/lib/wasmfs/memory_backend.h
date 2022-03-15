@@ -18,6 +18,8 @@ namespace wasmfs {
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
+  void open(oflags_t) override {}
+  void close() override {}
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
   void flush() override {}

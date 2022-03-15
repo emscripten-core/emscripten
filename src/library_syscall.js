@@ -261,17 +261,6 @@ var SyscallsLibrary = {
 #endif
   },
 
-  __syscall_open: function(path, flags, varargs) {
-    var pathname = SYSCALLS.getStr(path);
-    var mode = varargs ? SYSCALLS.get() : 0;
-    var stream = FS.open(pathname, flags, mode);
-    return stream.fd;
-  },
-  __syscall_unlink: function(path) {
-    path = SYSCALLS.getStr(path);
-    FS.unlink(path);
-    return 0;
-  },
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
@@ -380,10 +369,6 @@ var SyscallsLibrary = {
     linkpath = SYSCALLS.getStr(linkpath);
     FS.symlink(target, linkpath);
     return 0;
-  },
-  __syscall_readlink: function(path, buf, bufsize) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doReadlink(path, buf, bufsize);
   },
   __syscall_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
@@ -764,23 +749,6 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
     return 0;
   },
-  __syscall_getuid32__sig: 'i',
-  __syscall_getuid32__nothrow: true,
-  __syscall_getuid32__proxy: false,
-  __syscall_getuid32: '__syscall_getegid32',
-  __syscall_getgid32__sig: 'i',
-  __syscall_getgid32__nothrow: true,
-  __syscall_getgid32__proxy: false,
-  __syscall_getgid32: '__syscall_getegid32',
-  __syscall_geteuid32__sig: 'i',
-  __syscall_geteuid32__nothrow: true,
-  __syscall_geteuid32__proxy: false,
-  __syscall_geteuid32: '__syscall_getegid32',
-  __syscall_getegid32__nothrow: true,
-  __syscall_getegid32__proxy: false,
-  __syscall_getegid32: function() {
-    return 0;
-  },
   __syscall_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
     return 0;
@@ -929,9 +897,6 @@ var SyscallsLibrary = {
     return 0; // your advice is important to us (but we can't use it)
   },
   __syscall_openat: function(dirfd, path, flags, varargs) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -965,7 +930,7 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall_fstatat64: function(dirfd, path, buf, flags) {
+  __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
     var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
@@ -989,9 +954,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
     oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
@@ -1013,9 +975,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
@@ -1046,13 +1005,18 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
-    var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var atime = (seconds*1000) + (nanoseconds/(1000*1000));
-    times += {{{ C_STRUCTS.timespec.__size__ }}};
-    seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    if (!times) {
+      var atime = Date.now();
+      var mtime = atime;
+    } else {
+      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      times += {{{ C_STRUCTS.timespec.__size__ }}};
+      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    }
     FS.utime(path, atime, mtime);
     return 0;
   },

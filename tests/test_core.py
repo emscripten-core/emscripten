@@ -1545,7 +1545,7 @@ int main(int argc, char **argv)
 
   def test_format_exception(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'formatException', '_emscripten_format_exception', '_free'])
     self.maybe_closure()
     src = '''
@@ -1582,7 +1582,13 @@ int main(int argc, char **argv)
               try {
                   Module["_throw_exc"](i);
               } catch(p) {
+                  // Because we are catching and handling the exception in JS, the normal
+                  // exception catching C++ code doesn't kick in, so we need to make sure we free
+                  // the exception, if necessary. By incrementing and decrementing the refcount
+                  // we trigger the free'ing of the exception if its refcount was zero.
+                  ___cxa_increment_exception_refcount(p);
                   console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
+                  ___cxa_decrement_exception_refcount(p);
               }
             }
           });
@@ -2574,6 +2580,7 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_dispatch_after_exit(self):
+    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
   @node_pthreads
@@ -5488,7 +5495,7 @@ main( int argv, char ** argc ) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    for decoder_mode in [False, True]:
+    for decoder_mode in [0, 1]:
       self.set_setting('TEXTDECODER', decoder_mode)
       print(str(decoder_mode))
       self.do_runf(test_file('utf8_invalid.cpp'), 'OK.')
@@ -5808,6 +5815,11 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
+      if self.get_setting('WASMFS'):
+        if fs == 'NODEFS':
+          # TODO: NODEFS in WasmFS
+          continue
+        self.emcc_args += ['-sFORCE_FILESYSTEM']
       self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
@@ -6176,6 +6188,15 @@ void* operator new(size_t size) {
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
+    self.do_core_test('test_mmap.c')
+
+  @node_pthreads
+  def test_mmap_pthreads(self):
+    # Same test with threading enabled so give is some basic sanity
+    # checks of the locking on the internal data structures.
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_core_test('test_mmap.c')
 
   def test_mmap_file(self):
@@ -7927,7 +7948,7 @@ Module['onRuntimeInitialized'] = function() {
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
-      wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
+      wat = self.get_wasm_text(name)
       lines = wat.splitlines()
       wat = None
       for i in range(len(lines)):

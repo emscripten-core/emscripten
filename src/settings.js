@@ -1465,10 +1465,20 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [other]
 var IN_TEST_HARNESS = 0;
 
-// If true, enables support for pthreads.
+// If 1, target compiling a shared Wasm Memory.
+// [compile+link] - affects user code at compile and system libraries at link.
+var SHARED_MEMORY = 0;
+
+// If true, enables support for pthreads. This implies SHARED_MEMORY.
 // This setting is equivalent to `-pthread`, which should be preferred.
 // [compile+link] - affects user code at compile and system libraries at link.
 var USE_PTHREADS = 0;
+
+// If true, enables support for Wasm Workers. Wasm Workers enable applications
+// to create threads using a lightweight web-specific API that builds on top
+// of Wasm SharedArrayBuffer + Atomics API.
+// [compile+link] - affects user code at compile and system libraries at link.
+var WASM_WORKERS = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
@@ -1633,8 +1643,9 @@ var OFFSCREENCANVASES_TO_PTHREAD = "#canvas";
 // [link]
 var OFFSCREEN_FRAMEBUFFER = 0;
 
-// If nonzero, Fetch API (and hence ASMFS) supports backing to IndexedDB. If 0, IndexedDB is not utilized. Set to 0 if
-// IndexedDB support is not interesting for target application, to save a few kBytes.
+// If nonzero, Fetch API supports backing to IndexedDB. If 0, IndexedDB is not
+// utilized. Set to 0 if IndexedDB support is not interesting for target
+// application, to save a few kBytes.
 // [link]
 var FETCH_SUPPORT_INDEXEDDB = 1;
 
@@ -1645,11 +1656,6 @@ var FETCH_DEBUG = 0;
 // If nonzero, enables emscripten_fetch API.
 // [link]
 var FETCH = 0;
-
-// If set to 1, uses the multithreaded filesystem that is implemented within the
-// wasm module, using emscripten_fetch. Implies -s FETCH=1.
-// [link]
-var ASMFS = 0;
 
 // ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.

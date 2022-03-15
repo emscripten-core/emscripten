@@ -48,10 +48,10 @@ if (typeof WebAssembly != 'object') {
 
 var wasmMemory;
 
-#if USE_PTHREADS
+#if SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
-#endif // USE_PTHREADS
+#endif // SHARED_MEMORY
 
 //========================================
 // Runtime essentials
@@ -300,17 +300,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
        'JS engine does not provide full typed array support');
 #endif
 
-#if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
-  window.addEventListener('error', function(e) {
-    if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
-    Module['pageThrewException'] = true;
-  });
-}
-#endif
-
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
@@ -335,12 +324,19 @@ var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
+
+#if EXIT_RUNTIME
 var runtimeExited = false;
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
+#else
+function keepRuntimeAlive() {
+  return noExitRuntime;
+}
+#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -367,6 +363,10 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
@@ -395,6 +395,7 @@ function preMain() {
 }
 #endif
 
+#if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
   err('exitRuntime');
@@ -409,18 +410,17 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-#if EXIT_RUNTIME
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
+#endif
 
 function postRun() {
 #if STACK_OVERFLOW_CHECK
@@ -627,7 +627,7 @@ function abort(what) {
 
 #include "memoryprofiler.js"
 
-#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS && !WASMFS
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !WASMFS
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
@@ -661,7 +661,9 @@ function createExportWrapper(name, fixedasm) {
       asm = Module['asm'];
     }
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+#if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+#endif
     if (!asm[name]) {
       assert(asm[name], 'exported native function `' + displayName + '` not found');
     }
@@ -1079,9 +1081,16 @@ function createWasm() {
     // is in charge of programatically exporting them on the global object.
     exportAsmFunctions(exports);
 #endif
-#if USE_PTHREADS
+
+#if USE_PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+
+#if WASM_WORKERS
+    if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
+#if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
@@ -1102,7 +1111,11 @@ function createWasm() {
     }
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
+#endif // ~USE_PTHREADS
+#if WASM_WORKERS
+    }
 #endif
+
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
@@ -1131,7 +1144,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS || RELOCATABLE
+#if SHARED_MEMORY || RELOCATABLE
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1252,6 +1265,7 @@ function createWasm() {
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this path.
   if (Module['instantiateWasm']) {
 #if USE_OFFSET_CONVERTER
 #if ASSERTIONS && USE_PTHREADS

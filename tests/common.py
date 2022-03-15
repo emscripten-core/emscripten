@@ -70,6 +70,7 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 
 
 def delete_contents(pathname):
@@ -228,6 +229,20 @@ def with_env_modify(updates):
         return f(self)
     return modified
   return decorated
+
+
+def also_with_minimal_runtime(f):
+  assert callable(f)
+
+  def metafunc(self, with_minimal_runtime):
+    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if with_minimal_runtime:
+      self.set_setting('MINIMAL_RUNTIME', 1)
+    f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'minimal_runtime': (True,)}
+  return metafunc
 
 
 def ensure_dir(dirname):
@@ -404,7 +419,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
     # We want to be strict about closure warnings in our test code.
     # TODO(sbc): Remove this if we make it the default for `-Werror`:
     # https://github.com/emscripten-core/emscripten/issues/16205):
@@ -643,7 +658,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
-    return self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+    return self.run_process([WASM_DIS, wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)

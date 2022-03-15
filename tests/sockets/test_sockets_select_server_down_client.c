@@ -28,11 +28,9 @@ int sockfd = -1;
 void finish(int result) {
   close(sockfd);
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT(result);
-  emscripten_force_exit(result);
-#else
-  exit(result);
+  emscripten_cancel_main_loop();
 #endif
+  exit(result);
 }
 
 void iter() {
@@ -61,7 +59,7 @@ void iter() {
       finish(EXIT_FAILURE);
     } else if (!n) {
       perror("Connection to websocket server failed as expected.");
-      finish(266);
+      finish(0);
     }
   }
 }

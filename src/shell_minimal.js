@@ -46,6 +46,10 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || USE_PTHREADS
 
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+#endif
+
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
   throw 'unclear environment';
@@ -111,17 +115,9 @@ function ready() {
   readyPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-    run();
-#if USE_PTHREADS
-  }
-#endif
-#else
-#if ASSERTIONS
+  {{{ runOnMainThread("run();") }}}
+#elif ASSERTIONS
   console.log('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
-#endif
 #endif
 }
 
@@ -147,7 +143,12 @@ var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? do
 
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
+#else
 var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'function';
+#endif
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS

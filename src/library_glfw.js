@@ -529,13 +529,11 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       var sx = 0;
-      var sy = 0;
+      var sy = delta;
       if (event.type == 'mousewheel') {
         sx = event.wheelDeltaX;
-        sy = event.wheelDeltaY;
       } else {
         sx = event.deltaX;
-        sy = event.deltaY;
       }
 
       {{{ makeDynCall('vidd', 'GLFW.active.scrollFunc') }}}(GLFW.active.id, sx, sy);

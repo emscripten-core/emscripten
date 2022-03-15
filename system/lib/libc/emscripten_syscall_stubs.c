@@ -149,6 +149,22 @@ long __syscall_setdomainname(long name, long size) {
   return -EPERM;
 }
 
+long  __syscall_getuid32(void) {
+  return 0;
+}
+
+long  __syscall_getgid32(void) {
+  return 0;
+}
+
+long  __syscall_geteuid32(void) {
+  return 0;
+}
+
+long  __syscall_getegid32(void) {
+  return 0;
+}
+
 long __syscall_getresuid32(long ruid, long euid, long suid) {
   *((uid_t *)ruid) = 0;
   *((uid_t *)euid) = 0;

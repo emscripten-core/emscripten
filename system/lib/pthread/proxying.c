@@ -206,13 +206,26 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 EMSCRIPTEN_KEEPALIVE
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
+
+  // Recursion guard to avoid infinite recursion when we arrive here from the
+  // pthread_lock call below that executes the system queue. The per-task_queue
+  // recursion lock can't catch these recursions because it can only be checked
+  // after the lock has been acquired.
+  static _Thread_local int executing_system_queue = 0;
+  int is_system_queue = q == &system_proxying_queue;
+  if (is_system_queue) {
+    if (executing_system_queue) {
+      return;
+    }
+    executing_system_queue = 1;
+  }
+
   pthread_mutex_lock(&q->mutex);
   int tasks_index = get_tasks_index_for_thread(q, pthread_self());
   task_queue* tasks = tasks_index == -1 ? NULL : &q->task_queues[tasks_index];
   if (tasks == NULL || tasks->processing) {
     // No tasks for this thread or they are already being processed.
-    pthread_mutex_unlock(&q->mutex);
-    return;
+    goto end;
   }
   // Found the task queue; process the tasks.
   tasks->processing = 1;
@@ -227,7 +240,12 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     tasks = &q->task_queues[tasks_index];
   }
   tasks->processing = 0;
+
+end:
   pthread_mutex_unlock(&q->mutex);
+  if (is_system_queue) {
+    executing_system_queue = 0;
+  }
 }
 
 int emscripten_proxy_async(em_proxying_queue* q,

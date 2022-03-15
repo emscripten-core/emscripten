@@ -38,9 +38,9 @@ Including File System Support
 
 Emscripten decides whether to include file system support automatically. Many programs don't need files, and file system support is not negligible in size, so Emscripten avoids including it when it doesn't see a reason to. That means that if your C/C++ code does not access files, then  the ``FS`` object and other file system APIs will not be included in the output. And, on the other hand, if your C/C++ code does use files, then file system support will be automatically included. So normally things will "just work" and you don't need to think about this at all.
 
-However, if your C/C++ code doesn't use files, but you want to use them from JavaScript, then you can build with ``-s FORCE_FILESYSTEM=1``, which will make the compiler include file system support even though it doesn't see it being used.
+However, if your C/C++ code doesn't use files, but you want to use them from JavaScript, then you can build with ``-sFORCE_FILESYSTEM``, which will make the compiler include file system support even though it doesn't see it being used.
 
-On the other hand, if you want to **not** include any filesystem support code (which may be included even due to printf or iostreams, due to how musl and libc++ are structured), you can build with ``-s FILESYSTEM=0``. Very simple stdout support will be included if necessary in such a case, enough for printf and such to work, but no filesystem code will be added, which can save a significant amount of code size.
+On the other hand, if you want to **not** include any filesystem support code (which may be included even due to printf or iostreams, due to how musl and libc++ are structured), you can build with ``-sFILESYSTEM=0``. Very simple stdout support will be included if necessary in such a case, enough for printf and such to work, but no filesystem code will be added, which can save a significant amount of code size.
 
 
 .. _filesystem-api-persist-data:
