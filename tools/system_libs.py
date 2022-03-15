@@ -1031,7 +1031,6 @@ class libprintf_long_double(libc):
 
 class libwasm_workers(MTLibrary):
   def __init__(self, **kwargs):
-    self.stack_check = kwargs.pop('stack_check')
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
@@ -1039,8 +1038,7 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = ['-pthread',
-              '-D_DEBUG' if self.debug else '-Oz',
-              '-DSTACK_OVERFLOW_CHECK=' + ('2' if self.stack_check else '0')]
+              '-D_DEBUG' if self.debug else '-Oz']
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
@@ -1055,17 +1053,15 @@ class libwasm_workers(MTLibrary):
       name += '_stub'
     if self.debug:
       name += '-debug'
-    if self.stack_check:
-      name += '-stackcheck'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['debug', 'stack_check']
+    return super().vary_on() + ['debug']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, stack_check=settings.STACK_OVERFLOW_CHECK == 2, **kwargs)
+    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, **kwargs)
 
   def get_files(self):
     return files_in_path(
