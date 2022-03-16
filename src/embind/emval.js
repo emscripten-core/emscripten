@@ -134,6 +134,18 @@ var LibraryEmVal = {
     return Emval.toHandle(getStringOrSymbol(v));
   },
 
+  _emval_new_u8string__sig: 'ii',
+  _emval_new_u8string__deps: ['$Emval'],
+  _emval_new_u8string: function(v) {
+    return Emval.toHandle(UTF8ToString(v));
+  },
+
+  _emval_new_u16string__sig: 'ii',
+  _emval_new_u16string__deps: ['$Emval'],
+  _emval_new_u16string: function(v) {
+    return Emval.toHandle(UTF16ToString(v));
+  },
+
   _emval_take_value__sig: 'iii',
   _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
   _emval_take_value: function(type, argv) {
