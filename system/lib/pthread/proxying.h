@@ -107,12 +107,17 @@ public:
   ProxyingQueue() = default;
   ProxyingQueue& operator=(const ProxyingQueue&) = delete;
   ProxyingQueue& operator=(ProxyingQueue&& other) {
+    if (queue) {
+      em_proxying_queue_destroy(queue);
+    }
     queue = other.queue;
     other.queue = nullptr;
     return *this;
   }
   ProxyingQueue(const ProxyingQueue&) = delete;
-  ProxyingQueue(ProxyingQueue&& other) { *this = std::move(other); }
+  ProxyingQueue(ProxyingQueue&& other) : queue(nullptr) {
+    *this = std::move(other);
+  }
   ~ProxyingQueue() {
     if (queue) {
       em_proxying_queue_destroy(queue);
