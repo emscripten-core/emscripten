@@ -223,11 +223,14 @@ def env_modify(updates):
 
 # Decorator version of env_modify
 def with_env_modify(updates):
+  assert not callable(updates)
+
   def decorated(f):
-    def modified(self):
+    def modified(self, *args, **kwargs):
       with env_modify(updates):
-        return f(self)
+        return f(self, *args, **kwargs)
     return modified
+
   return decorated
 
 
