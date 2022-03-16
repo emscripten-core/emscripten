@@ -262,7 +262,17 @@ class interactive(BrowserCore):
     for args in [['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']]:
       self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-sUSE_PTHREADS', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
 
-  # Tests AudioWorklet feature
+  # Tests creating a Web Audio context using Emscripten library_webaudio.js feature.
+  @also_with_minimal_runtime
+  def test_web_audio(self):
+    self.btest('webaudio/create_webaudio.c', expected='0', args=['-lwebaudio.js'])
+
+  # Tests simple AudioWorklet noise generation
   @also_with_minimal_runtime
   def test_audio_worklet(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
+  # Tests a second AudioWorklet example: sine wave tone generator
+  @also_with_minimal_runtime
+  def test_audio_worklet_tone_generator(self):
+    self.btest('webaudio/tone_generator.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])

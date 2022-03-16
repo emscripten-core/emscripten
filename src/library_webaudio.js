@@ -65,7 +65,10 @@ let LibraryWebAudio = {
     delete EmAudio[objectHandle];
   },
 
-  emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject'],
+  // emscripten_create_audio_context() does not itself use emscriptenGetAudioObject() function, but mark it as a
+  // dependency, because the user will not be able to utilize the node unless they call emscriptenGetAudioObject()
+  // on it on JS side to connect it to the graph, so this avoids the user needing to manually do it on the command line.
+  emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: function(options) {
     let ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
@@ -231,10 +234,6 @@ let LibraryWebAudio = {
     });
   },
 
-  // emscripten_create_wasm_audio_worklet_node() function does not itself use emscriptenGetAudioObject() function, but mark it as a dependency, because
-  // the user will not be able to utilize the node unless they call emscriptenGetAudioObject() on it on JS side to connect it to the graph, so record
-  // it as a dependency here to avoid the user needing to manually do it on the command line.
-  emscripten_create_wasm_audio_worklet_node__deps: ['$emscriptenGetAudioObject'],
   emscripten_create_wasm_audio_worklet_node: function(contextHandle, name, options, callback, userData) {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_node() with a null Web Audio Context handle!`);

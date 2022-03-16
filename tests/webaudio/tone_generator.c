@@ -16,9 +16,17 @@ float phase = 0.f; // [local variable to the audio thread]
 float phaseIncrement = 440 * 2.f * PI / SAMPLE_RATE; // [local variable to the audio thread]
 float currentVolume = 0.3; // [local variable to the audio thread]
 
+#ifdef REPORT_RESULT // This is defined when running in Emscripten test harness. You can strip these out in your own project.
+volatile int audioProcessedCount = 0;
+#endif
+
 // This function will be called for every fixed 128 samples of audio to be processed.
 EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData)
 {
+#ifdef REPORT_RESULT
+	++audioProcessedCount;
+#endif
+
 	// Interpolate towards the target frequency and volume values.
 	float targetPhaseIncrement = targetToneFrequency * 2.f * PI / SAMPLE_RATE;
 	phaseIncrement = phaseIncrement * 0.95f + 0.05f * targetPhaseIncrement;
@@ -40,6 +48,18 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
 	// We generated audio and want to keep this processor going. Return EM_FALSE here to shut down.
 	return EM_TRUE;
 }
+
+#ifdef REPORT_RESULT
+EM_BOOL observe_test_end(double time, void *userData)
+{
+  if (audioProcessedCount >= 100)
+  {
+    REPORT_RESULT(0);
+    return EM_FALSE;
+  }
+  return EM_TRUE;
+}
+#endif
 
 // This callback will fire after the Audio Worklet Processor has finished being added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
@@ -78,6 +98,10 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL su
 			}
 		};
 	}, audioContext, wasmAudioWorklet);
+
+#ifdef REPORT_RESULT
+	emscripten_set_timeout_loop(observe_test_end, 10, 0);
+#endif
 }
 
 // This callback will fire when the Wasm Module has been shared to the AudioWorklet global scope, and is now ready to begin adding Audio Worklet Processors.
