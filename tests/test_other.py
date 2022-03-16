@@ -11831,3 +11831,4 @@ void foo() {}
   @also_with_minimal_runtime
   def test_audio_worklet(self):
     self.run_process([EMCC, test_file('webaudio/audioworklet.c'), '-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    self.run_process([EMCC, test_file('webaudio/audioworklet.c'), '-sAUDIO_WORKLET', '-sWASM_WORKERS', '--closure', '1', '-Oz'])
