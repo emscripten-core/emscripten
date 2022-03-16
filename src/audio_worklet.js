@@ -127,6 +127,14 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // After this we are ready to load in the main application JS script, which the main thread will addModule()
     // to this scope.
     globalThis.Module = arg['processorOptions'];
+#if !MINIMAL_RUNTIME
+    // Default runtime relies on an injected instantiateWasm() function to initialize the Wasm Module.
+    globalThis.Module['instantiateWasm'] = (info, receiveInstance) => {
+      var instance = new WebAssembly.Instance(Module['wasm'], info);
+      receiveInstance(instance, Module['wasm']);
+      return instance.exports;
+    };
+#endif
 #if WEBAUDIO_DEBUG
     console.log('AudioWorklet global scope looks like this:');
     console.dir(globalThis);

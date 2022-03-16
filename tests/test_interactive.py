@@ -11,7 +11,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
 
 from common import parameterized
-from common import BrowserCore, test_file
+from common import BrowserCore, test_file, also_with_minimal_runtime
 from tools.shared import WINDOWS
 from tools.utils import which
 
@@ -261,3 +261,8 @@ class interactive(BrowserCore):
   def test_webgl_offscreen_canvas_in_two_pthreads(self):
     for args in [['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']]:
       self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-sUSE_PTHREADS', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
+
+  # Tests AudioWorklet feature
+  @also_with_minimal_runtime
+  def test_audio_worklet(self):
+    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])

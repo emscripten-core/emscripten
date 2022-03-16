@@ -11826,3 +11826,8 @@ void foo() {}
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
     self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+
+  # Tests building the AudioWorklet demo (does not run.. see test interactive.test_audio_worklet for the running version)
+  @also_with_minimal_runtime
+  def test_audio_worklet(self):
+    self.run_process([EMCC, test_file('webaudio/audioworklet.c'), '-sAUDIO_WORKLET', '-sWASM_WORKERS'])

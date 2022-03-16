@@ -13,10 +13,20 @@
   5. Add the graph nodes to the Web Audio graph, and the audio callbacks should begin to fire.
 */
 
+#ifdef REPORT_RESULT // This is defined when running in Emscripten test harness. You can strip these out in your own project.
+_Thread_local int testTlsVariable = 1;
+int lastTlsVariableValueInAudioThread = 1;
+#endif
+
 // This function will be called for every fixed 128 samples of audio to be processed.
 EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData)
 {
+#ifdef REPORT_RESULT
+  assert(testTlsVariable == lastTlsVariableValueInAudioThread);
+  ++testTlsVariable;
+  lastTlsVariableValueInAudioThread = testTlsVariable;
   assert(emscripten_current_thread_is_audio_worklet());
+#endif
 
   // Produce noise in all output channels.
   for(int i = 0; i < numOutputs; ++i)
@@ -47,6 +57,21 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WO
   };
 });
 
+#ifdef REPORT_RESULT
+EM_BOOL main_thread_tls_access(double time, void *userData)
+{
+  // Try to mess the TLS variable on the main thread, with the expectation that it should not change
+  // the TLS value on the AudioWorklet thread.
+  testTlsVariable = (int)time;
+  if (lastTlsVariableValueInAudioThread >= 100)
+  {
+    REPORT_RESULT(0);
+    return EM_FALSE;
+  }
+  return EM_TRUE;
+}
+#endif
+
 // This callback will fire after the Audio Worklet Processor has finished being added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
 {
@@ -63,6 +88,10 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL su
 
   // Instantiate the noise-generator Audio Worklet Processor.
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
+
+#ifdef REPORT_RESULT
+  emscripten_set_timeout_loop(main_thread_tls_access, 10, 0);
+#endif
 
   InitHtmlUi(audioContext, wasmAudioWorklet);
 }
