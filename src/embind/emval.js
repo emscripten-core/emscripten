@@ -17,9 +17,13 @@
 /*global emval_get_global*/
 
 var LibraryEmVal = {
-  $emval_handle_array: [{},
-    {value: undefined},{value: null},
-    {value: true},{value: false}], // reserve zero and special values
+  $emval_handle_array: [
+    {},
+    {value: undefined},
+    {value: null},
+    {value: true},
+    {value: false}
+  ], // reserve zero and special values
   $emval_free_list: [],
   $emval_symbols: {}, // address -> string
 
@@ -34,9 +38,9 @@ var LibraryEmVal = {
   $count_emval_handles: function() {
     var count = 0;
     for (var i = 5; i < emval_handle_array.length; ++i) {
-        if (emval_handle_array[i] !== undefined) {
-            ++count;
-        }
+      if (emval_handle_array[i] !== undefined) {
+        ++count;
+      }
     }
     return count;
   },
@@ -44,9 +48,9 @@ var LibraryEmVal = {
   $get_first_emval__deps: ['$emval_handle_array'],
   $get_first_emval: function() {
     for (var i = 5; i < emval_handle_array.length; ++i) {
-        if (emval_handle_array[i] !== undefined) {
-            return emval_handle_array[i];
-        }
+      if (emval_handle_array[i] !== undefined) {
+        return emval_handle_array[i];
+      }
     }
     return null;
   },
@@ -60,36 +64,35 @@ var LibraryEmVal = {
   $getStringOrSymbol: function(address) {
     var symbol = emval_symbols[address];
     if (symbol === undefined) {
-        return readLatin1String(address);
-    } else {
-        return symbol;
+      return readLatin1String(address);
     }
+    return symbol;
   },
 
   $Emval__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
   $Emval: {
-    toValue: function(handle) {
+    toValue: (handle) => {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
       return emval_handle_array[handle].value;
     },
 
-    toHandle: function(value) {
+    toHandle: (value) => {
       switch (value) {
-        case undefined :{ return 1; }
-        case null :{ return 2; }
-        case true :{ return 3; }
-        case false :{ return 4; }
+        case undefined: return 1;
+        case null: return 2;
+        case true: return 3;
+        case false: return 4;
         default:{
           var handle = emval_free_list.length ?
               emval_free_list.pop() :
               emval_handle_array.length;
-  
+
           emval_handle_array[handle] = {refcount: 1, value: value};
           return handle;
-          }
         }
+      }
     }
   },
 
@@ -97,7 +100,7 @@ var LibraryEmVal = {
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
     if (handle > 4) {
-        emval_handle_array[handle].refcount += 1;
+      emval_handle_array[handle].refcount += 1;
     }
   },
 
@@ -105,8 +108,8 @@ var LibraryEmVal = {
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
     if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
-        emval_handle_array[handle] = undefined;
-        emval_free_list.push(handle);
+      emval_handle_array[handle] = undefined;
+      emval_free_list.push(handle);
     }
   },
 
@@ -168,7 +171,7 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return Emval.toHandle(obj);
     } */
-#if DYNAMIC_EXECUTION == 0
+#if !DYNAMIC_EXECUTION
     var argsList = new Array(argCount + 1);
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
@@ -183,7 +186,7 @@ var LibraryEmVal = {
 #else
     var argsList = "";
     for (var i = 0; i < argCount; ++i) {
-        argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
+      argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
     }
 
     var functionBody =
@@ -212,14 +215,14 @@ var LibraryEmVal = {
 
     var newer = emval_newers[argCount];
     if (!newer) {
-        newer = craftEmvalAllocator(argCount);
-        emval_newers[argCount] = newer;
+      newer = craftEmvalAllocator(argCount);
+      emval_newers[argCount] = newer;
     }
 
     return newer(handle, argTypes, args);
   },
 
-#if DYNAMIC_EXECUTION == 0
+#if !DYNAMIC_EXECUTION
   $emval_get_global: function() {
     if (typeof globalThis == 'object') {
       return globalThis;
@@ -289,7 +292,7 @@ var LibraryEmVal = {
     value = Emval.toValue(value);
     handle[key] = value;
   },
-    
+
   _emval_as__sig: 'iiii',
   _emval_as__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as: function(handle, returnType, destructorsRef) {
@@ -357,9 +360,9 @@ var LibraryEmVal = {
 
     var args = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-        var type = types[i];
-        args[i] = type['readValueFromPointer'](argv);
-        argv += type['argPackAdvance'];
+      var type = types[i];
+      args[i] = type['readValueFromPointer'](argv);
+      argv += type['argPackAdvance'];
     }
 
     var rv = handle.apply(undefined, args);
@@ -370,9 +373,8 @@ var LibraryEmVal = {
   _emval_lookupTypes: function(argCount, argTypes) {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-        a[i] = requireRegisteredType(
-            HEAP32[(argTypes >> 2) + i],
-            "parameter " + i);
+      a[i] = requireRegisteredType(HEAP32[(argTypes >> 2) + i],
+                                   "parameter " + i);
     }
     return a;
   },
@@ -407,7 +409,7 @@ var LibraryEmVal = {
       return returnId;
     }
 
-#if DYNAMIC_EXECUTION == 0
+#if !DYNAMIC_EXECUTION
     var argN = new Array(argCount - 1);
     var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
@@ -426,15 +428,14 @@ var LibraryEmVal = {
       }
     };
 #else
-
     var params = ["retType"];
     var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     for (var i = 0; i < argCount - 1; ++i) {
-        argsList += (i !== 0 ? ", " : "") + "arg" + i;
-        params.push("argType" + i);
-        args.push(types[1 + i]);
+      argsList += (i !== 0 ? ", " : "") + "arg" + i;
+      params.push("argType" + i);
+      args.push(types[1 + i]);
     }
 
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
@@ -535,7 +536,7 @@ var LibraryEmVal = {
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
   _emval_await: function(promise) {
-    return Asyncify.handleAsync(function () {
+    return Asyncify.handleAsync(() => {
       promise = Emval.toValue(promise);
       return promise.then(Emval.toHandle);
     });
