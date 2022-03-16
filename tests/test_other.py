@@ -2427,20 +2427,20 @@ int f() {
     self.assertContained('10\nok\n', self.run_js('a.out.js'))
 
   @is_slow_test
+  @parameterized({
+    '': [[]],
+    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
+    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+  })
   @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self):
+  def test_embind(self, extra_args):
     test_cases = [
-        (['-lembind']),
-        (['-lembind', '-O1']),
-        (['-lembind', '-O2']),
-        (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
+      (['-lembind']),
+      (['-lembind', '-O1']),
+      (['-lembind', '-O2']),
+      (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
     ]
-    without_utf8_args = ['-sEMBIND_STD_STRING_IS_UTF8=0']
-    test_cases_without_utf8 = []
-    for args in test_cases:
-        test_cases_without_utf8.append((args + without_utf8_args))
-    test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-sDYNAMIC_EXECUTION=0']) for args in test_cases])
+    test_cases = [t + extra_args for t in test_cases]
     # closure compiler doesn't work with DYNAMIC_EXECUTION=0
     test_cases.append((['-lembind', '-O2', '--closure=1']))
     for args in test_cases:
