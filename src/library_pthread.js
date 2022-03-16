@@ -1042,7 +1042,11 @@ var LibraryPThread = {
 
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
+      setTimeout(() => {
+        if (_pthread_self()) {
+          _emscripten_proxy_execute_queue(queue);
+        }
+      });
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {

@@ -18,6 +18,11 @@ extern "C" {
 // asynchronously or synchronously proxied from other threads. When work is
 // proxied to a queue on a particular thread, that thread is notified to start
 // processing work from that queue if it is not already doing so.
+//
+// Proxied work can only be completed on live thread runtimes, so users must
+// ensure either that all proxied work is completed before a thread exits or
+// that the thread exits with a live runtime, e.g. via
+// `emscripten_exit_with_live_runtime` to avoid dropped work.
 typedef struct em_proxying_queue em_proxying_queue;
 
 // Create and destroy proxying queues.
