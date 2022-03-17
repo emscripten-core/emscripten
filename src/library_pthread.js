@@ -1049,13 +1049,12 @@ var LibraryPThread = {
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
+  _emscripten_notify_proxying_queue__deps: ['$callUserCallback'],
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => {
-        if (_pthread_self()) {
-          _emscripten_proxy_execute_queue(queue);
-        }
-      });
+      setTimeout(() =>
+          callUserCallback(() =>
+              _emscripten_proxy_execute_queue(queue)));
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
