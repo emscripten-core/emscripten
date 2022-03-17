@@ -1052,6 +1052,8 @@ var LibraryPThread = {
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => {
+        // Only execute the queue if we have a live pthread runtime. We
+        // implement pthread_self to return 0 if there is no live runtime.
         if (_pthread_self()) {
           _emscripten_proxy_execute_queue(queue);
         }
