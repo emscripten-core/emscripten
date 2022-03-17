@@ -9088,7 +9088,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, settings=None, env=None, node_args=None):
+def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
   if env is None:
     env = {}
   if settings is None:
@@ -9107,9 +9107,6 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None):
       for k, v in self.env.items():
         del os.environ[k]
 
-    if node_args:
-      self.node_args = TT.original
-
   TT.tearDown = tearDown
 
   def setUp(self):
@@ -9126,8 +9123,13 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None):
     self.emcc_args += emcc_args
 
     if node_args:
-      TT.original = self.node_args
-      self.node_args.append(node_args)
+      self.node_args += node_args
+
+    if v8_args:
+      self.v8_args += v8_args
+
+    if require_v8:
+      self.require_v8()
 
   TT.setUp = setUp
 
@@ -9143,8 +9145,13 @@ core2g = make_run('core2g', emcc_args=['-O2', '-g'])
 core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
-core64 = make_run('core64', emcc_args=['-O0', '-g3'],
-                  settings={'MEMORY64': 2}, env=None, node_args='--experimental-wasm-bigint')
+
+# MEMORY64=1
+wasm64 = make_run('wasm64', emcc_args=[], settings={'MEMORY64': 1},
+                  require_v8=True, v8_args=['--experimental-wasm-memory64'])
+# MEMORY64=2, or "lowered"
+wasm64l = make_run('wasm64', emcc_args=[], settings={'MEMORY64': 2},
+                   node_args=['--experimental-wasm-bigint'])
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
 lto1 = make_run('lto1', emcc_args=['-flto', '-O1'])
