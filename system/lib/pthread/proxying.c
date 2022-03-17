@@ -206,6 +206,7 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 EMSCRIPTEN_KEEPALIVE
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
+  assert(pthread_self());
 
   // Recursion guard to avoid infinite recursion when we arrive here from the
   // pthread_lock call below that executes the system queue. The per-task_queue
