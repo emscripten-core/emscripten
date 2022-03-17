@@ -11836,3 +11836,11 @@ void foo() {}
     self.assertTrue(re.search(r'\(data \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
     # Test that extended-const expressions are used in at least one global initializer.
     self.assertTrue(re.search(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+
+  # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
+  # variant of the core test suite.
+  @require_v8
+  def test_memory64(self):
+    self.v8_args += ['--experimental-wasm-memory64']
+    for opt in ['-O0', '-O1', '-O2', '-O3']:
+      self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])
