@@ -4,7 +4,8 @@
 API Reference
 =============
 
-This section lists Emscripten's public API, organised by header file. At a very high level it consists of:
+This section lists Emscripten's public API, organised by header file. At a very
+high level it consists of:
 
 - :ref:`emscripten-h`:
   APIs for integrating with the browser environment.
@@ -25,13 +26,15 @@ This section lists Emscripten's public API, organised by header file. At a very 
   Enables writing multithreaded programs using a web-like API.
 
 - :ref:`Module`:
-  Global JavaScript object that can be used to control code execution and access exported methods.
+  Global JavaScript object that can be used to control code execution and access
+  exported methods.
 
 - :ref:`val-h`:
   Embind API to support transliteration of JavaScript code to C++.
 
 - :ref:`bind-h`:
-  Embind API for binding C++ functions and classes so that they can be called from JavaScript in a natural way.
+  Embind API for binding C++ functions and classes so that they can be called
+  from JavaScript in a natural way.
 
 - :ref:`trace-h`:
   A tracing API for doing memory usage analysis.
@@ -58,5 +61,3 @@ This section lists Emscripten's public API, organised by header file. At a very 
    fiber.h
    wasm_workers
    advanced-apis
-
-
