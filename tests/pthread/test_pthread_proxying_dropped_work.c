@@ -1,7 +1,8 @@
 #include <assert.h>
-#include <pthread.h>
-#include <unistd.h>
 #include <emscripten/console.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <unistd.h>
 
 #include "proxying.h"
 
@@ -11,6 +12,7 @@ _Atomic int exploded = 0;
 
 void explode(void* arg) {
   exploded = 1;
+  assert(false);
 }
 
 void* proxy_to_self(void* arg) {
