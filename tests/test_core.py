@@ -2587,6 +2587,15 @@ The current type of b is: 9
                                  emcc_args=args)
 
   @node_pthreads
+  def test_pthread_proxying_refcount(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE=1')
+    self.set_setting('ASSERTIONS=0')
+    args = [f'-I{path_from_root("system/lib/pthread")}']
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c',
+                                 emcc_args=args)
+
+  @node_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 

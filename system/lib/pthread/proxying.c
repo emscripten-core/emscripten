@@ -13,6 +13,8 @@
 
 #include "proxying.h"
 
+__attribute__((__weak__)) void __lsan_ignore_object(const void* p) {}
+
 #define TASK_QUEUE_INITIAL_CAPACITY 128
 
 extern int _emscripten_notify_proxying_queue(pthread_t target_thread,
@@ -126,13 +128,26 @@ struct em_proxying_queue {
   task_queue* task_queues;
   int size;
   int capacity;
+  // Reference count used to defer freeing the queue while there are outstanding
+  // references to it in JS event queues.
+  int refcount;
+#ifndef NDEBUG
+  // Track whether the user has destroyed the queue to prevent double frees.
+  int destroyed;
+#endif
 };
 
 static em_proxying_queue system_proxying_queue = {.mutex =
                                                     PTHREAD_MUTEX_INITIALIZER,
                                                   .task_queues = NULL,
                                                   .size = 0,
-                                                  .capacity = 0};
+                                                  .capacity = 0,
+                                                  .refcount = 1
+#ifndef NDEBUG
+                                                  ,
+                                                  .destroyed = 0
+#endif
+};
 
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
@@ -146,21 +161,50 @@ em_proxying_queue* em_proxying_queue_create(void) {
   *q = (em_proxying_queue){.mutex = PTHREAD_MUTEX_INITIALIZER,
                            .task_queues = NULL,
                            .size = 0,
-                           .capacity = 0};
+                           .capacity = 0,
+                           .refcount = 1
+#ifndef NDEBUG
+                           ,
+                           .destroyed = 0
+#endif
+  };
   return q;
 }
 
-void em_proxying_queue_destroy(em_proxying_queue* q) {
+static void do_em_proxying_queue_destroy(em_proxying_queue* q) {
   assert(q != NULL);
   assert(q != &system_proxying_queue && "cannot destroy system proxying queue");
-  // No need to acquire the lock; no one should be racing with the destruction
-  // of the queue.
+
+  // Decrement the refcount and do not actually destroy the queue if there are
+  // outstanding references to it.
+  pthread_mutex_lock(&q->mutex);
+  assert(q->refcount > 0);
+  int refcount = --q->refcount;
+  pthread_mutex_unlock(&q->mutex);
+  if (refcount > 0) {
+    return;
+  }
+
+  // No outstanding references; destroy the queue.
   pthread_mutex_destroy(&q->mutex);
   for (int i = 0; i < q->size; i++) {
     task_queue_deinit(&q->task_queues[i]);
   }
   free(q->task_queues);
   free(q);
+}
+
+void em_proxying_queue_destroy(em_proxying_queue* q) {
+  // User-facing destructor. Check for double frees if debugging and do not
+  // report queues as leaked after this has been called.
+#ifndef NDEBUG
+  pthread_mutex_lock(&q->mutex);
+  assert(!q->destroyed && "proxy queue double freed");
+  q->destroyed = 1;
+  pthread_mutex_unlock(&q->mutex);
+#endif
+  __lsan_ignore_object(q);
+  do_em_proxying_queue_destroy(q);
 }
 
 // Not thread safe. Returns -1 if there are no tasks for the thread.
@@ -202,8 +246,6 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
-// Exported for use in worker.js.
-EMSCRIPTEN_KEEPALIVE
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
@@ -266,8 +308,10 @@ int emscripten_proxy_async(em_proxying_queue* q,
   pthread_mutex_unlock(&q->mutex);
   // If the queue was previously empty, notify the target thread to process it.
   // Otherwise, the target thread was already notified when the existing work
-  // was enqueued so we don't need to notify it again.
+  // was enqueued so we don't need to notify it again. Increase the refcount to
+  // avoid destroying the queue while JS holds a reference to it.
   if (empty) {
+    q->refcount++;
     _emscripten_notify_proxying_queue(
       target_thread, pthread_self(), emscripten_main_browser_thread_id(), q);
   }
@@ -350,4 +394,16 @@ int emscripten_proxy_sync(em_proxying_queue* q,
                           void* arg) {
   task t = {func, arg};
   return emscripten_proxy_sync_with_ctx(q, target_thread, call_then_finish, &t);
+}
+
+// Exported for use in worker.js and library_pthread.js.
+EMSCRIPTEN_KEEPALIVE
+void _emscripten_execute_notified_proxying_queue(em_proxying_queue* queue) {
+  // Execute the queue if we have a live runtime and decrease its refcount.
+  if (pthread_self()) {
+    emscripten_proxy_execute_queue(queue);
+  }
+  if (queue != &system_proxying_queue) {
+    do_em_proxying_queue_destroy(queue);
+  }
 }

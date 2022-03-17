@@ -265,7 +265,7 @@ var LibraryPThread = {
 
         if (cmd === 'processProxyingQueue') {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-          _emscripten_proxy_execute_queue(d['queue']);
+          __emscripten_execute_notified_proxying_queue(d['queue']);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -1042,11 +1042,7 @@ var LibraryPThread = {
 
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => {
-        if (_pthread_self()) {
-          _emscripten_proxy_execute_queue(queue);
-        }
-      });
+      setTimeout(() => __emscripten_execute_notified_proxying_queue(queue));
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
