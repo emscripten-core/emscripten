@@ -1335,6 +1335,14 @@ FS.staticInit();` +
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');
       FS.mkdir('/dev/shm/tmp');
+      
+      // setup file system with time zone information
+      const zone = '/usr/share/zoneinfo/' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+      FS.mkdirTree(PATH.dirname(zone));
+      FS.createFile(PATH.dirname(zone), PATH.basename(zone));
+      FS.mkdir('/etc');
+      FS.symlink(zone, '/etc/localtime')
+
     },
     createSpecialDirectories: () => {
       // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the

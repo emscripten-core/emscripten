@@ -33,6 +33,7 @@ var WasiLibrary = {
         'PWD': '/',
         'HOME': '/home/web_user',
         'LANG': lang,
+        'TZ': Intl.DateTimeFormat().resolvedOptions().timeZone,
         '_': getExecutableName()
       };
       // Apply the user-provided values, if any.
