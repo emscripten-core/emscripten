@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.19
 ------
+- Old method of metadata extraction via wasm-emscripten-finalize removed
+  in favor of local python code. (#16529)
 
 3.1.18 - 08/01/2022
 -------------------
