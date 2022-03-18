@@ -2592,6 +2592,8 @@ The current type of b is: 9
     self.set_setting('PTHREAD_POOL_SIZE=1')
     self.set_setting('ASSERTIONS=0')
     args = [f'-I{path_from_root("system/lib/pthread")}']
+    if '-fsanitize=address' in self.emcc_args or '-fsanitize=leak' in self.emcc_args:
+      args += ['-DSANITIZER']
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c',
                                  emcc_args=args)
 
