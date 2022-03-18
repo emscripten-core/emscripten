@@ -8860,7 +8860,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'))
 
@@ -8873,7 +8872,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf(test_file('core/pthread/test_pthread_dlsym.c'))
 
