@@ -1056,6 +1056,8 @@ var LibraryPThread = {
       setTimeout(() => {
         // Only execute the queue if we have a live pthread runtime. We
         // implement pthread_self to return 0 if there is no live runtime.
+        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+        //       `runtimeExited` is correctly unset on workers.
         if (_pthread_self()) {
           _emscripten_proxy_execute_queue(queue);
         }
