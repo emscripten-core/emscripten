@@ -19,6 +19,7 @@ $_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
 $_emscripten_thread_init
+$_emscripten_yield
 $_main_thread
 $a_cas
 $a_cas_p.1
