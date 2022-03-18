@@ -54,7 +54,7 @@ int main() {
   }
   pthread_mutex_unlock(&mutex);
 
-  // Wait a bit (50 ms) for the postmessage notification to be recieved and
+  // Wait a bit (50 ms) for the postMessage notification to be received and
   // processed.
   struct timespec time = {
     .tv_sec = 0,
