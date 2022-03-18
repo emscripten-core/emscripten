@@ -167,8 +167,8 @@ struct em_proxying_queue {
   // Decremented directly from JS, so this must be the first field.
   _Atomic int js_refcount;
   // Doubly linked list pointers for the zombie list.
-  em_proxying_queue* prev;
-  em_proxying_queue* next;
+  em_proxying_queue* zombie_prev;
+  em_proxying_queue* zombie_next;
   // Protects all accesses to task_queues, size, and capacity.
   pthread_mutex_t mutex;
   // `size` task queues stored in an array of size `capacity`.
@@ -179,8 +179,8 @@ struct em_proxying_queue {
 
 // The system proxying queue.
 static em_proxying_queue system_proxying_queue = {.js_refcount = 0,
-                                                  .prev = NULL,
-                                                  .next = NULL,
+                                                  .zombie_prev = NULL,
+                                                  .zombie_next = NULL,
                                                   .mutex =
                                                     PTHREAD_MUTEX_INITIALIZER,
                                                   .task_queues = NULL,
@@ -193,8 +193,8 @@ em_proxying_queue* emscripten_proxy_get_system_queue(void) {
 
 // The head of the zombie list. Its mutex protects access to the list and its
 // other fields are not used..
-static em_proxying_queue zombie_list_head = {.prev = &zombie_list_head,
-                                             .next = &zombie_list_head,
+static em_proxying_queue zombie_list_head = {.zombie_prev = &zombie_list_head,
+                                             .zombie_next = &zombie_list_head,
                                              .mutex =
                                                PTHREAD_MUTEX_INITIALIZER};
 
@@ -209,13 +209,13 @@ static void em_proxying_queue_free(em_proxying_queue* q) {
 
 static void cull_zombies() {
   pthread_mutex_lock(&zombie_list_head.mutex);
-  em_proxying_queue* curr = zombie_list_head.next;
+  em_proxying_queue* curr = zombie_list_head.zombie_next;
   while (curr != &zombie_list_head) {
-    em_proxying_queue* next = curr->next;
+    em_proxying_queue* next = curr->zombie_next;
     if (curr->js_refcount == 0) {
       // Remove the zombie from the list and free it.
-      curr->prev->next = curr->next;
-      curr->next->prev = curr->prev;
+      curr->zombie_prev->zombie_next = curr->zombie_next;
+      curr->zombie_next->zombie_prev = curr->zombie_prev;
       em_proxying_queue_free(curr);
     }
     curr = next;
@@ -233,8 +233,8 @@ em_proxying_queue* em_proxying_queue_create(void) {
     return NULL;
   }
   *q = (em_proxying_queue){.js_refcount = 0,
-                           .prev = NULL,
-                           .next = NULL,
+                           .zombie_prev = NULL,
+                           .zombie_next = NULL,
                            .mutex = PTHREAD_MUTEX_INITIALIZER,
                            .task_queues = NULL,
                            .size = 0,
@@ -245,7 +245,8 @@ em_proxying_queue* em_proxying_queue_create(void) {
 void em_proxying_queue_destroy(em_proxying_queue* q) {
   assert(q != NULL);
   assert(q != &system_proxying_queue && "cannot destroy system proxying queue");
-  assert(!q->next && !q->prev && "double freeing em_proxying_queue!");
+  assert(!q->zombie_next && !q->zombie_prev &&
+         "double freeing em_proxying_queue!");
   if (q->js_refcount == 0) {
     // No outstanding references to the queue, so we can go ahead and free it.
     em_proxying_queue_free(q);
@@ -254,10 +255,10 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
   // Otherwise add the queue to the zombie list so that it will eventually be
   // freed safely.
   pthread_mutex_lock(&zombie_list_head.mutex);
-  q->next = zombie_list_head.next;
-  q->prev = &zombie_list_head;
-  q->next->prev = q;
-  q->prev->next = q;
+  q->zombie_next = zombie_list_head.zombie_next;
+  q->zombie_prev = &zombie_list_head;
+  q->zombie_next->zombie_prev = q;
+  q->zombie_prev->zombie_next = q;
   pthread_mutex_unlock(&zombie_list_head.mutex);
 }
 
