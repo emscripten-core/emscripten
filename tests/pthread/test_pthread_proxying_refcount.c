@@ -60,7 +60,7 @@ int main() {
     assert(queues[i]);
   }
 
-  // Create the worker and send it a tasks.
+  // Create the worker and send it tasks.
   pthread_t worker;
   pthread_create(&worker, NULL, execute_and_free_queue, NULL);
   for (int i = 0; i < 2; i++) {
