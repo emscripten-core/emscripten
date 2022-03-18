@@ -46,6 +46,10 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
+void _emscripten_yield() {
+  // nop
+}
+
 int pthread_mutex_init(
   pthread_mutex_t* __restrict mutex, const pthread_mutexattr_t* __restrict attr) {
   return 0;
