@@ -68,13 +68,13 @@ int main() {
   }
   should_execute = 1;
 
-  // Wait a bit (50 ms) for the postMessage notification to be received and
-  // processed.
-  struct timespec time = {
-    .tv_sec = 0,
-    .tv_nsec = 50 * 1000 * 1000,
-  };
-  nanosleep(&time, NULL);
+  // Wait for the tasks to be executed.
+  while (!executed[0] || !executed[1]) {
+  }
+
+  // Break the queue abstraction to wait for the refcounts to be decreased.
+  while (*(_Atomic int*)queues[0] || *(_Atomic int*)queues[1]) {
+  }
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.
