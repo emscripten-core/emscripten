@@ -290,7 +290,7 @@ self.onmessage = (e) => {
         Module['_emscripten_proxy_execute_queue'](e.data.queue);
       }
       // Decrement the ref count
-      Atomics.add(HEAP32, e.data.queue >> 2, -1);
+      Atomics.sub(HEAP32, e.data.queue >> 2, 1);
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
