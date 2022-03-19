@@ -119,10 +119,12 @@ public:
     other.queue = nullptr;
     return *this;
   }
+
   ProxyingQueue(const ProxyingQueue&) = delete;
   ProxyingQueue(ProxyingQueue&& other) : queue(nullptr) {
     *this = std::move(other);
   }
+
   ~ProxyingQueue() {
     if (queue) {
       em_proxying_queue_destroy(queue);
