@@ -1519,7 +1519,6 @@ def setup_pthreads(target):
     '__emscripten_thread_exit',
     '__emscripten_thread_crashed',
     '_emscripten_tls_init',
-    '_emscripten_current_thread_process_queued_calls',
     '_pthread_self',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
