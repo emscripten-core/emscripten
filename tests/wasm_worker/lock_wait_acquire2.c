@@ -50,8 +50,8 @@ char stack2[1024];
 
 int main()
 {
-  emscripten_wasm_worker_t worker1 = emscripten_create_wasm_worker_no_tls(stack1, sizeof(stack1));
-  emscripten_wasm_worker_t worker2 = emscripten_create_wasm_worker_no_tls(stack2, sizeof(stack2));
+  emscripten_wasm_worker_t worker1 = emscripten_create_wasm_worker(stack1, sizeof(stack1));
+  emscripten_wasm_worker_t worker2 = emscripten_create_wasm_worker(stack2, sizeof(stack2));
   emscripten_wasm_worker_post_function_v(worker1, worker1_main);
   emscripten_wasm_worker_post_function_v(worker2, worker2_main);
 }

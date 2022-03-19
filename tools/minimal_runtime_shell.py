@@ -54,7 +54,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     files_to_load += ["binary('%s')" % (target_basename + '.mem')]
 
   # Download .wasm file
-  if settings.WASM == 1 or not download_wasm:
+  if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
     if settings.MODULARIZE:
       modularize_imports += ['wasm: r[%d]' % len(files_to_load)]
     else:

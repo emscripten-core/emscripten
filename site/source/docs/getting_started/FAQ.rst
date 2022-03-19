@@ -143,7 +143,7 @@ to use a local webserver. For example, Python has one built in,
 in Python 2. After doing that, you can visit ``http://localhost:8000/``.
 
 When doing quick local testing, another option than a local webserver is to
-bundle everything into a single file, using ``-s SINGLE_FILE`` (as then no XHRs
+bundle everything into a single file, using ``-sSINGLE_FILE`` (as then no XHRs
 will be made to ``file://`` URLs).
 
 Otherwise, to debug this, look for an error reported on the page itself, or in
@@ -151,16 +151,16 @@ the browser devtools (web console and network tab), or in your webserver's
 logging.
 
 
-What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
+What is "No WebAssembly support found. Build with -sWASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
 Those errors indicate that WebAssembly support is not present in the VM you are
-trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly
+trying to run the code in. Compile with ``-sWASM=0`` to disable WebAssembly
 (and emit equivalent JS instead), if you want your code to run in such
 environments. Note that all modern browsers support WebAssembly, so this should
 only matter if you need to target legacy browsers.
 
-``-s WASM=0`` output should run exactly the same as a WebAssembly build, but may
+``-sWASM=0`` output should run exactly the same as a WebAssembly build, but may
 be larger, start up slower, and run slower, so it's better to ship WebAssembly
 whenever you can.
 
@@ -282,7 +282,7 @@ Emscripten has partial support for SDL1 and 2 audio, and OpenAL.
 To use SDL1 audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it
 that way alongside SDL1, SDL2, or another library for platform integration.
 
-To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-s USE_SDL_MIXER=2`. Format support is currently limited to OGG and WAV.
+To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-sUSE_SDL_MIXER=2`. Format support is currently limited to OGG and WAV.
 
 How can my compiled program access files?
 =========================================
@@ -366,12 +366,12 @@ The crucial thing is that ``Module`` exists, and has the property
 ``onRuntimeInitialized``, before the script containing emscripten output
 (``my_project.js`` in this example) is loaded.
 
-Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``.
+Another option is to use the ``MODULARIZE`` option, using ``-sMODULARIZE``.
 That puts all of the generated JavaScript into a factory function, which you can
 call to create an instance of your module. The factory function returns a
 Promise that resolves with the module instance. The promise is resolved once
 it's safe to call the compiled code, i.e. after the compiled code has been
-downloaded and instantiated. For example, if you build with ``-s MODULARIZE=1 -s
+downloaded and instantiated. For example, if you build with ``-sMODULARIZE -s
 'EXPORT_NAME="createMyModule"'``, then you can do this:
 
 ::
@@ -403,7 +403,7 @@ asynchronous happening later that you want to execute.
 
 In some cases, though, you may want a more "commandline" experience, where we do
 shut down the runtime when ``main()`` exits. You can build with ``-s
-EXIT_RUNTIME=1``, and then we will call ``atexits`` and so forth. When you build
+EXIT_RUNTIME``, and then we will call ``atexits`` and so forth. When you build
 with ``ASSERTIONS``, you should get a warning when you need this. For example,
 if your program prints something without a newline,
 
@@ -435,7 +435,7 @@ it must be added to the `EXPORTED_FUNCTIONS
 using the *emcc* command line. For example, to prevent functions ``my_func()``
 and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-  emcc -s EXPORTED_FUNCTIONS=_main,_my_func  ...
+  emcc -sEXPORTED_FUNCTIONS=_main,_my_func  ...
 
 .. note:: `_main` should be in the export list, as in that example, if you have
    a `main()` function. Otherwise, it will be removed as dead code; there is no
@@ -470,7 +470,7 @@ function with :c:type:`EMSCRIPTEN_KEEPALIVE`: ::
     build the same source in multiple ways and change what is exported, then
     managing exports on the command line is easier.
 
-  - Running *emcc* with ``-s LINKABLE=1`` will also disable link-time
+  - Running *emcc* with ``-sLINKABLE`` will also disable link-time
     optimizations and dead code elimination. This is not recommended as it makes
     the code larger and less optimized.
 
@@ -532,13 +532,13 @@ example,
 
  ::
 
-  emcc -s EXPORTED_FUNCTIONS=_main,_my_func ...
+  emcc -sEXPORTED_FUNCTIONS=_main,_my_func ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-  emcc -s EXPORTED_RUNTIME_METHODS=ccall ...
+  emcc -sEXPORTED_RUNTIME_METHODS=ccall ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -593,23 +593,23 @@ That may occur when using the old list syntax for ``-s`` settings:
 ::
 
   # this fails on most Linuxes
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=['foo']
+  emcc a.c -sEXPORTED_RUNTIME_METHODS=['foo']
 
   # this fails on macOS
-  emcc a.c -s EXPORTED_RUNTIME_METHODS="['foo']"
+  emcc a.c -sEXPORTED_RUNTIME_METHODS="['foo']"
 
 A new, simpler way to specify these lists is to simply use
 comma separated lists:
 
 ::
 
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=foo,bar
+  emcc a.c -sEXPORTED_RUNTIME_METHODS=foo,bar
 
 It is also possible to use a **response file**, that is,
 
 ::
 
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=@extra.txt
+  emcc a.c -sEXPORTED_RUNTIME_METHODS=@extra.txt
 
 with ``extra.txt`` being a plain text file that contains ``foo`` and ``bar`` on
 seperate lines.
@@ -621,7 +621,7 @@ Simple things like this should just work in a ``CMakeLists.txt`` file:
 
 ::
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
 
 However, some ``-s`` options may require quoting, or the space between ``-s``
 and the next argument may confuse CMake, when using things like
@@ -696,8 +696,8 @@ currently supported.
 How do I pass int64_t and uint64_t values from js into wasm functions?
 ======================================================================
 
-If you build using the `-s WASM_BIGINT` flag, then `int64_t` and `uint64_t` will
-be represented as `bigint` values in JS. Without the `-s WASM_BIGINT` flag, the
+If you build using the `-sWASM_BIGINT` flag, then `int64_t` and `uint64_t` will
+be represented as `bigint` values in JS. Without the `-sWASM_BIGINT` flag, the
 values will be represented as `number` in JS which can't represent int64s, so
 what happens is that in exported functions (that you can call from JS) we
 "legalize" the types, by turning an i64 argument into two i32s (low and high
@@ -735,7 +735,7 @@ Can I build JavaScript that only runs on the Web?
 =================================================
 
 Yes, you can see the `ENVIRONMENT` option in ``settings.js``. For example,
-building with ``emcc -s ENVIRONMENT=web`` will emit code that only runs on the
+building with ``emcc -sENVIRONMENT=web`` will emit code that only runs on the
 Web, and does not include support code for Node.js and other environments.
 
 This can be useful to reduce code size, and also works around issues like the

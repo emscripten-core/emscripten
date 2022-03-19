@@ -14,18 +14,11 @@ from subprocess import Popen
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner sockets')
 
-try:
-  import websockify
-except Exception:
-  # websockify won't successfully import on Windows under Python3, because socketserver.py doesn't export ForkingMixIn.
-  # (On python2, ForkingMixIn was exported but it didn't actually work on Windows).
-  # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
-  # which is the same behavior as before.
-  pass
 import clang_native
+import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
 from tools import shared, config, utils
-from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
+from tools.shared import PYTHON, EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
 
@@ -63,6 +56,8 @@ class WebsockifyServerHarness():
       run_process([CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
+
+    import websockify
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -167,8 +162,6 @@ class sockets(BrowserCore):
     os.environ['NODE_PATH'] = path_from_root('node_modules')
 
   def test_sockets_echo(self, extra_args=[]):
-    sockets_include = '-I' + test_file('sockets')
-
     # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use consecutive server listen ports,
     # because server teardown might not occur deterministically (python dtor time) and is a bit racy.
     # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
@@ -177,20 +170,20 @@ class sockets(BrowserCore):
 
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0'], 49161), 0),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1'], 49162), 1),
       # The following forces non-NULL addr and addlen parameters for the accept call
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
-      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include], 49160), 0)]
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
+      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49160), 0)]
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram] + extra_args)
 
-  def test_sockets_echo_pthreads(self, extra_args=[]):
+  def test_sockets_echo_pthreads(self):
     self.test_sockets_echo(['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   def test_sdl2_sockets_echo(self):
@@ -199,28 +192,26 @@ class sockets(BrowserCore):
       self.btest_exit('sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
-    sockets_include = '-I' + test_file('sockets')
-
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49167), 0),
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49168), 1),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49167), 0),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49168), 1),
       # The following forces non-NULL addr and addlen parameters for the accept call
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49169), 0)
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49169), 0)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
-      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49166), 0)]
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
+      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_ASYNC=1'], 49166), 0)]
 
     for harness, datagram in harnesses:
       print('harness:', harness)
       with harness:
-        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
+        self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1'])
         return
 
     # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
     print('expect fail')
-    self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
+    self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-DSOCKK=49169', '-DTEST_ASYNC=1'])
 
   def test_sockets_echo_bigdata(self):
     sockets_include = '-I' + test_file('sockets')
@@ -235,12 +226,12 @@ class sockets(BrowserCore):
     create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     harnesses = [
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49172), 0),
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49173), 1)
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0'], 49172), 0),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1'], 49173), 1)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
-      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include], 49171), 0)]
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
+      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49171), 0)]
 
     for harness, datagram in harnesses:
       with harness:
@@ -266,14 +257,12 @@ class sockets(BrowserCore):
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_closes_connection_rw(self):
-    sockets_include = '-I' + test_file('sockets')
-
     for harness in [
-      WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
-      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
+      WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
+      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
     ]:
       with harness:
-        self.btest_exit(test_file('sockets/test_sockets_select_server_closes_connection_client_rw.c'), args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(test_file('sockets/test_sockets_select_server_closes_connection_client_rw.c'), args=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
@@ -296,15 +285,13 @@ class sockets(BrowserCore):
     if config.NODE_JS not in config.JS_ENGINES:
       self.skipTest('node is not present')
 
-    sockets_include = '-I' + test_file('sockets')
-
     harnesses = [
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 59162), 0),
-      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 59164), 1)
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=0'], 59162), 0),
+      (CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DTEST_DGRAM=1'], 59164), 1)
     ]
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
-      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include], 59160), 0)]
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
+      harnesses += [(WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59160), 0)]
 
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
@@ -312,13 +299,13 @@ class sockets(BrowserCore):
         expected = 'do_msg_read: read 14 bytes'
         self.do_runf(test_file('sockets/test_sockets_echo_client.c'), expected, emcc_args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram])
 
-    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+    if not common.EMTEST_LACKS_NATIVE_CLANG:
       # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
       # server because as long as the subprotocol list contains binary it will configure itself to accept binary
       # This test also checks that the connect url contains the correct subprotocols.
       print("\nTesting compile time WebSocket configuration.\n")
       for harness in [
-        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include], 59166)
+        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59166)
       ]:
         with harness:
           self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'])
@@ -340,7 +327,7 @@ class sockets(BrowserCore):
         };
       ''')
       for harness in [
-        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [sockets_include], 59168)
+        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168)
       ]:
         with harness:
           self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])

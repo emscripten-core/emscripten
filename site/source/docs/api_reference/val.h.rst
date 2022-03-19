@@ -87,6 +87,16 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     Creates and returns a new ``Object``.
 
 
+  .. cpp:function:: static val u8string(const char* s)
+
+    Creates a ``val`` from a string literal in UTF-8 encoding.
+
+
+  .. cpp:function:: static val u16string(const char16_t* s)
+
+    Creates a ``val`` from a string literal in UTF-16 encoding.
+
+
   .. cpp:function:: static val undefined()
 
     Creates a ``val`` that represents ``undefined``.

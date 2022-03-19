@@ -24,13 +24,12 @@ void worker_main()
 }
 
 char stack[1024];
-char tlsBase[1024];
 
 int main()
 {
   EM_ASM(console.log($0), tls);
   assert(!emscripten_current_thread_is_wasm_worker());
   tls = 42;
-  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker_with_tls(stack, sizeof(stack), tlsBase, __builtin_wasm_tls_size());
+  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 }

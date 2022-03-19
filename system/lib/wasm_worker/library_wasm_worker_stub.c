@@ -8,11 +8,7 @@
 #error __EMSCRIPTEN_WASM_WORKERS__ should not be defined when building this file!
 #endif
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize) {
-  return 0;
-}
-
-emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize) {
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize) {
   return 0;
 }
 

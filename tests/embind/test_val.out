@@ -268,4 +268,16 @@ pass
 pass
 pass
 pass
+test:
+val u8string(const char* s)
+pass
+pass
+pass
+pass
+test:
+val u16string(const char16_t* s)
+pass
+pass
+pass
+pass
 end

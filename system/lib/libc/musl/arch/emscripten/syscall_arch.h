@@ -11,9 +11,7 @@
 extern "C" {
 #endif
 
-long __syscall_open(long path, long flags, ...); // mode is optional
 long __syscall_link(long oldpath, long newpath);
-long __syscall_unlink(long path);
 long __syscall_chdir(long path);
 long __syscall_mknod(long path, long mode, long dev);
 long __syscall_chmod(long path, long mode);
@@ -22,7 +20,6 @@ long __syscall_pause(void);
 long __syscall_access(long path, long amode);
 long __syscall_nice(long inc);
 long __syscall_sync(void);
-long __syscall_rename(long old_path, long new_path);
 long __syscall_mkdir(long path, long mode);
 long __syscall_rmdir(long path);
 long __syscall_dup(long fd);
@@ -37,7 +34,6 @@ long __syscall_setsid(void);
 long __syscall_setrlimit(long resource, long limit);
 long __syscall_getrusage(long who, long usage);
 long __syscall_symlink(long target, long linkpath);
-long __syscall_readlink(long path, long buf, long bufsize);
 long __syscall_munmap(long addr, long len);
 long __syscall_fchmod(long fd, long mode);
 long __syscall_getpriority(long which, long who);
@@ -92,11 +88,11 @@ long __syscall_fcntl64(long fd, long cmd, ...);
 long __syscall_statfs64(long path, long size, long buf);
 long __syscall_fstatfs64(long fd, long size, long buf);
 long __syscall_fadvise64_64(long fd, long low, long high, long low2, long high2, long advice);
-long __syscall_openat(long dirfd, long path, long flags, ...);
+long __syscall_openat(long dirfd, long path, long flags, ...); // mode is optional
 long __syscall_mkdirat(long dirfd, long path, long mode);
 long __syscall_mknodat(long dirfd, long path, long mode, long dev);
 long __syscall_fchownat(long dirfd, long path, long owner, long group, long flags);
-long __syscall_fstatat64(long dirfd, long path, long buf, long flags);
+long __syscall_newfstatat(long dirfd, long path, long buf, long flags);
 long __syscall_unlinkat(long dirfd, long path, long flags);
 long __syscall_renameat(long olddirfd, long oldpath, long newdirfd, long newpath);
 long __syscall_linkat(long olddirfd, long oldpath, long newdirfd, long newpath, long flags);

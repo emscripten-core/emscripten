@@ -72,7 +72,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Allows you to provide your own ``ArrayBuffer`` or ``SharedArrayBuffer`` to use as the memory.
 
-  .. note:: This is only supported if ``-s WASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
+  .. note:: This is only supported if ``-sWASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
 
 .. js:attribute:: Module.wasmMemory
 
@@ -131,7 +131,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.preinitializedWebGLContext
 
-  If building with ``-s GL_PREINITIALIZED_CONTEXT=1`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+  If building with ``-sGL_PREINITIALIZED_CONTEXT`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
 
 .. js:attribute:: Module.preRun
 
