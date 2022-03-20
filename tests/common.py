@@ -515,6 +515,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
+    if type(value) == bool:
+      value = int(value)
     self.settings_mods[key] = value
 
   def has_changed_setting(self, key):
