@@ -25,7 +25,7 @@ npm_checked = False
 
 def clean_processes(processes):
   for p in processes:
-    if (not hasattr(p, 'exitcode') or p.exitcode is None) and (not hasattr(p, 'returncode') or p.returncode is None):
+    if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
       # ask nicely (to try and catch the children)
       try:
         p.terminate() # SIGTERM
@@ -53,7 +53,9 @@ class WebsockifyServerHarness():
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      run_process([CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, env=clang_native.get_clang_native_env())
+      cmd = [CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args
+      print(cmd)
+      run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
@@ -81,6 +83,7 @@ class WebsockifyServerHarness():
       raise Exception('[Websockify failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
+    return self
 
   def __exit__(self, *args, **kwargs):
     # try to kill the websockify proxy gracefully
@@ -114,6 +117,7 @@ class CompiledServerHarness():
 
     process = Popen(config.NODE_JS + ['server.js'])
     self.processes.append(process)
+    return self
 
   def __exit__(self, *args, **kwargs):
     # clean up any processes we started
@@ -133,6 +137,7 @@ class BackgroundServerProcess():
     print('Running background server: ' + str(self.args))
     process = Popen(self.args)
     self.processes.append(process)
+    return self
 
   def __exit__(self, *args, **kwargs):
     clean_processes(self.processes)
@@ -187,8 +192,7 @@ class sockets(BrowserCore):
     self.test_sockets_echo(['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   def test_sdl2_sockets_echo(self):
-    harness = CompiledServerHarness('sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164)
-    with harness:
+    with CompiledServerHarness('sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
       self.btest_exit('sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
@@ -274,11 +278,8 @@ class sockets(BrowserCore):
       self.run_process([path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
-    for harness in [
-      CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210)
-    ]:
-      with harness:
-        self.btest_exit(test_file('sockets/test_enet_client.c'), args=enet + ['-DSOCKK=%d' % harness.listen_port])
+    with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
+      self.btest_exit(test_file('sockets/test_enet_client.c'), args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
@@ -304,15 +305,12 @@ class sockets(BrowserCore):
       # server because as long as the subprotocol list contains binary it will configure itself to accept binary
       # This test also checks that the connect url contains the correct subprotocols.
       print("\nTesting compile time WebSocket configuration.\n")
-      for harness in [
-        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59166)
-      ]:
-        with harness:
-          self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'])
+      with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59166):
+        self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'])
 
-          out = self.run_js('client.js')
-          self.assertContained('do_msg_read: read 14 bytes', out)
-          self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
+        out = self.run_js('client.js')
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
       # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
       # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
@@ -326,15 +324,12 @@ class sockets(BrowserCore):
           }
         };
       ''')
-      for harness in [
-        WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168)
-      ]:
-        with harness:
-          self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
+      with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168) as harness:
+        self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
 
-          out = self.run_js('client.js')
-          self.assertContained('do_msg_read: read 14 bytes', out)
-          self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
+        out = self.run_js('client.js')
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
 
   # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
