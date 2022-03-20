@@ -5713,9 +5713,9 @@ int main(int argc, char** argv) {
     self.assertLess(2.25 * vector, iostream)
 
   @parameterized({
-    '': (True,),
+    '': ('1',),
     # TODO(sbc): make dynamic linking work with wasm2js
-    # 'wasm2js': (False,)
+    # 'wasm2js': ('0',)
   })
   def test_minimal_dynamic(self, wasm):
     library_file = 'library.wasm' if wasm else 'library.js'
@@ -5734,7 +5734,7 @@ int main(int argc, char** argv) {
         }
       ''')
       # -fno-builtin to prevent printf -> iprintf optimization
-      self.run_process([EMCC, 'library.c', '-fno-builtin', '-sSIDE_MODULE', '-O2', '-o', library_file, '-sWASM=' + str(wasm), '-sEXPORT_ALL'] + library_args)
+      self.run_process([EMCC, 'library.c', '-fno-builtin', '-sSIDE_MODULE', '-O2', '-o', library_file, '-sWASM=' + wasm, '-sEXPORT_ALL'] + library_args)
       create_file('main.c', r'''
         #include <dlfcn.h>
         #include <stdio.h>
@@ -5752,7 +5752,7 @@ int main(int argc, char** argv) {
           else x();
         }
       ''' % library_file)
-      self.run_process([EMCC, 'main.c', '--embed-file', library_file, '-O2', '-sWASM=' + str(wasm)] + main_args)
+      self.run_process([EMCC, 'main.c', '--embed-file', library_file, '-O2', '-sWASM=' + wasm] + main_args)
       self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
       size = os.path.getsize('a.out.js')
       if wasm:
@@ -6663,17 +6663,19 @@ high = 1234
 
   def test_dash_s_unclosed_list(self):
     # Unclosed list
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, Value2"])
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, Value2"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
     self.assertContained('unclosed opened string list. expected final character to be "]"', err)
 
   def test_dash_s_valid_list(self):
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
     self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
 
   def test_dash_s_wrong_type(self):
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=[foo,bar]'])
-    self.assertContained("error: setting `EXIT_RUNTIME` expects `<class 'int'>` but got `<class 'list'>`", err)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=[foo,bar]'])
+    self.assertContained('error: setting `EXIT_RUNTIME` expects `bool` but got `list`', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=true'])
+    self.assertContained('error: attempt to set `EXIT_RUNTIME` to `true`; use 1/0 to set boolean setting', err)
 
   def test_dash_s_typo(self):
     # with suggestions
