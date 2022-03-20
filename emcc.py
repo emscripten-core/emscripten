@@ -3415,7 +3415,7 @@ def phase_binaryen(target, options, wasm_target):
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
-    building.emit_debug_on_side(wasm_target, settings.SEPARATE_DWARF)
+    building.emit_debug_on_side(wasm_target)
 
   if settings.WASM2C:
     wasm2c.do_wasm2c(wasm_target)

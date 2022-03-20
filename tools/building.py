@@ -1232,7 +1232,7 @@ def strip(infile, outfile, debug=False, producers=False):
 # debug into as a file on the side
 # TODO: emit only debug sections in the side file, and not the entire
 #       wasm as well
-def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
+def emit_debug_on_side(wasm_file):
   # if the dwarf filename wasn't provided, use the default target + a suffix
   wasm_file_with_dwarf = settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:
