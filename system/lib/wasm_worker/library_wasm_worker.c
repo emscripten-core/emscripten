@@ -2,6 +2,7 @@
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <emscripten/heap.h>
+#include <emscripten/stack.h>
 #include <malloc.h>
 
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
@@ -9,61 +10,46 @@
 #endif
 
 // Options:
-// #define WASM_WORKER_NO_TLS 0/1 : set to 1 to disable TLS compilation support for a small code size gain
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress);
-emscripten_wasm_worker_t _emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
+emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
 void __wasm_init_tls(void *memory);
 
-#if !WASM_WORKER_NO_TLS
 __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 	__wasm_init_tls((void*)*sbrk_ptr);
 	*sbrk_ptr += __builtin_wasm_tls_size();
 }
-#endif
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize)
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
 {
-#if WASM_WORKER_NO_TLS
-	return emscripten_create_wasm_worker_no_tls(stackLowestAddress, stackSize);
-#else
+	assert(stackLowestAddress != 0);
 	assert((uintptr_t)stackLowestAddress % 16 == 0);
+	assert(stackSize > 0);
 	assert(stackSize % 16 == 0);
-	assert(__builtin_wasm_tls_align() != 0 || __builtin_wasm_tls_size() == 0); // Internal consistency check: Clang can report __builtin_wasm_tls_align to be zero if there is no TLS used - double check it never reports zero if it is used.
-	assert(__builtin_wasm_tls_align() == 0 || (uintptr_t)tlsAddress % __builtin_wasm_tls_align() == 0 && "TLS memory address not aligned in a call to emscripten_create_wasm_worker_with_tls()! Please allocate memory with alignment from __builtin_wasm_tls_align() when creating a Wasm Worker!");
-	assert(tlsSize != 0 || __builtin_wasm_tls_size() == 0 && "Program code contains TLS: please use function emscripten_create_wasm_worker_with_tls() to create a Wasm Worker!");
-	assert(tlsSize == __builtin_wasm_tls_size() && "TLS size mismatch! Please reserve exactly __builtin_wasm_tls_size() TLS memory in a call to emscripten_create_wasm_worker_with_tls()");
-	assert(tlsAddress != 0 || tlsSize == 0);
-	return _emscripten_create_wasm_worker_with_tls((void*)stackLowestAddress, stackSize, tlsAddress);
-#endif
-}
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize)
-{
-#if !WASM_WORKER_NO_TLS
-	return emscripten_create_wasm_worker_with_tls(stackLowestAddress, stackSize, 0, 0);
-#else
-	assert((uintptr_t)stackLowestAddress % 16 == 0);
-	assert(stackSize % 16 == 0);
-	assert(__builtin_wasm_tls_size() == 0 && "Cannot disable TLS with -sWASM_WORKERS_NO_TLS=1 when compiling code that does require TLS! Rebuild with -sWASM_WORKERS_NO_TLS=1 removed, or remove uses of TLS from the codebase.");
-	return _emscripten_create_wasm_worker_no_tls((void*)stackLowestAddress, stackSize);
-#endif
+	// Guard against a programming oopsie: The target Worker's stack cannot be part of the calling
+	// thread's stack.
+	assert(emscripten_stack_get_base() <= (uintptr_t)stackLowestAddress || emscripten_stack_get_end() >= (uintptr_t)stackLowestAddress + stackSize
+		&& "When creating a Wasm Worker, its stack should be located either in global data or on the heap, not on the calling thread's own stack!");
+
+	// The Worker's TLS area will be spliced off from the stack region.
+    // We expect TLS area to need to be at most 16 bytes aligned
+	assert(__builtin_wasm_tls_align() == 0 || 16 % __builtin_wasm_tls_align() == 0);
+
+	uint32_t tlsSize = (__builtin_wasm_tls_size() + 15) & -16;
+	assert(stackSize > tlsSize);
+
+	return _emscripten_create_wasm_worker(stackLowestAddress, stackSize);
 }
 
 emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize)
 {
-#if WASM_WORKER_NO_TLS
-	return emscripten_create_wasm_worker_no_tls(memalign(16, stackSize), stackSize);
-#else
-	uint32_t tlsSize = __builtin_wasm_tls_size();
-	return emscripten_create_wasm_worker_with_tls(memalign(16, stackSize), stackSize, tlsSize ? memalign(__builtin_wasm_tls_align(), tlsSize) : 0, tlsSize);
-#endif
+	return emscripten_create_wasm_worker(memalign(16, stackSize), stackSize);
 }
 
 void emscripten_wasm_worker_sleep(int64_t nsecs)

@@ -65,11 +65,11 @@ The debug logs can be analysed to profile and review the changes that were made 
 Compiler settings
 ==================
 
-Emscripten has a number of compiler settings that can be useful for debugging. These are set using the :ref:`emcc -s <emcc-s-option-value>` option, and will override any optimization flags. For example:
+Emscripten has a number of compiler settings that can be useful for debugging. These are set using the :ref:`emcc -s<emcc-s-option-value>` option, and will override any optimization flags. For example:
 
 .. code-block:: bash
 
-  emcc -O1 -s ASSERTIONS=1 tests/hello_world
+  emcc -O1 -sASSERTIONS tests/hello_world
 
 Some important settings are:
 
@@ -233,7 +233,7 @@ There are several possible causes:
 In order to debug these sorts of issues:
 
 - Compile with ``-Werror``. This turns warnings into errors, which can be useful as some cases of undefined behavior would otherwise show warnings.
-- Use ``-s ASSERTIONS=2`` to get some useful information about the function pointer being called, and its type.
+- Use ``-sASSERTIONS=2`` to get some useful information about the function pointer being called, and its type.
 - Look at the browser stack trace to see where the error occurs and which function should have been called.
 - Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>`.
 - :ref:`Sanitizers` can help here, in particular UBSan.
@@ -341,7 +341,7 @@ Use the following workflow to find regressions with the *AutoDebugger*:
 Any difference between the outputs is likely to be caused by the bug.
 
 .. note::
-    You may want to use ``-s DETERMINISTIC`` which will ensure that timing
+    You may want to use ``-sDETERMINISTIC`` which will ensure that timing
     and other issues don't cause false positives.
 
 

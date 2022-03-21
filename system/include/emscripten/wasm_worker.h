@@ -17,28 +17,16 @@ extern "C" {
                                   behaves, the dynamically allocated memory can never be freed, so use this function
                                   only in scenarios where the page does not need to deinitialize/tear itself down.
 
-   emscripten_create_wasm_worker_no_tls: Creates a Wasm Worker on the given placed stack address area, but no TLS.
-                                         Use this function on codebase that explicitly do not have any TLS state,
-                                         e.g. when the Worker is being reset to reinit execution at runtime, or to micro-
-                                         optimize code size when TLS is not needed. This function will assert() fail if
-                                         the compiled code does have any TLS uses in it. This function does not use any
-                                         dynamic memory allocation.
-
-   emscripten_create_wasm_worker_with_tls: Creates a Wasm Worker on given placed stack address and TLS area.
-                                           Use the Wasm built-in functions __builtin_wasm_tls_align() and
-                                           __builtin_wasm_tls_size() to obtain the needed memory size for the TLS area
-                                           (though note that __builtin_wasm_tls_align() can return zero when the TLS size
-                                           is zero, so be careful to avoid a divide by zero if/when rounding to this alignment)
-                                           Use this function to manually manage the memory that a Worker should use.
-                                           This function does not use any dynamic memory allocation.
+   emscripten_create_wasm_worker: Creates a Wasm Worker on given placed stack address.
+                                  Use this function to manually manage the memory that a Worker should use.
+                                  This function does not use any dynamic memory allocation.
 
    Returns an ID that represents the given Worker. If not building with Wasm workers enabled (-s WASM_WORKERS=0),
    these functions will return 0 to denote failure.
    Note that the Worker will be loaded up asynchronously, and initially will not be executing any code. Use
    emscripten_wasm_worker_post_function_*() set of functions to start executing code on the Worker. */
 emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize);
-emscripten_wasm_worker_t emscripten_create_wasm_worker_no_tls(void *stackLowestAddress, uint32_t stackSize);
-emscripten_wasm_worker_t emscripten_create_wasm_worker_with_tls(void *stackLowestAddress, uint32_t stackSize, void *tlsAddress, uint32_t tlsSize);
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
 // Terminates the given Wasm Worker some time after it has finished executing its current, or possibly some subsequent
 // posted functions. Note that this function is not C++ RAII safe, but you must manually coordinate to release any

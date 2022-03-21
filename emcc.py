@@ -1479,6 +1479,90 @@ def phase_setup(options, state, newargs, user_settings):
   return (newargs, input_files)
 
 
+def setup_pthreads(target):
+  if settings.RELOCATABLE:
+    # phtreads + dyanmic linking has certain limitations
+    if settings.SIDE_MODULE:
+      diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
+    elif settings.MAIN_MODULE:
+      diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
+    elif settings.LINKABLE:
+      diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+  if settings.ALLOW_MEMORY_GROWTH:
+    diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+
+  # Functions needs to be exported from the module since they are used in worker.js
+  settings.REQUIRED_EXPORTS += [
+    'emscripten_dispatch_to_thread_',
+    '_emscripten_thread_free_data',
+    '_emscripten_allow_main_runtime_queued_calls',
+    'emscripten_main_browser_thread_id',
+    'emscripten_main_thread_process_queued_calls',
+    'emscripten_run_in_main_runtime_thread_js',
+    'emscripten_stack_set_limits',
+  ]
+
+  if settings.MAIN_MODULE:
+    settings.REQUIRED_EXPORTS += ['_emscripten_thread_sync_code', '__dl_seterr']
+
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+    '$exitOnMainThread',
+  ]
+  # Some symbols are required by worker.js.
+  # Because emitDCEGraph only considers the main js file, and not worker.js
+  # we have explicitly mark these symbols as user-exported so that they will
+  # kept alive through DCE.
+  # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
+  # for roots.
+  worker_imports = [
+    '__emscripten_thread_init',
+    '__emscripten_thread_exit',
+    '__emscripten_thread_crashed',
+    '_emscripten_tls_init',
+    '_pthread_self',
+  ]
+  settings.EXPORTED_FUNCTIONS += worker_imports
+  building.user_requested_exports.update(worker_imports)
+
+  # set location of worker.js
+  settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
+
+  # memalign is used to ensure allocated thread stacks are aligned.
+  settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
+
+  if settings.MINIMAL_RUNTIME:
+    building.user_requested_exports.add('exit')
+
+  if settings.PROXY_TO_PTHREAD:
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
+
+  # pthread stack setup and other necessary utilities
+  def include_and_export(name):
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
+    settings.EXPORTED_FUNCTIONS += [name]
+
+  include_and_export('establishStackSpace')
+  include_and_export('invokeEntryPoint')
+  if not settings.MINIMAL_RUNTIME:
+    # keepRuntimeAlive does not apply to MINIMAL_RUNTIME.
+    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive']
+
+  if settings.MODULARIZE:
+    if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
+      exit_with_error('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work')
+
+    # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
+    # can access them:
+
+    # general threading variables:
+    settings.EXPORTED_RUNTIME_METHODS += ['PThread']
+
+    # To keep code size to minimum, MINIMAL_RUNTIME does not utilize the global ExitStatus
+    # object, only regular runtime has it.
+    if not settings.MINIMAL_RUNTIME:
+      settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs, user_settings):
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args
@@ -2029,46 +2113,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     default_setting(user_settings, 'ABORTING_MALLOC', 0)
 
   if settings.USE_PTHREADS:
-    if settings.ALLOW_MEMORY_GROWTH:
-      diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+    setup_pthreads(target)
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
-    # Functions needs to be exported from the module since they are used in worker.js
-    settings.REQUIRED_EXPORTS += [
-      'emscripten_dispatch_to_thread_',
-      '_emscripten_thread_free_data',
-      '_emscripten_allow_main_runtime_queued_calls',
-      'emscripten_main_browser_thread_id',
-      'emscripten_main_thread_process_queued_calls',
-      'emscripten_run_in_main_runtime_thread_js',
-      'emscripten_stack_set_limits',
-    ]
-
-    if settings.MAIN_MODULE:
-      settings.REQUIRED_EXPORTS += ['_emscripten_thread_sync_code', '__dl_seterr']
-
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-      '$exitOnMainThread',
-    ]
-    # Some symbols are required by worker.js.
-    # Because emitDCEGraph only considers the main js file, and not worker.js
-    # we have explicitly mark these symbols as user-exported so that they will
-    # kept alive through DCE.
-    # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
-    # for roots.
-    worker_imports = [
-      '__emscripten_thread_init',
-      '__emscripten_thread_exit',
-      '__emscripten_thread_crashed',
-      '_emscripten_tls_init',
-      '_emscripten_current_thread_process_queued_calls',
-      '_pthread_self',
-    ]
-    settings.EXPORTED_FUNCTIONS += worker_imports
-    building.user_requested_exports.update(worker_imports)
-
-    # set location of worker.js
-    settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
   else:
+    if settings.PROXY_TO_PTHREAD:
+      exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   # TODO: Move this into the library JS file once it becomes possible.
@@ -2106,53 +2155,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       'addRunDependency',
       'removeRunDependency',
     ]
-
-  if settings.USE_PTHREADS:
-    # memalign is used to ensure allocated thread stacks are aligned.
-    settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
-
-    if settings.MINIMAL_RUNTIME:
-      building.user_requested_exports.add('exit')
-
-    if settings.PROXY_TO_PTHREAD:
-      settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
-
-    # pthread stack setup and other necessary utilities
-    def include_and_export(name):
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
-      settings.EXPORTED_FUNCTIONS += [name]
-
-    include_and_export('establishStackSpace')
-    include_and_export('invokeEntryPoint')
-    if not settings.MINIMAL_RUNTIME:
-      # keepRuntimeAlive does not apply to MINIMAL_RUNTIME.
-      settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive']
-
-    if settings.MODULARIZE:
-      if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
-        exit_with_error('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work')
-
-      # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
-      # can access them:
-
-      # general threading variables:
-      settings.EXPORTED_RUNTIME_METHODS += ['PThread']
-
-      # To keep code size to minimum, MINIMAL_RUNTIME does not utilize the global ExitStatus
-      # object, only regular runtime has it.
-      if not settings.MINIMAL_RUNTIME:
-        settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
-
-    if settings.RELOCATABLE:
-      # phtreads + dyanmic linking has certain limitations
-      if settings.SIDE_MODULE:
-        diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
-      elif settings.MAIN_MODULE:
-        diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
-      elif settings.LINKABLE:
-        diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
-  elif settings.PROXY_TO_PTHREAD:
-    exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
@@ -2507,6 +2509,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
     settings.WASM_BIGINT = 1
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
+    settings.MINIFY_WASM_IMPORTED_MODULES = 0
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
@@ -2857,13 +2860,13 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   module_export_name_substitution()
 
-  # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
+  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
   # by processing steps that occurred after Closure.
-  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0 and not settings.SINGLE_FILE:
-    # Process .js runtime file. Note that we need to handle the license text
-    # here, so that it will not confuse the hacky script.
-    js_manipulation.handle_license(final_js)
-    shared.run_process([shared.PYTHON, utils.path_from_root('tools/hacky_postprocess_around_closure_limitations.py'), final_js])
+  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
+    # to run in advanced mode)
+    final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
@@ -3528,7 +3531,7 @@ def module_export_name_substitution():
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   # For Node.js and other shell environments, create an unminified Module object so that
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
+  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)

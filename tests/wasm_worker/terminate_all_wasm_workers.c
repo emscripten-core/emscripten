@@ -75,8 +75,8 @@ void terminate_worker(void *userData)
 
 int main()
 {
-  worker[0] = emscripten_create_wasm_worker_no_tls(stack1, sizeof(stack1));
-  worker[1] = emscripten_create_wasm_worker_no_tls(stack2, sizeof(stack2));
+  worker[0] = emscripten_create_wasm_worker(stack1, sizeof(stack1));
+  worker[1] = emscripten_create_wasm_worker(stack2, sizeof(stack2));
   emscripten_wasm_worker_post_function_v(worker[0], worker_main);
   emscripten_wasm_worker_post_function_v(worker[1], worker_main);
 

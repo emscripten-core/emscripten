@@ -10,9 +10,9 @@ We call this "``preamble.js``" because Emscripten's output JS, at a high level, 
 
 The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
 
-If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-s EXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
 
-.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-s ASSERTIONS=1``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
+.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-sASSERTIONS``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
 
 
 .. contents:: Table of Contents
@@ -51,7 +51,7 @@ Calling compiled C functions from JavaScript
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS=_main,_myfunc"
+        -sEXPORTED_FUNCTIONS=_main,_myfunc"
 
       (Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal:
 
@@ -104,7 +104,7 @@ Calling compiled C functions from JavaScript
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS=_main,_myfunc
+        -sEXPORTED_FUNCTIONS=_main,_myfunc
 
       Exported functions can be called as normal:
 

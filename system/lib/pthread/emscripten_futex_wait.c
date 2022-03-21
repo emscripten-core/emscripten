@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <math.h>
 #include <emscripten/threading.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "atomic.h"
@@ -28,13 +27,13 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
   // nonzero, the contents of the address pointed by __emscripten_main_thread_futex
   // tell which address the main thread is simulating its wait on.
   // We need to be careful of recursion here: If we wait on a futex, and
-  // then call _emscripten_main_thread_process_queued_calls() below, that
-  // will call code that takes the proxying mutex - which can once more
-  // reach this code in a nested call. To avoid interference between the
-  // two (there is just a single __emscripten_main_thread_futex at a time), unmark
-  // ourselves before calling the potentially-recursive call. See below for
-  // how we handle the case of our futex being notified during the time in
-  // between when we are not set as the value of __emscripten_main_thread_futex.
+  // then call _emscripten_yield() below, that will call code that takes the
+  // proxying mutex - which can once more reach this code in a nested call. To
+  // avoid interference between the two (there is just a single
+  // __emscripten_main_thread_futex at a time), unmark ourselves before calling
+  // the potentially-recursive call. See below for how we handle the case of our
+  // futex being notified during the time in between when we are not set as the
+  // value of __emscripten_main_thread_futex.
   void* last_addr = a_cas_p(&_emscripten_main_thread_futex, 0, (void*)addr);
   // We must not have already been waiting.
   assert(last_addr == 0);
@@ -62,13 +61,13 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
       // We were told to stop waiting, so stop.
       break;
     }
-    emscripten_main_thread_process_queued_calls();
+    _emscripten_yield();
 
     // Check the value, as if we were starting the futex all over again.
     // This handles the following case:
     //
     //  * wait on futex A
-    //  * recurse into emscripten_main_thread_process_queued_calls(),
+    //  * recurse into _emscripten_yield(),
     //    which waits on futex B. that sets the __emscripten_main_thread_futex address to
     //    futex B, and there is no longer any mention of futex A.
     //  * a worker is done with futex A. it checks __emscripten_main_thread_futex but does
@@ -83,7 +82,7 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
     // That case motivates the design here. Given that, checking the memory
     // address is also necessary for other reasons: we unset and re-set our
     // address in __emscripten_main_thread_futex around calls to
-    // emscripten_main_thread_process_queued_calls(), and a worker could
+    // _emscripten_yield(), and a worker could
     // attempt to wake us up right before/after such times.
     //
     // Note that checking the memory value of the futex is valid to do: we
@@ -92,11 +91,11 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
     // later time when there is no need to block. The only "odd" thing is
     // that we may have caused side effects in that "delay" time. But the
     // only side effects we can have are to call
-    // emscripten_main_thread_process_queued_calls(). That is always ok to
+    // _emscripten_yield(). That is always ok to
     // do on the main thread (it's why it is ok for us to call it in the
     // middle of this function, and elsewhere). So if we check the value
     // here and return, it's the same is if what happened on the main thread
-    // was the same as calling emscripten_main_thread_process_queued_calls()
+    // was the same as calling _emscripten_yield()
     // a few times before calling emscripten_futex_wait().
     if (__c11_atomic_load((_Atomic uintptr_t*)addr, __ATOMIC_SEQ_CST) != val) {
       return -EWOULDBLOCK;
@@ -109,32 +108,12 @@ static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
   return 0;
 }
 
-static _Atomic bool thread_crashed = false;
-
-void _emscripten_thread_crashed() {
-  thread_crashed = true;
-}
-
 int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   if ((((intptr_t)addr)&3) != 0) {
     return -EINVAL;
   }
 
-  if (emscripten_is_main_runtime_thread()) {
-    // When a secondary thread crashes, we need to be able to interrupt the main
-    // thread even if it's in a blocking/looping on a mutex.  We want to avoid
-    // using the normal proxying mechanism to send this message since it can
-    // allocate (or otherwise itself crash) so use a low level atomic primitive
-    // for this signal.
-    if (thread_crashed) {
-      // Return the event loop so we can handle the message from the crashed
-      // thread.
-      emscripten_unwind_to_js_event_loop();
-    }
-
-    // Assist other threads by executing proxied operations that are effectively singlethreaded.
-    emscripten_main_thread_process_queued_calls();
-  }
+  _emscripten_yield();
 
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);

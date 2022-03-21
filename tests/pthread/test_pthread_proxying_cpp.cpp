@@ -125,7 +125,8 @@ void test_proxy_sync_with_ctx(void) {
     queue.proxySyncWithCtx(returner.native_handle(), [&](auto ctx) {
       i = 3;
       executor = std::this_thread::get_id();
-      ctx.finish();
+      auto finish = (void(*)(void*))emscripten_proxy_finish;
+      emscripten_async_call(finish, ctx.ctx, 0);
     });
     assert(i == 3);
     assert(executor == returner.get_id());
@@ -147,5 +148,4 @@ int main(int argc, char* argv[]) {
   returner.join();
 
   std::cout << "done\n";
-  emscripten_force_exit(0);
 }

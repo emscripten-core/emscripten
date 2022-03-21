@@ -639,6 +639,26 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
 
+  test("val u8string(const char* s)");
+  val::global().set("a", val::u8string(u8"abc"));
+  ensure_js("a == 'abc'");
+  val::global().set("a", val::u8string(u8"你好"));
+  ensure_js_not("a == 'abc'");
+  ensure_js("a == '你好'");
+  auto u8_str = val::global()["a"].as<std::string>();
+  ensure(u8_str == u8"你好");
+
+  test("val u16string(const char16_t* s)");
+  val::global().set("a", val::u16string(u"hello"));
+  ensure_js("a == 'hello'");
+  val::global().set("a", val::u16string(u"世界"));
+  ensure_js_not("a == 'hello'");
+  ensure_js("a == '世界'");
+  // UTF-16 encoded SMILING FACE WITH OPEN MOUTH (U+1F603)
+  const char16_t* s = u"😃 = \U0001F603 is :-D";
+  val::global().set("a", val::u16string(s));
+  ensure_js("a == '😃 = \U0001F603 is :-D'");
+  
   printf("end\n");
   return 0;
 }

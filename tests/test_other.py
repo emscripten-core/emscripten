@@ -48,7 +48,6 @@ emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 emprofile = shared.bat_suffix(path_from_root('emprofile'))
-wasm_dis = Path(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
 
@@ -90,30 +89,6 @@ def uses_canonical_tmp(func):
       shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
-
-
-def parse_wasm(filename):
-  wat = shared.run_process([wasm_dis, filename], stdout=PIPE).stdout
-  imports = []
-  exports = []
-  funcs = []
-  for line in wat.splitlines():
-    line = line.strip()
-    if line.startswith('(import '):
-      line = line.strip('()')
-      parts = line.split()
-      module = parts[1].strip('"')
-      name = parts[2].strip('"')
-      imports.append('%s.%s' % (module, name))
-    if line.startswith('(export '):
-      line = line.strip('()')
-      name = line.split()[1].strip('"')
-      exports.append(name)
-    if line.startswith('(func '):
-      line = line.strip('()')
-      name = line.split()[1].strip('"')
-      funcs.append(name)
-  return imports, exports, funcs
 
 
 def also_with_wasmfs(f):
@@ -183,6 +158,29 @@ class other(RunnerCore):
     finally:
       os.close(master)
       os.close(slave)
+
+  def parse_wasm(self, filename):
+    wat = self.get_wasm_text(filename)
+    imports = []
+    exports = []
+    funcs = []
+    for line in wat.splitlines():
+      line = line.strip()
+      if line.startswith('(import '):
+        line = line.strip('()')
+        parts = line.split()
+        module = parts[1].strip('"')
+        name = parts[2].strip('"')
+        imports.append('%s.%s' % (module, name))
+      if line.startswith('(export '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        exports.append(name)
+      if line.startswith('(func '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        funcs.append(name)
+    return imports, exports, funcs
 
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
@@ -2429,20 +2427,20 @@ int f() {
     self.assertContained('10\nok\n', self.run_js('a.out.js'))
 
   @is_slow_test
+  @parameterized({
+    '': [[]],
+    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
+    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+  })
   @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self):
+  def test_embind(self, extra_args):
     test_cases = [
-        (['-lembind']),
-        (['-lembind', '-O1']),
-        (['-lembind', '-O2']),
-        (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
+      (['-lembind']),
+      (['-lembind', '-O1']),
+      (['-lembind', '-O2']),
+      (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
     ]
-    without_utf8_args = ['-sEMBIND_STD_STRING_IS_UTF8=0']
-    test_cases_without_utf8 = []
-    for args in test_cases:
-        test_cases_without_utf8.append((args + without_utf8_args))
-    test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-sDYNAMIC_EXECUTION=0']) for args in test_cases])
+    test_cases = [t + extra_args for t in test_cases]
     # closure compiler doesn't work with DYNAMIC_EXECUTION=0
     test_cases.append((['-lembind', '-O2', '--closure=1']))
     for args in test_cases:
@@ -3936,7 +3934,7 @@ EM_ASM({ _middle() });
         out = self.run_js('a.out.js')
         self.assertContained(stack_trace_reference, out)
         # make sure there are no symbols in the wasm itself
-        wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
+        wat = self.get_wasm_text('a.out.wasm')
         for func_start in ('(func $middle', '(func $_middle'):
           self.assertNotContained(func_start, wat)
 
@@ -3993,7 +3991,13 @@ EM_ASM({ _middle() });
     self.assertExists('hello_world.o')
     self.assertExists('hello_world.bc')
 
-  def test_bad_function_pointer_cast(self):
+  @parameterized({
+    '': (True, False),
+    'safe_heap': (True, True),
+    'wasm2js': (False, False),
+    'wasm2js_safe_heap': (False, True),
+  })
+  def test_bad_function_pointer_cast(self, wasm, safe):
     create_file('src.cpp', r'''
 #include <stdio.h>
 
@@ -4012,33 +4016,31 @@ int main() {
 ''')
 
     for opts in [0, 1, 2]:
-      for safe in [0, 1]:
-        for emulate_casts in [0, 1]:
-          for relocatable in [0, 1]:
-            for wasm in [0, 1]:
-              # wasm2js is not compatible with relocatable mode
-              if wasm == 0 and relocatable:
-                continue
-              cmd = [EMXX, 'src.cpp', '-O' + str(opts)]
-              if not wasm:
-                cmd += ['-sWASM=0']
-              if safe:
-                cmd += ['-sSAFE_HEAP']
-              if emulate_casts:
-                cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-              if relocatable:
-                cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
-              print(cmd)
-              self.run_process(cmd)
-              returncode = 0 if emulate_casts or wasm == 0 else NON_ZERO
-              output = self.run_js('a.out.js', assert_returncode=returncode)
-              if emulate_casts or wasm == 0:
-                # success!
-                self.assertContained('Hello, world.', output)
-              else:
-                # otherwise, the error depends on the mode we are in
-                # wasm trap raised by the vm
-                self.assertContained('function signature mismatch', output)
+      for emulate_casts in [0, 1]:
+        for relocatable in [0, 1]:
+          # wasm2js is not compatible with relocatable mode
+          if not wasm and relocatable:
+            continue
+          cmd = [EMXX, 'src.cpp', '-O' + str(opts)]
+          if not wasm:
+            cmd += ['-sWASM=0']
+          if safe:
+            cmd += ['-sSAFE_HEAP']
+          if emulate_casts:
+            cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
+          if relocatable:
+            cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
+          print(cmd)
+          self.run_process(cmd)
+          returncode = 0 if emulate_casts or not wasm else NON_ZERO
+          output = self.run_js('a.out.js', assert_returncode=returncode)
+          if emulate_casts or wasm == 0:
+            # success!
+            self.assertContained('Hello, world.', output)
+          else:
+            # otherwise, the error depends on the mode we are in
+            # wasm trap raised by the vm
+            self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
     for m in ['', ' ']:
@@ -7077,7 +7079,7 @@ int main() {
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-sINITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
+      wat = self.get_wasm_text('a.out.wasm')
       memories = [l for l in wat.splitlines() if '(memory ' in l]
       self.assertEqual(len(memories), 2)
       line = memories[0]
@@ -7269,7 +7271,7 @@ int main() {
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)
 
-    imports, exports, funcs = parse_wasm('a.out.wasm')
+    imports, exports, funcs = self.parse_wasm('a.out.wasm')
     imports.sort()
     exports.sort()
     funcs.sort()
@@ -7428,12 +7430,10 @@ int main() {
         continue
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wat')
       cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = read_file('a.out.wat')
+      text = self.get_wasm_text('a.out.wasm')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7473,13 +7473,11 @@ int main() {
       ]:
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wat')
       with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
         cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = read_file('a.out.wat')
+      text = self.get_wasm_text('a.out.wasm')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7542,7 +7540,7 @@ int main() {
         if target.endswith('.wasm'):
           # only wasm requested
           self.assertNotExists('out.js')
-        wat = self.run_process([wasm_dis, 'out.wasm'], stdout=PIPE).stdout
+        wat = self.get_wasm_text('out.wasm')
         wat_lines = wat.split('\n')
         exports = [line.strip().split(' ')[1].replace('"', '') for line in wat_lines if "(export " in line]
         imports = [line.strip().split(' ')[2].replace('"', '') for line in wat_lines if "(import " in line]
@@ -8997,6 +8995,9 @@ ok.
   def test_getprotobyname(self):
     self.do_runf(test_file('sockets/test_getprotobyname.c'), 'success')
 
+  def test_create_socket(self):
+    self.do_runf(test_file('sockets/test_create_socket.c'), 'success')
+
   def test_socketpair(self):
     self.do_run(r'''
       #include <sys/socket.h>
@@ -9139,13 +9140,6 @@ int main () {
         test(['-sWASM=0'], closure, opt)
         test(['-sWASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  # TODO: Debug why the code size is different on Windows and Mac. Also, for
-  # some unknown reason (at time of writing), this test is not skipped on the
-  # Windows and Mac autorollers, despite the bot being correctly configured to
-  # skip this test in all three platforms (Linux, Mac, and Windows).
-  # The no_windows/no_mac decorators also solve that problem.
-  @no_windows("Code size is slightly different on Windows")
-  @no_mac("Code size is slightly different on Mac")
   @parameterized({
     'hello_world_wasm': ('hello_world', False, True),
     'hello_world_wasm2js': ('hello_world', True, True),
@@ -9735,7 +9729,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 4994), 150)
+    self.assertLess(abs(changed - 4975), 150)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', '''
@@ -11001,8 +10995,8 @@ exec "$@"
     # Building with RELOCATABLE + LINKABLE should include and export all of the standard library
     self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-sLINKABLE', '-o', 'out_linkable.wasm'])
 
-    exports = parse_wasm('out.wasm')[1]
-    exports_linkable = parse_wasm('out_linkable.wasm')[1]
+    exports = self.parse_wasm('out.wasm')[1]
+    exports_linkable = self.parse_wasm('out_linkable.wasm')[1]
 
     self.assertLess(len(exports), 20)
     self.assertGreater(len(exports_linkable), 1000)
@@ -11828,3 +11822,25 @@ void foo() {}
 
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))
+
+  # Tests the internal test suite of tools/unsafe_optimizations.js
+  def test_unsafe_optimizations(self):
+    self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+
+  @require_v8
+  def test_extended_const(self):
+    self.v8_args = ['--experimental-wasm-extended-const']
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-mextended-const', '-sMAIN_MODULE=2'])
+    wat = self.get_wasm_text('hello_world.wasm')
+    # Test that extended-const expressions are used in the data segments.
+    self.assertTrue(re.search(r'\(data \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+    # Test that extended-const expressions are used in at least one global initializer.
+    self.assertTrue(re.search(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+
+  # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
+  # variant of the core test suite.
+  @require_v8
+  def test_memory64(self):
+    self.v8_args += ['--experimental-wasm-memory64']
+    for opt in ['-O0', '-O1', '-O2', '-O3']:
+      self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])

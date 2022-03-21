@@ -53,7 +53,11 @@ var LibraryPThread = {
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
-        if (runtimeInitialized && !runtimeExited && typeof _pthread_self != 'undefined') {
+        if (runtimeInitialized && typeof _pthread_self != 'undefined'
+#if EXIT_RUNTIME
+        && !runtimeExited
+#endif
+        ) {
           t = _pthread_self();
         }
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
@@ -266,6 +270,8 @@ var LibraryPThread = {
         if (cmd === 'processProxyingQueue') {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
           _emscripten_proxy_execute_queue(d['queue']);
+          // Decrement the ref count
+          Atomics.sub(HEAP32, d['queue'] >> 2, 1);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -858,8 +864,13 @@ var LibraryPThread = {
     return 0;
   },
 
+#if PROXY_TO_PTHREAD
   __call_main__deps: ['exit', '$exitOnMainThread'],
   __call_main: function(argc, argv) {
+#if !EXIT_RUNTIME
+    // EXIT_RUNTIME==0 set, keeping main thread alive by default.
+    noExitRuntime = true;
+#endif
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -870,12 +881,12 @@ var LibraryPThread = {
       exitOnMainThread(returnCode);
     }
 #else
-    // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
 #if PTHREADS_DEBUG
     err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
@@ -1042,7 +1053,17 @@ var LibraryPThread = {
 
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
+      setTimeout(() => {
+        // Only execute the queue if we have a live pthread runtime. We
+        // implement pthread_self to return 0 if there is no live runtime.
+        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+        //       `runtimeExited` is correctly unset on workers.
+        if (_pthread_self()) {
+          _emscripten_proxy_execute_queue(queue);
+        }
+        // Decrement the ref count
+        Atomics.sub(HEAP32, queue >> 2, 1);
+      });
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
