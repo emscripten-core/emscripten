@@ -42,8 +42,6 @@ binaryen_checked = False
 EXPECTED_BINARYEN_VERSION = 105
 # cache results of nm - it can be slow to run
 nm_cache = {}
-# Stores the object files contained in different archive files passed as input
-ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
 user_requested_exports = set()
@@ -120,15 +118,6 @@ def unique_ordered(values):
     return True
 
   return [v for v in values if check(v)]
-
-
-# clear caches. this is not normally needed, except if the clang/LLVM
-# used changes inside this invocation of Building, which can happen in the benchmarker
-# when it compares different builds.
-def clear():
-  nm_cache.clear()
-  ar_contents.clear()
-  _is_ar_cache.clear()
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -208,6 +197,8 @@ def read_link_inputs(files):
   # each of them provides. Do this in multiple parallel processes.
   archive_names = [] # .a files passed in to the command line to the link
   object_names = [] # .o/.bc files passed in to the command line to the link
+  # Stores the object files contained in different archive files passed as input
+  ar_contents = {}
   for f in files:
     absolute_path_f = make_paths_absolute(f)
 
@@ -228,6 +219,7 @@ def read_link_inputs(files):
   # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
   # The results are not used here directly, but populated to llvm-nm cache structure.
   llvm_nm_multiple(object_names)
+  return ar_contents
 
 
 def llvm_backend_args():
@@ -443,6 +435,8 @@ def link_bitcode(args, target, force_archive_contents=False):
       files_to_link.append(f)
     return do_add
 
+  ar_contents = read_link_inputs(input_files)
+
   # Traverse a single archive. The object files are repeatedly scanned for
   # newly satisfied symbols until no new symbols are found. Returns true if
   # any object files were added to the link.
@@ -464,8 +458,6 @@ def link_bitcode(args, target, force_archive_contents=False):
           added_any_objects = True
     logger.debug('done running loop of archive %s' % (f))
     return added_any_objects
-
-  read_link_inputs(input_files)
 
   # Rescan a group of archives until we don't find any more objects to link.
   def scan_archive_group(group):
