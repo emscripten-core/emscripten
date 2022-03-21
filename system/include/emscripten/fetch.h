@@ -211,7 +211,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 // EMSCRIPTEN_RESULT_TIMED_OUT.
 // The onsuccess()/onerror()/onprogress() handlers will be called in the calling
 // thread from within this function before this function returns.
-EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch __attribute__((nonnull)), double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMSecs);
 
 // Closes a finished or an executing fetch operation and frees up all memory. If
 // the fetch operation was still executing, the onerror() handler will be called
