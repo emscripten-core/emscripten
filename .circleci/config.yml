@@ -303,6 +303,12 @@ jobs:
       - checkout
       - pip-install
       - run: python3 -m flake8 --show-source --statistics
+  mypy:
+    executor: bionic
+    steps:
+      - checkout
+      - pip-install
+      - run: mypy
   eslint:
     executor: linux-node
     steps:
@@ -576,6 +582,7 @@ workflows:
   build-test:
     jobs:
       - flake8
+      - mypy
       - eslint
       - build-docs
       - build-linux

@@ -268,5 +268,6 @@ else:
     def profile_block(block_name):
       return Logger(block_name)
 
+    @staticmethod
     def profile():
       return Logger(None)

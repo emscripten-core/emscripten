@@ -6,6 +6,7 @@
 import os
 import sys
 import logging
+from typing import List
 
 from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
@@ -30,7 +31,7 @@ JS_ENGINE = None
 JS_ENGINES = None
 WASMER = None
 WASMTIME = None
-WASM_ENGINES = []
+WASM_ENGINES: List[str] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None

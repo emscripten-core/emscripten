@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import glob
+from typing import Set
 from tools import config
 from tools import shared
 from tools import system_libs
@@ -165,7 +166,7 @@ class Ports:
   def get_build_dir():
     return shared.Cache.get_path('ports-builds')
 
-  name_cache = set()
+  name_cache: Set[str] = set()
 
   @staticmethod
   def fetch_project(name, url, subdir, sha512hash=None):
