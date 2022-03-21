@@ -7815,6 +7815,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$maybeExit'])
     create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
