@@ -171,7 +171,7 @@ def compile_settings():
   settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
 
   # Save settings to a file to work around v8 issue 1579
-  with shared.configuration.get_temp_files().get_file('.json') as settings_file:
+  with shared.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
       json.dump(settings.dict(), s, sort_keys=True, indent=2)
 

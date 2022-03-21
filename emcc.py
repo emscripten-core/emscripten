@@ -1046,7 +1046,7 @@ def run(args):
   # Strip args[0] (program name)
   args = args[1:]
 
-  misc_temp_files = shared.configuration.get_temp_files()
+  misc_temp_files = shared.get_temp_files()
 
   # Handle some global flags
 
@@ -3392,7 +3392,7 @@ def phase_binaryen(target, options, wasm_target):
                                symbols_file=symbols_file,
                                symbols_file_js=symbols_file_js)
 
-    shared.configuration.get_temp_files().note(wasm2js)
+    shared.get_temp_files().note(wasm2js)
 
     if settings.WASM == 2:
       safe_copy(wasm2js, wasm2js_template)
@@ -3514,7 +3514,7 @@ else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME})
 
-  shared.configuration.get_temp_files().note(final_js)
+  shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
 
@@ -3534,7 +3534,7 @@ def module_export_name_substitution():
   if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
-  shared.configuration.get_temp_files().note(final_js)
+  shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
 

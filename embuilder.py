@@ -73,7 +73,7 @@ PORT_VARIANTS = {
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
-temp_files = shared.configuration.get_temp_files()
+temp_files = shared.get_temp_files()
 logger = logging.getLogger('embuilder')
 legacy_prefixes = {
   'libgl': 'libGL',

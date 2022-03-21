@@ -26,7 +26,7 @@ from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import configuration, path_from_root
+from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import TEMP_DIR
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
@@ -270,7 +270,7 @@ def link_llvm(linker_inputs, target):
 def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
-    undefs = configuration.get_temp_files().get('.undefined').name
+    undefs = shared.get_temp_files().get('.undefined').name
     utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
@@ -625,7 +625,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   optimizer = path_from_root('tools/acorn-optimizer.js')
   original_filename = filename
   if extra_info is not None:
-    temp_files = configuration.get_temp_files()
+    temp_files = shared.get_temp_files()
     temp = temp_files.get('.js').name
     shutil.copyfile(filename, temp)
     with open(temp, 'a') as f:
@@ -642,7 +642,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     cmd += ['verbose']
   if not return_output:
     next = original_filename + '.jso.js'
-    configuration.get_temp_files().note(next)
+    shared.get_temp_files().note(next)
     check_call(cmd, stdout=open(next, 'w'))
     save_intermediate(next, '%s.js' % passes[0])
     return next
@@ -802,7 +802,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-    exports_file = configuration.get_temp_files().get('_module_exports.js')
+    exports_file = shared.get_temp_files().get('_module_exports.js')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
 
@@ -866,7 +866,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
   # https://github.com/google/closure-compiler/issues/3784
-  tempfiles = configuration.get_temp_files()
+  tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
     if isascii(filename):
@@ -987,7 +987,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
 # run binaryen's wasm-metadce to dce both js and wasm
 def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
-  temp_files = configuration.get_temp_files()
+  temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
   if settings.MAIN_MODULE:
     # For the main module we include all exports as possible roots, not just function exports.
@@ -1176,7 +1176,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
-      temp = configuration.get_temp_files().get('.js').name
+      temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
@@ -1186,7 +1186,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # TODO: in the non-closure case, we could run a lightweight general-
   #       purpose JS minifier here.
   if use_closure_compiler == 2:
-    temp = configuration.get_temp_files().get('.js').name
+    temp = shared.get_temp_files().get('.js').name
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
     temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
