@@ -992,14 +992,10 @@ int main() {
     self.assertContained('unknown file type: foobar.xxx', err)
 
   def test_multiply_defined_libsymbols(self):
-    lib_name = 'libA.c'
-    a2_name = 'a2.c'
-    b2_name = 'b2.c'
-    main_name = 'main.c'
-    create_file(lib_name, 'int mult() { return 1; }')
-    create_file(a2_name, 'void x() {}')
-    create_file(b2_name, 'void y() {}')
-    create_file(main_name, r'''
+    create_file('libA.c', 'int mult() { return 1; }')
+    create_file('a2.c', 'void x() {}')
+    create_file('b2.c', 'void y() {}')
+    create_file('main.c', r'''
       #include <stdio.h>
       int mult();
       int main() {
@@ -1008,26 +1004,20 @@ int main() {
       }
     ''')
 
-    self.emcc(lib_name, ['-shared'], output_filename='libA.so')
+    self.emcc('libA.c', ['-shared'], output_filename='libA.so')
 
-    self.emcc(a2_name, ['-r', '-L.', '-lA'])
-    self.emcc(b2_name, ['-r', '-L.', '-lA'])
+    self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
+    self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
 
-    self.emcc(main_name, ['-L.', '-lA', a2_name + '.o', b2_name + '.o'], output_filename='a.out.js')
+    self.emcc('main.c', ['-L.', '-lA', 'a2.o', 'b2.o'])
 
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
   def test_multiply_defined_libsymbols_2(self):
-    a = "int x() { return 55; }"
-    a_name = 'a.c'
-    create_file(a_name, a)
-    b = "int y() { return 2; }"
-    b_name = 'b.c'
-    create_file(b_name, b)
-    c = "int z() { return 5; }"
-    c_name = 'c.c'
-    create_file(c_name, c)
-    main = r'''
+    create_file('a.c', "int x() { return 55; }")
+    create_file('b.c', "int y() { return 2; }")
+    create_file('c.c', "int z() { return 5; }")
+    create_file('main.c', r'''
       #include <stdio.h>
       int x();
       int y();
@@ -1036,18 +1026,15 @@ int main() {
         printf("result: %d\n", x() + y() + z());
         return 0;
       }
-    '''
-    main_name = 'main.c'
-    create_file(main_name, main)
+    ''')
 
-    self.emcc(a_name, ['-c']) # a.c.o
-    self.emcc(b_name, ['-c']) # b.c.o
-    self.emcc(c_name, ['-c']) # c.c.o
-    lib_name = 'libLIB.a'
-    building.emar('cr', lib_name, [a_name + '.o', b_name + '.o']) # libLIB.a with a and b
+    self.emcc('a.c', ['-c']) # a.o
+    self.emcc('b.c', ['-c']) # b.o
+    self.emcc('c.c', ['-c']) # c.o
+    building.emar('cr', 'libLIB.a', ['a.o', 'b.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    self.emcc(main_name, [a_name + '.o', c_name + '.o', '-L.', '-lLIB'], output_filename='a.out.js')
+    self.emcc('main.c', ['a.o', 'c.o', '-L.', '-lLIB'])
 
     self.assertContained('result: 62', self.run_js('a.out.js'))
 
@@ -1063,9 +1050,9 @@ int main() {
       }
     ''')
 
-    self.emcc('lib.c', ['-c']) # lib.c.o
+    self.emcc('lib.c', ['-c']) # lib.o
     lib_name = 'libLIB.a'
-    building.emar('cr', lib_name, ['lib.c.o']) # libLIB.a with lib.c.o
+    building.emar('cr', lib_name, ['lib.o']) # libLIB.a with lib.o
 
     def test(compiler, main_name, lib_args, err_expected):
       print(err_expected)
@@ -1350,9 +1337,7 @@ int f() {
 
   def test_main_a(self):
     # if main() is in a .a, we need to pull in that .a
-
-    main_name = 'main.c'
-    create_file(main_name, r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       extern int f();
       int main() {
@@ -1361,18 +1346,17 @@ int f() {
       }
     ''')
 
-    other_name = 'other.c'
-    create_file(other_name, r'''
+    create_file('other.c', r'''
       #include <stdio.h>
       int f() { return 12346; }
     ''')
 
-    self.run_process([EMCC, main_name, '-c', '-o', main_name + '.o'])
-    self.run_process([EMCC, other_name, '-c', '-o', other_name + '.o'])
+    self.run_process([EMCC, '-c', 'main.c'])
+    self.run_process([EMCC, '-c', 'other.c'])
 
-    self.run_process([EMAR, 'cr', main_name + '.a', main_name + '.o'])
+    self.run_process([EMAR, 'cr', 'libmain.a', 'main.o'])
 
-    self.run_process([EMCC, other_name + '.o', main_name + '.a'])
+    self.run_process([EMCC, 'other.o', 'libmain.a'])
 
     self.assertContained('result: 12346.', self.run_js('a.out.js'))
 
