@@ -8,15 +8,12 @@
 
 from collections import namedtuple
 from enum import IntEnum
+import leb128
 import logging
 import os
-import sys
 
 from . import utils
 
-sys.path.append(utils.path_from_root('third_party'))
-
-import leb128
 
 logger = logging.getLogger('webassembly')
 

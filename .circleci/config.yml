@@ -47,15 +47,12 @@ commands:
       - run: npm ci
   pip-install:
     description: "pip install"
-    parameters:
-      python:
-        description: "Python executable to use"
-        type: string
-        default: python3
     steps:
       - run:
           name: pip install
-          command: << parameters.python >> -m pip install -r requirements-dev.txt
+          command: |
+            ${EMSDK_PYTHON:-python3} -m pip install -r requirements-dev.txt
+            ${EMSDK_PYTHON:-python3} -m pip install -r requirements.txt --target=.pip
   build:
     description: "Install emsdk"
     steps:
@@ -93,6 +90,7 @@ commands:
             cat ~/emsdk/.emscripten
       - emsdk-env
       - npm-install
+      - pip-install
       - run:
           name: clear cache
           command: |
@@ -100,7 +98,6 @@ commands:
   build-libs-and-freeze:
     description: "Build all libraries, and freeze the cache"
     steps:
-      - pip-install
       - run:
           name: embuilder build ALL
           command: |
@@ -420,11 +417,9 @@ jobs:
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/:/c/python38/Scripts/\"" >> $BASH_ENV
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - pip-install:
-          python: "$EMSDK_PYTHON"
+      - build
       - run-tests:
           test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
       # Run a single websockify-based test to ensure it works on windows.
@@ -443,11 +438,9 @@ jobs:
             brew list cmake || brew install cmake
             brew list python3 || brew install python3
       - checkout
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - pip-install:
-          python: "$EMSDK_PYTHON"
+      - build
       - run-tests:
           test_targets: "other sockets.test_nodejs_sockets_echo core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
 

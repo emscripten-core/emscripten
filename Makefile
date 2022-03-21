@@ -2,12 +2,15 @@ VERSION = $(shell cat emscripten-version.txt | sed s/\"//g)
 DESTDIR ?= ../emscripten-$(VERSION)
 DISTFILE = emscripten-$(VERSION).tar.bz2
 
+all:
+
 dist: $(DISTFILE)
 
 install:
 	@rm -rf $(DESTDIR)
 	./tools/install.py $(DESTDIR)
 	npm install --prefix $(DESTDIR)
+	pip install -r requirements.txt --target=$(DESTDIR)/.pip
 
 # Create an distributable archive of emscripten suitable for use
 # by end users. This archive excludes node_modules as it can include native

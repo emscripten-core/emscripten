@@ -93,3 +93,16 @@ def write_binary(file_path, contents):
   """Write to a file opened in binary mode"""
   with open(file_path, 'wb') as fh:
     fh.write(contents)
+
+
+# Verify the the packages from `requirements.txt` are installed correctly.
+# Emsdk using `emscripten/.pip` when installing these packages so add this to the
+# system path first.
+pip_path = os.path.join(path_from_root(), '.pip')
+if os.path.exists(pip_path):
+  sys.path.append(pip_path)
+
+try:
+  import leb128  # noqa
+except ImportError:
+  exit_with_error('unable to import `leb128`.  Did you run `pip install -r requirements.txt`?"')
