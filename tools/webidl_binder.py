@@ -10,6 +10,7 @@ https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.
 
 import os
 import sys
+from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -643,7 +644,7 @@ for name in names:
   mid_js += ['\n// ' + name + '\n']
   mid_c += ['\n// ' + name + '\n']
 
-  js_impl_methods = []
+  js_impl_methods: List[str] = []
 
   cons = interface.getExtendedAttribute('Constructor')
   if type(cons) == list:
