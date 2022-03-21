@@ -291,7 +291,7 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [link]
 var DECLARE_ASM_MODULE_EXPORTS = 1;
 
-// If 0, prevents inlining if set to 1. If 0, we will inline normally in LLVM.
+// If set to 1, prevents inlining. If 0, we will inline normally in LLVM.
 // This does not affect the inlining policy in Binaryen.
 // [compile]
 var INLINING_LIMIT = 0;
