@@ -29,13 +29,10 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
-// Access mode, file creation and file status flags for open.
-using oflags_t = uint32_t;
-
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position;
-  oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
+  const oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
@@ -43,7 +40,17 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
 
 public:
   OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
-    : position(position), flags(flags), file(file) {}
+    : position(position), flags(flags), file(file) {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().open(flags & O_ACCMODE);
+    }
+  }
+
+  ~OpenFileState() {
+    if (auto f = file->dynCast<DataFile>()) {
+      f->locked().close();
+    }
+  }
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;
@@ -60,6 +67,10 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
+
+  // Return the flags we were created with. This does not require a lock as the
+  // flags never change after creation.
+  oflags_t getFlags() const { return flags; }
 };
 
 class FileTable {

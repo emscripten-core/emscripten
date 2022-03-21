@@ -275,5 +275,33 @@ int main() {
   size = strftime(s, sizeof(s), "%I %M %p", &tm);
   test(!cmp(s, "12 01 PM"), "strftime test #35", s);
 
+  // strftime week number edge case
+  // 2013-01-06 Sunday
+  time_t y2013 = 1357430400ll;
+  gmtime_r(&y2013, &tm);
+  size = strftime(s, sizeof(s), "%Y-%m-%d %W %U", &tm);
+  test(!cmp(s, "2013-01-06 00 01"), "strftime test #36", s);
+
+  y2013 += 60 * 60 * 24;
+  gmtime_r(&y2013, &tm);
+  size = strftime(s, sizeof(s), "%Y-%m-%d %W %U", &tm);
+  test(!cmp(s, "2013-01-07 01 01"), "strftime test #36a", s);
+
+  // strftime %V (ISO 8601 week number) edge cases
+  time_t dec17 = 1481932800;
+  gmtime_r(&dec17, &tm);
+  size = strftime(s, sizeof(s), "%Y-%m-%d %G %V %w", &tm);
+  test(!cmp(s, "2016-12-17 2016 50 6"), "strftime test #37", s);
+
+  dec17 = 1513468800;
+  gmtime_r(&dec17, &tm);
+  size = strftime(s, sizeof(s), "%Y-%m-%d %G %V %w", &tm);
+  test(!cmp(s, "2017-12-17 2017 50 0"), "strftime test #37a", s);
+
+  dec17 = 1545004800;
+  gmtime_r(&dec17, &tm);
+  size = strftime(s, sizeof(s), "%Y-%m-%d %G %V %w", &tm);
+  test(!cmp(s, "2018-12-17 2018 51 1"), "strftime test #37b", s);
+
   return 0;
 }

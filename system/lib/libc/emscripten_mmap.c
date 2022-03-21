@@ -63,6 +63,7 @@ long __syscall_munmap(long addr, long length) {
 
   // We don't support partial munmapping.
   if (map->length != length) {
+    UNLOCK(lock);
     return -EINVAL;
   }
 

@@ -22,7 +22,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, require_v8
+from common import read_file, require_v8, also_with_minimal_runtime
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
@@ -146,17 +146,6 @@ def requires_threads(f):
   def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    return f(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_asmfs(f):
-  assert callable(f)
-
-  def decorated(self, *args, **kwargs):
-    # https://github.com/emscripten-core/emscripten/issues/9534
-    self.skipTest('ASMFS is looking for a maintainer')
     return f(self, *args, **kwargs)
 
   return decorated
@@ -2491,7 +2480,7 @@ void *getBindBuffer() {
   def test_worker_api_with_pthread_compilation_fails(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
     stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-sUSE_PTHREADS', '-sBUILD_AS_WORKER=1'])
-    self.assertContained('error: USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854', stderr)
+    self.assertContained("USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
@@ -4377,7 +4366,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5787), 100)
+    self.assertLess(abs(size - 5500), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4672,66 +4661,6 @@ window.close = function() {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_hello_file(self):
-    # Test basic file loading and the valid character set for files.
-    ensure_dir('dirrey')
-    shutil.copyfile(test_file('asmfs/hello_file.txt'), Path('dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
-    self.btest_exit('asmfs/hello_file.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_read_file_twice(self):
-    shutil.copyfile(test_file('asmfs/hello_file.txt'), 'hello_file.txt')
-    self.btest_exit('asmfs/read_file_twice.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_fopen_write(self):
-    self.btest_exit('asmfs/fopen_write.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_mkdir_create_unlink_rmdir(self):
-    self.btest_exit('cstdio/test_remove.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_dirent_test_readdir(self):
-    self.btest_exit('dirent/test_readdir.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_dirent_test_readdir_empty(self):
-    self.btest_exit('dirent/test_readdir_empty.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_close(self):
-    self.btest_exit(test_file('unistd/close.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_access(self):
-    self.btest_exit(test_file('unistd/access.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_unistd_unlink(self):
-    # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
-    self.btest_exit(test_file('unistd/unlink.c'), 0, args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-DNO_SYMLINK=1'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_test_fcntl_open(self):
-    self.btest_exit('fcntl/test_fcntl_open.c', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sPROXY_TO_PTHREAD'])
-
-  @requires_asmfs
-  @requires_threads
-  def test_asmfs_relative_paths(self):
-    self.btest_exit('asmfs/relative_paths.cpp', args=['-sASMFS', '-sWASM=0', '-sUSE_PTHREADS', '-sFETCH_DEBUG'])
-
   @requires_threads
   def test_pthread_locale(self):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
@@ -4787,12 +4716,13 @@ window.close = function() {
     for modularize in [[], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
       self.btest_exit(test_file('pthread/hello_thread.c'), args=['-sUSE_PTHREADS'] + modularize + opts)
 
-  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
+  # Tests that a pthreads build of -s MINIMAL_RUNTIME works well in different build modes
   @parameterized({
     '': ([],),
     'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
     'O3': (['-O3'],),
     'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+    'O3_modularize_MINIMAL_RUNTIME_2': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sMINIMAL_RUNTIME=2'],),
   })
   def test_minimal_runtime_hello_thread(self, opts):
     self.btest_exit(test_file('pthread/hello_thread.c'), args=['--closure=1', '-sMINIMAL_RUNTIME', '-sUSE_PTHREADS'] + opts)
@@ -5092,7 +5022,8 @@ window.close = function() {
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
-    self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sMINIMAL_RUNTIME'])
+    for mode in [1, 2]:
+      self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', f'-sMINIMAL_RUNTIME={mode}'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   def test_minimal_runtime_loader_shell(self):
@@ -5153,6 +5084,207 @@ window.close = function() {
 
   def test_system(self):
     self.btest_exit(test_file('system.c'))
+
+  # Tests the hello_wasm_worker.c documentation example code.
+  @also_with_minimal_runtime
+  def test_wasm_worker_hello(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  def test_wasm_worker_hello_minimal_runtime_2(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
+
+  # Tests Wasm Workers build in Wasm2JS mode.
+  @also_with_minimal_runtime
+  def test_wasm_worker_hello_wasm2js(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
+
+  # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
+  @also_with_minimal_runtime
+  def test_wasm_worker_embedded(self):
+    self.btest(test_file('wasm_worker/hello_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS=2'])
+
+  # Tests Wasm Worker thread stack setup
+  @also_with_minimal_runtime
+  def test_wasm_worker_thread_stack(self):
+    for mode in [0, 1, 2]:
+      self.btest(test_file('wasm_worker/thread_stack.c'), expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+
+  # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
+  @also_with_minimal_runtime
+  def test_wasm_worker_malloc(self):
+    self.btest(test_file('wasm_worker/malloc_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests Wasm Worker+pthreads simultaneously
+  @also_with_minimal_runtime
+  def test_wasm_worker_and_pthreads(self):
+    self.btest(test_file('wasm_worker/wasm_worker_and_pthread.c'), expected='0', args=['-sWASM_WORKERS', '-pthread'])
+
+  # Tests emscripten_wasm_worker_self_id() function
+  @also_with_minimal_runtime
+  def test_wasm_worker_self_id(self):
+    self.btest(test_file('wasm_worker/wasm_worker_self_id.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests direct Wasm Assembly .S file based TLS variables in Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_tls_wasm_assembly(self):
+    self.btest(test_file('wasm_worker/wasm_worker_tls_wasm_assembly.c'),
+               expected='42', args=['-sWASM_WORKERS', test_file('wasm_worker/wasm_worker_tls_wasm_assembly.S')])
+
+  # Tests C++11 keyword thread_local for TLS in Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_cpp11_thread_local(self):
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+ #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
+ #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
+#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
+#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
+#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
+#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
+#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
+    self.btest(test_file('wasm_worker/cpp11_thread_local.cpp'), expected='42', args=['-sWASM_WORKERS'])
+
+  # Tests C11 keyword _Thread_local for TLS in Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_c11__Thread_local(self):
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+ #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
+ #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
+#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
+#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
+#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
+#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
+#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
+
+    self.btest(test_file('wasm_worker/c11__Thread_local.c'), expected='42', args=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
+
+  # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_gcc___thread(self):
+    if not WINDOWS:
+      self.skipTest('''wasm-ld: /b/s/w/ir/cache/builder/emscripten-releases/llvm-project/llvm/include/llvm/ADT/Optional.h:199: const T &llvm::optional_detail::OptionalStorage<unsigned int, true>::getValue() const & [T = unsigned int]: Assertion `hasVal' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+ #8 0x000000000068173f lld::wasm::GlobalSymbol::getGlobalIndex() const (/root/emsdk/upstream/bin/wasm-ld+0x68173f)
+ #9 0x0000000000699894 lld::wasm::GlobalSection::generateRelocationCode(llvm::raw_ostream&, bool) const (/root/emsdk/upstream/bin/wasm-ld+0x699894)
+#10 0x0000000000688888 lld::wasm::(anonymous namespace)::Writer::run() Writer.cpp:0:0
+#11 0x0000000000682524 lld::wasm::writeResult() (/root/emsdk/upstream/bin/wasm-ld+0x682524)
+#12 0x0000000000662f89 lld::wasm::(anonymous namespace)::LinkerDriver::linkerMain(llvm::ArrayRef<char const*>) Driver.cpp:0:0
+#13 0x000000000065dd5e lld::wasm::link(llvm::ArrayRef<char const*>, llvm::raw_ostream&, llvm::raw_ostream&, bool, bool) (/root/emsdk/upstream/bin/wasm-ld+0x65dd5e)
+#14 0x000000000036f799 lldMain(int, char const**, llvm::raw_ostream&, llvm::raw_ostream&, bool) lld.cpp:0:0''')
+    self.btest(test_file('wasm_worker/gcc___Thread.c'), expected='42', args=['-sWASM_WORKERS', '-std=gnu11'])
+
+  # Tests emscripten_wasm_worker_sleep()
+  @also_with_minimal_runtime
+  def test_wasm_worker_sleep(self):
+    self.btest(test_file('wasm_worker/wasm_worker_sleep.c'), expected='1', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_terminate_wasm_worker()
+  @also_with_minimal_runtime
+  def test_wasm_worker_terminate(self):
+    self.btest(test_file('wasm_worker/terminate_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_terminate_all_wasm_workers()
+  @also_with_minimal_runtime
+  def test_wasm_worker_terminate_all(self):
+    self.btest(test_file('wasm_worker/terminate_all_wasm_workers.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_wasm_worker_post_function_*() API
+  @also_with_minimal_runtime
+  def test_wasm_worker_post_function(self):
+    self.btest(test_file('wasm_worker/post_function.c'), expected='8', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
+  # to send a message back from Worker to its parent thread.
+  @also_with_minimal_runtime
+  def test_wasm_worker_post_function_to_main_thread(self):
+    self.btest(test_file('wasm_worker/post_function_to_main_thread.c'), expected='10', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_navigator_hardware_concurrency() and emscripten_atomics_is_lock_free()
+  @also_with_minimal_runtime
+  def test_wasm_worker_hardware_concurrency_is_lock_free(self):
+    self.btest(test_file('wasm_worker/hardware_concurrency_is_lock_free.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_wasm_wait_i32() and emscripten_wasm_notify() functions.
+  @also_with_minimal_runtime
+  def test_wasm_worker_wait32_notify(self):
+    self.btest(test_file('wasm_worker/wait32_notify.c'), expected='2', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
+  @also_with_minimal_runtime
+  def test_wasm_worker_wait64_notify(self):
+    self.btest(test_file('wasm_worker/wait64_notify.c'), expected='2', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_atomic_wait_async() function.
+  @also_with_minimal_runtime
+  def test_wasm_worker_wait_async(self):
+    self.btest(test_file('wasm_worker/wait_async.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_atomic_cancel_wait_async() function.
+  @also_with_minimal_runtime
+  def test_wasm_worker_cancel_wait_async(self):
+    self.btest(test_file('wasm_worker/cancel_wait_async.c'), expected='1', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_atomic_cancel_all_wait_asyncs() function.
+  @also_with_minimal_runtime
+  def test_wasm_worker_cancel_all_wait_asyncs(self):
+    self.btest(test_file('wasm_worker/cancel_all_wait_asyncs.c'), expected='1', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_atomic_cancel_all_wait_asyncs_at_address() function.
+  @also_with_minimal_runtime
+  def test_wasm_worker_cancel_all_wait_asyncs_at_address(self):
+    self.btest(test_file('wasm_worker/cancel_all_wait_asyncs_at_address.c'), expected='1', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_init(), emscripten_lock_waitinf_acquire() and emscripten_lock_release()
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_waitinf(self):
+    self.btest(test_file('wasm_worker/lock_waitinf_acquire.c'), expected='4000', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_wait(self):
+    self.btest(test_file('wasm_worker/lock_wait_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_wait_acquire() between two Wasm Workers.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_wait2(self):
+    self.btest(test_file('wasm_worker/lock_wait_acquire2.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_async_acquire() function.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_async_acquire(self):
+    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_busyspin_wait(self):
+    self.btest(test_file('wasm_worker/lock_busyspin_wait_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_busyspin_waitinf_acquire() in Worker and main thread.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_busyspin_waitinf(self):
+    self.btest(test_file('wasm_worker/lock_busyspin_waitinf_acquire.c'), expected='1', args=['-sWASM_WORKERS'])
+
+  # Tests that proxied JS functions cannot be called from Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_no_proxied_js_functions(self):
+    self.btest(test_file('wasm_worker/no_proxied_js_functions.c'), expected='0',
+               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+
+  # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_waitinf_acquire(self):
+    self.btest(test_file('wasm_worker/semaphore_waitinf_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+
+  # Tests emscripten_semaphore_try_acquire() on the main thread
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_try_acquire(self):
+    self.btest(test_file('wasm_worker/semaphore_try_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   @no_firefox('no 4GB support yet')
   @require_v8

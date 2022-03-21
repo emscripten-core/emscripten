@@ -389,14 +389,15 @@ int main()
   );
   ensure(val::global()["a"].as<int>() == 2);
   ensure_not(val::global()["a"].as<int>() == 3);
+  val k("a");
+  ensure(val::global()[k].as<int>() == 2);
+  ensure_not(val::global()[k].as<int>() == 3);
   
-  test("template<typename K> void set(const K& key, const val& v)");
+  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", val(2));
   ensure_js("a == 2");
   val::global().set("a", val(3));
   ensure_js("a == 3");
-  
-  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", NULL);
   ensure_js("a == 0");
   val::global().set("a", false);
@@ -405,6 +406,12 @@ int main()
   ensure_js("a == 2");
   val::global().set("a", "b");
   ensure_js("a == 'b'");
+  val::global().set(k, 1);
+  ensure_js("a == 1");
+  val v(3);
+  val::global().set(k, v);
+  ensure("a == 3");
+  ensure(val::global()[k].as<int>() == 3);
   
   test("template<typename... Args> val operator()(Args&&... args)");
   EM_ASM(
@@ -631,6 +638,26 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(1) == 42);     // String containing numbers are converted correctly
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
+
+  test("val u8string(const char* s)");
+  val::global().set("a", val::u8string(u8"abc"));
+  ensure_js("a == 'abc'");
+  val::global().set("a", val::u8string(u8"你好"));
+  ensure_js_not("a == 'abc'");
+  ensure_js("a == '你好'");
+  auto u8_str = val::global()["a"].as<std::string>();
+  ensure(u8_str == u8"你好");
+
+  test("val u16string(const char16_t* s)");
+  val::global().set("a", val::u16string(u"hello"));
+  ensure_js("a == 'hello'");
+  val::global().set("a", val::u16string(u"世界"));
+  ensure_js_not("a == 'hello'");
+  ensure_js("a == '世界'");
+  // UTF-16 encoded SMILING FACE WITH OPEN MOUTH (U+1F603)
+  const char16_t* s = u"😃 = \U0001F603 is :-D";
+  val::global().set("a", val::u16string(s));
+  ensure_js("a == '😃 = \U0001F603 is :-D'");
   
   printf("end\n");
   return 0;

@@ -23,10 +23,15 @@ namespace wasmfs {
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
 class Backend;
+class Directory;
+
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
 using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
+
+// Access mode, file creation and file status flags for open.
+using oflags_t = uint32_t;
 
 class File : public std::enable_shared_from_this<File> {
 public:
@@ -65,7 +70,9 @@ public:
     return (ino_t)this;
   }
 
-  backend_t getBackend() { return backend; }
+  backend_t getBackend() const { return backend; }
+
+  bool isSeekable() const { return seekable; }
 
   class Handle;
   Handle locked();
@@ -90,13 +97,25 @@ protected:
   // count is not incremented. This also ensures that there are no cyclic
   // dependencies where the parent and child have shared_ptrs that reference
   // each other. This prevents the case in which an uncollectable cycle occurs.
-  std::weak_ptr<File> parent;
+  std::weak_ptr<Directory> parent;
 
-  // This specifies which backend a file is associated with.
+  // This specifies which backend a file is associated with. It may be null
+  // (NullBackend) if there is no particular backend associated with the file.
   backend_t backend;
+
+  // By default files are seekable. The rare exceptions are things like pipes
+  // and sockets.
+  bool seekable = true;
 };
 
 class DataFile : public File {
+  // Notify the backend when this file is opened or closed. The backend is
+  // responsible for keeping files accessible as long as they are open, even if
+  // they are unlinked.
+  // TODO: Report errors.
+  virtual void open(oflags_t flags) = 0;
+  virtual void close() = 0;
+
   // TODO: Allow backends to override the version of read with multiple iovecs
   // to make it possible to implement pipes. See #16269.
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
@@ -201,7 +220,6 @@ public:
   Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
     : file(file), lock(file->mutex, std::defer_lock) {}
-  bool trylock() { return lock.try_lock(); }
   size_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) { file->mode = mode; }
@@ -214,8 +232,8 @@ public:
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
   // specified by the parent weak_ptr.
-  std::shared_ptr<File> getParent() { return file->parent.lock(); }
-  void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+  std::shared_ptr<Directory> getParent() { return file->parent.lock(); }
+  void setParent(std::shared_ptr<Directory> parent) { file->parent = parent; }
 
   std::shared_ptr<File> unlocked() { return file; }
 };
@@ -226,6 +244,9 @@ class DataFile::Handle : public File::Handle {
 public:
   Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
   Handle(Handle&&) = default;
+
+  void open(oflags_t flags) { getFile()->open(flags); }
+  void close() { getFile()->close(); }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
@@ -254,6 +275,16 @@ public:
     : File::Handle(directory, std::defer_lock) {}
 
   std::shared_ptr<File> getChild(const std::string& name) {
+    // Unlinked directories must be empty, without even "." or ".."
+    if (!getParent()) {
+      return nullptr;
+    }
+    if (name == ".") {
+      return file;
+    }
+    if (name == "..") {
+      return getParent();
+    }
     return getDir()->getChild(name);
   }
   bool removeChild(const std::string& name);
@@ -268,30 +299,12 @@ public:
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }
 
-inline std::optional<File::Handle> File::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
-}
-
 inline DataFile::Handle DataFile::locked() {
   return Handle(shared_from_this());
 }
 
 inline Directory::Handle Directory::locked() {
   return Handle(shared_from_this());
-}
-
-inline std::optional<Directory::Handle> Directory::maybeLocked() {
-  auto handle = Handle(shared_from_this(), std::defer_lock);
-  if (handle.trylock()) {
-    return Handle(shared_from_this());
-  } else {
-    return {};
-  }
 }
 
 } // namespace wasmfs

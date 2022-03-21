@@ -18,8 +18,27 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.7
+3.1.8
 -----
+- A warning (limited-postlink-optimizations) was added that gets shown when
+  binaryen optimizations are limited due to DWARF information being requested.
+  Several binaryen passed are not compatible with the preservation of DWARF
+  information. (#16428)
+- Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
+  the vertical scroll amount for GLFW 3. (#16480)
+
+3.1.7 - 03/07/2022
+-------------------
+- Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
+  settings.  The new wasmfs filesystem is far enough along that it seems clear
+  that ASMFS will not need to be revived.
+- Fix deadlock in `munmap` that was introduced in 3.1.5.  The deadlock would
+  occur in multi-threaded programs when a partial unmap was requested (which
+  emscripten does not support). (#16413)
+- Added new compiler+linker option -sSHARED_MEMORY=1, which enables targeting
+  a shared WebAssembly.Memory. (#16419)
+- Added new API "Wasm Workers", which is an alternative to pthreads for building
+  multithreaded applications, enabled via -sWASM_WORKERS=1 (#12833)
 
 3.1.6 - 02/24/2022
 ------------------

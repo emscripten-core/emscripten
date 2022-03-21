@@ -285,14 +285,12 @@ self.onmessage = (e) => {
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
-    } else if (e.data.cmd === 'processThreadQueue') {
-      if (Module['_pthread_self']()) { // If this thread is actually running?
-        Module['_emscripten_current_thread_process_queued_calls']();
-      }
     } else if (e.data.cmd === 'processProxyingQueue') {
       if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_proxy_execute_queue'](e.data.queue);
       }
+      // Decrement the ref count
+      Atomics.sub(HEAP32, e.data.queue >> 2, 1);
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);

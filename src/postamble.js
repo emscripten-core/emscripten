@@ -263,6 +263,15 @@ function run(args) {
   }
 #endif
 
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) {
+#if MODULARIZE
+    readyPromiseResolve(Module);
+#endif // MODULARIZE
+    return initRuntime();
+  }
+#endif
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
@@ -398,11 +407,7 @@ function exit(status, implicit) {
   EXITSTATUS = status;
 
 #if ASSERTIONS && !EXIT_RUNTIME
-  // Skip this check if the runtime is being kept alive deliberately.
-  // For example if `exit_with_live_runtime` is called.
-  if (!runtimeKeepaliveCounter) {
-    checkUnflushedContent();
-  }
+  checkUnflushedContent();
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
@@ -425,24 +430,26 @@ function exit(status, implicit) {
   }
 #endif
 
-  if (keepRuntimeAlive()) {
-#if ASSERTIONS
-    // if exit() was called, we may warn the user if the runtime isn't actually being shut down
-    if (!implicit) {
-#if EXIT_RUNTIME == 0
-      var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-#else
-      var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
-#endif // EXIT_RUNTIME
-#if MODULARIZE
-      readyPromiseReject(msg);
-#endif // MODULARIZE
-      err(msg);
-    }
-#endif // ASSERTIONS
-  } else {
+#if EXIT_RUNTIME
+  if (!keepRuntimeAlive()) {
     exitRuntime();
   }
+#endif
+
+#if ASSERTIONS
+  // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
+  if (keepRuntimeAlive() && !implicit) {
+#if !EXIT_RUNTIME
+    var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
+#else
+    var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+#endif // EXIT_RUNTIME
+#if MODULARIZE
+    readyPromiseReject(msg);
+#endif // MODULARIZE
+    err(msg);
+  }
+#endif // ASSERTIONS
 
   procExit(status);
 }

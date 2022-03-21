@@ -47,8 +47,15 @@ commands:
       - run: npm ci
   pip-install:
     description: "pip install"
+    parameters:
+      python:
+        description: "Python executable to use"
+        type: string
+        default: python3
     steps:
-      - run: pip3 install -r requirements-dev.txt
+      - run:
+          name: pip install
+          command: << parameters.python >> -m pip install -r requirements-dev.txt
   build:
     description: "Install emsdk"
     steps:
@@ -93,6 +100,7 @@ commands:
   build-libs-and-freeze:
     description: "Build all libraries, and freeze the cache"
     steps:
+      - pip-install
       - run:
           name: embuilder build ALL
           command: |
@@ -134,54 +142,8 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
-  run-tests:
-    description: "Runs emscripten tests"
-    parameters:
-      test_targets:
-        description: "Test suites to run"
-        type: string
-    steps:
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - emsdk-env
-      - npm-install
-      - run:
-          name: run tests
-          command: |
-            ./tests/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./tools/check_clean.py
-  run-tests-mac:
-    description: "Runs emscripten tests"
-    parameters:
-      test_targets:
-        description: "Test suites to run"
-        type: string
-    steps:
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - checkout
-      - emsdk-env
-      - npm-install
-      - run:
-          name: Install brew package dependencies
-          environment:
-            HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew list cmake || brew install cmake
-            brew list python3 || brew install python3
-      - run:
-          name: run tests
-          command: |
-            ./tests/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./tools/check_clean.py
-  test-firefox:
-    description: "Runs emscripten tests under firefox"
+  prepare-for-tests:
+    description: "Setup emscripten tests"
     steps:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
@@ -193,6 +155,32 @@ commands:
       - emsdk-env
       - npm-install
       - pip-install
+  run-tests:
+    description: "Runs emscripten tests"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+    steps:
+      - run:
+          name: run tests
+          command: |
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
+  run-tests-linux:
+    description: "Runs emscripten tests"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+    steps:
+      - prepare-for-tests
+      - run-tests:
+          test_targets: << parameters.test_targets >>
+  test-firefox:
+    description: "Runs emscripten tests under firefox"
+    steps:
+      - prepare-for-tests
       - run:
           name: download firefox
           command: |
@@ -242,16 +230,7 @@ commands:
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - emsdk-env
-      - npm-install
-      - pip-install
+      - prepare-for-tests
       - download-chrome
       - run:
           name: run tests
@@ -274,13 +253,7 @@ commands:
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - checkout
-      - emsdk-env
-      - npm-install
-      - pip-install
+      - prepare-for-tests
       - download-chrome
       - run:
           name: run sockets tests
@@ -321,7 +294,7 @@ jobs:
   test-sanity:
     executor: bionic
     steps:
-      - run-tests:
+      - run-tests-linux:
           test_targets: "sanity"
   build-linux:
     executor: bionic
@@ -366,7 +339,7 @@ jobs:
   test-posixtest:
     executor: bionic
     steps:
-      - run-tests:
+      - run-tests-linux:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
@@ -375,37 +348,37 @@ jobs:
     environment:
       EMCC_READ_METADATA: "compare"
     steps:
-      - run-tests:
+      - run-tests-linux:
           test_targets: "core0"
   test-core2:
     executor: bionic
     environment:
       EMTEST_BROWSER: "node"
     steps:
-      - run-tests:
+      - run-tests-linux:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
           test_targets: "core2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
   test-core3:
     executor: bionic
     steps:
-      - run-tests:
+      - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir"
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe"
   test-wasm2js1:
     executor: bionic
     steps:
-      - run-tests:
+      - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
     executor: bionic
     steps:
-      - run-tests:
-          test_targets: "wasm64.test_hello_world"
+      - run-tests-linux:
+          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world"
   test-other:
     executor: bionic
     steps:
-      - run-tests:
+      - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
@@ -446,12 +419,17 @@ jobs:
             choco install python --version 3.8.0
       - run:
           name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
+          command: echo "export PATH=\"$PATH:/c/python38/:/c/python38/Scripts/\"" >> $BASH_ENV
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
+      - pip-install:
+          python: "$EMSDK_PYTHON"
       - run-tests:
           test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
+      # Run a single websockify-based test to ensure it works on windows.
+      - run-tests:
+          test_targets: "sockets.test_nodejs_sockets_echo"
   test-mac:
     executor: mac
     environment:
@@ -468,8 +446,10 @@ jobs:
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - run-tests-mac:
-          test_targets: "other core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run-tests:
+          test_targets: "other sockets.test_nodejs_sockets_echo core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:

@@ -87,16 +87,10 @@ Options that are modified or new in *emcc* are listed below:
 
      For more tips on optimizing your code, see Optimizing Code.
 
-"-s OPTION[=VALUE]"
+"-sOPTION[=VALUE]"
    [different OPTIONs affect at different stages, most at link time]
    Emscripten build options. For the available options, see
    src/settings.js.
-
-   Note:
-
-     You can prefix boolean options with "NO_" to reverse them. For
-     example, "-s EXIT_RUNTIME=1" is the same as "-s
-     NO_EXIT_RUNTIME=0".
 
    Note:
 
@@ -104,9 +98,16 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
+     It is possible, with boolean options, to use the "NO_" prefix to
+     reverse their meaning. For example, "-sEXIT_RUNTIME=0" is the
+     same as "-sNO_EXIT_RUNTIME=1" and vice versa.  This is not
+     recommended in most cases.
+
+   Note:
+
      Lists can be specified as comma separated strings:
 
-        -s EXPORTED_FUNCTIONS=foo,bar
+        -sEXPORTED_FUNCTIONS=foo,bar
 
    Note:
 
@@ -115,9 +116,9 @@ Options that are modified or new in *emcc* are listed below:
      and with or without brackets around the list.  For example, all
      the following are equivalent:
 
-        -s EXPORTED_FUNCTIONS="foo","bar"
-        -s EXPORTED_FUNCTIONS=["foo","bar"]
-        -s EXPORTED_FUNCTIONS=[foo,bar]
+        -sEXPORTED_FUNCTIONS="foo","bar"
+        -sEXPORTED_FUNCTIONS=["foo","bar"]
+        -sEXPORTED_FUNCTIONS=[foo,bar]
 
    Note:
 
@@ -125,14 +126,14 @@ Options that are modified or new in *emcc* are listed below:
      marks (") around the list in most shells (to avoid errors being
      raised). Two examples are shown below:
 
-        -s EXPORTED_FUNCTIONS="['liblib.so']"
-        -s "EXPORTED_FUNCTIONS=['liblib.so']"
+        -sEXPORTED_FUNCTIONS="['liblib.so']"
+        -s"EXPORTED_FUNCTIONS=['liblib.so']"
 
    You can also specify that the value of an option will be read from
    a file. For example, the following will set "EXPORTED_FUNCTIONS"
    based on the contents of the file at **path/to/file**.
 
-      -s EXPORTED_FUNCTIONS=@/path/to/file
+      -sEXPORTED_FUNCTIONS=@/path/to/file
 
    Note:
 
@@ -144,8 +145,9 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     Options can be specified as a single argument without a space
-     between the "-s" and option name.  e.g. "-sFOO=1".
+     Options can be specified as a single argument with or without a
+     space between the "-s" and option name.  e.g. "-sFOO" or "-s
+     FOO".
 
 "-g"
    [compile+link] Preserve debug information.
@@ -163,7 +165,7 @@ Options that are modified or new in *emcc* are listed below:
    "FILENAME" if provided, otherwise the same as the wasm file but
    with suffix ".debug.wasm". While the main file contains no debug
    info, it does contain a URL to where the debug file is, so that
-   devtools can find it. You can use "-s SEPARATE_DWARF_URL=URL" to
+   devtools can find it. You can use "-sSEPARATE_DWARF_URL=URL" to
    customize that location (this is useful if you want to host it on a
    different server, for example).
 
@@ -211,7 +213,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     When used with "-s WASM=2", two symbol files are created.
+     When used with "-sWASM=2", two symbol files are created.
      "[name].js.symbols" (with WASM symbols) and
      "[name].wasm.js.symbols" (with ASM.js symbols)
 
@@ -235,7 +237,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     * Consider using "-s MODULARIZE=1" when using closure, as it
+     * Consider using "-sMODULARIZE" when using closure, as it
        minifies globals to names that might conflict with others in
        the global scope. "MODULARIZE" puts all the output into a
        function (see "src/settings.js").
@@ -536,7 +538,7 @@ Options that are modified or new in *emcc* are listed below:
 "--threadprofiler"
    [link] Embeds a thread activity profiler onto the generated page.
    Use this to profile the application usage of pthreads when
-   targeting multithreaded builds (-s USE_PTHREADS=1/2).
+   targeting multithreaded builds (-sUSE_PTHREADS=1/2).
 
 "--em-config <path>"
    [general] Specifies the location of the **.emscripten**

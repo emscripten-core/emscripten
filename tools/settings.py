@@ -62,9 +62,11 @@ COMPILE_TIME_SETTINGS = {
     'STRICT',
     'EMSCRIPTEN_TRACING',
     'USE_PTHREADS',
+    'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
+    'WASM_WORKERS',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',

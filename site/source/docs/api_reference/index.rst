@@ -21,6 +21,9 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`Fetch-API`:
   API for managing accesses to network XHR and IndexedDB.
 
+- :ref:`wasm_workers`:
+  Enables writing multithreaded programs using a web-like API.
+
 - :ref:`Module`:
   Global JavaScript object that can be used to control code execution and access exported methods.
 
@@ -53,6 +56,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    bind.h
    trace.h
    fiber.h
+   wasm_workers
    advanced-apis
 
 

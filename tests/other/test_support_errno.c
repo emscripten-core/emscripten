@@ -9,11 +9,11 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h>
+#include <netdb.h>
 
 int main() {
-  int rtn = clock_gettime(-1, NULL);
-  printf("rtn     : %d\n", rtn);
+  void* rtn = gethostbyaddr(NULL, 0, 0);
+  printf("rtn     : %p\n", rtn);
   printf("errno   : %d\n", errno);
   printf("strerror: %s\n", strerror(errno));
   return 0;

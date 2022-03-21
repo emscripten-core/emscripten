@@ -163,9 +163,9 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    // With pthreads, races can happen (another thread might increase the size
+    // With multithreaded builds, races can happen (another thread might increase the size
     // in between), so return a failure, and let the caller retry.
-#if USE_PTHREADS
+#if SHARED_MEMORY
     if (requestedSize <= oldSize) {
       return false;
     }
@@ -391,25 +391,9 @@ LibraryManager.library = {
   // time.h
   // ==========================================================================
 
-  clock__sig: 'i',
-  clock: function() {
-    if (_clock.start === undefined) _clock.start = Date.now();
-    return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
-  },
-
-  time__sig: 'ii',
-  time: function(ptr) {
-    {{{ from64('ptr') }}};
-    var ret = (Date.now()/1000)|0;
-    if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
-    }
-    return ret;
-  },
-
-  difftime__sig: 'dii',
-  difftime: function(time1, time0) {
-    return time1 - time0;
+  _emscripten_date_now__sig: 'j',
+  _emscripten_date_now: function() {
+    return Date.now();
   },
 
   _mktime_js__sig: 'ii',
@@ -547,11 +531,6 @@ LibraryManager.library = {
     var ret = f();
     stackRestore(stack);
     return ret;
-  },
-
-  dysize: function(year) {
-    var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
-    return leap ? 366 : 365;
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
@@ -874,23 +853,8 @@ LibraryManager.library = {
         return date.tm_wday || 7;
       },
       '%U': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Sunday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year+1900, 0, 1);
-        var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Sunday?
-        if (compareByDay(firstSunday, endDate) < 0) {
-          // calculate difference in days between first Sunday and endDate
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstSundayUntilEndJanuary = 31-firstSunday.getDate();
-          var days = firstSundayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-
-        return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - date.tm_wday;
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%V': function(date) {
         // Replaced by the week number of the year (Monday as the first day of the week)
@@ -898,54 +862,35 @@ LibraryManager.library = {
         // or more days in the new year, then it is considered week 1.
         // Otherwise, it is the last week of the previous year, and the next week is week 1.
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
-        var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        var endDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
-          // if given date is before this years first week, then it belongs to the 53rd week of last year
-          return '53';
+        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
+        // If 1 Jan is just 1-3 days past Monday, the previous week
+        // is also in this year.
+        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
+          val++;
         }
-
-        if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
-          // if given date is after next years first week, then it belongs to the 01th week of next year
-          return '01';
+        if (!val) {
+          val = 52;
+          // If 31 December of prev year a Thursday, or Friday of a
+          // leap year, then the prev year has 53 weeks.
+          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
+          if (dec31 == 4 || (dec31 == 5 && __isLeapYear(date.tm_year%400-1))) {
+            val++;
+          }
+        } else if (val == 53) {
+          // If 1 January is not a Thursday, and not a Wednesday of a
+          // leap year, then this year has only 52 weeks.
+          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
+          if (jan1 != 4 && (jan1 != 3 || !__isLeapYear(date.tm_year)))
+            val = 1;
         }
-
-        // given date is in between CW 01..53 of this calendar year
-        var daysDifference;
-        if (firstWeekStartThisYear.getFullYear() < date.tm_year+1900) {
-          // first CW of this year starts last year
-          daysDifference = date.tm_yday+32-firstWeekStartThisYear.getDate()
-        } else {
-          // first CW of this year starts this year
-          daysDifference = date.tm_yday+1-firstWeekStartThisYear.getDate();
-        }
-        return leadingNulls(Math.ceil(daysDifference/7), 2);
+        return leadingNulls(val, 2);
       },
       '%w': function(date) {
         return date.tm_wday;
       },
       '%W': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Monday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year, 0, 1);
-        var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Monday?
-        if (compareByDay(firstMonday, endDate) < 0) {
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstMondayUntilEndJanuary = 31-firstMonday.getDate();
-          var days = firstMondayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-        return compareByDay(firstMonday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%y': function(date) {
         // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
@@ -1244,66 +1189,6 @@ LibraryManager.library = {
   strptime_l__deps: ['strptime'],
   strptime_l: function(buf, format, tm) {
     return _strptime(buf, format, tm); // no locale support yet
-  },
-
-  timespec_get__deps: ['clock_gettime', '$setErrNo'],
-  timespec_get: function(ts, base) {
-    //int timespec_get(struct timespec *ts, int base);
-    if (base !== {{{ cDefine('TIME_UTC') }}}) {
-      // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return 0;
-    }
-    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
-    return ret < 0 ? 0 : base;
-  },
-
-  // ==========================================================================
-  // sys/time.h
-  // ==========================================================================
-
-  clock_gettime__sig: 'iii',
-  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_gettime: function(clk_id, tp) {
-    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    var now;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      now = Date.now();
-    } else if ((clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} || clk_id === {{{ cDefine('CLOCK_MONOTONIC_RAW') }}}) && _emscripten_get_now_is_monotonic) {
-      now = _emscripten_get_now();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
-    return 0;
-  },
-  __clock_gettime__sig: 'iii',
-  __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_getres: function(clk_id, res) {
-    // int clock_getres(clockid_t clk_id, struct timespec *res);
-    var nsec;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
-      nsec = _emscripten_get_now_res();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
-    return 0;
-  },
-  gettimeofday__sig: 'iii',
-  // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
-  gettimeofday: function(ptr) {
-    var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
-    return 0;
   },
 
   // ==========================================================================
@@ -1911,7 +1796,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2416,6 +2301,7 @@ LibraryManager.library = {
 #endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
+// N.b. Wasm workers do not provide this kind of clock synchronization.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
                                "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
                                "} else " +
@@ -2462,8 +2348,9 @@ LibraryManager.library = {
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
+  $nowIsMonotonic__internal: true,
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-  emscripten_get_now_is_monotonic: `
+  $nowIsMonotonic: `
      ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
@@ -2474,8 +2361,14 @@ LibraryManager.library = {
     );`,
 #else
   // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-  emscripten_get_now_is_monotonic: 'true;',
+  $nowIsMonotonic: 'true;',
 #endif
+
+  _emscripten_get_now_is_monotonic__internal: true,
+  _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
+  _emscripten_get_now_is_monotonic: function() {
+    return nowIsMonotonic;
+  },
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -3276,8 +3169,13 @@ LibraryManager.library = {
       var func = callback.func;
       if (typeof func == 'number') {
         if (callback.arg === undefined) {
+          // Run the wasm function ptr with signature 'v'. If no function
+          // with such signature was exported, this call does not need
+          // to be emitted (and would confuse Closure)
           {{{ makeDynCall('v', 'func') }}}();
         } else {
+          // If any function with signature 'vi' was exported, run
+          // the callback with that signature.
           {{{ makeDynCall('vi', 'func') }}}(callback.arg);
         }
       } else {
@@ -3342,16 +3240,16 @@ LibraryManager.library = {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
-#if EXIT_RUNTIME == 0
-#if ASSERTIONS
+#if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
-#endif
 #endif
 #if MINIMAL_RUNTIME
     _exit(status);
 #else
     noExitRuntime = false;
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
+#endif
     exit(status);
 #endif
   },
@@ -3440,20 +3338,24 @@ LibraryManager.library = {
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
+#if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: function() {
+#if EXIT_RUNTIME
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
     err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#endif
 #endif
   },
 
@@ -3471,7 +3373,11 @@ LibraryManager.library = {
   ],
   $callUserCallback__docs: '/** @param {boolean=} synchronous */',
   $callUserCallback: function(func, synchronous) {
+#if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
+#else
+    if (ABORT) {
+#endif
 #if ASSERTIONS
       err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
@@ -3501,6 +3407,7 @@ LibraryManager.library = {
 #endif
   ],
   $maybeExit: function() {
+#if EXIT_RUNTIME
 #if RUNTIME_DEBUG
     err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3518,6 +3425,7 @@ LibraryManager.library = {
         handleException(e);
       }
     }
+#endif // EXIT_RUNTIME
   },
 #else
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff

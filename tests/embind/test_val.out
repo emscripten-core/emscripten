@@ -167,12 +167,15 @@ test:
 template<typename T> val operator[](const T& key)
 pass
 pass
-test:
-template<typename K> void set(const K& key, const val& v)
 pass
 pass
 test:
 template<typename K, typename V> void set(const K& key, const V& value)
+pass
+pass
+pass
+pass
+pass
 pass
 pass
 pass
@@ -261,6 +264,18 @@ pass
 pass
 pass
 pass
+pass
+pass
+pass
+pass
+test:
+val u8string(const char* s)
+pass
+pass
+pass
+pass
+test:
+val u16string(const char16_t* s)
 pass
 pass
 pass

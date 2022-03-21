@@ -16,6 +16,8 @@
 namespace wasmfs {
 
 class StdinFile : public DataFile {
+  void open(oflags_t) override {}
+  void close() override {}
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
@@ -34,7 +36,10 @@ class StdinFile : public DataFile {
   }
 
 public:
-  StdinFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {}
+  StdinFile(mode_t mode) : DataFile(mode, NullBackend, S_IFCHR) {
+    seekable = false;
+  }
+
   static std::shared_ptr<StdinFile> getSingleton();
 };
 
@@ -42,6 +47,9 @@ public:
 class WritingStdFile : public DataFile {
 protected:
   std::vector<char> writeBuffer;
+
+  void open(oflags_t) override {}
+  void close() override {}
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
@@ -55,7 +63,9 @@ protected:
   }
 
 public:
-  WritingStdFile() : DataFile(S_IWUGO, NullBackend, S_IFCHR) {}
+  WritingStdFile() : DataFile(S_IWUGO, NullBackend, S_IFCHR) {
+    seekable = false;
+  }
 };
 
 class StdoutFile : public WritingStdFile {

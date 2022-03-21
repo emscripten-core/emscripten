@@ -121,15 +121,14 @@ int main()
     test_read(fd[0], &rchar, (1 << 15) + 123);
     test_read(fd[0], &rchar, 321);
 
-
+#ifndef WASMFS // TODO: fcntl in WASMFS
     // Test non-blocking read from empty pipe
-
     assert(fcntl(fd[0], F_SETFL, O_NONBLOCK) == 0);
     assert(read(fd[0], buf, sizeof buf) == -1);
     assert(errno == EAGAIN);
+#endif
 
     // Normal operations still work in non-blocking mode
-
     test_poll(fd, FALSE);
     test_write(fd[1], &wchar, 10);
     test_poll(fd, TRUE);

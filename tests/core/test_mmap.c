@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <errno.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <unistd.h>
@@ -37,15 +38,18 @@ int main(int argc, char* argv[]) {
                         MAP_SHARED | MAP_ANON, -1, 0);
   assert(map != MAP_FAILED);
 
-  int i;
-
-  for (i = 0; i < NUM_INTS; i++) {
+  for (int i = 0; i < NUM_INTS; i++) {
     map[i] = i;
   }
 
-  for (i = 0; i < NUM_INTS; i++) {
+  for (int i = 0; i < NUM_INTS; i++) {
     assert(map[i] == i);
   }
+
+  // Emscripten does not support partial unmapping
+  int rtn = munmap(map, 65536);
+  assert(rtn == -1);
+  assert(errno == EINVAL);
 
   assert(munmap(map, NUM_BYTES) == 0);
 

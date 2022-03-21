@@ -129,6 +129,9 @@ var WASM_BINARY_FILE = '';
 // name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
+// name of the file containing the Wasm Worker *.ww.js, if relevant
+var WASM_WORKER_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 

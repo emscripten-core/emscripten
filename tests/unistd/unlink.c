@@ -32,16 +32,11 @@ static void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   mkdir("working", 0777);
 #ifdef __EMSCRIPTEN__
-
-#ifdef __EMSCRIPTEN_ASMFS__
-  mkdir("working", 0777);
-#else
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
-#endif
 #endif
   chdir("working");
   create_file("file", "test", 0777);
