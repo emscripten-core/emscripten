@@ -35,7 +35,7 @@ void emscripten_stack_init(void);
 // Sets the internal values reported by emscripten_stack_get_base() and
 // emscripten_stack_get_end().  This should be only used by low level libraries
 // such as asyncify fibers.
-void emscripten_stack_set_limits(void* base, void* end);
+void emscripten_stack_set_limits(void* base __attribute__((nonnull)), void* end __attribute__((nonnull)));
 
 // Returns the current stack pointer.
 uintptr_t emscripten_stack_get_current(void);

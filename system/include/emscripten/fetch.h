@@ -198,11 +198,11 @@ typedef struct emscripten_fetch_t {
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default
 // values in a future-compatible manner.
-void emscripten_fetch_attr_init(emscripten_fetch_attr_t *fetch_attr);
+void emscripten_fetch_attr_init(emscripten_fetch_attr_t *fetch_attr __attribute__((nonnull)));
 
 // Initiates a new Emscripten fetch operation, which downloads data from the
 // given URL or from IndexedDB database.
-emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const char *url);
+emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr __attribute__((nonnull)), const char *url);
 
 // Synchronously blocks to wait for the given fetch operation to complete. This
 // operation is not allowed in the main browser thread, in which case it will
@@ -211,27 +211,27 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 // EMSCRIPTEN_RESULT_TIMED_OUT.
 // The onsuccess()/onerror()/onprogress() handlers will be called in the calling
 // thread from within this function before this function returns.
-EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch __attribute__((nonnull)), double timeoutMSecs);
 
 // Closes a finished or an executing fetch operation and frees up all memory. If
 // the fetch operation was still executing, the onerror() handler will be called
 // in the calling thread before this function returns.
-EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
+EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch __attribute__((nonnull)));
 
 // Gets the size (in bytes) of the response headers as plain text.
 // This must be called on the same thread as the fetch originated on.
 // Note that this will return 0 if readyState < HEADERS_RECEIVED.
-size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
+size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch __attribute__((nonnull)));
 
 // Gets the response headers as plain text. dstSizeBytes should be
 // headers_length + 1 (for the null terminator).
 // This must be called on the same thread as the fetch originated on.
-size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
+size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch __attribute__((nonnull)), char *dst, size_t dstSizeBytes);
 
 // Converts the plain text headers into an array of strings. This array takes
 // the form {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 };
 // Note especially that the array is terminated with a null pointer.
-char **emscripten_fetch_unpack_response_headers(const char *headersString);
+char **emscripten_fetch_unpack_response_headers(const char *headersString __attribute__((nonnull)));
 
 // This frees the memory used by the array of headers. Call this when finished
 // with the data returned by emscripten_fetch_unpack_response_headers.
