@@ -853,10 +853,10 @@ class TestCoreBase(RunnerCore):
     self.emcc('b2.c', ['-c'])
     self.emcc('main.c', ['-c'])
 
-    building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
-    building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
+    building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
+    building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
 
-    building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
+    building.link_to_object(['main.o', 'liba.a', 'libb.a'], 'all.o')
 
     self.emcc('all.o', self.get_emcc_args(), 'all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
