@@ -3434,7 +3434,7 @@ LibraryManager.library = {
   $setWasmTableEntry__deps: ['$wasmTableMirror'],
   $setWasmTableEntry: function(idx, func) {
     wasmTable.set(idx, func);
-    wasmTableMirror[idx] = func;
+    wasmTableMirror[idx] = wasmTable.get(idx);
   },
 
   $getWasmTableEntry__internal: true,
