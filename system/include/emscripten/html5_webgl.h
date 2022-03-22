@@ -46,7 +46,7 @@ typedef struct EmscriptenWebGLContextAttributes {
 
 void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes __attribute__((nonnull)));
 
-EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target __attribute__((nonnull)), const EmscriptenWebGLContextAttributes *attributes);
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target __attribute__((nonnull)), const EmscriptenWebGLContextAttributes * _Nonnull attributes);
 
 EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 

@@ -41,7 +41,7 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ *addr __attribute__((nonnull
 // Wakes the given number of threads waiting on a location. Pass count ==
 // INT_MAX to wake all waiters on that location.
 // Returns -EINVAL if addr is null.
-int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
+int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 typedef struct em_queued_call em_queued_call;
 
