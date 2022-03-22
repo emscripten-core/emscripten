@@ -1162,7 +1162,8 @@ int f() {
     # built by mistake
     create_file('native.c', 'int native() { return 5; }')
     create_file('main.c', 'extern int native(); int main() { return native(); }')
-    self.run_process([CLANG_CC, 'native.c', '-target', 'x86_64-linux', '-c', '-o', 'native.o'])
+    self.run_process([CLANG_CC, 'native.c',  '-c', '-o', 'native.o'] +
+                     clang_native.get_clang_native_args())
     self.run_process([EMAR, 'crs', 'libfoo.a', 'native.o'])
     stderr = self.expect_fail([EMCC, 'main.c', 'libfoo.a'])
     self.assertContained('unknown file type', stderr)
@@ -9348,7 +9349,7 @@ int main () {
     for i in range(len(normal)):
       if normal[i] != jsmath[i]:
         diff += 1
-    self.assertEqual(diff, 4)
+    self.assertLess(diff, 5)
 
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
