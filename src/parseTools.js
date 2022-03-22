@@ -918,11 +918,10 @@ function makeRetainedCompilerSettings() {
   const ret = {};
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      try {
-        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
-          ret[x] = global[x];
-        }
-      } catch (e) {}
+      const value = global[x];
+      if (typeof value == 'number' || typeof value == 'boolean' || typeof value == 'string' || Array.isArray(x)) {
+        ret[x] = value;
+      }
     }
   }
   return ret;

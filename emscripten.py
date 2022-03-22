@@ -136,11 +136,11 @@ def update_settings_glue(metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
-  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or settings.MAIN_MODULE
+  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
