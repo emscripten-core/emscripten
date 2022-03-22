@@ -49,7 +49,6 @@
 #define SYS_stat64		__syscall_stat64
 #define SYS_lstat64		__syscall_lstat64
 #define SYS_fstat64		__syscall_fstat64
-#define SYS_lchown32		__syscall_lchown32
 #define SYS_getuid32		__syscall_getuid32
 #define SYS_getgid32		__syscall_getgid32
 #define SYS_geteuid32		__syscall_geteuid32
@@ -58,7 +57,6 @@
 #define SYS_fchown32		__syscall_fchown32
 #define SYS_getresuid32	__syscall_getresuid32
 #define SYS_getresgid32	__syscall_getresgid32
-#define SYS_chown32		__syscall_chown32
 #define SYS_mincore		__syscall_mincore
 #define SYS_madvise		__syscall_madvise
 #define SYS_getdents64		__syscall_getdents64

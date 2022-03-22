@@ -852,6 +852,7 @@ class libc(MuslInternalLibrary,
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
+          'emscripten_yield.c',
         ])
     else:
       ignore += ['thread']

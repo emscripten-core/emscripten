@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.8
 -----
+- Command line settings (`-s`) are now type checked.  For example, passing a
+  string to a boolean setting will now generate an error (e.g.
+  `-sEXIT_RUNTIME=foo`).  Previously, the value of `foo` would have have been
+  interpreted as non-zero and accepted as valid. (#16539)
 - A warning (limited-postlink-optimizations) was added that gets shown when
   binaryen optimizations are limited due to DWARF information being requested.
   Several binaryen passed are not compatible with the preservation of DWARF

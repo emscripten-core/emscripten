@@ -2568,7 +2568,7 @@ LibraryManager.library = {
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number') return ret;
+    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;

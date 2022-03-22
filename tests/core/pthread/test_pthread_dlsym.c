@@ -2,7 +2,6 @@
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdio.h>
-#include <emscripten/threading.h>
 
 typedef int (*func_t)();
 
@@ -53,7 +52,6 @@ static void test_order2() {
 
 static void* thread_main() {
   printf("in thread_main\n");
-  _emscripten_thread_sync_code();
   test_order2();
   printf("thread_main done\n");
   return 0;

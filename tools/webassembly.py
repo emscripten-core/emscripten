@@ -212,16 +212,15 @@ class Module:
 
   def parse_features_section(self):
     features = []
-    for sec in self.sections():
-      if sec.type == SecType.CUSTOM and sec.name == 'target_features':
-        self.seek(sec.offset)
-        self.readString()  # name
-        feature_count = self.readULEB()
-        while feature_count:
-          prefix = self.readByte()
-          features.append((chr(prefix), self.readString()))
-          feature_count -= 1
-        break
+    sec = self.get_custom_section('target_features')
+    if sec:
+      self.seek(sec.offset)
+      self.readString()  # name
+      feature_count = self.readULEB()
+      while feature_count:
+        prefix = self.readByte()
+        features.append((chr(prefix), self.readString()))
+        feature_count -= 1
     return features
 
   def parse_dylink_section(self):
@@ -289,7 +288,7 @@ class Module:
     return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
 
   def get_exports(self):
-    export_section = next((s for s in self.sections() if s.type == SecType.EXPORT), None)
+    export_section = self.get_section(SecType.EXPORT)
     if not export_section:
       return []
 
@@ -305,7 +304,7 @@ class Module:
     return exports
 
   def get_imports(self):
-    import_section = next((s for s in self.sections() if s.type == SecType.IMPORT), None)
+    import_section = self.get_section(SecType.IMPORT)
     if not import_section:
       return []
 
@@ -336,7 +335,7 @@ class Module:
     return imports
 
   def get_globals(self):
-    global_section = next((s for s in self.sections() if s.type == SecType.GLOBAL), None)
+    global_section = self.get_section(SecType.GLOBAL)
     if not global_section:
       return []
     globls = []
@@ -350,7 +349,7 @@ class Module:
     return globls
 
   def get_functions(self):
-    code_section = next((s for s in self.sections() if s.type == SecType.CODE), None)
+    code_section = self.get_section(SecType.CODE)
     if not code_section:
       return []
     functions = []
@@ -363,9 +362,18 @@ class Module:
       self.seek(start + body_size)
     return functions
 
+  def get_section(self, section_code):
+    return next((s for s in self.sections() if s.type == section_code), None)
+
+  def get_custom_section(self, name):
+    for section in self.sections():
+      if section.type == SecType.CUSTOM and section.name == name:
+        return section
+    return None
+
   def get_segments(self):
     segments = []
-    data_section = next((s for s in self.sections() if s.type == SecType.DATA), None)
+    data_section = self.get_section(SecType.DATA)
     self.seek(data_section.offset)
     num_segments = self.readULEB()
     for i in range(num_segments):
@@ -381,7 +389,7 @@ class Module:
     return segments
 
   def get_tables(self):
-    table_section = next((s for s in self.sections() if s.type == SecType.TABLE), None)
+    table_section = self.get_section(SecType.TABLE)
     if not table_section:
       return []
 
@@ -396,10 +404,7 @@ class Module:
     return tables
 
   def has_name_section(self):
-    for section in self.sections():
-      if section.type == SecType.CUSTOM and section.name == 'name':
-        return True
-    return False
+    return self.get_custom_section('name') is not None
 
 
 def parse_dylink_section(wasm_file):
