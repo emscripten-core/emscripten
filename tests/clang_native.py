@@ -14,6 +14,7 @@ logger = logging.getLogger('clang_native')
 
 def get_native_triple():
   arch = {
+      'aarch64': 'arm64',
       'arm64': 'arm64',
       'x86_64': 'x86_64',
       'AMD64': 'x86_64',
