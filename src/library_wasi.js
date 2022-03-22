@@ -15,7 +15,7 @@ var WasiLibrary = {
 #endif
   },
 
-  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '$getExecutableName', 'emscripten_get_timezone'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
@@ -33,7 +33,7 @@ var WasiLibrary = {
         'PWD': '/',
         'HOME': '/home/web_user',
         'LANG': lang,
-        'TZ': Intl.DateTimeFormat().resolvedOptions().timeZone,
+        'TZ': UTF8ToString(emscripten_get_timezone()),
         '_': getExecutableName()
       };
       // Apply the user-provided values, if any.

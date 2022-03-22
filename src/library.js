@@ -2323,6 +2323,19 @@ LibraryManager.library = {
                                "_emscripten_get_now = () => performance.now();\n",
 #endif
 
+  emscripten_get_timezone__sig: 'iv',
+  emscripten_get_timezone: function() {
+    var buflen = 128;
+
+    if (!_emscripten_get_timezone.buffer) {
+      _emscripten_get_timezone.buffer = _malloc(buflen);
+    }
+
+    stringToUTF8(Intl.DateTimeFormat().resolvedOptions().timeZone, _emscripten_get_timezone.buffer, buflen);
+
+    return _emscripten_get_timezone.buffer;
+  },
+
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
