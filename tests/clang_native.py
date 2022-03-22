@@ -12,19 +12,21 @@ from tools.utils import MACOS, WINDOWS, path_from_root
 
 logger = logging.getLogger('clang_native')
 
+
 def get_native_triple():
   arch = {
       'aarch64': 'arm64',
       'arm64': 'arm64',
       'x86_64': 'x86_64',
       'AMD64': 'x86_64',
-      }[platform.machine()]
+  }[platform.machine()]
   OS = {
       'linux': 'linux',
       'darwin': 'darwin',
       'win32': 'windows-msvc',
-      }[sys.platform]
+  }[sys.platform]
   return f'{arch}-{OS}'
+
 
 # These extra args need to be passed to Clang when targeting a native host system executable
 def get_clang_native_args():
