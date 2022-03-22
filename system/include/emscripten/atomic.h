@@ -37,8 +37,8 @@ uint8_t emscripten_atomic_load_u8(const void/*uint8_t*/ *addr __attribute__((non
 uint16_t emscripten_atomic_load_u16(const void/*uint16_t*/ *addr __attribute__((nonnull)));
 uint32_t emscripten_atomic_load_u32(const void/*uint32_t*/ *addr __attribute__((nonnull)));
 float emscripten_atomic_load_f32(const void/*float*/ *addr __attribute__((nonnull)));
-uint64_t emscripten_atomic_load_u64(const void/*uint64_t*/ *addr);
-double emscripten_atomic_load_f64(const void/*double*/ *addr __attribute__((nonnull))) __attribute__((nonnull));
+uint64_t emscripten_atomic_load_u64(const void/*uint64_t*/ *addr __attribute__((nonnull)));
+double emscripten_atomic_load_f64(const void/*double*/ *addr __attribute__((nonnull)));
 
 // Returns the value that was stored (i.e. 'val')
 uint8_t emscripten_atomic_store_u8(void/*uint8_t*/ *addr __attribute__((nonnull)), uint8_t val);
