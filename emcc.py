@@ -376,24 +376,16 @@ def apply_settings(user_settings):
     else:
       value = value.replace('\\', '\\\\')
 
-    existing = getattr(settings, user_key, None)
-    expect_list = type(existing) == list
+    expected_type = settings.types.get(key)
 
-    if filename and expect_list and value.strip()[0] != '[':
+    if filename and expected_type == list and value.strip()[0] != '[':
       # Prefer simpler one-line-per value parser
       value = parse_symbol_list_file(value)
     else:
       try:
-        value = parse_value(value, expect_list)
+        value = parse_value(value, expected_type)
       except Exception as e:
         exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
-
-    # Do some basic type checking by comparing to the existing settings.
-    # Sadly we can't do this generically in the SettingsManager since there are settings
-    # that so change types internally over time.
-    # We only currently worry about lists vs non-lists.
-    if expect_list != (type(value) == list):
-      exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
 
     setattr(settings, user_key, value)
 
@@ -1046,7 +1038,7 @@ def run(args):
   # Strip args[0] (program name)
   args = args[1:]
 
-  misc_temp_files = shared.configuration.get_temp_files()
+  misc_temp_files = shared.get_temp_files()
 
   # Handle some global flags
 
@@ -1808,7 +1800,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
 
   if options.use_closure_compiler:
-    settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
+    settings.USE_CLOSURE_COMPILER = 1
 
   if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
     exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
@@ -3392,7 +3384,7 @@ def phase_binaryen(target, options, wasm_target):
                                symbols_file=symbols_file,
                                symbols_file_js=symbols_file_js)
 
-    shared.configuration.get_temp_files().note(wasm2js)
+    shared.get_temp_files().note(wasm2js)
 
     if settings.WASM == 2:
       safe_copy(wasm2js, wasm2js_template)
@@ -3415,7 +3407,7 @@ def phase_binaryen(target, options, wasm_target):
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
-    building.emit_debug_on_side(wasm_target, settings.SEPARATE_DWARF)
+    building.emit_debug_on_side(wasm_target)
 
   if settings.WASM2C:
     wasm2c.do_wasm2c(wasm_target)
@@ -3514,7 +3506,7 @@ else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME})
 
-  shared.configuration.get_temp_files().note(final_js)
+  shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
 
@@ -3534,7 +3526,7 @@ def module_export_name_substitution():
   if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
-  shared.configuration.get_temp_files().note(final_js)
+  shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
 
@@ -3876,7 +3868,7 @@ def parse_symbol_list_file(contents):
   return [v.strip() for v in values]
 
 
-def parse_value(text, expect_list):
+def parse_value(text, expected_type):
   # Note that using response files can introduce whitespace, if the file
   # has a newline at the end. For that reason, we rstrip() in relevant
   # places here.
@@ -3931,13 +3923,19 @@ def parse_value(text, expect_list):
       return []
     return parse_string_list_members(text)
 
-  if expect_list or (text and text[0] == '['):
+  if expected_type == list or (text and text[0] == '['):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
       return json.loads(text)
     except ValueError:
       return parse_string_list(text)
+
+  if expected_type == float:
+    try:
+      return float(text)
+    except ValueError:
+      pass
 
   try:
     if text.startswith('0x'):

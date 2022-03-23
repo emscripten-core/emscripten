@@ -131,11 +131,6 @@ var SyscallsLibrary = {
       }
       return 0;
     },
-    doDup: function(stream, suggestFD, flags) {
-      var suggest = FS.getStream(suggestFD);
-      if (suggest) FS.close(suggest);
-      return FS.createStream(stream, suggestFD, suggestFD).fd;
-    },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
@@ -744,18 +739,8 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
   },
-  __syscall_lchown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
-    return 0;
-  },
   __syscall_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
-    return 0;
-  },
-  __syscall_chown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group);
     return 0;
   },
   __syscall_getdents64: function(fd, dirp, count) {
@@ -923,11 +908,13 @@ var SyscallsLibrary = {
     err('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
+    var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
+    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
 #if ASSERTIONS
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.chown(path, owner, group);
+    (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
   __syscall_newfstatat: function(dirfd, path, buf, flags) {
@@ -1036,7 +1023,9 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
-    return SYSCALLS.doDup(old, suggestFD, flags);
+    var suggest = FS.getStream(suggestFD);
+    if (suggest) FS.close(suggest);
+    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
   },
 };
 

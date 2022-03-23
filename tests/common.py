@@ -515,6 +515,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
+    if type(value) == bool:
+      value = int(value)
     self.settings_mods[key] = value
 
   def has_changed_setting(self, key):
@@ -902,10 +904,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    if output_filename is None:
-      output_filename = filename + '.o'
-    try_delete(output_filename)
-    self.run_process([compiler_for(filename), filename] + args + ['-o', output_filename], **kwargs)
+    cmd = [compiler_for(filename), filename] + args
+    if output_filename:
+      cmd += ['-o', output_filename]
+    self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 
