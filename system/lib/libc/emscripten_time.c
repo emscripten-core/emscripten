@@ -25,11 +25,11 @@ void _localtime_js(const time_t *restrict t, struct tm *restrict tm);
 void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
 double _emscripten_date_now();
 double emscripten_get_now_res();
-void emscripten_get_timezone_js(char* buffer, int length);
+void _emscripten_get_timezone_js(char* buffer, int length);
 
-char* emscripten_get_timezone() {
-  static char buffer[128];
-  emscripten_get_timezone_js(buffer, sizeof(buffer));
+const char* emscripten_get_timezone() {
+  thread_local char buffer[128];
+  _emscripten_get_timezone_js(buffer, sizeof(buffer));
   return buffer;
 }
 

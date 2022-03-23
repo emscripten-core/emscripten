@@ -2327,9 +2327,9 @@ LibraryManager.library = {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   },
   
-  emscripten_get_timezone_js__deps: ['$emscriptenGetTimeZone'],
-  emscripten_get_timezone_js__sig: 'vii',
-  emscripten_get_timezone_js:  function(str, len) {
+  _emscripten_get_timezone_js__deps: ['$emscriptenGetTimeZone'],
+  _emscripten_get_timezone_js__sig: 'vii',
+  _emscripten_get_timezone_js:  function(str, len) {
     stringToUTF8(emscriptenGetTimeZone(), str, len);
   }, 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
