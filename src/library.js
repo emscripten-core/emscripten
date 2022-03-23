@@ -2323,19 +2323,15 @@ LibraryManager.library = {
                                "_emscripten_get_now = () => performance.now();\n",
 #endif
 
-  emscripten_get_timezone__sig: 'iv',
-  emscripten_get_timezone: function() {
-    var buflen = 128;
-
-    if (!_emscripten_get_timezone.buffer) {
-      _emscripten_get_timezone.buffer = _malloc(buflen);
-    }
-
-    stringToUTF8(Intl.DateTimeFormat().resolvedOptions().timeZone, _emscripten_get_timezone.buffer, buflen);
-
-    return _emscripten_get_timezone.buffer;
+  $emscriptenGetTimeZone: function() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
   },
-
+  
+  emscripten_get_timezone_js__deps: ['$emscriptenGetTimeZone', 'emscripten_builtin_free'],
+  emscripten_get_timezone_js__sig: 'vi',
+  emscripten_get_timezone_js:  function(str, len) {
+    stringToUTF8(emscriptenGetTimeZone(), str, len);
+  }, 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
