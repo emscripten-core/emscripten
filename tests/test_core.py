@@ -2114,6 +2114,7 @@ int main(int argc, char **argv) {
 
   @parameterized({
     '': ([], False),
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
     'c': ([], True),
     'linked': (['-sMAIN_MODULE'], False),
     'linked_c': (['-sMAIN_MODULE'], True),
@@ -2121,9 +2122,11 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE' in args:
       self.check_dylink()
-    self.emcc_args += args
-    if '-sMAIN_MODULE' not in args:
+    else:
       self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
+    self.emcc_args += args
+    if '-sUSE_PTHREADS' in args:
+      self.setup_node_pthreads()
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
