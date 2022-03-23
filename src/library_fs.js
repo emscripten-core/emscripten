@@ -400,7 +400,7 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function(){ this.shared = {}; };
+        FS.FSStream = /** @constructor */ function(){ this.shared = { refcnt : 0 }; };
         FS.FSStream.prototype = {
           object: {
             get: function() { return this.node; },
@@ -423,12 +423,14 @@ FS.staticInit();` +
       }
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
+      stream.shared.refcnt ++;
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
       return stream;
     },
     closeStream: (fd) => {
+      FS.streams[fd].shared.refcnt --;
       FS.streams[fd] = null;
     },
 

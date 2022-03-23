@@ -96,16 +96,17 @@ mergeInto(LibraryManager.library, {
       var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true };
+      var stream = FS.createStream({ fd: fd, nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true });
       FS.streams[fd] = stream;
       return stream;
     },
     close: function(stream) {
-      if (!stream.stream_ops) {
-        // this stream is created by in-memory filesystem
+      FS.closeStream(stream.fd);
+      if (!stream.stream_ops && stream.shared.refcnt === 0) {
+        
+        // this stream is created by in-memory filesystem        
         fs.closeSync(stream.nfd);
       }
-      FS.closeStream(stream.fd);
     },
     llseek: function(stream, offset, whence) {
       if (stream.stream_ops) {
