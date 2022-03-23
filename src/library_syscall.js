@@ -131,11 +131,6 @@ var SyscallsLibrary = {
       }
       return 0;
     },
-    doDup: function(path, flags, suggestFD) {
-      var suggest = FS.getStream(suggestFD);
-      if (suggest) FS.close(suggest);
-      return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
-    },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
@@ -1028,7 +1023,9 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
+    var suggest = FS.getStream(suggestFD);
+    if (suggest) FS.close(suggest);
+    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
   },
 };
 
