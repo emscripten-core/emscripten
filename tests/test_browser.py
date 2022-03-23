@@ -3275,6 +3275,8 @@ window.close = function() {
     'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
     'mp3': (['mp3'],    'MIX_INIT_MP3', 'pudinha.mp3'),
     'mod': (['mod'],    'MIX_INIT_MOD', 'bleep.xm'),
+    # TODO: need to source freepats.cfg and a midi file
+    # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):

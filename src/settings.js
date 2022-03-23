@@ -1457,7 +1457,7 @@ var USE_MODPLUG = false;
 // [link]
 var SDL2_IMAGE_FORMATS = [];
 
-// Formats to support in SDL2_mixer. Valid values: ogg, mp3
+// Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
