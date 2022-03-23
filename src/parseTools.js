@@ -931,32 +931,35 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, and body of the
-// function. Returns the output of that function.
+// function, to which we pass the parsed-out name, arguments, body, and possible
+// "async" prefix of the input function. Returns the output of that function.
 function modifyFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let async_;
   let names;
   let args;
   let rest;
   if (match) {
-    name = match[1];
-    args = match[2];
+    async_ = match[1] || '';
+    name = match[2];
+    args = match[3];
     rest = text.substr(match[0].length);
   } else {
     // Match a function without a name (we could probably use a single regex
     // for both, but it would be more complex).
-    match = text.match(/^\s*function\(([^)]*)\)/);
+    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
     assert(match, 'could not match function ' + text + '.');
     name = '';
-    args = match[1];
+    async_ = match[1] || '';
+    args = match[2];
     rest = text.substr(match[0].length);
   }
   const bodyStart = rest.indexOf('{');
   assert(bodyStart >= 0);
   const bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
 }
 
 function runOnMainThread(text) {
