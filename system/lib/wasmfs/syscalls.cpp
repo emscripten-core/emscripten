@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
@@ -1065,11 +1066,7 @@ int __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   return 0;
 }
 
-static off_t combineOffParts(long low, long high) {
-  return (off_t(high) << 32) | off_t(low);
-}
-
-static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
+static long doTruncate(std::shared_ptr<File>& file, off_t size) {
   auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
@@ -1081,7 +1078,6 @@ static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
     return -EACCES;
   }
 
-  auto size = combineOffParts(low, high);
   if (size < 0) {
     return -EINVAL;
   }
@@ -1093,20 +1089,20 @@ static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
   return 0;
 }
 
-int __syscall_truncate64(long path, long low, long high) {
+int __syscall_truncate64(long path, uint64_t size) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
   }
-  return doTruncate(parsed.getFile(), low, high);
+  return doTruncate(parsed.getFile(), size);
 }
 
-int __syscall_ftruncate64(long fd, long low, long high) {
+int __syscall_ftruncate64(long fd, uint64_t size) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
   }
-  auto ret = doTruncate(openFile->locked().getFile(), low, high);
+  auto ret = doTruncate(openFile->locked().getFile(), size);
   // XXX It is not clear from the docs why ftruncate would differ from
   //     truncate here. However, on Linux this definitely happens, and the old
   //     FS matches that as well, so do the same here.

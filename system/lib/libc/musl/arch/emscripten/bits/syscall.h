@@ -62,7 +62,7 @@
 #define SYS_fcntl64		__syscall_fcntl64
 #define SYS_statfs64		__syscall_statfs64
 #define SYS_fstatfs64		__syscall_fstatfs64
-#define SYS_fadvise64_64	__syscall_fadvise64_64
+#define SYS_fadvise64		__syscall_fadvise64
 #define SYS_openat		__syscall_openat
 #define SYS_mkdirat		__syscall_mkdirat
 #define SYS_mknodat		__syscall_mknodat
