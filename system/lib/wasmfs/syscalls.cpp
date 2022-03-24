@@ -639,17 +639,18 @@ long __syscall_getcwd(long buf, long size) {
   }
 
   auto res = result.c_str();
+  int len = strlen(res) + 1;
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
-  if (strlen(res) >= size - 1) {
+  if (len >= size) {
     return -ENAMETOOLONG;
   }
 
   // Return value is a null-terminated c string.
   strcpy((char*)buf, res);
 
-  return buf;
+  return len;
 }
 
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
