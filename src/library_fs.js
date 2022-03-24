@@ -417,7 +417,7 @@ FS.staticInit();` +
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           },
-          flags: { 
+          flags: {
             get: function() { return this.shared.flags; },
             set: function(val) { this.shared.flags = val; },
           },
