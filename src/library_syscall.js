@@ -711,10 +711,10 @@ var SyscallsLibrary = {
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
-    var cwdLengthInBytes = lengthBytesUTF8(cwd);
-    if (size < cwdLengthInBytes + 1) return -{{{ cDefine('ERANGE') }}};
+    var cwdLengthInBytes = lengthBytesUTF8(cwd) + 1;
+    if (size < cwdLengthInBytes) return -{{{ cDefine('ERANGE') }}};
     stringToUTF8(cwd, buf, size);
-    return buf;
+    return cwdLengthInBytes;
   },
   __syscall_truncate64: function(path, low, high) {
     path = SYSCALLS.getStr(path);
