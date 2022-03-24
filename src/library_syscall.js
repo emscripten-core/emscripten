@@ -1114,9 +1114,9 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyFunction(t, function(name, args, body) {
       var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
       return 'function ' + name + '(' + args + ') {\n' +
-             '  return BigInt((function ' + name + '_inner(' + args + ') {\n' +
+             '  return (function ' + name + '_inner(' + args + ') {\n' +
              body +
-             '  })(' + argnums + '));' +
+             '  })(' + argnums + ');' +
              '}';
     });
   }
