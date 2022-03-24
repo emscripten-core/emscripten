@@ -30,6 +30,9 @@ See docs/process.md for more on how version tagging works.
   information. (#16428)
 - Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
   the vertical scroll amount for GLFW 3. (#16480)
+- The emsdk binaries for macOS now require macOS 10.14 Mojave (or above).
+  Prior versions of emsdk could run on 10.11 (or above), but supporting those
+  older versions recently became harder.
 
 3.1.7 - 03/07/2022
 -------------------
