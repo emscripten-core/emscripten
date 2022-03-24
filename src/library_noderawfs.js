@@ -100,9 +100,25 @@ mergeInto(LibraryManager.library, {
       FS.streams[fd] = stream;
       return stream;
     },
+    createStream: function(stream, fd_start, fd_end){
+      // Call the original FS.createStream
+      var rtn = VFS.createStream(stream, fd_start, fd_end);
+      if (typeof rtn.shared.refcnt == "undefined") {
+        rtn.shared.refcnf = 0;
+      } else {
+        rtn.shared.refcnf++;
+      }
+      return rtn;
+   },
+   closeStream: function(fd) {
+     if(FS.streams[fd].shared){
+       FS.streams[fd].shared.refcnt--;
+     }
+     VFS.closeStream(fd);
+   },
     close: function(stream) {
       FS.closeStream(stream.fd);
-      if (!stream.stream_ops && stream.shared.refcnt === 0) {
+      if (!stream.stream_ops && (!stream.shared || stream.shared.refcnt === 0)) {
         
         // this stream is created by in-memory filesystem        
         fs.closeSync(stream.nfd);
