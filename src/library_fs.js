@@ -417,10 +417,14 @@ FS.staticInit();` +
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           },
-          get flags() { return this.shared.flags; },
-          set flags(value) { this.shared.flags = value; },
-          get position() { return this.shared.position; },
-          set position(value) { this.shared.position = value; },
+          flags: { 
+            get: function() { return this.shared.flags; },
+            set: function(val) { this.shared.flags = val; },
+          },
+          position : {
+            get function() { return this.shared.position; },
+            set: function(val) { this.shared.position = val; },
+          },
         };
       }
       // clone it, so we can return an instance of FSStream
