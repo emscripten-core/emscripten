@@ -205,8 +205,8 @@ var WasiLibrary = {
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, 'i32') }}};
-      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, 'i32') }}};
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
