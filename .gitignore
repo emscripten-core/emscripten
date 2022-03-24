@@ -15,6 +15,9 @@
 # Default emscripten cache
 /cache
 
+# Python packages
+/.pip/
+
 # Ignore only the root node_modules, but not any further down the path
 /node_modules/
 

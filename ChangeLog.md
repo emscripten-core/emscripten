@@ -30,6 +30,11 @@ See docs/process.md for more on how version tagging works.
   information. (#16428)
 - Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
   the vertical scroll amount for GLFW 3. (#16480)
+- `pip` is now used to install python packages needed by emscripten. If you
+  use emscripten directly (e.g. via a git checkout) this means you will need
+  to run `pip install -r requirements` (as well as the existing `npm install`
+  requirement), after you checkout the code.  As with `npm install`, emsdk users
+  are not effected by this change. (#16551)
 
 3.1.7 - 03/07/2022
 -------------------
