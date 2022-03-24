@@ -45,9 +45,9 @@ mergeInto(LibraryManager.library, {
       return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
     },
     createStandardStreams: function() {
-      FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
+      FS.streams[0] = FS.createStream({ fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false });
       for (var i = 1; i < 3; i++) {
-        FS.streams[i] = { fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false };
+        FS.streams[i] = FS.createStream({ fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false });
       }
     },
     // generic function for all node creation
@@ -111,15 +111,12 @@ mergeInto(LibraryManager.library, {
       return rtn;
    },
    closeStream: function(fd) {
-     if (FS.streams[fd].shared){
-       FS.streams[fd].shared.refcnt--;
-     }
+     FS.streams[fd].shared.refcnt--;
      VFS.closeStream(fd);
    },
     close: function(stream) {
       FS.closeStream(stream.fd);
-      if (!stream.stream_ops && (!stream.shared || stream.shared.refcnt === 0)) {
-        
+      if (!stream.stream_ops && stream.shared.refcnt === 0) {
         // this stream is created by in-memory filesystem        
         fs.closeSync(stream.nfd);
       }
