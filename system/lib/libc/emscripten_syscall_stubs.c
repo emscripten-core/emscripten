@@ -100,10 +100,6 @@ int __syscall_link(long oldpath, long newpath) {
   return -EMLINK; // no hardlinks for us
 }
 
-int __syscall_nice(long inc) {
-  return -EPERM; // no meaning to nice for our single-process environment
-}
-
 int __syscall_getgroups32(long size, long list) {
   if (size < 1) {
     return -EINVAL;

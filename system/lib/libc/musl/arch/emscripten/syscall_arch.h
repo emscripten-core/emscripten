@@ -18,7 +18,6 @@ int __syscall_chmod(long path, long mode);
 int __syscall_getpid(void);
 int __syscall_pause(void);
 int __syscall_access(long path, long amode);
-int __syscall_nice(long inc);
 int __syscall_sync(void);
 int __syscall_mkdir(long path, long mode);
 int __syscall_rmdir(long path);
