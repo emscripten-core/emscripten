@@ -134,8 +134,9 @@ var SyscallsLibrary = {
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+        iov += {{{ C_STRUCTS.iovec.__size__ }}};
         var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
@@ -146,8 +147,9 @@ var SyscallsLibrary = {
     doWritev: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+        iov += {{{ C_STRUCTS.iovec.__size__ }}};
         var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
