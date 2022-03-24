@@ -2,16 +2,6 @@
 
 #include <stdio.h>
 
-template<typename T>
-int CHECKED_TRUNCATE_TO_POSITIVE_INT32(const T &val)
-{
-	if (val < 0 || val > 0x7FFFFFFF)
-	{
-		printf("Warning: Truncating value out of non-negative int32 range! (%lld)\n", (long long)val);
-	}
-	return (int)val;
-}
-
 #if defined(__APPLE__) || defined(__linux__)
 
 #include <sys/socket.h>

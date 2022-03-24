@@ -342,4 +342,4 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest_exit(test_file('websocket/tcp_echo_client.cpp'), args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+        self.btest_exit(test_file('websocket/tcp_echo_client.c'), args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
