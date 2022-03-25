@@ -28,7 +28,7 @@ double emscripten_get_now_res();
 void _emscripten_get_timezone_js(char* buffer, int length);
 
 const char* emscripten_get_timezone() {
-  static char buffer[128];
+  static thread_local char buffer[128];
   _emscripten_get_timezone_js(buffer, sizeof(buffer));
   return buffer;
 }
