@@ -974,10 +974,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 // [link]
 var INCLUDE_FULL_LIBRARY = false;
 
-// Set this to a string to override the shell file used
-// [link]
-var SHELL_FILE = false;
-
 // If set to 1, we emit relocatable code from the LLVM backend; both
 // globals and function pointers are all offset (by gb and fp, respectively)
 // Automatically set for SIDE_MODULE or MAIN_MODULE.
@@ -2062,11 +2058,12 @@ var LEGACY_SETTINGS = [
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
-  ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['BINARYEN_SCRIPTS', [''], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
+  ['SHELL_FILE', [''], 'No longer supported'],
 ];

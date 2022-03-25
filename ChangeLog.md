@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.9
 -----
+- The `-sSHELL_FILE` setting, which (unlike the --shell-file command line
+  options) we believe was never tested or externally used, has been removed.
+  (#16589)
 
 3.1.8 - 03/24/2022
 ------------------
