@@ -383,7 +383,7 @@ function ${name}(${args}) {
       return;
     }
 
-    const shellFile = SHELL_FILE ? SHELL_FILE : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js');
+    const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
 
     const shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));

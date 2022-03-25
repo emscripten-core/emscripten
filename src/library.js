@@ -2577,7 +2577,7 @@ LibraryManager.library = {
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number') return ret;
+    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
@@ -3203,7 +3203,7 @@ LibraryManager.library = {
   $setWasmTableEntry__deps: ['$wasmTableMirror'],
   $setWasmTableEntry: function(idx, func) {
     wasmTable.set(idx, func);
-    wasmTableMirror[idx] = func;
+    wasmTableMirror[idx] = wasmTable.get(idx);
   },
 
   $getWasmTableEntry__internal: true,

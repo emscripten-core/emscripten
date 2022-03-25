@@ -118,6 +118,8 @@ Windows
 macOS
 +++++
 
+.. note:: Emscripten requires macOS 10.14 Mojave or above.
+
 If you use the Emscripten SDK it includes a bundled version of Python 3.
 Otherwise you will need to manually install and use Python 3.6 or newer.
 

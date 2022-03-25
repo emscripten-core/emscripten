@@ -918,11 +918,10 @@ function makeRetainedCompilerSettings() {
   const ret = {};
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      try {
-        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
-          ret[x] = global[x];
-        }
-      } catch (e) {}
+      const value = global[x];
+      if (typeof value == 'number' || typeof value == 'boolean' || typeof value == 'string' || Array.isArray(x)) {
+        ret[x] = value;
+      }
     }
   }
   return ret;
@@ -932,32 +931,35 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, and body of the
-// function. Returns the output of that function.
+// function, to which we pass the parsed-out name, arguments, body, and possible
+// "async" prefix of the input function. Returns the output of that function.
 function modifyFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let async_;
   let names;
   let args;
   let rest;
   if (match) {
-    name = match[1];
-    args = match[2];
+    async_ = match[1] || '';
+    name = match[2];
+    args = match[3];
     rest = text.substr(match[0].length);
   } else {
     // Match a function without a name (we could probably use a single regex
     // for both, but it would be more complex).
-    match = text.match(/^\s*function\(([^)]*)\)/);
+    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
     assert(match, 'could not match function ' + text + '.');
     name = '';
-    args = match[1];
+    async_ = match[1] || '';
+    args = match[2];
     rest = text.substr(match[0].length);
   }
   const bodyStart = rest.indexOf('{');
   assert(bodyStart >= 0);
   const bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
 }
 
 function runOnMainThread(text) {
@@ -1115,12 +1117,12 @@ function receiveI64ParamAsI32s(name) {
 function receiveI64ParamAsDouble(name) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = Number(${name});`;
+    return `var ${name} = Number(${name}_bigint);`;
   }
 
   // Combine the i32 params. Use an unsigned operator on low and shift high by
   // 32 bits.
-  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {

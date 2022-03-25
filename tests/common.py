@@ -190,12 +190,7 @@ def require_v8(func):
 
 def node_pthreads(f):
   def decorated(self, *args, **kwargs):
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args += ['-Wno-pthreads-mem-growth']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    self.js_engines = [config.NODE_JS]
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.setup_node_pthreads()
     f(self, *args, **kwargs)
   return decorated
 
@@ -397,6 +392,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.js_engines = [config.NODE_JS]
 
+  def setup_node_pthreads(self):
+    self.require_node()
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
       return False
@@ -515,6 +519,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
+    if type(value) == bool:
+      value = int(value)
     self.settings_mods[key] = value
 
   def has_changed_setting(self, key):
@@ -902,10 +908,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    if output_filename is None:
-      output_filename = filename + '.o'
-    try_delete(output_filename)
-    self.run_process([compiler_for(filename), filename] + args + ['-o', output_filename], **kwargs)
+    cmd = [compiler_for(filename), filename] + args
+    if output_filename:
+      cmd += ['-o', output_filename]
+    self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 

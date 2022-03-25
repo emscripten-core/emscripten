@@ -191,7 +191,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   else:
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
 
-  temp_files = shared.configuration.get_temp_files()
+  temp_files = shared.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
     utils.write_file(shell_temp, shell)
     shell = shared.read_and_preprocess(shell_temp)

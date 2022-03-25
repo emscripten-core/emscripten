@@ -349,7 +349,9 @@ jobs:
       EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
-          test_targets: "core0"
+          # test_em_js_pthreads current triggers a bug in python metadata
+          # extraction: https://github.com/emscripten-core/emscripten/issues/16573
+          test_targets: "core0 skip:core0.test_em_js_pthreads"
   test-core2:
     executor: bionic
     environment:
@@ -374,7 +376,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world"
+          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world wasm64l.test_unistd_truncate wasm64l.test_mmap"
   test-other:
     executor: bionic
     steps:
@@ -423,18 +425,13 @@ jobs:
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
-      # Run a single websockify-based test to ensure it works on windows.
-      # We need to do this using the system python since the emsdk version
-      # does not have `pip` or come preloaded with `websockify`.
-      - run:
-          name: Set system python
-          command: echo "export EMSDK_PYTHON=/c/Python38/python.exe" >> $BASH_ENV
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "sockets.test_nodejs_sockets_echo"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
+      # Run a single websockify-based test to ensure it works on windows.
+      - run-tests:
+          test_targets: "sockets.test_nodejs_sockets_echo*"
   test-mac:
     executor: mac
     environment:
@@ -454,7 +451,7 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "other sockets.test_nodejs_sockets_echo core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
+          test_targets: "other sockets.test_nodejs_sockets_echo* core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:

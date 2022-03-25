@@ -2308,7 +2308,7 @@ var LibrarySDL = {
 
       if (!raw) {
         filename = PATH_FS.resolve(filename);
-        raw = Module["preloadedImages"][filename];
+        raw = preloadedImages[filename];
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
@@ -2326,7 +2326,7 @@ var LibrarySDL = {
           return 0;
 #endif
         } else if (Module['freePreloadedMediaOnUse']) {
-          Module["preloadedImages"][filename] = null;
+          preloadedImages[filename] = null;
         }
       }
 
@@ -2809,7 +2809,7 @@ var LibrarySDL = {
 
     if (rwops.filename !== undefined) {
       filename = PATH_FS.resolve(rwops.filename);
-      var raw = Module["preloadedAudios"][filename];
+      var raw = preloadedAudios[filename];
       if (!raw) {
         if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
         if (!Module.noAudioDecoding) warnOnce('Cannot find preloaded audio ' + filename);
@@ -2823,7 +2823,7 @@ var LibrarySDL = {
         }
       }
       if (Module['freePreloadedMediaOnUse']) {
-        Module["preloadedAudios"][filename] = null;
+        preloadedAudios[filename] = null;
       }
       audio = raw;
     }

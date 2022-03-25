@@ -270,6 +270,8 @@ var LibraryPThread = {
         if (cmd === 'processProxyingQueue') {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
           _emscripten_proxy_execute_queue(d['queue']);
+          // Decrement the ref count
+          Atomics.sub(HEAP32, d['queue'] >> 2, 1);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -1052,9 +1054,15 @@ var LibraryPThread = {
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => {
+        // Only execute the queue if we have a live pthread runtime. We
+        // implement pthread_self to return 0 if there is no live runtime.
+        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+        //       `runtimeExited` is correctly unset on workers.
         if (_pthread_self()) {
           _emscripten_proxy_execute_queue(queue);
         }
+        // Decrement the ref count
+        Atomics.sub(HEAP32, queue >> 2, 1);
       });
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});

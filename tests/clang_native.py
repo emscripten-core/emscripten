@@ -5,22 +5,40 @@
 
 import logging
 import os
+import platform
+import sys
 from tools.shared import PIPE, run_process, CLANG_CC, CLANG_CXX
 from tools.utils import MACOS, WINDOWS, path_from_root
 
 logger = logging.getLogger('clang_native')
 
 
+def get_native_triple():
+  arch = {
+      'aarch64': 'arm64',
+      'arm64': 'arm64',
+      'x86_64': 'x86_64',
+      'AMD64': 'x86_64',
+  }[platform.machine()]
+  OS = {
+      'linux': 'linux',
+      'darwin': 'darwin',
+      'win32': 'windows-msvc',
+  }[sys.platform]
+  return f'{arch}-{OS}'
+
+
 # These extra args need to be passed to Clang when targeting a native host system executable
 def get_clang_native_args():
+  triple = ['--target=' + get_native_triple()]
   if MACOS:
-    return ['-isystem', path_from_root('system/include/libcxx')]
+    return triple + ['-isystem', path_from_root('system/include/libcxx')]
   elif os.name == 'nt':
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
     # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
-    return ['-DWIN32']
+    return triple + ['-DWIN32']
   else:
-    return []
+    return triple
 
 
 # This environment needs to be present when targeting a native host system executable

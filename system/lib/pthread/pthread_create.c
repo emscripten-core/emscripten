@@ -66,7 +66,7 @@ static void init_file_lock(FILE *f) {
 static pid_t next_tid = 0;
 
 // In case the stub syscall is not linked it
-static long dummy_getpid() {
+static int dummy_getpid() {
   return 42;
 }
 weak_alias(dummy_getpid, __syscall_getpid);
