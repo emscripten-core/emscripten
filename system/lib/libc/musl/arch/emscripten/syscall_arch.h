@@ -59,7 +59,7 @@ int __syscall_mremap(long old_addr, long old_size, long new_size, long flags, lo
 int __syscall_poll(long fds, long nfds, long timeout);
 int __syscall_getcwd(long buf, long size);
 int __syscall_ugetrlimit(long resource, long rlim);
-int __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off);
+intptr_t __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off);
 int __syscall_truncate64(long path, uint64_t length);
 int __syscall_ftruncate64(long fd, uint64_t length);
 int __syscall_stat64(long path, long buf);
