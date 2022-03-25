@@ -29,7 +29,7 @@ double emscripten_get_now_res();
 void _emscripten_get_timezone_js(char* buffer, int length);
 
 const char* emscripten_get_timezone() {
-  _emscripten_get_timezone_js(timezone_buffer, sizeof(buffer));
+  _emscripten_get_timezone_js(timezone_buffer, sizeof(timezone_buffer));
   return timezone_buffer;
 }
 
