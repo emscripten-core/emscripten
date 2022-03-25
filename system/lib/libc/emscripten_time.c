@@ -28,7 +28,9 @@ double emscripten_get_now_res();
 void _emscripten_get_timezone_js(char* buffer, int length);
 
 const char* emscripten_get_timezone() {
-  static thread_local char buffer[128];
+  // Time zones have unique names in the form "Area/Location"
+  // The Area and Location names have a maximum length of 14 characters.
+  static thread_local char buffer[30];
   _emscripten_get_timezone_js(buffer, sizeof(buffer));
   return buffer;
 }
