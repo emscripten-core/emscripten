@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.8
+3.1.9
 -----
+
+3.1.8 - 03/24/2022
+------------------
 - Command line settings (`-s`) are now type checked.  For example, passing a
   string to a boolean setting will now generate an error (e.g.
   `-sEXIT_RUNTIME=foo`).  Previously, the value of `foo` would have have been
