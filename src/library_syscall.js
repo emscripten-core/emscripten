@@ -154,6 +154,7 @@ var SyscallsLibrary = {
 #endif
   },
 
+  __syscall_chdir__sig: 'ip',
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
@@ -164,22 +165,26 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
+  __syscall_rename__sig: 'ipp',
   __syscall_rename: function(old_path, new_path) {
     old_path = SYSCALLS.getStr(old_path);
     new_path = SYSCALLS.getStr(new_path);
     FS.rename(old_path, new_path);
     return 0;
   },
+  __syscall_rmdir__sig: 'ip',
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.rmdir(path);
     return 0;
   },
+  __syscall_dup__sig: 'ii',
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.createStream(old, 0).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
+  __syscall_pipe__sig: 'ip',
   __syscall_pipe: function(fdPtr) {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefine('EFAULT') }}});
@@ -192,6 +197,7 @@ var SyscallsLibrary = {
 
     return 0;
   },
+  __syscall_ioctl__sig: 'iiip',
   __syscall_ioctl: function(fd, op, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -582,6 +588,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
+  __syscall_poll__sig: 'ipi',
   __syscall_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -602,6 +609,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall_getcwd__sig: 'ipp',
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
@@ -610,25 +618,30 @@ var SyscallsLibrary = {
     stringToUTF8(cwd, buf, size);
     return cwdLengthInBytes;
   },
+  __syscall_truncate64__sig: 'ipj',
   __syscall_truncate64: function(path, {{{ defineI64Param('length') }}}) {
     {{{ receiveI64ParamAsDouble('length') }}}
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
+  __syscall_ftruncate64__sig: 'iij',
   __syscall_ftruncate64: function(fd, {{{ defineI64Param('length') }}}) {
     {{{ receiveI64ParamAsDouble('length') }}}
     FS.ftruncate(fd, length);
     return 0;
   },
+  __syscall_stat64__sig: 'iip',
   __syscall_stat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
+  __syscall_lstat64__sig: 'iip',
   __syscall_lstat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
+  __syscall_fstat64__sig: 'iip',
   __syscall_fstat64: function(fd, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
@@ -637,6 +650,7 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
+  __syscall_getdents64__sig: 'iipi',
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
@@ -685,6 +699,7 @@ var SyscallsLibrary = {
     return pos;
   },
   __syscall_fcntl64__deps: ['$setErrNo'],
+  __syscall_fcntl64__sig: 'iiip',
   __syscall_fcntl64: function(fd, cmd, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -733,12 +748,12 @@ var SyscallsLibrary = {
       case {{{ cDefine('F_SETOWN') }}}:
         return -{{{ cDefine('EINVAL') }}}; // These are for sockets. We don't have them fully implemented yet.
       case {{{ cDefine('F_GETOWN') }}}:
-        // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
+        // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fcntl() returns that, and we set errno ourselves.
         setErrNo({{{ cDefine('EINVAL') }}});
         return -1;
       default: {
 #if SYSCALL_DEBUG
-        err('warning: fctl64 unrecognized command ' + cmd);
+        err('warning: fcntl unrecognized command ' + cmd);
 #endif
         return -{{{ cDefine('EINVAL') }}};
       }
@@ -775,6 +790,7 @@ var SyscallsLibrary = {
   __syscall_fadvise64: function(fd, offset, len, advice) {
     return 0; // your advice is important to us (but we can't use it)
   },
+  __syscall_openat__sig: 'iipip',
   __syscall_openat: function(dirfd, path, flags, varargs) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -838,6 +854,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
+  __syscall_unlinkat__sig: 'iipi',
   __syscall_unlinkat: function(dirfd, path, flags) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -871,6 +888,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
+  __syscall_readlinkat__sig: 'vippp',
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -921,6 +939,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall_utimensat__sig: 'iippi',
   __syscall_utimensat: function(dirfd, path, times, flags) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -1040,17 +1059,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   if (pre || post) {
     t = modifyFunction(t, function(name, args, body) {
       return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
-    });
-  }
-
-  if (MEMORY64 && !isWasi) {
-    t = modifyFunction(t, function(name, args, body) {
-      var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
-      return 'function ' + name + '(' + args + ') {\n' +
-             '  return (function ' + name + '_inner(' + args + ') {\n' +
-             body +
-             '  })(' + argnums + ');' +
-             '}';
     });
   }
 

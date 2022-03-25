@@ -90,6 +90,46 @@ function runJSify(functionsOnly) {
     });
   }
 
+  function convertPointerParams(snippet, sig) {
+    // Automatically convert any incoming pointer arguments from BigInt
+    // to double (this limits the range to int53).
+    // And convert the return value if the function returns a pointer.
+    return modifyFunction(snippet, (name, args, body) => {
+      const argNames = args.split(',');
+      let newArgs = [];
+      let argConvertions = '';
+      for (let i = 1; i < sig.length; i++) {
+        const name = argNames[i - 1];
+        if (sig[i] == 'p') {
+          argConvertions += `${name} = Number(${name})\n`;
+          newArgs.push(`Number(${name})`);
+        } else {
+          newArgs.push(name);
+        }
+      }
+
+      if (sig[0] == 'p') {
+        // For functions that return a pointer we need to convert
+        // the return value too, which means we need to wrap the
+        // body in an inner function.
+        newArgs = newArgs.join(',');
+        return `\
+function ${name}(${args}) {
+  var ret = ((${args}) => { ${body} })(${newArgs});
+  return BigInt(ret);
+}`;
+      }
+
+      // Otherwise no inner function is needed and we covert the arguments
+      // before executing the function body.
+      return `\
+function ${name}(${args}) {
+  ${argConvertions};
+  ${body};
+}`;
+    });
+  }
+
   function processLibraryFunction(snippet, ident, finalName) {
     // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
@@ -109,6 +149,12 @@ function ${name}(${args}) {
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
+    }
+    if (MEMORY64) {
+      const sig = LibraryManager.library[ident + '__sig'];
+      if (sig && sig.includes('p')) {
+        snippet = convertPointerParams(snippet, sig);
+      }
     }
     return snippet;
   }
