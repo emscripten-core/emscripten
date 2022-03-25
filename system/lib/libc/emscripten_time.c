@@ -17,7 +17,6 @@
 __attribute__((__weak__)) long  timezone = 0;
 __attribute__((__weak__)) int   daylight = 0;
 __attribute__((__weak__)) char *tzname[2] = { 0, 0 };
-thread_local char timezone_buffer[128];
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
 time_t _timegm_js(struct tm *tm);
@@ -29,8 +28,9 @@ double emscripten_get_now_res();
 void _emscripten_get_timezone_js(char* buffer, int length);
 
 const char* emscripten_get_timezone() {
-  _emscripten_get_timezone_js(timezone_buffer, sizeof(timezone_buffer));
-  return timezone_buffer;
+  static char buffer[128];
+  _emscripten_get_timezone_js(buffer, sizeof(buffer));
+  return buffer;
 }
 
 __attribute__((__weak__))
