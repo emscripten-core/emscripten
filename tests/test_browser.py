@@ -2512,7 +2512,7 @@ void *getBindBuffer() {
       #include <emscripten.h>
       int main() {
         int found = EM_ASM_INT(
-          return Module['preloadedWasm']['/library.so'] !== undefined;
+          return preloadedWasm['/library.so'] !== undefined;
         );
         if (!found) {
           return 1;
