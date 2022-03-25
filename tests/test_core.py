@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
-from common import read_file, read_binary, require_v8
+from common import read_file, read_binary, require_v8, require_node
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
@@ -150,9 +150,9 @@ def also_with_noderawfs(func):
 
   def metafunc(self, rawfs):
     if rawfs:
+      self.require_node()
       self.emcc_args += ['-DNODERAWFS']
       self.set_setting('NODERAWFS')
-      self.js_engines = [config.NODE_JS]
     func(self)
 
   metafunc._parameterize = {'': (False,),
@@ -5576,6 +5576,7 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   @is_slow_test
+  @require_node
   def test_fs_nodefs_rw(self):
     # TODO(sbc): This test exposes in issue in the way we run closure compiler and
     # causes it to generate non-ES5 output.
@@ -5588,19 +5589,23 @@ main( int argv, char ** argc ) {
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
+  @require_node
   def test_fs_nodefs_cloexec(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
@@ -5608,12 +5613,13 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
 
   @no_windows('no symlink support on windows')
+  @require_node
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
     create_file('filename', 'foo')
     os.symlink('filename', 'linkname')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success')
 
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
@@ -5762,11 +5768,12 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
+  @require_node
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
     self.maybe_closure()
-    self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/truncate.c')
 
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
@@ -5817,26 +5824,29 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_links(self, args, nodefs):
     self.emcc_args += args
 
-    if WINDOWS and nodefs:
-      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
-      # Also, other detected discrepancies if you do end up running this test on NODEFS:
-      # test expects /, but Windows gives \ as path slashes.
-      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    if nodefs:
+      self.require_node()
+      if WINDOWS:
+        self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
+        # Also, other detected discrepancies if you do end up running this test on NODEFS:
+        # test expects /, but Windows gives \ as path slashes.
+        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
 
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('TODO: wasmfs+node')
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
-    self.do_run_in_out_file_test('unistd/links.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/links.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
+  @require_node
   def test_unistd_symlink_on_nodefs(self):
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.emcc_args += ['-lnodefs.js']
-    self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c')
 
   @also_with_wasm_bigint
   def test_unistd_io(self):

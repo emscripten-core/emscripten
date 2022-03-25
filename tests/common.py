@@ -390,6 +390,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+    if self.get_setting('MEMORY64') == 1:
+      self.skipTest("MEMORY64=1 tests don't yet run under node")
     self.js_engines = [config.NODE_JS]
 
   def setup_node_pthreads(self):
