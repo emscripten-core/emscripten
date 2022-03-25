@@ -376,7 +376,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world wasm64l.test_unistd_truncate"
+          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world wasm64l.test_unistd_truncate wasm64l.test_mmap"
   test-other:
     executor: bionic
     steps:
