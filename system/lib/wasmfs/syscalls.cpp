@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
@@ -42,7 +43,7 @@ extern "C" {
 
 using namespace wasmfs;
 
-long __syscall_dup3(long oldfd, long newfd, long flags) {
+int __syscall_dup3(long oldfd, long newfd, long flags) {
   if (flags & !O_CLOEXEC) {
     // TODO: Test this case.
     return -EINVAL;
@@ -66,7 +67,7 @@ long __syscall_dup3(long oldfd, long newfd, long flags) {
   return newfd;
 }
 
-long __syscall_dup(long fd) {
+int __syscall_dup(long fd) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Check that an open file exists corresponding to the given fd.
@@ -301,7 +302,7 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
-long __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
+int __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -360,15 +361,15 @@ long __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-long __syscall_stat64(long path, long buf) {
+int __syscall_stat64(long path, long buf) {
   return __syscall_fstatat64(AT_FDCWD, path, buf, 0);
 }
 
-long __syscall_lstat64(long path, long buf) {
+int __syscall_lstat64(long path, long buf) {
   return __syscall_fstatat64(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-long __syscall_fstat64(long fd, long buf) {
+int __syscall_fstat64(long fd, long buf) {
   return __syscall_fstatat64(fd, (long)"", buf, AT_EMPTY_PATH);
 }
 
@@ -465,7 +466,7 @@ int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_openat(long dirfd, long path, long flags, ...) {
+int __syscall_openat(long dirfd, long path, long flags, ...) {
   mode_t mode = 0;
   va_list v1;
   va_start(v1, flags);
@@ -530,11 +531,11 @@ int wasmfs_create_directory(char* path, long mode, backend_t backend) {
 }
 
 // TODO: Test this.
-long __syscall_mkdirat(long dirfd, long path, long mode) {
+int __syscall_mkdirat(long dirfd, long path, long mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
 }
 
-long __syscall_mkdir(long path, long mode) {
+int __syscall_mkdir(long path, long mode) {
   return doMkdir(path::parseParent((char*)path), mode);
 }
 
@@ -587,7 +588,7 @@ long doChdir(std::shared_ptr<File>& file) {
   return 0;
 }
 
-long __syscall_chdir(long path) {
+int __syscall_chdir(long path) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -595,7 +596,7 @@ long __syscall_chdir(long path) {
   return doChdir(parsed.getFile());
 }
 
-long __syscall_fchdir(long fd) {
+int __syscall_fchdir(long fd) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -603,7 +604,7 @@ long __syscall_fchdir(long fd) {
   return doChdir(openFile->locked().getFile());
 }
 
-long __syscall_getcwd(long buf, long size) {
+int __syscall_getcwd(long buf, long size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -672,7 +673,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_unlinkat(long dirfd, long path, long flags) {
+int __syscall_unlinkat(long dirfd, long path, long flags) {
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -734,11 +735,11 @@ long __syscall_unlinkat(long dirfd, long path, long flags) {
   return 0;
 }
 
-long __syscall_rmdir(long path) {
+int __syscall_rmdir(long path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-long __syscall_getdents64(long fd, long dirp, long count) {
+int __syscall_getdents64(long fd, long dirp, long count) {
   dirent* result = (dirent*)dirp;
 
   // Check if the result buffer is too small.
@@ -811,10 +812,10 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_renameat(long olddirfd,
-                        long oldpath,
-                        long newdirfd,
-                        long newpath) {
+int __syscall_renameat(long olddirfd,
+                       long oldpath,
+                       long newdirfd,
+                       long newpath) {
   // Rename is the only syscall that needs to (or is allowed to) acquire locks
   // on two directories at once. It requires locks on both the old and new
   // parent directories to ensure that the moved file can be atomically removed
@@ -922,12 +923,12 @@ long __syscall_renameat(long olddirfd,
   return 0;
 }
 
-long __syscall_rename(long oldpath, long newpath) {
+int __syscall_rename(long oldpath, long newpath) {
   return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_symlinkat(long target, long newdirfd, long linkpath) {
+int __syscall_symlinkat(long target, long newdirfd, long linkpath) {
   auto parsed = path::parseParent((char*)linkpath, newdirfd);
   if (auto err = parsed.getError()) {
     return err;
@@ -951,12 +952,12 @@ long __syscall_symlinkat(long target, long newdirfd, long linkpath) {
   return 0;
 }
 
-long __syscall_symlink(long target, long linkpath) {
+int __syscall_symlink(long target, long linkpath) {
   return __syscall_symlinkat(target, AT_FDCWD, linkpath);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
+int __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
   auto parsed = path::parseFile((char*)path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
@@ -972,10 +973,9 @@ long __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_utimensat(int dirFD,
-                         char* path,
-                         const struct timespec times[2],
-                         int flags) {
+int __syscall_utimensat(long dirFD, long path_, long times_, long flags) {
+  const char* path = (const char*)path_;
+  const struct timespec* times = (const struct timespec*)times_;
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1007,7 +1007,7 @@ long __syscall_utimensat(int dirFD,
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_fchmodat(long dirfd, long path, long mode, ...) {
+int __syscall_fchmodat(long dirfd, long path, long mode, ...) {
   int flags = 0;
   va_list v1;
   va_start(v1, mode);
@@ -1027,12 +1027,12 @@ long __syscall_fchmodat(long dirfd, long path, long mode, ...) {
   return 0;
 }
 
-long __syscall_chmod(long path, long mode) {
+int __syscall_chmod(long path, long mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
+int __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
@@ -1093,7 +1093,7 @@ static long doTruncate(std::shared_ptr<File>& file, long low, long high) {
   return 0;
 }
 
-long __syscall_truncate64(long path, long low, long high) {
+int __syscall_truncate64(long path, long low, long high) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1101,7 +1101,7 @@ long __syscall_truncate64(long path, long low, long high) {
   return doTruncate(parsed.getFile(), low, high);
 }
 
-long __syscall_ftruncate64(long fd, long low, long high) {
+int __syscall_ftruncate64(long fd, long low, long high) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1116,7 +1116,7 @@ long __syscall_ftruncate64(long fd, long low, long high) {
   return ret;
 }
 
-long __syscall_pipe(long fd) {
+int __syscall_pipe(long fd) {
   auto* fds = (__wasi_fd_t*)fd;
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
@@ -1136,7 +1136,9 @@ long __syscall_pipe(long fd) {
   return 0;
 }
 
-int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+// int poll(struct pollfd* fds, nfds_t nfds, int timeout);
+int __syscall_poll(long fds_, long nfds, long timeout) {
+  struct pollfd* fds = (struct pollfd*)fds_;
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
