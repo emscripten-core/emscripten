@@ -2,10 +2,11 @@
 #include <wasi/wasi-helpers.h>
 #include <emscripten/em_macros.h>
 
-#define __SYSCALL_LL_E(x) \
-((union { long long ll; long l[2]; }){ .ll = x }).l[0], \
-((union { long long ll; long l[2]; }){ .ll = x }).l[1]
-#define __SYSCALL_LL_O(x) __SYSCALL_LL_E((x))
+// Compile as if we can pass uint64 values directly to the
+// host.  Binaryen will take care of splitting any i64 params
+// into a pair of i32 values if needed.
+#define __SYSCALL_LL_E(x) (x)
+#define __SYSCALL_LL_O(x) (x)
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,8 +60,8 @@ int __syscall_poll(long fds, long nfds, long timeout);
 int __syscall_getcwd(long buf, long size);
 int __syscall_ugetrlimit(long resource, long rlim);
 int __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off);
-int __syscall_truncate64(long path, long low, long high);
-int __syscall_ftruncate64(long fd, long low, long high);
+int __syscall_truncate64(long path, uint64_t length);
+int __syscall_ftruncate64(long fd, uint64_t length);
 int __syscall_stat64(long path, long buf);
 int __syscall_lstat64(long path, long buf);
 int __syscall_fstat64(long fd, long buf);
@@ -84,7 +85,7 @@ int __syscall_getdents64(long fd, long dirp, long count);
 int __syscall_fcntl64(long fd, long cmd, ...);
 int __syscall_statfs64(long path, long size, long buf);
 int __syscall_fstatfs64(long fd, long size, long buf);
-int __syscall_fadvise64_64(long fd, long low, long high, long low2, long high2, long advice);
+int __syscall_fadvise64(long fd, uint64_t base, uint64_t len, long advice);
 int __syscall_openat(long dirfd, long path, long flags, ...); // mode is optional
 int __syscall_mkdirat(long dirfd, long path, long mode);
 int __syscall_mknodat(long dirfd, long path, long mode, long dev);
@@ -99,7 +100,7 @@ int __syscall_fchmodat(long dirfd, long path, long mode, ...);
 int __syscall_faccessat(long dirfd, long path, long amode, long flags);
 int __syscall_pselect6(long nfds, long readfds, long writefds, long exceptfds, long timeout, long sigmaks);
 int __syscall_utimensat(long dirfd, long path, long times, long flags);
-int __syscall_fallocate(long fd, long mode, long off_low, long off_high, long len_low, long len_high);
+int __syscall_fallocate(long fd, long mode, uint64_t off, uint64_t len);
 int __syscall_dup3(long fd, long suggestfd, long flags);
 int __syscall_pipe2(long fds, long flags);
 int __syscall_recvmmsg(long sockfd, long msgvec, long vlen, long flags, ...);

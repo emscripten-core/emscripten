@@ -19,7 +19,14 @@
 #endif
 
 #ifndef __scc
+#ifdef __EMSCRIPTEN__
+// With emscripten we allow the passing of longer-than-word-sized
+// argument (such as off_t on wasm32) and let binaryen handle splitting
+// them into a pair of i32 arguments.
+#define __scc(X) ((long long) (X))
+#else
 #define __scc(X) ((long) (X))
+#endif
 typedef long syscall_arg_t;
 #endif
 

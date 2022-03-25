@@ -1117,12 +1117,12 @@ function receiveI64ParamAsI32s(name) {
 function receiveI64ParamAsDouble(name) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = Number(${name});`;
+    return `var ${name} = Number(${name}_bigint);`;
   }
 
   // Combine the i32 params. Use an unsigned operator on low and shift high by
   // 32 bits.
-  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {
