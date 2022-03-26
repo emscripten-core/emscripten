@@ -1192,19 +1192,6 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // sys/timeb.h
-  // ==========================================================================
-
-  ftime: function(p) {
-    var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
-    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
-  },
-
-  // ==========================================================================
   // setjmp.h
   // ==========================================================================
 
