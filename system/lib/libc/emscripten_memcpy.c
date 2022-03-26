@@ -23,7 +23,7 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
 #ifndef EMSCRIPTEN_STANDALONE_WASM
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
-void* emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
+void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
 #endif
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
