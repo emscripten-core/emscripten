@@ -5,6 +5,7 @@ PATH=/
 PWD=/
 HOME=/home/web_user
 LANG=C.UTF-8
+TZ=UTC
 _={{{ THIS_PROGRAM }}}
 
 getenv(PATH): /
