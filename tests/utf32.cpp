@@ -24,7 +24,7 @@ int main() {
 		EM_ASM({
 			var str = UTF32ToString($0);
 			out(str);
-			var numBytesWritten = stringToUTF32(str, $1, $2);
+			var numBytesWritten = stringToUTF32(str, $1, Number($2));
 			if (numBytesWritten != 23*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, (wstr.length()+1)*sizeof(utf32));
 
@@ -39,7 +39,7 @@ int main() {
 		EM_ASM({
 			var str = UTF32ToString($0);
 			out(str);
-			var numBytesWritten = stringToUTF32(str, $1, $2);
+			var numBytesWritten = stringToUTF32(str, $1, Number($2));
 			if (numBytesWritten != 5*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
 		}, wstr.c_str(), memory, 6*sizeof(utf32));
 		assert(memory[5] == 0);

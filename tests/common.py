@@ -397,6 +397,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('WASM') != 0
 
   def check_dylink(self):
+    if self.get_setting('MEMORY64'):
+      self.skipTest('MEMORY64 does not yet support dynamic linking')
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
@@ -431,6 +433,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_node()
     self.set_setting('USE_PTHREADS')
     self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MEMORY64'):
+      self.skipTest('node pthreads not yet supported with MEMORY64')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
@@ -598,9 +602,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, ldflags=True):
+    def is_ldflag(f):
+      return any(f.startswith(s) for s in ['-sENVIRONMENT=', '--pre-js=', '--post-js='])
+
     args = self.serialize_settings() + self.emcc_args
     if ldflags:
       args += self.ldflags
+    else:
+      args = [a for a in args if not is_ldflag(a)]
     if not main_file:
       for i, arg in enumerate(args):
         if arg in ('--pre-js', '--post-js'):

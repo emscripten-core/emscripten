@@ -60,7 +60,11 @@ EM_JS(char*, return_utf8_str, (void), {
     var lengthBytes = lengthBytesUTF8(jsString)+1;
     var stringOnWasmHeap = _malloc(lengthBytes);
     stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+#if __wasm64__
+    return BigInt(stringOnWasmHeap);
+#else
     return stringOnWasmHeap;
+#endif
 });
 
 EM_JS(char*, return_str, (void), {
@@ -68,7 +72,11 @@ EM_JS(char*, return_str, (void), {
   var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
   stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+#if __wasm64__
+  return BigInt(stringOnWasmHeap);
+#else
   return stringOnWasmHeap;
+#endif
 });
 
 EM_JS(int, _prefixed, (void), {
