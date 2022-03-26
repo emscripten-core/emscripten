@@ -2520,6 +2520,19 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.WASMFS:
     settings.LINK_AS_CXX = True
 
+  # Some settings make no sense when not linking as C++
+  if not settings.LINK_AS_CXX:
+    cxx_only_settings = [
+      'DEMANGLE_SUPPORT',
+      'EXCEPTION_DEBUG',
+      'DISABLE_EXCEPTION_CATCHING',
+      'EXCEPTION_CATCHING_ALLOWED',
+      'DISABLE_EXCEPTION_THROWING',
+    ]
+    for setting in cxx_only_settings:
+      if setting in user_settings:
+        diagnostics.warning('linkflags', 'setting `%s` is not meaningful unless linking as C++', setting)
+
   # Export tag objects which are likely needed by the native code, but which are
   # currently not reported in the metadata of wasm-emscripten-finalize
   if settings.RELOCATABLE:
