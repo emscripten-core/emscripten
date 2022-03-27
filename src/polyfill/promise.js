@@ -189,7 +189,7 @@ var Promise = (function() {
         return reject(new TypeError('Promise.all accepts an array'));
       }
 
-      var args = Array.prototype.slice.call(arr);
+      var args = Array.from(arr);
       if (args.length === 0) return resolve([]);
       var remaining = args.length;
 

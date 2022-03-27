@@ -254,7 +254,7 @@ var Worker = (workerPath) => {
   function duplicateJSON(json) {
     function handleTypedArrays(key, value) {
       if (value && value.toString && value.toString().substring(0, 8) == '[object ' && value.length && value.byteLength) {
-        return Array.prototype.slice.call(value);
+        return Array.from(value);
       }
       return value;
     }

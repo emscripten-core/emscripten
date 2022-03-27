@@ -802,7 +802,7 @@ var LibraryBrowser = {
       } else {
         // general case
         sigCache[func] = function dynCall_wrapper() {
-          return dynCall(sig, func, Array.prototype.slice.call(arguments));
+          return dynCall(sig, func, Array.from(arguments));
         };
       }
     }

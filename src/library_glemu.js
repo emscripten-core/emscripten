@@ -3650,7 +3650,7 @@ var LibraryGLEmulation = {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
     GLImmediate.matrixStack[GLImmediate.currentMatrix].push(
-        Array.prototype.slice.call(GLImmediate.matrix[GLImmediate.currentMatrix]));
+        Array.from(GLImmediate.matrix[GLImmediate.currentMatrix]));
   },
 
   glPopMatrix: function() {
@@ -3678,7 +3678,7 @@ var LibraryGLEmulation = {
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
-    if (GL.debug) err('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    if (GL.debug) err('glLoadMatrixf receiving: ' + Array.from(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;

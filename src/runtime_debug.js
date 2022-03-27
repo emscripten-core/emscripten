@@ -83,7 +83,7 @@ function prettyPrint(arg) {
         throw 'see alert';
     }
     var ret = '{' + arg.byteLength + ':\n';
-    var arr = Array.prototype.slice.call(i8buf);
+    var arr = Array.from(i8buf);
     ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
     arr = Array.prototype.slice.call(f32buf, 0, 8);
     ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
