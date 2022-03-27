@@ -21,7 +21,7 @@ var SyscallsLibrary = {
 
     // shared utilities
     calculateAt: function(dirfd, path, allowEmpty) {
-      if (path[0] === '/') {
+      if (PATH.isAbs(path)) {
         return path;
       }
       // relative path
