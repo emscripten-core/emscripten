@@ -11830,3 +11830,8 @@ void foo() {}
     self.v8_args += ['--experimental-wasm-memory64']
     for opt in ['-O0', '-O1', '-O2', '-O3']:
       self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])
+
+  # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
+  # works with -sPROXY_POSIX_SOCKETS.
+  def test_dylink_proxy_posix_sockets(self):
+    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS'])

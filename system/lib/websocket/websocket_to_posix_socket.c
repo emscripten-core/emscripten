@@ -424,6 +424,13 @@ int listen(int socket, int backlog) {
   return ret;
 }
 
+int accept4(int socket, struct sockaddr *address, socklen_t *address_len, int flags) {
+  if (flags) {
+    abort(); // TODO
+  }
+  return accept(socket, address, address_len);
+}
+
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
 #ifdef POSIX_SOCKET_DEBUG
   emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "accept(socket=%d,address=%p,address_len=%p)\n", socket, address, address_len);
