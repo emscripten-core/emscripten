@@ -1194,9 +1194,9 @@ int main()
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
   def test_exceptions_off(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING')
     for support_longjmp in [0, 1]:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
+      self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
 
   @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):

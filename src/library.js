@@ -38,6 +38,10 @@ LibraryManager.library = {
     setTempRet0(val);
   },
 
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
+  },
+
   $zeroMemory: function(address, size) {
 #if LEGACY_VM_SUPPORT
     if (!HEAPU8.fill) {

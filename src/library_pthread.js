@@ -454,10 +454,6 @@ var LibraryPThread = {
     }
   },
 
-  $ptrToString: function(ptr) {
-    return '0x' + ptr.toString(16).padStart(8, '0');
-  },
-
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
