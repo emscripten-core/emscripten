@@ -26,11 +26,10 @@ void one() {
         printf("motion : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
 
         if (mouse_motions == 0) {
-          // xrel/yrel will be zero for the first motion
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 0) && eq(m->yrel, 0));
+          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 5) && eq(m->yrel, 15));
 #else
-          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 0) && eq(m->yrel, 0));
+          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 10) && eq(m->yrel, 20));
 #endif
         } else if (mouse_motions == 1) {
 #ifdef TEST_SDL_MOUSE_OFFSETS
@@ -93,6 +92,7 @@ int main() {
 }
 
 void main_2(void* arg) {
+  emscripten_run_script("window.simulateMouseEvent(0, 0, -1)");
   emscripten_run_script("window.simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
