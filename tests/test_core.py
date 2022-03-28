@@ -6981,29 +6981,6 @@ void* operator new(size_t size) {
     self.set_setting('ASSERTIONS', 2)
     self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
 
-  def test_getFuncWrapper_sig_alias(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getFuncWrapper'])
-    src = r'''
-    #include <stdio.h>
-    #include <emscripten.h>
-
-    void func1(int a) {
-      printf("func1\n");
-    }
-    void func2(int a, int b) {
-      printf("func2\n");
-    }
-
-    int main() {
-      EM_ASM({
-        getFuncWrapper($0, 'vi')(0);
-        getFuncWrapper($1, 'vii')(0, 0);
-      }, func1, func2);
-      return 0;
-    }
-    '''
-    self.do_run(src, 'func1\nfunc2\n')
-
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
     # https://github.com/emscripten-core/emscripten/issues/15081
