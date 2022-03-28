@@ -74,6 +74,41 @@ WebAssembly.
   the configure or cmake scripts.
 
 
+Using CMake
+===========
+
+To use cmake with Emscripten, ``emcmake`` wrapper can be used. A simple ``CMakeLists.txt`` would look something like this,
+
+.. code-block:: cmake
+
+  cmake_minimum_required(VERSION 3.10)
+
+  project(<project_name>)
+
+  add_executable(<target> <sources>)
+  target_link_options(
+      <target>
+      -sDISABLE_EXCEPTION_CATCHING=0
+      -sALLOW_MEMORY_GROWTH
+      -sMODULARIZE
+  )
+
+The Emscripten specific options are added to the ``target_link_options`` command. And assumming we are in a build directory just below the root, the build files can be generated with,
+
+.. code-block:: bash
+
+  emcmake cmake .. -GNinja
+
+The ``emcmake`` wrapper adds the flag, ``-DCMAKE_TOOLCHAIN_FILE=<emscripten cmake toolchain>`` if it is not already present. Subsequently building is just a normal call to ``ninja``, no wrappers required (same for other build systems like ``make``). This would produce the required files in the build directory. CMake automatically adds ``-g`` for Debug builds.
+
+Using vcpkg with Emscripten
+---------------------------
+The ``vcpkg`` C++ package manager also has a Emscripten community triplet which could used to pull in some libraries. Beware that this is community supported, so all the packages might not compile. But for the ones which do, it is pretty easy, the ``CMakeLists.txt`` won't need any extra changes other than the normal ``find_package`` call but generating the build files needs some additional arguments.
+
+.. code-block:: bash
+
+  emcmake cmake .. -GNinja -DCMAKE_TOOLCHAIN_FILE=<vcpkg_cmake_toolchain_file> -DVCPKG_TARGET_TRIPLET="wasm32-emscripten" -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+
 .. _building-projects-build-outputs:
 
 Emscripten linker output files
