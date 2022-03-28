@@ -366,7 +366,7 @@ jobs:
       - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe"
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe wasmfs.test_dlfcn_self"
   test-wasm2js1:
     executor: bionic
     steps:
