@@ -122,5 +122,4 @@ long _wasmfs_identify(char* path) {
   }
   return EEXIST;
 }
-
 }
