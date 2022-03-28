@@ -7,8 +7,16 @@
 #ifndef __emscripten_emmintrin_h__
 #define __emscripten_emmintrin_h__
 
+#include <wasm_simd128.h>
+
 #ifndef __SSE2__
 #error "SSE2 instruction set not enabled"
+#endif
+
+#ifdef WASM_SIMD_COMPAT_SLOW
+#define DIAGNOSE_SLOW diagnose_if(1, "Instruction emulated via slow path.", "warning")
+#else
+#define DIAGNOSE_SLOW
 #endif
 
 #include <xmmintrin.h>
@@ -984,7 +992,7 @@ _mm_cmplt_epi32(__m128i __a, __m128i __b)
   return (__m128i)wasm_i32x4_lt((v128_t)__a, (v128_t)__b);
 }
 
-static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128d __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtsi64_sd(__m128d __a, long long __b)
 {
   // TODO: optimize
@@ -997,7 +1005,7 @@ _mm_cvtsi64_sd(__m128d __a, long long __b)
   return m.m;
 }
 
-static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtsd_si64(__m128d __a)
 {
   // TODO: optimize
@@ -1009,7 +1017,7 @@ _mm_cvtsd_si64(__m128d __a)
     return 0x8000000000000000LL;
 }
 
-static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvttsd_si64(__m128d __a)
 {
   // TODO: optimize
@@ -1027,7 +1035,7 @@ _mm_cvtepi32_ps(__m128i __a)
   return (__m128)wasm_f32x4_convert_i32x4(__a);
 }
 
-static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtps_epi32(__m128 __a)
 {
   // TODO: optimize
@@ -1046,7 +1054,7 @@ _mm_cvtps_epi32(__m128 __a)
   return u.m;
 }
 
-static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvttps_epi32(__m128 __a)
 {
   // TODO: optimize
