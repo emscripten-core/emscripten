@@ -93,16 +93,16 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 }
 
 long _wasmfs_mkdir(char* path, long mode) {
-  return __syscall_mkdir((long)path, mode);
+  return __syscall_mkdir((intptr_t)path, mode);
 }
 
-long _wasmfs_chdir(char* path) { return __syscall_chdir((long)path); }
+long _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
 void _wasmfs_symlink(char* old_path, char* new_path) {
-  __syscall_symlink((long)old_path, (long)new_path);
+  __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
 long _wasmfs_chmod(char* path, mode_t mode) {
-  return __syscall_chmod((long)path, mode);
+  return __syscall_chmod((intptr_t)path, mode);
 }
 }
