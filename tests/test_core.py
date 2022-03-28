@@ -5627,7 +5627,6 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_writeFile(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING') # see issue 2334
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_write(self):
@@ -6470,7 +6469,6 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @is_slow_test
   def test_sqlite(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
