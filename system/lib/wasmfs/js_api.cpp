@@ -105,4 +105,22 @@ void _wasmfs_symlink(char* old_path, char* new_path) {
 long _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
+
+// Helper method that identifies what a path is:
+//   ENOENT - if nothing exists there
+//   EISDIR - if it is a directory
+//   EEXIST - if it is a normal file
+long _wasmfs_identify(char* path) {
+  struct stat file;
+  int err = 0;
+  err = stat(path, &file);
+  if (err < 0) {
+    return ENOENT;
+  }
+  if (S_ISDIR(file.st_mode)) {
+    return EISDIR;
+  }
+  return EEXIST;
+}
+
 }

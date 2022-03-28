@@ -2016,7 +2016,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '_wasmfs_chdir',
         '_wasmfs_symlink',
         '_wasmfs_chmod',
+        '_wasmfs_identify',
       ]
+    if settings.MAIN_MODULE:
+      # Dynamic library support uses JS API internals, so include it all
+      settings.FORCE_FILESYSTEM = 1
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:

@@ -361,7 +361,7 @@ var SyscallsLibrary = {
     FS.fchmod(fd, mode);
     return 0;
   },
-#if PROXY_POSIX_SOCKETS == 0
+#if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
   $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
   $getSocketFromFD: function(fd) {
     var socket = SOCKFS.getSocket(fd);

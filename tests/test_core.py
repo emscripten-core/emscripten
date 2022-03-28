@@ -3307,9 +3307,15 @@ Var: 42
       return data_exports
 
     self.do_core_test('test_dlfcn_self.c')
-    data_exports = get_data_exports('test_dlfcn_self.wasm')
-    data_exports = '\n'.join(sorted(data_exports)) + '\n'
-    self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
+
+    # check that we only export relevant things.
+    # disable this in WasmFS as it adds a bunch of additional exports for its
+    # own purposes internally TODO: when we focus on code size, we'll likely
+    # want to look at this
+    if not self.get_setting('WASMFS'):
+      data_exports = get_data_exports('test_dlfcn_self.wasm')
+      data_exports = '\n'.join(sorted(data_exports)) + '\n'
+      self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
   @needs_dylink
   def test_dlfcn_unique_sig(self):
