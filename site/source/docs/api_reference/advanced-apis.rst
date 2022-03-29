@@ -38,6 +38,12 @@ not be modified. Note also that the compiler changes some options depending on
 other settings. For example, ``ASSERTIONS`` is enabled by default, but disabled
 in optimized builds (``-O1+``).
 
+.. note::
+  For more information on what options can be used to configure Emscripten, read
+  ``src/settings.js`` or visit
+  `the emsettings page <https://emsettings.surma.technology>`_.
+
+
 preamble.js
 ===========
 
