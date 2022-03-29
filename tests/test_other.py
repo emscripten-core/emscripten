@@ -1860,6 +1860,10 @@ int f() {
                      '   ****     ****'
     self.assertContained(expectedOutput, self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
+  def test_freetype_with_pthreads(self):
+    # Verify that freetype supports compilation requiring pthreads
+    self.emcc(test_file('freetype_test.c'), ['-sUSE_PTHREADS', '-sUSE_FREETYPE'], output_filename='a.out.js')
+
   def test_icu(self):
     self.set_setting('USE_ICU')
     self.do_runf(test_file('other/test_icu.cpp'))
