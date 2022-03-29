@@ -9,6 +9,7 @@
 
 #include "backend.h"
 #include "file.h"
+#include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
 
@@ -19,6 +20,20 @@ class ProxiedFile : public DataFile {
 
   emscripten::SyncToAsync& proxy;
   std::shared_ptr<DataFile> baseFile;
+
+  void open(oflags_t flags) override {
+    proxy.invoke([&](auto resume) {
+      baseFile->locked().open(flags);
+      (*resume)();
+    });
+  }
+
+  void close() override {
+    proxy.invoke([&](auto resume) {
+      baseFile->locked().close();
+      (*resume)();
+    });
+  }
 
   // Read and write operations are forwarded via the proxying mechanism.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
@@ -50,6 +65,10 @@ class ProxiedFile : public DataFile {
       (*resume)();
     });
     return result;
+  }
+
+  void setSize(size_t size) override {
+    WASMFS_UNREACHABLE("TODO: ProxiedFS setSize");
   }
 
 public:

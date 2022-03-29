@@ -62,9 +62,11 @@ COMPILE_TIME_SETTINGS = {
     'STRICT',
     'EMSCRIPTEN_TRACING',
     'USE_PTHREADS',
+    'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
+    'WASM_WORKERS',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
@@ -83,7 +85,8 @@ COMPILE_TIME_SETTINGS = {
 
 class SettingsManager:
   attrs = {}
-  allowed_settings = []
+  types = {}
+  allowed_settings = set()
   legacy_settings = {}
   alt_names = {}
   internal_settings = set()
@@ -98,14 +101,22 @@ class SettingsManager:
     # Load the JS defaults into python.
     def read_js_settings(filename, attrs):
       with open(filename) as fh:
-        settings = fh.read().replace('//', '#')
+        settings = fh.read()
+      # Use a bunch of regexs to convert the file from JS to python
+      # TODO(sbc): This is kind hacky and we should probably covert
+      # this file in format that python can read directly (since we
+      # no longer read this file from JS at all).
+      settings = settings.replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      settings = re.sub(r'=\s+false\s*;', '= False', settings)
+      settings = re.sub(r'=\s+true\s*;', '= True', settings)
       exec(settings, {'attrs': attrs})
 
     internal_attrs = {}
     read_js_settings(path_from_root('src/settings.js'), self.attrs)
     read_js_settings(path_from_root('src/settings_internal.js'), internal_attrs)
     self.attrs.update(internal_attrs)
+    self.infer_types()
 
     if 'EMCC_STRICT' in os.environ:
       self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
@@ -129,6 +140,10 @@ class SettingsManager:
 
     self.internal_settings.update(internal_attrs.keys())
 
+  def infer_types(self):
+    for key, value in self.attrs.items():
+      self.types[key] = type(value)
+
   def dict(self):
     return self.attrs
 
@@ -138,7 +153,7 @@ class SettingsManager:
   def limit_settings(self, allowed):
     self.allowed_settings.clear()
     if allowed:
-      self.allowed_settings.extend(allowed)
+      self.allowed_settings.update(allowed)
 
   def __getattr__(self, attr):
     if self.allowed_settings:
@@ -173,16 +188,33 @@ class SettingsManager:
 
     if name not in self.attrs:
       msg = "Attempt to set a non-existent setting: '%s'\n" % name
-      suggestions = difflib.get_close_matches(name, list(self.attrs.keys()))
+      valid_keys = set(self.attrs.keys()).difference(self.internal_settings)
+      suggestions = difflib.get_close_matches(name, valid_keys)
       suggestions = [s for s in suggestions if s not in self.legacy_settings]
       suggestions = ', '.join(suggestions)
       if suggestions:
         msg += ' - did you mean one of %s?\n' % suggestions
-      msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+      msg += " - perhaps a typo in emcc's  -sX=Y  notation?\n"
       msg += ' - (see src/settings.js for valid values)'
       exit_with_error(msg)
 
+    self.check_type(name, value)
     self.attrs[name] = value
+
+  def check_type(self, name, value):
+    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO'):
+      return
+    expected_type = self.types.get(name)
+    if not expected_type:
+      return
+    # Allow itegers 1 and 0 for type `bool`
+    if expected_type == bool:
+      if value in (1, 0):
+        value = bool(value)
+      if value in ('True', 'False', 'true', 'false'):
+        exit_with_error('attempt to set `%s` to `%s`; use 1/0 to set boolean settings' % (name, value))
+    if type(value) != expected_type:
+      exit_with_error('setting `%s` expects `%s` but got `%s`' % (name, expected_type.__name__, type(value).__name__))
 
   def __getitem__(self, key):
     return self.attrs[key]

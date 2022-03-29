@@ -48,8 +48,8 @@ mergeInto(LibraryManager.library, {
     createSocket: function(family, type, protocol) {
       type &= ~{{{ cDefine('SOCK_CLOEXEC') | cDefine('SOCK_NONBLOCK') }}}; // Some applications may pass it; it makes no sense for a single process.
       var streaming = type == {{{ cDefine('SOCK_STREAM') }}};
-      if (protocol) {
-        assert(streaming == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
+      if (streaming && protocol && protocol != {{{ cDefine('IPPROTO_TCP') }}}) {
+        throw new FS.ErrnoError({{{ cDefine('EPROTONOSUPPORT') }}}); // if SOCK_STREAM, must be tcp or 0.
       }
 
       // create our internal socket structure
@@ -559,7 +559,7 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept: function(listensock) {
-        if (!listensock.server) {
+        if (!listensock.server || !listensock.pending.length) {
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         var newsock = listensock.pending.shift();

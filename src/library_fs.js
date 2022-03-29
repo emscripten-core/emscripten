@@ -124,11 +124,7 @@ FS.staticInit();` +
         follow_mount: true,
         recurse_count: 0
       };
-      for (var key in defaults) {
-        if (opts[key] === undefined) {
-          opts[key] = defaults[key];
-        }
-      }
+      opts = Object.assign(defaults, opts)
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
@@ -166,7 +162,7 @@ FS.staticInit();` +
             var link = FS.readlink(current_path);
             current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
-            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
+            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count + 1 });
             current = lookup.node;
 
             if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).

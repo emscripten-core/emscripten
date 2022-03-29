@@ -18,14 +18,55 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.6
+3.1.9
 -----
+- The `-sSHELL_FILE` setting, which (unlike the --shell-file command line
+  options) we believe was never tested or externally used, has been removed.
+  (#16589)
+- A warning is now issued when passing C++-only settings such
+  `-sEXCEPTION_CATCHING_ALLOWED` when not linking as C++. (#16609)
+
+3.1.8 - 03/24/2022
+------------------
+- Command line settings (`-s`) are now type checked.  For example, passing a
+  string to a boolean setting will now generate an error (e.g.
+  `-sEXIT_RUNTIME=foo`).  Previously, the value of `foo` would have have been
+  interpreted as non-zero and accepted as valid. (#16539)
+- A warning (limited-postlink-optimizations) was added that gets shown when
+  binaryen optimizations are limited due to DWARF information being requested.
+  Several binaryen passed are not compatible with the preservation of DWARF
+  information. (#16428)
+- Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
+  the vertical scroll amount for GLFW 3. (#16480)
+- The emsdk binaries for macOS now require macOS 10.14 Mojave (or above).
+  Prior versions of emsdk could run on 10.11 (or above), but supporting those
+  older versions recently became harder.
+
+3.1.7 - 03/07/2022
+-------------------
+- Remove unmaintained ASMFS filesystem backend and associated `-sASMFS`
+  settings.  The new wasmfs filesystem is far enough along that it seems clear
+  that ASMFS will not need to be revived.
+- Fix deadlock in `munmap` that was introduced in 3.1.5.  The deadlock would
+  occur in multi-threaded programs when a partial unmap was requested (which
+  emscripten does not support). (#16413)
+- Added new compiler+linker option -sSHARED_MEMORY=1, which enables targeting
+  a shared WebAssembly.Memory. (#16419)
+- Added new API "Wasm Workers", which is an alternative to pthreads for building
+  multithreaded applications, enabled via -sWASM_WORKERS=1 (#12833)
+
+3.1.6 - 02/24/2022
+------------------
 - Remove support for deprecated `EMMAKEN_COMPILER`, `EMMAKEN_CFLAGS`, and
   `EMMAKEN_NO_SDK`  environment variables.  These are all legacy and redundant
   in the face of other settings/flags:
    - `EMMAKEN_COMPILER` -> `LLVM_ROOT` in the config settings
    - `EMMAKEN_CFLAGS` -> `EMCC_CFLAGS`
    - `EMMAKEN_NO_SDK` -> standard `-nostdlib` and `-nostdinc` flags
+- emscripten will no longer automatically create a config file if it can't
+  find one in the configured location.  Instead, it will error out and point the
+  user to the `--generate-config` option, in case that is what they want.
+  (#13962)
 
 3.1.5 - 02/17/2022
 ------------------

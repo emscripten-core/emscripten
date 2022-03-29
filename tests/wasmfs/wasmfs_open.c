@@ -17,7 +17,7 @@
 
 int main() {
   // Test writing to a file with a trailing slash.
-  int fd = open("/dev/stdout/", O_RDWR);
+  int fd = open("/dev/stdout/", O_WRONLY);
 
   dprintf(fd, "WORKING WITH TRAILING BACKSLASH\n");
 
@@ -25,7 +25,7 @@ int main() {
   close(fd);
 
   // Test writing to a file with no trailing backslash.
-  int fd2 = open("/dev/stdout", O_RDWR);
+  int fd2 = open("/dev/stdout", O_WRONLY);
 
   dprintf(fd2, "WORKING WITHOUT TRAILING BACKSLASH\n");
 

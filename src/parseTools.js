@@ -118,6 +118,14 @@ function preprocess(text, filenameHint) {
             } else if (first === '#endif') {
               assert(showStack.length > 0);
               showStack.pop();
+            } else if (first === '#warning') {
+              if (showCurrentLine()) {
+                printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              }
+            } else if (first === '#error') {
+              if (showCurrentLine()) {
+                error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              }
             } else {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
             }
@@ -824,6 +832,13 @@ New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
     if (DYNCALLS) {
+      if (!hasExportedFunction(`dynCall_${sig}`)) {
+        if (ASSERTIONS) {
+          return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+        } else {
+          return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+        }
+      }
       return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
     } else {
       return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
@@ -831,6 +846,14 @@ Please update to new syntax.`);
   }
 
   if (DYNCALLS) {
+    if (!hasExportedFunction(`dynCall_${sig}`)) {
+      if (ASSERTIONS) {
+        return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+      } else {
+        return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+      }
+    }
+
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
       return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
@@ -895,11 +918,10 @@ function makeRetainedCompilerSettings() {
   const ret = {};
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      try {
-        if (typeof global[x] == 'number' || typeof global[x] == 'string' || this.isArray()) {
-          ret[x] = global[x];
-        }
-      } catch (e) {}
+      const value = global[x];
+      if (typeof value == 'number' || typeof value == 'boolean' || typeof value == 'string' || Array.isArray(x)) {
+        ret[x] = value;
+      }
     }
   }
   return ret;
@@ -909,36 +931,43 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, and body of the
-// function. Returns the output of that function.
+// function, to which we pass the parsed-out name, arguments, body, and possible
+// "async" prefix of the input function. Returns the output of that function.
 function modifyFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
+  let async_;
   let names;
   let args;
   let rest;
   if (match) {
-    name = match[1];
-    args = match[2];
+    async_ = match[1] || '';
+    name = match[2];
+    args = match[3];
     rest = text.substr(match[0].length);
   } else {
     // Match a function without a name (we could probably use a single regex
     // for both, but it would be more complex).
-    match = text.match(/^\s*function\(([^)]*)\)/);
+    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
     assert(match, 'could not match function ' + text + '.');
     name = '';
-    args = match[1];
+    async_ = match[1] || '';
+    args = match[2];
     rest = text.substr(match[0].length);
   }
   const bodyStart = rest.indexOf('{');
   assert(bodyStart >= 0);
   const bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
 }
 
 function runOnMainThread(text) {
-  if (USE_PTHREADS) {
+  if (WASM_WORKERS && USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else if (WASM_WORKERS) {
+    return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
+  } else if (USE_PTHREADS) {
     return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else {
     return text;
@@ -973,6 +1002,15 @@ function makeModuleReceive(localName, moduleName) {
   }
   ret += makeRemovedModuleAPIAssert(moduleName, localName);
   return ret;
+}
+
+function makeModuleReceiveExpr(name, defaultValue) {
+  checkReceiving(name);
+  if (expectToReceiveOnModule(name)) {
+    return `Module['${name}'] || ${defaultValue}`;
+  } else {
+    return `${defaultValue}`;
+  }
 }
 
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
@@ -1041,6 +1079,9 @@ function _asmjsDemangle(symbol) {
   if (symbol in WASM_SYSTEM_EXPORTS) {
     return symbol;
   }
+  if (symbol.startsWith('dynCall_')) {
+    return symbol;
+  }
   // Strip leading "_"
   assert(symbol.startsWith('_'));
   return symbol.substr(1);
@@ -1076,12 +1117,12 @@ function receiveI64ParamAsI32s(name) {
 function receiveI64ParamAsDouble(name) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = Number(${name});`;
+    return `var ${name} = Number(${name}_bigint);`;
   }
 
   // Combine the i32 params. Use an unsigned operator on low and shift high by
   // 32 bits.
-  return `${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
 function sendI64Argument(low, high) {
@@ -1165,4 +1206,24 @@ function runtimeKeepalivePush() {
 function runtimeKeepalivePop() {
   if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
   return 'runtimeKeepalivePop();';
+}
+
+// Some web functions like TextDecoder.decode() may not work with a view of a
+// SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
+// To avoid that, this function allows obtaining an unshared copy of an
+// ArrayBuffer.
+function getUnsharedTextDecoderView(heap, start, end) {
+  const shared = `${heap}.slice(${start}, ${end})`;
+  const unshared = `${heap}.subarray(${start}, ${end})`;
+
+  // No need to worry about this in non-shared memory builds
+  if (!SHARED_MEMORY) return unshared;
+
+  // If asked to get an unshared view to what we know will be a shared view, or if in -Oz,
+  // then unconditionally do a .slice() for smallest code size.
+  if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
+
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
+  // or can use .subarray() otherwise.
+  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
 }

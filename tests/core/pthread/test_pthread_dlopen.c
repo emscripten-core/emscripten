@@ -15,25 +15,26 @@ static sidey_func_type p_side_func_address;
 static int* expected_data_addr;
 static func_t expected_func_addr;
 
-static pthread_cond_t ready_cond = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t ready_mutex = PTHREAD_MUTEX_INITIALIZER;
+static atomic_bool started = false;
 static atomic_bool ready = false;
 
 static void* thread_main() {
-  while (!ready) {
-    pthread_mutex_lock(&ready_mutex);
-    pthread_cond_wait(&ready_cond, &ready_mutex);
-    pthread_mutex_unlock(&ready_mutex);
-  }
-
   printf("in thread_main\n");
-  _emscripten_thread_sync_code();
+  started = true;
+  // Spin until the main thread has loaded the side module
+  while (!ready) {}
 
-  printf("calling p_side_data_address=%p\n", p_side_data_address);
+#ifdef YIELD
+  // Without this explicit yield we could "invalid index into function table"
+  // below because this thread will not have loaded the side module.
+  // Uncommenting the calls to printf will also, in practice, end up loading
+  // the side module because internally they may end up waiting on a lock.
+  sched_yield();
+#endif
+
   int* data_addr = p_side_data_address();
   assert(data_addr == expected_data_addr);
 
-  printf("calling p_side_func_address=%p\n", p_side_func_address);
   func_t func_addr = p_side_func_address();
   assert(expected_func_addr == func_addr);
   assert(func_addr() == 43);
@@ -50,8 +51,10 @@ int main() {
   int rc = pthread_create(&t, NULL, thread_main, NULL);
   assert(rc == 0);
 
-  printf("loading dylib\n");
+  // Spin until the thread has started
+  while (!started) {}
 
+  printf("loading dylib\n");
   void* handle = dlopen("liblib.so", RTLD_NOW|RTLD_GLOBAL);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
@@ -71,10 +74,7 @@ int main() {
   printf("p_side_func_address -> %p\n", expected_func_addr);
   assert(expected_func_addr() == 43);
 
-  pthread_mutex_lock(&ready_mutex);
   ready = true;
-  pthread_cond_signal(&ready_cond);
-  pthread_mutex_unlock(&ready_mutex);
 
   printf("joining\n");
   rc = pthread_join(t, NULL);

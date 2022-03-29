@@ -46,6 +46,18 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
 Note that once the Module object is received by the main JavaScript file, it will look for ``Module['print']`` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
+Compilation settings
+====================
+
+The ``INCOMING_MODULE_JS_API`` compiler setting controls which ``Module``
+attributes are supported in the emitted JS. This list contains commonly-used
+things by default.
+
+Setting this to the smallest possible list for your application will save JS
+code size. For example, if you use no ``Module`` attributes, you can build
+with ``-sINCOMING_MODULE_JS_API=[]``. Or, if you use just a few, you can list
+them out, like this: ``-sINCOMING_MODULE_JS_API=print,printErr``.
+
 Affecting execution
 ===================
 
@@ -60,7 +72,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Allows you to provide your own ``ArrayBuffer`` or ``SharedArrayBuffer`` to use as the memory.
 
-  .. note:: This is only supported if ``-s WASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
+  .. note:: This is only supported if ``-sWASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
 
 .. js:attribute:: Module.wasmMemory
 
@@ -119,7 +131,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.preinitializedWebGLContext
 
-  If building with ``-s GL_PREINITIALIZED_CONTEXT=1`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+  If building with ``-sGL_PREINITIALIZED_CONTEXT`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
 
 .. js:attribute:: Module.preRun
 
@@ -163,3 +175,8 @@ Other methods
 
   When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyWorker.js>`_).
 
+.. js:function:: Module.fetchSettings
+
+  Override the default settings object used when fetching the Wasm module from
+  the network.  This attribute is expected to be a string and it defaults to ``{
+  credentials: 'same-origin' }``.

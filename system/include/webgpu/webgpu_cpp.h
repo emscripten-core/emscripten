@@ -287,8 +287,9 @@ namespace wgpu {
     };
 
     enum class LoadOp : uint32_t {
-        Clear = 0x00000000,
-        Load = 0x00000001,
+        Undefined = 0x00000000,
+        Clear = 0x00000001,
+        Load = 0x00000002,
     };
 
     enum class PipelineStatisticName : uint32_t {
@@ -303,6 +304,11 @@ namespace wgpu {
         Undefined = 0x00000000,
         LowPower = 0x00000001,
         HighPerformance = 0x00000002,
+    };
+
+    enum class PredefinedColorSpace : uint32_t {
+        Undefined = 0x00000000,
+        Srgb = 0x00000001,
     };
 
     enum class PresentMode : uint32_t {
@@ -378,8 +384,9 @@ namespace wgpu {
     };
 
     enum class StoreOp : uint32_t {
-        Store = 0x00000000,
-        Discard = 0x00000001,
+        Undefined = 0x00000000,
+        Store = 0x00000001,
+        Discard = 0x00000002,
     };
 
     enum class TextureAspect : uint32_t {
@@ -878,9 +885,9 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void BeginPipelineStatisticsQuery(QuerySet const& querySet, uint32_t queryIndex) const;
-        void Dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1) const;
+        void Dispatch(uint32_t workgroupCountX, uint32_t workgroupCountY = 1, uint32_t workgroupCountZ = 1) const;
         void DispatchIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
-        void EndPass() const;
+        void End() const;
         void EndPipelineStatisticsQuery() const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
@@ -1046,8 +1053,8 @@ namespace wgpu {
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t baseVertex = 0, uint32_t firstInstance = 0) const;
         void DrawIndexedIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
         void DrawIndirect(Buffer const& indirectBuffer, uint64_t indirectOffset) const;
+        void End() const;
         void EndOcclusionQuery() const;
-        void EndPass() const;
         void EndPipelineStatisticsQuery() const;
         void ExecuteBundles(uint32_t bundlesCount, RenderBundle const * bundles) const;
         void InsertDebugMarker(char const * markerLabel) const;
@@ -1363,12 +1370,12 @@ namespace wgpu {
 
     struct RenderPassDepthStencilAttachment {
         TextureView view;
-        LoadOp depthLoadOp;
-        StoreOp depthStoreOp;
-        float clearDepth;
+        LoadOp depthLoadOp = LoadOp::Undefined;
+        StoreOp depthStoreOp = StoreOp::Undefined;
+        float clearDepth = 0;
         bool depthReadOnly = false;
-        LoadOp stencilLoadOp;
-        StoreOp stencilStoreOp;
+        LoadOp stencilLoadOp = LoadOp::Undefined;
+        StoreOp stencilStoreOp = StoreOp::Undefined;
         uint32_t clearStencil = 0;
         bool stencilReadOnly = false;
     };

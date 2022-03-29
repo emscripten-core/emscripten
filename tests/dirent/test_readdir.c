@@ -83,7 +83,7 @@ void test() {
   //closedir(dir);
   //err = readdir_r(dir, NULL, &result);
   // XXX musl doesn't have enough error handling for this: assert(err == EBADF);
-  
+
   //
   // do a normal read with readdir
   //

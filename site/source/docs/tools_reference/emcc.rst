@@ -88,48 +88,48 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-s-option-value:
 
-``-s OPTION[=VALUE]``
+``-sOPTION[=VALUE]``
   [different OPTIONs affect at different stages, most at link time]
   Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-  .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
-
   .. note:: If no value is specifed it will default to ``1``.
+
+  .. note:: It is possible, with boolean options, to use the ``NO_`` prefix to reverse their meaning. For example, ``-sEXIT_RUNTIME=0`` is the same as ``-sNO_EXIT_RUNTIME=1`` and vice versa.  This is not recommended in most cases.
 
   .. note:: Lists can be specified as comma separated strings:
 
     ::
 
-      -s EXPORTED_FUNCTIONS=foo,bar
+      -sEXPORTED_FUNCTIONS=foo,bar
 
   .. note:: We also support older list formats that involve more quoting.  Lists can be specified with or without quotes around each element and with or without brackets around the list.  For example, all the following are equivalent:
 
     ::
 
-      -s EXPORTED_FUNCTIONS="foo","bar"
-      -s EXPORTED_FUNCTIONS=["foo","bar"]
-      -s EXPORTED_FUNCTIONS=[foo,bar]
+      -sEXPORTED_FUNCTIONS="foo","bar"
+      -sEXPORTED_FUNCTIONS=["foo","bar"]
+      -sEXPORTED_FUNCTIONS=[foo,bar]
 
   .. note:: For lists that include brackets or quote, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
 
     ::
 
-      -s EXPORTED_FUNCTIONS="['liblib.so']"
-      -s "EXPORTED_FUNCTIONS=['liblib.so']"
+      -sEXPORTED_FUNCTIONS="['liblib.so']"
+      -s"EXPORTED_FUNCTIONS=['liblib.so']"
 
   You can also specify that the value of an option will be read from a file. For example, the following will set ``EXPORTED_FUNCTIONS`` based on the contents of the file at **path/to/file**.
 
   ::
 
-    -s EXPORTED_FUNCTIONS=@/path/to/file
+    -sEXPORTED_FUNCTIONS=@/path/to/file
 
   .. note::
 
     - In this case the file should contain a list of symbols, one per line.  For legacy use cases JSON-formatted files are also supported: e.g. ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
 
-  .. note:: Options can be specified as a single argument without a space
-            between the ``-s`` and option name.  e.g. ``-sFOO=1``.
+  .. note:: Options can be specified as a single argument with or without a space
+            between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
 
 .. _emcc-g:
 
@@ -149,7 +149,7 @@ Options that are modified or new in *emcc* are listed below:
   otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
   the main file contains no debug info, it does contain a URL to where the
   debug file is, so that devtools can find it. You can use
-  ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
+  ``-sSEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
 
 .. _emcc-gsource-map:
@@ -207,7 +207,7 @@ Options that are modified or new in *emcc* are listed below:
   can still reconstruct meaningful stack traces by translating the indexes back
   to the names.
 
-  .. note:: When used with ``-s WASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
+  .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 
 .. _emcc-lto:
 
@@ -227,7 +227,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note::
 
-    - Consider using ``-s MODULARIZE=1`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
+    - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
     - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
     - Closure is only run if JavaScript opts are being done (``-O2`` or above).
@@ -463,7 +463,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--threadprofiler``
   [link]
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-s USE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-sUSE_PTHREADS=1/2).
 
 .. _emcc-config:
 
@@ -545,16 +545,15 @@ Environment variables
 Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/main/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
 
-.. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:
+.. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s<emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:
 
-  - ``-s FULL_ES2=1``
-  - ``-s LEGACY_GL_EMULATION=1``:
+  - ``-sFULL_ES2``
+  - ``-sLEGACY_GL_EMULATION``:
 
-    - ``-s GL_UNSAFE_OPTS=1``
-    - ``-s GL_FFP_ONLY=1``
+    - ``-sGL_UNSAFE_OPTS``
+    - ``-sGL_FFP_ONLY``
 
   - ASSERTIONS
   - SAFE_HEAP
-  - -s DISABLE_EXCEPTION_CATCHING=0.
+  - -sDISABLE_EXCEPTION_CATCHING=0
   - INLINING_LIMIT=
-

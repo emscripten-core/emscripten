@@ -54,13 +54,26 @@ def generate_minimal_runtime_load_statement(target_basename):
     files_to_load += ["binary('%s')" % (target_basename + '.mem')]
 
   # Download .wasm file
-  if settings.WASM == 1 or not download_wasm:
+  if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
     if settings.MODULARIZE:
       modularize_imports += ['wasm: r[%d]' % len(files_to_load)]
     else:
       then_statements += ["%s.wasm = r[%d];" % (settings.EXPORT_NAME, len(files_to_load))]
     if download_wasm:
       files_to_load += [download_wasm]
+
+  # Download wasm_worker file
+  if settings.WASM_WORKERS:
+    if settings.MODULARIZE:
+      if settings.WASM_WORKERS == 1: # '$wb': Wasm Worker Blob
+        modularize_imports += ['$wb: URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }))' % len(files_to_load)]
+      modularize_imports += ['js: js']
+    else:
+      if settings.WASM_WORKERS == 1:
+        then_statements += ['%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: \'application/javascript\' }));' % (settings.EXPORT_NAME, len(files_to_load))]
+
+    if download_wasm and settings.WASM_WORKERS == 1:
+      files_to_load += ["binary('%s')" % (target_basename + '.ww.js')]
 
   if settings.MODULARIZE and settings.USE_PTHREADS:
     modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
@@ -75,7 +88,12 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Execute compiled output when building with MODULARIZE
   if settings.MODULARIZE:
-    then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+
+    if settings.WASM_WORKERS:
+      then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  var js = URL.createObjectURL(new Blob([r[0]], { type: \'application/javascript\' }));\n script(js).then(function(c) { c({ %s }); });''' % ',\n  '.join(modularize_imports)]
+    else:
+      then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
   var js = r[0];\n  js({ %s });''' % ',\n  '.join(modularize_imports)]
 
   binary_xhr = '''  function binary(url) { // Downloads a binary file and outputs it in the specified callback
@@ -129,20 +147,26 @@ def generate_minimal_runtime_load_statement(target_basename):
     else:
       return script_xhr + files_to_load[0] + ";"
 
-  if not settings.MODULARIZE:
+  if not settings.MODULARIZE or settings.WASM_WORKERS:
     # If downloading multiple files like .wasm or .mem, those need to be loaded in
     # before we can add the main runtime script to the DOM, so convert the main .js
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
     # DOM.
-    if settings.USE_PTHREADS:
+    if settings.USE_PTHREADS or settings.WASM_WORKERS:
       script_load = "script(url)"
     else:
       script_load = "script(url).then(() => { URL.revokeObjectURL(url) });"
 
+    if settings.WASM_WORKERS:
+      save_js = '%s.js = ' % settings.EXPORT_NAME
+    else:
+      save_js = ''
+
     files_to_load[0] = "binary('%s')" % (target_basename + '.js')
-    then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
-                        script_load]
+    if not settings.MODULARIZE:
+      then_statements += ["var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
+                          script_load]
 
   # Add in binary() XHR loader if used:
   if any("binary(" in s for s in files_to_load + then_statements):
@@ -167,7 +191,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   else:
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
 
-  temp_files = shared.configuration.get_temp_files()
+  temp_files = shared.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
     utils.write_file(shell_temp, shell)
     shell = shared.read_and_preprocess(shell_temp)

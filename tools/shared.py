@@ -72,6 +72,7 @@ diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
+diagnostics.add_warning('limited-postlink-optimizations')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -113,7 +114,7 @@ def get_num_cores():
 
 
 def mp_run_process(command_tuple):
-  temp_files = configuration.get_temp_files()
+  temp_files = get_temp_files()
   cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
   std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
   ret = std_out.name if route_stdout_to_temp_files_suffix else None
@@ -162,7 +163,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
   with ToolchainProfiler.profile_block('run_multiple_processes'):
     processes = []
     num_parallel_processes = get_num_cores()
-    temp_files = configuration.get_temp_files()
+    temp_files = get_temp_files()
     i = 0
     num_completed = 0
 
@@ -304,7 +305,8 @@ def env_with_node_in_path():
 def check_node_version():
   try:
     actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = actual.replace('v', '').replace('-pre', '').split('.')
+    version = actual.replace('v', '')
+    version = version.split('-')[0].split('.')
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
@@ -464,9 +466,9 @@ def replace_or_append_suffix(filename, new_suffix):
 # temp directory (TEMP_DIR/emscripten_temp).
 def get_emscripten_temp_dir():
   """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
-  global configuration, EMSCRIPTEN_TEMP_DIR
+  global EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
-    EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
+    EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
 
     if not DEBUG_SAVE:
       def prepare_to_clean_temp(d):
@@ -483,54 +485,47 @@ def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
 
-class Configuration:
-  def __init__(self):
-    self.EMSCRIPTEN_TEMP_DIR = None
+def setup_temp_dirs():
+  global EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
+  EMSCRIPTEN_TEMP_DIR = None
 
-    self.TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
-    if not os.path.isdir(self.TEMP_DIR):
-      exit_with_error(f'The temporary directory `{self.TEMP_DIR}` does not exist! Please make sure that the path is correct.')
+  TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
+  if not os.path.isdir(TEMP_DIR):
+    exit_with_error(f'The temporary directory `{TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
-    self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
+  CANONICAL_TEMP_DIR = get_canonical_temp_dir(TEMP_DIR)
 
-    if DEBUG:
-      self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
-      try:
-        safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
-      except Exception as e:
-        exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
+  if DEBUG:
+    EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
+    try:
+      safe_ensure_dirs(EMSCRIPTEN_TEMP_DIR)
+    except Exception as e:
+      exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
 
-      # Since the canonical temp directory is, by definition, the same
-      # between all processes that run in DEBUG mode we need to use a multi
-      # process lock to prevent more than one process from writing to it.
-      # This is because emcc assumes that it can use non-unique names inside
-      # the temp directory.
-      # Sadly we need to allow child processes to access this directory
-      # though, since emcc can recursively call itself when building
-      # libraries and ports.
-      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
-        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
-        lock = filelock.FileLock(filelock_name)
-        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
-        lock.acquire()
-        atexit.register(lock.release)
-
-  def get_temp_files(self):
-    if DEBUG_SAVE:
-      # In debug mode store all temp files in the emscripten-specific temp dir
-      # and don't worry about cleaning them up.
-      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
-    else:
-      # Otherwise use the system tempdir and try to clean up after ourselves.
-      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
+    # Since the canonical temp directory is, by definition, the same
+    # between all processes that run in DEBUG mode we need to use a multi
+    # process lock to prevent more than one process from writing to it.
+    # This is because emcc assumes that it can use non-unique names inside
+    # the temp directory.
+    # Sadly we need to allow child processes to access this directory
+    # though, since emcc can recursively call itself when building
+    # libraries and ports.
+    if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
+      filelock_name = os.path.join(EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+      lock = filelock.FileLock(filelock_name)
+      os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
+      lock.acquire()
+      atexit.register(lock.release)
 
 
-def apply_configuration():
-  global configuration, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
-  configuration = Configuration()
-  EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
-  CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
-  TEMP_DIR = configuration.TEMP_DIR
+def get_temp_files():
+  if DEBUG_SAVE:
+    # In debug mode store all temp files in the emscripten-specific temp dir
+    # and don't worry about cleaning them up.
+    return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+  else:
+    # Otherwise use the system tempdir and try to clean up after ourselves.
+    return tempfiles.TempFiles(TEMP_DIR, save_debug_files=False)
 
 
 def target_environment_may_be(environment):
@@ -702,6 +697,7 @@ LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
+LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMCC = bat_suffix(path_from_root('emcc'))
@@ -713,7 +709,7 @@ EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 
-apply_configuration()
+setup_temp_dirs()
 
 Cache = cache.Cache(config.CACHE)
 

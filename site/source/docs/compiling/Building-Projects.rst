@@ -87,13 +87,13 @@ which files are produced under which conditions:
 
 - ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
 - ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
-- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-s STANDALONE_WASM`` settting had been used.
-- ``emcc ... -o output.{html,js} -s WASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
-- ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-s WASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
-- ``emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
-- ``emcc ... -o output.{html,js} -gsource-map`` generates a source map file ``output.wasm.map``. If targeting JavaScript with ``-s WASM=0``, the filename is ``output.{html,js}.map``.
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used.
+- ``emcc ... -o output.{html,js} -sWASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
+- ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-sWASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
+- ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
+- ``emcc ... -o output.{html,js} -gsource-map`` generates a source map file ``output.wasm.map``. If targeting JavaScript with ``-sWASM=0``, the filename is ``output.{html,js}.map``.
 - ``emcc ... -o output.{html,js} --preload-file xxx`` directive generates a preloaded MEMFS filesystem file ``output.data``.
-- ``emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
+- ``emcc ... -o output.{html,js} -sWASM={0,1} -sSINGLE_FILE`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
 
 This list is not exhaustive, but illustrates most commonly used combinations.
 
@@ -213,17 +213,17 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-s USE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
 
 .. code-block:: bash
 
-  emcc tests/sdl2glshader.c -s USE_SDL=2 -s LEGACY_GL_EMULATION=1 -o sdl2.html
+  emcc tests/sdl2glshader.c -sUSE_SDL=2 -sLEGACY_GL_EMULATION -o sdl2.html
 
 You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
 
-.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-s SDL2_IMAGE_FORMATS='["bmp","png","xpm"]'`` (note: jpg support is not available yet as of Jun 22 2018 - libjpg needs to be added to emscripten-ports). This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your images, so the browser codecs decode them (see :ref:`preloading-files`). A code path in the SDL2_image port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
+.. note:: *SDL_image* has also been added to ports, use it with ``-sUSE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-sSDL2_IMAGE_FORMATS='["bmp","png","xpm"]'`` (note: jpg support is not available yet as of Jun 22 2018 - libjpg needs to be added to emscripten-ports). This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your images, so the browser codecs decode them (see :ref:`preloading-files`). A code path in the SDL2_image port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
 
-.. note:: *SDL_net* has also been added to ports, use it with ``-s USE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
+.. note:: *SDL_net* has also been added to ports, use it with ``-sUSE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
 
 .. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
@@ -349,7 +349,7 @@ Emscripten provides the following preprocessor macros that can be used to identi
  * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
  * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
  * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
- * If targeting the pthreads multithreading support with the compiler & linker flag ``-s USE_PTHREADS=1``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
+ * If targeting the pthreads multithreading support with the compiler & linker flag ``-sUSE_PTHREADS``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
 Using a compiler wrapper

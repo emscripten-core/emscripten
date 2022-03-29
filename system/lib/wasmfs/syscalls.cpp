@@ -11,18 +11,22 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
+#include "pipe_backend.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -40,40 +44,39 @@ extern "C" {
 
 using namespace wasmfs;
 
-long __syscall_dup3(long oldfd, long newfd, long flags) {
-  auto fileTable = wasmFS.getLockedFileTable();
+int __syscall_dup3(int oldfd, int newfd, int flags) {
+  if (flags & !O_CLOEXEC) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
 
-  auto oldOpenFile = fileTable[oldfd];
-  // If oldfd is not a valid file descriptor, then the call fails,
-  // and newfd is not closed.
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto oldOpenFile = fileTable.getEntry(oldfd);
   if (!oldOpenFile) {
     return -EBADF;
   }
-
   if (newfd < 0) {
     return -EBADF;
   }
-
   if (oldfd == newfd) {
     return -EINVAL;
   }
 
   // If the file descriptor newfd was previously open, it will just be
   // overwritten silently.
-  fileTable[newfd] = oldOpenFile.unlocked();
+  fileTable.setEntry(newfd, oldOpenFile);
   return newfd;
 }
 
-long __syscall_dup(long fd) {
-  auto fileTable = wasmFS.getLockedFileTable();
+int __syscall_dup(int fd) {
+  auto fileTable = wasmFS.getFileTable().locked();
 
   // Check that an open file exists corresponding to the given fd.
-  auto openFile = fileTable[fd];
+  auto openFile = fileTable.getEntry(fd);
   if (!openFile) {
     return -EBADF;
   }
-
-  return fileTable.add(openFile.unlocked());
+  return fileTable.addEntry(openFile);
 }
 
 // This enum specifies whether file offset will be provided by the open file
@@ -93,13 +96,15 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = wasmFS.getLockedFileTable()[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto lockedOpenFile = openFile.locked();
+  // TODO: Check open file access mode for write permissions.
+
+  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -111,13 +116,14 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   auto lockedFile = file->locked();
 
   off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.position()
+                       ? lockedOpenFile.getPosition()
                        : offset;
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
-      lockedOpenFile.position() = currOffset;
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
+      lockedOpenFile.setPosition(currOffset);
     }
   };
   for (size_t i = 0; i < iovs_len; i++) {
@@ -160,13 +166,15 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = wasmFS.getLockedFileTable()[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto lockedOpenFile = openFile.locked();
+  // TODO: Check open file access mode for read permissions.
+
+  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -178,13 +186,14 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   auto lockedFile = file->locked();
 
   off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.position()
+                       ? lockedOpenFile.getPosition()
                        : offset;
   off_t oldOffset = currOffset;
   auto finish = [&] {
     *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState) {
-      lockedOpenFile.position() = currOffset;
+    if (setOffset == OffsetHandling::OpenFileState &&
+        lockedOpenFile.getFile()->isSeekable()) {
+      lockedOpenFile.setPosition(currOffset);
     }
   };
   size_t size = lockedFile.getSize();
@@ -251,164 +260,192 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = wasmFS.getLockedFileTable();
+  auto fileTable = wasmFS.getFileTable().locked();
+  if (!fileTable.getEntry(fd)) {
+    return __WASI_ERRNO_BADF;
+  }
+  fileTable.setEntry(fd, nullptr);
+  return __WASI_ERRNO_SUCCESS;
+}
 
-  // Remove openFileState entry from fileTable.
-  fileTable[fd] = nullptr;
+__wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+
+  // Nothing to flush for anything but a data file, but also not an error either
+  // way. TODO: in the future we may want syncing of directories.
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  if (dataFile) {
+    dataFile->locked().flush();
+  }
 
   return __WASI_ERRNO_SUCCESS;
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
-  auto fileTable = wasmFS.getLockedFileTable();
-
-  // Check that an open file exists corresponding to the given fd.
-  auto openFile = fileTable[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return NullBackend;
   }
-
-  auto lockedOpenFile = openFile.locked();
-  return lockedOpenFile.getFile()->getBackend();
+  return openFile->locked().getFile()->getBackend();
 }
 
 // This function is exposed to users to allow them to obtain a backend_t for a
 // specified path.
-backend_t wasmfs_get_backend_by_path(char* path) {
-  auto pathParts = splitPath(path);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  // Parent node doesn't exist.
-  if (!parsedPath.parent) {
+backend_t wasmfs_get_backend_by_path(const char* path) {
+  auto parsed = path::parseFile(path);
+  if (parsed.getError()) {
+    // Could not find the file.
     return NullBackend;
   }
-
-  return parsedPath.child ? parsedPath.child->getBackend() : NullBackend;
+  return parsed.getFile()->getBackend();
 }
 
-static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
+int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
+  // Only accept valid flags.
+  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  std::shared_ptr<File> file;
+  if ((flags & AT_EMPTY_PATH) && strcmp((char*)path, "") == 0) {
+    // Don't parse a path, just use `dirfd` directly.
+    if (dirfd == AT_FDCWD) {
+      // TODO: Test this case.
+      file = wasmFS.getCWD();
+    } else {
+      auto openFile = wasmFS.getFileTable().locked().getEntry(dirfd);
+      if (!openFile) {
+        return -EBADF;
+      }
+      file = openFile->locked().getFile();
+    }
+  } else {
+    // Parse the relative path.
+    // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
+    auto parsed = path::parseFile((char*)path, dirfd);
+    if (auto err = parsed.getError()) {
+      return err;
+    }
+    file = parsed.getFile();
+  }
+
+  // Extract the information from the file.
   auto lockedFile = file->locked();
+  auto buffer = (struct stat*)buf;
 
   buffer->st_size = lockedFile.getSize();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
   // values.
-  buffer->st_dev =
-    1; // ID of device containing file: Hardcode 1 for now, no meaning at the
+  // ID of device containing file: Hardcode 1 for now, no meaning at the
+  buffer->st_dev = 1;
   // moment for Emscripten.
-  buffer->st_mode = lockedFile.mode();
+  buffer->st_mode = lockedFile.getMode();
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
   buffer->st_uid = 0;
   buffer->st_gid = 0;
-  buffer->st_rdev =
-    1; // Device ID (if special file) No meaning right now for Emscripten.
-
+  // Device ID (if special file) No meaning right now for Emscripten.
+  buffer->st_rdev = 1;
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
   buffer->st_blocks = (buffer->st_size + 511) / 512;
-  buffer->st_blksize =
-    4096; // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_atim.tv_sec = lockedFile.atime();
-  buffer->st_mtim.tv_sec = lockedFile.mtime();
-  buffer->st_ctim.tv_sec = lockedFile.ctime();
-
+  // Specifies the preferred blocksize for efficient disk I/O.
+  buffer->st_blksize = 4096;
+  buffer->st_atim.tv_sec = lockedFile.getATime();
+  buffer->st_mtim.tv_sec = lockedFile.getMTime();
+  buffer->st_ctim.tv_sec = lockedFile.getCTime();
   return __WASI_ERRNO_SUCCESS;
 }
 
-long __syscall_stat64(long path, long buf) {
-  auto pathParts = splitPath((char*)path);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  // Parent node doesn't exist.
-  if (!parsedPath.parent) {
-    return err;
-  }
-
-  if (parsedPath.child) {
-    struct stat* buffer = (struct stat*)buf;
-    return doStat(parsedPath.child, buffer);
-  } else {
-    return -ENOENT;
-  }
+int __syscall_stat64(intptr_t path, intptr_t buf) {
+  return __syscall_fstatat64(AT_FDCWD, path, buf, 0);
 }
 
-long __syscall_lstat64(long path, long buf) {
-  // TODO: When symlinks are introduced, lstat will return information about the
-  // link itself rather than the file it refers to.
-  return __syscall_stat64(path, buf);
+int __syscall_lstat64(intptr_t path, intptr_t buf) {
+  return __syscall_fstatat64(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-long __syscall_fstat64(long fd, long buf) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
-  if (!openFile) {
-    return -EBADF;
-  }
-  struct stat* buffer = (struct stat*)buf;
-  return doStat(openFile.locked().getFile(), buffer);
+int __syscall_fstat64(int fd, intptr_t buf) {
+  return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
 }
 
-static __wasi_fd_t doOpen(char* pathname,
-                          long flags,
+static __wasi_fd_t doOpen(path::ParsedParent parsed,
+                          int flags,
                           mode_t mode,
                           backend_t backend = NullBackend) {
   int accessMode = (flags & O_ACCMODE);
-  bool canWrite = false;
-
-  if (accessMode == O_WRONLY || accessMode == O_RDWR) {
-    canWrite = true;
+  if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
+      accessMode != O_RDWR) {
+    return -EINVAL;
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert(
-    ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
-                 O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
+  assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
+                    O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) ==
+         0);
 
-  auto pathParts = splitPath(pathname);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  // Parent node doesn't exist.
-  if (!parsedPath.parent) {
+  if (auto err = parsed.getError()) {
     return err;
   }
-
-  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+  auto& [parent, childName] = parsed.getParentChild();
+  if (childName.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
-  // The requested node was not found.
-  if (!parsedPath.child) {
-    // If curr is the last element and the create flag is specified
-    // If O_DIRECTORY is also specified, still create a regular file:
-    // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
-    if (flags & O_CREAT) {
-      // Mask all permissions sent via mode.
+  std::shared_ptr<File> child;
+  {
+    auto lockedParent = parent->locked();
+    child = lockedParent.getChild(std::string(childName));
+    // The requested node was not found.
+    if (!child) {
+      // If curr is the last element and the create flag is specified
+      // If O_DIRECTORY is also specified, still create a regular file:
+      // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
+      if (!(flags & O_CREAT)) {
+        return -ENOENT;
+      }
+
+      // Inserting into an unlinked directory is not allowed.
+      if (!lockedParent.getParent()) {
+        return -ENOENT;
+      }
+
+      // Mask out everything except the permissions bits.
       mode &= S_IALLUGO;
 
       // If there is no explicitly provided backend, use the parent's backend.
       if (!backend) {
-        backend = parsedPath.parent->unlocked()->getBackend();
+        backend = parent->getBackend();
       }
+
+      // TODO: Check write permissions on the parent directory.
+      // TODO: Forbid mounting new backends except under the root backend.
+      // TODO: Check that the insert actually succeeds.
       auto created = backend->createFile(mode);
-
-      parsedPath.parent->insertChild(pathParts.back(), created);
+      lockedParent.insertChild(std::string(childName), created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
-
-      return wasmFS.getLockedFileTable().add(openFile);
-    } else {
-      return -ENOENT;
+      return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
 
+  // Check user permissions.
+  auto fileMode = child->locked().getMode();
+  if ((accessMode == O_RDONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_READ)) {
+    return -EACCES;
+  }
+  if ((accessMode == O_WRONLY || accessMode == O_RDWR) &&
+      !(fileMode & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
   // Fail if O_DIRECTORY is specified and pathname is not a directory
-  if (flags & O_DIRECTORY && !parsedPath.child->is<Directory>()) {
+  if (flags & O_DIRECTORY && !child->is<Directory>()) {
     return -ENOTDIR;
   }
 
@@ -417,9 +454,8 @@ static __wasi_fd_t doOpen(char* pathname,
     return -EEXIST;
   }
 
-  auto openFile = std::make_shared<OpenFileState>(0, flags, parsedPath.child);
-
-  return wasmFS.getLockedFileTable().add(openFile);
+  auto openFile = std::make_shared<OpenFileState>(0, flags, child);
+  return wasmFS.getFileTable().locked().addEntry(openFile);
 }
 
 // This function is exposed to users and allows users to create a file in a
@@ -427,37 +463,35 @@ static __wasi_fd_t doOpen(char* pathname,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(pathname, O_CREAT, mode, backend);
+  return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
-  // Since mode is optional, mode is specified using varargs.
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   mode_t mode = 0;
-  va_list vl;
-  va_start(vl, flags);
-  mode = va_arg(vl, int);
-  va_end(vl);
+  va_list v1;
+  va_start(v1, flags);
+  mode = va_arg(v1, int);
+  va_end(v1);
 
-  return doOpen((char*)pathname, flags, mode);
+  return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
-static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
-  auto pathParts = splitPath(path);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  // Parent node doesn't exist.
-  if (!parsedPath.parent) {
+static int
+doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+  if (auto err = parsed.getError()) {
     return err;
   }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
 
-  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+  if (childName.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
   // Check if the requested directory already exists.
-  if (parsedPath.child) {
+  if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
 
@@ -470,49 +504,61 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   // the parent directory. However, if a backend is passed as a parameter,
   // then that backend is used.
   if (!backend) {
-    backend = parsedPath.parent->unlocked()->getBackend();
+    backend = parent->getBackend();
   }
-  // Create an empty in-memory directory.
+
+  // TODO: Check write permissions in the parent.
+  // TODO: Forbid mounting new backends except under the root backend.
+  // TODO: Check that the insertion is successful.
   auto created = backend->createDirectory(mode);
-  parsedPath.parent->insertChild(pathParts.back(), created);
+  lockedParent.insertChild(childName, created);
 
   // Update the times.
   auto lockedFile = created->locked();
   time_t now = time(NULL);
-  lockedFile.atime() = now;
-  lockedFile.mtime() = now;
-  lockedFile.ctime() = now;
+  lockedFile.setATime(now);
+  lockedFile.setMTime(now);
+  lockedFile.setCTime(now);
 
   return 0;
 }
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char* path, long mode, backend_t backend) {
-  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), long>,
+int wasmfs_create_directory(char* path, int mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
-  return doMkdir(path, mode, backend);
+  return doMkdir(path::parseParent(path), mode, backend);
 }
 
-long __syscall_mkdir(long path, long mode) {
-  return doMkdir((char*)path, mode);
+// TODO: Test this.
+int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+  return doMkdir(path::parseParent((char*)path, dirfd), mode);
+}
+
+int __syscall_mkdir(intptr_t path, int mode) {
+  return doMkdir(path::parseParent((char*)path), mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
                               __wasi_filedelta_t offset,
                               __wasi_whence_t whence,
                               __wasi_filesize_t* newoffset) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
-  auto lockedOpenFile = openFile.locked();
+  auto lockedOpenFile = openFile->locked();
+
+  if (!lockedOpenFile.getFile()->isSeekable()) {
+    return __WASI_ERRNO_SPIPE;
+  }
 
   off_t position;
   if (whence == SEEK_SET) {
     position = offset;
   } else if (whence == SEEK_CUR) {
-    position = lockedOpenFile.position() + offset;
+    position = lockedOpenFile.getPosition() + offset;
   } else if (whence == SEEK_END) {
     // Only the open file state is altered in seek. Locking the underlying
     // data file here once is sufficient.
@@ -525,7 +571,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
     return __WASI_ERRNO_INVAL;
   }
 
-  lockedOpenFile.position() = position;
+  lockedOpenFile.setPosition(position);
 
   if (newoffset) {
     *newoffset = position;
@@ -534,31 +580,32 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
-long __syscall_chdir(long path) {
-  auto pathParts = splitPath((char*)path);
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  if (!parsedPath.parent) {
-    return err;
-  }
-
-  if (!parsedPath.child) {
-    return -ENOENT;
-  }
-
-  auto childDir = parsedPath.child->dynCast<Directory>();
-
-  if (childDir) {
-    wasmFS.setCWD(childDir);
-    return 0;
-  } else {
+int doChdir(std::shared_ptr<File>& file) {
+  auto dir = file->dynCast<Directory>();
+  if (!dir) {
     return -ENOTDIR;
   }
+  wasmFS.setCWD(dir);
+  return 0;
 }
 
-long __syscall_getcwd(long buf, long size) {
+int __syscall_chdir(intptr_t path) {
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doChdir(parsed.getFile());
+}
+
+int __syscall_fchdir(int fd) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  return doChdir(openFile->locked().getFile());
+}
+
+int __syscall_getcwd(intptr_t buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -594,17 +641,18 @@ long __syscall_getcwd(long buf, long size) {
   }
 
   auto res = result.c_str();
+  int len = strlen(res) + 1;
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
-  if (strlen(res) >= size - 1) {
+  if (len >= size) {
     return -ENAMETOOLONG;
   }
 
   // Return value is a null-terminated c string.
   strcpy((char*)buf, res);
 
-  return buf;
+  return len;
 }
 
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
@@ -612,12 +660,12 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   // to get __wasi_fd_is_valid working.
   // There are other fields in the stat structure that we should really
   // be filling in here.
-  auto openFile = wasmFS.getLockedFileTable()[fd];
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  if (openFile.locked().getFile()->is<Directory>()) {
+  if (openFile->locked().getFile()->is<Directory>()) {
     stat->fs_filetype = __WASI_FILETYPE_DIRECTORY;
   } else {
     stat->fs_filetype = __WASI_FILETYPE_REGULAR_FILE;
@@ -625,76 +673,74 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-// This enum specifies whether rmdir or unlink is being performed.
-enum class UnlinkMode { Rmdir, Unlink };
-
-static long doUnlink(char* path, UnlinkMode unlinkMode) {
-  auto pathParts = splitPath(path);
-
-  // TODO: Ensure that . and .. are invalid when path parsing is updated.
-  // This can be done when path parsing is refactored.
-
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  // Parent node doesn't exist.
-  if (!parsedPath.parent) {
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+  if (flags & ~AT_REMOVEDIR) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  // It is invalid for rmdir paths to end in ".", but we need to distinguish
+  // this case from the case of `parseParent` returning (root, '.') when parsing
+  // "/", so we need to find the invalid "/." manually.
+  if (flags == AT_REMOVEDIR) {
+    std::string_view p((char*)path);
+    // Ignore trailing '/'.
+    while (!p.empty() && p.back() == '/') {
+      p.remove_suffix(1);
+    }
+    if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+      return -EINVAL;
+    }
+  }
+  auto parsed = path::parseParent((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
     return err;
   }
-
-  if (!parsedPath.child) {
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  if (!file) {
     return -ENOENT;
   }
-
-  // Current state just matches JS file system behaviour.
-  if (parsedPath.child == wasmFS.getRootDirectory()) {
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
     return -EBUSY;
   }
 
-  // rmdir checks if the target is a directory and if the directory is empty.
-  auto targetDir = parsedPath.child->dynCast<Directory>();
-  if (unlinkMode == UnlinkMode::Rmdir) {
-
-    if (!targetDir) {
-      return -ENOTDIR;
+  auto lockedFile = file->locked();
+  if (auto dir = file->dynCast<Directory>()) {
+    if (flags != AT_REMOVEDIR) {
+      return -EISDIR;
     }
-
-    // A directory can only be removed if it has zero entries.
-    if (targetDir->locked().getNumEntries() > 0) {
+    // A directory can only be removed if it has no entries.
+    if (dir->locked().getNumEntries() > 0) {
       return -ENOTEMPTY;
     }
   } else {
-    // unlink cannot remove a directory.
-    if (targetDir) {
-      return -EISDIR;
+    // A normal file or symlink.
+    if (flags == AT_REMOVEDIR) {
+      return -ENOTDIR;
     }
   }
 
   // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
-  if (!(parsedPath.parent->mode() & WASMFS_PERM_WRITE)) {
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
   // Input is valid, perform the unlink.
-  if (!parsedPath.parent->removeChild(pathParts.back())) {
+  if (!lockedParent.removeChild(childName)) {
     return -EPERM;
   }
   return 0;
 }
 
-long __syscall_rmdir(long path) {
-  return doUnlink((char*)path, UnlinkMode::Rmdir);
+int __syscall_rmdir(intptr_t path) {
+  return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-long __syscall_unlink(long path) {
-  return doUnlink((char*)path, UnlinkMode::Unlink);
-}
-long __syscall_getdents64(long fd, long dirp, long count) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
-
-  if (!openFile) {
-    return -EBADF;
-  }
+int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   dirent* result = (dirent*)dirp;
 
   // Check if the result buffer is too small.
@@ -702,41 +748,40 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     return -EINVAL;
   }
 
-  auto file = openFile.locked().getFile();
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto lockedOpenFile = openFile->locked();
 
-  auto directory = file->dynCast<Directory>();
-  if (!directory) {
+  auto dir = lockedOpenFile.getFile()->dynCast<Directory>();
+  if (!dir) {
     return -ENOTDIR;
   }
+  auto lockedDir = dir->locked();
 
-  // Hold the locked directory to prevent the state from being changed during
-  // the operation.
-  auto lockedDir = directory->locked();
-
-  off_t bytesRead = 0;
   // A directory's position corresponds to the index in its entries vector.
-  int index = openFile.locked().position();
+  int index = lockedOpenFile.getPosition();
 
-  // In the root directory, ".." refers to itself.
-  auto dotdot =
-    file == wasmFS.getRootDirectory() ? file : lockedDir.getParent();
-
-  // If the directory is unlinked then the parent pointer should be null.
-  if (!dotdot) {
-    return -ENOENT;
+  // If this directory has been unlinked and has no parent, then it is
+  // completely empty.
+  auto parent = lockedDir.getParent();
+  if (!parent) {
+    return 0;
   }
 
-  // There are always two hardcoded directories "." and ".."
-  std::vector<Directory::Entry> entries = {{".", File::DirectoryKind},
-                                           {"..", File::DirectoryKind}};
+  std::vector<Directory::Entry> entries = {
+    {".", File::DirectoryKind, dir->getIno()},
+    {"..", File::DirectoryKind, parent->getIno()}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
+  off_t bytesRead = 0;
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
     auto& entry = entries[index];
     result->d_ino = entry.ino;
-    result->d_off = bytesRead + sizeof(dirent);
+    result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
     switch (entry.kind) {
       case File::UnknownKind:
@@ -761,158 +806,117 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     bytesRead += sizeof(dirent);
   }
 
-  // Set the directory's offset position:
-  openFile.locked().position() = index;
+  // Update position
+  lockedOpenFile.setPosition(index);
 
   return bytesRead;
 }
 
-// TODO: Revisit this syscall after refactoring file system locking strategy.
-long __syscall_rename(long old_path, long new_path) {
-  // The rename syscall must be atomic to prevent other file system operations
-  // from concurrently changing the directories. If it were not atomic, then the
-  // file system could be left in an inconsistent state. For example, a
-  // rename("src/a","dest/b") and an rmdir("/dest") could conflict. Assume that
-  // the src/a file is unlinked first before moving it to the empty /dest
-  // directory. In the meantime, another thread could remove the empty /dest
-  // directory. src/a can still attach itself to the /dest directory since we
-  // have its shared_ptr, and the syscall would succeed. However, this may be
-  // unexpected for the user, who might have expected the subsequent
-  // rmdir("/dest") to fail since /dest is no longer empty. Both syscalls
-  // succeeding would result in a data loss, which would have been prevented if
-  // either of them was blocked by the other. Thus rename should guarantee that
-  // the order of operations is consistent.
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_renameat(int olddirfd,
+                       intptr_t oldpath,
+                       int newdirfd,
+                       intptr_t newpath) {
+  // Rename is the only syscall that needs to (or is allowed to) acquire locks
+  // on two directories at once. It requires locks on both the old and new
+  // parent directories to ensure that the moved file can be atomically removed
+  // from the old directory and added to the new directory without something
+  // changing that would prevent the move.
+  //
+  // To prevent deadlock in the case of simultaneous renames, serialize renames
+  // with an additional global lock.
+  static std::mutex renameMutex;
+  std::lock_guard<std::mutex> renameLock(renameMutex);
 
-  // Trylocking on the new_path parent is needed in the case where two renames
-  // are operating on opposing sources and destinations. This would cause them
-  // to lock the directories in reverse order and could cause deadlock.
-
-  // Edge case: rename("dir", "dir/somename") - in this scenario it should not
-  // be possible to rename the destination if the source is an ancestor.
-
-  // Edge case: rename("dir/somename", "dir") - in this scenario it should not
-  // be possible to rename the destination since by definition it is
-  // non-empty.
-
-  auto oldPathParts = splitPath((char*)old_path);
-
-  // For this operation to be atomic we must lock the source parent directory.
-  // getParsedPath() will return a locked parent directory.
-  long err;
-  auto oldParsedPath = getParsedPath(oldPathParts, err);
-
-  if (!oldParsedPath.parent) {
+  // Get the old directory.
+  auto parsedOld = path::parseParent((char*)oldpath, olddirfd);
+  if (auto err = parsedOld.getError()) {
     return err;
   }
+  auto& [oldParent, oldFileNameView] = parsedOld.getParentChild();
+  std::string oldFileName(oldFileNameView);
 
-  if (oldPathParts.back().size() > WASMFS_NAME_MAX) {
+  // Get the new directory.
+  auto parsedNew = path::parseParent((char*)newpath, newdirfd);
+  if (auto err = parsedNew.getError()) {
+    return err;
+  }
+  auto& [newParent, newFileNameView] = parsedNew.getParentChild();
+  std::string newFileName(newFileNameView);
+
+  if (newFileNameView.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
-  if (!oldParsedPath.child) {
+  // Lock both directories.
+  auto lockedOldParent = oldParent->locked();
+  auto lockedNewParent = newParent->locked();
+
+  // Get the source and destination files.
+  auto oldFile = lockedOldParent.getChild(oldFileName);
+  auto newFile = lockedNewParent.getChild(newFileName);
+
+  if (!oldFile) {
     return -ENOENT;
   }
 
-  // In Linux and WasmFS, renaming the root directory should return EBUSY.
-  // In the JS file system it reports EINVAL.
-  if (oldParsedPath.child == wasmFS.getRootDirectory()) {
-    return -EBUSY;
-  }
-
-  // Obtain the destination parent directory to see if it exists.
-  auto newPathParts = splitPath((char*)new_path);
-
-  if (newPathParts.empty()) {
-    return -ENOENT;
-  }
-
-  // In Linux, renaming a directory to the root directory returns ENOTEMPTY.
-  // TODO: Fix this when path parsing is refactored.
-  std::vector<std::string> root = {"/"};
-  if (newPathParts == root) {
-    return -ENOTEMPTY;
-  }
-
-  auto newBase = newPathParts.back();
-  if (newBase.size() > WASMFS_NAME_MAX) {
-    return -ENAMETOOLONG;
-  }
-
-  // oldParsedPath.child is the forbidden ancestor.
-  auto newParentDir = getDir(
-    newPathParts.begin(), newPathParts.end() - 1, err, oldParsedPath.child);
-
-  // If the destination parent directory doesn't exist, the source file cannot
-  // be moved.
-  if (!newParentDir) {
-    return err;
-  }
-
-  // Edge case: a/b -> a/c share the same parent. Trylocking the same parent
-  // with a recursive mutex should work, so we don't need to treat that case
-  // specially here.
-  // TODO: Should getParsedPath return a locked handle already or a shared
-  // pointer and rely on the caller to lock the directory?
-  auto maybeLockedNewParentDir = newParentDir->maybeLocked();
-  if (!maybeLockedNewParentDir) {
-    return -EBUSY;
-  }
-
-  auto lockedNewParentDir = std::move(*maybeLockedNewParentDir);
-  auto newPath = lockedNewParentDir.getChild(newBase);
-
-  // If old_path and new_path are the same, do nothing.
-  if (newPath == oldParsedPath.child) {
+  // If the source and destination are the same, do nothing.
+  if (oldFile == newFile) {
     return 0;
   }
 
-  // Cannot move from source directory without write permissions.
-  if (!(oldParsedPath.parent->mode() & WASMFS_PERM_WRITE)) {
-    return -EACCES;
+  // Never allow renaming or overwriting the root.
+  auto root = wasmFS.getRootDirectory();
+  if (oldFile == root || newFile == root) {
+    return -EBUSY;
   }
 
-  // Cannot move to a destination parent directory without write permissions.
-  if (!(lockedNewParentDir.mode() & WASMFS_PERM_WRITE)) {
+  // Cannot modify either directory without write permissions.
+  if (!(lockedOldParent.getMode() & WASMFS_PERM_WRITE) ||
+      !(lockedNewParent.getMode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
   // TODO: Check that the source and parent directories have the same backends.
 
-  // new path must be removed if it exists.
-  if (newPath) {
-    if (oldParsedPath.child->is<DataFile>()) {
-      // Cannot overwrite a file with a directory.
-      if (newPath->is<Directory>()) {
+  // Check that oldDir is not an ancestor of newDir.
+  for (auto curr = newParent; curr != root; curr = curr->locked().getParent()) {
+    if (curr == oldFile) {
+      return -EINVAL;
+    }
+  }
+
+  // The new file must be removed if it already exists.
+  if (newFile) {
+    if (auto newDir = newFile->dynCast<Directory>()) {
+      // Cannot overwrite a directory with a non-directory.
+      auto oldDir = oldFile->dynCast<Directory>();
+      if (!oldDir) {
         return -EISDIR;
       }
-    } else if (oldParsedPath.child->is<Directory>()) {
-      auto newPathDirectory = newPath->dynCast<Directory>();
-
-      // Cannot overwrite a directory with a file.
-      if (!newPathDirectory) {
-        return -ENOTDIR;
-      }
-
-      // This should also cover the case in where
-      // the destination is an ancestor of the source:
-      // rename("dir/subdir", "dir");
-      if (newPathDirectory->locked().getNumEntries() > 0) {
+      // Cannot overwrite a non-empty directory.
+      if (newDir->locked().getNumEntries() > 0) {
         return -ENOTEMPTY;
       }
     } else {
-      assert(false && "Unhandled file kind in rename");
+      // Cannot overwrite a non-directory with a directory.
+      if (oldFile->is<Directory>()) {
+        return -ENOTDIR;
+      }
     }
-    if (!lockedNewParentDir.removeChild(newBase)) {
+
+    // Remove the overwritten file.
+    if (!lockedNewParent.removeChild(newFileName)) {
       return -EPERM;
     }
   }
 
   // Unlink the oldpath and add the oldpath to the new parent dir.
-  if (!oldParsedPath.parent->removeChild(oldPathParts.back())) {
+  if (!lockedOldParent.removeChild(oldFileName)) {
     // TODO: Put the file that was going to be overwritten back!
     return -EPERM;
   }
-  if (!lockedNewParentDir.insertChild(newBase, oldParsedPath.child)) {
+  if (!lockedNewParent.insertChild(newFileName, oldFile)) {
     // TODO: Put all the removed files back!
     return -EPERM;
   }
@@ -920,113 +924,134 @@ long __syscall_rename(long old_path, long new_path) {
   return 0;
 }
 
-long __syscall_symlink(char* old_path, char* new_path) {
-  auto pathParts = splitPath(new_path);
+int __syscall_rename(intptr_t oldpath, intptr_t newpath) {
+  return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
+}
 
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-
-  if (!parsedPath.parent) {
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
+  auto parsed = path::parseParent((char*)linkpath, newdirfd);
+  if (auto err = parsed.getError()) {
     return err;
   }
-
-  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+  auto& [parent, childNameView] = parsed.getParentChild();
+  if (childNameView.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
-
-  if (parsedPath.child) {
+  auto lockedParent = parent->locked();
+  std::string childName(childNameView);
+  if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
 
-  auto backend = parsedPath.parent->unlocked()->getBackend();
-  auto created = backend->createSymlink(old_path);
-  if (!parsedPath.parent->insertChild(pathParts.back(), created)) {
+  auto backend = parent->getBackend();
+  auto created = backend->createSymlink((char*)target);
+  if (!lockedParent.insertChild(childName, created)) {
     return -EPERM;
   }
 
   return 0;
 }
 
-long __syscall_readlink(char* path, char* buf, size_t bufSize) {
-  auto pathParts = splitPath(path);
+int __syscall_symlink(intptr_t target, intptr_t linkpath) {
+  return __syscall_symlinkat(target, AT_FDCWD, linkpath);
+}
 
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-  if (!parsedPath.parent) {
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
+  auto parsed = path::parseFile((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
     return err;
   }
-  if (!parsedPath.child) {
-    return -ENOENT;
-  }
-  if (!parsedPath.child->is<Symlink>()) {
+  auto link = parsed.getFile()->dynCast<Symlink>();
+  if (!link) {
     return -EINVAL;
   }
-
-  const auto& target = parsedPath.child->dynCast<Symlink>()->getTarget();
-
-  auto bytes = std::min(bufSize, target.size());
-  memcpy(buf, target.c_str(), bytes);
-
+  const auto& target = link->getTarget();
+  auto bytes = std::min((size_t)bufsize, target.size());
+  memcpy((char*)buf, target.c_str(), bytes);
   return bytes;
 }
 
-long __syscall_utimensat(int dirFD,
-                         char* path,
-                         const struct timespec times[2],
-                         int flags) {
-  // TODO: support flags here
-  assert(flags == 0);
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
+  const char* path = (const char*)path_;
+  const struct timespec* times = (const struct timespec*)times_;
+  if (flags & ~AT_SYMLINK_NOFOLLOW) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
 
-  auto pathParts = splitPath(path);
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirFD);
-  if (!parsedPath.parent) {
+  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
+  auto parsed = path::parseFile(path, dirFD);
+  if (auto err = parsed.getError()) {
     return err;
   }
 
-  // TODO: tv_nsec (nanoseconds) as well? but time_t is seconds as an integer
-  auto aSeconds = times[0].tv_sec;
-  auto mSeconds = times[1].tv_sec;
+  // TODO: Set tv_nsec (nanoseconds) as well.
+  // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
+  // TODO: Check for write access to the file (see man page for specifics).
+  time_t aSeconds, mSeconds;
+  if (times == NULL) {
+    aSeconds = time(NULL);
+    mSeconds = aSeconds;
+  } else {
+    aSeconds = times[0].tv_sec;
+    mSeconds = times[1].tv_sec;
+  }
 
-  auto locked = parsedPath.child->locked();
-  locked.atime() = aSeconds;
-  locked.mtime() = mSeconds;
+  auto locked = parsed.getFile()->locked();
+  locked.setATime(aSeconds);
+  locked.setMTime(mSeconds);
 
   return 0;
 }
 
-long __syscall_chmod(char* path, long mode) {
-  auto pathParts = splitPath(path);
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err);
-  if (!parsedPath.parent) {
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
+  int flags = 0;
+  va_list v1;
+  va_start(v1, mode);
+  flags = va_arg(v1, int);
+  va_end(v1);
+
+  if (flags & ~AT_SYMLINK_NOFOLLOW) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
+  auto parsed = path::parseFile((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
     return err;
   }
-
-  parsedPath.child->locked().mode() = mode;
-
+  parsed.getFile()->locked().setMode(mode);
   return 0;
 }
 
-long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
+int __syscall_chmod(intptr_t path, int mode) {
+  return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+}
+
+// TODO: Test this with non-AT_FDCWD values.
+int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
     return -EINVAL;
   }
-
-  auto pathParts = splitPath((char*)path);
-  long err;
-  auto parsedPath = getParsedPath(pathParts, err, nullptr, dirfd);
-  if (!parsedPath.parent) {
-    return err;
+  if (flags & ~(AT_EACCESS | AT_SYMLINK_NOFOLLOW)) {
+    // TODO: Test this case.
+    return -EINVAL;
   }
-  if (!parsedPath.child) {
-    return -ENOENT;
+
+  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
+  auto parsed = path::parseFile((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
+    return err;
   }
 
   if (amode != F_OK) {
-    auto mode = parsedPath.child->locked().mode();
+    auto mode = parsed.getFile()->locked().getMode();
     if ((amode & R_OK) && !(mode & WASMFS_PERM_READ)) {
       return -EACCES;
     }
@@ -1040,4 +1065,122 @@ long __syscall_faccessat(long dirfd, long path, long amode, long flags) {
 
   return 0;
 }
+
+static int doTruncate(std::shared_ptr<File>& file, off_t size) {
+  auto dataFile = file->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  if (size < 0) {
+    return -EINVAL;
+  }
+
+  // TODO: error handling for allocation errors. atm with exceptions disabled,
+  //       however, C++ backends using std::vector for storage have no way to
+  //       report that, and will abort in malloc.
+  locked.setSize(size);
+  return 0;
 }
+
+int __syscall_truncate64(intptr_t path, uint64_t size) {
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doTruncate(parsed.getFile(), size);
+}
+
+int __syscall_ftruncate64(int fd, uint64_t size) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto ret = doTruncate(openFile->locked().getFile(), size);
+  // XXX It is not clear from the docs why ftruncate would differ from
+  //     truncate here. However, on Linux this definitely happens, and the old
+  //     FS matches that as well, so do the same here.
+  if (ret == -EACCES) {
+    ret = -EINVAL;
+  }
+  return ret;
+}
+
+int __syscall_pipe(intptr_t fd) {
+  auto* fds = (__wasi_fd_t*)fd;
+
+  // Make a pipe: Two PipeFiles that share a single data source between them, so
+  // that writing to one can be read in the other.
+  //
+  // No backend is needed here, so pass in nullptr for that.
+  auto data = std::make_shared<PipeData>();
+  auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
+  auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  fds[0] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
+  fds[1] =
+    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
+
+  return 0;
+}
+
+// int poll(struct pollfd* fds, nfds_t nfds, int timeout);
+int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
+  struct pollfd* fds = (struct pollfd*)fds_;
+  auto fileTable = wasmFS.getFileTable().locked();
+
+  // Process the list of FDs and compute their revents masks. Count the number
+  // of nonzero such masks, which is our return value.
+  int nonzero = 0;
+  for (nfds_t i = 0; i < nfds; i++) {
+    auto* pollfd = &fds[i];
+    auto fd = pollfd->fd;
+    if (fd < 0) {
+      // Negative FDs are ignored in poll().
+      pollfd->revents = 0;
+      continue;
+    }
+    // Assume invalid, unless there is an open file.
+    auto mask = POLLNVAL;
+    auto openFile = fileTable.getEntry(fd);
+    if (openFile) {
+      mask = 0;
+      auto flags = openFile->getFlags();
+      auto readBit = pollfd->events & POLLOUT;
+      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+        mask |= readBit;
+      }
+      auto writeBit = pollfd->events & POLLIN;
+      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+        // If there is data in the file, then there is also the ability to read.
+        // TODO: Does this need to consider the position as well? That is, if
+        //       the position is at the end, we can't read from the current
+        //       position at least.
+        if (openFile->locked().getFile()->locked().getSize() > 0) {
+          mask |= writeBit;
+        }
+      }
+      // TODO: get mask from File dynamically using a poll() hook?
+    }
+    // TODO: set the state based on the state of the other end of the pipe, for
+    //       pipes (POLLERR | POLLHUP)
+    if (mask) {
+      nonzero++;
+    }
+    pollfd->revents = mask;
+  }
+  // TODO: This should block based on the timeout. The old FS did not do so due
+  //       to web limitations, which we should perhaps revisit (especially with
+  //       pthreads and asyncify).
+  return nonzero;
+}
+
+} // extern "C"

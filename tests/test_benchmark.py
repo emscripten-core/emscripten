@@ -163,9 +163,6 @@ class NativeBenchmarker(Benchmarker):
   def get_size_text(self):
     return 'dynamically linked - libc etc. are not included!'
 
-  def cleanup(self):
-    pass
-
 
 def run_binaryen_opts(filename, opts):
   run_process([
@@ -181,14 +178,11 @@ class EmscriptenBenchmarker(Benchmarker):
     self.engine = engine
     self.extra_args = extra_args.copy()
     self.env = os.environ.copy()
-    for k, v in env.items():
-      self.env[k] = v
+    self.env.update(env)
     self.binaryen_opts = binaryen_opts.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
-    self.old_env = os.environ
-    os.environ = self.env.copy()
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
     if lib_builder:
       env_init = self.env.copy()
@@ -239,10 +233,6 @@ class EmscriptenBenchmarker(Benchmarker):
     else:
       ret.append(self.filename[:-3] + '.wasm')
     return ret
-
-  def cleanup(self):
-    os.environ = self.old_env
-    building.clear()
 
 
 class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
@@ -350,9 +340,6 @@ class CheerpBenchmarker(Benchmarker):
 
   def get_output_files(self):
     return [self.filename, self.filename.replace('.js', '.wasm')]
-
-  def cleanup(self):
-    pass
 
 
 # Benchmarkers
@@ -476,7 +463,6 @@ class benchmark(common.RunnerCore):
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps, expected_output)
       b.display(baseline)
-      b.cleanup()
 
   def test_primes(self, check=True):
     src = r'''

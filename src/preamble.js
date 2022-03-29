@@ -48,10 +48,10 @@ if (typeof WebAssembly != 'object') {
 
 var wasmMemory;
 
-#if USE_PTHREADS
+#if SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
-#endif // USE_PTHREADS
+#endif // SHARED_MEMORY
 
 //========================================
 // Runtime essentials
@@ -137,6 +137,10 @@ function ccall(ident, returnType, argTypes, args, opts) {
       }
     }
   }
+#if ASYNCIFY
+  // Data for a previous async operation that was in flight before us.
+  var previousAsync = Asyncify.currData;
+#endif
   var ret = func.apply(null, cArgs);
   function onDone(ret) {
 #if ASYNCIFY
@@ -146,11 +150,22 @@ function ccall(ident, returnType, argTypes, args, opts) {
     return convertReturnValue(ret);
   }
 #if ASYNCIFY
+  // Keep the runtime alive through all calls. Note that this call might not be
+  // async, but for simplicity we push and pop in all calls.
   runtimeKeepalivePush();
   var asyncMode = opts && opts.async;
-  // Check if we started an async operation just now.
-  if (Asyncify.currData) {
-    // If so, the WASM function ran asynchronous and unwound its stack.
+  if (Asyncify.currData != previousAsync) {
+#if ASSERTIONS
+    // A change in async operation happened. If there was already an async
+    // operation in flight before us, that is an error: we should not start
+    // another async operation while one is active, and we should not stop one
+    // either. The only valid combination is to have no change in the async
+    // data (so we either had one in flight and left it alone, or we didn't have
+    // one), or to have nothing in flight and to start one.
+    assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
+    assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
+#endif
+    // This is a new async operation. The wasm is paused and has unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
@@ -275,7 +290,7 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -283,17 +298,6 @@ assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTA
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
-#endif
-
-#if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
-  window.addEventListener('error', function(e) {
-    if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
-    Module['pageThrewException'] = true;
-  });
-}
 #endif
 
 #if IMPORTED_MEMORY
@@ -320,12 +324,19 @@ var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
+
+#if EXIT_RUNTIME
 var runtimeExited = false;
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
+#else
+function keepRuntimeAlive() {
+  return noExitRuntime;
+}
+#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -352,6 +363,10 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
@@ -380,6 +395,7 @@ function preMain() {
 }
 #endif
 
+#if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
   err('exitRuntime');
@@ -394,18 +410,17 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-#if EXIT_RUNTIME
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
+#endif
 
 function postRun() {
 #if STACK_OVERFLOW_CHECK
@@ -549,12 +564,6 @@ function removeRunDependency(id) {
   }
 }
 
-Module["preloadedImages"] = {}; // maps url to image data
-Module["preloadedAudios"] = {}; // maps url to audio data
-#if MAIN_MODULE
-Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -612,7 +621,7 @@ function abort(what) {
 
 #include "memoryprofiler.js"
 
-#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS && !WASMFS
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !WASMFS
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
@@ -646,7 +655,9 @@ function createExportWrapper(name, fixedasm) {
       asm = Module['asm'];
     }
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+#if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+#endif
     if (!asm[name]) {
       assert(asm[name], 'exported native function `' + displayName + '` not found');
     }
@@ -683,7 +694,7 @@ function makeAbortWrapper(original) {
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP == 'emscripten'
-        || e === 'longjmp' // rethrow longjmp if enabled
+        || e === Infinity // rethrow longjmp if enabled (In Emscripten EH format longjmp will throw Infinity)
 #endif
       ) {
         throw e;
@@ -836,7 +847,7 @@ function getBinaryPromise() {
       && !isFileURI(wasmBinaryFile)
 #endif
     ) {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+      return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
@@ -872,7 +883,7 @@ var wasmOffsetConverter;
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
@@ -1064,9 +1075,16 @@ function createWasm() {
     // is in charge of programatically exporting them on the global object.
     exportAsmFunctions(exports);
 #endif
-#if USE_PTHREADS
+
+#if USE_PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+
+#if WASM_WORKERS
+    if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
+#if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
@@ -1087,7 +1105,11 @@ function createWasm() {
     }
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
+#endif // ~USE_PTHREADS
+#if WASM_WORKERS
+    }
 #endif
+
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
@@ -1116,7 +1138,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS || RELOCATABLE
+#if SHARED_MEMORY || RELOCATABLE
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1181,7 +1203,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch == 'function') {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
         // Suppress closure warning here since the upstream definition for
         // instantiateStreaming only allows Promise<Repsponse> rather than
         // an actual Response.
@@ -1237,6 +1259,7 @@ function createWasm() {
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this path.
   if (Module['instantiateWasm']) {
 #if USE_OFFSET_CONVERTER
 #if ASSERTIONS && USE_PTHREADS

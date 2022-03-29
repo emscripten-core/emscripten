@@ -11,13 +11,14 @@
 #error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
 #endif
 
-#include <stddef.h>
-#include <assert.h>
-#include <string>
+#include <cassert>
+#include <cstddef>
 #include <functional>
-#include <vector>
 #include <map>
+#include <string>
 #include <type_traits>
+#include <vector>
+
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 

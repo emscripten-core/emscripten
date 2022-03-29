@@ -136,11 +136,11 @@ def update_settings_glue(metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
-  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or settings.MAIN_MODULE
+  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
@@ -171,7 +171,7 @@ def compile_settings():
   settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
 
   # Save settings to a file to work around v8 issue 1579
-  with shared.configuration.get_temp_files().get_file('.json') as settings_file:
+  with shared.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
       json.dump(settings.dict(), s, sort_keys=True, indent=2)
 
@@ -456,9 +456,7 @@ def compare_metadata(metadata, pymetadata):
 
 def finalize_wasm(infile, outfile, memfile):
   building.save_intermediate(infile, 'base.wasm')
-  # tell binaryen to look at the features section, and if there isn't one, to use MVP
-  # (which matches what llvm+lld has given us)
-  args = ['--minimize-wasm-changes']
+  args = []
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
@@ -466,6 +464,13 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
+    modify_wasm = True
+  if settings.USE_PTHREADS and settings.RELOCATABLE:
+    # HACK: When settings.USE_PTHREADS and settings.RELOCATABLE are set finalize needs to scan
+    # more than just the start function for memory.init instructions.  This means it can't run
+    # with setSkipFunctionBodies() enabled.  Currently the only way to force this is to set an
+    # output file.
+    # TODO(sbc): Find a better way to do this.
     modify_wasm = True
   if settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map', outfile)

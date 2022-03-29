@@ -283,6 +283,11 @@
 #define SANITIZER_SIGN_EXTENDED_ADDRESSES 0
 #endif
 
+// Emscripten emulates the canonical linux syscall set.
+#if !defined SANITIZER_USES_CANONICAL_LINUX_SYSCALLS && SANITIZER_EMSCRIPTEN
+# define SANITIZER_USES_CANONICAL_LINUX_SYSCALLS 1
+#endif
+
 // The AArch64 and RISC-V linux ports use the canonical syscall set as
 // mandated by the upstream linux community for all new ports. Other ports
 // may still use legacy syscalls.

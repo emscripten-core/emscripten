@@ -9,9 +9,9 @@ int sched_yield()
 {
 #if __EMSCRIPTEN__
 	// SharedArrayBuffer and wasm threads do not support explicit yielding.
-	// For now we at least process our event queue so that other threads who
-	// are waiting on this one to perform actions can make progesss.
-	emscripten_current_thread_process_queued_calls();
+	// For now we at least call `emscripten_yield` which processes the event queue
+	// (along with other essential tasks).
+	_emscripten_yield();
 	return 0;
 #else
 	return syscall(SYS_sched_yield);

@@ -4,12 +4,34 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if !USE_PTHREADS
+#error "Internal error! USE_PTHREADS should be enabled when including library_pthread.js."
+#endif
+#if !SHARED_MEMORY
+#error "Internal error! SHARED_MEMORY should be enabled when including library_pthread.js."
+#endif
+#if USE_PTHREADS == 2
+#error "USE_PTHREADS=2 is no longer supported"
+#endif
+#if BUILD_AS_WORKER
+#error "USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
+#endif
+#if PROXY_TO_WORKER
+#error "--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker."
+#endif
+#if EVAL_CTORS
+#error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
+#endif
+#if STANDALONE_WASM
+#error "STANDALONE_WASM does not support shared memories yet"
+#endif
+
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
-                   '$ptrToString',
+                   '$ptrToString', '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -31,7 +53,11 @@ var LibraryPThread = {
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
-        if (runtimeInitialized && !runtimeExited && typeof _pthread_self != 'undefined') {
+        if (runtimeInitialized && typeof _pthread_self != 'undefined'
+#if EXIT_RUNTIME
+        && !runtimeExited
+#endif
+        ) {
           t = _pthread_self();
         }
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
@@ -212,7 +238,7 @@ var LibraryPThread = {
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
-        PThread.tlsInitFunctions[i]();
+        if (PThread.tlsInitFunctions.hasOwnProperty(i)) PThread.tlsInitFunctions[i]();
       }
     },
     // Loads the WebAssembly module into the given list of Workers.
@@ -241,9 +267,11 @@ var LibraryPThread = {
           return;
         }
 
-        if (cmd === 'processQueuedMainThreadWork') {
+        if (cmd === 'processProxyingQueue') {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-          _emscripten_main_thread_process_queued_calls();
+          _emscripten_proxy_execute_queue(d['queue']);
+          // Decrement the ref count
+          Atomics.sub(HEAP32, d['queue'] >> 2, 1);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -274,7 +302,10 @@ var LibraryPThread = {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
           }
-        } else {
+        } else if (cmd) {
+          // The received message looks like something that should be handled by this message
+          // handler, (since there is a e.data.cmd field present), but is not one of the
+          // recognized commands:
           err("worker sent an unknown command " + cmd);
         }
         PThread.currentProxiedOperationCallerThread = undefined;
@@ -421,10 +452,6 @@ var LibraryPThread = {
       }
       return PThread.unusedWorkers.pop();
     }
-  },
-
-  $ptrToString: function(ptr) {
-    return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
   $killThread__deps: ['_emscripten_thread_free_data'],
@@ -613,6 +640,13 @@ var LibraryPThread = {
     PThread.threadInit();
   },
 
+  $pthreadCreateProxied__internal: true,
+  $pthreadCreateProxied__proxy: 'sync',
+  $pthreadCreateProxied__deps: ['__pthread_create_js'],
+  $pthreadCreateProxied: function(pthread_ptr, attr, start_routine, arg) {
+    return ___pthread_create_js(pthread_ptr, attr, start_routine, arg);
+  },
+
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
@@ -622,7 +656,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -737,7 +771,7 @@ var LibraryPThread = {
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
     if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
-      return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PTHREAD_CREATE') }}}, pthread_ptr, attr, start_routine, arg);
+      return pthreadCreateProxied(pthread_ptr, attr, start_routine, arg);
     }
 
     // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort
@@ -826,8 +860,13 @@ var LibraryPThread = {
     return 0;
   },
 
+#if PROXY_TO_PTHREAD
   __call_main__deps: ['exit', '$exitOnMainThread'],
   __call_main: function(argc, argv) {
+#if !EXIT_RUNTIME
+    // EXIT_RUNTIME==0 set, keeping main thread alive by default.
+    noExitRuntime = true;
+#endif
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -838,12 +877,12 @@ var LibraryPThread = {
       exitOnMainThread(returnCode);
     }
 #else
-    // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
 #if PTHREADS_DEBUG
     err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
@@ -870,7 +909,7 @@ var LibraryPThread = {
 #endif
   },
 
-  emscripten_proxy_to_main_thread_js__deps: ['emscripten_run_in_main_runtime_thread_js'],
+  emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', 'emscripten_run_in_main_runtime_thread_js'],
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1008,32 +1047,19 @@ var LibraryPThread = {
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
-  // This function is called internally to notify target thread ID that it has messages it needs to
-  // process in its message queue inside the Wasm heap. As a helper, the caller must also pass the
-  // ID of the main browser thread to this function, to avoid needlessly ping-ponging between JS and
-  // Wasm boundaries.
-  _emscripten_notify_thread_queue: function(targetThreadId, mainThreadId) {
-    if (targetThreadId == mainThreadId) {
-      postMessage({'cmd' : 'processQueuedMainThreadWork'});
-    } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread': targetThreadId, 'cmd': 'processThreadQueue'});
-    } else {
-      var pthread = PThread.pthreads[targetThreadId];
-      var worker = pthread && pthread.worker;
-      if (!worker) {
-#if ASSERTIONS
-        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
-#endif
-        return /*0*/;
-      }
-      worker.postMessage({'cmd' : 'processThreadQueue'});
-    }
-    return 1;
-  },
-
   _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(function() { _emscripten_proxy_execute_queue(queue); });
+      setTimeout(() => {
+        // Only execute the queue if we have a live pthread runtime. We
+        // implement pthread_self to return 0 if there is no live runtime.
+        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+        //       `runtimeExited` is correctly unset on workers.
+        if (_pthread_self()) {
+          _emscripten_proxy_execute_queue(queue);
+        }
+        // Decrement the ref count
+        Atomics.sub(HEAP32, queue >> 2, 1);
+      });
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {

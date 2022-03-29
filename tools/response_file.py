@@ -60,7 +60,7 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
   from . import shared
-  shared.configuration.get_temp_files().note(response_filename)
+  shared.get_temp_files().note(response_filename)
 
   return response_filename
 
@@ -87,7 +87,10 @@ def read_response_file(response_filename):
   if len(components) > 1 and (encoding_suffix.startswith('utf') or encoding_suffix.startswith('cp') or encoding_suffix.startswith('iso') or encoding_suffix in ['ascii', 'latin-1']):
     guessed_encoding = encoding_suffix
   else:
-    guessed_encoding = 'utf-8'
+    # On windows, recent version of CMake emit rsp files containing
+    # a BOM.  Using 'utf-8-sig' works on files both with and without
+    # a BOM.
+    guessed_encoding = 'utf-8-sig'
 
   try:
     # First try with the guessed encoding

@@ -67,11 +67,6 @@ global.LibraryManager = {
       libraries.push('library_wget.js');
     }
 
-    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
-      libraries.push('library_webgl.js');
-      libraries.push('library_html5_webgl.js');
-    }
-
     if (EMSCRIPTEN_TRACING) {
       libraries.push('library_memoryprofiler.js');
     }
@@ -97,6 +92,7 @@ global.LibraryManager = {
       libraries.push('library_wasmfs.js');
       libraries.push('library_wasmfs_js_file.js');
       libraries.push('library_wasmfs_fetch.js');
+      libraries.push('library_wasmfs_node.js');
     }
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
@@ -368,16 +364,11 @@ function exportRuntime() {
     // if it is used, that they should export it
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
-      // (we could optimize this, but in ASSERTIONS mode code size doesn't
-      // matter anyhow)
-      let extra = '';
-      if (isExportedByForceFilesystem(name)) {
-        extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
-      }
-      if (!isNumber) {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = () => abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}");`;
+      const fssymbol = isExportedByForceFilesystem(name);
+      if (isNumber) {
+        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
       } else {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Object.defineProperty(Module, "${name}", { configurable: true, get: function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") } });`;
+        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
       }
     }
     return '';
@@ -426,7 +417,6 @@ function exportRuntime() {
     'registerFunctions',
     'addFunction',
     'removeFunction',
-    'getFuncWrapper',
     'prettyPrint',
     'dynCall',
     'getCompilerSetting',
@@ -450,7 +440,7 @@ function exportRuntime() {
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident)) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
       runtimeElements.push(ident.substr(1));
     }
   }

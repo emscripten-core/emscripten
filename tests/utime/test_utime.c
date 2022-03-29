@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <utime.h>
 #include <sys/stat.h>
@@ -32,20 +33,38 @@ void test() {
   // will fail
   struct utimbuf t = {1000000000, 1000000000};
 
-  utime("writeable", &t);
+  errno = 0;
+  int rv = utime("writeable", &t);
+  assert(rv == 0);
   assert(!errno);
   memset(&s, 0, sizeof s);
-  stat("writeable", &s);
+  rv = stat("writeable", &s);
+  assert(rv == 0);
   assert(s.st_atime == t.actime);
   assert(s.st_mtime == t.modtime);
+
+  // NULL sets atime and mtime to current time.
+  long now = time(NULL);
+  rv = utime("writeable", NULL);
+  assert(rv == 0);
+  memset(&s, 0, sizeof s);
+  stat("writeable", &s);
+  assert(s.st_atime == s.st_mtime);
+  long diff = s.st_atime - now;
+  if (abs(diff) > 5) {
+    fprintf(stderr, "st_atime: %li, now: %li, diff: %li\n ", s.st_atime, now, diff);
+    assert(abs(diff) <= 5);
+  }
 
   // write permissions aren't checked when setting node
   // attributes unless the user uid isn't the owner (so
   // therefor, this should work fine)
-  utime("unwriteable", &t);
+  rv = utime("unwriteable", &t);
+  assert(rv == 0);
   assert(!errno);
   memset(&s, 0, sizeof s);
-  stat("unwriteable", &s);
+  rv = stat("unwriteable", &s);
+  assert(rv == 0);
   assert(s.st_atime == t.actime);
   assert(s.st_mtime == t.modtime);
 

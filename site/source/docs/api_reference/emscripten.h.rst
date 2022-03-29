@@ -270,7 +270,7 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -281,7 +281,7 @@ Functions
 
 .. c:function:: int emscripten_run_script_int(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -293,7 +293,7 @@ Functions
 
 .. c:function:: char *emscripten_run_script_string(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -481,7 +481,7 @@ Functions
 
   The difference is that ``emscripten_force_exit`` will shut down the runtime even if you previously called :c:func:`emscripten_exit_with_live_runtime` or otherwise kept the runtime alive. In other words, this method gives you the option to completely shut down the runtime after it was kept alive beyond the completion of ``main()``.
 
-  Note that if ``EXIT_RUNTIME`` is not set (which is the case by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-s EXIT_RUNTIME=1`` if you want to be able to exit the runtime.
+  Note that if ``EXIT_RUNTIME`` is not set (which is the case by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-sEXIT_RUNTIME`` if you want to be able to exit the runtime.
 
   :param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
@@ -1054,7 +1054,7 @@ Functions
 
   For this command to work, you must build with the following compiler option (as we do not want to increase the build size with this metadata): ::
 
-    -s RETAIN_COMPILER_SETTINGS=1
+    -sRETAIN_COMPILER_SETTINGS
 
   :param name: The compiler setting to return.
   :type name: const char*
@@ -1066,7 +1066,7 @@ Functions
   Returns whether pseudo-synchronous functions can be used.
 
   :rtype: int
-  :returns: 1 if program was compiled with ASYNCIFY=1, 0 otherwise.
+  :returns: 1 if program was compiled with -sASYNCIFY, 0 otherwise.
 
 
 .. c:function:: void emscripten_debugger()
@@ -1279,7 +1279,7 @@ Typedefs
 Pseudo-synchronous functions
 ============================
 
-These functions require Asyncify (``-s ASYNCIFY=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
+These functions require Asyncify (``-sASYNCIFY``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Sleeping
 --------
@@ -1412,7 +1412,7 @@ Functions
     including rarely-used functions, in which case the lazy-loading may
     not happen at all.
 
-  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+  .. note:: This requires building with ``-sASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

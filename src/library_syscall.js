@@ -21,7 +21,7 @@ var SyscallsLibrary = {
 
     // shared utilities
     calculateAt: function(dirfd, path, allowEmpty) {
-      if (path[0] === '/') {
+      if (PATH.isAbs(path)) {
         return path;
       }
       // relative path
@@ -131,16 +131,12 @@ var SyscallsLibrary = {
       }
       return 0;
     },
-    doDup: function(path, flags, suggestFD) {
-      var suggest = FS.getStream(suggestFD);
-      if (suggest) FS.close(suggest);
-      return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
-    },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+        iov += {{{ C_STRUCTS.iovec.__size__ }}};
         var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
@@ -151,8 +147,9 @@ var SyscallsLibrary = {
     doWritev: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+        iov += {{{ C_STRUCTS.iovec.__size__ }}};
         var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
@@ -208,16 +205,6 @@ var SyscallsLibrary = {
       return stream;
     },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    get64: function(low, high) {
-#if ASSERTIONS
-      if (low >= 0) assert(high === 0);
-      else assert(high === -1);
-#endif
-#if SYSCALL_DEBUG
-      err('    (i64: "' + low + '")');
-#endif
-      return low;
-    }
   },
 
   _mmap_js__deps: ['$SYSCALLS',
@@ -261,17 +248,6 @@ var SyscallsLibrary = {
 #endif
   },
 
-  __syscall_open: function(path, flags, varargs) {
-    var pathname = SYSCALLS.getStr(path);
-    var mode = varargs ? SYSCALLS.get() : 0;
-    var stream = FS.open(pathname, flags, mode);
-    return stream.fd;
-  },
-  __syscall_unlink: function(path) {
-    path = SYSCALLS.getStr(path);
-    FS.unlink(path);
-    return 0;
-  },
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
@@ -380,10 +356,6 @@ var SyscallsLibrary = {
     linkpath = SYSCALLS.getStr(linkpath);
     FS.symlink(target, linkpath);
     return 0;
-  },
-  __syscall_readlink: function(path, buf, bufsize) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doReadlink(path, buf, bufsize);
   },
   __syscall_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
@@ -731,19 +703,19 @@ var SyscallsLibrary = {
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
-    var cwdLengthInBytes = lengthBytesUTF8(cwd);
-    if (size < cwdLengthInBytes + 1) return -{{{ cDefine('ERANGE') }}};
+    var cwdLengthInBytes = lengthBytesUTF8(cwd) + 1;
+    if (size < cwdLengthInBytes) return -{{{ cDefine('ERANGE') }}};
     stringToUTF8(cwd, buf, size);
-    return buf;
+    return cwdLengthInBytes;
   },
-  __syscall_truncate64: function(path, low, high) {
+  __syscall_truncate64: function(path, {{{ defineI64Param('length') }}}) {
+    {{{ receiveI64ParamAsDouble('length') }}}
     path = SYSCALLS.getStr(path);
-    var length = SYSCALLS.get64(low, high);
     FS.truncate(path, length);
     return 0;
   },
-  __syscall_ftruncate64: function(fd, low, high) {
-    var length = SYSCALLS.get64(low, high);
+  __syscall_ftruncate64: function(fd, {{{ defineI64Param('length') }}}) {
+    {{{ receiveI64ParamAsDouble('length') }}}
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -759,35 +731,8 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
   },
-  __syscall_lchown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
-    return 0;
-  },
-  __syscall_getuid32__sig: 'i',
-  __syscall_getuid32__nothrow: true,
-  __syscall_getuid32__proxy: false,
-  __syscall_getuid32: '__syscall_getegid32',
-  __syscall_getgid32__sig: 'i',
-  __syscall_getgid32__nothrow: true,
-  __syscall_getgid32__proxy: false,
-  __syscall_getgid32: '__syscall_getegid32',
-  __syscall_geteuid32__sig: 'i',
-  __syscall_geteuid32__nothrow: true,
-  __syscall_geteuid32__proxy: false,
-  __syscall_geteuid32: '__syscall_getegid32',
-  __syscall_getegid32__nothrow: true,
-  __syscall_getegid32__proxy: false,
-  __syscall_getegid32: function() {
-    return 0;
-  },
   __syscall_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
-    return 0;
-  },
-  __syscall_chown32: function(path, owner, group) {
-    path = SYSCALLS.getStr(path);
-    FS.chown(path, owner, group);
     return 0;
   },
   __syscall_getdents64: function(fd, dirp, count) {
@@ -923,15 +868,12 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return ___syscall_statfs64(0, size, buf);
   },
-  __syscall_fadvise64_64__nothrow: true,
-  __syscall_fadvise64_64__proxy: false,
-  __syscall_fadvise64_64: function(fd, offset, len, advice) {
+  __syscall_fadvise64__nothrow: true,
+  __syscall_fadvise64__proxy: false,
+  __syscall_fadvise64: function(fd, offset, len, advice) {
     return 0; // your advice is important to us (but we can't use it)
   },
   __syscall_openat: function(dirfd, path, flags, varargs) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -958,14 +900,16 @@ var SyscallsLibrary = {
     err('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
+    var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
+    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
 #if ASSERTIONS
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.chown(path, owner, group);
+    (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
-  __syscall_fstatat64: function(dirfd, path, buf, flags) {
+  __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
     var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
@@ -989,9 +933,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
     oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
@@ -1013,9 +954,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
@@ -1046,20 +984,25 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
-    var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var atime = (seconds*1000) + (nanoseconds/(1000*1000));
-    times += {{{ C_STRUCTS.timespec.__size__ }}};
-    seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
-    nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    if (!times) {
+      var atime = Date.now();
+      var mtime = atime;
+    } else {
+      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      times += {{{ C_STRUCTS.timespec.__size__ }}};
+      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+    }
     FS.utime(path, atime, mtime);
     return 0;
   },
-  __syscall_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
+  __syscall_fallocate: function(fd, mode, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('len') }}}) {
+    {{{ receiveI64ParamAsDouble('offset') }}}
+    {{{ receiveI64ParamAsDouble('len') }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
-    var offset = SYSCALLS.get64(off_low, off_high);
-    var len = SYSCALLS.get64(len_low, len_high);
 #if ASSERTIONS
     assert(mode === 0);
 #endif
@@ -1072,7 +1015,9 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
+    var suggest = FS.getStream(suggestFD);
+    if (suggest) FS.close(suggest);
+    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
   },
 };
 
@@ -1159,9 +1104,9 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyFunction(t, function(name, args, body) {
       var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
       return 'function ' + name + '(' + args + ') {\n' +
-             '  return BigInt((function ' + name + '_inner(' + args + ') {\n' +
+             '  return (function ' + name + '_inner(' + args + ') {\n' +
              body +
-             '  })(' + argnums + '));' +
+             '  })(' + argnums + ');' +
              '}';
     });
   }
