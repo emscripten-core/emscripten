@@ -124,7 +124,7 @@ FS.staticInit();` +
         follow_mount: true,
         recurse_count: 0
       };
-      opts = Object.assign(defaults, opts)
+      opts = objAssign(defaults, opts)
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
@@ -418,7 +418,7 @@ FS.staticInit();` +
         };
       }
       // clone it, so we can return an instance of FSStream
-      stream = Object.assign(new FS.FSStream(), stream);
+      stream = objAssign(new FS.FSStream(), stream);
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;

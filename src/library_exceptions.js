@@ -344,7 +344,7 @@ var LibraryExceptions = {
       // just pass through the thrown ptr
       {{{ makeStructuralReturn(['thrown', 0]) }}};
     }
-    var typeArray = Array.prototype.slice.call(arguments);
+    var typeArray = arraySlice.call(arguments);
 
     // can_catch receives a **, add indirection
 #if EXCEPTION_DEBUG

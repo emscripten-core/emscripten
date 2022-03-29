@@ -222,7 +222,7 @@ var LibraryPThread = {
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL != 'undefined') {
-        Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
+        objAssign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
           Module['canvas'].id = data.moduleCanvasId;

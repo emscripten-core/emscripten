@@ -287,7 +287,7 @@ mergeInto(LibraryManager.library, {
             var queued = peer.dgram_send_queue.shift();
             while (queued) {
 #if SOCKET_DEBUG
-              out('websocket sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
+              out('websocket sending queued data (' + queued.byteLength + ' bytes): ' + [arraySlice.call(new Uint8Array(queued))]);
 #endif
               peer.socket.send(queued);
               queued = peer.dgram_send_queue.shift();
@@ -316,7 +316,7 @@ mergeInto(LibraryManager.library, {
           }
 
 #if SOCKET_DEBUG
-          out('websocket handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
+          out('websocket handle message (' + data.byteLength + ' bytes): ' + [arraySlice.call(data)]);
 #endif
 
           // if this is the port message, override the peer's port with it
@@ -643,7 +643,7 @@ mergeInto(LibraryManager.library, {
               dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
             }
 #if SOCKET_DEBUG
-            out('websocket queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+            out('websocket queuing (' + length + ' bytes): ' + [arraySlice.call(new Uint8Array(data))]);
 #endif
             dest.dgram_send_queue.push(data);
             return length;
@@ -652,7 +652,7 @@ mergeInto(LibraryManager.library, {
 
         try {
 #if SOCKET_DEBUG
-          out('websocket send (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+          out('websocket send (' + length + ' bytes): ' + [arraySlice.call(new Uint8Array(data))]);
 #endif
           // send the actual data
           dest.socket.send(data);
@@ -703,7 +703,7 @@ mergeInto(LibraryManager.library, {
         };
 
 #if SOCKET_DEBUG
-        out('websocket read (' + bytesRead + ' bytes): ' + [Array.prototype.slice.call(res.buffer)]);
+        out('websocket read (' + bytesRead + ' bytes): ' + [arraySlice.call(res.buffer)]);
 #endif
 
         // push back any unread data for TCP connections

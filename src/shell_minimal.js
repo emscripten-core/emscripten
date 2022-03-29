@@ -128,6 +128,8 @@ function ready() {
 #endif
 #endif
 
+#include "runtime_abbrv_names.js"
+
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 

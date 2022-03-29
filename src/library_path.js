@@ -76,7 +76,7 @@ mergeInto(LibraryManager.library, {
       return PATH.splitPath(path)[3];
     },
     join: function() {
-      var paths = Array.prototype.slice.call(arguments, 0);
+      var paths = arraySlice.call(arguments, 0);
       return PATH.normalize(paths.join('/'));
     },
     join2: (l, r) => {

@@ -103,7 +103,7 @@ function runJSify(functionsOnly) {
     if (LIBRARY_DEBUG && !isJsOnlyIdentifier(ident)) {
       snippet = modifyFunction(snippet, (name, args, body) => `\
 function ${name}(${args}) {
-  var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + arraySlice.call(arguments).map(prettyPrint) + "]");
   ${body}
   }).apply(this, arguments);
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));

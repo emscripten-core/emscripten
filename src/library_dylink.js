@@ -239,7 +239,7 @@ var LibraryDylink = {
     return function() {
       var sp = stackSave();
       try {
-        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
+        return dynCall(sig, arguments[0], arraySlice.call(arguments, 1));
       } catch(e) {
         stackRestore(sp);
         // Exceptions thrown from C++ exception will be integer numbers.

@@ -3123,7 +3123,7 @@ LibraryManager.library = {
     var argCache = [];
     return function() {
       argCache.length = 0;
-      Object.assign(argCache, arguments);
+      objAssign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
     };
   },

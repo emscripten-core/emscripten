@@ -63,7 +63,7 @@ function prettyPrint(arg) {
     return arg + '\n\n';
   }
   if (arg.byteLength) {
-    return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
+    return '{' + arraySlice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
     var buf = new ArrayBuffer(32);
     var i8buf = new Int8Array(buf);
     var i16buf = new Int16Array(buf);
@@ -83,9 +83,9 @@ function prettyPrint(arg) {
         throw 'see alert';
     }
     var ret = '{' + arg.byteLength + ':\n';
-    var arr = Array.prototype.slice.call(i8buf);
+    var arr = arraySlice.call(i8buf);
     ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
-    arr = Array.prototype.slice.call(f32buf, 0, 8);
+    arr = arraySlice.call(f32buf, 0, 8);
     ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
     return ret;
   }

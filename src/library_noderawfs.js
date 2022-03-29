@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
           }
         }
       };
-      var VFS = Object.assign({}, FS);
+      var VFS = objAssign({}, FS);
       for (var _key in NODERAWFS) {
         FS[_key] = _wrapNodeError(NODERAWFS[_key]);
       }

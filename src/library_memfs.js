@@ -356,7 +356,7 @@ mergeInto(LibraryManager.library, {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
+              contents = arraySlice.call(contents, position, position + length);
             }
           }
           allocated = true;
