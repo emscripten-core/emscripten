@@ -1545,18 +1545,21 @@ var LibraryWebGPU = {
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.view) }}}),
         "depthClearValue": depthClearValue,
-        "depthLoadOp": depthLoadOpInt,
+        "depthLoadOp": WebGPU.LoadOp[depthLoadOpInt],
         "depthStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthStoreOp) }}}],
         "depthReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthReadOnly) }}},
         "stencilClearValue": stencilClearValue,
-        "stencilLoadOp": stencilLoadOpInt,
+        "stencilLoadOp": WebGPU.LoadOp[stencilLoadOpInt],
         "stencilStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
         // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        "depthLoadValue": WebGPU.LoadOp[depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}})],
-        "stencilLoadValue": WebGPU.LoadOp[stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}})],
+        // Note these also read the old clearDepth/clearStencil rather than depthClearValue/stencilClearValue.
+        "depthLoadValue": depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' :
+          {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearDepth, 'float') }}},
+        "stencilLoadValue": stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' :
+          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearStencil) }}},
       };
     }
 
@@ -1590,9 +1593,9 @@ var LibraryWebGPU = {
 
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     commandEncoder["clearBuffer"](
-      buffer, 
+      buffer,
       {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}},
-      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}} 
+      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}}
     );
   },
 
