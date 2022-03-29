@@ -26,7 +26,7 @@ While Emscripten mostly focuses on compiling C and C++ using
 compilers (for example, Rust has Emscripten integration, with the
 `wasm32-unknown-emscripten` and `asmjs-unknown-emscripten` targets).
 
-License 
+License
 -------
 
 Emscripten is available under 2 licenses, the MIT license and the
