@@ -361,6 +361,10 @@ var SyscallsLibrary = {
     FS.fchmod(fd, mode);
     return 0;
   },
+// When building with PROXY_POSIX_SOCKETS the socket syscalls are implemented
+// natively in libsockets.a.
+// When building with WASMFS the socket syscalls are implemented natively in
+// libwasmfs.a.
 #if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
   $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
   $getSocketFromFD: function(fd) {
