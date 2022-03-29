@@ -3,6 +3,8 @@
 //
 // ==========================================================================
 
+var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
+
 var LibraryDylink = {
 #if RELOCATABLE
   $resolveGlobalSymbol__internal: true,
@@ -199,14 +201,24 @@ var LibraryDylink = {
 #endif
 
 #if !MAIN_MODULE
+#if !ALLOW_UNIMPLEMENTED_SYSCALLS
+  _dlopen_js__deps: [function() { error(dlopenMissingError); }],
+  _emscripten_dlopen_js__deps: [function() { error(dlopenMissingError); }],
+  _dlsym_js__deps: [function() { error(dlopenMissingError); }],
+#else
+  $dlopenMissingError: `= ${dlopenMissingError}`,
+  _dlopen_js__deps: ['$dlopenMissingError'],
+  _emscripten_dlopen_js__deps: ['$dlopenMissingError'],
+  _dlsym_js__deps: ['$dlopenMissingError'],
+#endif
   _dlopen_js: function(filename, flag) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
   _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
   _dlsym_js: function(handle, symbol) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
   _dlinit: function() {},
 #else // MAIN_MODULE != 0
