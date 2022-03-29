@@ -158,8 +158,6 @@
     {
         "file": "time.h",
         "defines": [
-            ["li", "CLOCKS_PER_SEC"],
-            "TIME_UTC",
             "CLOCK_REALTIME",
             "CLOCK_MONOTONIC",
             "CLOCK_MONOTONIC_RAW"
@@ -997,8 +995,6 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_PTHREAD_CREATE",
-            "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
             "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_FUNC_SIG_V",

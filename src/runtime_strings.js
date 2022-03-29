@@ -6,49 +6,21 @@
 
 // runtime_strings.js: Strings related runtime functions that are part of both MINIMAL_RUNTIME and regular runtime.
 
+#if TEXTDECODER == 2
+var UTF8Decoder = new TextDecoder('utf8');
+#elif TEXTDECODER == 1
+var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined;
+#endif
+
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
-
-#if SHARED_MEMORY && TEXTDECODER
 /**
- * UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
- * https://github.com/whatwg/encoding/issues/172
- * To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
- * which can still be much faster than creating a string character by
- * character.
- * @constructor
- */
-function TextDecoderWrapper(encoding) {
-  var textDecoder = new TextDecoder(encoding);
-  this.decode = (data) => {
-#if ASSERTIONS
-    assert(data instanceof Uint8Array);
-#endif
-    // While we compile with pthreads, this method can be called on side buffers
-    // as well, such as the stdout buffer in the filesystem code. Only copy when
-    // we have to.
-    if (data.buffer instanceof SharedArrayBuffer) {
-      data = new Uint8Array(data);
-    }
-    return textDecoder.decode.call(textDecoder, data);
-  };
-}
-#endif
-
-#if TEXTDECODER == 2
-var UTF8Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf8') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
-
-/**
+ * heapOrArray is either a regular array, or a JavaScript typed array view.
  * @param {number} idx
  * @param {number=} maxBytesToRead
  * @return {string}
  */
-function UTF8ArrayToString(heap, idx, maxBytesToRead) {
+function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
 #if CAN_ADDRESS_2GB
   idx >>>= 0;
 #endif
@@ -58,17 +30,15 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
   // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
-  while (heap[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+  while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
-  return UTF8Decoder.decode(
-    heap.subarray ? heap.subarray(idx, endPtr) : new Uint8Array(heap.slice(idx, endPtr))
-  );
+  return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-  if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
-    return UTF8Decoder.decode(heap.subarray(idx, endPtr));
+  if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
+    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
   } else {
 #endif // TEXTDECODER
     var str = '';
@@ -82,23 +52,23 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
-      var u0 = heap[idx++];
+      var u0 = heapOrArray[idx++];
 #if !TEXTDECODER
       // If not building with TextDecoder enabled, we don't know the string length, so scan for \0 byte.
       // If building with TextDecoder, we know exactly at what byte index the string ends, so checking for nulls here would be redundant.
       if (!u0) return str;
 #endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      var u1 = heap[idx++] & 63;
+      var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      var u2 = heap[idx++] & 63;
+      var u2 = heapOrArray[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
 #if ASSERTIONS
         if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
 #endif
-        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heap[idx++] & 63);
+        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
       }
 
       if (u0 < 0x10000) {
@@ -139,7 +109,7 @@ function UTF8ToString(ptr, maxBytesToRead) {
   if (!ptr) return '';
   var maxPtr = ptr + maxBytesToRead;
   for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
-  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+  return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
 #else
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 #endif

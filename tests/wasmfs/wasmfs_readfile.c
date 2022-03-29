@@ -19,7 +19,7 @@
 int main() {
   int err = wasmfs_create_directory("/root", 0777, get_backend());
   assert(err == 0);
-  int fd = open("/root/test", O_CREAT, S_IRUSR | S_IWUSR);
+  int fd = open("/root/test", O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
   const char* msg = "Success\n";
 
   errno = 0;

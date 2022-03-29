@@ -87,6 +87,7 @@ misc_test_modes = [
   'minimal0',
   'wasmfs',
   'wasm64',
+  'wasm64l',
 ]
 
 
@@ -236,7 +237,7 @@ def replace_legacy_suite_names(args):
   newargs = []
 
   for a in args:
-    if a.startswith('wasm') and not a.startswith('wasm2js') and not a.startswith('wasmfs'):
+    if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
       print('warning: test suites in test_core.py have been renamed from `wasm` to `core`. Please use the new names')
       a = a.replace('wasm', 'core', 1)
     newargs.append(a)

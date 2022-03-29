@@ -26,7 +26,7 @@ from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import configuration, path_from_root
+from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import TEMP_DIR
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
@@ -39,11 +39,9 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 104
+EXPECTED_BINARYEN_VERSION = 105
 # cache results of nm - it can be slow to run
 nm_cache = {}
-# Stores the object files contained in different archive files passed as input
-ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
 user_requested_exports = set()
@@ -120,15 +118,6 @@ def unique_ordered(values):
     return True
 
   return [v for v in values if check(v)]
-
-
-# clear caches. this is not normally needed, except if the clang/LLVM
-# used changes inside this invocation of Building, which can happen in the benchmarker
-# when it compares different builds.
-def clear():
-  nm_cache.clear()
-  ar_contents.clear()
-  _is_ar_cache.clear()
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -208,6 +197,8 @@ def read_link_inputs(files):
   # each of them provides. Do this in multiple parallel processes.
   archive_names = [] # .a files passed in to the command line to the link
   object_names = [] # .o/.bc files passed in to the command line to the link
+  # Stores the object files contained in different archive files passed as input
+  ar_contents = {}
   for f in files:
     absolute_path_f = make_paths_absolute(f)
 
@@ -228,6 +219,7 @@ def read_link_inputs(files):
   # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
   # The results are not used here directly, but populated to llvm-nm cache structure.
   llvm_nm_multiple(object_names)
+  return ar_contents
 
 
 def llvm_backend_args():
@@ -278,7 +270,7 @@ def link_llvm(linker_inputs, target):
 def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
-    undefs = configuration.get_temp_files().get('.undefined').name
+    undefs = shared.get_temp_files().get('.undefined').name
     utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
@@ -443,6 +435,8 @@ def link_bitcode(args, target, force_archive_contents=False):
       files_to_link.append(f)
     return do_add
 
+  ar_contents = read_link_inputs(input_files)
+
   # Traverse a single archive. The object files are repeatedly scanned for
   # newly satisfied symbols until no new symbols are found. Returns true if
   # any object files were added to the link.
@@ -464,8 +458,6 @@ def link_bitcode(args, target, force_archive_contents=False):
           added_any_objects = True
     logger.debug('done running loop of archive %s' % (f))
     return added_any_objects
-
-  read_link_inputs(input_files)
 
   # Rescan a group of archives until we don't find any more objects to link.
   def scan_archive_group(group):
@@ -633,7 +625,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   optimizer = path_from_root('tools/acorn-optimizer.js')
   original_filename = filename
   if extra_info is not None:
-    temp_files = configuration.get_temp_files()
+    temp_files = shared.get_temp_files()
     temp = temp_files.get('.js').name
     shutil.copyfile(filename, temp)
     with open(temp, 'a') as f:
@@ -650,7 +642,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     cmd += ['verbose']
   if not return_output:
     next = original_filename + '.jso.js'
-    configuration.get_temp_files().note(next)
+    shared.get_temp_files().note(next)
     check_call(cmd, stdout=open(next, 'w'))
     save_intermediate(next, '%s.js' % passes[0])
     return next
@@ -810,7 +802,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-    exports_file = configuration.get_temp_files().get('_module_exports.js')
+    exports_file = shared.get_temp_files().get('_module_exports.js')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
 
@@ -874,7 +866,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
   # https://github.com/google/closure-compiler/issues/3784
-  tempfiles = configuration.get_temp_files()
+  tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
     if isascii(filename):
@@ -995,7 +987,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
 # run binaryen's wasm-metadce to dce both js and wasm
 def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
-  temp_files = configuration.get_temp_files()
+  temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
   if settings.MAIN_MODULE:
     # For the main module we include all exports as possible roots, not just function exports.
@@ -1184,7 +1176,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
-      temp = configuration.get_temp_files().get('.js').name
+      temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
@@ -1194,7 +1186,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # TODO: in the non-closure case, we could run a lightweight general-
   #       purpose JS minifier here.
   if use_closure_compiler == 2:
-    temp = configuration.get_temp_files().get('.js').name
+    temp = shared.get_temp_files().get('.js').name
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
     temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
@@ -1232,7 +1224,7 @@ def strip(infile, outfile, debug=False, producers=False):
 # debug into as a file on the side
 # TODO: emit only debug sections in the side file, and not the entire
 #       wasm as well
-def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
+def emit_debug_on_side(wasm_file):
   # if the dwarf filename wasn't provided, use the default target + a suffix
   wasm_file_with_dwarf = settings.SEPARATE_DWARF
   if wasm_file_with_dwarf is True:

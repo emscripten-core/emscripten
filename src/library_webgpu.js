@@ -1907,7 +1907,12 @@ var LibraryWebGPU = {
 
   wgpuComputePassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["end"]();
+    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
+    if (pass["end"]) {
+      pass["end"]();
+    } else {
+      pass["endPass"]();
+    }
   },
 
   // wgpuRenderPass
@@ -2041,7 +2046,12 @@ var LibraryWebGPU = {
 
   wgpuRenderPassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["end"]();
+    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
+    if (pass["end"]) {
+      pass["end"]();
+    } else {
+      pass["endPass"]();
+    }
   },
 
   // Render bundle encoder

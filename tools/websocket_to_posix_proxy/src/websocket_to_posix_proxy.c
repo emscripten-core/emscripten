@@ -1,11 +1,13 @@
+#include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
+
 #include "posix_sockets.h"
 #include "threads.h"
-#include <string.h>
-#include <errno.h>
-#include <assert.h>
 
 #include "websocket_to_posix_proxy.h"
 #include "socket_registry.h"
@@ -19,8 +21,15 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-uint64_t ntoh64(uint64_t x) // thread-safe, re-entrant
-{
+int CHECKED_TRUNCATE_TO_POSITIVE_INT32(long long val) {
+  if (val < 0 || val > 0x7FFFFFFF) {
+    printf("Warning: Truncating value out of non-negative int32 range! (%lld)\n", (long long)val);
+  }
+  return (int)val;
+}
+
+// thread-safe, re-entrant
+uint64_t ntoh64(uint64_t x) {
   return ntohl(x>>32) | ((uint64_t)ntohl(x&0xFFFFFFFFu) << 32);
 }
 
@@ -47,45 +56,44 @@ uint64_t ntoh64(uint64_t x) // thread-safe, re-entrant
 #define MAX_SOCKADDR_SIZE 256
 #define MAX_OPTIONVALUE_SIZE 16
 
-struct SocketCallHeader
-{
+typedef struct SocketCallHeader {
   int callId;
   int function;
-};
+} SocketCallHeader;
 
 static char buf_temp_str[2048] = {};
 
-static char *BufferToString(const void *buf, size_t len) // not thread-safe, but only used for debug prints, so expected not to cause trouble
-{
+// not thread-safe, but only used for debug prints, so expected not to cause
+// trouble
+static char *BufferToString(const void *buf, size_t len) {
   uint8_t *b = (uint8_t *)buf;
-  if (!b)
-  {
+  if (!b) {
     sprintf(buf_temp_str, "(null ptr) (%d bytes)", (int)len);
     return buf_temp_str;
   }
 
-  for(size_t i = 0; i < len && i*3 + 64 < sizeof(buf_temp_str); ++i)
-  {
+  for (size_t i = 0; i < len && i*3 + 64 < sizeof(buf_temp_str); ++i) {
     sprintf(buf_temp_str + i*3, "%02X ", b[i]);
   }
   sprintf(buf_temp_str + len*3, " (%d bytes)", (int)len);
   return buf_temp_str;
 }
 
-void WebSocketMessageUnmaskPayload(uint8_t *payload, uint64_t payloadLength, uint32_t maskingKey) // thread-safe, re-entrant
-{
+// thread-safe, re-entrant
+void WebSocketMessageUnmaskPayload(uint8_t* payload,
+                                   uint64_t payloadLength,
+                                   uint32_t maskingKey) {
   uint8_t maskingKey8[4];
   memcpy(maskingKey8, &maskingKey, 4);
   uint32_t *data_u32 = (uint32_t *)payload;
   uint32_t *end_u32 = (uint32_t *)((uintptr_t)(payload + (payloadLength & ~3u)));
 
-  while(data_u32 < end_u32)
+  while (data_u32 < end_u32)
     *data_u32++ ^= maskingKey;
 
   uint8_t *end = payload + payloadLength;
   uint8_t *data = (uint8_t *)data_u32;
-  while(data < end)
-  {
+  while (data < end) {
     *data ^= maskingKey8[(data-payload) % 4];
     ++data;
   }
@@ -93,9 +101,8 @@ void WebSocketMessageUnmaskPayload(uint8_t *payload, uint64_t payloadLength, uin
 
 extern MUTEX_T webSocketSendLock;
 
-void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
-{
-  // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the 
+void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes) {
+  // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the
   // same socket. (This could be per-socket, currently global for simplicity)
   LOCK_MUTEX(&webSocketSendLock);
   uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/] = {};
@@ -104,16 +111,13 @@ void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
   header->fin = 1;
   int headerBytes = 2;
 
-  if (numBytes < 126)
+  if (numBytes < 126) {
     header->payloadLength = numBytes;
-  else if (numBytes <= 65535)
-  {
+  } else if (numBytes <= 65535) {
     header->payloadLength = 126;
     *(uint16_t*)(headerData+headerBytes) = htons((unsigned short)numBytes);
     headerBytes += 2;
-  }
-  else
-  {
+  } else {
     header->payloadLength = 127;
     *(uint64_t*)(headerData+headerBytes) = hton64(numBytes);
     headerBytes += 8;
@@ -123,11 +127,11 @@ void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
   printf("Sending %llu bytes message (%llu bytes of payload) to WebSocket\n", headerBytes + numBytes, numBytes);
 
   printf("Header:");
-  for(int i = 0; i < headerBytes; ++i)
+  for (int i = 0; i < headerBytes; ++i)
     printf(" %02X", headerData[i]);
 
   printf("\nPayload:");
-  for(int i = 0; i < numBytes; ++i)
+  for (int i = 0; i < numBytes; ++i)
     printf(" %02X", ((unsigned char*)buf)[i]);
   printf("\n");
 #endif
@@ -231,10 +235,8 @@ void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
 #define MUSL_AF_KCM          MUSL_PF_KCM
 #define MUSL_AF_MAX          MUSL_PF_MAX
 
-static int Translate_Socket_Domain(int domain)
-{
-  switch(domain)
-  {
+static int Translate_Socket_Domain(int domain) {
+  switch (domain) {
 //  case MUSL_PF_UNSPEC: return PF_UNSPEC;
 //  case MUSL_PF_LOCAL: return PF_LOCAL;
 //  case MUSL_PF_UNIX: return PF_UNIX;
@@ -348,21 +350,17 @@ static int Translate_Socket_Domain(int domain)
 #define MUSL_SOCK_CLOEXEC   02000000
 #define MUSL_SOCK_NONBLOCK  04000
 
-static int Translate_Socket_Type(int type)
-{
-  if ((type & MUSL_SOCK_CLOEXEC) != 0)
-  {
+static int Translate_Socket_Type(int type) {
+  if ((type & MUSL_SOCK_CLOEXEC) != 0) {
     fprintf(stderr, "Unsupported MUSL SOCK_CLOEXEC passed!\n");
     type &= ~MUSL_SOCK_CLOEXEC;
   }
-  if ((type & MUSL_SOCK_NONBLOCK) != 0)
-  {
+  if ((type & MUSL_SOCK_NONBLOCK) != 0) {
     fprintf(stderr, "Unsupported MUSL SOCK_NONBLOCK passed!\n");
     type &= ~MUSL_SOCK_NONBLOCK;
   }
 
-  switch(type)
-  {
+  switch (type) {
   case MUSL_SOCK_STREAM: return SOCK_STREAM;
   case MUSL_SOCK_DGRAM: return SOCK_DGRAM;
   case MUSL_SOCK_RAW: return SOCK_RAW;
@@ -409,10 +407,8 @@ static int Translate_Socket_Type(int type)
 #define MUSL_IPPROTO_MPLS     137
 #define MUSL_IPPROTO_RAW      255
 
-static int Translate_Socket_Protocol(int protocol)
-{
-  switch(protocol)
-  {
+static int Translate_Socket_Protocol(int protocol) {
+  switch (protocol) {
     case MUSL_IPPROTO_IP: return IPPROTO_IP;
 //    case MUSL_IPPROTO_HOPOPTS: return IPPROTO_HOPOPTS;
     case MUSL_IPPROTO_ICMP: return IPPROTO_ICMP;
@@ -490,10 +486,8 @@ static int Translate_Socket_Protocol(int protocol)
 #define MUSL_SOL_NFC         280
 #define MUSL_SOL_KCM         281
 
-static int Translate_Socket_Level(int level)
-{
-  switch(level)
-  {
+static int Translate_Socket_Level(int level) {
+  switch (level) {
   case MUSL_SOL_SOCKET: return SOL_SOCKET;
   case MUSL_IPPROTO_TCP: return IPPROTO_TCP;
 //  case MUSL_SOL_IP: return SOL_IP;
@@ -581,10 +575,8 @@ static int Translate_Socket_Level(int level)
 #define MUSL_SO_ATTACH_REUSEPORT_EBPF 52
 #define MUSL_SO_CNX_ADVICE           53
 
-static int Translate_SOL_SOCKET_option(int sockopt)
-{
-  switch(sockopt)
-  {
+static int Translate_SOL_SOCKET_option(int sockopt) {
+  switch (sockopt) {
   case MUSL_SO_DEBUG: return SO_DEBUG;
   case MUSL_SO_REUSEADDR: return SO_REUSEADDR;
   case MUSL_SO_TYPE: return SO_TYPE;
@@ -676,10 +668,8 @@ static int Translate_SOL_SOCKET_option(int sockopt)
 #define MUSL_TCP_SAVE_SYN     27
 #define MUSL_TCP_SAVED_SYN    28
 
-static int Translate_IPPROTO_TCP_option(int sockopt)
-{
-  switch(sockopt)
-  {
+static int Translate_IPPROTO_TCP_option(int sockopt) {
+  switch (sockopt) {
   case MUSL_TCP_NODELAY: return TCP_NODELAY;
   case MUSL_TCP_MAXSEG: return TCP_MAXSEG;
 //  case MUSL_TCP_CORK: return TCP_CORK;
@@ -715,14 +705,14 @@ static int Translate_IPPROTO_TCP_option(int sockopt)
   }
 }
 
-void Socket(int client_fd, uint8_t *data, uint64_t numBytes) // int socket(int domain, int type, int protocol);
-{
-  struct MSG {
+// int socket(int domain, int type, int protocol);
+void Socket(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int domain;
     int type;
     int protocol;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   d->domain = Translate_Socket_Domain(d->domain);
@@ -736,8 +726,7 @@ void Socket(int client_fd, uint8_t *data, uint64_t numBytes) // int socket(int d
   if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
 
-  if (errorCode == 0)
-  {
+  if (errorCode == 0) {
     // The proxy client connection created a new socket - track its lifetime and mark the new socket to be part of
     // this particular proxy connection so that it will be properly freed when the proxy connection disconnects,
     // and that no other proxy connections will be able to access this socket.
@@ -755,14 +744,14 @@ void Socket(int client_fd, uint8_t *data, uint64_t numBytes) // int socket(int d
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) // int socketpair(int domain, int type, int protocol, int socket_vector[2]);
-{
-  struct MSG {
+// int socketpair(int domain, int type, int protocol, int socket_vector[2]);
+void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int domain;
     int type;
     int protocol;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   SOCKET_T socket_vector[2];
@@ -784,8 +773,7 @@ void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) // int socketpa
   if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
 
-  if (errorCode == 0)
-  {
+  if (errorCode == 0) {
     // The proxy client connection created two new sockets - track their lifetime and mark the new sockets to be part of
     // this particular proxy connection so that they will be properly freed when the proxy connection disconnects,
     // and that no other proxy connections will be able to access these sockets.
@@ -811,10 +799,8 @@ void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) // int socketpa
 #define MUSL_SHUT_WR 1
 #define MUSL_SHUT_RDWR 2
 
-static int Translate_Shutdown_How(int how)
-{
-  switch(how)
-  {
+static int Translate_Shutdown_How(int how) {
+  switch (how) {
   case MUSL_SHUT_RD: return SHUTDOWN_READ;
   case MUSL_SHUT_WR: return SHUTDOWN_WRITE;
   case MUSL_SHUT_RDWR: return SHUTDOWN_BIDIRECTIONAL;
@@ -824,36 +810,32 @@ static int Translate_Shutdown_How(int how)
   }
 }
 
-void Shutdown(int client_fd, uint8_t *data, uint64_t numBytes) // int shutdown(int socket, int how);
-{
-  struct MSG {
+// int shutdown(int socket, int how);
+void Shutdown(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     int how;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   d->how = Translate_Shutdown_How(d->how);
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = shutdown(d->socket, d->how);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 #ifdef POSIX_SOCKET_DEBUG
     printf("shutdown(socket=%d,how=%d)->%d\n", d->socket, d->how, ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-    if (errorCode == 0 && d->how == SHUTDOWN_BIDIRECTIONAL)
-    {
+    if (errorCode == 0 && d->how == SHUTDOWN_BIDIRECTIONAL) {
       // Proxy client performed bidirectional close, mark this socket as being disconnected, and disallow it
       // from accessing this socket again - this close()s the socket.
       CloseSocketByConnection(client_fd, d->socket);
     }
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "shutdown(socket=%d,how=%d): Proxy client connection client_fd=%d attempted to call shutdown() on a socket fd=%d that it did not create (or has already shut down)\n", d->socket, d->how, client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -869,29 +851,26 @@ void Shutdown(int client_fd, uint8_t *data, uint64_t numBytes) // int shutdown(i
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Bind(int client_fd, uint8_t *data, uint64_t numBytes) // int bind(int socket, const struct sockaddr *address, socklen_t address_len);
-{
-  struct MSG {
+// int bind(int socket, const struct sockaddr *address, socklen_t address_len);
+void Bind(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*socklen_t*/ address_len;
     uint8_t address[];
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = bind(d->socket, (sockaddr*)d->address, d->address_len);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = bind(d->socket, (struct sockaddr*)d->address, d->address_len);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 #ifdef POSIX_SOCKET_DEBUG
     printf("bind(socket=%d,address=%p,address_len=%d, address=\"%s\")->%d\n", d->socket, d->address, d->address_len, BufferToString(d->address, d->address_len), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "bind(): Proxy client connection client_fd=%d attempted to call bind() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -907,31 +886,28 @@ void Bind(int client_fd, uint8_t *data, uint64_t numBytes) // int bind(int socke
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Connect(int client_fd, uint8_t *data, uint64_t numBytes) // int connect(int socket, const struct sockaddr *address, socklen_t address_len);
-{
-  struct MSG {
+// int connect(int socket, const struct sockaddr *address, socklen_t address_len);
+void Connect(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*socklen_t*/ address_len;
     uint8_t address[];
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   int actualAddressLen = MIN(d->address_len, (uint32_t)numBytes - sizeof(MSG));
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = connect(d->socket, (sockaddr*)d->address, actualAddressLen);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = connect(d->socket, (struct sockaddr*)d->address, actualAddressLen);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 #ifdef POSIX_SOCKET_DEBUG
     printf("connect(socket=%d,address=%p,address_len=%d, address=\"%s\")->%d\n", d->socket, d->address, d->address_len, BufferToString(d->address, actualAddressLen), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "connect(): Proxy client connection client_fd=%d attempted to call connect() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -947,28 +923,25 @@ void Connect(int client_fd, uint8_t *data, uint64_t numBytes) // int connect(int
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Listen(int client_fd, uint8_t *data, uint64_t numBytes) // int listen(int socket, int backlog);
-{
-  struct MSG {
+// int listen(int socket, int backlog);
+void Listen(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     int backlog;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = listen(d->socket, d->backlog);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 #ifdef POSIX_SOCKET_DEBUG
     printf("listen(socket=%d,backlog=%d)->%d\n", d->socket, d->backlog, ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "bind(): Proxy client connection client_fd=%d attempted to call bind() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -984,13 +957,13 @@ void Listen(int client_fd, uint8_t *data, uint64_t numBytes) // int listen(int s
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Accept(int client_fd, uint8_t *data, uint64_t numBytes) // int accept(int socket, struct sockaddr *address, socklen_t *address_len);
-{
-  struct MSG {
+// int accept(int socket, struct sockaddr *address, socklen_t *address_len);
+void Accept(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*socklen_t*/ address_len;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t address[MAX_SOCKADDR_SIZE] = {};
@@ -999,12 +972,11 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) // int accept(int s
   SOCKET_T ret;
   int errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
 #ifdef POSIX_SOCKET_DEBUG
     printf("accept(socket=%d,address=%p,address_len=%u, address=\"%s\")\n", d->socket, address, d->address_len, BufferToString(address, addressLen));
 #endif
-    ret = accept(d->socket, d->address_len ? (sockaddr*)address : 0, d->address_len ? &addressLen : 0);
+    ret = accept(d->socket, d->address_len ? (struct sockaddr*)address : 0, d->address_len ? &addressLen : 0);
     errorCode = (ret < 0) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
@@ -1012,26 +984,23 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) // int accept(int s
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
 
-		if (ret > 0)
-		{
-			// New connection socket created by the proxy bridge, mark it as part of this WebSocket proxy connection.
-			TrackSocketUsedByConnection(client_fd, ret);
-		}
-  }
-  else
-  {
+    if (ret > 0) {
+      // New connection socket created by the proxy bridge, mark it as part of this WebSocket proxy connection.
+      TrackSocketUsedByConnection(client_fd, ret);
+    }
+  } else {
     fprintf(stderr, "accept(): Proxy client connection client_fd=%d attempted to call accept() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     addressLen = 0;
   }
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int ret;
     int errno_;
     int address_len;
     uint8_t address[];
-  };
+  } Result;
 
   int actualAddressLen = MIN(addressLen, (socklen_t)d->address_len);
   int resultSize = sizeof(Result) + actualAddressLen;
@@ -1045,13 +1014,13 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) // int accept(int s
   free(r);
 }
 
-void Getsockname(int client_fd, uint8_t *data, uint64_t numBytes) // int getsockname(int socket, struct sockaddr *address, socklen_t *address_len);
-{
-  struct MSG {
+// int getsockname(int socket, struct sockaddr *address, socklen_t *address_len);
+void Getsockname(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*socklen_t*/ address_len;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t address[MAX_SOCKADDR_SIZE];
@@ -1060,30 +1029,27 @@ void Getsockname(int client_fd, uint8_t *data, uint64_t numBytes) // int getsock
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = getsockname(d->socket, (sockaddr*)address, &addressLen);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = getsockname(d->socket, (struct sockaddr*)address, &addressLen);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("getsockname(socket=%d,address=%p,address_len=%u)->%d (ret address: \"%s\")\n", d->socket, address, d->address_len, ret, BufferToString(address, addressLen));
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "getsockname(): Proxy client connection client_fd=%d attempted to call getsockname() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     addressLen = 0;
   }
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int ret;
     int errno_;
     int address_len;
     uint8_t address[];
-  };
+  } Result;
   int actualAddressLen = MIN(addressLen, (socklen_t)d->address_len);
   int resultSize = sizeof(Result) + actualAddressLen;
   Result *r = (Result*)malloc(resultSize);
@@ -1096,13 +1062,14 @@ void Getsockname(int client_fd, uint8_t *data, uint64_t numBytes) // int getsock
   free(r);
 }
 
-void Getpeername(int client_fd, uint8_t *data, uint64_t numBytes) // int getpeername(int socket, struct sockaddr *address, socklen_t *address_len);
+// int getpeername(int socket, struct sockaddr *address, socklen_t *address_len);
+void Getpeername(int client_fd, uint8_t *data, uint64_t numBytes)
 {
-  struct MSG {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*socklen_t*/ address_len;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t address[MAX_SOCKADDR_SIZE];
@@ -1110,30 +1077,27 @@ void Getpeername(int client_fd, uint8_t *data, uint64_t numBytes) // int getpeer
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = getpeername(d->socket, (sockaddr*)address, &addressLen);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = getpeername(d->socket, (struct sockaddr*)address, &addressLen);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("getpeername(socket=%d,address=%p,address_len=%u, address=\"%s\")->%d\n", d->socket, address, d->address_len, BufferToString(address, addressLen), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "getpeername(): Proxy client connection client_fd=%d attempted to call getpeername() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     addressLen = 0;
   }
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int ret;
     int errno_;
     int address_len;
     uint8_t address[];
-  };
+  } Result;
   int actualAddressLen = MIN(addressLen, (socklen_t)d->address_len);
   int resultSize = sizeof(Result) + actualAddressLen;
   Result *r = (Result*)malloc(resultSize);
@@ -1146,23 +1110,22 @@ void Getpeername(int client_fd, uint8_t *data, uint64_t numBytes) // int getpeer
   free(r);
 }
 
-void Send(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int send(int socket, const void *message, size_t length, int flags);
-{
-  struct MSG {
+// ssize_t/int send(int socket, const void *message, size_t length, int flags);
+void Send(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*size_t*/ length;
     int flags;
     uint8_t message[];
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   int actualBytes = MIN((int)numBytes - sizeof(MSG), d->length);
   SEND_RET_TYPE ret;
   int errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = send(d->socket, (const char *)d->message, actualBytes, d->flags);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
@@ -1170,9 +1133,7 @@ void Send(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int send(i
     printf("send(socket=%d,message=%p,length=%zd,flags=%d, data=\"%s\")->" SEND_FORMATTING_SPECIFIER "\n", d->socket, d->message, d->length, d->flags, BufferToString(d->message, d->length), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "send(): Proxy client connection client_fd=%d attempted to call send() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -1188,14 +1149,14 @@ void Send(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int send(i
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Recv(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recv(int socket, void *buffer, size_t length, int flags);
-{
-  struct MSG {
+// ssize_t/int recv(int socket, void *buffer, size_t length, int flags);
+void Recv(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*size_t*/ length;
     int flags;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t *buffer = (uint8_t*)malloc(d->length);
@@ -1203,8 +1164,7 @@ void Recv(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recv(i
   int errorCode;
   int receivedBytes;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = recv(d->socket, (char *)buffer, d->length, d->flags);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
     receivedBytes = MAX(ret, 0);
@@ -1213,20 +1173,18 @@ void Recv(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recv(i
     printf("recv(socket=%d,buffer=%p,length=%zd,flags=%d)->" SEND_FORMATTING_SPECIFIER " received \"%s\"\n", d->socket, buffer, d->length, d->flags, ret, BufferToString(buffer, receivedBytes));
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "recv(): Proxy client connection client_fd=%d attempted to call recv() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     receivedBytes = 0;
   }
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int/*ssize_t/int*/ ret;
     int errno_;
     uint8_t data[];
-  };
+  } Result;
   int resultSize = sizeof(Result) + receivedBytes;
   Result *r = (Result *)malloc(resultSize);
   r->callId = d->header.callId;
@@ -1238,9 +1196,9 @@ void Recv(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recv(i
   free(r);
 }
 
-void Sendto(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
-{
-  struct MSG {
+// ssize_t/int sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
+void Sendto(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*size_t*/ length;
@@ -1248,24 +1206,21 @@ void Sendto(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int send
     uint32_t/*socklen_t*/ dest_len;
     uint8_t dest_addr[MAX_SOCKADDR_SIZE];
     uint8_t message[];
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   SEND_RET_TYPE ret;
   int errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = sendto(d->socket, (const char *)d->message, d->length, d->flags, (sockaddr*)d->dest_addr, d->dest_len);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = sendto(d->socket, (const char *)d->message, d->length, d->flags, (struct sockaddr*)d->dest_addr, d->dest_len);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("sendto(socket=%d,message=%p,length=%zd,flags=%d,dest_addr=%p,dest_len=%d)->" SEND_FORMATTING_SPECIFIER "\n", d->socket, d->message, d->length, d->flags, d->dest_addr, d->dest_len, ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "sendto(): Proxy client connection client_fd=%d attempted to call sendto() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -1281,15 +1236,15 @@ void Sendto(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int send
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
-{
-  struct MSG {
+// ssize_t/int recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
+void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     uint32_t/*size_t*/ length;
     int flags;
     uint32_t/*socklen_t*/ address_len;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t address[MAX_SOCKADDR_SIZE];
@@ -1299,18 +1254,15 @@ void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int re
 
   int ret, errorCode, receivedBytes;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
-    ret = recvfrom(d->socket, (char *)buffer, d->length, d->flags, (sockaddr*)address, &address_len);
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
+    ret = recvfrom(d->socket, (char *)buffer, d->length, d->flags, (struct sockaddr*)address, &address_len);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 #ifdef POSIX_SOCKET_DEBUG
     printf("recvfrom(socket=%d,buffer=%p,length=%zd,flags=%d,address=%p,address_len=%u, address=\"%s\")->%d\n", d->socket, buffer, d->length, d->flags, address, d->address_len, BufferToString(address, address_len), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
     receivedBytes = MAX(ret, 0);
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "recvfrom(): Proxy client connection client_fd=%d attempted to call recvfrom() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     receivedBytes = 0;
@@ -1319,14 +1271,14 @@ void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int re
 
   int actualAddressLen = MIN(address_len, (socklen_t)d->address_len);
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int/*ssize_t/int*/ ret;
     int errno_;
     int data_len;
     int address_len; // N.B. this is the reported address length of the sender, that may be larger than what is actually serialized to this message.
     uint8_t data_and_address[];
-  };
+  } Result;
   int resultSize = sizeof(Result) + receivedBytes + actualAddressLen;
   Result *r = (Result *)malloc(resultSize);
   r->callId = d->header.callId;
@@ -1340,9 +1292,9 @@ void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int re
   free(r);
 }
 
-void Sendmsg(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int sendmsg(int socket, const struct msghdr *message, int flags);
-{
-	printf("TODO implement sendmsg()\n");
+// ssize_t/int sendmsg(int socket, const struct msghdr *message, int flags);
+void Sendmsg(int client_fd, uint8_t *data, uint64_t numBytes) {
+  printf("TODO implement sendmsg()\n");
 #ifdef POSIX_SOCKET_DEBUG
 //  printf("sendmsg(socket=%d,message=%p,flags=%d)\n", d->socket, d->message, d->flags);
 #endif
@@ -1350,23 +1302,23 @@ void Sendmsg(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int sen
   // TODO
 }
 
-void Recvmsg(int client_fd, uint8_t *data, uint64_t numBytes) // ssize_t/int recvmsg(int socket, struct msghdr *message, int flags);
-{
-	printf("TODO implement recvmsg()\n");
+// ssize_t/int recvmsg(int socket, struct msghdr *message, int flags);
+void Recvmsg(int client_fd, uint8_t *data, uint64_t numBytes) {
+  printf("TODO implement recvmsg()\n");
 #ifdef POSIX_SOCKET_DEBUG
 //  printf("recvmsg(socket=%d,message=%p,flags=%d)\n", d->socket, d->message, d->flags);
 #endif
 }
 
-void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int getsockopt(int socket, int level, int option_name, void *option_value, socklen_t *option_len);
-{
-  struct MSG {
+// int getsockopt(int socket, int level, int option_name, void *option_value, socklen_t *option_len);
+void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     int level;
     int option_name;
     uint32_t/*socklen_t*/ option_len;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
   uint8_t option_value[MAX_OPTIONVALUE_SIZE];
@@ -1378,8 +1330,7 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int getsocko
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = getsockopt(d->socket, d->level, d->option_name, (char*)option_value, &option_len);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
@@ -1387,21 +1338,19 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int getsocko
     printf("getsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%u, optionData=\"%s\")->%d\n", d->socket, d->level, d->option_name, option_value, d->option_len, BufferToString(option_value, option_len), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "getsockopt(): Proxy client connection client_fd=%d attempted to call getsockopt() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
     option_len = 0;
   }
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int ret;
     int errno_;
     int option_len;
     uint8_t option_value[];
-  };
+  } Result;
 
   int actualOptionLen = MIN(option_len, (socklen_t)d->option_len);
   int resultSize = sizeof(Result) + actualOptionLen;
@@ -1415,22 +1364,21 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int getsocko
   free(r);
 }
 
-void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
-{
-  struct MSG {
+// int setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
+void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
+  typedef struct MSG {
     SocketCallHeader header;
     int socket;
     int level;
     int option_name;
     int option_len;
     uint8_t option_value[];
-  };
+  } MSG;
   MSG *d = (MSG*)data;
   int actualOptionLen = MIN(d->option_len, (int)(numBytes - sizeof(MSG)));
 
   d->level = Translate_Socket_Level(d->level);
-  switch(d->level)
-  {
+  switch (d->level) {
     case SOL_SOCKET: d->option_name = Translate_SOL_SOCKET_option(d->option_name); break;
     case IPPROTO_TCP: d->option_name = Translate_IPPROTO_TCP_option(d->option_name); break;
     default:
@@ -1440,8 +1388,7 @@ void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int setsocko
 
   int ret, errorCode;
 
-  if (IsSocketPartOfConnection(client_fd, d->socket))
-  {
+  if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = setsockopt(d->socket, d->level, d->option_name, (const char *)d->option_value, actualOptionLen);
     errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
@@ -1449,9 +1396,7 @@ void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int setsocko
     printf("setsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%d, optionData=\"%s\")->%d\n", d->socket, d->level, d->option_name, d->option_value, d->option_len, BufferToString(d->option_value, actualOptionLen), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
-  }
-  else
-  {
+  } else {
     fprintf(stderr, "setsockopt(): Proxy client connection client_fd=%d attempted to call setsockopt() on a socket fd=%d that it did not create (or has already shut down)\n", client_fd, d->socket);
     ret = errorCode = -1;
   }
@@ -1467,12 +1412,12 @@ void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) // int setsocko
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
-void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
-{
+// int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
+void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
 #define MAX_NODE_LEN 2048
 #define MAX_SERVICE_LEN 128
 
-  struct MSG {
+  typedef struct MSG {
     SocketCallHeader header;
     char node[MAX_NODE_LEN]; // Arbitrary max length limit
     char service[MAX_SERVICE_LEN]; // Arbitrary max length limit
@@ -1481,17 +1426,17 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getaddr
     int ai_family;
     int ai_socktype;
     int ai_protocol;
-  };
+  } MSG;
   MSG *d = (MSG*)data;
 
-  addrinfo hints;
+  struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
   hints.ai_flags = d->ai_flags;
   hints.ai_family = d->ai_family;
   hints.ai_socktype = d->ai_socktype;
   hints.ai_protocol = d->ai_protocol;
 
-  addrinfo *res = 0;
+  struct addrinfo *res = 0;
   int ret = getaddrinfo(d->node, d->service, d->hasHints ? &hints : 0, &res);
   int errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
 
@@ -1504,41 +1449,37 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getaddr
   int ai_addrTotalLen = 0;
   int addrCount = 0;
 
-  if (ret == 0)
-  {
-    if (res && res->ai_canonname)
-    {
+  if (ret == 0) {
+    if (res && res->ai_canonname) {
       if (strlen(res->ai_canonname) >= MAX_NODE_LEN) printf("Warning: Truncated res->ai_canonname to %d bytes (was %s)\n", MAX_NODE_LEN, res->ai_canonname);
       strncpy(ai_canonname, res->ai_canonname, MAX_NODE_LEN-1);
     }
 
-    addrinfo *ai = res;
-    while(ai)
-    {
+    struct addrinfo *ai = res;
+    while (ai) {
       ai_addrTotalLen += CHECKED_TRUNCATE_TO_POSITIVE_INT32(ai->ai_addrlen);
       ++addrCount;
       ai = ai->ai_next;
     }
   }
 
-  struct ResAddrinfo
-  {
+  typedef struct ResAddrinfo {
     int ai_flags;
     int ai_family;
     int ai_socktype;
     int ai_protocol;
     int/*socklen_t*/ ai_addrlen;
     uint8_t /*sockaddr **/ ai_addr[];
-  };
+  } ResAddrinfo;
 
-  struct Result {
+  typedef struct Result {
     int callId;
     int ret;
     int errno_;
     char ai_canonname[MAX_NODE_LEN];
     int addrCount;
     uint8_t /*ResAddrinfo[]*/ addr[];
-  };
+  } Result;
 
   int resultSize = sizeof(Result) + sizeof(ResAddrinfo)*addrCount + ai_addrTotalLen;
   Result *r = (Result*)malloc(resultSize);
@@ -1550,10 +1491,9 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getaddr
   strncpy(r->ai_canonname, ai_canonname, MAX_NODE_LEN-1);
   r->addrCount = addrCount;
 
-  addrinfo *ai = res;
+  struct addrinfo *ai = res;
   int offset = 0;
-  while(ai)
-  {
+  while (ai) {
     ResAddrinfo *o = (ResAddrinfo*)(r->addr + offset);
     o->ai_flags = ai->ai_flags;
     o->ai_family = ai->ai_family;
@@ -1571,30 +1511,28 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getaddr
   free(r);
 }
 
-void Getnameinfo(int client_fd, uint8_t *data, uint64_t numBytes) // int getnameinfo(const struct sockaddr *addr, socklen_t addrlen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags);
-{
+// int getnameinfo(const struct sockaddr *addr, socklen_t addrlen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags);
+void Getnameinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
   fprintf(stderr, "TODO getnameinfo() unimplemented!\n");
 }
 
-static void *memdup(const void *ptr, size_t sz)
-{
+static void *memdup(const void *ptr, size_t sz) {
   if (!ptr) return 0;
   void *dup = malloc(sz);
   if (dup) memcpy(dup, ptr, sz);
   return dup;
 }
 
-struct MessageArg
+typedef struct MessageArg
 {
   int client_fd;
   uint8_t *payload;
   uint64_t numBytes;
-};
+} MessageArg;
 
 void ProcessWebSocketMessageSynchronouslyInCurrentThread(int client_fd, uint8_t *payload, uint64_t numBytes);
 
-THREAD_RETURN_T message_processing_thread(void *arg)
-{
+THREAD_RETURN_T message_processing_thread(void *arg) {
   MessageArg *msg = (MessageArg*)arg;
   assert(msg);
   assert(msg->client_fd);
@@ -1605,8 +1543,7 @@ THREAD_RETURN_T message_processing_thread(void *arg)
 }
 
 // Offloads the processing of the given message to a background thread.
-void ProcessWebSocketMessageAsynchronouslyInBackgroundThread(int client_fd, uint8_t *payload, uint64_t numBytes)
-{
+void ProcessWebSocketMessageAsynchronouslyInBackgroundThread(int client_fd, uint8_t *payload, uint64_t numBytes) {
   MessageArg *arg = (MessageArg*)malloc(sizeof(MessageArg));
   arg->client_fd = client_fd;
   arg->payload = (uint8_t*)memdup(payload, (size_t)numBytes);
@@ -1614,15 +1551,13 @@ void ProcessWebSocketMessageAsynchronouslyInBackgroundThread(int client_fd, uint
   THREAD_T thread;
   // TODO: Instead of unconditionally always creating a thread here, create a thread pool and push messages to it.
   // (leaving this as a future optimization because not sure if it matters here much at all for performance)
-	CREATE_THREAD(thread, message_processing_thread, arg);
+  CREATE_THREAD(thread, message_processing_thread, arg);
 }
 
-void ProcessWebSocketMessageSynchronouslyInCurrentThread(int client_fd, uint8_t *payload, uint64_t numBytes)
-{
+void ProcessWebSocketMessageSynchronouslyInCurrentThread(int client_fd, uint8_t *payload, uint64_t numBytes) {
   assert(numBytes >= sizeof(SocketCallHeader)); // Already validated in ProcessWebSocketMessage() before coming here, so we should be good.
   SocketCallHeader *header = (SocketCallHeader*)payload;
-  switch(header->function)
-  {
+  switch (header->function) {
     case POSIX_SOCKET_MSG_SOCKET: Socket(client_fd, payload, numBytes); break;
     case POSIX_SOCKET_MSG_SOCKETPAIR: Socketpair(client_fd, payload, numBytes); break;
     case POSIX_SOCKET_MSG_SHUTDOWN: Shutdown(client_fd, payload, numBytes); break;
@@ -1645,27 +1580,26 @@ void ProcessWebSocketMessageSynchronouslyInCurrentThread(int client_fd, uint8_t 
     default:
       printf("Unknown POSIX_SOCKET_MSG %u received!\n", header->function);
       break;
-	}
+  }
 }
 
-void ProcessWebSocketMessage(int client_fd, uint8_t *payload, uint64_t numBytes)
-{
-  if (numBytes < sizeof(SocketCallHeader))
-  {
+void ProcessWebSocketMessage(int client_fd, uint8_t *payload, uint64_t numBytes) {
+  if (numBytes < sizeof(SocketCallHeader)) {
     printf("Received too small sockets call message! size: %d bytes, expected at least %d bytes\n", (int)numBytes, (int)sizeof(SocketCallHeader));
     return;
   }
   SocketCallHeader *header = (SocketCallHeader*)payload;
-  if (header->function == POSIX_SOCKET_MSG_RECV || header->function == POSIX_SOCKET_MSG_RECVFROM || header->function == POSIX_SOCKET_MSG_RECVMSG || header->function == POSIX_SOCKET_MSG_CONNECT || header->function == POSIX_SOCKET_MSG_ACCEPT)
-  {
+  if (header->function == POSIX_SOCKET_MSG_RECV ||
+      header->function == POSIX_SOCKET_MSG_RECVFROM ||
+      header->function == POSIX_SOCKET_MSG_RECVMSG ||
+      header->function == POSIX_SOCKET_MSG_CONNECT ||
+      header->function == POSIX_SOCKET_MSG_ACCEPT) {
     // Synchonous/blocking recv()s can halt indefinitely until a message is actually received. An application might
     // be send()ing messages in one thread while using another thread to wait for recv(). Therefore run these potentially
     // blocking recv()s in a separate thread. The nonblocking operations can run synchronously in calling thread (they could
     // also run in a background thread, but for performance, do not offload them since it is not necessary)
     ProcessWebSocketMessageAsynchronouslyInBackgroundThread(client_fd, payload, numBytes);
-  }
-  else
-  {
+  } else {
     ProcessWebSocketMessageSynchronouslyInCurrentThread(client_fd, payload, numBytes);
   }
 }

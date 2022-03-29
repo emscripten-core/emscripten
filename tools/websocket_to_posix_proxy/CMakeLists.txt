@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 project(websocket_to_posix_proxy)
 
-file(GLOB sourceFiles src/*.cpp src/*.h)
+file(GLOB sourceFiles src/*.cpp src/*.c src/*.h)
 
 add_executable(websocket_to_posix_proxy ${sourceFiles})
 

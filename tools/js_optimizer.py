@@ -19,8 +19,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
 from tools import building, config, shared, utils
 
-configuration = shared.configuration
-temp_files = configuration.get_temp_files()
+temp_files = shared.get_temp_files()
 
 
 ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.js')

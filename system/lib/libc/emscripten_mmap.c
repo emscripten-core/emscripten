@@ -34,11 +34,11 @@ static volatile int lock[1];
 static struct map* mappings;
 
 // JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-long _mmap_js(long addr, long length, long prot, long flags, long fd, long offset, int* allocated);
-long _munmap_js(long addr, long length, long prot, long flags, long fd, long offset);
-long _msync_js(long addr, long length, long flags, long fd);
+intptr_t _mmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
+int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+int _msync_js(intptr_t addr, size_t length, int flags, int fd);
 
-static struct map* find_mapping(long addr, struct map** prev) {
+static struct map* find_mapping(intptr_t addr, struct map** prev) {
   struct map* map = mappings;
   while (map) {
     if (map->addr == (void*)addr) {
@@ -52,7 +52,7 @@ static struct map* find_mapping(long addr, struct map** prev) {
   return map;
 }
 
-long __syscall_munmap(long addr, long length) {
+int __syscall_munmap(intptr_t addr, size_t length) {
   LOCK(lock);
   struct map* prev = NULL;
   struct map* map = find_mapping(addr, &prev);
@@ -95,7 +95,7 @@ long __syscall_munmap(long addr, long length) {
   return 0;
 }
 
-long __syscall_msync(long addr, long len, long flags) {
+int __syscall_msync(intptr_t addr, size_t len, int flags) {
   LOCK(lock);
   struct map* map = find_mapping(addr, NULL);
   UNLOCK(lock);
@@ -108,9 +108,9 @@ long __syscall_msync(long addr, long len, long flags) {
   return _msync_js(addr, len, map->flags, map->fd);
 }
 
-long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
+intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
   // addr argument must be page aligned if MAP_FIXED flag is set.
-  if (flags & MAP_FIXED && (addr % WASM_PAGE_SIZE) != 0) {
+  if (flags & MAP_FIXED && ((intptr_t)addr % WASM_PAGE_SIZE) != 0) {
     return -EINVAL;
   }
 

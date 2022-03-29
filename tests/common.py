@@ -70,6 +70,7 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 
 
 def delete_contents(pathname):
@@ -189,12 +190,7 @@ def require_v8(func):
 
 def node_pthreads(f):
   def decorated(self, *args, **kwargs):
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args += ['-Wno-pthreads-mem-growth']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    self.js_engines = [config.NODE_JS]
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.setup_node_pthreads()
     f(self, *args, **kwargs)
   return decorated
 
@@ -222,11 +218,14 @@ def env_modify(updates):
 
 # Decorator version of env_modify
 def with_env_modify(updates):
+  assert not callable(updates)
+
   def decorated(f):
-    def modified(self):
+    def modified(self, *args, **kwargs):
       with env_modify(updates):
-        return f(self)
+        return f(self, *args, **kwargs)
     return modified
+
   return decorated
 
 
@@ -391,7 +390,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+    if self.get_setting('MEMORY64') == 1:
+      self.skipTest("MEMORY64=1 tests don't yet run under node")
     self.js_engines = [config.NODE_JS]
+
+  def setup_node_pthreads(self):
+    self.require_node()
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -418,7 +428,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
     # We want to be strict about closure warnings in our test code.
     # TODO(sbc): Remove this if we make it the default for `-Werror`:
     # https://github.com/emscripten-core/emscripten/issues/16205):
@@ -511,6 +521,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
+    if type(value) == bool:
+      value = int(value)
     self.settings_mods[key] = value
 
   def has_changed_setting(self, key):
@@ -657,7 +669,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
-    return self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+    return self.run_process([WASM_DIS, wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
@@ -898,10 +910,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    if output_filename is None:
-      output_filename = filename + '.o'
-    try_delete(output_filename)
-    self.run_process([compiler_for(filename), filename] + args + ['-o', output_filename], **kwargs)
+    cmd = [compiler_for(filename), filename] + args
+    if output_filename:
+      cmd += ['-o', output_filename]
+    self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 

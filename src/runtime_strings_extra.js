@@ -32,12 +32,10 @@ function stringToAscii(str, outPtr) {
 // a copy of that string as a Javascript String object.
 
 #if TEXTDECODER == 2
-var UTF16Decoder = new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf-16le');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
-var UTF16Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder{{{ SHARED_MEMORY ? 'Wrapper' : ''}}}('utf-16le') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
+var UTF16Decoder = new TextDecoder('utf-16le');
+#elif TEXTDECODER == 1
+var UTF16Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf-16le') : undefined;
+#endif
 
 function UTF16ToString(ptr, maxBytesToRead) {
 #if ASSERTIONS
@@ -57,7 +55,7 @@ function UTF16ToString(ptr, maxBytesToRead) {
 #if TEXTDECODER != 2
   if (endPtr - ptr > 32 && UTF16Decoder) {
 #endif // TEXTDECODER != 2
-    return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
+    return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'endPtr') }}});
 #if TEXTDECODER != 2
   } else {
 #endif // TEXTDECODER != 2

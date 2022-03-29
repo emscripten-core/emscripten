@@ -121,6 +121,10 @@ if (Module['ENVIRONMENT']) {
 var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 #endif
 
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+#endif
+
 #if SHARED_MEMORY && !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
@@ -309,6 +313,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
+#if EXIT_RUNTIME
       // Unlike node which has process.exitCode, d8 has no such mechanism. So we
       // have no way to set the exit code and then let the program exit with
       // that code when it naturally stops running (say, when all setTimeouts
@@ -323,6 +328,7 @@ if (ENVIRONMENT_IS_SHELL) {
       if (runtimeKeepaliveCounter) {
         throw toThrow;
       }
+#endif
       logExceptionOnExit(toThrow);
       quit(status);
     };

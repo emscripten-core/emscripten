@@ -54,6 +54,8 @@ void _emval_run_destructors(EM_DESTRUCTORS handle);
 EM_VAL _emval_new_array();
 EM_VAL _emval_new_object();
 EM_VAL _emval_new_cstring(const char*);
+EM_VAL _emval_new_u8string(const char*);
+EM_VAL _emval_new_u16string(const char16_t*);
 
 EM_VAL _emval_take_value(TYPEID type, EM_VAR_ARGS argv);
 
@@ -349,6 +351,14 @@ public:
 
     static val object() {
         return val(internal::_emval_new_object());
+    }
+
+    static val u8string(const char* s) {
+        return val(internal::_emval_new_u8string(s));
+    }
+
+    static val u16string(const char16_t* s) {
+        return val(internal::_emval_new_u16string(s));
     }
 
     static val undefined() {

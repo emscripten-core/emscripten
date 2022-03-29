@@ -82,7 +82,11 @@ function updateGlobalBufferAndViews(b) {
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-  wasmMemory = new WebAssembly.Memory({
+  wasmMemory =
+#if WASM_WORKERS
+    Module['mem'] ||
+#endif
+    new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
     , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
@@ -114,15 +118,11 @@ var wasmOffsetConverter;
 
 #if EXIT_RUNTIME
 var __ATEXIT__    = []; // functions called during shutdown
+var runtimeExited = false;
 #endif
 
 #if ASSERTIONS || SAFE_HEAP || USE_ASAN
 var runtimeInitialized = false;
-
-// This is always false in minimal_runtime - the runtime does not have a concept
-// of exiting (keeping this variable here for now since it is referenced from
-// generated code)
-var runtimeExited = false;
 #endif
 
 #include "runtime_math.js"

@@ -37,6 +37,8 @@ emdump
 emprofile
 emdwp
 emnm
+emstrip
+emsymbolizer
 tools/file_packager
 tools/webidl_binder
 tests/runner

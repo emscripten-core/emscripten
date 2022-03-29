@@ -290,7 +290,7 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -298,17 +298,6 @@ assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTA
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
-#endif
-
-#if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
-  window.addEventListener('error', function(e) {
-    if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
-    Module['pageThrewException'] = true;
-  });
-}
 #endif
 
 #if IMPORTED_MEMORY
@@ -335,12 +324,19 @@ var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
+
+#if EXIT_RUNTIME
 var runtimeExited = false;
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
+#else
+function keepRuntimeAlive() {
+  return noExitRuntime;
+}
+#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -367,6 +363,10 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+#endif
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
@@ -395,6 +395,7 @@ function preMain() {
 }
 #endif
 
+#if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
   err('exitRuntime');
@@ -409,18 +410,17 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-#if EXIT_RUNTIME
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
+#endif
 
 function postRun() {
 #if STACK_OVERFLOW_CHECK
@@ -564,12 +564,6 @@ function removeRunDependency(id) {
   }
 }
 
-Module["preloadedImages"] = {}; // maps url to image data
-Module["preloadedAudios"] = {}; // maps url to audio data
-#if MAIN_MODULE
-Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -661,7 +655,9 @@ function createExportWrapper(name, fixedasm) {
       asm = Module['asm'];
     }
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+#if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+#endif
     if (!asm[name]) {
       assert(asm[name], 'exported native function `' + displayName + '` not found');
     }
@@ -887,7 +883,7 @@ var wasmOffsetConverter;
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
@@ -1080,9 +1076,15 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 
-#if USE_PTHREADS// || WASM_WORKERS
+#if USE_PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+
+#if WASM_WORKERS
+    if (!ENVIRONMENT_IS_WASM_WORKER) {
+#endif
+#if USE_PTHREADS
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
@@ -1103,7 +1105,11 @@ function createWasm() {
     }
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
+#endif // ~USE_PTHREADS
+#if WASM_WORKERS
+    }
 #endif
+
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
   {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}

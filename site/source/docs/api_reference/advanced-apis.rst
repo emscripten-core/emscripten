@@ -4,7 +4,10 @@
 Advanced APIs
 =============
 
-This section lists APIs that are not suitable for general use, but which may be useful to developers in some circumstances. These include APIs that are difficult or complicated to use, or which are intended primarily for developers working on the Emscripten core.
+This section lists APIs that are not suitable for general use, but which may be
+useful to developers in some circumstances. These include APIs that are
+difficult or complicated to use, or which are intended primarily for developers
+working on the Emscripten core.
 
 .. contents:: Table of Contents
     :local:
@@ -14,42 +17,57 @@ This section lists APIs that are not suitable for general use, but which may be 
 .. _settings-js:
 
 settings.js
-============
+===========
 
-`settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_ contains default values and options used in various places by the compiler.
+`settings.js`_ contains default values and options used in various places by the
+compiler.
 
-.. Warning :: Many **settings.js** options are highly brittle - certain combinations of options, and combinations of certain options used with some source code, can cause Emscripten to fail badly. This is intended for use by "advanced users", and possibly even only people developing Emscripten itself.
+.. Warning:: Many **settings.js** options are highly brittle - certain
+   combinations of options, and combinations of certain options used with some
+   source code, can cause Emscripten to fail badly. This is intended for use by
+   "advanced users", and possibly even only people developing Emscripten itself.
 
-
-The options in **settings.js** are normally set as command line parameters to *emcc*: ::
+The options in **settings.js** are normally set as command line parameters to
+*emcc*::
 
   emcc -s OPT=VALUE
 
+While it is possible to edit **settings.js** manually, this is *highly
+discouraged*. In general **settings.js** defines low-level options that should
+not be modified. Note also that the compiler changes some options depending on
+other settings. For example, ``ASSERTIONS`` is enabled by default, but disabled
+in optimized builds (``-O1+``).
 
-While it is possible to edit **settings.js** manually, this is *highly discouraged*. In general **settings.js** defines low-level options that should not be modified. Note also that the compiler changes some options depending on other settings. For example, ``ASSERTIONS`` is enabled by default, but disabled in optimized builds (``-O1+``).
-
-The small number of options that developers may have cause to change should be modified when the *emcc* tool is invoked. For example, ``EXPORTED_FUNCTIONS``: ::
-
-  ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS=_int_sqrt
+.. note::
+  For more information on what options can be used to configure Emscripten, read
+  ``src/settings.js`` or visit
+  `the emsettings page <https://emsettings.surma.technology>`_.
 
 
 preamble.js
 ===========
 
-The following advanced APIs are documented in `preamble.js <https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js>`_.
+The following advanced APIs are documented in `preamble.js`_.
 
 .. js:function:: allocate(slab, allocator)
 
-  This is marked as *internal* because it is difficult to use (it has been optimized for multiple syntaxes to save space in generated code). Normally developers should instead allocate memory using ``_malloc()``, initialize it with :js:func:`setValue`, etc., but this function may be useful for advanced developers in certain cases.
+  This is marked as *internal* because it is difficult to use (it has been
+  optimized for multiple syntaxes to save space in generated code). Normally
+  developers should instead allocate memory using ``_malloc()``, initialize it
+  with :js:func:`setValue`, etc., but this function may be useful for advanced
+  developers in certain cases.
 
-  :param slab: An array of data, or a number. If a number, then the size of the block to allocate, in *bytes*.
+  :param slab: An array of data, or a number. If a number, then the size of the
+               block to allocate, in *bytes*.
   :param allocator: How to allocate memory, see ALLOC_*
 
 
 Advanced File System API
 ========================
 
-:ref:`Filesystem-API` covers the public API that will be relevant to most developers. The following functions are only needed for advanced use-cases (for example, writing a new local file system) or legacy file system compatibility.
+:ref:`Filesystem-API` covers the public API that will be relevant to most
+developers. The following functions are only needed for advanced use-cases (for
+example, writing a new local file system) or legacy file system compatibility.
 
 .. js:function::
   FS.hashName(parentid, name)
@@ -106,3 +124,6 @@ There are also a small number of additional :ref:`flag modes <fs-read-and-write-
 - ``xw+``
 - ``xa``
 - ``xa+``
+
+.. _settings.js: https://github.com/emscripten-core/emscripten/blob/main/src/settings.js
+.. _preamble.js: https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js

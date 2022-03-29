@@ -26,7 +26,7 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
                 'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
-                'in6addr_any.c', 'in6addr_loopback.c']
+                'in6addr_any.c', 'in6addr_loopback.c', 'accept4.c']
 
 
 def files_in_path(path, filenames):
@@ -290,7 +290,6 @@ class Library:
     commands = []
     objects = []
     cflags = self.get_cflags()
-    base_flags = get_base_cflags()
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       object_basename = shared.unsuffixed_basename(src)
@@ -310,13 +309,12 @@ class Library:
         cmd = [shared.EMCC]
       else:
         cmd = [shared.EMXX]
+
+      cmd += cflags
       if ext in ('.s', '.S'):
-        cmd += base_flags
         # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
         # assembly files that define wasm globals.
-        cmd.remove('-g')
-      else:
-        cmd += cflags
+        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
@@ -470,27 +468,38 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
+    self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-sUSE_PTHREADS']
+      cflags += ['-sUSE_PTHREADS', '-sWASM_WORKERS']
+    if self.is_ww:
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
+    if self.is_ww:
+      name += '-ww'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt']
+    return super().vary_on() + ['is_mt', 'is_ww']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS and not settings.USE_PTHREADS, **kwargs)
+
+  @classmethod
+  def variations(cls):
+    combos = super(MTLibrary, cls).variations()
+    # To save on # of variations, pthreads and Wasm workers when used together, just use pthreads variation.
+    return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 
 class DebugLibrary(Library):
@@ -843,6 +852,7 @@ class libc(MuslInternalLibrary,
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
+          'emscripten_yield.c',
         ])
     else:
       ignore += ['thread']
@@ -906,11 +916,14 @@ class libc(MuslInternalLibrary,
           'asctime_r.c',
           'asctime.c',
           'ctime.c',
+          'difftime.c',
+          'ftime.c',
           'gmtime.c',
           'localtime.c',
           'nanosleep.c',
           'clock_nanosleep.c',
           'ctime_r.c',
+          'timespec_get.c',
           'utime.c',
         ])
     libc_files += files_in_path(
@@ -1018,6 +1031,46 @@ class libprintf_long_double(libc):
     return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
 
 
+class libwasm_workers(MTLibrary):
+  def __init__(self, **kwargs):
+    self.debug = kwargs.pop('debug')
+    super().__init__(**kwargs)
+
+  name = 'libwasm_workers'
+
+  def get_cflags(self):
+    cflags = ['-pthread',
+              '-D_DEBUG' if self.debug else '-Oz']
+    if not self.debug:
+      cflags += ['-DNDEBUG']
+    if self.is_ww or self.is_mt:
+      cflags += ['-sWASM_WORKERS']
+    if settings.MAIN_MODULE:
+      cflags += ['-fPIC']
+    return cflags
+
+  def get_base_name(self):
+    name = 'libwasm_workers'
+    if not self.is_ww and not self.is_mt:
+      name += '_stub'
+    if self.debug:
+      name += '-debug'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['debug']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, **kwargs)
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasm_worker',
+        filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
+
+
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
@@ -1038,7 +1091,7 @@ class libsockets_proxy(MTLibrary):
   cflags = ['-Os']
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.cpp')]
+    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
     return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
@@ -1099,7 +1152,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -1192,7 +1245,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
@@ -1587,7 +1640,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__year_to_secs.c',
                    'clock.c',
                    'clock_gettime.c',
-                   'difftime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
@@ -1801,6 +1853,9 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.USE_WEBGPU:
     add_library('libwebgpu_cpp')
+
+  if settings.WASM_WORKERS:
+    add_library('libwasm_workers')
 
   return libs_to_link
 
