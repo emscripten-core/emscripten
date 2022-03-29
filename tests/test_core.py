@@ -5927,17 +5927,17 @@ PORT: 3979
     ''')
     create_file('duplicated_func_1.js', '''
       mergeInto(LibraryManager.library, {
-	    duplicatedFunc : function() {
-		    return 1;
-	      }
+        duplicatedFunc : function() {
+            return 1;
+          }
         }, false
       );
     ''')
     create_file('duplicated_func_2.js', '''
       mergeInto(LibraryManager.library, {
-	    duplicatedFunc : function() {
-		    return 2;
-	      }
+        duplicatedFunc : function() {
+            return 2;
+          }
         }, false
       );
     ''')
