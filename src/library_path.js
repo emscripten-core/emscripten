@@ -72,9 +72,6 @@ mergeInto(LibraryManager.library, {
       if (lastSlash === -1) return path;
       return path.substr(lastSlash+1);
     },
-    extname: (path) => {
-      return PATH.splitPath(path)[3];
-    },
     join: function() {
       var paths = Array.prototype.slice.call(arguments, 0);
       return PATH.normalize(paths.join('/'));
