@@ -1536,11 +1536,9 @@ var LibraryWebGPU = {
     function makeDepthStencilAttachment(dsaPtr) {
       if (dsaPtr === 0) return undefined;
 
-      var depthLoadOpInt = WebGPU.LoadOp[
-        {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}}];
+      var depthLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}};
       var depthClearValue = {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthClearValue, 'float') }}};
-      var stencilLoadOpInt = WebGPU.LoadOp[
-        {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}}];
+      var stencilLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}};
       var stencilClearValue = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilClearValue) }}};
 
       return {
@@ -1557,8 +1555,8 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
         // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        "depthLoadValue": depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}}),
-        "stencilLoadValue": stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}}),
+        "depthLoadValue": WebGPU.LoadOp[depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}})],
+        "stencilLoadValue": WebGPU.LoadOp[stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}})],
       };
     }
 
