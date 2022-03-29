@@ -87,21 +87,19 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
-                 '-DFT2_BUILD_LIBRARY', '-O2',
-                 '-I' + dest_path + '/include',
-                 '-I' + dest_path + '/truetype',
-                 '-I' + dest_path + '/sfnt',
-                 '-I' + dest_path + '/autofit',
-                 '-I' + dest_path + '/smooth',
-                 '-I' + dest_path + '/raster',
-                 '-I' + dest_path + '/psaux',
-                 '-I' + dest_path + '/psnames',
-                 '-I' + dest_path + '/truetype',
-                 '-w']
-      if settings.USE_PTHREADS:
-        command += ['-sUSE_PTHREADS']
-      commands.append(command)
+      commands.append([shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
+                       '-DFT2_BUILD_LIBRARY', '-O2',
+                       '-I' + dest_path + '/include',
+                       '-I' + dest_path + '/truetype',
+                       '-I' + dest_path + '/sfnt',
+                       '-I' + dest_path + '/autofit',
+                       '-I' + dest_path + '/smooth',
+                       '-I' + dest_path + '/raster',
+                       '-I' + dest_path + '/psaux',
+                       '-I' + dest_path + '/psnames',
+                       '-I' + dest_path + '/truetype',
+                       '-w',
+                       '-pthread'])
       o_s.append(o)
 
     ports.run_commands(commands)
