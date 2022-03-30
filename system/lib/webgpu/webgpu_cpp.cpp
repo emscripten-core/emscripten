@@ -998,16 +998,16 @@ namespace wgpu {
             "offsetof mismatch for RenderPassDepthStencilAttachment::depthLoadOp");
     static_assert(offsetof(RenderPassDepthStencilAttachment, depthStoreOp) == offsetof(WGPURenderPassDepthStencilAttachment, depthStoreOp),
             "offsetof mismatch for RenderPassDepthStencilAttachment::depthStoreOp");
-    static_assert(offsetof(RenderPassDepthStencilAttachment, clearDepth) == offsetof(WGPURenderPassDepthStencilAttachment, clearDepth),
-            "offsetof mismatch for RenderPassDepthStencilAttachment::clearDepth");
+    static_assert(offsetof(RenderPassDepthStencilAttachment, depthClearValue) == offsetof(WGPURenderPassDepthStencilAttachment, depthClearValue),
+            "offsetof mismatch for RenderPassDepthStencilAttachment::depthClearValue");
     static_assert(offsetof(RenderPassDepthStencilAttachment, depthReadOnly) == offsetof(WGPURenderPassDepthStencilAttachment, depthReadOnly),
             "offsetof mismatch for RenderPassDepthStencilAttachment::depthReadOnly");
     static_assert(offsetof(RenderPassDepthStencilAttachment, stencilLoadOp) == offsetof(WGPURenderPassDepthStencilAttachment, stencilLoadOp),
             "offsetof mismatch for RenderPassDepthStencilAttachment::stencilLoadOp");
     static_assert(offsetof(RenderPassDepthStencilAttachment, stencilStoreOp) == offsetof(WGPURenderPassDepthStencilAttachment, stencilStoreOp),
             "offsetof mismatch for RenderPassDepthStencilAttachment::stencilStoreOp");
-    static_assert(offsetof(RenderPassDepthStencilAttachment, clearStencil) == offsetof(WGPURenderPassDepthStencilAttachment, clearStencil),
-            "offsetof mismatch for RenderPassDepthStencilAttachment::clearStencil");
+    static_assert(offsetof(RenderPassDepthStencilAttachment, stencilClearValue) == offsetof(WGPURenderPassDepthStencilAttachment, stencilClearValue),
+            "offsetof mismatch for RenderPassDepthStencilAttachment::stencilClearValue");
     static_assert(offsetof(RenderPassDepthStencilAttachment, stencilReadOnly) == offsetof(WGPURenderPassDepthStencilAttachment, stencilReadOnly),
             "offsetof mismatch for RenderPassDepthStencilAttachment::stencilReadOnly");
 
@@ -1366,8 +1366,8 @@ namespace wgpu {
             "offsetof mismatch for RenderPassColorAttachment::loadOp");
     static_assert(offsetof(RenderPassColorAttachment, storeOp) == offsetof(WGPURenderPassColorAttachment, storeOp),
             "offsetof mismatch for RenderPassColorAttachment::storeOp");
-    static_assert(offsetof(RenderPassColorAttachment, clearColor) == offsetof(WGPURenderPassColorAttachment, clearColor),
-            "offsetof mismatch for RenderPassColorAttachment::clearColor");
+    static_assert(offsetof(RenderPassColorAttachment, clearValue) == offsetof(WGPURenderPassColorAttachment, clearValue),
+            "offsetof mismatch for RenderPassColorAttachment::clearValue");
 
     // RequiredLimits
 
