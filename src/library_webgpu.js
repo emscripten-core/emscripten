@@ -1555,11 +1555,8 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
         // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        // Note these also read the old clearDepth/clearStencil rather than depthClearValue/stencilClearValue.
-        "depthLoadValue": depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' :
-          {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearDepth, 'float') }}},
-        "stencilLoadValue": stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' :
-          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearStencil) }}},
+        "depthLoadValue": depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : depthClearValue,
+        "stencilLoadValue": stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : stencilClearValue,
       };
     }
 
