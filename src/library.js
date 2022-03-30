@@ -2637,14 +2637,14 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['$convertFrameToPC'],
+  emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: function(level) {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return convertFrameToPC(callstack[level + 2]);
+    return convertFrameToPC(callstack[level + 3]);
   },
 
   $UNWIND_CACHE: {},
@@ -2686,9 +2686,9 @@ LibraryManager.library = {
   // least in JavaScript frames, so we have to rely on PC values. Therefore, we
   // must be able to unwind from a PC value that may no longer be on the
   // execution stack, and so we are forced to cache the entire call stack.
-  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache'],
+  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
   emscripten_stack_snapshot: function () {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
@@ -2696,7 +2696,7 @@ LibraryManager.library = {
 
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can
     // unwind from this spot.
-    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[2]);
+    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[3]);
     UNWIND_CACHE.last_stack = callstack;
     return UNWIND_CACHE.last_addr;
   },
@@ -2716,20 +2716,20 @@ LibraryManager.library = {
   // how this is used.  addr must be the return address of the last call to
   // emscripten_stack_snapshot, or this function will instead use the current
   // call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC'],
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
       stack = UNWIND_CACHE.last_stack;
     } else {
-      stack = new Error().stack.split('\n');
+      stack = jsStackTrace().split('\n');
       if (stack[0] == 'Error') {
         stack.shift();
       }
       saveInUnwindCache(stack);
     }
 
-    var offset = 2;
+    var offset = 3;
     while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
       ++offset;
     }
