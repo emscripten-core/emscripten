@@ -9617,6 +9617,14 @@ int main(void) {
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
+  def test_asan_sync_compilation(self):
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.do_runf(test_file('other/test_asan_null_deref.c'),
+                 emcc_args=['-fsanitize=address', '-gsource-map'],
+                 assert_returncode=NON_ZERO, expected_output=[
+      'AddressSanitizer: null-pointer-dereference on address',
+    ])
+
   def test_asan_memory_growth(self):
     self.do_runf(test_file('other/test_asan_null_deref.c'),
                  emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
