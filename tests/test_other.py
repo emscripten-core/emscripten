@@ -9661,12 +9661,12 @@ int main(void) {
                             '--profiling-funcs'])
 
   @parameterized({
-    'async': ['-sWASM_ASYNC_COMPILATION'],
+    '': [],
     'sync': ['-sWASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
     self.do_runf(test_file('other/test_offset_converter.c'), 'ok',
-                 emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + list(args))
+                 emcc_args=['-sUSE_OFFSET_CONVERTER', '--profiling-funcs'] + list(args))
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
