@@ -6051,7 +6051,7 @@ PORT: 3979
     ''')
 
     self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
-    err = self.expect_fail([EMCC, test_file('duplicated_func.cpp')] + self.get_emcc_args())
+    err = self.expect_fail([EMCC, 'duplicated_func.cpp'] + self.get_emcc_args())
     self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Use allowOverride if this is intended', err)
 
   def test_unicode_js_library(self):
