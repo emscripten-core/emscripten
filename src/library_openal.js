@@ -4294,7 +4294,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1012 /* AL_PLAYING */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1012 /* AL_PLAYING */);
     }
   },
 
@@ -4344,7 +4345,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1014 /* AL_STOPPED */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
     }
   },
 
@@ -4397,7 +4399,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1011 /* AL_INITIAL */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1011 /* AL_INITIAL */);
     }
   },
 
@@ -4447,7 +4450,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1013 /* AL_PAUSED */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1013 /* AL_PAUSED */);
     }
   },
 
