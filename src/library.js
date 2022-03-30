@@ -2787,10 +2787,7 @@ LibraryManager.library = {
     var source;
 #if LOAD_SOURCE_MAP
     if (wasmSourceMap) {
-      var info = wasmSourceMap.lookup(pc);
-      if (info) {
-        source = {file: info.source, line: info.line, column: info.column};
-      }
+      source = wasmSourceMap.lookup(pc);
     }
 #endif
 

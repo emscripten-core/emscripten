@@ -9698,8 +9698,21 @@ int main(void) {
     'sync': ['-sWASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
-    self.do_runf(test_file('other/test_offset_converter.c'), 'ok',
-                 emcc_args=['-sUSE_OFFSET_CONVERTER', '--profiling-funcs'] + list(args))
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ptrToString'])
+    self.emcc_args += ['--profiling-funcs']
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok', emcc_args=list(args))
+
+  @parameterized({
+    '': [],
+    'sync': ['-sWASM_ASYNC_COMPILATION=0'],
+  })
+  def test_offset_converter_source_map(self, *args):
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('LOAD_SOURCE_MAP')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ptrToString'])
+    self.emcc_args += ['-gsource-map', '-DUSE_SOURCE_MAP']
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok', emcc_args=list(args))
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
