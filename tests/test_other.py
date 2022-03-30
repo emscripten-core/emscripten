@@ -7235,17 +7235,24 @@ int main() {
     expected_basename = os.path.splitext(filename)[0]
     expected_basename += args_to_filename(args)
 
-    self.run_process([compiler_for(filename), filename, '-g2'] + args + self.get_emcc_args())
+    # Run once without closure and parse output to find asmLibraryArg
+    build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()
+    self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
-    end = js.find('}', start) + 1
+    assert(start != -1)
+    end = js.find('}', start)
+    assert(end != -1)
     start = js.find('{', start)
-    relevant = js[start + 2:end - 2]
+    assert(start != -1)
+    relevant = js[start + 2:end - 1]
     relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
     sent.sort()
+
+    self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
 
     for exists in expected_exists:
       self.assertIn(exists, sent)
@@ -11350,6 +11357,18 @@ void foo() {}
       self.run_process(cmd + ['-sASSERTIONS=0'])
       err = self.run_js('a.out.js')
       self.assertNotContained('warning: unsupported syscall', err)
+
+  def test_unimplemented_syscalls_dlopen(self):
+    cmd = [EMCC, test_file('other/test_dlopen_blocking.c'), '-sASSERTIONS']
+    self.run_process(cmd)
+    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
+
+    # If we build the same thing with ALLOW_UNIMPLEMENTED_SYSCALLS=0 we
+    # expect a link-time failure rather than a runtime one.
+    cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
+    err = self.expect_fail(cmd)
+    self.assertContained('To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking', err)
 
   @require_v8
   def test_missing_shell_support(self):
