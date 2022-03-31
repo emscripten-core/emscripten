@@ -236,11 +236,20 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   return check_call(command, **kw).stdout
 
 
-def get_npm_cmd(name):
+def get_npm_cmd(name, base='node_modules/.bin'):
+  """Returns a command list that executes the given npm executable.
+
+  If the file does not exist, this is because npm install was not run, so
+  we display that error to the user.
+
+  These executables are typically stored in node_modules/.bin and we
+  return a platform-specific list of a command and args that will invoke it.
+  """
   if WINDOWS:
-    cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
+    cmd = [path_from_root(base, name + '.cmd')]
   else:
-    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
+    # We want to invoke the script with the configured node binary.
+    cmd = config.NODE_JS + [path_from_root(base, name)]
   if not os.path.exists(cmd[-1]):
     exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd

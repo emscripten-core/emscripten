@@ -702,12 +702,15 @@ def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
 
 
 def get_closure_compiler():
-  # First check if the user configured a specific CLOSURE_COMPILER in thier settings
+  # First check if the user configured a specific CLOSURE_COMPILER in their settings
   if config.CLOSURE_COMPILER:
     return config.CLOSURE_COMPILER
 
-  # Otherwise use the one installed vai npm
-  cmd = shared.get_npm_cmd('google-closure-compiler')
+  # Otherwise use the one installed via npm. We do not want to get the one
+  # in node_modules/.bin because that's a symlink, which may not work correctly in
+  # all environments (e.g. Bazel remote execution). Instead, we go to what that
+  # symlink would be pointing to directly.
+  cmd = shared.get_npm_cmd(os.path.join('google-closure-compiler', 'cli.js'), base='node_modules')
   if not WINDOWS:
     # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
