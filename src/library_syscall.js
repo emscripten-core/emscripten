@@ -1025,7 +1025,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     var suggest = FS.getStream(suggestFD);
     if (suggest) FS.close(suggest);
-    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
+    return FS.createStream(old, suggestFD, suggestFD + 1).fd;
   },
 };
 
