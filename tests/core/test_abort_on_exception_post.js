@@ -44,7 +44,8 @@ addOnPostRun(function() {
     out(e);
   }
   out("wasmTableMirror");
-  if(typeof wasmTableMirror !== "undefined") {
+  if (typeof wasmTableMirror !== "undefined") {
+
     try {
       // Make sure wasmTableMirror matches wasmTable after wasmTable.get override
       var testFunc = function() {};
