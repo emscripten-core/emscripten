@@ -3185,6 +3185,9 @@ LibraryManager.library = {
   $setWasmTableEntry__deps: ['$wasmTableMirror'],
   $setWasmTableEntry: function(idx, func) {
     wasmTable.set(idx, func);
+    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
+    // functions so we need to call it here to retrieve the potential wrapper correctly
+    // instead of just storing 'func' directly into wasmTableMirror
     wasmTableMirror[idx] = wasmTable.get(idx);
   },
 
