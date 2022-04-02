@@ -1156,13 +1156,15 @@ int f() {
     self.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
   def test_dot_a_all_contents_invalid(self):
     # check that we error if an object file in a .a is not valid bitcode.
     # do not silently ignore native object files, which may have been
     # built by mistake
     create_file('native.c', 'int native() { return 5; }')
     create_file('main.c', 'extern int native(); int main() { return native(); }')
-    self.run_process([CLANG_CC, 'native.c', '-target', 'x86_64-linux', '-c', '-o', 'native.o'])
+    self.run_process([CLANG_CC, 'native.c', '-c', '-o', 'native.o'] +
+                     clang_native.get_clang_native_args())
     self.run_process([EMAR, 'crs', 'libfoo.a', 'native.o'])
     stderr = self.expect_fail([EMCC, 'main.c', 'libfoo.a'])
     self.assertContained('unknown file type', stderr)
