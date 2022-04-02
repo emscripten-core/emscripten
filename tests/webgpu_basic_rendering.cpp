@@ -121,7 +121,7 @@ void render(wgpu::TextureView view) {
     attachment.view = view;
     attachment.loadOp = wgpu::LoadOp::Clear;
     attachment.storeOp = wgpu::StoreOp::Store;
-    attachment.clearColor = {0, 0, 0, 1};
+    attachment.clearValue = {0, 0, 0, 1};
 
     wgpu::RenderPassDescriptor renderpass{};
     renderpass.colorAttachmentCount = 1;

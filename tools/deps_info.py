@@ -196,6 +196,7 @@ _deps_info = {
 def get_deps_info():
   if not settings.EXCEPTION_HANDLING and settings.LINK_AS_CXX:
     _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
+    _deps_info['__cxa_throw'] = ['__cxa_is_pointer_type']
     _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch']

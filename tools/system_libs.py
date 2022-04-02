@@ -26,7 +26,7 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
                 'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
-                'in6addr_any.c', 'in6addr_loopback.c']
+                'in6addr_any.c', 'in6addr_loopback.c', 'accept4.c']
 
 
 def files_in_path(path, filenames):
@@ -917,6 +917,7 @@ class libc(MuslInternalLibrary,
           'asctime.c',
           'ctime.c',
           'difftime.c',
+          'ftime.c',
           'gmtime.c',
           'localtime.c',
           'nanosleep.c',

@@ -417,7 +417,6 @@ function exportRuntime() {
     'registerFunctions',
     'addFunction',
     'removeFunction',
-    'getFuncWrapper',
     'prettyPrint',
     'dynCall',
     'getCompilerSetting',

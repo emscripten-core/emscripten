@@ -11,6 +11,12 @@ void _emscripten_thread_crashed() {
   thread_crashed = true;
 }
 
+static void dummy()
+{
+}
+
+weak_alias(dummy, _emscripten_thread_sync_code);
+
 /*
  * Called whenever a thread performs a blocking action (or calls sched_yield).
  * This function takes care of running the event queue and other housekeeping
@@ -36,6 +42,5 @@ void _emscripten_yield() {
     emscripten_main_thread_process_queued_calls();
   }
 
-  // TODO(sbc): Do code synchronization between threads as part of yield
-  //_emscripten_thread_sync_code();
+  _emscripten_thread_sync_code();
 }
