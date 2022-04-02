@@ -30,6 +30,9 @@ function convertJsFunctionToWasm(func, sig) {
     }
     return new WebAssembly.Function(type, func);
   }
+  if (sig.length > 123) {
+    throw new Error(`Too many arguments! Can handle at most 122 but was given ${sig.length - 1}.`);
+  }
 
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
