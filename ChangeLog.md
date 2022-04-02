@@ -43,7 +43,7 @@ See docs/process.md for more on how version tagging works.
   older versions recently became harder.
 - The SDL_mixer library can be configured to support MIDIs by passing "mid"
   to the SDL2_MIXER_FORMATS setting. It uses Timidity, and you must provide
-  your own instrument soound files and mount them at "/etc/timidity". (#16556)
+  your own instrument sound files and mount them at "/etc/timidity". (#16556)
 
 3.1.7 - 03/07/2022
 -------------------
