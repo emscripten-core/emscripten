@@ -9361,7 +9361,7 @@ int main () {
     for i in range(len(normal)):
       if normal[i] != jsmath[i]:
         diff += 1
-    self.assertEqual(diff, 4)
+    self.assertLess(diff, 5)
 
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
