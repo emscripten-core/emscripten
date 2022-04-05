@@ -7,10 +7,13 @@
 // This gives correct answers for everything less than 2^{14} = 16384
 // I hope nobody is contemplating functions with 16384 arguments...
 function uleb128Encode(n){
-  if(n < 128) {
+#ASSERTIONS
+  assert(n < 16384);
+#endif
+  if (n < 128) {
       return [n];
   }
-  return [(n % 128) + 128, n >> 7];
+  return [(n % 128) | 128, n >> 7];
 }
 
 
