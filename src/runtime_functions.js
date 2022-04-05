@@ -11,7 +11,7 @@ function uleb128Encode(n) {
   assert(n < 16384);
 #endif
   if (n < 128) {
-      return [n];
+    return [n];
   }
   return [(n % 128) | 128, n >> 7];
 }
