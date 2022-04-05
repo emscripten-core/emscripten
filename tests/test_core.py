@@ -8112,7 +8112,9 @@ Module['onRuntimeInitialized'] = function() {
       #include "header.h"
 
       int main() {
+        printf("before sleep\n");
         my_sleep(1);
+        printf("after sleep\n");
         return 0;
       }
     ''', r'''
@@ -8123,12 +8125,12 @@ Module['onRuntimeInitialized'] = function() {
       void my_sleep(int milli_seconds) {
         // put variable onto stack
         volatile int value = 42;
-        printf("%d ", value);
+        printf("%d\n", value);
         emscripten_sleep(milli_seconds);
         // variable on stack in side module function should be restored.
         printf("%d\n", value);
       }
-    ''', '42 42', header='void my_sleep(int);')
+    ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);')
 
   @needs_dylink
   @no_memory64('TODO: asyncify for wasm64')
@@ -8157,11 +8159,13 @@ Module['onRuntimeInitialized'] = function() {
       {
         int side_module_run()
         {
+          printf("before sleep\n");
           emscripten_sleep(1000);
+          printf("after sleep\n");
           return 42;
         }
       }
-    ''', '42', need_reverse=False)
+    ''', 'before sleep\nafter sleep\n42', need_reverse=False)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
