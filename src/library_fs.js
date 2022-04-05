@@ -429,11 +429,8 @@ FS.staticInit();` +
       }
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
-      var fd = stream.fd;
-      if (fd === undefined) {
-        fd = FS.nextfd(fd_start, fd_end);
-        stream.fd = fd;
-      }
+      var fd = FS.nextfd(fd_start, fd_end);
+      stream.fd = fd;
       FS.streams[fd] = stream;
       return stream;
     },
