@@ -272,16 +272,8 @@ uptr internal_write(fd_t fd, const void *buf, uptr count) {
 
 uptr internal_ftruncate(fd_t fd, uptr size) {
   sptr res;
-#if SANITIZER_EMSCRIPTEN
-  // The __SYSCALL_LL_O macros that musl uses to split 64-bit arguments
-  // doesn't work in C++ code so we have to do it manually.
-  union { long long ll; long l[2]; } split{ .ll = size };
-  HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
-               split.l[0], split.l[1]));
-#else
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
                (OFF_T)size));
-#endif
   return res;
 }
 

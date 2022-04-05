@@ -63,6 +63,11 @@ def get(ports, settings, shared):
         '-DMUSIC_MOD_MODPLUG',
       ]
 
+    if "mid" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-DMUSIC_MID_TIMIDITY',
+      ]
+
     ports.build_port(
       dest_path,
       final,
@@ -74,7 +79,6 @@ def get(ports, settings, shared):
       ],
       exclude_dirs=[
         'native_midi',
-        'timidity',
         'external',
       ]
     )

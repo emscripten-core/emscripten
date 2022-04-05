@@ -38,6 +38,10 @@ LibraryManager.library = {
     setTempRet0(val);
   },
 
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
+  },
+
   $zeroMemory: function(address, size) {
 #if LEGACY_VM_SUPPORT
     if (!HEAPU8.fill) {
@@ -1189,19 +1193,6 @@ LibraryManager.library = {
   strptime_l__deps: ['strptime'],
   strptime_l: function(buf, format, tm) {
     return _strptime(buf, format, tm); // no locale support yet
-  },
-
-  // ==========================================================================
-  // sys/timeb.h
-  // ==========================================================================
-
-  ftime: function(p) {
-    var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
-    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
   },
 
   // ==========================================================================
@@ -2568,7 +2559,7 @@ LibraryManager.library = {
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number') return ret;
+    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
@@ -3194,7 +3185,10 @@ LibraryManager.library = {
   $setWasmTableEntry__deps: ['$wasmTableMirror'],
   $setWasmTableEntry: function(idx, func) {
     wasmTable.set(idx, func);
-    wasmTableMirror[idx] = func;
+    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
+    // functions so we need to call it here to retrieve the potential wrapper correctly
+    // instead of just storing 'func' directly into wasmTableMirror
+    wasmTableMirror[idx] = wasmTable.get(idx);
   },
 
   $getWasmTableEntry__internal: true,

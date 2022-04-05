@@ -8,3 +8,5 @@ cwrap
 program has already aborted!
 embind
 program has already aborted!
+wasmTableMirror
+wasmTableMirror done

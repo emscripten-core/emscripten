@@ -29,10 +29,10 @@ class Error(BaseException):
 
 
 def get_codesec_offset(module):
-  for sec in module.sections():
-    if sec.type == webassembly.SecType.CODE:
-      return sec.offset
-  raise Error(f'No code section found in {module.filename}')
+  sec = module.get_section(webassembly.SecType.CODE)
+  if not sec:
+    raise Error(f'No code section found in {module.filename}')
+  return sec.offset
 
 
 def has_debug_line_section(module):

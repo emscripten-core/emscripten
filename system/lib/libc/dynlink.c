@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <threads.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,17 +22,17 @@
 
 //#define DYLINK_DEBUG
 
-extern void* _dlopen_js(struct dso* handle);
-extern void* _dlsym_js(struct dso* handle, const char* symbol);
-extern void _emscripten_dlopen_js(struct dso* handle,
-                                  em_arg_callback_func onsuccess,
-                                  em_arg_callback_func onerror);
+void _dlinit();
+void* _dlopen_js(struct dso* handle);
+void* _dlsym_js(struct dso* handle, const char* symbol);
+void _emscripten_dlopen_js(struct dso* handle,
+                           em_arg_callback_func onsuccess,
+                           em_arg_callback_func onerror);
+void __dl_vseterr(const char*, va_list);
 
 static struct dso * _Atomic head, * _Atomic tail;
 static thread_local struct dso* thread_local_tail;
 static pthread_rwlock_t lock;
-
-void __dl_vseterr(const char*, va_list);
 
 static void error(const char* fmt, ...) {
   va_list ap;
@@ -114,8 +115,7 @@ static void ensure_init() {
     // Flags are not important since the main module is already loaded.
     struct dso* p = load_library_start("__main__", RTLD_NOW|RTLD_GLOBAL);
     assert(p);
-    void* success = _dlopen_js(p);
-    assert(success);
+    _dlinit(p);
     load_library_done(p);
     assert(head);
   }
@@ -217,13 +217,22 @@ int dladdr(const void* addr, Dl_info* info) {
   return 1;
 }
 
+#ifdef _REENTRANT
 void _emscripten_thread_sync_code() {
+  // This function is called from emscripten_yeild which itself is called
+  // whenever we block on a futex.  We need to check to avoid infinite
+  // recursion when taking the lock below.
+  static thread_local bool syncing = false;
+  if (syncing) {
+    return;
+  }
+  syncing = true;
   ensure_init();
   if (thread_local_tail == tail) {
 #ifdef DYLINK_DEBUG
     fprintf(stderr, "%p: emscripten_thread_sync_code: already in sync\n", pthread_self());
 #endif
-    return;
+    goto done;
   }
   pthread_rwlock_rdlock(&lock);
   if (!thread_local_tail) {
@@ -245,4 +254,8 @@ void _emscripten_thread_sync_code() {
 #ifdef DYLINK_DEBUG
   fprintf(stderr, "%p: emscripten_thread_sync_code done\n", pthread_self());
 #endif
+
+done:
+  syncing = false;
 }
+#endif

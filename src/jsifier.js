@@ -325,7 +325,9 @@ function ${name}(${args}) {
         //   foo: '=[value]'
         //  emits
         //   'var foo = [value];'
-        if (typeof snippet == 'string' && snippet[0] == '=') snippet = snippet.substr(1);
+        if (typeof snippet == 'string' && snippet[0] == '=') {
+          snippet = snippet.substr(1);
+        }
         contentText = `var ${finalName} = ${snippet};`;
       }
       const sig = LibraryManager.library[ident + '__sig'];
@@ -383,7 +385,7 @@ function ${name}(${args}) {
       return;
     }
 
-    const shellFile = SHELL_FILE ? SHELL_FILE : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js');
+    const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
 
     const shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));

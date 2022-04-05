@@ -290,7 +290,7 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -563,12 +563,6 @@ function removeRunDependency(id) {
     }
   }
 }
-
-Module["preloadedImages"] = {}; // maps url to image data
-Module["preloadedAudios"] = {}; // maps url to audio data
-#if MAIN_MODULE
-Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-#endif
 
 /** @param {string|number=} what */
 function abort(what) {
@@ -889,7 +883,7 @@ var wasmOffsetConverter;
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
@@ -910,6 +904,13 @@ var splitModuleProxyHandler = {
     }
   }
 };
+#endif
+
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runOnMainThread("removeRunDependency('source-map');") }}}
+}
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
@@ -1122,11 +1123,6 @@ function createWasm() {
 
 #if LOAD_SOURCE_MAP
   {{{ runOnMainThread("addRunDependency('source-map');") }}}
-
-  function receiveSourceMapJSON(sourceMap) {
-    wasmSourceMap = new WasmSourceMap(sourceMap);
-    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
-  }
 #endif
 
   // Prefer streaming instantiation if available.

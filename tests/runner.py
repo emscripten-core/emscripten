@@ -87,6 +87,7 @@ misc_test_modes = [
   'minimal0',
   'wasmfs',
   'wasm64',
+  'wasm64l',
 ]
 
 

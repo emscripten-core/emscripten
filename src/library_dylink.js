@@ -3,6 +3,8 @@
 //
 // ==========================================================================
 
+var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
+
 var LibraryDylink = {
 #if RELOCATABLE
   $resolveGlobalSymbol__internal: true,
@@ -198,16 +200,27 @@ var LibraryDylink = {
   },
 #endif
 
-#if MAIN_MODULE == 0
+#if !MAIN_MODULE
+#if !ALLOW_UNIMPLEMENTED_SYSCALLS
+  _dlopen_js__deps: [function() { error(dlopenMissingError); }],
+  _emscripten_dlopen_js__deps: [function() { error(dlopenMissingError); }],
+  _dlsym_js__deps: [function() { error(dlopenMissingError); }],
+#else
+  $dlopenMissingError: `= ${dlopenMissingError}`,
+  _dlopen_js__deps: ['$dlopenMissingError'],
+  _emscripten_dlopen_js__deps: ['$dlopenMissingError'],
+  _dlsym_js__deps: ['$dlopenMissingError'],
+#endif
   _dlopen_js: function(filename, flag) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
   _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
   _dlsym_js: function(handle, symbol) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+    abort(dlopenMissingError);
   },
+  _dlinit: function() {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
@@ -671,15 +684,6 @@ var LibraryDylink = {
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     err('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
-    if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
-      LDSO.loadedLibsByName[lib] = {
-        refcount: Infinity,   // = nodelete
-        name:     '__main__',
-        module:   Module['asm'],
-        global:   true
-      };
-    }
-
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
     flags = flags || {global: true, nodelete: true}
@@ -747,9 +751,8 @@ var LibraryDylink = {
     // libModule <- lib
     function getLibModule() {
       // lookup preloaded cache first
-      if (Module['preloadedWasm'] !== undefined &&
-          Module['preloadedWasm'][lib] !== undefined) {
-        var libModule = Module['preloadedWasm'][lib];
+      if (typeof preloadedWasm != 'undefined' && preloadedWasm[lib]) {
+        var libModule = preloadedWasm[lib];
         return flags.loadAsync ? Promise.resolve(libModule) : libModule;
       }
 
@@ -970,6 +973,17 @@ var LibraryDylink = {
 #endif
     return result;
   },
+
+  _dlinit: function(main_dso_handle) {
+    var dso = {
+      refcount: Infinity,   // = nodelete
+      name:     '__main__',
+      module:   Module['asm'],
+      global:   true
+    };
+    LDSO.loadedLibsByName[dso.name] = dso;
+    LDSO.loadedLibsByHandle[main_dso_handle] = dso;
+  }
 #endif // MAIN_MODULE != 0
 };
 

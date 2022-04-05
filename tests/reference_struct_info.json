@@ -1015,7 +1015,7 @@
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 48,
-            "clearColor": 16,
+            "clearValue": 16,
             "loadOp": 8,
             "resolveTarget": 4,
             "storeOp": 12,
@@ -1023,11 +1023,11 @@
         },
         "WGPURenderPassDepthStencilAttachment": {
             "__size__": 36,
-            "clearDepth": 12,
-            "clearStencil": 28,
+            "depthClearValue": 12,
             "depthLoadOp": 4,
             "depthReadOnly": 16,
             "depthStoreOp": 8,
+            "stencilClearValue": 28,
             "stencilLoadOp": 20,
             "stencilReadOnly": 32,
             "stencilStoreOp": 24,
@@ -1201,7 +1201,8 @@
             "nextInChain": 0
         },
         "__cxa_exception": {
-            "__size__": 16,
+            "__size__": 20,
+            "adjustedPtr": 16,
             "caught": 12,
             "exceptionDestructor": 8,
             "exceptionType": 4,

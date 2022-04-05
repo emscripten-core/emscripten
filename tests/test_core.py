@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
-from common import read_file, read_binary, require_v8
+from common import read_file, read_binary, require_v8, require_node
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
@@ -150,9 +150,9 @@ def also_with_noderawfs(func):
 
   def metafunc(self, rawfs):
     if rawfs:
+      self.require_node()
       self.emcc_args += ['-DNODERAWFS']
       self.set_setting('NODERAWFS')
-      self.js_engines = [config.NODE_JS]
     func(self)
 
   metafunc._parameterize = {'': (False,),
@@ -853,10 +853,10 @@ class TestCoreBase(RunnerCore):
     self.emcc('b2.c', ['-c'])
     self.emcc('main.c', ['-c'])
 
-    building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
-    building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
+    building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
+    building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
 
-    building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
+    building.link_to_object(['main.o', 'liba.a', 'libb.a'], 'all.o')
 
     self.emcc('all.o', self.get_emcc_args(), 'all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
@@ -1194,9 +1194,9 @@ int main()
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
   def test_exceptions_off(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING')
     for support_longjmp in [0, 1]:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
+      self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
 
   @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):
@@ -2114,6 +2114,7 @@ int main(int argc, char **argv) {
 
   @parameterized({
     '': ([], False),
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
     'c': ([], True),
     'linked': (['-sMAIN_MODULE'], False),
     'linked_c': (['-sMAIN_MODULE'], True),
@@ -2121,9 +2122,11 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE' in args:
       self.check_dylink()
-    self.emcc_args += args
-    if '-sMAIN_MODULE' not in args:
+    else:
       self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
+    self.emcc_args += args
+    if '-sUSE_PTHREADS' in args:
+      self.setup_node_pthreads()
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
@@ -2579,6 +2582,7 @@ The current type of b is: 9
                                  emcc_args=args, interleaved_output=False)
 
   @node_pthreads
+  @no_wasm2js('occasionally hangs in wasm2js (#16569)')
   def test_pthread_proxying_cpp(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -5572,6 +5576,7 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   @is_slow_test
+  @require_node
   def test_fs_nodefs_rw(self):
     # TODO(sbc): This test exposes in issue in the way we run closure compiler and
     # causes it to generate non-ES5 output.
@@ -5584,19 +5589,23 @@ main( int argv, char ** argc ) {
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
+  @require_node
   def test_fs_nodefs_cloexec(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
+  @require_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
@@ -5604,12 +5613,13 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
 
   @no_windows('no symlink support on windows')
+  @require_node
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
     create_file('filename', 'foo')
     os.symlink('filename', 'linkname')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success')
 
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
@@ -5617,7 +5627,6 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_writeFile(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING') # see issue 2334
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_write(self):
@@ -5758,11 +5767,12 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
+  @require_node
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
     self.maybe_closure()
-    self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/truncate.c')
 
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
@@ -5813,26 +5823,29 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_links(self, args, nodefs):
     self.emcc_args += args
 
-    if WINDOWS and nodefs:
-      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
-      # Also, other detected discrepancies if you do end up running this test on NODEFS:
-      # test expects /, but Windows gives \ as path slashes.
-      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    if nodefs:
+      self.require_node()
+      if WINDOWS:
+        self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
+        # Also, other detected discrepancies if you do end up running this test on NODEFS:
+        # test expects /, but Windows gives \ as path slashes.
+        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
 
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('TODO: wasmfs+node')
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
-    self.do_run_in_out_file_test('unistd/links.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/links.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
+  @require_node
   def test_unistd_symlink_on_nodefs(self):
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.emcc_args += ['-lnodefs.js']
-    self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c')
 
   @also_with_wasm_bigint
   def test_unistd_io(self):
@@ -6456,7 +6469,6 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @is_slow_test
   def test_sqlite(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
@@ -6966,29 +6978,6 @@ void* operator new(size_t size) {
     # enable costly assertions to verify correct table behavior
     self.set_setting('ASSERTIONS', 2)
     self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
-
-  def test_getFuncWrapper_sig_alias(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getFuncWrapper'])
-    src = r'''
-    #include <stdio.h>
-    #include <emscripten.h>
-
-    void func1(int a) {
-      printf("func1\n");
-    }
-    void func2(int a, int b) {
-      printf("func2\n");
-    }
-
-    int main() {
-      EM_ASM({
-        getFuncWrapper($0, 'vi')(0);
-        getFuncWrapper($1, 'vii')(0, 0);
-      }, func1, func2);
-      return 0;
-    }
-    '''
-    self.do_run(src, 'func1\nfunc2\n')
 
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
@@ -7815,6 +7804,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$maybeExit'])
     create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
@@ -8871,9 +8861,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
+  @parameterized({
+    '': (True,),
+    'no_yield': (False,)
+  })
   @needs_dylink
   @node_pthreads
-  def test_pthread_dlopen(self):
+  def test_pthread_dlopen(self, do_yield):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -8881,7 +8875,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'))
+    if do_yield:
+      self.emcc_args.append('-DYIELD')
+      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'), 'done join')
+    else:
+      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
+                   'invalid index into function table',
+                   assert_returncode=NON_ZERO)
 
   @needs_dylink
   @node_pthreads
@@ -9043,6 +9043,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # https://github.com/emscripten-core/emscripten/issues/15080
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
@@ -9176,7 +9177,7 @@ corez = make_run('corez', emcc_args=['-Oz'])
 wasm64 = make_run('wasm64', emcc_args=[], settings={'MEMORY64': 1},
                   require_v8=True, v8_args=['--experimental-wasm-memory64'])
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64', emcc_args=[], settings={'MEMORY64': 2},
+wasm64l = make_run('wasm64l', emcc_args=[], settings={'MEMORY64': 2},
                    node_args=['--experimental-wasm-bigint'])
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])

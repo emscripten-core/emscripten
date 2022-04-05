@@ -63,7 +63,7 @@ var ASSERTIONS = 1;
 // This logging isn't quite assertion-quality in that it isn't necessarily a
 // symptom that something is wrong.
 // [link]
-var RUNTIME_LOGGING = 0;
+var RUNTIME_LOGGING = false;
 
 // Chooses what kind of stack smash checks to emit to generated code:
 // Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
@@ -80,13 +80,13 @@ var STACK_OVERFLOW_CHECK = 0;
 
 // When set to 1, will generate more verbose output during compilation.
 // [general]
-var VERBOSE = 0;
+var VERBOSE = false;
 
 // Whether we will run the main() function. Disable if you embed the generated
 // code in your own, and will call main() yourself at the right time (which you
 // can do with Module.callMain(), with an optional parameter of commandline args).
 // [link]
-var INVOKE_RUN = 1;
+var INVOKE_RUN = true;
 
 // If 0, the runtime is not quit when main() completes (allowing code to
 // run afterwards, for example from the browser main event loop). atexit()s
@@ -98,7 +98,7 @@ var INVOKE_RUN = 1;
 //  - For a command (has a main function) this is always 1
 //  - For a reactor (no a main function) this is always 0
 // [link]
-var EXIT_RUNTIME = 0;
+var EXIT_RUNTIME = false;
 
 // How to represent the initial memory content.
 // 0: embed a base64 string literal representing the initial memory data
@@ -106,7 +106,7 @@ var EXIT_RUNTIME = 0;
 
 //    use the --memory-init-file command line switch to select this method
 // [link]
-var MEM_INIT_METHOD = 0;
+var MEM_INIT_METHOD = false;
 
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If
@@ -157,7 +157,7 @@ var MALLOC = "dlmalloc";
 //      it in at link time.
 //
 // [link]
-var ABORTING_MALLOC = 1;
+var ABORTING_MALLOC = true;
 
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
@@ -204,7 +204,7 @@ var MAXIMUM_MEMORY = 2147483648;
 // returning 0 when it fails, and also of being able to allocate more
 // memory from the system as necessary.
 // [link]
-var ALLOW_MEMORY_GROWTH = 0;
+var ALLOW_MEMORY_GROWTH = false;
 
 // If ALLOW_MEMORY_GROWTH is true, this variable specifies the geometric
 // overgrowth rate of the heap at resize. Specify MEMORY_GROWTH_GEOMETRIC_STEP=0
@@ -255,7 +255,7 @@ var INITIAL_TABLE = -1;
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
 // [link]
-var ALLOW_TABLE_GROWTH = 0;
+var ALLOW_TABLE_GROWTH = false;
 
 // Where global data begins; the start of static memory.
 // A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
@@ -265,7 +265,7 @@ var GLOBAL_BASE = 1024;
 
 // Whether closure compiling is being run on this output
 // [link]
-var USE_CLOSURE_COMPILER = 0;
+var USE_CLOSURE_COMPILER = false;
 
 // Specifies how warnings emitted by Closure are treated. Possible
 // options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
@@ -276,7 +276,7 @@ var CLOSURE_WARNINGS = 'quiet';
 
 // Ignore closure warnings and errors (like on duplicate definitions)
 // [link]
-var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
+var IGNORE_CLOSURE_COMPILER_ERRORS = false;
 
 // If set to 1, each wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
@@ -289,18 +289,18 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // also things can break if the scope the code is in is not the global scope
 // (e.g. if you manually enclose them in a function scope).
 // [link]
-var DECLARE_ASM_MODULE_EXPORTS = 1;
+var DECLARE_ASM_MODULE_EXPORTS = true;
 
-// If 0, prevents inlining if set to 1. If 0, we will inline normally in LLVM.
+// If set to 1, prevents inlining. If 0, we will inline normally in LLVM.
 // This does not affect the inlining policy in Binaryen.
 // [compile]
-var INLINING_LIMIT = 0;
+var INLINING_LIMIT = false;
 
 // If set to 1, perform acorn pass that converts each HEAP access into a
 // function call that uses DataView to enforce LE byte order for HEAP buffer;
 // This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 // LE systems are supported). Does not affect generated wasm.
-var SUPPORT_BIG_ENDIAN = 0;
+var SUPPORT_BIG_ENDIAN = false;
 
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
@@ -315,7 +315,7 @@ var SAFE_HEAP = 0;
 
 // Log out all SAFE_HEAP operations
 // [link]
-var SAFE_HEAP_LOG = 0;
+var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
@@ -328,42 +328,42 @@ var SAFE_HEAP_LOG = 0;
 // this is all undefined behavior). This approaches appears good enough to
 // support Python, which is the main use case motivating this feature.
 // [link]
-var EMULATE_FUNCTION_POINTER_CASTS = 0;
+var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
 // [link]
-var EXCEPTION_DEBUG = 0;
+var EXCEPTION_DEBUG = false;
 
 // If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
 // to emit fully proper demangled c++ names
 // [link]
-var DEMANGLE_SUPPORT = 0;
+var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
 // Runtime.debug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
 //   emscripten_run_script("Runtime.debug = ...;");
 // [link]
-var LIBRARY_DEBUG = 0;
+var LIBRARY_DEBUG = false;
 
 // Print out all musl syscalls, including translating their numeric index
 // to the string name, which can be convenient for debugging. (Other system
 // calls are not numbered and already have clear names; use LIBRARY_DEBUG
 // to get logging for all of them.)
 // [link]
-var SYSCALL_DEBUG = 0;
+var SYSCALL_DEBUG = false;
 
 // Log out socket/network data transfer.
 // [link]
-var SOCKET_DEBUG = 0;
+var SOCKET_DEBUG = false;
 
 // Log dynamic linker information
 // [link]
-var DYLINK_DEBUG = 0;
+var DYLINK_DEBUG = false;
 
 // Register file system callbacks using trackingDelegate in library_fs.js
 // [link]
-var FS_DEBUG = 0;
+var FS_DEBUG = false;
 
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
@@ -377,7 +377,7 @@ var FS_DEBUG = 0;
 // Run time configuration may be useful as it lets an application select
 // multiple different services.
 // [link]
-var SOCKET_WEBRTC = 0;
+var SOCKET_WEBRTC = false;
 
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
 // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
@@ -390,7 +390,7 @@ var WEBSOCKET_URL = 'ws://';
 // If 1, the POSIX sockets API uses a native bridge process server to proxy sockets calls
 // from browser to native world.
 // [link]
-var PROXY_POSIX_SOCKETS = 0;
+var PROXY_POSIX_SOCKETS = false;
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
@@ -400,32 +400,32 @@ var WEBSOCKET_SUBPROTOCOL = 'binary';
 
 // Print out debugging information from our OpenAL implementation.
 // [link]
-var OPENAL_DEBUG = 0;
+var OPENAL_DEBUG = false;
 
 // If 1, prints out debugging related to calls from emscripten_web_socket_* functions
 // in emscripten/websocket.h.
 // If 2, additionally traces bytes communicated via the sockets.
 // [link]
-var WEBSOCKET_DEBUG = 0;
+var WEBSOCKET_DEBUG = false;
 
 // Adds extra checks for error situations in the GL library. Can impact
 // performance.
 // [link]
-var GL_ASSERTIONS = 0;
+var GL_ASSERTIONS = false;
 
 // If enabled, prints out all API calls to WebGL contexts. (*very* verbose)
 // [link]
-var TRACE_WEBGL_CALLS = 0;
+var TRACE_WEBGL_CALLS = false;
 
 // Enables more verbose debug printing of WebGL related operations. As with
 // LIBRARY_DEBUG, this is toggleable at runtime with option GL.debug.
 // [link]
-var GL_DEBUG = 0;
+var GL_DEBUG = false;
 
 // When enabled, sets preserveDrawingBuffer in the context, to allow tests to
 // work (but adds overhead)
 // [link]
-var GL_TESTING = 0;
+var GL_TESTING = false;
 
 // How large GL emulation temp buffers are
 // [link]
@@ -433,11 +433,11 @@ var GL_MAX_TEMP_BUFFER_SIZE = 2097152;
 
 // Enables some potentially-unsafe optimizations in GL emulation code
 // [link]
-var GL_UNSAFE_OPTS = 1;
+var GL_UNSAFE_OPTS = true;
 
 // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 // [link]
-var FULL_ES2 = 0;
+var FULL_ES2 = false;
 
 // If true, glGetString() for GL_VERSION and GL_SHADING_LANGUAGE_VERSION will
 // return strings OpenGL ES format "Open GL ES ... (WebGL ...)" rather than the
@@ -447,18 +447,18 @@ var FULL_ES2 = 0;
 // false to make GL contexts appear like WebGL contexts and to save some bytes
 // from the output.
 // [link]
-var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
+var GL_EMULATE_GLES_VERSION_STRING_FORMAT = true;
 
 // If true, all GL extensions are advertised in both unprefixed WebGL extension
 // format, but also in desktop/mobile GLES/GL extension format with "GL_" prefix.
 // [link]
-var GL_EXTENSIONS_IN_PREFIXED_FORMAT = 1;
+var GL_EXTENSIONS_IN_PREFIXED_FORMAT = true;
 
 // If true, adds support for automatically enabling all GL extensions for
 // GLES/GL emulation purposes. This takes up code size. If you set this to 0,
 // you will need to manually enable the extensions you need.
 // [link]
-var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
+var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = true;
 
 // If true, the function emscripten_webgl_enable_extension() can be called to
 // enable any WebGL extension. If false, to save code size,
@@ -472,18 +472,18 @@ var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
 // N.B. if setting this to 0, GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS must be set
 // to zero as well.
 // [link]
-var GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 1;
+var GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = true;
 
 // If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
 // of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
 // saves code size. (Good to keep at 1 for development)
 // [link]
-var GL_TRACK_ERRORS = 1;
+var GL_TRACK_ERRORS = true;
 
 // If true, GL contexts support the explicitSwapControl context creation flag.
 // Set to 0 to save a little bit of space on projects that do not need it.
 // [link]
-var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = 0;
+var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = false;
 
 // If true, calls to glUniform*fv and glUniformMatrix*fv utilize a pool of
 // preallocated temporary buffers for common small sizes to avoid generating
@@ -492,26 +492,26 @@ var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = 0;
 // you are only using WebGL 2 and do not support WebGL 1, this is not needed and
 // you can turn it off.
 // [link]
-var GL_POOL_TEMP_BUFFERS = 1;
+var GL_POOL_TEMP_BUFFERS = true;
 
 // Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
 // the offset of a typed array view pointing to an ArrayBuffer. Set this to
 // 1 to enable a polyfill that works around the issue when it appears. This
 // bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
 // [link]
-var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
+var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = false;
 
 // If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
 // extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
-var GL_EXPLICIT_UNIFORM_LOCATION = 0;
+var GL_EXPLICIT_UNIFORM_LOCATION = false;
 
 // If true, enables support for the EMSCRIPTEN_uniform_layout_binding WebGL
 // extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
-var GL_EXPLICIT_UNIFORM_BINDING = 0;
+var GL_EXPLICIT_UNIFORM_BINDING = false;
 
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
-var USE_WEBGL2 = 0;
+var USE_WEBGL2 = false;
 
 // Specifies the lowest WebGL version to target. Pass -s MIN_WEBGL_VERSION=1
 // to enable targeting WebGL 1, and -s MIN_WEBGL_VERSION=2 to drop support
@@ -537,18 +537,18 @@ var MAX_WEBGL_VERSION = 1;
 // in GLSLES 1.00 shaders, support for unsized internal texture formats, and the
 // GL_HALF_FLOAT_OES != GL_HALF_FLOAT mixup.
 // [link]
-var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
+var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = false;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 // This automatically turns on FULL_ES2 and WebGL2 support.
 // [link]
-var FULL_ES3 = 0;
+var FULL_ES3 = false;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
 // in some cases, see
 // http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
 // [link]
-var LEGACY_GL_EMULATION = 0;
+var LEGACY_GL_EMULATION = false;
 
 // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline
 // in your code, you can also set this to 1 to signal the GL emulation layer
@@ -556,17 +556,17 @@ var LEGACY_GL_EMULATION = 0;
 // not use shaders at all. If LEGACY_GL_EMULATION = 0, this setting has no
 // effect.
 // [link]
-var GL_FFP_ONLY = 0;
+var GL_FFP_ONLY = false;
 
 // If you want to create the WebGL context up front in JS code, set this to 1
 // and set Module['preinitializedWebGLContext'] to a precreated WebGL context.
 // WebGL initialization afterwards will use this GL context to render.
 // [link]
-var GL_PREINITIALIZED_CONTEXT = 0;
+var GL_PREINITIALIZED_CONTEXT = false;
 
 // Enables support for WebGPU (via "webgpu/webgpu.h").
 // [link]
-var USE_WEBGPU = 0;
+var USE_WEBGPU = false;
 
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
@@ -575,44 +575,44 @@ var USE_WEBGPU = 0;
 // used automatically from IMG_Load and IMG_Load_RW. You can also call the
 // stbi_* functions directly yourself.
 // [link]
-var STB_IMAGE = 0;
+var STB_IMAGE = false;
 
 // From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
 // are broken and do not function correctly, when used as source textures.
 // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
 // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 // [link]
-var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
+var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = false;
 
 // Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
 // calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
 // context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
 // https://github.com/emscripten-core/emscripten/issues/13295.
 // Set this to 0 to force-disable the workaround if you know the issue will not affect you.
-var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = 1;
+var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and
 // can also vary between browsers.
 // [link]
-var JS_MATH = 0;
+var JS_MATH = false;
 
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 // [link]
-var POLYFILL_OLD_MATH_FUNCTIONS = 0;
+var POLYFILL_OLD_MATH_FUNCTIONS = false;
 
 // Set this to enable compatibility emulations for old JavaScript engines. This gives you
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
-//  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
-//  * Disable WebAssembly. (Must be paired with -s WASM=0)
+//  * Work around old Chromium WebGL 1 bug (-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
+//  * Disable WebAssembly. (Must be paired with -sWASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 //  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 // You can also configure the above options individually.
 // [link]
-var LEGACY_VM_SUPPORT = 0;
+var LEGACY_VM_SUPPORT = false;
 
 // Specify which runtime environments the JS output will be capable of running
 // in.  For maximum portability this can configured to support all envionements
@@ -653,7 +653,7 @@ var ENVIRONMENT = 'web,webview,worker,node';
 //     preloadPlugin stuff, etc.
 //   * LZ4 files are read-only.
 // [link]
-var LZ4 = 0;
+var LZ4 = false;
 
 // Emscripten exception handling options.
 // The three options below (DISABLE_EXCEPTION_CATCHING,
@@ -699,7 +699,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // TODO(sbc): Move to settings_internal (current blocked due to use in test
 // code).
 // [link]
-var DISABLE_EXCEPTION_THROWING = 0;
+var DISABLE_EXCEPTION_THROWING = false;
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
@@ -710,7 +710,7 @@ var DISABLE_EXCEPTION_THROWING = 0;
 // With this option, we prevent that from showing up as an unhandled
 // exception.
 // [link]
-var NODEJS_CATCH_EXIT = 1;
+var NODEJS_CATCH_EXIT = true;
 
 // Catch unhandled rejections in node. Without this, node may print the error,
 // and that this behavior will change in future node, wait a few seconds, and
@@ -719,13 +719,13 @@ var NODEJS_CATCH_EXIT = 1;
 // make the process exit immediately with a non-0 return code.
 // This should be fixed in Node 15+.
 // [link]
-var NODEJS_CATCH_REJECTION = 1;
+var NODEJS_CATCH_REJECTION = true;
 
 // Whether to transform the code using asyncify. This makes it possible to
 // call JS functions from synchronous-looking code in C/C++.
 // See https://emscripten.org/docs/porting/asyncify.html
 // [link]
-var ASYNCIFY = 0;
+var ASYNCIFY = false;
 
 // Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
@@ -741,7 +741,7 @@ var ASYNCIFY_IMPORTS = [];
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
 // [link]
-var ASYNCIFY_IGNORE_INDIRECT = 0;
+var ASYNCIFY_IGNORE_INDIRECT = false;
 
 // The size of the asyncify stack - the region used to store unwind/rewind
 // info. This must be large enough to store the call stack and locals. If it is too
@@ -810,16 +810,16 @@ var ASYNCIFY_ONLY = [];
 
 // If enabled will output which functions have been instrumented and why.
 // [link]
-var ASYNCIFY_ADVISE = 0;
+var ASYNCIFY_ADVISE = false;
 
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
 // [link]
-var ASYNCIFY_LAZY_LOAD_CODE = 0;
+var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
 // [link]
-var ASYNCIFY_DEBUG = 0;
+var ASYNCIFY_DEBUG = false;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
@@ -878,7 +878,7 @@ var INCOMING_MODULE_JS_API = [
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
 // [link]
-var CASE_INSENSITIVE_FS = 0;
+var CASE_INSENSITIVE_FS = false;
 
 // If set to 0, does not build in any filesystem support. Useful if you are just
 // doing pure computation, but not reading files or using any streams (including
@@ -888,13 +888,13 @@ var CASE_INSENSITIVE_FS = 0;
 // does not require a full filesystem. If you still want filesystem support, use
 // FORCE_FILESYSTEM
 // [link]
-var FILESYSTEM = 1;
+var FILESYSTEM = true;
 
 // Makes full filesystem support be included, even if statically it looks like
 // it is not used. For example, if your C code uses no files, but you include
 // some JS that does, you might need this.
 // [link]
-var FORCE_FILESYSTEM = 0;
+var FORCE_FILESYSTEM = false;
 
 // Enables support for the NODERAWFS filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
@@ -907,7 +907,7 @@ var FORCE_FILESYSTEM = 0;
 // handles permissions and errors and so forth may be noticeable.  This has
 // mostly been tested on Linux so far.
 // [link]
-var NODERAWFS = 0;
+var NODERAWFS = false;
 
 // This saves the compiled wasm module in a file with name
 //   $WASM_BINARY_NAME.$V8_VERSION.cached
@@ -924,7 +924,7 @@ var NODERAWFS = 0;
 //    as mentioned earlier. If that is in a read-only directory, you may need
 //    to place them elsewhere. You can use the locateFile() hook to do so.
 // [link]
-var NODE_CODE_CACHING = 0;
+var NODE_CODE_CACHING = false;
 
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the
@@ -944,13 +944,13 @@ var EXPORTED_FUNCTIONS = [];
 // for all X that end up in the JS file. This is useful to export the JS
 // library functions on Module, for things like dynamic linking.
 // [link]
-var EXPORT_ALL = 0;
+var EXPORT_ALL = false;
 
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
 // [link]
-var RETAIN_COMPILER_SETTINGS = 0;
+var RETAIN_COMPILER_SETTINGS = false;
 
 // JS library elements (C functions implemented in JS) that we include by
 // default. If you want to make sure something is included by the JS compiler,
@@ -972,17 +972,13 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 // you will need to use those in the main file too to pull in malloc for use by
 // the module.
 // [link]
-var INCLUDE_FULL_LIBRARY = 0;
-
-// Set this to a string to override the shell file used
-// [link]
-var SHELL_FILE = 0;
+var INCLUDE_FULL_LIBRARY = false;
 
 // If set to 1, we emit relocatable code from the LLVM backend; both
 // globals and function pointers are all offset (by gb and fp, respectively)
 // Automatically set for SIDE_MODULE or MAIN_MODULE.
 // [compile+link]
-var RELOCATABLE = 0;
+var RELOCATABLE = false;
 
 // A main module is a file compiled in a way that allows us to link it to
 // a side module at runtime.
@@ -1004,12 +1000,12 @@ var RUNTIME_LINKED_LIBS = [];
 // If set to 1, this is a worker library, a special kind of library that is run
 // in a worker. See emscripten.h
 // [link]
-var BUILD_AS_WORKER = 0;
+var BUILD_AS_WORKER = false;
 
 // If set to 1, we build the project into a js file that will run in a worker,
 // and generate an html file that proxies input and output to/from it.
 // [link]
-var PROXY_TO_WORKER = 0;
+var PROXY_TO_WORKER = false;
 
 // If set, the script file name the main thread loads.  Useful if your project
 // doesn't run the main emscripten- generated script immediately but does some
@@ -1033,7 +1029,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 // main thread does the only pthread_create call that happens on
 // that thread, so it's the only chance to transfer the canvas from there.
 // [link]
-var PROXY_TO_PTHREAD = 0;
+var PROXY_TO_PTHREAD = false;
 
 // If set to 1, this file can be linked with others, either as a shared library
 // or as the main file that calls a shared library. To enable that, we will not
@@ -1046,7 +1042,7 @@ var PROXY_TO_PTHREAD = 0;
 // *not* set this, so that we still do normal DCE on them, and in that case
 // you must keep relevant things alive yourself using exporting.
 // [link]
-var LINKABLE = 0;
+var LINKABLE = false;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
@@ -1062,25 +1058,25 @@ var LINKABLE = 0;
 //   * DEFAULT_TO_CXX is disabled.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
-var STRICT = 0;
+var STRICT = false;
 
 // Allow program to link with or without `main` symbol.
 // If this is disabled then one must provide a `main` symbol or explicitly
 // opt out by passing `--no-entry` or an EXPORTED_FUNCTIONS list that doesn't
 // include `_main`.
 // [link]
-var IGNORE_MISSING_MAIN = 1;
+var IGNORE_MISSING_MAIN = true;
 
 // Automatically attempt to add archive indexes at link time to archives that
 // don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
 // [link]
-var AUTO_ARCHIVE_INDEXES = 1;
+var AUTO_ARCHIVE_INDEXES = true;
 
 // Add "use strict;" to generated JS
 // [link]
-var STRICT_JS = 0;
+var STRICT_JS = false;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
 // the library_*.js files. Note that it is common in large projects to not
@@ -1091,7 +1087,7 @@ var STRICT_JS = 0;
 // also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
 // EXPORTED_FUNCTIONS will also be reported.
 // [link]
-var WARN_ON_UNDEFINED_SYMBOLS = 1;
+var WARN_ON_UNDEFINED_SYMBOLS = true;
 
 // If set to 1, we will give a link-time error on any undefined symbols (see
 // WARN_ON_UNDEFINED_SYMBOLS). To allow undefined symbols at link time set this
@@ -1099,12 +1095,12 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 // be reported.
 // [link]
-var ERROR_ON_UNDEFINED_SYMBOLS = 1;
+var ERROR_ON_UNDEFINED_SYMBOLS = true;
 
 // Use small chunk size for binary synchronous XHR's in Web Workers.  Used for
 // testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
 // [link]
-var SMALL_XHR_CHUNKS = 0;
+var SMALL_XHR_CHUNKS = false;
 
 // If 1, will include shim code that tries to 'fake' a browser environment, in
 // order to let you run a browser program (say, using SDL) in the shell.
@@ -1113,7 +1109,7 @@ var SMALL_XHR_CHUNKS = 0;
 // very partial - it is hard to fake a whole browser! - so keep your
 // expectations low for this to work.
 // [link]
-var HEADLESS = 0;
+var HEADLESS = false;
 
 // If 1, we force Date.now(), Math.random, etc. to return deterministic results.
 // This also tries to make execution deterministic across machines and
@@ -1122,7 +1118,7 @@ var HEADLESS = 0;
 // in different browsers, or in the browser and in node).
 // Good for comparing builds for debugging purposes (and nothing else).
 // [link]
-var DETERMINISTIC = 0;
+var DETERMINISTIC = false;
 
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
@@ -1186,23 +1182,23 @@ var DETERMINISTIC = 0;
 // intended usage is to add code that is optimized with the rest of the emitted
 // code, allowing better dead code elimination and minification.
 // [link]
-var MODULARIZE = 0;
+var MODULARIZE = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 // [link]
-var EXPORT_ES6 = 0;
+var EXPORT_ES6 = false;
 
 // Use the ES6 Module relative import feature 'import.meta.url'
 // to auto-detect WASM Module path.
 // It might not be supported on old browsers / toolchains
 // [link]
-var USE_ES6_IMPORT_META = 1;
+var USE_ES6_IMPORT_META = true;
 
 // If 1, will just time how long main() takes to execute, and not print out
 // anything at all whatsoever. This is useful for benchmarking.
 // [link]
-var BENCHMARK = 0;
+var BENCHMARK = false;
 
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
@@ -1238,11 +1234,11 @@ var DYNAMIC_EXECUTION = 1;
 
 // whether we are in the generate struct_info bootstrap phase
 // [link]
-var BOOTSTRAPPING_STRUCT_INFO = 0;
+var BOOTSTRAPPING_STRUCT_INFO = false;
 
 // Add some calls to emscripten tracing APIs
 // [compile+link]
-var EMSCRIPTEN_TRACING = 0;
+var EMSCRIPTEN_TRACING = false;
 
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
@@ -1253,7 +1249,7 @@ var USE_GLFW = 2;
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
 // instead of wasm.
 //
-// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time.
 // In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
 // the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 // .wasm.js fallback will be used.
@@ -1298,7 +1294,7 @@ var WASM = 1;
 // Standlone builds require a `main` entry point by default.  If you want to
 // build a library (also known as a reactor) instead you can pass `--no-entry`.
 // [link]
-var STANDALONE_WASM = 0;
+var STANDALONE_WASM = false;
 
 // Whether to ignore implicit traps when optimizing in binaryen.  Implicit
 // traps are the traps that happen in a load that is out of bounds, or
@@ -1310,7 +1306,7 @@ var STANDALONE_WASM = 0;
 // not useful on large and complex projects, but in a small and simple enough
 // codebase it may help reduce code size a little bit.
 // [link]
-var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
+var BINARYEN_IGNORE_IMPLICIT_TRAPS = false;
 
 // A comma-separated list of extra passes to run in the binaryen optimizer,
 // Setting this does not override/replace the default passes. It is appended at
@@ -1324,18 +1320,18 @@ var BINARYEN_EXTRA_PASSES = "";
 //
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 // [link]
-var WASM_ASYNC_COMPILATION = 1;
+var WASM_ASYNC_COMPILATION = true;
 
 // If set to 1, the dynCall() and dynCall_sig() API is made available
 // to caller.
 // [link]
-var DYNCALLS = 0;
+var DYNCALLS = false;
 
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need
 // to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
 // an i64 is used.
 // [link]
-var WASM_BIGINT = 0;
+var WASM_BIGINT = false;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in, and LLVM emits this by default.
@@ -1345,18 +1341,18 @@ var WASM_BIGINT = 0;
 // reasons, see
 // https://github.com/WebAssembly/tool-conventions/issues/93.
 // [link]
-var EMIT_PRODUCERS_SECTION = 0;
+var EMIT_PRODUCERS_SECTION = false;
 
 // Emits emscripten license info in the JS output.
 // [link]
-var EMIT_EMSCRIPTEN_LICENSE = 0;
+var EMIT_EMSCRIPTEN_LICENSE = false;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 // this to 0 may be desirable.
 // [link]
-var LEGALIZE_JS_FFI = 1;
+var LEGALIZE_JS_FFI = true;
 
 // Ports
 
@@ -1386,55 +1382,55 @@ var USE_SDL_NET = 1;
 
 // 1 = use icu from emscripten-ports
 // [link]
-var USE_ICU = 0;
+var USE_ICU = false;
 
 // 1 = use zlib from emscripten-ports
 // [link]
-var USE_ZLIB = 0;
+var USE_ZLIB = false;
 
 // 1 = use bzip2 from emscripten-ports
 // [link]
-var USE_BZIP2 = 0;
+var USE_BZIP2 = false;
 
 // 1 = use giflib from emscripten-ports
 // [link]
-var USE_GIFLIB = 0;
+var USE_GIFLIB = false;
 
 // 1 = use libjpeg from emscripten-ports
 // [link]
-var USE_LIBJPEG = 0;
+var USE_LIBJPEG = false;
 
 // 1 = use libpng from emscripten-ports
 // [link]
-var USE_LIBPNG = 0;
+var USE_LIBPNG = false;
 
 // 1 = use Regal from emscripten-ports
 // [link]
-var USE_REGAL = 0;
+var USE_REGAL = false;
 
 // 1 = use Boost headers from emscripten-ports
 // [link]
-var USE_BOOST_HEADERS = 0;
+var USE_BOOST_HEADERS = false;
 
 // 1 = use bullet from emscripten-ports
 // [link]
-var USE_BULLET = 0;
+var USE_BULLET = false;
 
 // 1 = use vorbis from emscripten-ports
 // [link]
-var USE_VORBIS = 0;
+var USE_VORBIS = false;
 
 // 1 = use ogg from emscripten-ports
 // [link]
-var USE_OGG = 0;
+var USE_OGG = false;
 
 // 1 = use mpg123 from emscripten-ports
 // [link]
-var USE_MPG123 = 0;
+var USE_MPG123 = false;
 
 // 1 = use freetype from emscripten-ports
 // [link]
-var USE_FREETYPE = 0;
+var USE_FREETYPE = false;
 
 // Specify the SDL_mixer version that is being linked against.
 // Doesn't *have* to match USE_SDL, but a good idea.
@@ -1443,36 +1439,36 @@ var USE_SDL_MIXER = 1;
 
 // 1 = use harfbuzz from harfbuzz upstream
 // [link]
-var USE_HARFBUZZ = 0;
+var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
 // [link]
-var USE_COCOS2D = 0;
+var USE_COCOS2D = false;
 
 // 1 = use libmodplug from emscripten-ports
 // [link]
-var USE_MODPLUG = 0;
+var USE_MODPLUG = false;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 // [link]
 var SDL2_IMAGE_FORMATS = [];
 
-// Formats to support in SDL2_mixer. Valid values: ogg, mp3
+// Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
-var IN_TEST_HARNESS = 0;
+var IN_TEST_HARNESS = false;
 
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
-var SHARED_MEMORY = 0;
+var SHARED_MEMORY = false;
 
 // If true, enables support for pthreads. This implies SHARED_MEMORY.
 // This setting is equivalent to `-pthread`, which should be preferred.
 // [compile+link] - affects user code at compile and system libraries at link.
-var USE_PTHREADS = 0;
+var USE_PTHREADS = false;
 
 // If true, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
@@ -1500,7 +1496,7 @@ var WASM_WORKERS = 0;
 // browser reports, and is how you can get exactly enough workers for a
 // threadpool equal to the number of cores).
 // [link] - affects generated JS runtime code at link time
-var PTHREAD_POOL_SIZE = '';
+var PTHREAD_POOL_SIZE = 0;
 
 // Normally, applications can create new threads even when the pool is empty.
 // When application breaks out to the JS event loop before trying to block on
@@ -1531,7 +1527,7 @@ var PTHREAD_POOL_SIZE_STRICT = 1;
 // main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
 // then the runtime will wait for the pool to start up before running main().
 // [link] - affects generated JS runtime code at link time
-var PTHREAD_POOL_DELAY_LOAD = 0;
+var PTHREAD_POOL_DELAY_LOAD = false;
 
 // If not explicitly specified, this is the stack size to use for newly created
 // pthreads.  According to
@@ -1548,7 +1544,7 @@ var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 
 // True when building with --threadprofiler
 // [link]
-var PTHREADS_PROFILING = 0;
+var PTHREADS_PROFILING = false;
 
 // It is dangerous to call pthread_join or pthread_cond_wait
 // on the main thread, as doing so can cause deadlocks on the Web (and also
@@ -1557,11 +1553,11 @@ var PTHREADS_PROFILING = 0;
 // This may become set to 0 by default in the future; for now, this just
 // warns in the console.
 // [link]
-var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
+var ALLOW_BLOCKING_ON_MAIN_THREAD = true;
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 // [link]
-var PTHREADS_DEBUG = 0;
+var PTHREADS_DEBUG = false;
 
 // This tries to evaluate code at compile time. The main use case is to eval
 // global ctor functions, which are those that run before main(), but main()
@@ -1611,13 +1607,13 @@ var TEXTDECODER = 1;
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
 // Disable this to support binary data transfer.
 // [link]
-var EMBIND_STD_STRING_IS_UTF8 = 1;
+var EMBIND_STD_STRING_IS_UTF8 = true;
 
 // If set to 1, enables support for transferring canvases to pthreads and
 // creating WebGL contexts in them, as well as explicit swap control for GL
 // contexts. This needs browser support for the OffscreenCanvas specification.
 // [link]
-var OFFSCREENCANVAS_SUPPORT = 0;
+var OFFSCREENCANVAS_SUPPORT = false;
 
 // If you are using PROXY_TO_PTHREAD with OFFSCREENCANVAS_SUPPORT, then specify
 // here a comma separated list of CSS ID selectors to canvases to proxy over
@@ -1641,27 +1637,27 @@ var OFFSCREENCANVASES_TO_PTHREAD = "#canvas";
 // time, and allows one to utilize OffscreenCanvas where available, and to fall
 // back to Offscreen Framebuffer otherwise.
 // [link]
-var OFFSCREEN_FRAMEBUFFER = 0;
+var OFFSCREEN_FRAMEBUFFER = false;
 
 // If nonzero, Fetch API supports backing to IndexedDB. If 0, IndexedDB is not
 // utilized. Set to 0 if IndexedDB support is not interesting for target
 // application, to save a few kBytes.
 // [link]
-var FETCH_SUPPORT_INDEXEDDB = 1;
+var FETCH_SUPPORT_INDEXEDDB = true;
 
 // If nonzero, prints out debugging information in library_fetch.js
 // [link]
-var FETCH_DEBUG = 0;
+var FETCH_DEBUG = false;
 
 // If nonzero, enables emscripten_fetch API.
 // [link]
-var FETCH = 0;
+var FETCH = false;
 
 // ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.
 // [link]
-var WASMFS = 0;
+var WASMFS = false;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
@@ -1674,20 +1670,20 @@ var WASMFS = 0;
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
 // [link]
-var SINGLE_FILE = 0;
+var SINGLE_FILE = false;
 
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
 // need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 // [link]
-var AUTO_JS_LIBRARIES = 1;
+var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
 // and libhtml5.   If this is disabled it is necessary to explcitly add
 // e.g. -lhtml5 and also to first build the library using `embuilder`.
 // [link]
-var AUTO_NATIVE_LIBRARIES = 1;
+var AUTO_NATIVE_LIBRARIES = true;
 
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox
 // versions >= MIN_FIREFOX_VERSION
@@ -1734,7 +1730,7 @@ var MIN_CHROME_VERSION = 75;
 // for effective code size optimizations to take place.
 // In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
-var SUPPORT_ERRNO = 1;
+var SUPPORT_ERRNO = true;
 
 // If true, uses minimal sized runtime without POSIX features, Module,
 // preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
@@ -1763,7 +1759,7 @@ var MINIMAL_RUNTIME = 0;
 // since it requires server side configuration and for really small pages there
 // is no observable difference (also has a ~100 byte impact to code size)
 // [link]
-var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
+var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 
 // If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly instantiation,
 // where WebAssembly module is compiled+instantiated already while it is being
@@ -1775,14 +1771,14 @@ var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
 // the size of the JS runtime file, and the size of the preloaded data file
 // to download, and the browser in question.
 // [link]
-var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
+var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 
 // If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
 // enable this. If you are not using dynamic allocations, can set this to 0 to
 // save code size. This setting is ignored when building with -s
 // MINIMAL_RUNTIME=0.
 // [link]
-var USES_DYNAMIC_ALLOC = 1;
+var USES_DYNAMIC_ALLOC = true;
 
 // If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
 // If set to 0, these APIs are not available.  If you are using C++ exceptions,
@@ -1797,14 +1793,14 @@ var USES_DYNAMIC_ALLOC = 1;
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
-var SUPPORT_LONGJMP = 1;
+var SUPPORT_LONGJMP = true;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
 // When enabled, there is no "Module.canvas" object, no magic "null" default
 // handling, and DOM element 'target' parameters are taken to refer to CSS
 // selectors, instead of referring to DOM IDs.
 // [link]
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = true;
 
 // Certain browser DOM API operations, such as requesting fullscreen mode
 // transition or pointer lock require that the request originates from within
@@ -1816,7 +1812,7 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 // to disable support for deferring to save code space if your application does
 // not need support for deferred calls.
 // [link]
-var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = 1;
+var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 
 // Specifies whether the generated .html file is run through html-minifier. The
 // set of optimization passes run by html-minifier depends on debug and
@@ -1825,7 +1821,7 @@ var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = 1;
 // least -O1 or -Os to be used. Pass -s MINIFY_HTML=0 to explicitly choose to
 // disable HTML minification altogether.
 // [link]
-var MINIFY_HTML = 1;
+var MINIFY_HTML = true;
 
 // Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
 // you run wasm2js *later* on the wasm, and you can pick between running the
@@ -1833,7 +1829,7 @@ var MINIFY_HTML = 1;
 // test_maybe_wasm2js test.  This option can be useful for debugging and
 // bisecting.
 // [link]
-var MAYBE_WASM2JS = 0;
+var MAYBE_WASM2JS = false;
 
 // This option is no longer used. The appropriate shadow memory size is now
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
@@ -1846,27 +1842,27 @@ var ASAN_SHADOW_SIZE = -1
 // binary in stack traces, as well as for avoiding using source map entries
 // across function boundaries.
 // [link]
-var USE_OFFSET_CONVERTER = 0;
+var USE_OFFSET_CONVERTER = false;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
 // report undefined symbols within the binary.  Without this option the linker
 // doesn't know which symbols might be defined in JS so reporting of undefined
 // symbols is delayed until the JS compiler is run.
 // [link]
-var LLD_REPORT_UNDEFINED = 0;
+var LLD_REPORT_UNDEFINED = false;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
 // When this is disabled `em++` is required when compiling and linking C++
 // programs. This which matches the behaviour of gcc/g++ and clang/clang++.
 // [compile+link]
-var DEFAULT_TO_CXX = 1;
+var DEFAULT_TO_CXX = true;
 
 // While LLVM's wasm32 has long double = float128, we don't support printing
 // that at full precision by default. Instead we print as 64-bit doubles, which
 // saves libc code size. You can flip this option on to get a libc with full
 // long double printing precision.
 // [link]
-var PRINTF_LONG_DOUBLE = 0;
+var PRINTF_LONG_DOUBLE = false;
 
 // Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
 // resulting in a .c file that you can compile with a C compiler to get a
@@ -1875,7 +1871,7 @@ var PRINTF_LONG_DOUBLE = 0;
 // if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
 // which avoids trampling a C file).
 // [link]
-var WASM2C = 0;
+var WASM2C = false;
 
 // Experimental sandboxing mode, see
 // https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
@@ -1901,7 +1897,7 @@ var SEPARATE_DWARF_URL = '';
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
 // [link]
-var ERROR_ON_WASM_CHANGES_AFTER_LINK = 0;
+var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Whether the program should abort when an unhandled WASM exception is encountered.
 // This makes the Emscripten program behave more like a native program where the OS
@@ -1916,7 +1912,7 @@ var ERROR_ON_WASM_CHANGES_AFTER_LINK = 0;
 // Enable this if you want Emscripten to handle unhandled exceptions nicely at the
 // cost of a few bytes extra.
 // [link]
-var ABORT_ON_WASM_EXCEPTIONS = 0;
+var ABORT_ON_WASM_EXCEPTIONS = false;
 
 // Build binaries that use as many WASI APIs as possible, and include additional
 // JS support libraries for those APIs.  This allows emscripten to produce binaries
@@ -1925,7 +1921,7 @@ var ABORT_ON_WASM_EXCEPTIONS = 0;
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.
 // [link]
-var PURE_WASI = 0;
+var PURE_WASI = false;
 
 // Set to 1 to define the WebAssembly.Memory object outside of the wasm
 // module.  By default the wasm module defines the memory and exports
@@ -1937,7 +1933,7 @@ var PURE_WASI = 0;
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
 // [link]
-var IMPORTED_MEMORY = 0;
+var IMPORTED_MEMORY = false;
 
 // Generate code to loading split wasm modules.
 // This option will automatically generate two wasm files as output, one
@@ -1947,7 +1943,7 @@ var IMPORTED_MEMORY = 0;
 // As well as this the generated JS code will contains help functions
 // to loading split modules.
 // [link]
-var SPLIT_MODULE = 0;
+var SPLIT_MODULE = false;
 
 // How to calculate reverse dependencies (dependencies from JS functions to
 // native functions) prior to linking native code with wasm-ld.  This option
@@ -1967,18 +1963,18 @@ var REVERSE_DEPS = 'auto';
 
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
 // on startup, before loading the main module.
-var AUTOLOAD_DYLIBS = 1;
+var AUTOLOAD_DYLIBS = true;
 
 // Include unimplemented JS syscalls to be included in the final output.  This
 // allows programs that depend on these syscalls at runtime to be compiled, even
 // though these syscalls will fail (or do nothing) at runtime.
-var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
+var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
 // Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
 // the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
 // [link]
-var TRUSTED_TYPES = 0;
+var TRUSTED_TYPES = false;
 
 // When targeting older browsers emscripten will sometimes require that
 // polyfills be included in the output.  If you would prefer to take care of
@@ -1986,7 +1982,7 @@ var TRUSTED_TYPES = 0;
 // from generating these by passing `-sNO_POLYFILL` or `-sPOLYFILL=0`
 // With default browser targets emscripten does not need any polyfills so this
 // settings is *only* needed when also explicitly targeting older browsers.
-var POLYFILL = 1;
+var POLYFILL = true;
 
 //===========================================
 // Internal, used for testing only, from here
@@ -1994,11 +1990,11 @@ var POLYFILL = 1;
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 // [link]
-var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
+var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
 
 // Internal (testing only): Forces memory growing to fail.
 // [link]
-var TEST_MEMORY_GROWTH_FAILS = 0;
+var TEST_MEMORY_GROWTH_FAILS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
@@ -2025,7 +2021,7 @@ var LEGACY_SETTINGS = [
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to JavaScript (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM=1 - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
@@ -2062,11 +2058,12 @@ var LEGACY_SETTINGS = [
   ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
   ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
   ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
-  ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
+  ['BINARYEN_SCRIPTS', [''], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
+  ['SHELL_FILE', [''], 'No longer supported'],
 ];

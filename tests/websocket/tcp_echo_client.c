@@ -1,4 +1,5 @@
 // TCP client that sends a few messages to a server and prints out the replies
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,16 +12,12 @@
 #include <emscripten.h>
 #include <emscripten/websocket.h>
 #include <emscripten/threading.h>
- 
-EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
+#include <emscripten/posix_socket.h>
 
-extern "C" {
-EMSCRIPTEN_WEBSOCKET_T emscripten_init_websocket_to_posix_socket_bridge(const char *bridgeUrl);
-}
+static EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 #endif
 
-int lookup_host(const char *host)
-{
+int lookup_host(const char *host) {
   struct addrinfo hints, *res;
   int errcode;
   char addrstr[100];
@@ -32,19 +29,16 @@ int lookup_host(const char *host)
   hints.ai_flags |= AI_CANONNAME;
 
   errcode = getaddrinfo(host, NULL, &hints, &res);
-  if (errcode != 0)
-  {
+  if (errcode != 0) {
     printf("getaddrinfo failed!\n");
     return -1;
   }
 
   printf("Host: %s\n", host);
-  while (res)
-  {
+  while (res) {
     inet_ntop(res->ai_family, res->ai_addr->sa_data, addrstr, 100);
 
-    switch (res->ai_family)
-    {
+    switch (res->ai_family) {
     case AF_INET:
       ptr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
       break;
@@ -60,8 +54,7 @@ int lookup_host(const char *host)
   return 0;
 }
 
-int main(int argc , char *argv[])
-{
+int main(int argc , char *argv[]) {
 #ifdef __EMSCRIPTEN__
   bridgeSocket = emscripten_init_websocket_to_posix_socket_bridge("ws://localhost:8080");
   // Synchronously wait until connection has been established.
@@ -69,15 +62,14 @@ int main(int argc , char *argv[])
   do {
     emscripten_websocket_get_ready_state(bridgeSocket, &readyState);
     emscripten_thread_sleep(100);
-  } while(readyState == 0);
+  } while (readyState == 0);
 #endif
 
   lookup_host("google.com");
 
   // Create socket
   int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock == -1)
-  {
+  if (sock == -1) {
     printf("Could not create socket");
     return 1;
   }
@@ -88,31 +80,30 @@ int main(int argc , char *argv[])
   server.sin_family = AF_INET;
   server.sin_port = htons(7777);
 
-  if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
-  {
+  if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
     perror("connect failed. Error");
     return 1;
   }
 
   puts("Connected\n");
-  for(int i = 0; i < 10; ++i)
-  {
-    const char message[] = "hell";
-    if (send(sock, message, strlen(message), 0) < 0)
-    {
+  for (int i = 0; i < 10; ++i) {
+    const char message[] = "hello world";
+    if (send(sock, message, strlen(message), 0) < 0) {
       puts("Send failed");
       return 1;
     }
 
     char server_reply[256];
-    if (recv(sock, server_reply, 256, 0) < 0)
-    {
+    if (recv(sock, server_reply, 256, 0) < 0) {
       puts("recv failed");
       break;
     }
-     
+
     puts("Server reply: ");
     puts(server_reply);
+    // For the purposes of the test assert that the server
+    // echos back what we send it.
+    assert(strcmp(server_reply, message) == 0);
   }
 
   close(sock);

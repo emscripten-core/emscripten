@@ -98,7 +98,8 @@ def get(ports, settings, shared):
                        '-I' + dest_path + '/psaux',
                        '-I' + dest_path + '/psnames',
                        '-I' + dest_path + '/truetype',
-                       '-w'])
+                       '-w',
+                       '-pthread'])
       o_s.append(o)
 
     ports.run_commands(commands)
