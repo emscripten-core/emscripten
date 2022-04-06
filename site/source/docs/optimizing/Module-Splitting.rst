@@ -32,12 +32,12 @@ module and will split all other functions out into the secondary module.
 
 Emscripten has a prototype integration with wasm-split enabled by the
 ``-sSPLIT_MODULE`` option. This option will emit the original module with the
-wasm-split instrument applied so it is ready to collect profiles. It will also
-insert the placeholder functions responsible for loading a secondary module into
-the emitted JS. The developer is then responsible for running appropriate
+wasm-split instrumentation applied so it is ready to collect profiles. It will
+also insert the placeholder functions responsible for loading a secondary module
+into the emitted JS. The developer is then responsible for running appropriate
 workloads, collecting the profiles, and using the wasm-split tool to perform the
 splitting. After the module is split, everything will work correctly with no
-further changes to the JS.
+further changes to the JS produced by the initial compilation.
 
 Basic Example
 -------------
@@ -81,7 +81,6 @@ Here’s our application code::
       unsupported(i);
     }
   }
-
 
 This application prompts the user for some input and executes different
 functions depending on what the user provides. It uses the prompt-sync npm
