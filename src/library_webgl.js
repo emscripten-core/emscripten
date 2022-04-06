@@ -1781,7 +1781,7 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      if (data) {
+      if (data && size > 0) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
         GLctx.bufferData(target, size, usage);
@@ -1799,7 +1799,7 @@ var LibraryGL = {
   glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && size > 0) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
