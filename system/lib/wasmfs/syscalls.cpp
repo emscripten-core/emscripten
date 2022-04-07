@@ -1183,6 +1183,43 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
+int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+  assert(mode == 0); // TODO, but other modes were never supported in the old FS
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return -ENODEV;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EBADF;
+  }
+
+  if (off < 0 || len <= 0) {
+    return -EINVAL;
+  }
+
+  // TODO: We silently do nothing if the stream does not support allocation, but
+  //       in principle we should return EOPNOTSUPP.
+  // TODO: We could only fill zeros for regions that were completely unused
+  //       before, which for a backend with sparse data storage could make a
+  //       difference. For that we'd need a new backend API.
+  auto newNeededSize = off + len;
+  if (newNeededSize > locked.getSize()) {
+    locked.setSize(newNeededSize);
+  }
+
+  return 0;
+}
+
 // Stubs (at least for now)
 
 int __syscall_accept4(int sockfd,
