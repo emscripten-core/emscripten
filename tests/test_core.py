@@ -5633,7 +5633,6 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_writeFile(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING') # see issue 2334
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_write(self):
@@ -6476,7 +6475,6 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @is_slow_test
   def test_sqlite(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
@@ -6986,29 +6984,6 @@ void* operator new(size_t size) {
     # enable costly assertions to verify correct table behavior
     self.set_setting('ASSERTIONS', 2)
     self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
-
-  def test_getFuncWrapper_sig_alias(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getFuncWrapper'])
-    src = r'''
-    #include <stdio.h>
-    #include <emscripten.h>
-
-    void func1(int a) {
-      printf("func1\n");
-    }
-    void func2(int a, int b) {
-      printf("func2\n");
-    }
-
-    int main() {
-      EM_ASM({
-        getFuncWrapper($0, 'vi')(0);
-        getFuncWrapper($1, 'vii')(0, 0);
-      }, func1, func2);
-      return 0;
-    }
-    '''
-    self.do_run(src, 'func1\nfunc2\n')
 
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
@@ -8892,9 +8867,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
+  @parameterized({
+    '': (True,),
+    'no_yield': (False,)
+  })
   @needs_dylink
   @node_pthreads
-  def test_pthread_dlopen(self):
+  def test_pthread_dlopen(self, do_yield):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -8902,7 +8881,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'))
+    if do_yield:
+      self.emcc_args.append('-DYIELD')
+      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'), 'done join')
+    else:
+      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
+                   'invalid index into function table',
+                   assert_returncode=NON_ZERO)
 
   @needs_dylink
   @node_pthreads
@@ -9064,6 +9049,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # https://github.com/emscripten-core/emscripten/issues/15080
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)

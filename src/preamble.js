@@ -906,6 +906,13 @@ var splitModuleProxyHandler = {
 };
 #endif
 
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runOnMainThread("removeRunDependency('source-map');") }}}
+}
+#endif
+
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
   var instance;
@@ -1116,11 +1123,6 @@ function createWasm() {
 
 #if LOAD_SOURCE_MAP
   {{{ runOnMainThread("addRunDependency('source-map');") }}}
-
-  function receiveSourceMapJSON(sourceMap) {
-    wasmSourceMap = new WasmSourceMap(sourceMap);
-    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
-  }
 #endif
 
   // Prefer streaming instantiation if available.

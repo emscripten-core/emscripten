@@ -700,7 +700,7 @@ File system API
 
 .. js:data:: FS.trackingDelegate[callback name]
 
-  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem.
+  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem. This requires -s FS_DEBUG=1.
 
   .. _fs-callback-names:
 

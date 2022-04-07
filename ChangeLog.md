@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - The `-sSHELL_FILE` setting, which (unlike the --shell-file command line
   options) we believe was never tested or externally used, has been removed.
   (#16589)
+- A warning is now issued when passing C++-only settings such
+  `-sEXCEPTION_CATCHING_ALLOWED` when not linking as C++. (#16609)
 
 3.1.8 - 03/24/2022
 ------------------
@@ -39,6 +41,9 @@ See docs/process.md for more on how version tagging works.
 - The emsdk binaries for macOS now require macOS 10.14 Mojave (or above).
   Prior versions of emsdk could run on 10.11 (or above), but supporting those
   older versions recently became harder.
+- The SDL_mixer library can be configured to support MIDIs by passing "mid"
+  to the SDL2_MIXER_FORMATS setting. It uses Timidity, and you must provide
+  your own instrument sound files and mount them at "/etc/timidity". (#16556)
 
 3.1.7 - 03/07/2022
 -------------------

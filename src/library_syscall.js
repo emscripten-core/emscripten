@@ -279,7 +279,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.open(old.path, old.flags, 0).fd;
+    return FS.createStream(old, 0).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: function(fdPtr) {
@@ -802,7 +802,7 @@ var SyscallsLibrary = {
           return -{{{ cDefine('EINVAL') }}};
         }
         var newStream;
-        newStream = FS.open(stream.path, stream.flags, 0, arg);
+        newStream = FS.createStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefine('F_GETFD') }}}:
@@ -1021,7 +1021,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     var suggest = FS.getStream(suggestFD);
     if (suggest) FS.close(suggest);
-    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
+    return FS.createStream(old, suggestFD, suggestFD + 1).fd;
   },
 };
 
