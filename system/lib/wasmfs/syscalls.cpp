@@ -1183,4 +1183,35 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
+int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+  assert(mode == 0); // TODO, but other modes were never supported in the old FS
+
+static int doTruncate(std::shared_ptr<File>& file, off_t size) {
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+
+  auto dataFile = file.getFile()->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return -__WASI_ERRNO_ISDIR;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EBADF;
+  }
+
+  if (off < 0 || len <= 0) {
+    return -EINVAL;
+  }
+
+  // TODO: we silently do nothing if the stream does not support allocation, but
+  //       in principle we should return EOPNOTSUPP
+  locked.allocate(off, len);
+
+  return 0;
+}
+
 } // extern "C"

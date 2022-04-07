@@ -25,6 +25,7 @@ class MemoryFile : public DataFile {
   void flush() override {}
   size_t getSize() override { return buffer.size(); }
   void setSize(size_t size) override { return buffer.resize(size); }
+  void allocate(size_t off, size_t len) override { buffer.reserve(off + len); }
 
 public:
   MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
