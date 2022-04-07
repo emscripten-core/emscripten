@@ -1186,16 +1186,16 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
 int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
-static int doTruncate(std::shared_ptr<File>& file, off_t size) {
-  auto parsed = path::parseFile((char*)path);
-  if (auto err = parsed.getError()) {
-    return err;
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
   }
 
-  auto dataFile = file.getFile()->dynCast<DataFile>();
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
-    return -__WASI_ERRNO_ISDIR;
+    return -ENODEV;
   }
 
   auto locked = dataFile->locked();
