@@ -126,15 +126,6 @@ class DataFile : public File {
   // while doing the resizing).
   virtual void setSize(size_t size) = 0;
 
-  // Allocates enough space for there to be room at offset |off| for |len|
-  // bytes.
-  // TODO: by default this does nothing atm, which is reasonable as there is no
-  //       observable effect to calling this, but in principle this should be
-  //       fallible and return an error code if the file does not even support
-  //       the operation, or failed for some reason, etc.
-  virtual void allocate(size_t off, size_t len) {
-  }
-
   // TODO: Design a proper API for flushing files.
   virtual void flush() = 0;
 
@@ -263,8 +254,6 @@ public:
   }
 
   void setSize(size_t size) { return getFile()->setSize(size); }
-
-  void allocate(size_t off, size_t len) { return getFile()->allocate(off, len); }
 
   // TODO: Design a proper API for flushing files.
   void flush() { getFile()->flush(); }
