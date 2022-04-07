@@ -8,8 +8,21 @@ Module Splitting
 development and may change and gain new features frequently. This page will be
 kept up-to-date with the latest changes.*
 
-wasm-split is a Binaryen tool that splits a Wasm module into a primary and a
-secondary module. The primary module has all the same imports and exports as the
+Large codebases often contain a lot of code that is very rarely used in practice
+or is never used early in the application's life cycle. Loading that unused code
+can noticeably delay application startup, so it would be good to defer loading
+that code until after the application has already started. One excellent
+solution for this is to use dynamic linking, but that requires refactoring an
+application into shared libraries and also comes with some performance overhead,
+so it is not always feasible. Module splitting is another approach where a
+module is split into separate pieces, the primary and secondary modules, after
+it is built normally. The primary module is loaded first and contains the code
+necessary to start the application, while the secondary module contains code
+that will be needed later or not at all. The secondary module will automatically
+be loaded on demand.
+
+wasm-split is a Binaryen tool that performs module splitting. After running
+wasm-split, the primary module has all the same imports and exports as the
 original module and is meant to be a drop-in replacement for it. However, it
 also imports a placeholder function for each secondary function that was split
 out into the secondary module. Before the secondary module is loaded, calls of
