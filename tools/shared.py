@@ -236,7 +236,7 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   return check_call(command, **kw).stdout
 
 
-def get_npm_cmd(name_or_path, direct=False):
+def get_npm_cmd(name_or_path, relative_to_node_bin=True):
   """Returns a command list that executes the given npm executable.
 
   If the file does not exist, this is because npm install was not run, so
@@ -245,18 +245,18 @@ def get_npm_cmd(name_or_path, direct=False):
   These executables are typically stored in node_modules/.bin and we
   return a platform-specific list of a command and args that will invoke it.
 
-  If direct is False, the first argument will be treated as the name of a
-  node executable in node_modules/.bin. If direct is True, the first
+  If relative_to_node_bin is True, the first argument will be treated as
+  the name of a node executable in node_modules/.bin. If it is False, the first
   argument will be used as a path relative to the root directory which is
   pointing to the node executable.
   """
   cmd_path = name_or_path
   if WINDOWS:
-    if not direct:
+    if relative_to_node_bin:
       cmd_path = os.path.join('node_modules/.bin', name_or_path + '.cmd')
     cmd = [path_from_root(cmd_path)]
   else:
-    if not direct:
+    if relative_to_node_bin:
       cmd_path = os.path.join('node_modules/.bin', name_or_path)
     # We want to invoke the script with the configured node binary.
     cmd = config.NODE_JS + [path_from_root(cmd_path)]

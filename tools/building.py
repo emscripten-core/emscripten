@@ -714,7 +714,7 @@ def get_closure_compiler():
     # may not work correctly in all environments (e.g. Bazel remote execution). Instead,
     # we go to what that symlink would be pointing to directly.
     cmd = shared.get_npm_cmd(os.path.join('node_modules', 'google-closure-compiler', 'cli.js'),
-                             direct=True)
+                             relative_to_node_bin=False)
     # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
     # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
     # out of memory"
