@@ -1207,14 +1207,15 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
     return -EINVAL;
   }
 
-  // TODO: we silently do nothing if the stream does not support allocation, but
-  //       in principle we should return EOPNOTSUPP
-  // TODO: instead of just setting the size, we could only increase the size if
-  //       off + len is greater than the old size, and we could only fill zeros
-  //       for regions that were completely unused before (for a backend with
-  //       sparse data storage, that would make a difference from the current
-  //       code).
-  locked.setSize(off + len);
+  // TODO: We silently do nothing if the stream does not support allocation, but
+  //       in principle we should return EOPNOTSUPP.
+  // TODO: We could only fill zeros for regions that were completely unused
+  //       before, which for a backend with sparse data storage could make a
+  //       difference. For that we'd need a new backend API.
+  auto newNeededSize = off + len;
+  if (newNeededSize > locked.getSize()) {
+    locked.setSize(newNeededSize);
+  }
 
   return 0;
 }
