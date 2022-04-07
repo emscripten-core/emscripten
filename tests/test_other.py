@@ -11626,6 +11626,10 @@ void foo() {}
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
+  @also_with_wasmfs
+  def test_unistd_chown(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_chown.c')
+
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
     # TODO: update this test when /dev has been filled out.
