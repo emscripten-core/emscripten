@@ -285,11 +285,11 @@ int pthread_attr_destroy(pthread_attr_t *attr) {
   return 0;
 }
 
-int pthread_setcancelstate() {
+int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
 
-int pthread_setcanceltype() {
+int pthread_setcanceltype(int type, int* oldtype) {
   return 0;
 }
 
