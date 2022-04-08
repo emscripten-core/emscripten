@@ -93,4 +93,19 @@ ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd) {
   return getChild(parent, child);
 }
 
+ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags) {
+  if ((flags & AT_EMPTY_PATH) && path.size() == 0) {
+    // Don't parse a path, just use `dirfd` directly.
+    if (fd == AT_FDCWD) {
+      return {wasmFS.getCWD()};
+    }
+    auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+    if (!openFile) {
+      return {-EBADF};
+    }
+    return {openFile->locked().getFile()};
+  }
+  return path::parseFile(path, fd);
+}
+
 } // namespace wasmfs::path
