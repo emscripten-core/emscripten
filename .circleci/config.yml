@@ -118,7 +118,7 @@ commands:
       - run:
           name: embuilder (PIC)
           command: |
-            ./embuilder build SYSTEM --pic
+            ./embuilder build MINIMAL --pic
             ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
