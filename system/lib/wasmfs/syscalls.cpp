@@ -303,34 +303,19 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
+static
+
 int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  std::shared_ptr<File> file;
-  if ((flags & AT_EMPTY_PATH) && strcmp((char*)path, "") == 0) {
-    // Don't parse a path, just use `dirfd` directly.
-    if (dirfd == AT_FDCWD) {
-      // TODO: Test this case.
-      file = wasmFS.getCWD();
-    } else {
-      auto openFile = wasmFS.getFileTable().locked().getEntry(dirfd);
-      if (!openFile) {
-        return -EBADF;
-      }
-      file = openFile->locked().getFile();
-    }
-  } else {
-    // Parse the relative path.
-    // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-    auto parsed = path::parseFile((char*)path, dirfd);
-    if (auto err = parsed.getError()) {
-      return err;
-    }
-    file = parsed.getFile();
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
   }
+  auto file = parsed.getFile();
 
   // Extract the information from the file.
   auto lockedFile = file->locked();
@@ -1032,6 +1017,27 @@ int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
+int __syscall_fchownat(
+  int dirfd, intptr_t path, int owner, int group, int flags) {
+  // Only accept valid flags.
+  if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+
+  // Ignore the actual owner and group because we don't track those.
+  // TODO: Update metadata time stamp.
+  return 0;
+}
+
+int __syscall_fchown32(int fd, int owner, int group) {
+  return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
+}
+
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
@@ -1181,6 +1187,117 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   //       to web limitations, which we should perhaps revisit (especially with
   //       pthreads and asyncify).
   return nonzero;
+}
+
+int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+  assert(mode == 0); // TODO, but other modes were never supported in the old FS
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return -ENODEV;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EBADF;
+  }
+
+  if (off < 0 || len <= 0) {
+    return -EINVAL;
+  }
+
+  // TODO: We silently do nothing if the stream does not support allocation, but
+  //       in principle we should return EOPNOTSUPP.
+  // TODO: We could only fill zeros for regions that were completely unused
+  //       before, which for a backend with sparse data storage could make a
+  //       difference. For that we'd need a new backend API.
+  auto newNeededSize = off + len;
+  if (newNeededSize > locked.getSize()) {
+    locked.setSize(newNeededSize);
+  }
+
+  return 0;
+}
+
+// Stubs (at least for now)
+
+int __syscall_accept4(int sockfd,
+                      intptr_t addr,
+                      intptr_t addrlen,
+                      int flags,
+                      int dummy1,
+                      int dummy2) {
+  return -ENOSYS;
+}
+
+int __syscall_bind(
+  int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_connect(
+  int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_socket(
+  int domain, int type, int protocol, int dummy1, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_listen(
+  int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4) {
+  return -ENOSYS;
+}
+
+int __syscall_getsockopt(int sockfd,
+                         int level,
+                         int optname,
+                         intptr_t optval,
+                         intptr_t optlen,
+                         int dummy) {
+  return -ENOSYS;
+}
+
+int __syscall_getsockname(
+  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_getpeername(
+  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_sendto(
+  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, size_t alen) {
+  return -ENOSYS;
+}
+
+int __syscall_sendmsg(
+  int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
+  return -ENOSYS;
+}
+
+int __syscall_recvfrom(int sockfd,
+                       intptr_t msg,
+                       size_t len,
+                       int flags,
+                       intptr_t addr,
+                       intptr_t alen) {
+  return -ENOSYS;
+}
+
+int __syscall_recvmsg(
+  int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
 }
 
 } // extern "C"
