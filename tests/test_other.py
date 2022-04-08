@@ -11615,6 +11615,10 @@ void foo() {}
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
   @also_with_wasmfs
+  def test_unistd_fdatasync(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_fdatasync.c')
+
+  @also_with_wasmfs
   def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
 

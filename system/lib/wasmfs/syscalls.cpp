@@ -284,6 +284,11 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+int __syscall_fdatasync(int fd) {
+  // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
+  return __wasi_fd_sync(fd);
+}
+
 backend_t wasmfs_get_backend_by_fd(int fd) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
