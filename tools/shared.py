@@ -247,8 +247,7 @@ def get_npm_cmd(name_or_path, relative_to_node_bin=True):
 
   If relative_to_node_bin is True, the first argument will be treated as
   the name of a node executable in node_modules/.bin. If it is False, the first
-  argument will be used as a path relative to the root directory which is
-  pointing to the node executable.
+  argument will be used as a path relative to the emscripten root.
   """
   cmd_path = name_or_path
   if WINDOWS:
