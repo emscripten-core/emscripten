@@ -118,6 +118,16 @@ var WasmFSLibrary = {
       var buffer = allocateUTF8OnStack(path);
       return __wasmfs_chmod(buffer, mode);
     },
+    findObject: (path) => {
+      var result = __wasmfs_identify(path);
+      if (result == {{{ cDefine('ENOENT') }}}) {
+        return null;
+      }
+      return {
+        isFolder: result == {{{ cDefine('EISDIR') }}},
+        isDevice: false, // TODO: wasmfs support for devices
+      };
+    },
 #endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
