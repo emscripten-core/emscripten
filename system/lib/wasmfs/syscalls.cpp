@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
