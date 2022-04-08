@@ -533,7 +533,9 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  // TODO: Check write permissions in the parent.
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
   // TODO: Forbid mounting new backends except under the root backend.
   // TODO: Check that the insertion is successful.
   auto created = backend->createDirectory(mode);
