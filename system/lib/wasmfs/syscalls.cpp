@@ -477,6 +477,32 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
+int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+  assert(dev == 0); // TODO: support special devices
+  if (mode & S_IFDIR) {
+    return -EINVAL;
+  }
+  if (mode & S_IFIFO) {
+    return -EPERM;
+  }
+  auto flags = O_CREAT;
+  auto read = bool(mode & WASMFS_PERM_READ);
+  auto write = bool(mode & WASMFS_PERM_WRITE);
+  if (read && !write) {
+    flags |= O_RDONLY;
+  } else if (write && !read) {
+    flags |= O_WRONLY;
+  } else if (read && write) {
+    flags |= O_RDWR;
+  }
+  auto err = doOpen(path::parseParent((char*)path, dirfd), flags, mode);
+  // Return an error if there is one, or 0 on success.
+  if (err < 0) {
+    return err;
+  }
+  return 0;
+}
+
 static int
 doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {

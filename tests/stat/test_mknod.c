@@ -53,17 +53,22 @@ void test() {
 
   // mknod a file
   err = mknod("mknod-file", S_IFREG | 0777, 0);
+  if (err) {
+    printf("err %d %s errno: %d %s\n", err, strerror(err), errno, strerror(errno));
+  }
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("mknod-file", &s);
   assert(S_ISREG(s.st_mode));
 
+#ifndef WASMFS // TODO: wasmfs support for special devices
   // mknod a character device
   err = mknod("mknod-device", S_IFCHR | 0777, 123);
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("mknod-device", &s);
   assert(S_ISCHR(s.st_mode));
+#endif // WASMFS
 
 #endif
 
