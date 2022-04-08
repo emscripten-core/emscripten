@@ -53,9 +53,6 @@ void test() {
 
   // mknod a file
   err = mknod("mknod-file", S_IFREG | 0777, 0);
-  if (err) {
-    printf("err %d %s errno: %d %s\n", err, strerror(err), errno, strerror(errno));
-  }
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("mknod-file", &s);
