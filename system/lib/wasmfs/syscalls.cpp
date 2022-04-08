@@ -14,6 +14,7 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <syscall_arch.h>
 #include <unistd.h>
@@ -1110,6 +1111,36 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
     ret = -EINVAL;
   }
   return ret;
+}
+
+int __syscall_ioctl(int fd, int request, ...) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  switch (request) {
+    case TCGETA:
+    case TCGETS:
+    case TCSETA:
+    case TCSETAW:
+    case TCSETAF:
+    case TCSETS:
+    case TCSETSW:
+    case TCSETSF:
+    case TIOCGPGRP:
+    case TIOCSPGRP:
+    case TIOCGWINSZ:
+    case TIOCSWINSZ:
+    case FIONREAD: {
+      // TODO: TTY support. We should check if this is a TTY, and then do the
+      //       proper thing if so, or return ENOTTY if it is not. For now, just
+      //       claim nothing is a TTY.
+      return -ENOTTY;
+    }
+    default: {
+      abort();
+    }
+  }
 }
 
 int __syscall_pipe(intptr_t fd) {
