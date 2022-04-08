@@ -1112,11 +1112,21 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
   return ret;
 }
 
+static bool isTTY(int fd) {
+  // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
+  //       nothing else.
+  return fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO; 
+}
+
 int __syscall_ioctl(int fd, int request, ...) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
   }
+  if (!isTTY(fd)) {
+    return -ENOTTY;
+  }
+  // TODO: Full TTY support. For now this is limited, and matches the old FS.
   switch (request) {
     case TCGETA:
     case TCGETS:
@@ -1126,15 +1136,15 @@ int __syscall_ioctl(int fd, int request, ...) {
     case TCSETS:
     case TCSETSW:
     case TCSETSF:
-    case TIOCGPGRP:
-    case TIOCSPGRP:
     case TIOCGWINSZ:
-    case TIOCSWINSZ:
-    case FIONREAD: {
-      // TODO: TTY support. We should check if this is a TTY, and then do the
-      //       proper thing if so, or return ENOTTY if it is not. For now, just
-      //       claim nothing is a TTY.
-      return -ENOTTY;
+    case TIOCSWINSZ: {
+      // TTY operations that we do nothing for anyhow can just be ignored.
+      return -0;
+    }
+    case TIOCGPGRP:
+    case TIOCSPGRP: {
+      // TODO We should get/set the group number here.
+      return -EINVAL;
     }
     default: {
       abort();
