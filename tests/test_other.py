@@ -11614,8 +11614,9 @@ void foo() {}
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
-  @also_with_wasmfs
   def test_unistd_fdatasync(self):
+    # TODO: Remove this test in favor of unistd/misc.c
+    self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_fdatasync.c')
 
   @also_with_wasmfs
