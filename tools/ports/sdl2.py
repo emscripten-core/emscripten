@@ -58,7 +58,7 @@ def get(ports, settings, shared):
     power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c
     filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c
     main/dummy/SDL_dummy_main.c locale/SDL_locale.c locale/emscripten/SDL_syslocale.c misc/SDL_url.c
-    misc/dummy/SDL_sysurl.c'''.split()
+    misc/emscripten/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
     thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
