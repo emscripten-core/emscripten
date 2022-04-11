@@ -76,7 +76,6 @@ public:
 
   class Handle;
   Handle locked();
-  std::optional<Handle> maybeLocked();
 
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
@@ -178,7 +177,6 @@ public:
 
   class Handle;
   Handle locked();
-  std::optional<Handle> maybeLocked();
 
 protected:
   // 4096 bytes is the size of a block in ext4.

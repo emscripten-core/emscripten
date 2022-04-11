@@ -25,7 +25,12 @@ int main() {
   printf("posix_fallocate: %d\n", posix_fallocate(f, 3, 2));
   printf("errno: %d\n", errno);
   stat("/test", &s);
-  printf("st_size: %lld\n", s.st_size);
+#if WASMFS
+  assert(s.st_size == 5);
+#else
+  // The old FS, incorrectly, reports 6 here (unlike linux and wasmfs)
+  assert(s.st_size == 6);
+#endif
   memset(&s, 0, sizeof s);
   printf("\n");
   errno = 0;

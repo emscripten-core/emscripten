@@ -56,7 +56,7 @@ void* _wasmfs_read_file(char* path) {
 
 // Writes to a file, possibly creating it, and returns the number of bytes
 // written successfully.
-long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
+int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto parsedParent = path::parseParent(pathname);
   if (parsedParent.getError()) {
     return 0;
@@ -92,17 +92,34 @@ long _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   return data_size;
 }
 
-long _wasmfs_mkdir(char* path, long mode) {
+int _wasmfs_mkdir(char* path, int mode) {
   return __syscall_mkdir((intptr_t)path, mode);
 }
 
-long _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
+int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
 void _wasmfs_symlink(char* old_path, char* new_path) {
   __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
-long _wasmfs_chmod(char* path, mode_t mode) {
+int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
+}
+
+// Helper method that identifies what a path is:
+//   ENOENT - if nothing exists there
+//   EISDIR - if it is a directory
+//   EEXIST - if it is a normal file
+int _wasmfs_identify(char* path) {
+  struct stat file;
+  int err = 0;
+  err = stat(path, &file);
+  if (err < 0) {
+    return ENOENT;
+  }
+  if (S_ISDIR(file.st_mode)) {
+    return EISDIR;
+  }
+  return EEXIST;
 }
 }
