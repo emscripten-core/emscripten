@@ -1115,7 +1115,8 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
 static bool isTTY(std::shared_ptr<File>& file) {
   // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
   //       nothing else.
-  return file == Stdin::getSingleton() || file == Stdout::getSingleton() || file == Stderr::getSingleton();
+  return file == Stdin::getSingleton() || file == Stdout::getSingleton() ||
+         file == Stderr::getSingleton();
 }
 
 int __syscall_ioctl(int fd, int request, ...) {
