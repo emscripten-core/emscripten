@@ -37,15 +37,9 @@ void setup() {
   mkdir("dir/rename-dir/subdir/subsubdir", 0777);
   mkdir("dir-readonly", 0555);
   // TODO: Remove when chmod is implemented in WasmFS.
-#ifdef WASMFS
-  mkdir("dir-readonly2", 0555);
-#else
   mkdir("dir-readonly2", 0777);
-#endif
   mkdir("dir-readonly2/somename", 0777);
-#ifndef WASMFS
   chmod("dir-readonly2", 0555);
-#endif
   mkdir("dir-nonempty", 0777);
   mkdir("dir/subdir3", 0777);
   mkdir("dir/subdir3/subdir3_1", 0777);
