@@ -889,7 +889,8 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'library_pthread_stub.c',
-          'pthread_self_stub.c'
+          'pthread_self_stub.c',
+          'proxying_stub.c',
         ])
 
     if self.is_optz:
