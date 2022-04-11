@@ -303,34 +303,19 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
+static
+
 int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  std::shared_ptr<File> file;
-  if ((flags & AT_EMPTY_PATH) && strcmp((char*)path, "") == 0) {
-    // Don't parse a path, just use `dirfd` directly.
-    if (dirfd == AT_FDCWD) {
-      // TODO: Test this case.
-      file = wasmFS.getCWD();
-    } else {
-      auto openFile = wasmFS.getFileTable().locked().getEntry(dirfd);
-      if (!openFile) {
-        return -EBADF;
-      }
-      file = openFile->locked().getFile();
-    }
-  } else {
-    // Parse the relative path.
-    // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-    auto parsed = path::parseFile((char*)path, dirfd);
-    if (auto err = parsed.getError()) {
-      return err;
-    }
-    file = parsed.getFile();
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
   }
+  auto file = parsed.getFile();
 
   // Extract the information from the file.
   auto lockedFile = file->locked();
@@ -1058,6 +1043,27 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
 
 int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+}
+
+int __syscall_fchownat(
+  int dirfd, intptr_t path, int owner, int group, int flags) {
+  // Only accept valid flags.
+  if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+
+  // Ignore the actual owner and group because we don't track those.
+  // TODO: Update metadata time stamp.
+  return 0;
+}
+
+int __syscall_fchown32(int fd, int owner, int group) {
+  return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
