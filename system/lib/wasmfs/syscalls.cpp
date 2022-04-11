@@ -14,19 +14,20 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
 #include "pipe_backend.h"
+#include "streams.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -1116,6 +1117,48 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
     ret = -EINVAL;
   }
   return ret;
+}
+
+static bool isTTY(std::shared_ptr<File>& file) {
+  // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
+  //       nothing else.
+  return file == StdinFile::getSingleton() ||
+         file == StdoutFile::getSingleton() ||
+         file == StderrFile::getSingleton();
+}
+
+int __syscall_ioctl(int fd, int request, ...) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!isTTY(openFile->locked().getFile())) {
+    return -ENOTTY;
+  }
+  // TODO: Full TTY support. For now this is limited, and matches the old FS.
+  switch (request) {
+    case TCGETA:
+    case TCGETS:
+    case TCSETA:
+    case TCSETAW:
+    case TCSETAF:
+    case TCSETS:
+    case TCSETSW:
+    case TCSETSF:
+    case TIOCGWINSZ:
+    case TIOCSWINSZ: {
+      // TTY operations that we do nothing for anyhow can just be ignored.
+      return -0;
+    }
+    case TIOCGPGRP:
+    case TIOCSPGRP: {
+      // TODO We should get/set the group number here.
+      return -EINVAL;
+    }
+    default: {
+      abort();
+    }
+  }
 }
 
 int __syscall_pipe(intptr_t fd) {
