@@ -1234,7 +1234,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
       mask = 0;
-      auto flags = openFile->getFlags();
+      auto flags = openFile->locked().getFlags();
       auto readBit = pollfd->events & POLLOUT;
       if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
         mask |= readBit;
@@ -1312,7 +1312,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
     case F_DUPFD: {
       int newfd = 0;
       va_list v1;
-      va_start(v1, mode);
+      va_start(v1, cmd);
       newfd = va_arg(v1, int);
       va_end(v1);
       if (newfd < 0) {
@@ -1334,15 +1334,18 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // FD_CLOEXEC makes no sense for a single process.
       return 0;
     case F_GETFL:
-      return openFile.locked()->getFlags();
+      return openFile->locked().getFlags();
     case F_SETFL: {
       int flags = 0;
       va_list v1;
-      va_start(v1, mode);
+      va_start(v1, cmd);
       flags = va_arg(v1, int);
       va_end(v1);
+      // TODO: check validity
+      openFile->locked().setFlags(flags);
       return 0;
     }
+#if 0
     case F_GETLK:
     /* case F_GETLK64: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
       {{{ assert(cDefine('F_GETLK') === cDefine('F_GETLK64')), '' }}}
@@ -1366,10 +1369,9 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
       setErrNo(EINVAL);
       return -1;
-    default: {
-#if SYSCALL_DEBUG
-      err('warning: fctl64 unrecognized command ' + cmd);
 #endif
+    default: {
+      // TODO: support any remaining cmds
       return -EINVAL;
     }
   }
