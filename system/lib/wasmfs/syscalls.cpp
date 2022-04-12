@@ -359,10 +359,16 @@ int __syscall_fstat64(int fd, intptr_t buf) {
   return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
 }
 
+// When calling doOpen(), we may request an FD be returned, or we may not need
+// that return value (in which case no FD need be allocated, and we return 0 on
+// success).
+enum class OpenReturnMode { FD, Nothing };
+
 static __wasi_fd_t doOpen(path::ParsedParent parsed,
                           int flags,
                           mode_t mode,
-                          backend_t backend = NullBackend) {
+                          backend_t backend = NullBackend,
+                          OpenReturnMode::FD returnMode) {
   int accessMode = (flags & O_ACCMODE);
   if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
       accessMode != O_RDWR) {
@@ -413,6 +419,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       // TODO: Check that the insert actually succeeds.
       auto created = backend->createFile(mode);
       lockedParent.insertChild(std::string(childName), created);
+      if (returnMode == OpenReturnMode::Nothing) {
+        return 0;
+      }
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
@@ -480,7 +489,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   } else if (read && write) {
     flags |= O_RDWR;
   }
-  auto err = doOpen(path::parseParent((char*)path, dirfd), flags, mode);
+  auto err = doOpen(path::parseParent((char*)path, dirfd), flags, mode, NullBackend, OpenReturnMode::Nothing);
   // Return an error if there is one, or 0 on success.
   if (err < 0) {
     return err;
