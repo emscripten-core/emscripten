@@ -1310,7 +1310,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
 
   switch (cmd) {
     case F_DUPFD: {
-      int newfd = 0;
+      int newfd;
       va_list v1;
       va_start(v1, cmd);
       newfd = va_arg(v1, int);
@@ -1336,7 +1336,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
     case F_GETFL:
       return openFile->locked().getFlags();
     case F_SETFL: {
-      int flags = 0;
+      int flags;
       va_list v1;
       va_start(v1, cmd);
       flags = va_arg(v1, int);
@@ -1345,31 +1345,35 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       openFile->locked().setFlags(flags);
       return 0;
     }
-#if 0
-    case F_GETLK:
-    /* case F_GETLK64: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
-      {{{ assert(cDefine('F_GETLK') === cDefine('F_GETLK64')), '' }}}
-      var arg = SYSCALLS.get();
-      var offset = {{{ C_STRUCTS.flock.l_type }}};
-      // We're always unlocked.
-      {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16;
+    case F_GETLK: {
+      // If these constants differ then we'd need a case for both.
+      static_assert(F_GETLK == F_GETLK64);
+      flock* data;
+      va_list v1;
+      va_start(v1, cmd);
+      data = va_arg(v1, flock*);
+      va_end(v1);
+      // We're always unlocked for now, until we implement byte-range locks.
+      data->l_type = F_UNLCK;
       return 0;
     }
     case F_SETLK:
-    case F_SETLKW:
-    /* case F_SETLK64: Currently in musl F_SETLK64 has same value as F_SETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
-    /* case F_SETLKW64: Currently in musl F_SETLKW64 has same value as F_SETLKW, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
-      {{{ assert(cDefine('F_SETLK64') === cDefine('F_SETLK')), '' }}}
-      {{{ assert(cDefine('F_SETLKW64') === cDefine('F_SETLKW')), '' }}}
-      return 0; // Pretend that the locking is successful.
+    case F_SETLKW: {
+      static_assert(F_SETLK == F_SETLK64);
+      static_assert(F_SETLKW == F_SETLKW64);
+      // Always error for now, until we implement byte-range locks.
+      return -EACCES;
+    }
     case F_GETOWN_EX:
     case F_SETOWN:
-      return -EINVAL; // These are for sockets. We don't have them fully implemented yet.
+      // These are for sockets. We don't have them fully implemented yet.
+      return -EINVAL;
     case F_GETOWN:
-      // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
-      setErrNo(EINVAL);
+      // Work around what seems to be a musl bug, where they do not set errno
+      // in the caller. This has been an issue since the JS filesystem and had
+      // the same workaround there.
+      errno = EINVAL;
       return -1;
-#endif
     default: {
       // TODO: support any remaining cmds
       return -EINVAL;
