@@ -253,10 +253,6 @@ var SyscallsLibrary = {
     FS.chdir(path);
     return 0;
   },
-  __syscall_mknod: function(path, mode, dev) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doMknod(path, mode, dev);
-  },
   __syscall_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);

@@ -1,6 +1,5 @@
 #define SYS_link		  __syscall_link
 #define SYS_chdir		 __syscall_chdir
-#define SYS_mknod		 __syscall_mknod
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
 #define SYS_pause		 __syscall_pause

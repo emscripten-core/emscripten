@@ -365,10 +365,16 @@ int __syscall_fstat64(int fd, intptr_t buf) {
   return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
 }
 
+// When calling doOpen(), we may request an FD be returned, or we may not need
+// that return value (in which case no FD need be allocated, and we return 0 on
+// success).
+enum class OpenReturnMode { FD, Nothing };
+
 static __wasi_fd_t doOpen(path::ParsedParent parsed,
                           int flags,
                           mode_t mode,
-                          backend_t backend = NullBackend) {
+                          backend_t backend = NullBackend,
+                          OpenReturnMode returnMode = OpenReturnMode::FD) {
   int accessMode = (flags & O_ACCMODE);
   if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
       accessMode != O_RDWR) {
@@ -419,6 +425,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       // TODO: Check that the insert actually succeeds.
       auto created = backend->createFile(mode);
       lockedParent.insertChild(std::string(childName), created);
+      if (returnMode == OpenReturnMode::Nothing) {
+        return 0;
+      }
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
@@ -454,7 +463,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
+  return doOpen(
+    path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -466,6 +476,21 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   va_end(v1);
 
   return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
+}
+
+int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+  assert(dev == 0); // TODO: support special devices
+  if (mode & S_IFDIR) {
+    return -EINVAL;
+  }
+  if (mode & S_IFIFO) {
+    return -EPERM;
+  }
+  return doOpen(path::parseParent((char*)path, dirfd),
+                O_CREAT | O_EXCL,
+                mode,
+                NullBackend,
+                OpenReturnMode::Nothing);
 }
 
 static int
@@ -498,7 +523,9 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  // TODO: Check write permissions in the parent.
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
   // TODO: Forbid mounting new backends except under the root backend.
   // TODO: Check that the insertion is successful.
   auto created = backend->createDirectory(mode);
