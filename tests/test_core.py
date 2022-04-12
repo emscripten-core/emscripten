@@ -2576,11 +2576,6 @@ The current type of b is: 9
   def test_pthread_proxying(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    if self.is_wasm2js():
-      # Add one test of wasm2js + closure in the default test suites that run on
-      # the bots (they only run wasm2js1 atm, and by default we don't run
-      # closure on -O1 builds).
-      self.emcc_args += ['--closure=1']
     self.set_setting('INITIAL_MEMORY=32mb')
     args = [f'-I{path_from_root("system/lib/pthread")}']
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
@@ -5464,7 +5459,6 @@ main( int argv, char ** argc ) {
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
-  @also_with_wasmfs
   def test_fcntl_open(self):
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
