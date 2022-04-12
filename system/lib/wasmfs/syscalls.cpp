@@ -486,18 +486,8 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   if (mode & S_IFIFO) {
     return -EPERM;
   }
-  auto flags = O_CREAT | O_EXCL;
-  auto read = bool(mode & WASMFS_PERM_READ);
-  auto write = bool(mode & WASMFS_PERM_WRITE);
-  if (read && !write) {
-    flags |= O_RDONLY;
-  } else if (write && !read) {
-    flags |= O_WRONLY;
-  } else if (read && write) {
-    flags |= O_RDWR;
-  }
   auto err = doOpen(path::parseParent((char*)path, dirfd),
-                    flags,
+                    O_CREAT | O_EXCL,
                     mode,
                     NullBackend,
                     OpenReturnMode::Nothing);
