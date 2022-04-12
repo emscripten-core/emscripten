@@ -90,9 +90,13 @@ long __syscall_openat(int dirfd, const char* path, long flags, ...) {
   return -EPERM;
 }
 
-int __syscall_ioctl(int fd, int op, ...) { return -ENOSYS; }
+__attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
+  return -ENOSYS;
+}
 
-long __syscall_fcntl64(long fd, long cmd, ...) { return -ENOSYS; }
+__attribute__((__weak__)) long __syscall_fcntl64(long fd, long cmd, ...) {
+  return -ENOSYS;
+}
 
 // Emscripten additions
 

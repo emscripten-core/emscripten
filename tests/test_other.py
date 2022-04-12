@@ -8163,6 +8163,7 @@ end
     out = self.run_process([EMCC, '--help'], stdout=PIPE).stdout
     assert re.search(expected, out)
 
+  @also_with_wasmfs
   def test_ioctl_window_size(self):
       self.do_other_test('test_ioctl_window_size.cpp')
 
@@ -10283,6 +10284,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 ''')
     self.run_process([EMCC, 'errno_type.c'])
 
+  @also_with_wasmfs
   def test_standalone_syscalls(self):
     self.run_process([EMXX, test_file('other/test_standalone_syscalls.cpp'), '-o', 'test.wasm'])
     expected = read_file(test_file('other/test_standalone_syscalls.out'))
@@ -11613,6 +11615,11 @@ void foo() {}
   def test_unistd_create(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
+
+  def test_unistd_fdatasync(self):
+    # TODO: Remove this test in favor of unistd/misc.c
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_fdatasync.c')
 
   @also_with_wasmfs
   def test_unistd_seek(self):
