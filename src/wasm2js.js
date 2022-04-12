@@ -61,12 +61,8 @@ WebAssembly = {
     // the main JS
   },
 
-  // Note that Instance must not be minified by closure as it will be used by
-  // workers in the case of pthreads: workers get the Module and will create an
-  // Instance of it, so WebAssembly.Instance is the one API they must be able to
-  // call.
   /** @constructor */
-  'Instance': function(module, info) {
+  Instance: function(module, info) {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
@@ -81,7 +77,7 @@ WebAssembly = {
 #if SHARED_MEMORY
           'module': module,
 #endif
-          'instance': new WebAssembly['Instance'](module)
+          'instance': new WebAssembly.Instance(module)
         });
 #if ASSERTIONS || WASM == 2 // see postamble_minimal.js which uses .catch
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
