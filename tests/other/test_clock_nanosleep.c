@@ -29,6 +29,8 @@ int main(void) {
   struct timespec deadline;
   clock_gettime(CLOCK_MONOTONIC, &deadline);
   deadline.tv_nsec += 20 * 1000 * 1000;
+  deadline.tv_sec += (deadline.tv_nsec / (1000 * 1000 * 1000));
+  deadline.tv_nsec = deadline.tv_nsec % (1000 * 1000 * 1000);
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL);
   after = get_time_ms();
   printf("after: %lli\n", after);
