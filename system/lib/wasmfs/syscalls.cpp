@@ -448,7 +448,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
+  return doOpen(path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -470,7 +470,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   if (mode & S_IFIFO) {
     return -EPERM;
   }
-  auto flags = O_CREAT;
+  auto flags = O_CREAT | O_EXCL;
   auto read = bool(mode & WASMFS_PERM_READ);
   auto write = bool(mode & WASMFS_PERM_WRITE);
   if (read && !write) {
