@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
@@ -457,7 +456,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
+  return doOpen(
+    path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -489,7 +489,11 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   } else if (read && write) {
     flags |= O_RDWR;
   }
-  auto err = doOpen(path::parseParent((char*)path, dirfd), flags, mode, NullBackend, OpenReturnMode::Nothing);
+  auto err = doOpen(path::parseParent((char*)path, dirfd),
+                    flags,
+                    mode,
+                    NullBackend,
+                    OpenReturnMode::Nothing);
   // Return an error if there is one, or 0 on success.
   if (err < 0) {
     return err;
