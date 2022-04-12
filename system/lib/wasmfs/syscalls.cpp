@@ -374,7 +374,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
                           int flags,
                           mode_t mode,
                           backend_t backend = NullBackend,
-                          OpenReturnMode returnMode=OpenReturnMode::FD) {
+                          OpenReturnMode returnMode = OpenReturnMode::FD) {
   int accessMode = (flags & O_ACCMODE);
   if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
       accessMode != O_RDWR) {
