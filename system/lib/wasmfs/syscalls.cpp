@@ -1301,6 +1301,80 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   return 0;
 }
 
+int __syscall_fcntl64(int fd, int cmd, ...) {
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  switch (cmd) {
+    case F_DUPFD: {
+      int newfd = 0;
+      va_list v1;
+      va_start(v1, mode);
+      newfd = va_arg(v1, int);
+      va_end(v1);
+      if (newfd < 0) {
+        return -EINVAL;
+      }
+
+      // Find the first available fd at arg or after.
+      // TODO: Should we check for a limit on the max FD number, if we have one?
+      while (1) {
+        if (!fileTable.getEntry(newfd)) {
+          fileTable.setEntry(newfd, openFile);
+          return newfd;
+        }
+        newfd++;
+      }
+    }
+    case F_GETFD:
+    case F_SETFD:
+      // FD_CLOEXEC makes no sense for a single process.
+      return 0;
+    case F_GETFL:
+      return openFile.locked()->getFlags();
+    case F_SETFL: {
+      int flags = 0;
+      va_list v1;
+      va_start(v1, mode);
+      flags = va_arg(v1, int);
+      va_end(v1);
+      return 0;
+    }
+    case F_GETLK:
+    /* case F_GETLK64: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
+      {{{ assert(cDefine('F_GETLK') === cDefine('F_GETLK64')), '' }}}
+      var arg = SYSCALLS.get();
+      var offset = {{{ C_STRUCTS.flock.l_type }}};
+      // We're always unlocked.
+      {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16;
+      return 0;
+    }
+    case F_SETLK:
+    case F_SETLKW:
+    /* case F_SETLK64: Currently in musl F_SETLK64 has same value as F_SETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+    /* case F_SETLKW64: Currently in musl F_SETLKW64 has same value as F_SETLKW, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+      {{{ assert(cDefine('F_SETLK64') === cDefine('F_SETLK')), '' }}}
+      {{{ assert(cDefine('F_SETLKW64') === cDefine('F_SETLKW')), '' }}}
+      return 0; // Pretend that the locking is successful.
+    case F_GETOWN_EX:
+    case F_SETOWN:
+      return -EINVAL; // These are for sockets. We don't have them fully implemented yet.
+    case F_GETOWN:
+      // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
+      setErrNo(EINVAL);
+      return -1;
+    default: {
+#if SYSCALL_DEBUG
+      err('warning: fctl64 unrecognized command ' + cmd);
+#endif
+      return -EINVAL;
+    }
+  }
+}
+
 // Stubs (at least for now)
 
 int __syscall_accept4(int sockfd,
