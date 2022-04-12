@@ -2136,6 +2136,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
+    if 'MALLOC' in user_settings and 'dlmalloc' in user_settings['MALLOC']:
+      exit_with_error('dlmalloc does not work with Wasm Workers! Please remove -sMALLOC=dlmalloc')
+    default_setting(user_settings, 'MALLOC', 'emmalloc')
+
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.

@@ -22,7 +22,8 @@ __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 	__wasm_init_tls((void*)*sbrk_ptr);
-	*sbrk_ptr += __builtin_wasm_tls_size();
+	assert(*sbrk_ptr % 4 == 0); // sbrk value must always be a multiple of four bytes.
+	*sbrk_ptr += (__builtin_wasm_tls_size() + 3) & -4; // round TLS up to next 4 bytes to retain correct sbrk rounding.
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)

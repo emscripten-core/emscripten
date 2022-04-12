@@ -11847,6 +11847,15 @@ void foo() {}
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
+  # Tests that Wasm Workers are properly detected not to (at least for now) work with dlmalloc
+  @also_with_minimal_runtime
+  def test_wasm_worker_dlmalloc_not_supported(self):
+    # Using dlmalloc should produce a build error
+    stderr = self.run_process([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sMALLOC=dlmalloc'], stderr=PIPE, check=False).stderr
+    self.assertContained('dlmalloc does not work with Wasm Workers! Please remove -sMALLOC=dlmalloc', stderr)
+    # Using emmalloc should compile ok
+    self.run_process([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sMALLOC=emmalloc'])
+
   def test_debug_opt_warning(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
     self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)

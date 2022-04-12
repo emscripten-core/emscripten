@@ -97,7 +97,7 @@ typedef struct Region
   uint32_t _at_the_end_of_this_struct_size; // do not dereference, this is present for convenient struct sizeof() computation only
 } Region;
 
-#if defined(__EMSCRIPTEN_PTHREADS__)
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(__EMSCRIPTEN_WASM_WORKERS__)
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
 static volatile uint8_t multithreadingLock = 0;
 #define MALLOC_ACQUIRE() while(__sync_lock_test_and_set(&multithreadingLock, 1)) { while(multithreadingLock) { /*nop*/ } }
