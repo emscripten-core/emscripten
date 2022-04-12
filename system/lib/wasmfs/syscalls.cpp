@@ -486,16 +486,11 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   if (mode & S_IFIFO) {
     return -EPERM;
   }
-  auto err = doOpen(path::parseParent((char*)path, dirfd),
-                    O_CREAT | O_EXCL,
-                    mode,
-                    NullBackend,
-                    OpenReturnMode::Nothing);
-  // Return an error if there is one, or 0 on success.
-  if (err < 0) {
-    return err;
-  }
-  return 0;
+  return doOpen(path::parseParent((char*)path, dirfd),
+                O_CREAT | O_EXCL,
+                mode,
+                NullBackend,
+                OpenReturnMode::Nothing);
 }
 
 static int
