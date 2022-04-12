@@ -19,7 +19,10 @@
 #include <emscripten/trace.h>
 
 /* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
-#if __EMSCRIPTEN_PTHREADS__
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#define USE_LOCKS 1
+#define USE_SPIN_LOCKS 1 // Wasm Workers does not have the pthread API, so use spinwaiting
+#elif defined(__EMSCRIPTEN_PTHREADS__)
 #define USE_LOCKS 1
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
 #endif
