@@ -10,14 +10,20 @@
 
 emscripten_semaphore_t workDone = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(0);
 
+// Make sure we have tiny byte of TLS data that causes LLVM TLS size to be not a multiple of four from the get-go.
+__thread uint8_t dummyTls;
+
 void work()
 {
+  assert(dummyTls == 0);
   for(int i = 0; i < 100000; ++i)
   {
+    dummyTls += 1;
     void *ptr = malloc(emscripten_random() * 10000);
     assert(ptr);
     free(ptr);
   }
+  printf("dummyTls: %d\n", (int)dummyTls);
   emscripten_semaphore_release(&workDone, 1);
 }
 
