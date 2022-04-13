@@ -1203,6 +1203,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return poppler + freetype
 
   def get_zlib_library(self):
+    self.emcc_args += ['-Wno-deprecated-non-prototype']
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                               configure=['cmake', '.'],

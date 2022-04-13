@@ -6531,6 +6531,7 @@ void* operator new(size_t size) {
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
+    self.emcc_args += ['-Wno-deprecated-non-prototype']
     self.do_run_from_file(
         test_file('third_party/zlib/example.c'),
         test_file('core/test_zlib.out'),
