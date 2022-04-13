@@ -8144,7 +8144,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME', 1)
-    self.emcc_args += ['-sASYNCIFY_IMPORTS=["_Z8my_sleepi"]']
+    self.emcc_args += ['-sASYNCIFY_IMPORTS=["my_sleep"]']
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -8168,7 +8168,7 @@ Module['onRuntimeInitialized'] = function() {
         // variable on stack in side module function should be restored.
         printf("%d\n", value);
       }
-    ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);')
+    ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')

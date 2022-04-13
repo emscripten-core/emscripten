@@ -265,6 +265,9 @@ mergeInto(LibraryManager.library, {
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
 #if RELOCATABLE
+      // Exported functions in side modules are not listed in `Module["asm"]`,
+      // but are added as a form of `Module["(asmjs mangled name)"]`.
+      // So we should find a rewind function from `Module["asm"]` and `Module["(asmjs mangled name)"]`.
       if (!func) {
         func = Module[asmjsMangle(name)];
       }
