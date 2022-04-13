@@ -227,7 +227,7 @@ self.onmessage = (e) => {
         // That is not acceptable per C/C++ specification, but x86 compiler ABI extensions
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
-        // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
+        // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86 ABI extension.
         var result = Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK

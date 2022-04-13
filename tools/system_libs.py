@@ -1870,7 +1870,7 @@ def calculate(input_files, args, forced):
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-sREVERSE_DEPS=none` depending on the desired result')
     settings.REVERSE_DEPS = 'all'
 
   handle_reverse_deps(input_files)

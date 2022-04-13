@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS=_int_sqrt -s EXPORTED_RUNTIME_METHODS=ccall,cwrap
+    emcc tests/hello_function.cpp -o function.html -sEXPORTED_FUNCTIONS=_int_sqrt -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -131,7 +131,7 @@ parameters to pass to the function:
      from JavaScript:
 
      - Exporting is done at compile time. For example:
-       ``-s EXPORTED_FUNCTIONS=_main,_other_function`` exports
+       ``-sEXPORTED_FUNCTIONS=_main,_other_function`` exports
        ``main()`` and ``other_function()``.
      - Note that you need ``_`` at the
        beginning of the function names in the ``EXPORTED_FUNCTIONS`` list.
@@ -159,7 +159,7 @@ parameters to pass to the function:
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
      ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s EXPORTED_RUNTIME_METHODS=ccall,cwrap``,
+     ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -190,7 +190,7 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=ccall
+    emcc api_example.c -o api_example.js -sMODULARIZE -sEXPORTED_RUNTIME_METHODS=ccall
 
 Require the library and call its procedures from node:
 
@@ -614,7 +614,7 @@ be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-You should build with ``-s ALLOW_TABLE_GROWTH`` to allow new functions to be
+You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
 .. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
@@ -675,7 +675,7 @@ integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
 tricky when wasm-based memory is allowed to **grow**, by compiling with
-``-s ALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
+``-sALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
 

@@ -105,7 +105,7 @@ EM_BOOL emscripten_websocket_is_supported(void);
 // Creates a new WebSocket and connects it to the given remote host.
 // If the return value of this function is > 0, the function has succeeded and the return value represents a handle to the WebSocket object.
 // If the return value of this function is < 0, then the function has failed, and the return value can be interpreted as a EMSCRIPTEN_RESULT code
-// representing the cause of the failure. If the function returns 0, then the call has failed with an unknown reason (build with -s WEBSOCKET_DEBUG=1 for more information)
+// representing the cause of the failure. If the function returns 0, then the call has failed with an unknown reason (build with -sWEBSOCKET_DEBUG for more information)
 EMSCRIPTEN_WEBSOCKET_T emscripten_websocket_new(EmscriptenWebSocketCreateAttributes *createAttributes);
 
 // Sends the given string of null-delimited UTF8 encoded text data to the connected server.

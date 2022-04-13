@@ -30,7 +30,7 @@ compiler.
 The options in **settings.js** are normally set as command line parameters to
 *emcc*::
 
-  emcc -s OPT=VALUE
+  emcc -sOPT=VALUE
 
 While it is possible to edit **settings.js** manually, this is *highly
 discouraged*. In general **settings.js** defines low-level options that should

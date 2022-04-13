@@ -72,7 +72,7 @@ global.LibraryManager = {
     }
 
     if (FILESYSTEM) {
-      // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
+      // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',
         'library_memfs.js',
@@ -210,14 +210,14 @@ global.LibraryManager = {
           if (VERBOSE) {
             error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
           } else {
-            error('use -s VERBOSE to see more details');
+            error('use -sVERBOSE to see more details');
           }
         } else {
           error(`failure to process js library "${filename}": ${details}`);
           if (VERBOSE) {
             error(`original source:\n=============\n${src}\n=============`);
           } else {
-            error('use -s VERBOSE to see more details');
+            error('use -sVERBOSE to see more details');
           }
         }
         throw e;

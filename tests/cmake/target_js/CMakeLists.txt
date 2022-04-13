@@ -11,14 +11,14 @@ file(GLOB postJsFiles post*.js)
 file(GLOB libraryJsFiles jslibrary*.js)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-  set(linkFlags "-g4 -s NO_EXIT_RUNTIME=1")
+  set(linkFlags "-g4 -sNO_EXIT_RUNTIME")
 else()
   # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
-  set(linkFlags "-O2 -s NO_EXIT_RUNTIME=1")
+  set(linkFlags "-O2 -sNO_EXIT_RUNTIME")
 endif()
 
 # Ensure synchronous startup for this test, whose output expects it
-set(linkFlags "${linkFlags} -s WASM_ASYNC_COMPILATION=0")
+set(linkFlags "${linkFlags} -sWASM_ASYNC_COMPILATION=0")
 
 # Test that the CMake-provided macro check_function_exists() works.
 include(CheckFunctionExists)

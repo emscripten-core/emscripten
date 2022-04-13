@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 // emmalloc: A lightweight web-friendly memory allocator suitable for very small applications.
-// Enable the usage of emmalloc by passing the linker flag -s MALLOC=emmalloc to the application.
+// Enable the usage of emmalloc by passing the linker flag -sMALLOC=emmalloc to the application.
 
 // A debug function that dumps the whole structure of malloc internal memory blocks to console.
 // *extremely slow*, use for debugging allocation test cases.

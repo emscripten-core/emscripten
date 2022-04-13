@@ -1714,7 +1714,7 @@ int f() {
 
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
-    self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
+    self.assertContained('error: -sMAIN_MODULE + pthreads is experimental', err)
 
   @node_pthreads
   def test_dylink_pthread_bigint_em_asm(self):
@@ -3929,7 +3929,7 @@ EM_ASM({ _middle() });
         for func_start in ('(func $middle', '(func $_middle'):
           self.assertNotContained(func_start, wat)
 
-      # Ensure symbols file type according to `-s WASM=` mode
+      # Ensure symbols file type according to `-sWASM=` mode
       if wasm == 0:
         self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
       elif wasm == 1:
@@ -4063,7 +4063,7 @@ int main() {
     self.assertNotContained('new Function', src)
     try_delete('a.out.js')
 
-    # Test that -s DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
+    # Test that -sDYNAMIC_EXECUTION and -sRELOCATABLE are not allowed together.
     self.expect_fail([EMCC, test_file('hello_world.c'), '-O1',
                       '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
     try_delete('a.out.js')
@@ -4076,12 +4076,12 @@ int main() {
       }
       ''')
 
-    # Test that emscripten_run_script() aborts when -s DYNAMIC_EXECUTION=0
+    # Test that emscripten_run_script() aborts when -sDYNAMIC_EXECUTION=0
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=0'])
     self.assertContained('DYNAMIC_EXECUTION=0 was set, cannot eval', self.run_js('a.out.js', assert_returncode=NON_ZERO))
     try_delete('a.out.js')
 
-    # Test that emscripten_run_script() posts a warning when -s DYNAMIC_EXECUTION=2
+    # Test that emscripten_run_script() posts a warning when -sDYNAMIC_EXECUTION=2
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', self.run_js('a.out.js'))
     self.assertContained('hello from script', self.run_js('a.out.js'))
@@ -5497,9 +5497,9 @@ print(os.environ.get('NM'))
   def test_sdl2_config(self):
     for args, expected in [
       [['--version'], '2.0.10'],
-      [['--cflags'], '-s USE_SDL=2'],
-      [['--libs'], '-s USE_SDL=2'],
-      [['--cflags', '--libs'], '-s USE_SDL=2'],
+      [['--cflags'], '-sUSE_SDL=2'],
+      [['--libs'], '-sUSE_SDL=2'],
+      [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
       out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
@@ -5652,12 +5652,12 @@ int main() {
             self.assertContained('Aborted(Cannot enlarge memory arrays', output)
             if growth:
               # when growth is enabled, the default is to not abort, so just explain that
-              self.assertContained('If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1', output)
+              self.assertContained('If you want malloc to return NULL (0) instead of this abort, do not link with -sABORTING_MALLOC', output)
             else:
               # when growth is not enabled, suggest 3 possible solutions (start with more memory, allow growth, or don't abort)
               self.assertContained(('higher than the current value 16777216,', 'higher than the current value 33554432,'), output)
-              self.assertContained('compile with  -s ALLOW_MEMORY_GROWTH=1 ', output)
-              self.assertContained('compile with  -s ABORTING_MALLOC=0 ', output)
+              self.assertContained('compile with -sALLOW_MEMORY_GROWTH', output)
+              self.assertContained('compile with -sABORTING_MALLOC=0', output)
 
   def test_failing_growth_2gb(self):
     create_file('test.cpp', r'''
@@ -5789,7 +5789,7 @@ int main(int argc, char** argv) {
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
   def test_RUNTIME_LINKED_LIBS(self):
-    # Verify that the legacy `-s RUNTIME_LINKED_LIBS` option acts the same as passing a
+    # Verify that the legacy `-sRUNTIME_LINKED_LIBS` option acts the same as passing a
     # library on the command line directly.
     create_file('side.c', 'int foo() { return 42; }')
     create_file('main.c', '#include <assert.h>\nextern int foo(); int main() { assert(foo() == 42); return 0; }')
@@ -6848,7 +6848,7 @@ int main() {}
         print('    ' + curr)
         create_file('test.js', curr + src)
         seen = self.run_js('test.js', engine=engine, assert_returncode=NON_ZERO)
-        self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -s ENVIRONMENT=web or -s ENVIRONMENT=node', seen)
+        self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
 
   def test_override_c_environ(self):
     create_file('pre.js', r'''
@@ -6882,7 +6882,7 @@ int main() {}
     self.assertContained('|world|', output.stdout)
 
   def test_warn_no_filesystem(self):
-    error = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
+    error = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM'
 
     self.run_process([EMCC, test_file('hello_world.c')])
     seen = self.run_js('a.out.js')
@@ -9366,7 +9366,7 @@ int main () {
 
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
-    # via the environment EMCC_STRICT=1 and from the command line `-s STRICT`
+    # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
     cmd = [EMCC, test_file('hello_world.c'), '-sSTRICT']
     self.run_process(cmd)
     with env_modify({'EMCC_STRICT': '1'}):
@@ -9469,7 +9469,7 @@ int main () {
     # explicly setting IGNORE_MISSING_MAIN overrides the STRICT setting
     self.run_process([EMCC, '-sSTRICT', '-sIGNORE_MISSING_MAIN', 'empty.c'])
 
-  # Tests the difference between options -s SAFE_HEAP=1 and -s SAFE_HEAP=2.
+  # Tests the difference between options -sSAFE_HEAP=1 and -sSAFE_HEAP=2.
   def test_safe_heap_2(self):
     self.run_process([EMCC, test_file('safe_heap_2.c'), '-sSAFE_HEAP=1'])
     result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
@@ -9546,7 +9546,7 @@ int main(void) {
     self.run_process([EMXX, 'src.cpp'] + args)
     self.assertContained(expected, self.run_js('a.out.js'))
 
-  # Tests that passing -s MALLOC=none will not include system malloc() to the build.
+  # Tests that passing -sMALLOC=none will not include system malloc() to the build.
   def test_malloc_none(self):
     stderr = self.expect_fail([EMCC, test_file('malloc_none.c'), '-sMALLOC=none'])
     self.assertContained('undefined symbol: malloc', stderr)
@@ -9820,7 +9820,7 @@ int main(void) {
         self.run_process(cmd)
 
   def test_fignore_exceptions(self):
-    # the new clang flag -fignore-exceptions basically is the same as -s DISABLE_EXCEPTION_CATCHING=1,
+    # the new clang flag -fignore-exceptions basically is the same as -sDISABLE_EXCEPTION_CATCHING,
     # that is, it allows throwing, but emits no support code for catching.
     self.run_process([EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
     enable_size = os.path.getsize('a.out.wasm')
@@ -10253,7 +10253,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       self.assertContained(details, err)
 
     # plain -O0
-    legalization_message = 'to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
+    legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
     fail([], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
@@ -10263,8 +10263,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   def test_output_to_nowhere(self):
     self.run_process([EMXX, test_file('hello_world.cpp'), '-o', os.devnull, '-c'])
 
-  # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
-  # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity
+  # Test that passing -sMIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
+  # I.e. -sMIN_X_VERSION=-1 is equal to -sMIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
     self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_IE_VERSION=-1'])
@@ -10516,7 +10516,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # being undefined in the native code and in this case we recommend LLD_REPORT_UNDEFINED.
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c')])
     self.assertContained('error: undefined symbol: foo (referenced by top-level compiled C/C++ code)', err)
-    self.assertContained('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols', err)
+    self.assertContained('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols', err)
 
   def test_xclang_flag(self):
     create_file('foo.h', ' ')
@@ -10603,12 +10603,12 @@ int main () {
     self.run_js('out.js')
 
   def test_shared_and_side_module_flag(self):
-    # Test that `-shared` and `-s SIDE_MODULE` flag causes wasm dylib generation without a warning.
+    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning.
     err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertIsWasmDylib('out.foo')
 
-    # Test that `-shared` and `-s SIDE_MODULE` flag causes wasm dylib generation without a warning even if given exectuable output name.
+    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning even if given exectuable output name.
     err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.wasm'],
                            stderr=PIPE).stderr
     self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
@@ -10758,7 +10758,7 @@ exec "$@"
 
   def test_pthread_MODULARIZE(self):
     stderr = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'], stderr=PIPE, check=False).stderr
-    self.assertContained('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work',
+    self.assertContained('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work',
                          stderr)
 
   def test_jslib_clobber_i(self):

@@ -913,7 +913,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
     logger.error('Closure compiler run failed:\n')
   elif len(proc.stderr.strip()) > 0:
     if settings.CLOSURE_WARNINGS == 'error':
-      logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
+      logger.error('Closure compiler completed with warnings and -sCLOSURE_WARNINGS=error enabled, aborting!\n')
     elif settings.CLOSURE_WARNINGS == 'warn':
       logger.warn('Closure compiler completed with warnings:\n')
 
@@ -946,7 +946,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if settings.CLOSURE_WARNINGS == 'error':
-      exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+      exit_with_error('closure compiler produced warnings and -sCLOSURE_WARNINGS=error enabled')
 
   return outfile
 
@@ -1405,8 +1405,8 @@ def map_to_js_libs(library_name):
   return (None, None)
 
 
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will have the same effect as
-# -s USE_SDL=2.
+# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
+# have the same effect as -sUSE_SDL=2.
 def map_and_apply_to_settings(library_name):
   # most libraries just work, because the -l name matches the name of the
   # library we build. however, if a library has variations, which cause us to
@@ -1511,7 +1511,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       # legalization. show a clear error for those (as the flags the user passed
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
+        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 0:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
