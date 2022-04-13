@@ -889,7 +889,8 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'library_pthread_stub.c',
-          'pthread_self_stub.c'
+          'pthread_self_stub.c',
+          'proxying_stub.c',
         ])
 
     if self.is_optz:
@@ -1474,7 +1475,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
 
   cflags = ['-fno-exceptions', '-std=c++17']
 
-  includes = ['system/lib/wasmfs']
+  includes = ['system/lib/wasmfs', 'system/lib/pthread']
 
   def get_files(self):
     backends = files_in_path(
