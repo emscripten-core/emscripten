@@ -11880,3 +11880,10 @@ void foo() {}
   # works with -sPROXY_POSIX_SOCKETS.
   def test_dylink_proxy_posix_sockets(self):
     self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS'])
+
+  def test_in_tree_header_usage(self):
+    # Using headers directly from where they live in the source tree does not work.
+    # Verify that we generate a useful warning when folks try to do this.
+    create_file('test.c', '#include <emscripten.h>')
+    err = self.expect_fail([EMCC, '-I' + path_from_root('system/include'), 'test.c'])
+    self.assertContained('#error "Including files directly from the emscripten source tree is not supported', err)
