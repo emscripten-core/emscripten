@@ -1302,9 +1302,14 @@ class libmalloc(MTLibrary):
     return 'lib%s' % self.malloc
 
   def get_base_name(self):
-    name = super().get_base_name()
+    name = self.get_base_name_prefix()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
+
+    # Add the prefixes for malloc ('-mt' / '-ww') after the '-debug' part, since the -debug string
+    # is part of the user-submitted -sMALLOC prefix (e.g. -sMALLOC=dlmalloc-debug)
+    name += super().get_base_name().replace(self.get_base_name_prefix(), '')
+
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
       name += '-noerrno'
