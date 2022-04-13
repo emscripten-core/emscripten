@@ -18,15 +18,6 @@
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
-/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
-#ifdef __EMSCRIPTEN_WASM_WORKERS__
-#define USE_LOCKS 1
-#define USE_SPIN_LOCKS 1 // Wasm Workers does not have the pthread API, so use spinwaiting
-#elif defined(__EMSCRIPTEN_PTHREADS__)
-#define USE_LOCKS 1
-#define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
-#endif
-
 #ifndef MALLOC_ALIGNMENT
 #include <stddef.h>
 /* `malloc`ed pointers must be aligned at least as strictly as max_align_t. */
