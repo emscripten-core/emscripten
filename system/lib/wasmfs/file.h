@@ -283,7 +283,11 @@ public:
     if (name == "..") {
       return getParent();
     }
-    return getDir()->getChild(name);
+    auto child = getDir()->getChild(name);
+    if (child) {
+      child->locked().setParent(getDir());
+    }
+    return child;
   }
   bool removeChild(const std::string& name);
   std::shared_ptr<File> insertChild(const std::string& name,

@@ -168,19 +168,17 @@ private:
     if (_wasmfs_node_get_mode(childPath.c_str(), &mode)) {
       return nullptr;
     }
-    std::shared_ptr<File> child;
     if (S_ISREG(mode)) {
-      child = std::make_shared<NodeFile>(mode, getBackend(), childPath);
+      return std::make_shared<NodeFile>(mode, getBackend(), childPath);
     } else if (S_ISDIR(mode)) {
-      child = std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
+      return std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
     } else if (S_ISLNK(mode)) {
       // return std::make_shared<NodeSymlink>(mode, getBackend(), childPath);
+      return nullptr;
     } else {
       // Unrecognized file kind not made visible to WasmFS.
       return nullptr;
     }
-    child->locked().setParent(shared_from_this()->cast<Directory>());
-    return child;
   }
 
   bool removeChild(const std::string& name) override {
