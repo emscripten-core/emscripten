@@ -18,7 +18,7 @@ function hexDump(bytes) {
 
 var port = 8088;
 var ws = require('ws');
-var wss = new ws.Server({ port: port });
+var wss = new ws.WebSocketServer({ port: port });
 console.log('WebSocket server listening on ws://localhost:' + port + '/');
 wss.on('connection', function(ws) {
   console.log('Client connected!');
