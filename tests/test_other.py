@@ -9992,7 +9992,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   def test_em_asm_c89(self):
     create_file('src.c', '''
       #include <emscripten/em_asm.h>
-      int main() {
+      int main(void) {
         EM_ASM({ console.log('hello'); });
       }\n''')
     self.run_process([EMCC, '-c', 'src.c',
