@@ -17,7 +17,7 @@
 #error "USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
 #if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker."
+#error "--proxy-to-worker is not supported with -sUSE_PTHREADS>0! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
 #endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
@@ -403,7 +403,7 @@ var LibraryPThread = {
           );
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
         } else
- #endif
+#endif
         PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
@@ -432,9 +432,9 @@ var LibraryPThread = {
 #if ASSERTIONS
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
-        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
+        'If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`.'
 #if PTHREAD_POOL_SIZE_STRICT == 1
-        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-sPTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
         );
 #endif // ASSERTIONS
@@ -700,7 +700,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
+        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -748,7 +748,7 @@ var LibraryPThread = {
             // be able to transfer control to offscreen, but WebGL can be
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
-            err('pthread_create: Build with -s OFFSCREEN_FRAMEBUFFER=1 to enable fallback proxying of GL commands from pthread to main thread.');
+            err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
             return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
 #endif
           }
@@ -932,7 +932,7 @@ var LibraryPThread = {
       var b = args >> 3;
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
-  #if WASM_BIGINT
+#if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
           HEAP64[b + 2*i] = BigInt(1);
@@ -942,9 +942,9 @@ var LibraryPThread = {
           HEAP64[b + 2*i] = BigInt(0);
           HEAPF64[b + 2*i + 1] = arg;
         }
-  #else
+#else
         HEAPF64[b + i] = arg;
-  #endif
+#endif
       }
       return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     });

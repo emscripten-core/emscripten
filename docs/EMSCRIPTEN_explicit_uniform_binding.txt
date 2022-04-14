@@ -157,7 +157,7 @@ Additions to Emscripten compiler
     to coordinate enabling the extension, EMSCRIPTEN_explicit_uniform_binding
     activation is controlled at compile time by specifying the flag
 
-        -s GL_EXPLICIT_UNIFORM_BINDING=1
+        -sGL_EXPLICIT_UNIFORM_BINDING
 
     to 'emcc' or 'em++' linker command line in the Emscripten compiler.
 

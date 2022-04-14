@@ -1983,7 +1983,7 @@ int main() {
     output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
     self.set_setting('ASSERTIONS')
-    self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
+    self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
     self.clear_setting('ASSERTIONS')
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
@@ -2134,7 +2134,7 @@ int main(int argc, char **argv) {
   def test_runtime_stacksave(self):
     self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
 
-  # Tests that -s MINIMAL_RUNTIME=1 builds can utilize -s ALLOW_MEMORY_GROWTH=1 option.
+  # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2671,7 +2671,7 @@ The current type of b is: 9
   def test_pthread_abort_interrupt(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    expected = ['Aborted(). Build with -s ASSERTIONS=1 for more info', 'Aborted(native code called abort())']
+    expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
     self.do_runf(test_file('pthread/test_pthread_abort_interrupt.c'), expected, assert_returncode=NON_ZERO)
 
   @no_asan('ASan does not support custom memory allocators')
@@ -5454,6 +5454,7 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(test_file('stat/test_mknod.c'), 'success')
 
+  @also_with_wasmfs
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
@@ -6531,6 +6532,8 @@ void* operator new(size_t size) {
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
+    # TODO: remove Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
+    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
     self.do_run_from_file(
         test_file('third_party/zlib/example.c'),
         test_file('core/test_zlib.out'),
@@ -8271,7 +8274,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
-  # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
+  # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8289,7 +8292,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     else:
       print(occurances)
 
-  # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
+  # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
@@ -8299,7 +8302,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
 
-  # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
+  # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @parameterized({
     'default': ([],),
     'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
@@ -8330,7 +8333,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.maybe_closure()
     self.do_runf(test_file('hello_world.c'), 'hello, world!')
 
-  # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
+  # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
@@ -8343,7 +8346,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.maybe_closure()
     self.do_runf(test_file('small_hello_world.c'), 'hello')
 
-  # Tests global initializer with -s MINIMAL_RUNTIME=1
+  # Tests global initializer with -sMINIMAL_RUNTIME
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
@@ -8963,7 +8966,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
-    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    # Could also test with -sALLOW_TABLE_GROWTH
     self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
@@ -8971,7 +8974,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests the emscripten_get_exported_function() API.
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_emscripten_get_exported_function(self):
-    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    # Could also test with -sALLOW_TABLE_GROWTH
     self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]

@@ -353,7 +353,7 @@ var LibraryEGL = {
 #endif
 #if GL_ASSERTIONS
       if (glesContextVersion == 3) {
-        err('When initializing GLES3/WebGL2 via EGL, one must build with -s MAX_WEBGL_VERSION=2 !');
+        err('When initializing GLES3/WebGL2 via EGL, one must build with -sMAX_WEBGL_VERSION=2!');
       } else {
         err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
       }

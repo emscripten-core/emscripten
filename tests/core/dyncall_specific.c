@@ -22,7 +22,7 @@ int waka(int w, long long xy, int z) {
 int main() {
   EM_ASM({
     // Note that these would need to use BigInts if the file were built with
-    // -s WASM_BIGINT
+    // -sWASM_BIGINT
 #if DIRECT
     console.log('Received ' + dynCall_iiji($0, 1, 4, 0xffffffff, 9));
     return;
