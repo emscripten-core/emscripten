@@ -23,8 +23,6 @@ static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 	__wasm_init_tls((void*)*sbrk_ptr);
 	assert(*sbrk_ptr % 4 == 0); // sbrk value must always be a multiple of four bytes.
-	// TODO: This TLS size rounding up to next multiple of 4 bytes could well be done at compile time, which
-	// would save the need to emit code size to round here. (and could turn this into a assert(__builtin_wasm_tls_size() % 4 == 0) instead)
 	*sbrk_ptr += (__builtin_wasm_tls_size() + 3) & -4; // round TLS up to next 4 bytes to retain correct sbrk rounding.
 }
 
@@ -44,8 +42,6 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress,
     // We expect TLS area to need to be at most 16 bytes aligned
 	assert(__builtin_wasm_tls_align() == 0 || 16 % __builtin_wasm_tls_align() == 0);
 
-	// TODO: This TLS size rounding up to next multiple of 16 bytes could well be done at compile time, which
-	// would save the need to emit code size to round here.
 	uint32_t tlsSize = (__builtin_wasm_tls_size() + 15) & -16;
 	assert(stackSize > tlsSize);
 
