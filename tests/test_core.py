@@ -4865,7 +4865,6 @@ side init sees 82, 72, -534.
 main main sees -524, -534, 72.
 '''])
 
-  @disabled('re-enable when clang rev 11da1b53 rolls into emscripten')
   @needs_make('mingw32-make')
   @needs_dylink
   def test_dylink_zlib(self):
@@ -6509,7 +6508,6 @@ void* operator new(size_t size) {
                 includes=[test_file('sqlite')],
                 force_c=True)
 
-  @disabled('re-enable when clang rev 11da1b53 rolls into emscripten')
   @needs_make('mingw32-make')
   @is_slow_test
   @parameterized({
@@ -6533,7 +6531,8 @@ void* operator new(size_t size) {
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
-    self.emcc_args += ['-Wno-deprecated-non-prototype']
+    # TODO: remove Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
+    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
     self.do_run_from_file(
         test_file('third_party/zlib/example.c'),
         test_file('core/test_zlib.out'),

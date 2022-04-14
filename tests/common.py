@@ -1203,7 +1203,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return poppler + freetype
 
   def get_zlib_library(self):
-    self.emcc_args += ['-Wno-deprecated-non-prototype']
+    # TODO: remove -Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
+    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                               configure=['cmake', '.'],

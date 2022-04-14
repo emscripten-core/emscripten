@@ -9989,7 +9989,6 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.run_process([EMCC, 'foo.o', 'main.o'])
     self.assertContained('Hello, world!\nHello, world!\n', self.run_js('a.out.js'))
 
-  @disabled('re-enable when clang rev 11da1b53 rolls into emscripten')
   def test_em_asm_c89(self):
     create_file('src.c', '''
       #include <emscripten/em_asm.h>
