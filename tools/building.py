@@ -1484,21 +1484,6 @@ binaryen_kept_debug_info = False
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and \
-     (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
-    # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we use source maps (which are
-    # implemented separately from dwarf).
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    cmd += ['--strip-dwarf']
   cmd += args
   if infile:
     cmd += [infile]
@@ -1534,8 +1519,22 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(*args, **kwargs):
-  return run_binaryen_command('wasm-opt', *args, **kwargs)
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+  if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
+    # remove any dwarf debug info sections, if the debug level is <3, as
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
+    # note that we add this pass first, so that it doesn't interfere with
+    # the final set of passes (which may generate stack IR, and nothing
+    # should be run after that)
+    # TODO: if lld can strip dwarf then we don't need this. atm though it can
+    #       only strip all debug info or none, which includes the name section
+    #       which we may need
+    # TODO: once fastcomp is gone, either remove source maps entirely, or
+    #       support them by emitting a source map at the end from the dwarf,
+    #       and use llvm-objcopy to remove that final dwarf
+    args.insert(0, '--strip-dwarf')
+  return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
 save_intermediate_counter = 0
