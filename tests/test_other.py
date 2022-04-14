@@ -11850,6 +11850,9 @@ void foo() {}
   def test_debug_opt_warning(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
     self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
+    # with --profiling-funcs however we do not use DWARF (we just emit the
+    # names section) and will not warn.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--profiling-funcs', '-Werror'])
 
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))
