@@ -1234,7 +1234,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
       mask = 0;
-      auto flags = openFile->getFlags();
+      auto flags = openFile->locked().getFlags();
       auto readBit = pollfd->events & POLLOUT;
       if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
         mask |= readBit;
@@ -1299,6 +1299,97 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   }
 
   return 0;
+}
+
+int __syscall_fcntl64(int fd, int cmd, ...) {
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  switch (cmd) {
+    case F_DUPFD: {
+      int newfd;
+      va_list v1;
+      va_start(v1, cmd);
+      newfd = va_arg(v1, int);
+      va_end(v1);
+      if (newfd < 0) {
+        return -EINVAL;
+      }
+
+      // Find the first available fd at arg or after.
+      // TODO: Should we check for a limit on the max FD number, if we have one?
+      while (1) {
+        if (!fileTable.getEntry(newfd)) {
+          fileTable.setEntry(newfd, openFile);
+          return newfd;
+        }
+        newfd++;
+      }
+    }
+    case F_GETFD:
+    case F_SETFD:
+      // FD_CLOEXEC makes no sense for a single process.
+      return 0;
+    case F_GETFL:
+      return openFile->locked().getFlags();
+    case F_SETFL: {
+      int flags;
+      va_list v1;
+      va_start(v1, cmd);
+      flags = va_arg(v1, int);
+      va_end(v1);
+      // This syscall should ignore most flags.
+      flags = flags & ~(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL |
+                        O_NOCTTY | O_TRUNC);
+      // Also ignore this flag which musl always adds constantly, but does not
+      // matter for us.
+      flags = flags & ~O_LARGEFILE;
+      // On linux only a few flags can be modified, and we support only a subset
+      // of those. Error on anything else.
+      auto supportedFlags = flags & O_APPEND;
+      if (flags != supportedFlags) {
+        return -EINVAL;
+      }
+      openFile->locked().setFlags(flags);
+      return 0;
+    }
+    case F_GETLK: {
+      // If these constants differ then we'd need a case for both.
+      static_assert(F_GETLK == F_GETLK64);
+      flock* data;
+      va_list v1;
+      va_start(v1, cmd);
+      data = va_arg(v1, flock*);
+      va_end(v1);
+      // We're always unlocked for now, until we implement byte-range locks.
+      data->l_type = F_UNLCK;
+      return 0;
+    }
+    case F_SETLK:
+    case F_SETLKW: {
+      static_assert(F_SETLK == F_SETLK64);
+      static_assert(F_SETLKW == F_SETLKW64);
+      // Always error for now, until we implement byte-range locks.
+      return -EACCES;
+    }
+    case F_GETOWN_EX:
+    case F_SETOWN:
+      // These are for sockets. We don't have them fully implemented yet.
+      return -EINVAL;
+    case F_GETOWN:
+      // Work around what seems to be a musl bug, where they do not set errno
+      // in the caller. This has been an issue since the JS filesystem and had
+      // the same workaround there.
+      errno = EINVAL;
+      return -1;
+    default: {
+      // TODO: support any remaining cmds
+      return -EINVAL;
+    }
+  }
 }
 
 // Stubs (at least for now)

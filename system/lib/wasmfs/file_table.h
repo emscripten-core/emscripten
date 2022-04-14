@@ -32,7 +32,7 @@ template<typename T> bool addWillOverFlow(T a, T b) {
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position;
-  const oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
+  oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
@@ -62,15 +62,14 @@ public:
 
     std::shared_ptr<File>& getFile() { return openFileState->file; };
 
-    off_t getPosition() { return openFileState->position; };
+    off_t getPosition() const { return openFileState->position; };
     void setPosition(off_t pos) { openFileState->position = pos; };
+
+    oflags_t getFlags() const { return openFileState->flags; };
+    void setFlags(oflags_t flags) { openFileState->flags = flags; };
   };
 
   Handle locked() { return Handle(shared_from_this()); }
-
-  // Return the flags we were created with. This does not require a lock as the
-  // flags never change after creation.
-  oflags_t getFlags() const { return flags; }
 };
 
 class FileTable {
