@@ -403,7 +403,7 @@ var LibraryPThread = {
           );
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
         } else
- #endif
+#endif
         PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
@@ -932,7 +932,7 @@ var LibraryPThread = {
       var b = args >> 3;
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
-  #if WASM_BIGINT
+#if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
           HEAP64[b + 2*i] = BigInt(1);
@@ -942,9 +942,9 @@ var LibraryPThread = {
           HEAP64[b + 2*i] = BigInt(0);
           HEAPF64[b + 2*i + 1] = arg;
         }
-  #else
+#else
         HEAPF64[b + i] = arg;
-  #endif
+#endif
       }
       return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     });
