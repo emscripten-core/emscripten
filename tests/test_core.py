@@ -4865,6 +4865,7 @@ side init sees 82, 72, -534.
 main main sees -524, -534, 72.
 '''])
 
+  @disabled('re-enable when clang rev 11da1b53 rolls into emscripten')
   @needs_make('mingw32-make')
   @needs_dylink
   def test_dylink_zlib(self):
@@ -6508,6 +6509,7 @@ void* operator new(size_t size) {
                 includes=[test_file('sqlite')],
                 force_c=True)
 
+  @disabled('re-enable when clang rev 11da1b53 rolls into emscripten')
   @needs_make('mingw32-make')
   @is_slow_test
   @parameterized({
