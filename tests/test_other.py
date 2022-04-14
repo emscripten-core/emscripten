@@ -11887,3 +11887,10 @@ void foo() {}
     create_file('test.c', '#include <emscripten.h>')
     err = self.expect_fail([EMCC, '-I' + path_from_root('system/include'), 'test.c'])
     self.assertContained('#error "Including files directly from the emscripten source tree is not supported', err)
+
+  def test_multiple_g_flags(self):
+    # Verify that a second -g argument overrides the first
+    self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g'])
+    self.assertIn(b'.debug', read_binary('hello_world.o'))
+    self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
+    self.assertNotIn(b'.debug', read_binary('hello_world.o'))
