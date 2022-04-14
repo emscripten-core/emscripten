@@ -126,7 +126,7 @@ def update_settings_glue(metadata):
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
   # Store function exports so that Closure and metadce can track these even in
-  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
   settings.WASM_FUNCTION_EXPORTS = metadata['exports']
 
   # start with the MVP features, and add any detected features.

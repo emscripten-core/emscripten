@@ -4,7 +4,7 @@
 fiber.h
 =======
 
-`Fibers <https://en.wikipedia.org/wiki/Fiber_(computer_science)>`_ are light, co-operative threads of execution. The `fiber.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/fiber.h>`_ header defines a low-level API for manipulating Fibers in Emscripten. Fibers are implemented with :ref:`Asyncify`, so you must link your program with ``-s ASYNCIFY`` if you intend to use them.
+`Fibers <https://en.wikipedia.org/wiki/Fiber_(computer_science)>`_ are light, co-operative threads of execution. The `fiber.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/fiber.h>`_ header defines a low-level API for manipulating Fibers in Emscripten. Fibers are implemented with :ref:`Asyncify`, so you must link your program with ``-sASYNCIFY`` if you intend to use them.
 
 Fibers are intended as a building block for asynchronous control flow constructs,
 such as coroutines. They supersede the legacy coroutine API that was available

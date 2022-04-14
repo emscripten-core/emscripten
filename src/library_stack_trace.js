@@ -38,7 +38,7 @@ var LibraryStackTrace = {
     });
 #else // DEMANGLE_SUPPORT
 #if ASSERTIONS
-    warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+    warnOnce('warning: build with -sDEMANGLE_SUPPORT to link in libcxxabi demangling');
 #endif // ASSERTIONS
     return func;
 #endif // DEMANGLE_SUPPORT
