@@ -46,9 +46,11 @@ __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
 
 void StdoutFile::flush() {
   // Write a null to flush the output (see comment above on "Flush on either a
-  // null or a newline").
-  const uint8_t nothing = '\0';
-  write(&nothing, 1, 0);
+  // null or a newline"), if we have content.
+  if (!writeBuffer.empty()) {
+    const uint8_t nothing = '\0';
+    write(&nothing, 1, 0);
+  }
 }
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
@@ -68,8 +70,10 @@ __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
 
 void StderrFile::flush() {
   // Similar to StdoutFile.
-  const uint8_t nothing = '\0';
-  write(&nothing, 1, 0);
+  if (!writeBuffer.empty()) {
+    const uint8_t nothing = '\0';
+    write(&nothing, 1, 0);
+  }
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {
