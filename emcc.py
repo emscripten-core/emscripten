@@ -2005,6 +2005,12 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
     settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
+    if settings.MAIN_MODULE:
+      # Dynamic library support uses JS API internals, so include it all
+      # TODO: rewriting more of the dynamic linking support code into wasm could
+      #       avoid this. also, after we remove the old FS, we could write a
+      #       more specific API for wasmfs/dynamic linking integration perhaps
+      settings.FORCE_FILESYSTEM = 1
     if settings.FORCE_FILESYSTEM:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
@@ -2018,12 +2024,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '_wasmfs_chmod',
         '_wasmfs_identify',
       ]
-    if settings.MAIN_MODULE:
-      # Dynamic library support uses JS API internals, so include it all
-      # TODO: rewriting more of the dynamic linking support code into wasm could
-      #       avoid this. also, after we remove the old FS, we could write a
-      #       more specific API for wasmfs/dynamic linking integration perhaps
-      settings.FORCE_FILESYSTEM = 1
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -2145,10 +2145,14 @@ def phase_linker_setup(options, state, newargs, user_settings):
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_createLazyFile',
-      'FS_createDevice',
       'FS_unlink'
     ]
+    if not settings.WASMFS:
+      # The old FS has some functionality that WasmFS lacks.
+      settings.EXPORTED_RUNTIME_METHODS += [
+        'FS_createLazyFile',
+        'FS_createDevice'
+      ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
       'addRunDependency',

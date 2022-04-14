@@ -45,7 +45,7 @@ using js_index_t = uint32_t;
 // struct when we go through C and JS.
 struct CppCallbackState : public CallbackState {
   // The function to call to resume execution.
-  emscripten::SyncToAsync::Callback resume;
+  emscripten::ProxyingQueue::ProxyingCtx ctx;
 };
 
 extern "C" {
@@ -85,7 +85,7 @@ void _wasmfs_jsimpl_async_get_size(js_index_t backend,
 namespace wasmfs {
 
 class ProxiedAsyncJSImplFile : public DataFile {
-  emscripten::SyncToAsync& proxy;
+  emscripten::ProxyWorker& proxy;
 
   js_index_t getBackendIndex() {
     static_assert(sizeof(backend_t) == sizeof(js_index_t), "TODO: wasm64");
@@ -104,8 +104,8 @@ class ProxiedAsyncJSImplFile : public DataFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     CppCallbackState state;
 
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
+    proxy([&](auto ctx) {
+      state.ctx = ctx;
 
       _wasmfs_jsimpl_async_write(
         getBackendIndex(),
@@ -113,7 +113,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
         buf,
         len,
         offset,
-        [](CppCallbackState* state) { (*state->resume)(); },
+        [](CppCallbackState* state) { state->ctx.finish(); },
         &state);
     });
 
@@ -127,8 +127,8 @@ class ProxiedAsyncJSImplFile : public DataFile {
 
     CppCallbackState state;
 
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
+    proxy([&](auto ctx) {
+      state.ctx = ctx;
 
       _wasmfs_jsimpl_async_read(
         getBackendIndex(),
@@ -136,7 +136,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
         buf,
         len,
         offset,
-        [](CppCallbackState* state) { (*state->resume)(); },
+        [](CppCallbackState* state) { state->ctx.finish(); },
         &state);
     });
 
@@ -148,13 +148,13 @@ class ProxiedAsyncJSImplFile : public DataFile {
   size_t getSize() override {
     CppCallbackState state;
 
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
+    proxy([&](auto ctx) {
+      state.ctx = ctx;
 
       _wasmfs_jsimpl_async_get_size(
         getBackendIndex(),
         getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
+        [](CppCallbackState* state) { state->ctx.finish(); },
         &state);
     });
 
@@ -168,17 +168,17 @@ class ProxiedAsyncJSImplFile : public DataFile {
 public:
   ProxiedAsyncJSImplFile(mode_t mode,
                          backend_t backend,
-                         emscripten::SyncToAsync& proxy)
+                         emscripten::ProxyWorker& proxy)
     : DataFile(mode, backend), proxy(proxy) {
     CppCallbackState state;
 
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
+    proxy([&](auto ctx) {
+      state.ctx = ctx;
 
       _wasmfs_jsimpl_async_alloc_file(
         getBackendIndex(),
         getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
+        [](CppCallbackState* state) { state->ctx.finish(); },
         &state);
     });
   }
@@ -186,28 +186,28 @@ public:
   ~ProxiedAsyncJSImplFile() {
     CppCallbackState state;
 
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
+    proxy([&](auto ctx) {
+      state.ctx = ctx;
 
       _wasmfs_jsimpl_async_free_file(
         getBackendIndex(),
         getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
+        [](CppCallbackState* state) { state->ctx.finish(); },
         &state);
     });
   }
 };
 
 class ProxiedAsyncJSBackend : public Backend {
-  emscripten::SyncToAsync proxy;
+  emscripten::ProxyWorker proxy;
 
 public:
   // Receives as a parameter a function to call on the proxied thread, which is
   // useful for doing setup there.
   ProxiedAsyncJSBackend(std::function<void(backend_t)> setupOnThread) {
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+    proxy([&](auto ctx) {
       setupOnThread(this);
-      (*resume)();
+      ctx.finish();
     });
   }
 

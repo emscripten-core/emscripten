@@ -206,13 +206,13 @@ mergeInto(LibraryManager.library, {
 // However its implementation is faulty: https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
 // Firefox Nightly 86.0a1 (2021-01-15) does not yet have it, https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
 // And at the time of writing, no other browser has it either.
-#if MIN_EDGE_VERSION != TARGET_NOT_SUPPORTED || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+#if MIN_EDGE_VERSION < 91 || MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
-  // Also always polyfill in Chrome-based browsers, where Atomics.waitAsync is broken,
+  // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is broken until Chrome 91,
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || navigator.userAgent.indexOf('Chrome') != -1) { \n"+
+  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || parseInt((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) { \n"+
 "let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];\n"+
 "function __Atomics_pollWaitAsyncAddresses() {\n"+
 "  let now = performance.now();\n"+

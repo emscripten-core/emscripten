@@ -677,12 +677,10 @@ function getHeapForType(type, unsigned) {
         return unsigned ? 'HEAPU64' : 'HEAP64';
       }
       // fall through
-    case '<4 x i32>':
     case 'i32':
       return unsigned ? 'HEAPU32' : 'HEAP32';
     case 'double':
       return 'HEAPF64';
-    case '<4 x float>':
     case 'float':
       return 'HEAPF32';
   }
