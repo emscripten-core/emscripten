@@ -7739,6 +7739,23 @@ int main() {
       err = self.run_process([EMCC, '-O' + str(level), test_file('hello_world.c')], stderr=PIPE).stderr
       self.assertContainedIf("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err, level > 3)
 
+  def test_o_level_invalid(self):
+    # Test that string values, and negative integers are not accepted
+    err = self.expect_fail([EMCC, '-Ofoo', test_file('hello_world.c')])
+    self.assertContained('emcc: error: invalid optimization level: -Ofoo', err)
+    err = self.expect_fail([EMCC, '-O-10', test_file('hello_world.c')])
+    self.assertContained('emcc: error: invalid optimization level: -O-10', err)
+
+  def test_g_level_invalid(self):
+    # Bad integer values are handled by emcc
+    err = self.expect_fail([EMCC, '-g5', test_file('hello_world.c')])
+    self.assertContained('emcc: error: invalid debug level: -g5', err)
+    err = self.expect_fail([EMCC, '-g-10', test_file('hello_world.c')])
+    self.assertContained('emcc: error: invalid debug level: -g-10', err)
+    # Unknown string values are passed through to clang which will error out
+    err = self.expect_fail([EMCC, '-gfoo', test_file('hello_world.c')])
+    self.assertContained("error: unknown argument: '-gfoo'", err)
+
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'a.js', '-o', 'b.js'])

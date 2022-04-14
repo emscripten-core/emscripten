@@ -3019,7 +3019,7 @@ def parse_args(newargs):
         options.requested_level = 2
         settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=1')
-      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + arg, clamp=True)
+      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
@@ -3068,7 +3068,7 @@ def parse_args(newargs):
       requested_level = strip_prefix(arg, '-g') or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
-        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + arg)
+        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
@@ -3975,13 +3975,13 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   try:
     level = int(level_string)
   except ValueError:
-    raise Exception(err_msg)
+    exit_with_error(err_msg)
   if clamp:
     if level > max_level:
       logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
       level = max_level
   if not 0 <= level <= max_level:
-    raise Exception(err_msg)
+    exit_with_error(err_msg)
   return level
 
 
