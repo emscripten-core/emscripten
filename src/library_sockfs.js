@@ -339,8 +339,11 @@ mergeInto(LibraryManager.library, {
 
         if (ENVIRONMENT_IS_NODE) {
           peer.socket.on('open', handleOpen);
-          peer.socket.on('message', function(data) {
-            handleMessage(data);
+          peer.socket.on('message', function(data, isBinary) {
+            if (!isBinary) {
+              return;
+            }
+            handleMessage((new Uint8Array(data)).buffer); // copy from node Buffer -> ArrayBuffer
           });
           peer.socket.on('close', function() {
             Module['websocket'].emit('close', sock.stream.fd);
