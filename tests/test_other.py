@@ -11848,7 +11848,9 @@ void foo() {}
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
   @parameterized({
+    # we will warn here since -O2 runs the optimizer and -g enables DWARF
     'O2_g': (True, ['-O2', '-g'],),
+    # asyncify will force wasm-opt to run as well, so we warn here too
     'asyncify_g': (True, ['-sASYNCIFY', '-g'],),
     # with --profiling-funcs however we do not use DWARF (we just emit the
     # names section) and will not warn.
