@@ -3466,11 +3466,11 @@ Var: 42
       #include <stdio.h>
       #include <string.h>
 
-      typedef void (*voidfunc)();
+      typedef void (*voidfunc)(void);
       typedef void (*intfunc)(int);
 
       void callvoid(voidfunc f) { f(); }
-      void callint(voidfunc f, int x) { f(x); }
+      void callint(intfunc f, int x) { f(x); }
 
       void void_0() { printf("void 0\n"); }
       void void_1() { printf("void 1\n"); }
