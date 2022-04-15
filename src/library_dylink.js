@@ -220,7 +220,7 @@ var LibraryDylink = {
   _dlsym_js: function(handle, symbol) {
     abort(dlopenMissingError);
   },
-  _dlinit: function() {},
+  _dlinit: function(main_dso_handle) {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
