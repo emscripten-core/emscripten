@@ -38,40 +38,12 @@ MemoryDirectory::findEntry(const std::string& name) {
   });
 }
 
-std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->child;
-  }
-  return nullptr;
-}
-
 bool MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
-  if (entry == entries.end()) {
-    return false;
-  }
-  entries.erase(entry);
-  return true;
-}
-
-std::shared_ptr<File> MemoryDirectory::insertChild(const std::string& name,
-                                                   std::shared_ptr<File> file) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->child;
-  }
-  entries.push_back({name, file});
-  return file;
-}
-
-std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
-  auto entry =
-    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
-      return entry.child == file;
-    });
   if (entry != entries.end()) {
-    return entry->name;
+    entries.erase(entry);
   }
-  return {};
+  return true;
 }
 
 std::vector<Directory::Entry> MemoryDirectory::getEntries() {
@@ -81,6 +53,21 @@ std::vector<Directory::Entry> MemoryDirectory::getEntries() {
     result.push_back({name, child->kind, child->getIno()});
   }
   return result;
+}
+
+bool MemoryDirectory::insertMove(const std::string& name,
+                                 std::shared_ptr<File> file) {
+  auto& oldEntries =
+    std::static_pointer_cast<MemoryDirectory>(file->locked().getParent())
+      ->entries;
+  for (auto it = oldEntries.begin(); it != oldEntries.end(); ++it) {
+    if (it->child == file) {
+      oldEntries.erase(it);
+      break;
+    }
+  }
+  insertChild(name, file);
+  return true;
 }
 
 class MemoryFileBackend : public Backend {

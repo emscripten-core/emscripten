@@ -106,6 +106,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   // TODO: Check open file access mode for write permissions.
 
   auto lockedOpenFile = openFile->locked();
+  assert(lockedOpenFile.getFile());
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -421,10 +422,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       }
 
       // TODO: Check write permissions on the parent directory.
-      // TODO: Forbid mounting new backends except under the root backend.
+      std::shared_ptr<File> created;
+      if (backend == parent->getBackend()) {
+        created = lockedParent.insertDataFile(std::string(childName), mode);
+      } else {
+        created = backend->createFile(mode);
+        bool mounted = lockedParent.mountChild(std::string(childName), created);
+        assert(mounted);
+      }
       // TODO: Check that the insert actually succeeds.
-      auto created = backend->createFile(mode);
-      lockedParent.insertChild(std::string(childName), created);
       if (returnMode == OpenReturnMode::Nothing) {
         return 0;
       }
@@ -432,6 +438,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
+
+  // TODO: Return EISDIR if child is a directory and write access is requested.
 
   // Check user permissions.
   auto fileMode = child->locked().getMode();
@@ -516,6 +524,10 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   mode &= S_IRWXUGO | S_ISVTX;
 
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
   // By default, the backend that the directory is created in is the same as
   // the parent directory. However, if a backend is passed as a parameter,
   // then that backend is used.
@@ -523,13 +535,16 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
-    return -EACCES;
+  std::shared_ptr<File> created;
+  if (backend == parent->getBackend()) {
+    created = lockedParent.insertDirectory(childName, mode);
+  } else {
+    created = backend->createDirectory(mode);
+    bool mounted = lockedParent.mountChild(childName, created);
+    assert(mounted);
   }
-  // TODO: Forbid mounting new backends except under the root backend.
+
   // TODO: Check that the insertion is successful.
-  auto created = backend->createDirectory(mode);
-  lockedParent.insertChild(childName, created);
 
   // Update the times.
   auto lockedFile = created->locked();
@@ -904,7 +919,7 @@ int __syscall_renameat(int olddirfd,
     }
   }
 
-  // The new file must be removed if it already exists.
+  // The new file will be removed if it already exists.
   if (newFile) {
     if (auto newDir = newFile->dynCast<Directory>()) {
       // Cannot overwrite a directory with a non-directory.
@@ -922,23 +937,12 @@ int __syscall_renameat(int olddirfd,
         return -ENOTDIR;
       }
     }
-
-    // Remove the overwritten file.
-    if (!lockedNewParent.removeChild(newFileName)) {
-      return -EPERM;
-    }
   }
 
-  // Unlink the oldpath and add the oldpath to the new parent dir.
-  if (!lockedOldParent.removeChild(oldFileName)) {
-    // TODO: Put the file that was going to be overwritten back!
+  // Perform the move.
+  if (!lockedNewParent.insertMove(newFileName, oldFile)) {
     return -EPERM;
   }
-  if (!lockedNewParent.insertChild(newFileName, oldFile)) {
-    // TODO: Put all the removed files back!
-    return -EPERM;
-  }
-
   return 0;
 }
 
@@ -961,13 +965,9 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
-
-  auto backend = parent->getBackend();
-  auto created = backend->createSymlink((char*)target);
-  if (!lockedParent.insertChild(childName, created)) {
+  if (!lockedParent.insertSymlink(childName, (char*)target)) {
     return -EPERM;
   }
-
   return 0;
 }
 

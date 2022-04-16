@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <emscripten/html5.h>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <sys/stat.h>
@@ -24,6 +25,7 @@ namespace wasmfs {
 
 class Backend;
 class Directory;
+class Symlink;
 
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
@@ -150,22 +152,43 @@ public:
   };
 
 private:
+  enum class DCacheKind { Normal, Mount };
+  struct DCacheEntry {
+    DCacheKind kind;
+    std::shared_ptr<File> file;
+  };
+  // TODO: Use a cache data structure with smaller code size.
+  std::map<std::string, DCacheEntry> dcache;
+
   // Return the file with the given name or null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
+
+  // Inserts a file with the given name, kind, and mode. Returns a `File`
+  // corresponding to the newly created file or nullptr if the new file could
+  // not be created. Assumes a child with this name does not already exist.
+  virtual std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                                   mode_t mode) = 0;
+  virtual std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                                     mode_t mode) = 0;
+  virtual std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                                 const std::string& target) = 0;
+
+  // Move the file represented by `file` from its current directory to this
+  // directory with the new `name`, possibly overwriting another file that
+  // already exists with that name. The old directory may be the same as this
+  // directory. On success, return `true`. Otherwise return `false` without
+  // changing any underlying state.
+  virtual bool insertMove(const std::string& name,
+                          std::shared_ptr<File> file) = 0;
+
   // Remove the file with the given name, returning `true` on success or if the
-  // child has already been removed.
+  // child has already been removed or returning `false` if the child cannot be
+  // removed.
   virtual bool removeChild(const std::string& name) = 0;
-  // Insert the given file with the given name if there is not already an entry
-  // with the same name. Returns the inserted file or the preexisting file or
-  // null if the file could not be inserted and there was also no preexisting
-  // file.
-  virtual std::shared_ptr<File> insertChild(const std::string& name,
-                                            std::shared_ptr<File> file) = 0;
-  // Return the name of the file if it is contained within this directory or an
-  // empty string if it is not.
-  virtual std::string getName(std::shared_ptr<File> file) = 0;
+
   // The number of entries in this directory.
   virtual size_t getNumEntries() = 0;
+
   // The list of entries in this directory.
   virtual std::vector<Directory::Entry> getEntries() = 0;
 
@@ -266,33 +289,47 @@ public:
 
 class Directory::Handle : public File::Handle {
   std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
+  void finishInsertingChild(const std::string& name,
+                            std::shared_ptr<File> child);
 
 public:
   Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
   Handle(std::shared_ptr<File> directory, std::defer_lock_t)
     : File::Handle(directory, std::defer_lock) {}
 
-  std::shared_ptr<File> getChild(const std::string& name) {
-    // Unlinked directories must be empty, without even "." or ".."
-    if (!getParent()) {
-      return nullptr;
-    }
-    if (name == ".") {
-      return file;
-    }
-    if (name == "..") {
-      return getParent();
-    }
-    return getDir()->getChild(name);
-  }
+  std::shared_ptr<File> getChild(const std::string& name);
+
+  // Add a child to this directory's entry cache without actually inserting it
+  // in the underlying backend. Assumes a child with this name does not already
+  // exist. Return `true` on success and `false` otherwise.
+  bool mountChild(const std::string& name, std::shared_ptr<File> file);
+
+  // Insert a child of the given name, kind, and mode in the underlying backend,
+  // which will allocate and return a corresponding `File` on success or return
+  // nullptr otherwise. Assumes a child with this name does not already exist.
+  std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                           mode_t mode);
+  std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                             mode_t mode);
+  std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                         const std::string& target);
+
+  // Move the file represented by `file` from its current directory to this
+  // directory with the new `name`, possibly overwriting another file that
+  // already exists with that name. The old directory may be the same as this
+  // directory. On success, return `true`. Otherwise return `false` without
+  // changing any underlying state.
+  bool insertMove(const std::string& name, std::shared_ptr<File> file);
+
+  // Remove the file with the given name, returning `true` on success or if the
+  // vhild has already been removed or returning `false` if the child cannot be
+  // removed.
   bool removeChild(const std::string& name);
-  std::shared_ptr<File> insertChild(const std::string& name,
-                                    std::shared_ptr<File> file);
-  std::string getName(std::shared_ptr<File> file) {
-    return getDir()->getName(file);
-  }
-  size_t getNumEntries() { return getDir()->getNumEntries(); }
-  std::vector<Directory::Entry> getEntries() { return getDir()->getEntries(); }
+
+  std::string getName(std::shared_ptr<File> file);
+
+  size_t getNumEntries();
+  std::vector<Directory::Entry> getEntries();
 };
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }

@@ -51,11 +51,38 @@ class MemoryDirectory : public Directory {
 
   std::vector<ChildEntry>::iterator findEntry(const std::string& name);
 
-  std::shared_ptr<File> getChild(const std::string& name) override;
+  std::shared_ptr<File> getChild(const std::string& name) override {
+    return nullptr;
+  }
   bool removeChild(const std::string& name) override;
-  std::shared_ptr<File> insertChild(const std::string& name,
-                                    std::shared_ptr<File> file) override;
-  std::string getName(std::shared_ptr<File> file) override;
+
+  void insertChild(const std::string& name, std::shared_ptr<File> child) {
+    assert(findEntry(name) == entries.end());
+    entries.push_back({name, child});
+  }
+
+  std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                           mode_t mode) override {
+    auto child = std::make_shared<MemoryFile>(mode, getBackend());
+    insertChild(name, child);
+    return child;
+  }
+
+  std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                             mode_t mode) override {
+    auto child = std::make_shared<MemoryDirectory>(mode, getBackend());
+    insertChild(name, child);
+    return child;
+  }
+
+  std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                         const std::string& target) override {
+    // TODO
+    abort();
+  }
+
+  bool insertMove(const std::string& name, std::shared_ptr<File> file) override;
+
   size_t getNumEntries() override { return entries.size(); }
   std::vector<Directory::Entry> getEntries() override;
 
