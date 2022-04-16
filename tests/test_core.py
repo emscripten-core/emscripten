@@ -4868,11 +4868,7 @@ main main sees -524, -534, 72.
   @needs_make('mingw32-make')
   @needs_dylink
   def test_dylink_zlib(self):
-    self.emcc_args += [
-      '-Wno-shift-negative-value',
-      '-Wno-pointer-sign',
-      '-I' + test_file('third_party/zlib')
-    ]
+    self.emcc_args += ['-Wno-shift-negative-value', '-I' + test_file('third_party/zlib')]
     self.set_setting('RELOCATABLE')
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
@@ -6526,6 +6522,8 @@ void* operator new(size_t size) {
     self.maybe_closure()
 
     self.emcc_args.append('-Wno-shift-negative-value')
+    self.emcc_args.append('-Wno-pointer-sign')
+
     if '-g' in self.emcc_args:
       self.emcc_args.append('-gsource-map') # more source maps coverage
 
