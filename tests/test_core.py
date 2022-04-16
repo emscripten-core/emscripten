@@ -6522,6 +6522,8 @@ void* operator new(size_t size) {
     self.maybe_closure()
 
     self.emcc_args.append('-Wno-shift-negative-value')
+    self.emcc_args.append('-Wno-pointer-sign')
+
     if '-g' in self.emcc_args:
       self.emcc_args.append('-gsource-map') # more source maps coverage
 
