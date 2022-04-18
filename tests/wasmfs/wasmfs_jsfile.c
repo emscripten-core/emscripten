@@ -27,6 +27,7 @@ void write_and_read(const char* msg, int fd, const char* expected) {
   assert(errno == 0);
   read(fd, buf, sizeof(buf));
   assert(errno == 0);
+  printf("%s\n", buf);
   assert(strcmp(buf, expected) == 0);
 }
 
