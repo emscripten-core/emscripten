@@ -20,7 +20,6 @@ int __syscall_getpid(void);
 int __syscall_pause(void);
 int __syscall_access(intptr_t path, int amode);
 int __syscall_sync(void);
-int __syscall_mkdir(intptr_t path, int mode);
 int __syscall_rmdir(intptr_t path);
 int __syscall_dup(int fd);
 int __syscall_pipe(intptr_t fd);
