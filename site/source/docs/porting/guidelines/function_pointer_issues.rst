@@ -45,7 +45,7 @@ There are three solutions to this problem (the second is preferred):
 
   - Cast the function pointer back to the correct type before it is called. This is problematic because it requires that the caller knows the original type.
   - Manually write an adapter function that does not need to be cast, and calls the original function. For example, it might ignore a parameter, and in that way bridge between the different function pointer types.
-  - Use ``EMULATE_FUNCTION_POINTER_CASTS``. When you build with ``-s EMULATE_FUNCTION_POINTER_CASTS=1``, Emscripten emits code to emulate function pointer casts at runtime, adding extra arguments/dropping them/changing their type/adding or dropping a return type/etc. This can add significant runtime overhead, so it is not recommended, but is be worth trying.
+  - Use ``EMULATE_FUNCTION_POINTER_CASTS``. When you build with ``-sEMULATE_FUNCTION_POINTER_CASTS``, Emscripten emits code to emulate function pointer casts at runtime, adding extra arguments/dropping them/changing their type/adding or dropping a return type/etc. This can add significant runtime overhead, so it is not recommended, but is be worth trying.
 
 For a real-world example, consider the code below:
 

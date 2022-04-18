@@ -14,16 +14,12 @@ bool blockerExecuted = false;
 
 void final(void*) {
   assert(frame == 20);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  exit(0);
 }
 
 void looper() {
   if (blockerExecuted == false) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
+    exit(1);
   }
 
   frame++;
@@ -48,4 +44,7 @@ int main() {
   prevTime = emscripten_get_now();
   emscripten_push_uncounted_main_loop_blocker(main_loop_blocker, NULL);
   emscripten_set_main_loop(looper, 60, 1);
+  // Should never get here
+  assert(false);
+  return 99;
 }

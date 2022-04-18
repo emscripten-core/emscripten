@@ -8,9 +8,10 @@
 
 mergeInto(LibraryManager.library, {
   // Clear a 'compact' UUID.
+  uuid_clear__deps: ['$zeroMemory'],
   uuid_clear: function(uu) {
     // void uuid_clear(uuid_t uu);
-    _memset(uu, 0, 16);
+    zeroMemory(uu, 16);
   },
 
   // Compare whether or not two 'compact' UUIDs are the same.
@@ -44,8 +45,8 @@ mergeInto(LibraryManager.library, {
       } catch(e) {}
 #endif // ENVIRONMENT_MAY_BE_NODE
     } else if (ENVIRONMENT_IS_WEB &&
-               typeof(window.crypto) !== 'undefined' &&
-               typeof(window.crypto.getRandomValues) !== 'undefined') {
+               typeof window.crypto != 'undefined' &&
+               typeof window.crypto.getRandomValues != 'undefined') {
       // If crypto.getRandomValues is available try to use it.
       uuid = new Uint8Array(16);
       window.crypto.getRandomValues(uuid);
@@ -62,8 +63,9 @@ mergeInto(LibraryManager.library, {
       }
     }
 
-    uuid[6] = (uuid[6] & 0x0F) | 0x40;
-    uuid[8] = (uuid[8] & 0x7F) | 0x80;
+    // Makes uuid compliant to RFC-4122
+    uuid[6] = (uuid[6] & 0x0F) | 0x40; // uuid version
+    uuid[8] = (uuid[8] & 0x3F) | 0x80; // uuid variant
     writeArrayToMemory(uuid, out);
   },
 

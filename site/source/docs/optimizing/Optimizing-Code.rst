@@ -29,7 +29,7 @@ The optimization level you should use depends mostly on the current stage of dev
 
 .. note::
 
-  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
+  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
 How Emscripten optimizes
 ========================
@@ -37,59 +37,43 @@ How Emscripten optimizes
 Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
 
 - For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
-- For asm.js, the Emscripten asm.js optimizer is run.
 - JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
 - Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
 
 Link Times
 ==========
 
-To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. It
-is ok to link with those flags even if the source files were compiled with a
-different optimization level.
+To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. In
+those modes Emscripten focuses on faster iteration times. (Note that it is ok
+to link with those flags even if the source files were compiled with a different
+optimization level.)
 
-``-O0`` will do no optimization work at link time. ``-O1`` will do very minimal
-optimizations, and does not have the assertions that ``-O0`` does by default,
-so it can be useful for a build that links very quickly but also runs reasonably
-fast. (Of course, for a final release build, it is usually worth linking with
-something like ``-O3 --closure 1`` for full optimizations.)
+To also skip non-optimization work at link time, link with ``-sWASM_BIGINT``.
+Enabling BigInt support removes the need for Emscripten to "legalize" the wasm
+to handle ``i64`` values on the JS/Wasm boundary (as with BigInts ``i64`` values
+are legal, and require no extra processing).
 
-In some cases Emscripten can avoid modifying the wasm binary that is produced by
-the linker (``wasm-ld``). That will give you the fastest possible link times.
-All Emscripten does in such a build is generate the JavaScript support code,
-while leaving the WebAssembly output from the linker unmodified.
+Some link flags add additional work at the link stage that can slow things down.
+For example ``-g`` enables DWARF support, flags like ``-sSAFE_HEAP`` will require
+JS post-processing, and flags like ``-sASYNCIFY`` will require wasm
+post-processing. To ensure your flags allow the fastest possible link, in which
+the wasm is not modified after ``wasm-ld``, build with
+``-sERROR_ON_WASM_CHANGES_AFTER_LINK``. With that option you will get an error
+during link if Emscripten must perform changes to the Wasm. For example, if you
+didn't pass ``-sWASM_BIGINT`` then it will tell you that legalization forces
+it to change the Wasm. You will also get an error if you build with ``-O2`` or
+above, as the Binaryen optimizer would normally be run.
 
-Specifically, as of Emscripten 2.0.7, if you build with either ``-O0`` or
-``-O1`` then the only thing Emscripten needs to do to the wasm file is legalize
-it. This can be avoided by enabling BigInt integration which renders legalization
-unnecessary (as when using BigInts we can represent ``i64`` values properly
-without legalization). To do that, build with
-
-.. code-block:: bash
-
-  emcc -s WASM_BIGINT
-
-You can also ensure you get that speedup:
-
-.. code-block:: bash
-
-  emcc -s WASM_BIGINT -s ERROR_ON_WASM_CHANGES_AFTER_LINK
-
-``ERROR_ON_WASM_CHANGES_AFTER_LINK`` will, as the name implies, show an error
-during link if Emscripten must perform changes to the Wasm. If you remove that
-``-s WASM_BIGINT``, it will tell you that legalization forces it to change the
-wasm. You will also get an error if you build with ``-O2`` or above, as the
-Binaryen optimizer would normally be run.
 
 Advanced compiler settings
 ==========================
 
-There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tools/shared.py#L958>`_).
+There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
 WebAssembly
 ===========
 
-Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (and then emscripten emits asm.js), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
+Emscripten will emit WebAssembly by default. You can switch that off with ``-sWASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
 
 .. _optimizing-code-size:
 
@@ -105,7 +89,7 @@ Trading off code size and performance
 
 You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.)
 
-Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly/asm.js.
+Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly module.
 
 Miscellaneous code size tips
 ----------------------------
@@ -118,8 +102,8 @@ In addition to the above, the following tips can help to reduce code size:
 
 The following compiler settings can help (see ``src/settings.js`` for more details):
 
-- Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
-- You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
+- Disable inlining when possible, using ``-sINLINING_LIMIT``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
+- You can use the ``-sFILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc. This prevents the compiler from emitting code to support all possible runtime environments, saving ~2KB.
 
 LTO
@@ -135,6 +119,59 @@ linker can handle a mix wasm object files and LTO object files.  Passing
 Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all
 source files with ``-flto`` and also link with ``flto``.
 
+EVAL_CTORS
+==========
+
+Building with ``-sEVAL_CTORS`` will evaluate as much code as possible at
+compile time. That includes both the "global ctor" functions (functions LLVM
+emits that run before ``main()``) as well as ``main()`` itself. As much as can
+be evaluated will be, and the resulting state is then "snapshotted" into the
+wasm. Then when the program is run it will begin from that state, and not need
+to execute that code, which can save time.
+
+This optimization can either reduce or increase code size. If a small amount
+of code generates many changes in memory, for example, then overall size may
+increase. It is best to build with this flag and then measure code and startup
+speed and see if the tradeoff is worthwhile in your program.
+
+You can make an effort to write EVAL_CTORS-friendly code, by deferring things
+that cannot be evalled as much as possible. For example, calls to imports stop
+this optimization, and so if you have a game engine that creates a GL context
+and then does some pure computation to set up unrelated data structures in
+memory, then you could reverse that order. Then the pure computation could run
+first, and be evalled away, and the GL context creation call to an import would
+not prevent that. Other things you can do are to avoid using ``argc/argv``, to
+avoid using ``getenv()``, and so forth.
+
+Logging is shown when using this option so that you can see whether things can
+be improved. Here is an example of output from ``emcc -sEVAL_CTORS``:
+
+::
+
+  trying to eval __wasm_call_ctors
+    ...partial evalling successful, but stopping since could not eval: call import: wasi_snapshot_preview1.environ_sizes_get
+         recommendation: consider --ignore-external-input
+    ...stopping
+
+The first line indicates an attempt to eval LLVM's function that runs global
+ctors. It evalled some of the function but then it stopped on the WASI import
+``environ_sizes_get``, which means it is trying to read from the environment.
+As the output says, you can tell ``EVAL_CTORS`` to ignore external input, which
+will ignore such things. You can enable that with mode ``2``, that is, build
+with ``emcc -sEVAL_CTORS=2``:
+
+::
+
+  trying to eval __wasm_call_ctors
+    ...success on __wasm_call_ctors.
+  trying to eval main
+    ...stopping (in block) since could not eval: call import: wasi_snapshot_preview1.fd_write
+    ...stopping
+
+Now it has succeeded to eval ``__wasm_call_ctors`` completely. It then moved on
+to ``main``, where it stopped because of a call to WASI's ``fd_write``, that is,
+a call to print something.
+
 Very large codebases
 ====================
 
@@ -145,6 +182,11 @@ Running by itself
 
 If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory fragmentation issues.
 
+Module Splitting
+----------------
+
+If your module is large enough that the time to download and instantiate it is noticeably affecting your application's startup performance, it may be worth splitting the module and deferring the loading of code that is not necessary to bring up the application. See :ref:`Module-Splitting` for a guide on how to do this. *Note that module splitting is an experimental feature and subject to change.*
+
 
 Other optimization issues
 =========================
@@ -154,9 +196,9 @@ Other optimization issues
 C++ exceptions
 --------------
 
-Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how asm.js/wasm currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
+Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how WebAssembly currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
 
-To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_).
+To re-enable exceptions in optimized code, run *emcc* with ``-sDISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_).
 
 .. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
 
@@ -170,7 +212,7 @@ C++ run-time type info support (dynamic casts, etc.) adds overhead that is somet
 Memory Growth
 -------------
 
-Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables asm.js optimizations. In WebAssembly, however, there should be little or no overhead.
+Building with ``-sALLOW_MEMORY_GROWTH`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need.
 
 Viewing code optimization passes
 --------------------------------
@@ -207,5 +249,3 @@ Emscripten-compiled code can currently achieve approximately half the speed of a
 
 -  :ref:`Building-Projects` is a two-stage process: compiling source code files to LLVM **and** generating JavaScript from LLVM. Did you build using the same optimization values in **both** steps (``-O2`` or ``-O3``)?
 -  Test on multiple browsers. If performance is acceptable on one browser and significantly poorer on another, then :ref:`file a bug report <bug-reports>`, noting the problem browser and other relevant information.
-- Does the code *validate* in Firefox (look for "Successfully compiled asm.js code" in the web console). If you see a validation error when using an up-to-date version of Firefox and Emscripten then please :ref:`file a bug report <bug-reports>`.
-

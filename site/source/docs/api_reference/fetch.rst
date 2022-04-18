@@ -12,8 +12,8 @@ network requests can be run either synchronously or asynchronously as desired.
 
 .. note::
 
-  In order to use the Fetch API, you would need to compile your code with **-s
-  FETCH=1**.
+  In order to use the Fetch API, you would need to compile your code with
+  ``-sFETCH``.
 
 Introduction
 ============
@@ -87,7 +87,7 @@ attributes:
   }
 
 For a full example, see the file
-tests/fetch/example_async_xhr_to_memory_via_indexeddb.cpp.
+tests/fetch/example_async_xhr_to_memory_via_indexeddb.c.
 
 Persisting data bytes from memory
 ---------------------------------
@@ -193,11 +193,11 @@ emscripten_fetch() returns.
   restrictions, depending on which Emscripten build mode (linker flags) is used:
 
   - **No flags**: Only asynchronous Fetch operations are available.
-  - **--proxy-to-worker**: Synchronous Fetch operations are allowed for fetches
+  - ``--proxy-to-worker``: Synchronous Fetch operations are allowed for fetches
     that only do an XHR but do not interact with IndexedDB.
-  - **-s USE_PTHREADS=1**: Synchronous Fetch operations are available on
+  - ``-sUSE_PTHREADS``: Synchronous Fetch operations are available on
     pthreads, but not on the main thread.
-  - **--proxy-to-worker** + **-s USE_PTHREADS=1**: Synchronous Fetch operations
+  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Synchronous Fetch operations
     are available both on the main thread and pthreads.
 
 Waitable Fetches
@@ -241,10 +241,10 @@ issuing thread can perform some other work until the fetch completes.
 
   Waitable fetches are available only in certain build modes:
 
-  - **No flags** or **--proxy-to-worker**: Waitable fetches are not available.
-  - **-s USE_PTHREADS=1**: Waitable fetches are available on pthreads, but not
+  - **No flags** or ``--proxy-to-worker``: Waitable fetches are not available.
+  - ``-sUSE_PTHREADS``: Waitable fetches are available on pthreads, but not
     on the main thread.
-  - **--proxy-to-worker** + **-s USE_PTHREADS=1**: Waitable fetches are
+  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Waitable fetches are
     available on all threads.
 
 Tracking Progress
@@ -389,7 +389,7 @@ be dealt with separately.
     strcpy(attr.requestMethod, "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     // Make a Range request to only fetch bytes 10 to 20
-    const char* headers[] = {"Range", "bytes=10-20"};
+    const char* headers[] = {"Range", "bytes=10-20", NULL};
     attr.requestHeaders = headers;
     attr.onsuccess = downloadSucceeded;
     attr.onerror = downloadFailed;
@@ -407,8 +407,6 @@ documenting:
  - Emscripten_fetch_attr_t allows setting custom HTTP request headers (e.g. for
    cache control)
  - Document HTTP simple auth fields in Emscripten_fetch_attr_t.
- - Document how to populate to a certain filesystem path location in IndexedB,
-   and e.g. fopen() it via ASMFS afterwards.
  - Document overriddenMimeType attribute in Emscripten_fetch_attr_t.
  - Reference documentation of the individual fields in Emscripten_fetch_attr_t,
    Emscripten_fetch_t and #defines.

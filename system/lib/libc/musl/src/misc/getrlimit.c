@@ -1,7 +1,6 @@
 #include <sys/resource.h>
 #include <errno.h>
 #include "syscall.h"
-#include "libc.h"
 
 #define FIX(x) do{ if ((x)>=SYSCALL_RLIM_INFINITY) (x)=RLIM_INFINITY; }while(0)
 
@@ -24,4 +23,4 @@ int getrlimit(int resource, struct rlimit *rlim)
 	return 0;
 }
 
-LFS64(getrlimit);
+weak_alias(getrlimit, getrlimit64);

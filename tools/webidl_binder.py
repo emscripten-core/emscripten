@@ -3,20 +3,22 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-WebIDL binder
+"""WebIDL binder
 
-http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
-'''
+https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
+"""
 
-import os, sys
+import os
+import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
-from tools import shared
+from tools import shared, utils
 
-sys.path.append(shared.path_from_root('third_party'))
-sys.path.append(shared.path_from_root('third_party', 'ply'))
+sys.path.append(utils.path_from_root('third_party'))
+sys.path.append(utils.path_from_root('third_party/ply'))
 
 import WebIDL
 
@@ -25,22 +27,25 @@ import WebIDL
 # CHECKS='ALL' will do extensive argument type checking (~5x slower than default).
 #                 This will catch invalid numbers, invalid pointers, invalid strings, etc.
 # Anything else defaults to legacy mode for backward compatibility.
-CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
+CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
-if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
+if DEBUG:
+  print("Debug print ON, CHECKS=%s" % CHECKS)
 
 # We need to avoid some closure errors on the constructors we define here.
 CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
 
-class Dummy(object):
+
+class Dummy:
   def __init__(self, init):
     for k, v in init.items():
       self.__dict__[k] = v
 
-  def getExtendedAttribute(self, name):
+  def getExtendedAttribute(self, name): # noqa: U100
     return None
+
 
 input_file = sys.argv[1]
 output_base = sys.argv[2]
@@ -52,7 +57,7 @@ p = WebIDL.Parser()
 p.parse(r'''
 interface VoidPtr {
 };
-''' + open(input_file).read())
+''' + utils.read_file(input_file))
 data = p.finish()
 
 interfaces = {}
@@ -67,8 +72,8 @@ for thing in data:
   elif isinstance(thing, WebIDL.IDLEnum):
     enums[thing.identifier.name] = thing
 
-#print interfaces
-#print implements
+# print interfaces
+# print implements
 
 pre_c = []
 mid_c = []
@@ -81,6 +86,7 @@ pre_c += [r'''
 mid_c += [r'''
 extern "C" {
 ''']
+
 
 def build_constructor(name):
   implementing_name = implements[name][0] if implements.get(name) else 'WrapperObject'
@@ -295,11 +301,13 @@ void array_bounds_check(const int array_size, const int array_idx) {
 
 C_FLOATS = ['float', 'double']
 
+
 def full_typename(arg):
   return ('const ' if arg.getExtendedAttribute('Const') else '') + arg.type.name + ('[]' if arg.type.isArray() else '')
 
+
 def type_to_c(t, non_pointing=False):
-  #print 'to c ', t
+  # print 'to c ', t
   def base_type_to_c(t):
     if t == 'Long':
       ret = 'int'
@@ -347,31 +355,37 @@ def type_to_c(t, non_pointing=False):
     prefix = 'const '
   return prefix + base_type_to_c(t) + suffix
 
+
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
     return '&'
   return ''
+
 
 def deref_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
     return '*'
   return ''
 
+
 def type_to_cdec(raw):
-  name = ret = type_to_c(raw.type.name, non_pointing=True)
-  if raw.getExtendedAttribute('Const'): ret = 'const ' + ret
-  if raw.type.name not in interfaces: return ret
+  ret = type_to_c(raw.type.name, non_pointing=True)
+  if raw.getExtendedAttribute('Const'):
+    ret = 'const ' + ret
+  if raw.type.name not in interfaces:
+    return ret
   if raw.getExtendedAttribute('Ref'):
     return ret + '&'
   if raw.getExtendedAttribute('Value'):
     return ret
   return ret + '*'
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False, array_attribute=False):
-  global mid_c, mid_js, js_impl_methods
 
+def render_function(class_name, func_name, sigs, return_type, non_pointer,
+                    copy, operator, constructor, func_scope,
+                    call_content=None, const=False, array_attribute=False):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
-  all_checks = CHECKS  == 'ALL'
+  all_checks = CHECKS == 'ALL'
 
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())
@@ -393,7 +407,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
   call_prefix = '' if not constructor else 'this.ptr = '
   call_postfix = ''
-  if return_type != 'Void' and not constructor: call_prefix = 'return '
+  if return_type != 'Void' and not constructor:
+    call_prefix = 'return '
   if not constructor:
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
@@ -443,23 +458,29 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       body += "  /* %s <%s> [%s] */\n" % (js_arg, arg.type.name, inner)
 
       # Wrap asserts with existence check when argument is optional.
-      if all_checks and optional: body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
+      if all_checks and optional:
+        body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
       # Special case argument types.
       if arg.type.isNumeric():
         if arg.type.isInteger():
-          if all_checks: body += "  assert(typeof {0} === 'number' && !isNaN({0}), '{1}Expecting <integer>');\n".format(js_arg, check_msg)
+          if all_checks:
+            body += "  assert(typeof {0} === 'number' && !isNaN({0}), '{1}Expecting <integer>');\n".format(js_arg, check_msg)
         else:
-          if all_checks: body += "  assert(typeof {0} === 'number', '{1}Expecting <number>');\n".format(js_arg, check_msg)
+          if all_checks:
+            body += "  assert(typeof {0} === 'number', '{1}Expecting <number>');\n".format(js_arg, check_msg)
         # No transform needed for numbers
       elif arg.type.isBoolean():
-        if all_checks: body += "  assert(typeof {0} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n".format(js_arg, check_msg)
+        if all_checks:
+          body += "  assert(typeof {0} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n".format(js_arg, check_msg)
         # No transform needed for booleans
       elif arg.type.isString():
         # Strings can be DOM strings or pointers.
-        if all_checks: body += "  assert(typeof {0} === 'string' || ({0} && typeof {0} === 'object' && typeof {0}.ptr === 'number'), '{1}Expecting <string>');\n".format(js_arg, check_msg)
+        if all_checks:
+          body += "  assert(typeof {0} === 'string' || ({0} && typeof {0} === 'object' && typeof {0}.ptr === 'number'), '{1}Expecting <string>');\n".format(js_arg, check_msg)
         do_default = True # legacy path is fast enough for strings.
       elif arg.type.isInterface():
-        if all_checks: body += "  assert(typeof {0} === 'object' && typeof {0}.ptr === 'number', '{1}Expecting <pointer>');\n".format(js_arg, check_msg)
+        if all_checks:
+          body += "  assert(typeof {0} === 'object' && typeof {0}.ptr === 'number', '{1}Expecting <pointer>');\n".format(js_arg, check_msg)
         if optional:
           body += "  if(typeof {0} !== 'undefined' && {0} !== null) {{ {0} = {0}.ptr }};\n".format(js_arg)
         else:
@@ -468,7 +489,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       else:
         do_default = True
 
-      if all_checks and optional: body += "}\n"
+      if all_checks and optional:
+        body += "}\n"
     else:
       do_default = True
 
@@ -499,15 +521,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js += [r'''%sfunction%s(%s) {
+  mid_js.append(r'''%sfunction%s(%s) {
 %s
-};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
+};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
 
   # C
 
-  for i in range(min_args, max_args+1):
+  for i in range(min_args, max_args + 1):
     raw = sigs.get(i)
-    if raw is None: continue
+    if raw is None:
+      continue
     sig = list(map(full_typename, raw))
     if array_attribute:
       sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
@@ -548,7 +571,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     return_prefix = basic_return
     return_postfix = ''
     if non_pointer:
-      return_prefix += '&';
+      return_prefix += '&'
     if copy:
       pre += '  static %s temp;\n' % type_to_c(return_type, non_pointing=True)
       return_prefix += '(temp = '
@@ -556,23 +579,23 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     c_return_type = type_to_c(return_type)
     maybe_const = 'const ' if const else ''
-    mid_c += [r'''
+    mid_c.append(r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix))
 
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
-        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
+        js_call_args = ', '.join(['%s%s' % (('(ptrdiff_t)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
-        js_impl_methods += [r'''  %s %s(%s) %s {
+        js_impl_methods.append(r'''  %s %s(%s) %s {
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
-    }, (int)this%s);
+    }, (ptrdiff_t)this%s);
   }''' % (c_return_type, func_name, dec_args, maybe_const,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           class_name,
@@ -581,12 +604,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           func_name,
           ','.join(['$%d' % i for i in range(1, max_args + 1)]),
           return_postfix,
-          (', ' if js_call_args else '') + js_call_args)]
+          (', ' if js_call_args else '') + js_call_args))
 
 
 for name, interface in interfaces.items():
   js_impl = interface.getExtendedAttribute('JSImplementation')
-  if not js_impl: continue
+  if not js_impl:
+    continue
   implements[name] = [js_impl[0]]
 
 # Compute the height in the inheritance tree of each node. Note that the order of interation
@@ -617,11 +641,11 @@ for name in names:
   mid_js += ['\n// ' + name + '\n']
   mid_c += ['\n// ' + name + '\n']
 
-  global js_impl_methods
   js_impl_methods = []
 
   cons = interface.getExtendedAttribute('Constructor')
-  if type(cons) == list: raise Exception('do not use "Constructor", instead create methods with the name of the interface')
+  if type(cons) == list:
+    raise Exception('do not use "Constructor", instead create methods with the name of the interface')
 
   js_impl = interface.getExtendedAttribute('JSImplementation')
   if js_impl:
@@ -635,7 +659,8 @@ for name in names:
     mid_js += build_constructor(name)
 
   for m in interface.members:
-    if not m.isMethod(): continue
+    if not m.isMethod():
+      continue
     constructor = m.identifier.name == name
     if not constructor:
       parent_constructor = False
@@ -656,7 +681,7 @@ for name in names:
         return_type = ret.name
       else:
         assert return_type == ret.name, 'overloads must have the same return type'
-      for i in range(len(args)+1):
+      for i in range(len(args) + 1):
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
           sigs[i] = args[:i]
@@ -673,13 +698,14 @@ for name in names:
       mid_js += build_constructor(name)
 
   for m in interface.members:
-    if not m.isAttr(): continue
+    if not m.isAttr():
+      continue
     attr = m.identifier.name
 
     if m.type.isArray():
-      get_sigs = { 1: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] })] }
-      set_sigs = { 2: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] }),
-                       Dummy({ 'type': m.type })] }
+      get_sigs = {1: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]})]}
+      set_sigs = {2: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]}),
+                      Dummy({'type': m.type})]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
       set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
       if m.getExtendedAttribute('BoundsChecked'):
@@ -687,8 +713,8 @@ for name in names:
         get_call_content = "(%s, %s)" % (bounds_check, get_call_content)
         set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
-      get_sigs = { 0: [] }
-      set_sigs = { 1: [Dummy({ 'type': m.type })] }
+      get_sigs = {0: []}
+      set_sigs = {1: [Dummy({'type': m.type})]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr
       set_call_content = 'self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0'
 
@@ -726,12 +752,11 @@ for name in names:
       mid_js += [r'''
     Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
 
-
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
   %s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (name, name)]
     render_function(name,
-                    '__destroy__', { 0: [] }, 'Void',
+                    '__destroy__', {0: []}, 'Void',
                     None,
                     None,
                     None,
@@ -769,8 +794,7 @@ for name, enum in enums.items():
       [namespace, identifier] = symbols
       if namespace in interfaces:
         # namespace is a class
-        deferred_js += ["Module['%s']['%s'] = _%s();\n" % \
-                  (namespace, identifier, function_id)]
+        deferred_js += ["Module['%s']['%s'] = _%s();\n" % (namespace, identifier, function_id)]
       else:
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
         deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
@@ -785,16 +809,18 @@ if len(deferred_js):
     %s
   }
   if (runtimeInitialized) setupEnums();
-  else addOnPreMain(setupEnums);
+  else addOnInit(setupEnums);
 })();
 ''' % '\n    '.join(deferred_js)]
 
 # Write
 
 with open(output_base + '.cpp', 'w') as c:
-  for x in pre_c: c.write(x)
-  for x in mid_c: c.write(x)
+  for x in pre_c:
+    c.write(x)
+  for x in mid_c:
+    c.write(x)
 
 with open(output_base + '.js', 'w') as js:
-  for x in mid_js: js.write(x)
-
+  for x in mid_js:
+    js.write(x)

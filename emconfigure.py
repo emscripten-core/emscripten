@@ -18,6 +18,7 @@ tests will work properly.
 
 import sys
 from tools import building
+from tools import shared
 from subprocess import CalledProcessError
 
 
@@ -35,12 +36,20 @@ variables so that emcc etc. are used. Typical usage:
 (but you can run any command instead of configure)''', file=sys.stderr)
     return 1
 
-  if 'cmake' in sys.argv[1]:
+  args = sys.argv[1:]
+
+  if 'cmake' in args:
     print('error: use `emcmake` rather then `emconfigure` for cmake projects', file=sys.stderr)
     return 1
 
+  env = building.get_building_env()
+  # When we configure via a ./configure script, don't do config-time
+  # compilation with emcc, but instead do builds natively with Clang. This
+  # is a heuristic emulation that may or may not work.
+  env['EMMAKEN_JUST_CONFIGURE'] = '1'
+  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
   try:
-    building.configure(sys.argv[1:])
+    shared.check_call(args, env=env)
     return 0
   except CalledProcessError as e:
     return e.returncode

@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include "libc.h"
+#include "lock.h"
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten fork() is not supported: pthread_atfork is a no-op
 static struct atfork_funcs {
 	void (*prepare)(void);
 	void (*parent)(void);
@@ -8,7 +10,7 @@ static struct atfork_funcs {
 	struct atfork_funcs *prev, *next;
 } *funcs;
 
-static volatile int lock[2];
+static volatile int lock[1];
 
 void __fork_handler(int who)
 {
@@ -29,9 +31,13 @@ void __fork_handler(int who)
 		UNLOCK(lock);
 	}
 }
+#endif
 
 int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void))
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten fork() is not supported: pthread_atfork is a no-op
+	return 0;
+#else
 	struct atfork_funcs *new = malloc(sizeof *new);
 	if (!new) return -1;
 
@@ -45,4 +51,5 @@ int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(vo
 	funcs = new;
 	UNLOCK(lock);
 	return 0;
+#endif
 }

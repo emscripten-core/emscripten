@@ -34,7 +34,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_SETFD: %d\n", fcntl(f, F_SETFD));
+  printf("F_SETFD: %d\n", fcntl(f, F_SETFD, -1));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;
@@ -62,15 +62,15 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_SETLK: %d\n", fcntl(f, F_SETLK, &lk));
-  printf("errno: %d\n", errno);
-  printf("\n");
-  errno = 0;
+#ifndef WASMFS // TODO: wasmfs support for byte offset locking.
+  int err = fcntl(f, F_SETLK, &lk);
+  assert(err == 0);
+  assert(errno == 0);
 
-  printf("F_SETLKW: %d\n", fcntl(f, F_SETLK, &lk));
-  printf("errno: %d\n", errno);
-  printf("\n");
-  errno = 0;
+  err = fcntl(f, F_SETLK, &lk);
+  assert(err == 0);
+  assert(errno == 0);
+#endif
 
   printf("F_SETOWN: %d\n", fcntl(f, F_SETOWN, 123));
   printf("errno: %d\n", errno);
@@ -82,7 +82,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("INVALID: %d\n", fcntl(f, 123));
+  printf("INVALID: %d\n", fcntl(f, 123, -1));
   printf("errno: %d\n", errno);
 
   return 0;

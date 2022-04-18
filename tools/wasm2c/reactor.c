@@ -1,7 +1,7 @@
 // TODO: optional prefixing
-void wasmbox_init(void) {
+void WASM_RT_ADD_PREFIX(wasmbox_init)(void) {
   // Initialize wasm2c runtime.
-  init();
+  WASM_RT_ADD_PREFIX(init)();
 
   // Set up handling for a trap
   int trap_code;
@@ -9,6 +9,6 @@ void wasmbox_init(void) {
     printf("[wasm trap %d, halting]\n", trap_code);
     abort();
   } else {
-    Z__initializeZ_vv();
+    WASM_RT_ADD_PREFIX(Z__initializeZ_vv)();
   }
 }

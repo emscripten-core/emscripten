@@ -43,6 +43,16 @@ d3.js swimlane chart example adapted to use in Emscripten from http://bl.ocks.or
 .future { stroke: gray; fill: #ddd; }
 .past { stroke: green; }
 .brush .extent { stroke: gray; fill: blue; fill-opacity: .165; }
+div.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+}
 </style>
 </head><body>
 
@@ -97,9 +107,42 @@ function cmdLineBasename(cmdLine) {
   // we want to return 'run' as the interesting command that was executed
   if (cmdname.indexOf('node') == 0 || cmdname.indexOf('python') == 0) {
     var positionalParams = findPositionalParams(cmdLine, []);
-    if (positionalParams.length > 0) cmdLineBasename(positionalParams);
+    if (positionalParams.length > 0) return cmdLineBasename(positionalParams);
   }
   return cmdname;
+}
+
+function shortenRidiculouslyLongCmdLine(cmdLine) {
+  var cmdLine2 = [];
+  for(var l of cmdLine) {
+    if (l.length > 100) {
+      cmdLine2.push(l.substr(0, 50) + ' ... ' + l.substr(l.length - 50));
+    } else {
+      cmdLine2.push(l);
+    }
+  }
+  return cmdLine2;
+}
+
+function htmlFormatCmdLine(cmdLine) {
+  cmdLine = shortenRidiculouslyLongCmdLine(cmdLine);
+  var html = '';
+  var prev = '';
+  var lineLength = 0;
+  for(var l of cmdLine) {
+    if (prev.length > 3 && (prev[0] != '-' || lineLength >= 100)) {
+      html += '<br>';
+      lineLength = 0;
+    }
+    else {
+      html += ' ';
+      ++lineLength;
+    }
+    html += l;
+    prev = l;
+    lineLength += l.length;
+  }
+  return html.trim();
 }
 
 function findValueOfParam(cmdLine, key) {
@@ -451,6 +494,11 @@ function createSwimlaneChart(data) {
     .attr('height', mainHeight)
     .attr('class', 'main');
 
+  // Define the div for the tooltip
+  var div = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
   // draw the lanes for the main chart
   main.append('g').selectAll('.laneLines')
     .data(lanes)
@@ -570,6 +618,23 @@ function createSwimlaneChart(data) {
     x1.domain([minExtent, maxExtent]);
     main.select('.main.axis').call(x1DateAxis);
 
+    function mouseoverTooltip(d) {
+      var text = d.cmdLine ? htmlFormatCmdLine(d.cmdLine) : d.cmd;
+      div.transition()
+         .duration(50)
+         .style("opacity", 1.0);
+      div.html(text)
+      mousemoveTooltip(d);
+    }
+    function mousemoveTooltip(d) {
+      div.style("left", (d3.event.pageX) + "px")
+         .style("top", (d3.event.pageY - 28) + "px");
+    }
+    function mouseoutTooltip(d) {
+      div.transition()
+          .duration(500)
+          .style("opacity", 0);
+    }
     // upate the item rects
     var rects = itemRects.selectAll('rect')
       .data(visItems, function (d) { return d.id; })
@@ -582,8 +647,10 @@ function createSwimlaneChart(data) {
       .attr('width', function(d) { return x1(d.end) - x1(d.start); })
       .attr('height', function(d) { return .8 * y1(1); })
       .attr('class', function(d) { return 'mainItem ' + d.class; })
-      .attr('fill', function(d) { return d.color; });
-
+      .attr('fill', function(d) { return d.color; })
+      .on("mouseover", mouseoverTooltip)
+      .on("mousemove", mousemoveTooltip)
+      .on("mouseout", mouseoutTooltip);
     rects.exit().remove();
 
     // update the item labels
@@ -596,20 +663,17 @@ function createSwimlaneChart(data) {
       .attr('x', function(d) { return x1(Math.max(d.start, minExtent)) + 2; })
       .attr('y', function(d) { return y1(d.lane) + .4 * y1(1) + 6.5; })
       .attr('text-anchor', 'start')
-      .attr('class', 'itemLabel');
+      .attr('class', 'itemLabel')
+      .on("mouseover", mouseoverTooltip)
+      .on("mousemove", mousemoveTooltip)
+      .on("mouseout", mouseoutTooltip);
 
     labels.exit().remove();
   }
 }
 
-var xhr = new XMLHttpRequest();
-xhr.onreadystatechange = function() {
-  if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 0)) {
-    createSwimlaneChart(JSON.parse(xhr.responseText));
-  }
-};
-xhr.open("GET", {{{results_log_file}}}, true);
-xhr.send();
+var emProfileJsonData = {{{ emprofile_json_data }}};
+createSwimlaneChart(emProfileJsonData);
 
 </script>
 </body>

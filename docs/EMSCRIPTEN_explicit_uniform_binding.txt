@@ -1,0 +1,173 @@
+Name
+
+    EMSCRIPTEN_explicit_uniform_binding
+
+Name Strings
+
+    GL_EMSCRIPTEN_explicit_uniform_binding
+
+Contributors
+
+    Jukka Jylänki, Unity Technologies
+    Brendan Duncan, Unity Technologies
+
+Contact
+
+    Jukka Jylänki, Unity Technologies (jukkaj 'at' unity3d.com)
+    Brendan Duncan, Unity Technologies (brendan.duncan 'at' unity3d.com)
+
+Status
+
+    Implemented in Emscripten 2.0.18 and newer for OpenGL ES 2 and
+    OpenGL ES 3 contexts. (April 2021)
+
+Version
+
+    Date: April 13, 2021
+    Revision: 1
+
+Dependencies
+
+    Emscripten 2.0.18 compiler targeting OpenGL ES 2.0 or OpenGL ES 3.0
+    versions.
+
+    Written against the OpenGL ES 2.0.25 and WebGL 1 specifications.
+
+Overview
+
+    WebGL 1 API provides a special type of uniforms called texture samplers.
+    The organization of these samplers is designed around the concept of
+    a file of device global multitexturing binding points. This provides a
+    layer of indirection: instead of directly connecting texture objects to
+    sampler uniforms in the shader, textures are set active in multitexturing
+    binding points, and samplers uniforms then each select a binding point to
+    sample from.
+
+    WebGL 2 API provides support for Uniform Buffer Objects (UBOs). Again,
+    instead of directly connecting a GPU buffer to a uniform block in the
+    shader, each UBO variable is connected to a slot in a file of uniform
+    block binding points, and the uniform block variables are assigned to
+    read from one of these uniform block binding points.
+
+    Sampler uniforms are assigned a multitexturing unit by calling the
+    function gl.uniform1i(). Uniform blocks are assigned a uniform block
+    binding point by calling the function gl.uniformBlockBinding().
+
+    By default after a successful shader link, all samplers and uniform blocks
+    are initially assigned the binding point zero. Instead of programmatically
+    reassigning the binding points in Wasm/JS code, it can be useful to specify
+    the default binding point to use in GLSL shader code. This allows a shader
+    compilation backend to generate multiple shader programs that have mutually
+    compatible layouts, without needing further coordination in application
+    code.
+
+    This extension adds support for specifying the initial multitexturing and
+    uniform block binding points for texture samplers and uniform blocks. This
+    is achieved via the same syntax that is available in Desktop OpenGL 4.2 and
+    the extension ARB_shading_language_420pack. There, a programmer may choose
+    to specify the integer binding point of a texture sampler or a uniform
+    block in advance directly in the submitted shader code. The GLSL directive
+
+        layout(binding = x) uniform sampler2D diffuse;
+
+    specifies that the sampler 'diffuse' should sample a texture located in
+    multitexturing unit 'x'.
+
+    Likewise, specifying
+
+        layout(binding = x) uniform myBlock { vec4 color; }
+
+    specifies that the uniform block 'myBlock' should read from the Uniform
+    Buffer Object located at uniform block binding point 'x'.
+
+    In sibling specifications, support for explicit binding points exist in
+    Desktop OpenGL 4.2 core specification and in the extension
+    ARB_shading_language_420pack.
+
+New Procedures and Functions
+
+    None.
+
+New Tokens
+
+    None.
+
+Additions to OpenGL ES Shading Language 1.00 Specification
+
+  Add to sampler qualifiers:
+
+    The qualifier "layout(binding = x)" can be prepended to a texture sampler
+    variable directive to bind the integer multitexturing unit that the given
+    sampler reads from:
+
+        layout(binding = x) uniform sampler2D diffuse;
+
+    Only one layout qualifier may appear in a single declaration.
+
+    Any sampler declared without a binding identifier is initially assigned to
+    sample from multitexturing unit zero. After a program is linked, the binding
+    points used for samplers with or without a binding identifier can be updated
+    by the OpenGL API.
+
+    If the binding identifier is used with an array, the first element of the 
+    array takes the specified unit and each subsequent element takes the next 
+    consecutive unit.
+
+    If the binding is less than zero, or greater than or equal to the 
+    implementation-dependent maximum supported number of units, a compilation 
+    error will occur. When the binding identifier is used with an array of size
+    N, all elements of the array from binding through binding + N - 1 must be 
+    within this range.
+
+Additions to OpenGL ES Shading Language 3.00 Specification
+
+  Add to Layout Qualifiers:
+
+    The qualifier "layout(binding = x)" can be prepended to a uniform block
+    variable directive:
+
+        layout(binding = x) uniform myBlock { vec4 color; }
+
+    The binding identifier specifies the uniform buffer binding point 
+    corresponding to the uniform block, which will be used to obtain the 
+    values of the member variables of the block.
+
+    Only one layout qualifier may appear in a single declaration.
+
+    Any uniform block declared without a binding identifier is initially 
+    assigned to block binding point zero. After a program is linked, the 
+    binding points used for uniform blocks declared with or without a binding 
+    identifier can be updated by the OpenGL API.
+
+    If the binding identifier is used with a uniform block instanced as an 
+    array then the first element of the array takes the specified block binding
+    and each subsequent element takes the next consecutive uniform block 
+    binding point.
+
+    If the binding point for any uniform block instance is less than zero, or 
+    greater than or equal to the implementation-dependent maximum number of 
+    uniform buffer bindings, a compilation error will occur.  When the binding 
+    identifier is used with a uniform block instanced as an array of size N, 
+    all elements of the array from binding through binding + N - 1 must be
+    within this range.
+
+Additions to Emscripten compiler
+
+    Instead of utilizing the runtime method WebGLRenderingContext.getExtension()
+    to coordinate enabling the extension, EMSCRIPTEN_explicit_uniform_binding
+    activation is controlled at compile time by specifying the flag
+
+        -sGL_EXPLICIT_UNIFORM_BINDING
+
+    to 'emcc' or 'em++' linker command line in the Emscripten compiler.
+
+    When this flag is passed, the extension EMSCRIPTEN_explicit_uniform_binding
+    is enabled for all contexts created in the application.
+
+    The choice of compile time activation is due to the considerable increase in
+    code size that is involved in enabling this extension.
+
+Revision History
+
+    Revision 1.0, April 13, 2021: juj
+        - First version

@@ -37,7 +37,7 @@ int main() {
 
   printf("*stdin==0:%d*\n", stdin == 0); // check that external values are at least not NULL
   printf("*%%*\n");
-  printf("*%.1ld*\n", 5);
+  printf("*%.1ld*\n", 5l);
 
   printf("*%.1f*\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
 

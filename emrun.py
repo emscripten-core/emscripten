@@ -12,6 +12,8 @@ Usage: emrun <options> filename.html <args to program>
 See emrun --help for more information
 """
 
+# N.B. Do not introduce external dependencies to this file. It is often used
+# standalone outside Emscripten directory tree.
 import argparse
 import atexit
 import cgi
@@ -20,7 +22,9 @@ import os
 import platform
 import re
 import shlex
+import shutil
 import socket
+import stat
 import struct
 import subprocess
 import sys
@@ -29,18 +33,22 @@ import threading
 import time
 from operator import itemgetter
 
-from tools import shared
-
 if sys.version_info.major == 2:
   import SocketServer as socketserver
   from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
   from urllib import unquote
   from urlparse import urlsplit
+
+  def print_to_handle(handle, line):
+    print >> handle, line # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote, urlsplit
+
+  def print_to_handle(handle, line):
+    handle.write(line + '\n')
 
 # Populated from cmdline params
 emrun_options = None
@@ -49,8 +57,8 @@ emrun_options = None
 # page.
 browser_process = None
 
-previous_browser_process_pids = None
-current_browser_process_pids = None
+previous_browser_processes = None
+current_browser_processes = None
 
 navigation_has_occurred = False
 
@@ -72,7 +80,7 @@ have_received_messages = False
 emrun_not_enabled_nag_printed = False
 
 # Stores the exit() code of the html page when/if it quits.
-page_exit_code = 0
+page_exit_code = None
 
 # If this is set to a non-empty string, all processes by this name will be
 # killed at exit.  This is used to clean up after browsers that spawn
@@ -151,7 +159,7 @@ def logi(msg):
     if emrun_options.log_html:
       sys.stdout.write(format_html(msg))
     else:
-      print(msg, file=sys.stdout)
+      print_to_handle(sys.stdout, msg)
     sys.stdout.flush()
     last_message_time = tick()
 
@@ -166,7 +174,7 @@ def logv(msg):
       if emrun_options.log_html:
         sys.stdout.write(format_html(msg))
       else:
-        print(msg, file=sys.stdout)
+        print_to_handle(sys.stdout, msg)
       sys.stdout.flush()
       last_message_time = tick()
 
@@ -179,7 +187,7 @@ def loge(msg):
     if emrun_options.log_html:
       sys.stderr.write(format_html(msg))
     else:
-      print(msg, file=sys.stderr)
+      print_to_handle(sys.stderr, msg)
     sys.stderr.flush()
     last_message_time = tick()
 
@@ -195,7 +203,7 @@ def browser_logi(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print(msg, file=browser_stdout_handle)
+  print_to_handle(browser_stdout_handle, msg)
   browser_stdout_handle.flush()
   last_message_time = tick()
 
@@ -205,7 +213,7 @@ def browser_loge(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print(msg, file=browser_stderr_handle)
+  print_to_handle(browser_stderr_handle, msg)
   browser_stderr_handle.flush()
   last_message_time = tick()
 
@@ -228,7 +236,7 @@ def delete_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   if temp_firefox_profile_dir is not None:
     logv('remove_tree("' + temp_firefox_profile_dir + '")')
-    shared.try_delete(temp_firefox_profile_dir)
+    remove_tree(temp_firefox_profile_dir)
     temp_firefox_profile_dir = None
 
 
@@ -246,7 +254,7 @@ user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
-// Don't ask user if he wants to set Firefox as the default system browser
+// Don't ask user if they want to set Firefox as the default system browser
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
@@ -286,7 +294,7 @@ user_pref('browser.newtabpage.introShown', true);
 user_pref('browser.download.panel.shown', true);
 user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
-// Don't ask the user if he wants to close the browser when there are multiple tabs.
+// Don't ask the user if they want to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
 user_pref("dom.allow_scripts_to_close_windows", true);
@@ -344,34 +352,53 @@ def is_browser_process_alive():
   if browser_process and browser_process.poll() is None:
     return True
 
-  if current_browser_process_pids:
+  if current_browser_processes:
     try:
       import psutil
-      for p in current_browser_process_pids:
+      for p in current_browser_processes:
         if psutil.pid_exists(p['pid']):
           return True
+      return False
     except Exception:
       # Fail gracefully if psutil not available
-      return True
+      logv('psutil is not available, emrun may not be able to accurately track whether the browser process is alive or not')
 
-  return False
+  # We do not have a track of the browser process ID that we spawned.
+  # Make an assumption that the browser process is open as long until
+  # the C program calls exit().
+  return page_exit_code is None
 
 
 def kill_browser_process():
   """Kills browser_process and processname_killed_atexit. Also removes the
   temporary Firefox profile that was created, if one exists.
   """
-  global browser_process, processname_killed_atexit
-  if browser_process:
-    logv('Terminating browser process..')
+  global browser_process, processname_killed_atexit, current_browser_processes
+  if browser_process and browser_process.poll() is None:
     try:
+      logv('Terminating browser process pid=' + str(browser_process.pid) + '..')
       browser_process.kill()
-      delete_emrun_safe_firefox_profile()
     except Exception as e:
       logv('Failed with error ' + str(e) + '!')
+
     browser_process = None
+    # We have a hold of the target browser process explicitly, no need to resort to killall,
+    # so clear that record out.
     processname_killed_atexit = ''
-    return
+
+  if current_browser_processes:
+    for pid in current_browser_processes:
+      try:
+        logv('Terminating browser process pid=' + str(pid['pid']) + '..')
+        os.kill(pid['pid'], 9)
+      except Exception as e:
+        logv('Failed with error ' + str(e) + '!')
+
+    current_browser_processes = None
+    # We have a hold of the target browser process explicitly, no need to resort to killall,
+    # so clear that record out.
+    processname_killed_atexit = ''
+
   if len(processname_killed_atexit):
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
@@ -393,6 +420,38 @@ def kill_browser_process():
       delete_emrun_safe_firefox_profile()
     # Clear the process name to represent that the browser is now dead.
     processname_killed_atexit = ''
+
+  delete_emrun_safe_firefox_profile()
+
+
+# Heuristic that attempts to search for the browser process IDs that emrun spawned.
+# This depends on the assumption that no other browser process IDs have been spawned
+# during the short time perioed between the time that emrun started, and the browser
+# process navigated to the page.
+# This heuristic is needed because all modern browsers are multiprocess systems -
+# starting a browser process from command line generally launches just a "stub" spawner
+# process that immediately exits.
+def detect_browser_processes():
+  if not browser_exe:
+    return # Running with --no_browser, we are not binding to a spawned browser.
+
+  global current_browser_processes
+  logv('First navigation occurred. Identifying currently running browser processes')
+  running_browser_processes = list_processes_by_name(browser_exe)
+
+  def pid_existed(pid):
+    for proc in previous_browser_processes:
+      if proc['pid'] == pid:
+        return True
+    return False
+
+  for p in running_browser_processes:
+    logv('Detected running browser process id: ' + str(p['pid']) + ', existed already at emrun startup? ' + str(pid_existed(p['pid'])))
+
+  current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
+
+  if len(current_browser_processes) == 0:
+    logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
 # Our custom HTTP web server that will server the target page to run via .html.
@@ -471,6 +530,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
+    logv("Entering web server loop.")
     while self.is_running:
       now = tick()
       # Did user close browser?
@@ -478,6 +538,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         logv("Shutting down because browser is no longer alive")
         delete_emrun_safe_firefox_profile()
         if not emrun_options.serve_after_close:
+          logv("Browser process has shut down, quitting web server.")
           self.is_running = False
 
       # Serve HTTP
@@ -510,6 +571,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
     # Clean up at quit, print any leftover messages in queue.
     self.print_all_messages()
+    logv("Web server loop done.")
 
   def handle_error(self, request, client_address):
     err = sys.exc_info()[1].args[0]
@@ -535,16 +597,10 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     # A browser has navigated to this page - check which PID got spawned for
     # the browser
-    global previous_browser_process_pids, current_browser_process_pids, navigation_has_occurred
-    if not navigation_has_occurred and current_browser_process_pids is None:
-      running_browser_process_pids = list_processes_by_name(browser_exe)
-      for p in running_browser_process_pids:
-        def pid_existed(pid):
-          for proc in previous_browser_process_pids:
-            if proc['pid'] == pid:
-              return True
-          return False
-        current_browser_process_pids = list(filter(lambda x: not pid_existed(x['pid']), running_browser_process_pids))
+    global navigation_has_occurred
+    if not navigation_has_occurred and current_browser_processes is None:
+      detect_browser_processes()
+
     navigation_has_occurred = True
 
     if os.path.isdir(path):
@@ -628,15 +684,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       # Binary file dump/upload handling. Requests to
       # "stdio.html?file=filename" will write binary data to the given file.
       data = self.rfile.read(int(self.headers['Content-Length']))
-      filename = query[len('file='):]
-      dump_out_directory = 'dump_out'
+      filename = unquote_u(query[len('file='):])
+      filename = os.path.join(emrun_options.dump_out_directory, os.path.normpath(filename))
       try:
-        os.mkdir(dump_out_directory)
+        os.makedirs(os.path.dirname(filename))
       except OSError:
         pass
-      filename = os.path.join(dump_out_directory, os.path.normpath(filename))
-      open(filename, 'wb').write(data)
-      print('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
+      with open(filename, 'wb') as fh:
+        fh.write(data)
+      logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
@@ -740,7 +796,7 @@ def get_cpu_info():
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
   except Exception as e:
     import traceback
-    print(traceback.format_exc())
+    loge(traceback.format_exc())
     return {'model': 'Unknown ("' + str(e) + '")',
             'physicalCores': 1,
             'logicalCores': 1,
@@ -1004,7 +1060,8 @@ def get_computer_model():
         model = check_output(cmd)
         model = re.search('<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
-        open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w').write(model) # Cache the hardware model to disk
+        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w') as fh:
+          fh.write(model) # Cache the hardware model to disk
         return model
       except Exception:
         hwmodel = check_output(['sysctl', 'hw.model'])
@@ -1299,6 +1356,21 @@ def subprocess_env():
   return e
 
 
+# Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
+def remove_tree(d):
+  os.chmod(d, stat.S_IWRITE)
+  try:
+    def remove_readonly_and_try_again(func, path, exc_info):
+      if not (os.stat(path).st_mode & stat.S_IWRITE):
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+      else:
+        raise
+    shutil.rmtree(d, onerror=remove_readonly_and_try_again)
+  except Exception:
+    pass
+
+
 def get_system_info(format_json):
   if emrun_options.android:
     if format_json:
@@ -1314,7 +1386,8 @@ def get_system_info(format_json):
       return info.strip()
   else:
     try:
-      unique_system_id = open(os.path.expanduser('~/.emrun.generated.guid'), 'r').read().strip()
+      with open(os.path.expanduser('~/.emrun.generated.guid')) as fh:
+        unique_system_id = fh.read().strip()
     except Exception:
       import uuid
       unique_system_id = str(uuid.uuid4())
@@ -1369,7 +1442,10 @@ def list_processes_by_name(exe_full_path):
         pass
   except Exception:
     # Fail gracefully if psutil not available
+    logv('import psutil failed, unable to detect browser processes')
     pass
+
+  logv('Searching for processes by full path name "' + exe_full_path + '".. found ' + str(len(pids)) + ' entries')
 
   return pids
 
@@ -1494,6 +1570,9 @@ to emrun itself and arguments to your page.
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
 
+  parser.add_argument('--dump_out_directory', default='dump_out', type=str,
+                      help='If specified, overrides the directory for dump files using emrun_file_dump method.')
+
   parser.add_argument('serve', nargs='?', default='')
 
   parser.add_argument('cmdlineparams', nargs='*')
@@ -1607,7 +1686,6 @@ to emrun itself and arguments to your page.
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
-      print(str(browser))
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: # Launching a web page on local system.
     if options.browser:
@@ -1621,15 +1699,14 @@ to emrun itself and arguments to your page.
       browser_exe = browser[0]
       browser_args = shlex.split(unwrap(options.browser_args))
 
-      if 'safari' in browser_exe.lower():
+      if MACOS and ('safari' in browser_exe.lower() or browser_exe == 'open'):
         # Safari has a bug that a command line 'Safari http://page.com' does
         # not launch that page, but instead launches 'file:///http://page.com'.
         # To remedy this, must use the open -a command to run Safari, but
         # unfortunately this will end up spawning Safari process detached from
         # emrun.
-        if MACOS:
-          browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
-
+        browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
+        browser_exe = '/Applications/Safari.app/Contents/MacOS/Safari'
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
@@ -1664,7 +1741,7 @@ to emrun itself and arguments to your page.
     profile_dir = create_emrun_safe_firefox_profile()
 
     def run(cmd):
-      print(str(cmd))
+      logi(str(cmd))
       subprocess.call(cmd)
 
     run(['adb', 'shell', 'rm', '-rf', '/mnt/sdcard/safe_firefox_profile'])
@@ -1682,16 +1759,16 @@ to emrun itself and arguments to your page.
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
-    print(get_system_info(format_json=options.json))
+    logi(get_system_info(format_json=options.json))
 
   if options.browser_info:
     if options.android:
       if options.json:
-        print(json.dumps({'browser': 'Android ' + browser_app}, indent=2))
+        logi(json.dumps({'browser': 'Android ' + browser_app}, indent=2))
       else:
         logi('Browser: Android ' + browser_app)
     else:
-      print(get_browser_info(browser_exe, format_json=options.json))
+      logi(get_browser_info(browser_exe, format_json=options.json))
 
   # Suppress run warning if requested.
   if options.no_emrun_detect:
@@ -1712,14 +1789,18 @@ to emrun itself and arguments to your page.
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Starting browser: %s" % ' '.join(browser))
+    logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect
     #   when the user closes the page.
     #   serve_forever = True
-    global previous_browser_process_pids
-    previous_browser_process_pids = list_processes_by_name(browser[0])
+    global previous_browser_processes
+    logv(browser_exe)
+    previous_browser_processes = list_processes_by_name(browser_exe)
+    for p in previous_browser_processes:
+      logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
     browser_process = subprocess.Popen(browser, env=subprocess_env())
+    logv('Launched browser process with pid=' + str(browser_process.pid))
     if options.kill_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not

@@ -13,15 +13,13 @@
 #include <emscripten/html5.h>
 #include <assert.h>
 
-int result = 0;
-
 #define GL_CALL( x ) \
     { \
         x; \
         GLenum error = glGetError(); \
         if( error != GL_NO_ERROR ) { \
             printf( "GL ERROR: %d,  %s\n", (int)error, #x ); \
-            result = 1; \
+            assert(false); \
         } \
     } \
 
@@ -39,9 +37,6 @@ int main()
   if (!context)
   {
     printf("Skipped: WebGL 2 is not supported.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     return 0;
   }
   emscripten_webgl_make_context_current(context);
@@ -61,12 +56,12 @@ int main()
     "  gl_Position = a * block1bb.var1*block1bb.variable2 + block2dddd.var1*block2dddd.variable2;\n"
     "}\n";
 
-    const char *fragmentShader = 
+    const char *fragmentShader =
     "#version 300 es\n"
     "precision lowp float;\n"
     "  uniform Block3eeeee {\n"
     "  uniform vec4 var1;\n"
-    "  uniform vec4 variable2;\n" 
+    "  uniform vec4 variable2;\n"
     "} block3ffffff;\n"   // Append characters of different lengths to test name string lengths.
     "out vec4 outColor;\n"
     "void main() {\n"
@@ -86,7 +81,7 @@ int main()
     {
        char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
        glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
-       printf("Error compiling shader:\n%s\n", infoLog);            
+       printf("Error compiling shader:\n%s\n", infoLog);
     }
   }
 
@@ -102,7 +97,7 @@ int main()
     {
        char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
        glGetShaderInfoLog(fs, infoLen, NULL, infoLog);
-       printf("Error compiling shader:\n%s\n", infoLog);            
+       printf("Error compiling shader:\n%s\n", infoLog);
     }
   }
 
@@ -118,7 +113,7 @@ int main()
   glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &maxLength);
   printf("GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: %d\n", maxLength);
   assert(maxLength == 12);
-  
+
   GLint numActiveUniforms = -1;
   glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numActiveUniforms);
   printf("GL_ACTIVE_UNIFORMS: %d\n", numActiveUniforms);
@@ -131,9 +126,9 @@ int main()
     GLint size = -1;
     GLenum type = -1;
     glGetActiveUniform(program, i, 255, &length, &size, &type, str);
-    
+
     GLint loc = glGetUniformLocation(program, str);
-    
+
     GLint indx = -1;
     glGetActiveUniformsiv(program, 1, (GLuint*)&i, GL_UNIFORM_BLOCK_INDEX, &indx);
 
@@ -155,9 +150,9 @@ int main()
     glGetActiveUniformBlockName(program, i, 255, &length, str);
     assert(length > 0);
     printf("Active uniform block at index %d: %s\n", i, str);
-    
+
     GLint param = -1;
-#define DUMPUNIFORMBLOCKSTATUS(stat) glGetActiveUniformBlockiv(program, i, stat, &param); printf("%s: %d\n", #stat, param);
+#define DUMPUNIFORMBLOCKSTATUS(stat) param = -1; glGetActiveUniformBlockiv(program, i, stat, &param); printf("%s: %d\n", #stat, param); assert(param != -1);
     DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
     DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
     DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_BINDING);
@@ -170,8 +165,5 @@ int main()
       printf("offset for index %d: %d\n", i, indices[i]);
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
   return 0;
 }

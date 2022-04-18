@@ -14,7 +14,6 @@ int main() {
   int result = EM_ASM_INT({
     return Module.sawAsyncCompilation | 0;
   });
-  REPORT_RESULT(result);
-  return 0;
+  return result;
 }
 

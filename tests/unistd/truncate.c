@@ -48,7 +48,7 @@ int main() {
   printf("f2: %d\n", f2);
 
   fstat(f, &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -56,7 +56,7 @@ int main() {
   printf("ftruncate(10): %d\n", ftruncate(f, 10));
   printf("errno: %s\n", strerror(errno));
   fstat(f, &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -64,7 +64,7 @@ int main() {
   printf("ftruncate(4): %d\n", ftruncate(f, 4));
   printf("errno: %s\n", strerror(errno));
   fstat(f, &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -72,7 +72,7 @@ int main() {
   printf("ftruncate(-1): %d\n", ftruncate(f, -1));
   printf("errno: %s\n", strerror(errno));
   fstat(f, &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -80,7 +80,7 @@ int main() {
   printf("truncate(2): %d\n", truncate("towrite", 2));
   printf("errno: %s\n", strerror(errno));
   stat("towrite", &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -88,7 +88,7 @@ int main() {
   printf("truncate(readonly, 2): %d\n", truncate("toread", 2));
   printf("errno: %s\n", strerror(errno));
   stat("toread", &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
@@ -96,7 +96,7 @@ int main() {
   printf("ftruncate(readonly, 4): %d\n", ftruncate(f2, 4));
   printf("errno: %s\n", strerror(errno));
   fstat(f2, &s);
-  printf("st_size: %ld\n", s.st_size);
+  printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
 

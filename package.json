@@ -1,14 +1,19 @@
 {
   "private": true,
   "devDependencies": {
-    "es-check": "^5.1.0",
+    "es-check": "^6.1.1",
+    "eslint": "^8.6.0",
+    "eslint-config-google": "^0.14.0",
+    "source-map": "0.7.3",
     "ws": "~0.4.28"
   },
   "dependencies": {
-    "acorn": "7.3.1",
-    "google-closure-compiler": "20200920.0.0",
-    "html-minifier-terser": "5.0.2",
-    "source-map": "0.5.6",
+    "acorn": "^8.7.0",
+    "google-closure-compiler": "20220104.0.0",
+    "html-minifier-terser": "6.1.0",
     "wasm2c": "1.0.0"
+  },
+  "scripts": {
+    "lint": "eslint ."
   }
 }

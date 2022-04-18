@@ -4,8 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,15 +30,6 @@ static void *thread1_start(void *arg)
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   FILE *handle = fopen("file1.txt", "w");
   fputs("hello!", handle);
   fclose(handle);
@@ -53,7 +43,5 @@ int main()
   fclose(handle);
   assert(!strcmp(str, "hello2!"));
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

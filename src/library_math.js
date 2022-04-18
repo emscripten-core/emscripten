@@ -5,8 +5,8 @@ mergeInto(LibraryManager.library, {
   emscripten_math_pow: function(x, y) {
     return Math.pow(x, y);
   },
-  emscripten_math_random: function(x) {
-    return Math.random(x);
+  emscripten_math_random: function() {
+    return Math.random();
   },
   emscripten_math_sign: function(x) {
     return Math.sign(x);
@@ -19,6 +19,9 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_math_expm1: function(x) {
     return Math.expm1(x);
+  },
+  emscripten_math_fmod: function(x, y) {
+    return x % y;
   },
   emscripten_math_log: function(x) {
     return Math.log(x);
@@ -64,7 +67,7 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_math_hypot: function(count, varargs) {
     var args = [];
-    for(var i = 0; i < count; ++i) args.push(HEAPF64[(varargs>>3) + i]);
+    for (var i = 0; i < count; ++i) args.push(HEAPF64[(varargs>>3) + i]);
     return Math.hypot.apply(null, args);
   },
   emscripten_math_sin: function(x) {

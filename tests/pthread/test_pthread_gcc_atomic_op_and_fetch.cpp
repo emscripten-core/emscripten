@@ -16,23 +16,6 @@
 
 #define T int
 
-#if 0
-// TEMP to make this test pass:
-// Our Clang backend doesn't define this builtin function, so implement it ourselves.
-// The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
-// TODO: Move this to Clang backend?
-T __sync_nand_and_fetch(T *ptr, T x)
-{
-	for(;;)
-	{
-		T old = emscripten_atomic_load_u32(ptr);
-		T newVal = ~(old & x);
-		T old2 = emscripten_atomic_cas_u32(ptr, old, newVal);
-		if (old2 == old) return newVal;
-	}
-}
-#endif
-
 void *thread_add_and_fetch(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
@@ -47,40 +30,37 @@ void *thread_sub_and_fetch(void *arg)
 	pthread_exit(0);
 }
 
-volatile int or_and_fetch_data = 0;
+volatile long or_and_fetch_data = 0;
 void *thread_or_and_fetch(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
-		__sync_or_and_fetch((int*)&or_and_fetch_data, (int)arg);
+		__sync_or_and_fetch((long*)&or_and_fetch_data, (long)arg);
 	pthread_exit(0);
 }
 
-volatile int and_and_fetch_data = 0;
+volatile long and_and_fetch_data = 0;
 void *thread_and_and_fetch(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
-		__sync_and_and_fetch((int*)&and_and_fetch_data, (int)arg);
+		__sync_and_and_fetch((long*)&and_and_fetch_data, (long)arg);
 	pthread_exit(0);
 }
 
-volatile int xor_and_fetch_data = 0;
+volatile long xor_and_fetch_data = 0;
 void *thread_xor_and_fetch(void *arg)
 {
 	for(int i = 0; i < 9999; ++i) // Odd number of times so that the operation doesn't cancel itself out.
-		__sync_xor_and_fetch((int*)&xor_and_fetch_data, (int)arg);
+		__sync_xor_and_fetch((long*)&xor_and_fetch_data, (long)arg);
 	pthread_exit(0);
 }
 
-// XXX NAND support does not exist in Atomics API.
-#if 0
-volatile int nand_and_fetch_data = 0;
+volatile long nand_and_fetch_data = 0;
 void *thread_nand_and_fetch(void *arg)
 {
 	for(int i = 0; i < 9999; ++i) // Odd number of times so that the operation doesn't cancel itself out.
-		__sync_nand_and_fetch((int*)&nand_and_fetch_data, (int)arg);
+		__sync_nand_and_fetch((long*)&nand_and_fetch_data, (long)arg);
 	pthread_exit(0);
 }
-#endif
 
 pthread_t thread[NUM_THREADS];
 
@@ -160,8 +140,6 @@ int main()
 			}
 		}
 	}
-// XXX NAND support does not exist in Atomics API.
-#if 0
 	{
 		T x = 5;
 		T y = __sync_nand_and_fetch(&x, 9);
@@ -176,9 +154,6 @@ int main()
 			assert(nand_and_fetch_data == -1);
 		}
 	}
-#endif
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

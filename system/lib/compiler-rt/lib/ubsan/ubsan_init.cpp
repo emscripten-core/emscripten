@@ -1,4 +1,4 @@
-//===-- ubsan_init.cc -----------------------------------------------------===//
+//===-- ubsan_init.cpp ----------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -33,14 +33,25 @@ static void CommonInit() {
   InitializeSuppressions();
 }
 
+static void UbsanDie() {
+  if (common_flags()->print_module_map >= 1)
+    DumpProcessMap();
+}
+
 static void CommonStandaloneInit() {
   SanitizerToolName = GetSanititizerToolName();
   CacheBinaryName();
   InitializeFlags();
+  __sanitizer::InitializePlatformEarly();
   __sanitizer_set_report_path(common_flags()->log_path);
   AndroidLogInit();
   InitializeCoverage(common_flags()->coverage, common_flags()->coverage_dir);
   CommonInit();
+
+  // Only add die callback when running in standalone mode to avoid printing
+  // the same information from multiple sanitizers' output
+  AddDieCallback(UbsanDie);
+  Symbolizer::LateInitialize();
 }
 
 void __ubsan::InitAsStandalone() {

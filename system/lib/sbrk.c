@@ -18,7 +18,7 @@
 #endif
 
 #ifdef __EMSCRIPTEN_TRACING__
-#include <emscripten/em_asm.h>
+void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
 #endif
 
 #include <emscripten/heap.h>
@@ -31,9 +31,9 @@
 
 extern size_t __heap_base;
 
-static intptr_t sbrk_val = (intptr_t)&__heap_base;
+static uintptr_t sbrk_val = (uintptr_t)&__heap_base;
 
-intptr_t* emscripten_get_sbrk_ptr() {
+uintptr_t* emscripten_get_sbrk_ptr() {
 #ifdef __PIC__
   // In relocatable code we may call emscripten_get_sbrk_ptr() during startup,
   // potentially *before* the setup of the dynamically-linked __heap_base, when
@@ -41,41 +41,38 @@ intptr_t* emscripten_get_sbrk_ptr() {
   // code doing dynamic linking itself ends up instrumented, which is why we can
   // get such an instrumented call before sbrk_val has its proper value.)
   if (sbrk_val == 0) {
-    sbrk_val = (intptr_t)&__heap_base;
+    sbrk_val = (uintptr_t)&__heap_base;
   }
 #endif
   return &sbrk_val;
 }
 
-void *sbrk(intptr_t increment) {
+void *sbrk(intptr_t increment_) {
   uintptr_t old_size;
   // Enforce preserving a minimal 4-byte alignment for sbrk.
+  uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
   // itself is threadsafe so alternative allocators work. We do that by looping
   // and retrying if we hit interference with another thread.
-  intptr_t expected;
+  uintptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_PTHREADS__
-    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+    uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 #if __EMSCRIPTEN_PTHREADS__
-    intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
+    uintptr_t old_brk = __c11_atomic_load((_Atomic(uintptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
-    intptr_t old_brk = *sbrk_ptr;
+    uintptr_t old_brk = *sbrk_ptr;
 #endif
-    intptr_t new_brk = old_brk + increment;
+    uintptr_t new_brk = old_brk + increment;
     // Check for a 32-bit overflow, which would indicate that we are trying to
     // allocate over 4GB, which is never possible in wasm32.
     if (increment > 0 && (uint32_t)new_brk <= (uint32_t)old_brk) {
       goto Error;
     }
-#ifdef __wasm__
-    old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
-#else
     old_size = emscripten_get_heap_size();
-#endif
     if (new_brk > old_size) {
       // Try to grow memory.
       if (!emscripten_resize_heap(new_brk)) {
@@ -88,7 +85,7 @@ void *sbrk(intptr_t increment) {
     // by iterating the loop body again.
     expected = old_brk;
     __c11_atomic_compare_exchange_strong(
-        (_Atomic(intptr_t)*)sbrk_ptr,
+        (_Atomic(uintptr_t)*)sbrk_ptr,
         &expected, new_brk,
         __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
     if (expected != old_brk) {
@@ -99,7 +96,7 @@ void *sbrk(intptr_t increment) {
 #endif // __EMSCRIPTEN_PTHREADS__
 
 #ifdef __EMSCRIPTEN_TRACING__
-    EM_ASM({if (typeof emscriptenMemoryProfiler !== 'undefined') emscriptenMemoryProfiler.onSbrkGrow($0, $1)}, old_brk, old_brk + increment );
+    emscripten_memprof_sbrk_grow(old_brk, new_brk);
 #endif
     return (void*)old_brk;
 
@@ -112,15 +109,16 @@ Error:
   return (void*)-1;
 }
 
-int brk(intptr_t ptr) {
+int brk(void* ptr) {
 #if __EMSCRIPTEN_PTHREADS__
   // FIXME
   printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
   abort();
-#endif
-  intptr_t last = (intptr_t)sbrk(0);
-  if (sbrk(ptr - last) == (void*)-1) {
+#else
+  uintptr_t last = (uintptr_t)sbrk(0);
+  if (sbrk((uintptr_t)ptr - last) == (void*)-1) {
     return -1;
   }
   return 0;
+#endif
 }

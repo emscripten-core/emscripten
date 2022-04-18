@@ -79,8 +79,8 @@ var LibraryTracing = {
       EmscriptenTrace.loadWorkerViaXHR(collector_url + 'worker.js', function (worker) {
         EmscriptenTrace.worker = worker;
         EmscriptenTrace.worker.addEventListener('error', function (e) {
-          console.log('TRACE WORKER ERROR:');
-          console.log(e);
+          out('TRACE WORKER ERROR:');
+          out(e);
         }, false);
         EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                              'data_version': EmscriptenTrace.DATA_VERSION,
@@ -104,7 +104,7 @@ var LibraryTracing = {
       if (window && window['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
-        console.log('GOOGLE WTF NOT AVAILABLE TO ENABLE');
+        out('GOOGLE WTF NOT AVAILABLE TO ENABLE');
       }
     },
 
@@ -219,7 +219,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: function(address, size) {
-    if (typeof Module['onMalloc'] === 'function') Module['onMalloc'](address, size);
+    if (typeof Module['onMalloc'] == 'function') Module['onMalloc'](address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -228,7 +228,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: function(old_address, new_address, size) {
-    if (typeof Module['onRealloc'] === 'function') Module['onRealloc'](old_address, new_address, size);
+    if (typeof Module['onRealloc'] == 'function') Module['onRealloc'](old_address, new_address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -237,7 +237,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: function(address) {
-    if (typeof Module['onFree'] === 'function') Module['onFree'](address);
+    if (typeof Module['onFree'] == 'function') Module['onFree'](address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,

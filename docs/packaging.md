@@ -46,16 +46,14 @@ Alternatively, you may want to build our official emscripten release tags, which
 are the versions the emsdk lets users install. To find the mapping between the
 emsdk versions and the revision of the emscripten-releases repository, the emsdk
 has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
+[emscripten-releases-tags.json](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json).
 All versions listed there should be safe to build, as we check that the CI
 was green on them.
 
 To see how our CI builds things, the relevant script is
 [build.py](https://github.com/WebAssembly/waterfall/blob/master/src/build.py).
 In general, the repos you need to build are LLVM and Binaryen (as emscripten
-itself doesn't have any binaries to build). (Note: If you are packaging the older
-fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
-repos, and build them together to get LLVM and clang.)
+itself doesn't have any binaries to build).
 
 When packaging build results, you need the following executables (when using
 the wasm backend):
@@ -69,6 +67,7 @@ the wasm backend):
     * llvm-ar
     * llvm-as
     * llvm-dis
+    * llvm-link
     * llvm-dwarfdump
   * From Binaryen:
     * wasm-emscripten-finalize
@@ -77,9 +76,6 @@ the wasm backend):
     * wasm-as
     * wasm2js
     * wasm-metadce
-
-(If you are packaging the older fastcomp backend instead of the wasm backend,
-you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
 
 Node modules
 ------------
@@ -126,7 +122,7 @@ Prebuilt libraries
 
 Ideally a packaged installation can include a fully populated cache directory
 containing pre-built libraries.  If you want to do this you can use
-`./embuilder build ALL` to populate the cache directory.  You can them ship the
+`embuilder build ALL` to populate the cache directory.  You can them ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
 to be sure that all possible configurations of the libraries are built.
@@ -142,14 +138,4 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While these
-packages are not officially supported by the emscripten developers we try to
-work with downstream packagers to ensure everything works as expected.
-
-**Homebrew**
- - package info: https://formulae.brew.sh/formula/emscripten
- - maintainer: @chenrui333
-
-**Arch Linux**
- - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
- - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
+See https://emscripten.org/docs/getting_started/downloads.html#installation-using-packages

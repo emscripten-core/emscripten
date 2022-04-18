@@ -6,23 +6,21 @@
 
 // runtime_strings.js: Strings related runtime functions that are part of both MINIMAL_RUNTIME and regular runtime.
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
-// a copy of that string as a Javascript String object.
-
 #if TEXTDECODER == 2
 var UTF8Decoder = new TextDecoder('utf8');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
+#elif TEXTDECODER == 1
+var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined;
+#endif
 
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
+// a copy of that string as a Javascript String object.
 /**
+ * heapOrArray is either a regular array, or a JavaScript typed array view.
  * @param {number} idx
  * @param {number=} maxBytesToRead
  * @return {string}
  */
-function UTF8ArrayToString(heap, idx, maxBytesToRead) {
+function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
 #if CAN_ADDRESS_2GB
   idx >>>= 0;
 #endif
@@ -32,17 +30,15 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
   // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
-  while (heap[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+  while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
-  return UTF8Decoder.decode(
-    heap.subarray ? heap.subarray(idx, endPtr) : new Uint8Array(heap.slice(idx, endPtr))
-  );
+  return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-  if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
-    return UTF8Decoder.decode(heap.subarray(idx, endPtr));
+  if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
+    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
   } else {
 #endif // TEXTDECODER
     var str = '';
@@ -56,23 +52,23 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
-      var u0 = heap[idx++];
+      var u0 = heapOrArray[idx++];
 #if !TEXTDECODER
       // If not building with TextDecoder enabled, we don't know the string length, so scan for \0 byte.
       // If building with TextDecoder, we know exactly at what byte index the string ends, so checking for nulls here would be redundant.
       if (!u0) return str;
 #endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      var u1 = heap[idx++] & 63;
+      var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      var u2 = heap[idx++] & 63;
+      var u2 = heapOrArray[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
 #if ASSERTIONS
-        if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string on the asm.js/wasm heap to a JS string!');
+        if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
 #endif
-        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heap[idx++] & 63);
+        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
       }
 
       if (u0 < 0x10000) {
@@ -105,14 +101,15 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
+  {{{ from64('ptr') }}};
 #if CAN_ADDRESS_2GB
   ptr >>>= 0;
 #endif
 #if TEXTDECODER == 2
   if (!ptr) return '';
   var maxPtr = ptr + maxBytesToRead;
-  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
-  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+  for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
 #else
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 #endif
@@ -164,7 +161,7 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
     } else {
       if (outIdx + 3 >= endIdx) break;
 #if ASSERTIONS
-      if (u >= 0x200000) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to an UTF-8 string on the asm.js/wasm heap! (Valid unicode code points should be in range 0-0x1FFFFF).');
+      if (u > 0x10FFFF) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
 #endif
       heap[outIdx++] = 0xF0 | (u >> 18);
       heap[outIdx++] = 0x80 | ((u >> 12) & 63);
@@ -190,4 +187,17 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 }
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
-{{{ lengthBytesUTF8 }}}
+function lengthBytesUTF8(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) ++len;
+    else if (u <= 0x7FF) len += 2;
+    else if (u <= 0xFFFF) len += 3;
+    else len += 4;
+  }
+  return len;
+}

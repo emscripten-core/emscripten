@@ -92,11 +92,17 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
+#ifndef SANITIZER_EMSCRIPTEN
+    // Emscripten's fake mmap doesn't support partial unmapping
     UnmapOrDie((void*)map_res, res - map_res);
+#endif
   }
+#ifndef SANITIZER_EMSCRIPTEN
+  // Emscripten's fake mmap doesn't support partial unmapping
   uptr end = res + size;
   if (end != map_end)
     UnmapOrDie((void*)end, map_end - end);
+#endif
   return (void*)res;
 }
 
@@ -249,6 +255,7 @@ bool MemoryRangeIsAvailable(uptr range_start, uptr range_end) {
   return true;
 }
 
+#if !SANITIZER_MAC
 void DumpProcessMap() {
   MemoryMappingLayout proc_maps(/*cache_enabled*/true);
   const sptr kBufSize = 4095;
@@ -262,6 +269,7 @@ void DumpProcessMap() {
   Report("End of process memory map.\n");
   UnmapOrDie(filename, kBufSize);
 }
+#endif
 #endif
 
 const char *GetPwd() {
@@ -288,8 +296,8 @@ bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
   // and thus always fails.
 #else
   MemoryMappingLayout proc_maps(/*cache_enabled*/false);
-  InternalScopedString buff(kMaxPathLength);
-  MemoryMappedSegment segment(buff.data(), kMaxPathLength);
+  InternalMmapVector<char> buff(kMaxPathLength);
+  MemoryMappedSegment segment(buff.data(), buff.size());
   while (proc_maps.Next(&segment)) {
     if (segment.IsExecutable() &&
         internal_strcmp(module, segment.filename) == 0) {
@@ -309,7 +317,7 @@ uptr SignalContext::GetAddress() const {
 
 bool SignalContext::IsMemoryAccess() const {
   auto si = static_cast<const siginfo_t *>(siginfo);
-  return si->si_signo == SIGSEGV;
+  return si->si_signo == SIGSEGV || si->si_signo == SIGBUS;
 }
 
 int SignalContext::GetType() const {
@@ -363,10 +371,18 @@ int GetNamedMappingFd(const char *name, uptr size, int *flags) {
   CHECK(internal_strlen(name) < sizeof(shmname) - 10);
   internal_snprintf(shmname, sizeof(shmname), "/dev/shm/%zu [%s]",
                     internal_getpid(), name);
+  int o_cloexec = 0;
+#if defined(O_CLOEXEC)
+  o_cloexec = O_CLOEXEC;
+#endif
   int fd = ReserveStandardFds(
-      internal_open(shmname, O_RDWR | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRWXU));
+      internal_open(shmname, O_RDWR | O_CREAT | O_TRUNC | o_cloexec, S_IRWXU));
   CHECK_GE(fd, 0);
   int res = internal_ftruncate(fd, size);
+#if !defined(O_CLOEXEC)
+  res = fcntl(fd, F_SETFD, FD_CLOEXEC);
+  CHECK_EQ(0, res);
+#endif
   CHECK_EQ(0, res);
   res = internal_unlink(shmname);
   CHECK_EQ(0, res);

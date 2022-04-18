@@ -97,13 +97,11 @@ void mainloop()
   }
 }
 
-#ifdef REPORT_RESULT
 void report_result(void *arg)
 {
   emscripten_html5_remove_all_event_listeners();
-  REPORT_RESULT(0);
+  emscripten_force_exit(0);
 }
-#endif
 
 int main()
 {
@@ -114,13 +112,7 @@ int main()
 
   emscripten_set_main_loop(mainloop, 10, 0);
 
-  /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
-     Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(noExitRuntime = true);
-
-#ifdef REPORT_RESULT
   // Keep the page running for a moment.
   emscripten_async_call(report_result, 0, 5000);
-#endif
-  return 0;
+  return 99;
 }

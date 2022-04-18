@@ -10,8 +10,8 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 
-unsigned int main_thread_wait_val = 1;
-int result = 1;
+_Atomic uint32_t main_thread_wait_val = 1;
+_Atomic int result = 1;
 
 void *ThreadMain(void *arg)
 {
@@ -24,23 +24,14 @@ void *ThreadMain(void *arg)
 		fputs(str, handle);
 		fclose(handle);
 	}
-	emscripten_atomic_store_u32(&main_thread_wait_val, 0);
+	main_thread_wait_val = 0;
 	emscripten_futex_wake(&main_thread_wait_val, 1);
-	emscripten_atomic_store_u32(&result, 0);
+	result = 0;
 	pthread_exit(0);
 }
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);
@@ -51,15 +42,9 @@ int main()
 	if (rc != 0 && rc != -EWOULDBLOCK)
 	{
 		printf("ERROR! futex wait errored %d!\n", rc);
-		result = 2;
-#ifdef REPORT_RESULT
-		REPORT_RESULT(result);
-#endif
-		exit(1);
+		return 2;
 	}
 	pthread_join(thread, 0);		
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(result);
-#endif
+  return result;
 }

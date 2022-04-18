@@ -7,44 +7,48 @@
 // === Auto-generated postamble setup entry stuff ===
 {{{ exportRuntime() }}}
 
-#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
+#if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
+  <<< ATMAINS >>>
 
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = _proxy_main();
+  var ret = _emscripten_proxy_main();
 #else
   var ret = _main();
 
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
-  PThread.runExitHandlers();
-#endif
+  PThread.terminateAllThreads();
 #endif
 
-#if IN_TEST_HARNESS
-  // fflush() filesystem stdio for test harness, since there are existing
+#endif
+
+#if IN_TEST_HARNESS && hasExportedFunction('___stdio_exit')
+  // flush any stdio streams for test harness, since there are existing
   // tests that depend on this behavior.
   // For production use, instead print full lines to avoid this kind of lazy
   // behavior.
-  if (typeof _fflush !== 'undefined') _fflush();
+  ___stdio_exit();
 #endif
+
+#if EXIT_RUNTIME
 
 #if ASSERTIONS
   runtimeExited = true;
 #endif
+
+  _proc_exit(ret);
 #endif
+#endif // PROXY_TO_PTHREAD
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -53,37 +57,42 @@ function run() {
 #endif
 
 function initRuntime(asm) {
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
   runtimeInitialized = true;
 #endif
 
 #if USE_PTHREADS
-  // Export needed variables that worker.js needs to Module.
-  Module['_emscripten_tls_init'] = _emscripten_tls_init;
-  Module['HEAPU32'] = HEAPU32;
-  Module['dynCall'] = dynCall;
-  Module['registerPthreadPtr'] = registerPthreadPtr;
-  Module['_pthread_self'] = _pthread_self;
-
   if (ENVIRONMENT_IS_PTHREAD) {
-    PThread.initWorker();
+    // Export needed variables that worker.js needs to Module.
+    Module['HEAPU32'] = HEAPU32;
+    Module['__emscripten_thread_init'] = __emscripten_thread_init;
+    Module['__emscripten_thread_exit'] = __emscripten_thread_exit;
+    Module['_pthread_self'] = _pthread_self;
     return;
   }
+#endif
 
-  // Pass the thread address inside the asm.js scope to store it for fast access
-  // that avoids the need for a FFI out.
-  registerPthreadPtr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-  _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
+#if WASM_WORKERS
+  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
 #endif
 
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
+#if STACK_OVERFLOW_CHECK >= 2
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
 #endif
 
-  /*** RUN_GLOBAL_INITIALIZERS(); ***/
+#if USE_PTHREADS
+  PThread.tlsInitFunctions.push(asm['emscripten_tls_init']);
+#endif
 
-  {{{ getQuoted('ATINITS') }}}
+#if hasExportedFunction('___wasm_call_ctors')
+  asm['__wasm_call_ctors']();
+#endif
+
+  <<< ATINITS >>>
 }
 
 // Initialize wasm (asynchronous)
@@ -124,7 +133,7 @@ function loadWasmModuleToWorkers() {
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
-/*** ASM_MODULE_EXPORTS_DECLARES ***/
+<<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -191,24 +200,42 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if USE_OFFSET_CONVERTER
-  wasmOffsetConverter =
 #if USE_PTHREADS
-    ENVIRONMENT_IS_PTHREAD ? resetPrototype(WasmOffsetConverter, wasmOffsetData) :
+  if (!ENVIRONMENT_IS_PTHREAD)
 #endif
-    new WasmOffsetConverter(Module['wasm'], output.module);
+    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
-  /*** ASM_MODULE_EXPORTS ***/
+  <<< WASM_MODULE_EXPORTS >>>
 #endif
   wasmTable = asm['__indirect_function_table'];
+#if ASSERTIONS
+  assert(wasmTable);
+#endif
+
+#if !IMPORTED_MEMORY
+  wasmMemory = asm['memory'];
+#if ASSERTIONS
+  assert(wasmMemory);
+  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
+#endif
+  updateGlobalBufferAndViews(wasmMemory.buffer);
+#endif
+
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if ASSERTIONS
+  if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
+#endif
+  HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
+#endif
 
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE
   if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
-#if !PTHREAD_POOL_DELAY_LOAD  
+#if !PTHREAD_POOL_DELAY_LOAD
   else
 #endif
     ready();
@@ -222,16 +249,17 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
     postMessage({ 'cmd': 'loaded' });
   }
 #endif
+}
 
 #if ASSERTIONS || WASM == 2
-}).catch(function(error) {
+, function(error) {
 #if ASSERTIONS
   console.error(error);
 #endif
 
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (typeof location !== 'undefined') {
+  if (typeof location != 'undefined') {
 #endif
     // WebAssembly compilation failed, try running the JS fallback instead.
     var search = location.search;
@@ -242,5 +270,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   }
 #endif
 #endif // WASM == 2
+}
 #endif // ASSERTIONS || WASM == 2
-});
+);

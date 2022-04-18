@@ -1,6 +1,5 @@
 #include <pthread.h>
 #include <threads.h>
-#include "libc.h"
 
 static int __pthread_equal(pthread_t a, pthread_t b)
 {

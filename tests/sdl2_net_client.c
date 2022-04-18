@@ -12,7 +12,7 @@
  *
  * or
  *
- * emcc -Wall sdl2_net_client.c -s USE_SDL_NET=2 -s USE_SDL=2 -o sdl2_net_client.js
+ * emcc -Wall sdl2_net_client.c -sUSE_SDL_NET=2 -sUSE_SDL=2 -o sdl2_net_client.js
  */
 
 #include <stdio.h>
@@ -22,6 +22,10 @@
 #include <assert.h>
 
 #include "SDL_net.h"
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 typedef enum {
   MSG_READ,
@@ -42,11 +46,9 @@ void finish(int result) {
     SDLNet_Quit();
   }
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT(result);
-  emscripten_force_exit(result);
-#else
-  exit(result);
+  emscripten_cancel_main_loop();
 #endif
+  exit(result);
 }
 
 char *msgs[] = {

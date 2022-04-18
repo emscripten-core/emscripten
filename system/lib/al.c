@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <emscripten.h>
+#include <emscripten/console.h>
 
 #include <AL/alc.h>
 #include <AL/al.h>
@@ -22,7 +23,17 @@ const ALCchar *emscripten_alcGetStringiSOFT(ALCdevice *device, ALCenum paramName
 ALCboolean emscripten_alcResetDeviceSOFT(ALCdevice *device, const ALCint *attrList);
 
 
-void* emscripten_GetAlcProcAddress(ALCchar *name) {
+void* alcGetProcAddress(ALCdevice *device, const ALCchar *name) {
+  // Validate the input.
+  if (EM_ASM_INT({
+    if (!$0) {
+      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      return 1;
+    }
+  }, name)) {
+    return NULL;
+  }
+
   // Base API
   if (!strcmp(name, "alcCreateContext")) { return alcCreateContext; }
   else if (!strcmp(name, "alcMakeContextCurrent")) { return alcMakeContextCurrent; }
@@ -51,14 +62,26 @@ void* emscripten_GetAlcProcAddress(ALCchar *name) {
   else if (!strcmp(name, "alcGetStringiSOFT")) { return emscripten_alcGetStringiSOFT; }
   else if (!strcmp(name, "alcResetDeviceSOFT")) { return emscripten_alcResetDeviceSOFT; }
 
-  EM_ASM({
-    err("bad name in alcGetProcAddress: " + UTF8ToString($0));
-  }, name);
+  emscripten_console_errorf("bad name in alcGetProcAddress: %s", name);
   return 0;
 }
 
 
-void* emscripten_GetAlProcAddress(ALchar *name) {
+void* alGetProcAddress(const ALchar *name) {
+  // Validate the state and the input.
+  if (EM_ASM_INT({
+    if (!AL.currentCtx) {
+      err("alGetProcAddress() called without a valid context");
+      return 1;
+    }
+    if (!$0) {
+      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      return 1;
+    }
+  }, name)) {
+    return NULL;
+  }
+
   // Base API
   if (!strcmp(name, "alDopplerFactor")) { return alDopplerFactor; }
   else if (!strcmp(name, "alDopplerVelocity")) { return alDopplerVelocity; }
@@ -136,8 +159,6 @@ void* emscripten_GetAlProcAddress(ALchar *name) {
 
   // Extensions
 
-  EM_ASM({
-    err("bad name in alGetProcAddress: " + UTF8ToString($0));
-  }, name);
+  emscripten_console_errorf("bad name in alGetProcAddress: %s", name);
   return 0;
 }

@@ -11,6 +11,9 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
+// Special placeholder for `import.meta`.
+var EMSCRIPTEN$IMPORT$META;
+
 // Closure externs used by library_sockfs.js
 
 /**
@@ -67,115 +70,29 @@ Atomics.store = function() {};
 var WebAssembly = {};
 /**
  * @constructor
- * @param {!BufferSource} bytes
+ * @param {Object} globalDescriptor
+ * @param {*=} value
  */
-WebAssembly.Module = function(bytes) {};
+WebAssembly.Global = function(globalDescriptor, value) {};
 /**
  * @constructor
- * @param {!WebAssembly.Module} moduleObject
- * @param {Object=} importObject
+ * @param {Object} tagDescriptor
  */
-WebAssembly.Instance = function(moduleObject, importObject) {};
-/**
- * @constructor
- * @param {MemoryDescriptor} memoryDescriptor
- */
-WebAssembly.Memory = function(memoryDescriptor) {};
-/**
- * @constructor
- * @param {TableDescriptor} tableDescriptor
- */
-WebAssembly.Table = function(tableDescriptor) {};
-/**
- * @constructor
- * @extends {Error}
- */
-WebAssembly.CompileError = function() {};
-/**
- * @constructor
- * @extends {Error}
- */
-WebAssembly.LinkError = function() {};
-/**
- * @constructor
- * @param {string=} message
- * @param {string=} fileName
- * @param {number=} lineNumber
- * @extends {Error}
- */
-WebAssembly.RuntimeError = function(message, fileName, lineNumber) {};
+WebAssembly.Tag = function(tagDescriptor) {};
 /**
  * Note: Closure compiler does not support function overloading, omit this overload for now.
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
  */
-/**
- * @param {!BufferSource} moduleObject
- * @param {Object=} importObject
- * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
- */
-WebAssembly.instantiate = function(moduleObject, importObject) {};
-/**
- * @param {!Promise<!Response>|!Response} source
- * @param {Object=} importObject
- * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
- */
-WebAssembly.instantiateStreaming = function(source, importObject) {};
-/**
- * @param {!BufferSource} bytes
- * @return {!Promise<!WebAssembly.Module>}
- */
-WebAssembly.compile = function(bytes) {};
-/**
- * @param {!BufferSource} bytes
- * @return {boolean}
- */
-WebAssembly.validate = function(bytes) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @return {!Array<{name:string, kind:string}>}
- */
-WebAssembly.Module.exports = function(moduleObject) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @return {!Array<{module:string, name:string, kind:string}>}
- */
-WebAssembly.Module.imports = function(moduleObject) {};
-/**
- * @param {!WebAssembly.Module} moduleObject
- * @param {string} sectionName
- * @return {!Array<!ArrayBuffer>}
- */
-WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
 WebAssembly.Instance.prototype.exports;
-/**
- * @param {number} delta
- * @return {number}
- */
-WebAssembly.Memory.prototype.grow = function(delta) {};
 /**
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
 /**
- * @param {number} delta
- * @return {number}
- */
-WebAssembly.Table.prototype.grow = function(delta) {};
-/**
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
-/**
- * @param {number} index
- * @return {function(...)}
- */
-WebAssembly.Table.prototype.get = function(index) {};
-/**
- * @param {number} index
- * @param {?function(...)} value
- */
-WebAssembly.Table.prototype.set = function(index, value) {};
 
 /**
  * @suppress {undefinedVars}
@@ -189,29 +106,6 @@ var wakaUnknownBefore;
  * @suppress {undefinedVars}
  */
 var MozBlobBuilder;
-
-/**
- * Some JS libraries make conditional calls to dynCall_xxx function when
- * callbacks are registered.  For example the exit runtime handler makes
- * conditional calles to dynCall_v and dynCall_vi, but not all wasm binaryies
- * will contain these.
- */
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_v;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_vi;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_vii;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_iii;
 
 // Module loaders externs, for AMD etc.
 
@@ -295,14 +189,7 @@ var devicePixelRatio;
 // Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
 // the names need to match:
 /** @suppress {duplicate} */
-var threadInfoStruct;
-/** @suppress {duplicate} */
-var selfThreadId;
-/** @suppress {duplicate} */
 var noExitRuntime;
-
-/** @type {?AudioWorklet} */
-BaseAudioContext.prototype.audioWorklet;
 
 /*
  * AudioWorkletGlobalScope globals
@@ -311,3 +198,48 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
+
+/*
+ * WebGPU globals
+ */
+var GPUBufferUsage;
+var GPUColorWrite;
+var GPUMapMode;
+var GPUShaderStage;
+var GPUTextureUsage;
+var GPU;
+var GPUAdapter;
+var GPUBindGroup;
+var GPUBindGroupLayout;
+var GPUBuffer;
+var GPUCanvasContext;
+var GPUCommandBuffer;
+var GPUCommandEncoder;
+var GPUCompilationInfo;
+var GPUCompilationMessage;
+var GPUComputePassEncoder;
+var GPUComputePipeline;
+var GPUDevice;
+var GPUDeviceLostInfo;
+var GPUExternalTexture;
+var GPUOutOfMemoryError;
+var GPUPipelineLayout;
+var GPUQuerySet;
+var GPUQueue;
+var GPURenderBundle;
+var GPURenderBundleEncoder;
+var GPURenderPassEncoder;
+var GPURenderPipeline;
+var GPUSampler;
+var GPUShaderModule;
+var GPUSupportedFeatures;
+var GPUSupportedLimits;
+var GPUTexture;
+var GPUTextureView;
+var GPUUncapturedErrorEvent;
+var GPUValidationError;
+
+/*
+ * Avoid closure minifying anything to "id". See #13965
+ */
+var id;

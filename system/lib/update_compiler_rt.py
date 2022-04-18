@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2020 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -10,6 +10,8 @@ import sys
 import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
+emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 local_src = os.path.join(script_dir, 'compiler-rt')
 
 copy_dirs = [
@@ -23,14 +25,26 @@ copy_dirs = [
     ('lib', 'ubsan_minimal'),
 ]
 
+preserve_files = ('readme.txt',)
+
+
 def clear(dirname):
-  if os.path.exists(dirname):
-    shutil.rmtree(dirname)
-  os.makedirs(dirname)
+  for f in os.listdir(dirname):
+    if f in preserve_files or 'emscripten' in f:
+      continue
+    full = os.path.join(dirname, f)
+    if os.path.isdir(full):
+      shutil.rmtree(full)
+    else:
+      os.remove(full)
 
 
 def main():
-  upstream_dir = os.path.abspath(sys.argv[1])
+  if len(sys.argv) > 1:
+    llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
+  else:
+    llvm_dir = default_llvm_dir
+  upstream_dir = os.path.join(llvm_dir, 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
   upstream_include = os.path.join(upstream_dir, 'include', 'sanitizer')

@@ -26,12 +26,6 @@ F_GETLK: 0
 errno: 0
 lk.l_type == F_UNLCK: 1
 
-F_SETLK: 0
-errno: 0
-
-F_SETLKW: 0
-errno: 0
-
 F_SETOWN: -1
 errno: 28
 

@@ -1,6 +1,5 @@
 #include <wctype.h>
 #include <ctype.h>
-#include "libc.h"
 
 int iswblank(wint_t wc)
 {

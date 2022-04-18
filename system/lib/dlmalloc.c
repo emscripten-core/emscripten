@@ -24,7 +24,18 @@
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
 #endif
 
+#ifndef MALLOC_ALIGNMENT
+#include <stddef.h>
+/* `malloc`ed pointers must be aligned at least as strictly as max_align_t. */
+#define MALLOC_ALIGNMENT (__alignof__(max_align_t))
+/*
+  Emscripten aligns even float128 to 64-bits, to save size and increase speed.
+  See https://github.com/emscripten-core/emscripten/issues/10072
+*/
+_Static_assert(MALLOC_ALIGNMENT == 8, "max_align_t must be 8");
 #endif
+
+#endif // __EMSCRIPTEN__
 
 
 #define __THROW
@@ -856,6 +867,10 @@ extern "C" {
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
 #if defined(__EMSCRIPTEN__)
+void* __libc_malloc(size_t) __attribute__((weak, alias("dlmalloc")));
+void  __libc_free(void*) __attribute__((weak, alias("dlfree")));
+void* __libc_calloc(size_t) __attribute__((weak, alias("dlcalloc")));
+void* __libc_realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));

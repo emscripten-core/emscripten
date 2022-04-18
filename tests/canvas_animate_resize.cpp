@@ -19,7 +19,7 @@
 //  - If set, manually update CSS pixel size of the canvas. If unset, leave the CSS size to auto and expect the browser to resize the canvas size.
 
 #if !defined(TEST_EMSCRIPTEN_SET_MAIN_LOOP) && !defined(__EMSCRIPTEN_PTHREADS__)
-#error TEST_EMSCRIPTEN_SET_MAIN_LOOP=false, but blocking main loops require using -s PROXY_TO_PTHREADS= and multithreading (build with -s PROXY_TO_PTHREAD=1 and -s USE_PTHREADS=1)
+#error TEST_EMSCRIPTEN_SET_MAIN_LOOP=false, but blocking main loops require using -sPROXY_TO_PTHREADS= and multithreading (build with -sPROXY_TO_PTHREAD and -sUSE_PTHREADS)
 #endif
 
 #if !defined(TEST_EMSCRIPTEN_SET_MAIN_LOOP) && !defined(TEST_EXPLICIT_CONTEXT_SWAP)
@@ -81,9 +81,6 @@ void tick()
     emscripten_webgl_make_context_current(0);
     emscripten_webgl_destroy_context(ctx);
     printf("quit\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     exit(0);
   }
 }
@@ -154,4 +151,5 @@ int main()
     usleep(16*1000);
   }
 #endif
+  return 99;
 }

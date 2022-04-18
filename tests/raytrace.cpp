@@ -1,8 +1,3 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
 // sphere flake bvh raytracer (c) 2005, thierry berger-perrin <tbptbp@gmail.com>
 // this code is released under the GNU Public License.
 // Emscripten changes: stdlib.h, some printf stuff, SIZE

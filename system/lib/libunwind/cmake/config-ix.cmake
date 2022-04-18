@@ -1,13 +1,19 @@
-
+include(CMakePushCheckState)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 include(CheckLibraryExists)
+include(CheckSymbolExists)
+include(CheckCSourceCompiles)
 
 check_library_exists(c fopen "" LIBUNWIND_HAS_C_LIB)
 
 if (NOT LIBUNWIND_USE_COMPILER_RT)
-  check_library_exists(gcc_s __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_S_LIB)
-  check_library_exists(gcc __absvdi2 "" LIBUNWIND_HAS_GCC_LIB)
+  if (ANDROID)
+    check_library_exists(gcc __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_LIB)
+  else ()
+    check_library_exists(gcc_s __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_S_LIB)
+    check_library_exists(gcc __absvdi2 "" LIBUNWIND_HAS_GCC_LIB)
+  endif ()
 endif()
 
 # libunwind is built with -nodefaultlibs, so we want all our checks to also
@@ -55,45 +61,35 @@ if (LIBUNWIND_HAS_NODEFAULTLIBS_FLAG)
   endif ()
 endif ()
 
-# Check compiler flags
-check_c_compiler_flag(-funwind-tables         LIBUNWIND_HAS_FUNWIND_TABLES)
-check_cxx_compiler_flag(-fno-exceptions       LIBUNWIND_HAS_NO_EXCEPTIONS_FLAG)
-check_cxx_compiler_flag(-fno-rtti             LIBUNWIND_HAS_NO_RTTI_FLAG)
-check_cxx_compiler_flag(-fstrict-aliasing     LIBUNWIND_HAS_FSTRICT_ALIASING_FLAG)
-check_cxx_compiler_flag(-nostdinc++           LIBUNWIND_HAS_NOSTDINCXX_FLAG)
-check_cxx_compiler_flag(-Wall                 LIBUNWIND_HAS_WALL_FLAG)
-check_cxx_compiler_flag(-W                    LIBUNWIND_HAS_W_FLAG)
-check_cxx_compiler_flag(-Wno-unused-function  LIBUNWIND_HAS_WNO_UNUSED_FUNCTION_FLAG)
-check_cxx_compiler_flag(-Wunused-variable     LIBUNWIND_HAS_WUNUSED_VARIABLE_FLAG)
-check_cxx_compiler_flag(-Wunused-parameter    LIBUNWIND_HAS_WUNUSED_PARAMETER_FLAG)
-check_cxx_compiler_flag(-Wstrict-aliasing     LIBUNWIND_HAS_WSTRICT_ALIASING_FLAG)
-check_cxx_compiler_flag(-Wstrict-overflow     LIBUNWIND_HAS_WSTRICT_OVERFLOW_FLAG)
-check_cxx_compiler_flag(-Wwrite-strings       LIBUNWIND_HAS_WWRITE_STRINGS_FLAG)
-check_cxx_compiler_flag(-Wchar-subscripts     LIBUNWIND_HAS_WCHAR_SUBSCRIPTS_FLAG)
-check_cxx_compiler_flag(-Wmismatched-tags     LIBUNWIND_HAS_WMISMATCHED_TAGS_FLAG)
-check_cxx_compiler_flag(-Wmissing-braces      LIBUNWIND_HAS_WMISSING_BRACES_FLAG)
-check_cxx_compiler_flag(-Wshorten-64-to-32    LIBUNWIND_HAS_WSHORTEN_64_TO_32_FLAG)
-check_cxx_compiler_flag(-Wsign-conversion     LIBUNWIND_HAS_WSIGN_CONVERSION_FLAG)
-check_cxx_compiler_flag(-Wsign-compare        LIBUNWIND_HAS_WSIGN_COMPARE_FLAG)
-check_cxx_compiler_flag(-Wshadow              LIBUNWIND_HAS_WSHADOW_FLAG)
-check_cxx_compiler_flag(-Wconversion          LIBUNWIND_HAS_WCONVERSION_FLAG)
-check_cxx_compiler_flag(-Wnewline-eof         LIBUNWIND_HAS_WNEWLINE_EOF_FLAG)
-check_cxx_compiler_flag(-Wundef               LIBUNWIND_HAS_WUNDEF_FLAG)
-check_cxx_compiler_flag(-pedantic             LIBUNWIND_HAS_PEDANTIC_FLAG)
-check_cxx_compiler_flag(-Werror               LIBUNWIND_HAS_WERROR_FLAG)
-check_cxx_compiler_flag(-Wno-error            LIBUNWIND_HAS_WNO_ERROR_FLAG)
-check_cxx_compiler_flag(/WX                   LIBUNWIND_HAS_WX_FLAG)
-check_cxx_compiler_flag(/WX-                  LIBUNWIND_HAS_NO_WX_FLAG)
-check_cxx_compiler_flag(/EHsc                 LIBUNWIND_HAS_EHSC_FLAG)
-check_cxx_compiler_flag(/EHs-                 LIBUNWIND_HAS_NO_EHS_FLAG)
-check_cxx_compiler_flag(/EHa-                 LIBUNWIND_HAS_NO_EHA_FLAG)
-check_cxx_compiler_flag(/GR-                  LIBUNWIND_HAS_NO_GR_FLAG)
-check_cxx_compiler_flag(-std=c++11            LIBUNWIND_HAS_STD_CXX11)
-
-if(LIBUNWIND_HAS_STD_CXX11)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# Check compiler pragmas
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  cmake_push_check_state()
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -Werror=unknown-pragmas")
+  check_c_source_compiles("
+#pragma comment(lib, \"c\")
+int main() { return 0; }
+" LIBUNWIND_HAS_COMMENT_LIB_PRAGMA)
+  cmake_pop_check_state()
 endif()
 
-check_library_exists(dl dladdr "" LIBUNWIND_HAS_DL_LIB)
-check_library_exists(pthread pthread_once "" LIBUNWIND_HAS_PTHREAD_LIB)
+# Check compiler flags
+check_cxx_compiler_flag(-nostdinc++ LIBUNWIND_HAS_NOSTDINCXX_FLAG)
 
+# Check symbols
+check_symbol_exists(__arm__ "" LIBUNWIND_TARGET_ARM)
+check_symbol_exists(__USING_SJLJ_EXCEPTIONS__ "" LIBUNWIND_USES_SJLJ_EXCEPTIONS)
+check_symbol_exists(__ARM_DWARF_EH__ "" LIBUNWIND_USES_DWARF_EH)
+
+if(LIBUNWIND_TARGET_ARM AND NOT LIBUNWIND_USES_SJLJ_EXCEPTIONS AND NOT LIBUNWIND_USES_DWARF_EH)
+  # This condition is copied from __libunwind_config.h
+  set(LIBUNWIND_USES_ARM_EHABI ON)
+endif()
+
+# Check libraries
+if(FUCHSIA)
+  set(LIBUNWIND_HAS_DL_LIB NO)
+  set(LIBUNWIND_HAS_PTHREAD_LIB NO)
+else()
+  check_library_exists(dl dladdr "" LIBUNWIND_HAS_DL_LIB)
+  check_library_exists(pthread pthread_once "" LIBUNWIND_HAS_PTHREAD_LIB)
+endif()

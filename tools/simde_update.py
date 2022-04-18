@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2020 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -9,12 +9,16 @@
 """
 
 import os
+import re
 import subprocess
 import sys
 
 from os import path
 
-sys.path.insert(1, path.dirname(path.dirname(path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
+
 from tools.shared import get_emscripten_temp_dir
 
 tmpdir = get_emscripten_temp_dir()
@@ -39,28 +43,33 @@ def main():
     print("Using provided repository without updating [make sure it's up to date!]")
 
   try:
-    neon_h_buf = subprocess.check_output([path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")])
+    neon_h_buf = subprocess.check_output(
+        [path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")],
+        text=True)
   except subprocess.CalledProcessError as e:
     print("amalgamate.py returned error: " + str(e))
     return 1
 
   try:
-    os.mkdir(path.join(emdir, "system", "include", "neon"))
+    os.mkdir(path.join(emdir, "system", "include", "compat"))
   except FileExistsError:
-    if not path.isdir(path.join(emdir, "system", "include", "neon")):
-      print("system/include/neon exists and is not a directory, exiting...")
+    if not path.isdir(path.join(emdir, "system", "include", "compat")):
+      print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
-  with open(path.join(emdir, "system", "include", "neon", "arm_neon.h"), "wb+") as f:
+  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
     try:
-      f.write(b"#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
-      f.write(b"#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      f.write(neon_h_buf)
-      f.write(b"#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
-      f.write(b"#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      print("'system/include/neon/arm_neon.h' updated")
+      f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
+      SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
+      # Replace file headers, which contains tmp directory names and changes every time we
+      # update simde, causing a larger diff than necessary.
+      f.write(re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE))
+      f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
+      print("'system/include/compat/arm_neon.h' updated")
     except Exception:
-      print("error writing 'system/include/neon/arm_neon.h'")
+      print("error writing 'system/include/compat/arm_neon.h'")
       return 1
 
   return 0

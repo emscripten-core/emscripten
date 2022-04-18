@@ -43,12 +43,7 @@ void ensure_not(bool value)
 
 void ensure_js(string js_code)
 {
-  js_code.append(";");
-  const char* js_code_pointer = js_code.c_str();
-  ensure(EM_ASM_INT({
-    var js_code = UTF8ToString($0);
-    return eval(js_code);
-  }, js_code_pointer));
+  ensure(emscripten_run_script_int(js_code.c_str()));
 }
 
 void ensure_js_not(string js_code)
@@ -63,9 +58,18 @@ void throw_js_error(val js_error)
   js_error.throw_();
 }
 
+struct Dummy {};
+
+Dummy * makeDummy()
+{
+  return new Dummy();
+}
+
 EMSCRIPTEN_BINDINGS(test_bindings)
 {
+  emscripten::class_<Dummy>("Dummy");
   emscripten::function("throw_js_error", &throw_js_error);
+  emscripten::function("makeDummy", &makeDummy, emscripten::allow_raw_pointers());
 }
 
 int main()
@@ -107,6 +111,15 @@ int main()
   test("val object()");
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
+  
+  // Test emval{From,To}Handle roundtrip.
+  {
+    val a = val::global("a");
+    val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_INT({
+      return Emval.toHandle(Emval.toValue($0));
+    }, a.as_handle())));
+    ensure(a == a_roundtrip);
+  }
   
   test("val undefined()");
   val::global().set("a", val::undefined());
@@ -332,7 +345,7 @@ int main()
     d = undefined;
     e = 0;
     f = 1;
-    g = '';
+    g = "";
     h = '0';
     i = 'false';
   );
@@ -376,14 +389,15 @@ int main()
   );
   ensure(val::global()["a"].as<int>() == 2);
   ensure_not(val::global()["a"].as<int>() == 3);
+  val k("a");
+  ensure(val::global()[k].as<int>() == 2);
+  ensure_not(val::global()[k].as<int>() == 3);
   
-  test("template<typename K> void set(const K& key, const val& v)");
+  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", val(2));
   ensure_js("a == 2");
   val::global().set("a", val(3));
   ensure_js("a == 3");
-  
-  test("template<typename K, typename V> void set(const K& key, const V& value)");
   val::global().set("a", NULL);
   ensure_js("a == 0");
   val::global().set("a", false);
@@ -392,6 +406,12 @@ int main()
   ensure_js("a == 2");
   val::global().set("a", "b");
   ensure_js("a == 'b'");
+  val::global().set(k, 1);
+  ensure_js("a == 1");
+  val v(3);
+  val::global().set(k, v);
+  ensure("a == 3");
+  ensure(val::global()[k].as<int>() == 3);
   
   test("template<typename... Args> val operator()(Args&&... args)");
   EM_ASM(
@@ -570,7 +590,7 @@ int main()
   ensure_js("test_val_throw_('message')");
   ensure_js("test_val_throw_(new TypeError('message'))");
   
-  // this test should probably go elsewhere as it is not a member of val
+  // these tests should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
     // can't declare like this because i get:
@@ -589,6 +609,18 @@ int main()
   ensure(aAsArray.at(2).as<string>() == "b");
   ensure(aAsArray.size() == 4);
   
+  test("template<typename T> std::vector<T *> vecFromJSArray(const val& v)");
+  EM_ASM(
+    b = [];
+    b[0] = Module.makeDummy();
+    b[1] = Module.makeDummy();
+  );
+  const std::vector<Dummy *>& bAsArray = vecFromJSArray<Dummy *>(val::global("b"), allow_raw_pointers());
+  ensure(bAsArray.size() == 2);
+  for (auto *dummy : bAsArray) {
+    delete dummy;
+  }
+
   test("template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)");
   
   const std::vector<float>& aAsNumberVectorFloat = convertJSArrayToNumberVector<float>(val::global("a"));
@@ -606,6 +638,26 @@ int main()
   ensure(aAsNumberVectorUint32_t.at(1) == 42);     // String containing numbers are converted correctly
   ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
   ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
+
+  test("val u8string(const char* s)");
+  val::global().set("a", val::u8string(u8"abc"));
+  ensure_js("a == 'abc'");
+  val::global().set("a", val::u8string(u8"你好"));
+  ensure_js_not("a == 'abc'");
+  ensure_js("a == '你好'");
+  auto u8_str = val::global()["a"].as<std::string>();
+  ensure(u8_str == u8"你好");
+
+  test("val u16string(const char16_t* s)");
+  val::global().set("a", val::u16string(u"hello"));
+  ensure_js("a == 'hello'");
+  val::global().set("a", val::u16string(u"世界"));
+  ensure_js_not("a == 'hello'");
+  ensure_js("a == '世界'");
+  // UTF-16 encoded SMILING FACE WITH OPEN MOUTH (U+1F603)
+  const char16_t* s = u"😃 = \U0001F603 is :-D";
+  val::global().set("a", val::u16string(s));
+  ensure_js("a == '😃 = \U0001F603 is :-D'");
   
   printf("end\n");
   return 0;

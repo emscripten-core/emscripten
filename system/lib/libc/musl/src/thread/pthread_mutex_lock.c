@@ -1,7 +1,5 @@
 #include "pthread_impl.h"
 
-int __pthread_mutex_timedlock(pthread_mutex_t *restrict, const struct timespec *restrict);
-
 int __pthread_mutex_lock(pthread_mutex_t *m)
 {
 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL

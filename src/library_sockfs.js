@@ -8,7 +8,7 @@ mergeInto(LibraryManager.library, {
   $SOCKFS__postset: function() {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS', '$ERRNO_CODES'], // TODO: avoid ERRNO_CODES
+  $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
     mount: function(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring
@@ -21,15 +21,15 @@ mergeInto(LibraryManager.library, {
       // For more documentation see system/include/emscripten/emscripten.h
       Module['websocket']._callbacks = {};
       Module['websocket']['on'] = /** @this{Object} */ function(event, callback) {
-	    if ('function' === typeof callback) {
-		  this._callbacks[event] = callback;
+        if ('function' === typeof callback) {
+          this._callbacks[event] = callback;
         }
-	    return this;
+        return this;
       };
 
       Module['websocket'].emit = /** @this{Object} */ function(event, param) {
-	    if ('function' === typeof this._callbacks[event]) {
-		  this._callbacks[event].call(this, param);
+        if ('function' === typeof this._callbacks[event]) {
+          this._callbacks[event].call(this, param);
         }
       };
 
@@ -48,8 +48,8 @@ mergeInto(LibraryManager.library, {
     createSocket: function(family, type, protocol) {
       type &= ~{{{ cDefine('SOCK_CLOEXEC') | cDefine('SOCK_NONBLOCK') }}}; // Some applications may pass it; it makes no sense for a single process.
       var streaming = type == {{{ cDefine('SOCK_STREAM') }}};
-      if (protocol) {
-        assert(streaming == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
+      if (streaming && protocol && protocol != {{{ cDefine('IPPROTO_TCP') }}}) {
+        throw new FS.ErrnoError({{{ cDefine('EPROTONOSUPPORT') }}}); // if SOCK_STREAM, must be tcp or 0.
       }
 
       // create our internal socket structure
@@ -143,7 +143,7 @@ mergeInto(LibraryManager.library, {
       createPeer: function(sock, addr, port) {
         var ws;
 
-        if (typeof addr === 'object') {
+        if (typeof addr == 'object') {
           ws = addr;
           addr = null;
           port = null;
@@ -230,7 +230,7 @@ mergeInto(LibraryManager.library, {
             ws = new WebSocketConstructor(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
-            throw new FS.ErrnoError(ERRNO_CODES.EHOSTUNREACH);
+            throw new FS.ErrnoError({{{ cDefine('EHOSTUNREACH') }}});
           }
         }
 
@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
         // if this is a bound dgram socket, send the port number first to allow
         // us to override the ephemeral port reported to us by remotePort on the
         // remote end.
-        if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport !== 'undefined') {
+        if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport != 'undefined') {
 #if SOCKET_DEBUG
           out('websocket queuing port message (port ' + sock.sport + ')');
 #endif
@@ -300,7 +300,7 @@ mergeInto(LibraryManager.library, {
         };
 
         function handleMessage(data) {
-          if (typeof data === 'string') {
+          if (typeof data == 'string') {
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
@@ -354,7 +354,7 @@ mergeInto(LibraryManager.library, {
             // ECONNREFUSED they are not necessarily the expected error code e.g. 
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
-            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            sock.error = {{{ cDefine('ECONNREFUSED') }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
             Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
             // don't throw
           });
@@ -369,7 +369,7 @@ mergeInto(LibraryManager.library, {
           peer.socket.onerror = function(error) {
             // The WebSocket spec only allows a 'simple event' to be thrown on error,
             // so we only really know as much as ECONNREFUSED.
-            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            sock.error = {{{ cDefine('ECONNREFUSED') }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
             Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
           };
         }
@@ -419,7 +419,7 @@ mergeInto(LibraryManager.library, {
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
             return 0;
           default:
-            return ERRNO_CODES.EINVAL;
+            return {{{ cDefine('EINVAL') }}};
         }
       },
       close: function(sock) {
@@ -444,8 +444,8 @@ mergeInto(LibraryManager.library, {
         return 0;
       },
       bind: function(sock, addr, port) {
-        if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already bound
+        if (typeof sock.saddr != 'undefined' || typeof sock.sport != 'undefined') {
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});  // already bound
         }
         sock.saddr = addr;
         sock.sport = port;
@@ -464,13 +464,13 @@ mergeInto(LibraryManager.library, {
             sock.sock_ops.listen(sock, 0);
           } catch (e) {
             if (!(e instanceof FS.ErrnoError)) throw e;
-            if (e.errno !== ERRNO_CODES.EOPNOTSUPP) throw e;
+            if (e.errno !== {{{ cDefine('EOPNOTSUPP') }}}) throw e;
           }
         }
       },
       connect: function(sock, addr, port) {
         if (sock.server) {
-          throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
+          throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
         }
 
         // TODO autobind
@@ -478,13 +478,13 @@ mergeInto(LibraryManager.library, {
         // }
 
         // early out if we're already connected / in the middle of connecting
-        if (typeof sock.daddr !== 'undefined' && typeof sock.dport !== 'undefined') {
+        if (typeof sock.daddr != 'undefined' && typeof sock.dport != 'undefined') {
           var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
           if (dest) {
             if (dest.socket.readyState === dest.socket.CONNECTING) {
-              throw new FS.ErrnoError(ERRNO_CODES.EALREADY);
+              throw new FS.ErrnoError({{{ cDefine('EALREADY') }}});
             } else {
-              throw new FS.ErrnoError(ERRNO_CODES.EISCONN);
+              throw new FS.ErrnoError({{{ cDefine('EISCONN') }}});
             }
           }
         }
@@ -496,20 +496,20 @@ mergeInto(LibraryManager.library, {
         sock.dport = peer.port;
 
         // always "fail" in non-blocking mode
-        throw new FS.ErrnoError(ERRNO_CODES.EINPROGRESS);
+        throw new FS.ErrnoError({{{ cDefine('EINPROGRESS') }}});
       },
       listen: function(sock, backlog) {
         if (!ENVIRONMENT_IS_NODE) {
-          throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
+          throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
         }
 #if ENVIRONMENT_MAY_BE_NODE
         if (sock.server) {
-           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already listening
+           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});  // already listening
         }
         var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
-        console.log('listen: ' + host + ':' + sock.sport);
+        out('listen: ' + host + ':' + sock.sport);
 #endif
         sock.server = new WebSocketServer({
           host: host,
@@ -520,7 +520,7 @@ mergeInto(LibraryManager.library, {
 
         sock.server.on('connection', function(ws) {
 #if SOCKET_DEBUG
-          console.log('received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
+          out('received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
 #endif
           if (sock.type === {{{ cDefine('SOCK_STREAM') }}}) {
             var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
@@ -552,15 +552,15 @@ mergeInto(LibraryManager.library, {
           // is still probably the most useful thing to do. This error shouldn't
           // occur in a well written app as errors should get trapped in the compiled
           // app's own getaddrinfo call.
-          sock.error = ERRNO_CODES.EHOSTUNREACH; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          sock.error = {{{ cDefine('EHOSTUNREACH') }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
           Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
 #endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept: function(listensock) {
-        if (!listensock.server) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        if (!listensock.server || !listensock.pending.length) {
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         var newsock = listensock.pending.shift();
         newsock.stream.flags = listensock.stream.flags;
@@ -570,7 +570,7 @@ mergeInto(LibraryManager.library, {
         var addr, port;
         if (peer) {
           if (sock.daddr === undefined || sock.dport === undefined) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
+            throw new FS.ErrnoError({{{ cDefine('ENOTCONN') }}});
           }
           addr = sock.daddr;
           port = sock.dport;
@@ -592,7 +592,7 @@ mergeInto(LibraryManager.library, {
           }
           // if there was no address to fall back to, error out
           if (addr === undefined || port === undefined) {
-            throw new FS.ErrnoError(ERRNO_CODES.EDESTADDRREQ);
+            throw new FS.ErrnoError({{{ cDefine('EDESTADDRREQ') }}});
           }
         } else {
           // connection-based sockets will only use the bound
@@ -606,9 +606,9 @@ mergeInto(LibraryManager.library, {
         // early out if not connected with a connection-based socket
         if (sock.type === {{{ cDefine('SOCK_STREAM') }}}) {
           if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
+            throw new FS.ErrnoError({{{ cDefine('ENOTCONN') }}});
           } else if (dest.socket.readyState === dest.socket.CONNECTING) {
-            throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
+            throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
           }
         }
 
@@ -658,14 +658,14 @@ mergeInto(LibraryManager.library, {
           dest.socket.send(data);
           return length;
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
       },
       recvmsg: function(sock, length) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
         if (sock.type === {{{ cDefine('SOCK_STREAM') }}} && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
+          throw new FS.ErrnoError({{{ cDefine('ENOTCONN') }}});
         }
 
         var queued = sock.recv_queue.shift();
@@ -675,7 +675,7 @@ mergeInto(LibraryManager.library, {
 
             if (!dest) {
               // if we have a destination address but are not connected, error out
-              throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
+              throw new FS.ErrnoError({{{ cDefine('ENOTCONN') }}});
             }
             else if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               // return null if the socket has closed
@@ -683,10 +683,10 @@ mergeInto(LibraryManager.library, {
             }
             else {
               // else, our socket is in a valid state but truly has nothing available
-              throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
+              throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
             }
           } else {
-            throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
+            throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
           }
         }
 
@@ -732,14 +732,19 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  __set_network_callback: function(event, userData, callback) {
+  $_setNetworkCallback__deps: ['$withStackSave',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush',
+#endif
+  ],
+  $_setNetworkCallback: function(event, userData, callback) {
     function _callback(data) {
       try {
         if (event === 'error') {
-          var sp = stackSave();
-          var msg = allocate(intArrayFromString(data[2]), ALLOC_STACK);
-          {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
-          stackRestore(sp);
+          withStackSave(function() {
+            var msg = allocateUTF8OnStack(data[2]);
+            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+          });
         } else {
           {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
@@ -747,37 +752,39 @@ mergeInto(LibraryManager.library, {
         if (e instanceof ExitStatus) {
           return;
         } else {
-          if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+          if (e && typeof e == 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
           throw e;
         }
       }
     };
 
-    noExitRuntime = true;
+    // FIXME(sbc): This has no corresponding Pop so will currently keep the
+    // runtime alive indefinitely.
+    {{{ runtimeKeepalivePush() }}}
     Module['websocket']['on'](event, callback ? _callback : null);
   },
-  emscripten_set_socket_error_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_error_callback: function(userData, callback) {
-    ___set_network_callback('error', userData, callback);
+    _setNetworkCallback('error', userData, callback);
   },
-  emscripten_set_socket_open_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_open_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_open_callback: function(userData, callback) {
-    ___set_network_callback('open', userData, callback);
+    _setNetworkCallback('open', userData, callback);
   },
-  emscripten_set_socket_listen_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_listen_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_listen_callback: function(userData, callback) {
-    ___set_network_callback('listen', userData, callback);
+    _setNetworkCallback('listen', userData, callback);
   },
-  emscripten_set_socket_connection_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_connection_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_connection_callback: function(userData, callback) {
-    ___set_network_callback('connection', userData, callback);
+    _setNetworkCallback('connection', userData, callback);
   },
-  emscripten_set_socket_message_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_message_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_message_callback: function(userData, callback) {
-    ___set_network_callback('message', userData, callback);
+    _setNetworkCallback('message', userData, callback);
   },
-  emscripten_set_socket_close_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_close_callback: function(userData, callback) {
-    ___set_network_callback('close', userData, callback);
+    _setNetworkCallback('close', userData, callback);
   }
 });

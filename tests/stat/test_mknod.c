@@ -58,12 +58,14 @@ void test() {
   stat("mknod-file", &s);
   assert(S_ISREG(s.st_mode));
 
+#ifndef WASMFS // TODO: wasmfs support for special devices
   // mknod a character device
   err = mknod("mknod-device", S_IFCHR | 0777, 123);
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("mknod-device", &s);
   assert(S_ISCHR(s.st_mode));
+#endif // WASMFS
 
 #endif
 

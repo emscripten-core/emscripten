@@ -12,12 +12,11 @@
     @param {number} value
     @param {string} type
     @param {number|boolean=} noSafe */
-function setValue(ptr, value, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+function setValue(ptr, value, type = 'i8', noSafe) {
+  if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {
-    switch(type) {
+    switch (type) {
       case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
@@ -29,7 +28,7 @@ function setValue(ptr, value, type, noSafe) {
     }
   } else {
 #endif
-    switch(type) {
+    switch (type) {
       case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
@@ -47,12 +46,11 @@ function setValue(ptr, value, type, noSafe) {
 /** @param {number} ptr
     @param {string} type
     @param {number|boolean=} noSafe */
-function getValue(ptr, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+function getValue(ptr, type = 'i8', noSafe) {
+  if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {
-    switch(type) {
+    switch (type) {
       case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
       case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
       case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
@@ -64,7 +62,7 @@ function getValue(ptr, type, noSafe) {
     }
   } else {
 #endif
-    switch(type) {
+    switch (type) {
       case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
       case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
       case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
@@ -89,7 +87,7 @@ function getSafeHeapType(bytes, isFloat) {
     case 1: return 'i8';
     case 2: return 'i16';
     case 4: return isFloat ? 'float' : 'i32';
-    case 8: return 'double';
+    case 8: return isFloat ? 'double' : 'i64';
     default: assert(0);
   }
 }
@@ -107,8 +105,16 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
+#if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#else
+  if (dest % bytes !== 0) warnOnce('alignment error in a memory store operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
+#endif
+#if EXIT_RUNTIME
+  if (runtimeInitialized && !runtimeExited) {
+#else
   if (runtimeInitialized) {
+#endif
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
     assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
@@ -127,8 +133,16 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   dest >>>= 0;
 #endif
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
+#if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#else
+  if (dest % bytes !== 0) warnOnce('alignment error in a memory load operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
+#endif
+#if EXIT_RUNTIME
+  if (runtimeInitialized && !runtimeExited) {
+#else
   if (runtimeInitialized) {
+#endif
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
     assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
@@ -158,10 +172,11 @@ function segfault() {
   abort('segmentation fault');
 }
 function alignfault() {
+#if SAFE_HEAP == 1
   abort('alignment fault');
-}
-function ftfault() {
-  abort('Function table mask error');
+#else
+  warnOnce('alignment fault');
+#endif
 }
 #endif
 

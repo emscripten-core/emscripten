@@ -13,7 +13,7 @@
 #include "emscripten.h"
 #endif
 
-const int numSprites = 9;
+#define numSprites 9
 SDL_Surface *screen;
 SDL_Surface *sprite[numSprites];
 

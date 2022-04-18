@@ -56,6 +56,12 @@ template <typename T> static void register_integer(const char* name) {
     std::numeric_limits<T>::max());
 }
 
+template <typename T> static void register_bigint(const char* name) {
+  using namespace internal;
+  _embind_register_bigint(TypeID<T>::get(), name, sizeof(T), std::numeric_limits<T>::min(),
+    std::numeric_limits<T>::max());
+}
+
 template <typename T> static void register_float(const char* name) {
   using namespace internal;
   _embind_register_float(TypeID<T>::get(), name, sizeof(T));
@@ -71,6 +77,9 @@ enum TypedArrayIndex {
   Uint32Array,
   Float32Array,
   Float64Array,
+  // Only available if WASM_BIGINT
+  Int64Array,
+  Uint64Array,
 };
 
 template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
@@ -80,7 +89,8 @@ template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
            : (sizeof(T) == 1
                  ? (std::is_signed<T>::value ? Int8Array : Uint8Array)
                  : (sizeof(T) == 2 ? (std::is_signed<T>::value ? Int16Array : Uint16Array)
-                                   : (std::is_signed<T>::value ? Int32Array : Uint32Array)));
+                                   : (sizeof(T) == 4 ? (std::is_signed<T>::value ? Int32Array : Uint32Array)
+                                                     : (std::is_signed<T>::value ? Int64Array : Uint64Array))));
 }
 
 template <typename T> static void register_memory_view(const char* name) {
@@ -90,7 +100,12 @@ template <typename T> static void register_memory_view(const char* name) {
 } // namespace
 
 extern "C" {
-void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
+
+// Normal initialization, executed through a global constructor. This
+// happens on the main thread; pthreads will call it manually, so make
+// sure we also export it (via EMSCRIPTEN_KEEPALIVE).
+EMSCRIPTEN_KEEPALIVE __attribute__((constructor))
+void __embind_register_native_and_builtin_types() {
   using namespace emscripten::internal;
 
   _embind_register_void(TypeID<void>::get(), "void");
@@ -106,6 +121,9 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_integer<unsigned int>("unsigned int");
   register_integer<signed long>("long");
   register_integer<unsigned long>("unsigned long");
+
+  register_bigint<int64_t>("int64_t");
+  register_bigint<uint64_t>("uint64_t");
 
   register_float<float>("float");
   register_float<double>("double");
@@ -148,10 +166,5 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_memory_view<long double>("emscripten::memory_view<long double>");
 #endif
 }
-}
 
-EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
-  // Normal initialization, executed through a global constructor. This
-  // happens on the main thread; pthreads will call it manually.
-  __embind_register_native_and_builtin_types();
-}
+} // extern "C"

@@ -1,4 +1,4 @@
-//===-- ubsan_type_hash_itanium.cc ----------------------------------------===//
+//===-- ubsan_type_hash_itanium.cpp ---------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -12,10 +12,11 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 #include "ubsan_platform.h"
-#if CAN_SANITIZE_UB && !SANITIZER_WINDOWS
+#if CAN_SANITIZE_UB && !defined(_MSC_VER)
 #include "ubsan_type_hash.h"
 
 #include "sanitizer_common/sanitizer_common.h"
+#include "sanitizer_common/sanitizer_ptrauth.h"
 
 // The following are intended to be binary compatible with the definitions
 // given in the Itanium ABI. We make no attempt to be ODR-compatible with
@@ -194,6 +195,7 @@ struct VtablePrefix {
   std::type_info *TypeInfo;
 };
 VtablePrefix *getVtablePrefix(void *Vtable) {
+  Vtable = ptrauth_auth_data(Vtable, ptrauth_key_cxx_vtable_pointer, 0);
   VtablePrefix *Vptr = reinterpret_cast<VtablePrefix*>(Vtable);
   VtablePrefix *Prefix = Vptr - 1;
   if (!IsAccessibleMemoryRange((uptr)Prefix, sizeof(VtablePrefix)))

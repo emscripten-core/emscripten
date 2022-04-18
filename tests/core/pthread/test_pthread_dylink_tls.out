@@ -1,0 +1,23 @@
+thread: 1
+side_tls  value  : 42 43
+side_tls direct  : 42 43
+main_tls  value  : 10 11
+main_tls direct  : 10 11
+increment done
+side_tls  value  : 62 43
+side_tls direct  : 62 43
+main_tls  value  : 30 11
+main_tls direct  : 30 11
+
+thread: 2
+side_tls  value  : 42 43
+side_tls direct  : 42 43
+main_tls  value  : 10 11
+main_tls direct  : 10 11
+increment done
+side_tls  value  : 52 43
+side_tls direct  : 52 43
+main_tls  value  : 20 11
+main_tls direct  : 20 11
+
+success

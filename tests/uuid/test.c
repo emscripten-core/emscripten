@@ -38,6 +38,7 @@ int main() {
     assert(uuid_is_null(uuid) == 0);
     assert(uuid_type(uuid) == UUID_TYPE_DCE_RANDOM);
     assert(uuid_variant(uuid) == UUID_VARIANT_DCE);
+    assert((uuid[8] & 0xC0) == 0x80); // RFC-4122 variant marker
 
     char *generated = (char *)malloc(37*sizeof(char));
     uuid_unparse(uuid, generated);
@@ -64,10 +65,6 @@ int main() {
 
     assert(uuid_is_null(uuid) == 1);
 
-    // The following lets the browser test exit cleanly.
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    exit(0);
+    return 0;
 }
 

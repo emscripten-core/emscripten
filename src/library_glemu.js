@@ -53,6 +53,37 @@ var LibraryGLEmulation = {
     fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
+    // GL_CLIP_PLANE support
+    MAX_CLIP_PLANES: 6,
+    clipPlaneEnabled: [false, false, false, false, false, false],
+    clipPlaneEquation: [],
+
+    // GL_LIGHTING support
+    lightingEnabled: false,
+
+    lightModelAmbient: null,
+    lightModelLocalViewer: false,
+    lightModelTwoSide: false,
+
+    materialAmbient: null,
+    materialDiffuse: null,
+    materialSpecular: null,
+    materialShininess: null,
+    materialEmission: null,
+
+    MAX_LIGHTS: 8,
+    lightEnabled: [false, false, false, false, false, false, false, false],
+    lightAmbient: [],
+    lightDiffuse: [],
+    lightSpecular: [],
+    lightPosition: [],
+    // TODO attenuation modes of lights
+
+    // GL_ALPHA_TEST support
+    alphaTestEnabled: false,
+    alphaTestFunc: 0x207, // GL_ALWAYS
+    alphaTestRef: 0.0,
+
     // GL_POINTS support.
     pointSize: 1.0,
 
@@ -108,10 +139,30 @@ var LibraryGLEmulation = {
 
       GLEmulation.fogColor = new Float32Array(4);
 
+      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+        GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
+      }
+
+      // set defaults for GL_LIGHTING
+      GLEmulation.lightModelAmbient = new Float32Array([0.2, 0.2, 0.2, 1.0]);
+      GLEmulation.materialAmbient = new Float32Array([0.2, 0.2, 0.2, 1.0]);
+      GLEmulation.materialDiffuse = new Float32Array([0.8, 0.8, 0.8, 1.0]);
+      GLEmulation.materialSpecular = new Float32Array([0.0, 0.0, 0.0, 1.0]);
+      GLEmulation.materialShininess = new Float32Array([0.0]);
+      GLEmulation.materialEmission = new Float32Array([0.0, 0.0, 0.0, 1.0]);
+
+      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+        GLEmulation.lightAmbient[lightId] = new Float32Array([0.0, 0.0, 0.0, 1.0]);
+        GLEmulation.lightDiffuse[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
+        GLEmulation.lightSpecular[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
+        GLEmulation.lightPosition[lightId] = new Float32Array([0.0, 0.0, 1.0, 0.0]);
+      }
+
+
       // Add some emulation workarounds
       err('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 1
-      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
+      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -sGL_UNSAFE_OPTS=0');
 #endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
@@ -129,7 +180,7 @@ var LibraryGLEmulation = {
 
 #if RELOCATABLE
 {{{
-(updateExport = function(name) {
+(updateExport = (name) => {
   var name = '_' + name;
   var exported = 'Module["' + name + '"]';
   // make sure we write to an existing export, and are not repeating ourselves
@@ -137,11 +188,11 @@ var LibraryGLEmulation = {
 }, '')
 }}}
 #else
-{{{ (updateExport = function(){ return '' }, '') }}}
+{{{ (updateExport = () => '', '') }}}
 #endif
 
       var glEnable = _glEnable;
-      _glEnable = _emscripten_glEnable = function _glEnable(cap) {
+      _glEnable = _emscripten_glEnable = (cap) => {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
@@ -149,6 +200,32 @@ var LibraryGLEmulation = {
           if (GLEmulation.fogEnabled != true) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = true;
+          }
+          return;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+          var clipPlaneId = cap - 0x3000;
+          if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
+            GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
+          }
+          return;
+        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
+          var lightId = cap - 0x4000;
+          if (GLEmulation.lightEnabled[lightId] != true) {
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.lightEnabled[lightId] = true;
+          }
+          return;
+        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+          if (GLEmulation.lightingEnabled != true) {
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.lightingEnabled = true;
+          }
+          return;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          if (GLEmulation.alphaTestEnabled != true) {
+            GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.alphaTestEnabled = true;
           }
           return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
@@ -167,12 +244,38 @@ var LibraryGLEmulation = {
       {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
-      _glDisable = _emscripten_glDisable = function _glDisable(cap) {
+      _glDisable = _emscripten_glDisable = (cap) => {
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
         if (cap == 0xB60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != false) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = false;
+          }
+          return;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+          var clipPlaneId = cap - 0x3000;
+          if (GLEmulation.clipPlaneEnabled[clipPlaneId] != false) {
+            GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.clipPlaneEnabled[clipPlaneId] = false;
+          }
+          return;
+        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
+          var lightId = cap - 0x4000;
+          if (GLEmulation.lightEnabled[lightId] != false) {
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.lightEnabled[lightId] = false;
+          }
+          return;
+        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+          if (GLEmulation.lightingEnabled != false) {
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.lightingEnabled = false;
+          }
+          return;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          if (GLEmulation.alphaTestEnabled != false) {
+            GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.alphaTestEnabled = false;
           }
           return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
@@ -190,9 +293,19 @@ var LibraryGLEmulation = {
       };
       {{{ updateExport('glDisable') }}}
 
-      _glIsEnabled = _emscripten_glIsEnabled = function _glIsEnabled(cap) {
+      _glIsEnabled = _emscripten_glIsEnabled = (cap) => {
         if (cap == 0xB60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+          var clipPlaneId = cap - 0x3000;
+          return GLEmulation.clipPlaneEnabled[clipPlaneId] ? 1 : 0;
+        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
+          var lightId = cap - 0x4000;
+          return GLEmulation.lightEnabled[lightId] ? 1 : 0;
+        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+          return GLEmulation.lightingEnabled ? 1 : 0;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          return GLEmulation.alphaTestEnabled ? 1 : 0;
         } else if (!(cap in validCapabilities)) {
           return 0;
         }
@@ -201,7 +314,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glIsEnabled') }}}
 
       var glGetBooleanv = _glGetBooleanv;
-      _glGetBooleanv = _emscripten_glGetBooleanv = function _glGetBooleanv(pname, p) {
+      _glGetBooleanv = _emscripten_glGetBooleanv = (pname, p) => {
         var attrib = GLEmulation.getAttributeFromCapability(pname);
         if (attrib !== null) {
           var result = GLImmediate.enabledClientAttributes[attrib];
@@ -213,7 +326,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glGetBooleanv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
-      _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
+      _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
         switch (pname) {
           case 0x84E2: pname = GLctx.MAX_TEXTURE_IMAGE_UNITS /* fake it */; break; // GL_MAX_TEXTURE_UNITS
           case 0x8B4A: { // GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB
@@ -277,15 +390,27 @@ var LibraryGLEmulation = {
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
+          case 0x0D32: { // GL_MAX_CLIP_PLANES
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
+            return;
+          }
+          case 0x0BA0: { // GL_MATRIX_MODE
+            {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + 0x1700', 'i32') }}};
+            return;
+          }
+          case 0x0BC1: { // GL_ALPHA_TEST_FUNC
+            {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestFunc', 'i32') }}};
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
       {{{ updateExport('glGetIntegerv') }}}
 
       var glGetString = _glGetString;
-      _glGetString = _emscripten_glGetString = function _glGetString(name_) {
+      _glGetString = _emscripten_glGetString = (name_) => {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
-        switch(name_) {
+        switch (name_) {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
             var ret = stringToNewUTF8((GLctx.getSupportedExtensions() || []).join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
@@ -308,7 +433,7 @@ var LibraryGLEmulation = {
       GL.shaderOriginalSources = {};
 #endif
       var glCreateShader = _glCreateShader;
-      _glCreateShader = _emscripten_glCreateShader = function _glCreateShader(shaderType) {
+      _glCreateShader = _emscripten_glCreateShader = (shaderType) => {
         var id = glCreateShader(shaderType);
         GL.shaderInfos[id] = {
           type: shaderType,
@@ -326,10 +451,10 @@ var LibraryGLEmulation = {
       }
 
       var glShaderSource = _glShaderSource;
-      _glShaderSource = _emscripten_glShaderSource = function _glShaderSource(shader, count, string, length) {
+      _glShaderSource = _emscripten_glShaderSource = (shader, count, string, length) => {
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
-        console.log("glShaderSource: Input: \n" + source);
+        out("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
         // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
@@ -381,20 +506,20 @@ var LibraryGLEmulation = {
               source = 'uniform mat4 u_textureMatrix' + i + '; \n' + source;
             }
           }
-          if (source.indexOf('gl_FrontColor') >= 0) {
+          if (source.includes('gl_FrontColor')) {
             source = 'varying vec4 v_color; \n' +
                      source.replace(/gl_FrontColor/g, 'v_color');
           }
-          if (source.indexOf('gl_Color') >= 0) {
+          if (source.includes('gl_Color')) {
             source = 'attribute vec4 a_color; \n' +
                      source.replace(/gl_Color/g, 'a_color');
           }
-          if (source.indexOf('gl_Normal') >= 0) {
+          if (source.includes('gl_Normal')) {
             source = 'attribute vec3 a_normal; \n' +
                      source.replace(/gl_Normal/g, 'a_normal');
           }
           // fog
-          if (source.indexOf('gl_FogFragCoord') >= 0) {
+          if (source.includes('gl_FogFragCoord')) {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
@@ -406,26 +531,26 @@ var LibraryGLEmulation = {
               source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
             }
           }
-          if (source.indexOf('gl_Color') >= 0) {
+          if (source.includes('gl_Color')) {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
           }
-          if (source.indexOf('gl_Fog.color') >= 0) {
+          if (source.includes('gl_Fog.color')) {
             source = 'uniform vec4 u_fogColor;   \n' +
                      source.replace(/gl_Fog.color/g, 'u_fogColor');
           }
-          if (source.indexOf('gl_Fog.end') >= 0) {
+          if (source.includes('gl_Fog.end')) {
             source = 'uniform float u_fogEnd;   \n' +
                      source.replace(/gl_Fog.end/g, 'u_fogEnd');
           }
-          if (source.indexOf('gl_Fog.scale') >= 0) {
+          if (source.includes('gl_Fog.scale')) {
             source = 'uniform float u_fogScale;   \n' +
                      source.replace(/gl_Fog.scale/g, 'u_fogScale');
           }
-          if (source.indexOf('gl_Fog.density') >= 0) {
+          if (source.includes('gl_Fog.density')) {
             source = 'uniform float u_fogDensity;   \n' +
                      source.replace(/gl_Fog.density/g, 'u_fogDensity');
           }
-          if (source.indexOf('gl_FogFragCoord') >= 0) {
+          if (source.includes('gl_FogFragCoord')) {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
@@ -433,14 +558,14 @@ var LibraryGLEmulation = {
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
-        console.log("glShaderSource: Output: \n" + source);
+        out("glShaderSource: Output: \n" + source);
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
       {{{ updateExport('glShaderSource') }}}
 
       var glCompileShader = _glCompileShader;
-      _glCompileShader = _emscripten_glCompileShader = function _glCompileShader(shader) {
+      _glCompileShader = _emscripten_glCompileShader = (shader) => {
         GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
         if (!GLctx.getShaderParameter(GL.shaders[shader], GLctx.COMPILE_STATUS)) {
@@ -456,7 +581,7 @@ var LibraryGLEmulation = {
 
       GL.programShaders = {};
       var glAttachShader = _glAttachShader;
-      _glAttachShader = _emscripten_glAttachShader = function _glAttachShader(program, shader) {
+      _glAttachShader = _emscripten_glAttachShader = (program, shader) => {
         if (!GL.programShaders[program]) GL.programShaders[program] = [];
         GL.programShaders[program].push(shader);
         glAttachShader(program, shader);
@@ -464,7 +589,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glAttachShader') }}}
 
       var glDetachShader = _glDetachShader;
-      _glDetachShader = _emscripten_glDetachShader = function _glDetachShader(program, shader) {
+      _glDetachShader = _emscripten_glDetachShader = (program, shader) => {
         var programShader = GL.programShaders[program];
         if (!programShader) {
           err('WARNING: _glDetachShader received invalid program: ' + program);
@@ -477,7 +602,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glDetachShader') }}}
 
       var glUseProgram = _glUseProgram;
-      _glUseProgram = _emscripten_glUseProgram = function _glUseProgram(program) {
+      _glUseProgram = _emscripten_glUseProgram = (program) => {
 #if GL_DEBUG
         if (GL.debug) {
           err('[using program with shaders]');
@@ -499,7 +624,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glUseProgram') }}}
 
       var glDeleteProgram = _glDeleteProgram;
-      _glDeleteProgram = _emscripten_glDeleteProgram = function _glDeleteProgram(program) {
+      _glDeleteProgram = _emscripten_glDeleteProgram = (program) => {
         glDeleteProgram(program);
         if (program == GL.currProgram) {
           GLImmediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
@@ -511,14 +636,14 @@ var LibraryGLEmulation = {
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
       var zeroUsedPrograms = {};
       var glBindAttribLocation = _glBindAttribLocation;
-      _glBindAttribLocation = _emscripten_glBindAttribLocation = function _glBindAttribLocation(program, index, name) {
+      _glBindAttribLocation = _emscripten_glBindAttribLocation = (program, index, name) => {
         if (index == 0) zeroUsedPrograms[program] = true;
         glBindAttribLocation(program, index, name);
       };
       {{{ updateExport('glBindAttribLocation') }}}
 
       var glLinkProgram = _glLinkProgram;
-      _glLinkProgram = _emscripten_glLinkProgram = function _glLinkProgram(program) {
+      _glLinkProgram = _emscripten_glLinkProgram = (program) => {
         if (!(program in zeroUsedPrograms)) {
           GLctx.bindAttribLocation(GL.programs[program], 0, 'a_position');
         }
@@ -527,7 +652,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glLinkProgram') }}}
 
       var glBindBuffer = _glBindBuffer;
-      _glBindBuffer = _emscripten_glBindBuffer = function _glBindBuffer(target, buffer) {
+      _glBindBuffer = _emscripten_glBindBuffer = (target, buffer) => {
         glBindBuffer(target, buffer);
         if (target == GLctx.ARRAY_BUFFER) {
           if (GLEmulation.currentVao) {
@@ -543,7 +668,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glBindBuffer') }}}
 
       var glGetFloatv = _glGetFloatv;
-      _glGetFloatv = _emscripten_glGetFloatv = function _glGetFloatv(pname, params) {
+      _glGetFloatv = _emscripten_glGetFloatv = (pname, params) => {
         if (pname == 0xBA6) { // GL_MODELVIEW_MATRIX
           HEAPF32.set(GLImmediate.matrix[0/*m*/], params >> 2);
         } else if (pname == 0xBA7) { // GL_PROJECTION_MATRIX
@@ -560,6 +685,13 @@ var LibraryGLEmulation = {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
         } else if (pname == 0xB65) { // GL_FOG_MODE
           {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
+        } else if (pname == 0xB53) { // GL_LIGHT_MODEL_AMBIENT
+          {{{ makeSetValue('params', '0', 'GLEmulation.lightModelAmbient[0]', 'float') }}};
+          {{{ makeSetValue('params', '4', 'GLEmulation.lightModelAmbient[1]', 'float') }}};
+          {{{ makeSetValue('params', '8', 'GLEmulation.lightModelAmbient[2]', 'float') }}};
+          {{{ makeSetValue('params', '12', 'GLEmulation.lightModelAmbient[3]', 'float') }}};
+        } else if (pname == 0xBC2) { // GL_ALPHA_TEST_REF
+          {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestRef', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -567,7 +699,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glGetFloatv') }}}
 
       var glHint = _glHint;
-      _glHint = _emscripten_glHint = function _glHint(target, mode) {
+      _glHint = _emscripten_glHint = (target, mode) => {
         if (target == 0x84EF) { // GL_TEXTURE_COMPRESSION_HINT
           return;
         }
@@ -576,7 +708,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glHint') }}}
 
       var glEnableVertexAttribArray = _glEnableVertexAttribArray;
-      _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = function _glEnableVertexAttribArray(index) {
+      _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = (index) => {
         glEnableVertexAttribArray(index);
         GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
@@ -584,7 +716,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glEnableVertexAttribArray') }}}
 
       var glDisableVertexAttribArray = _glDisableVertexAttribArray;
-      _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = function _glDisableVertexAttribArray(index) {
+      _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = (index) => {
         glDisableVertexAttribArray(index);
         delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
@@ -592,7 +724,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glDisableVertexAttribArray') }}}
 
       var glVertexAttribPointer = _glVertexAttribPointer;
-      _glVertexAttribPointer = _emscripten_glVertexAttribPointer = function _glVertexAttribPointer(index, size, type, normalized, stride, pointer) {
+      _glVertexAttribPointer = _emscripten_glVertexAttribPointer = (index, size, type, normalized, stride, pointer) => {
         glVertexAttribPointer(index, size, type, normalized, stride, pointer);
         if (GLEmulation.currentVao) { // TODO: avoid object creation here? likely not hot though
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
@@ -688,7 +820,7 @@ var LibraryGLEmulation = {
 
   glGetPointerv: function(name, p) {
     var attribute;
-    switch(name) {
+    switch (name) {
       case 0x808E: // GL_VERTEX_ARRAY_POINTER
         attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX]; break;
       case 0x8090: // GL_COLOR_ARRAY_POINTER
@@ -715,8 +847,10 @@ var LibraryGLEmulation = {
   $GLImmediate: {
     MapTreeLib: null,
     spawnMapTreeLib: function() {
-      /* A naive implementation of a map backed by an array, and accessed by
+      /**
+       * A naive implementation of a map backed by an array, and accessed by
        * naive iteration along the array. (hashmap with only one bucket)
+       * @constructor
        */
       function CNaiveListMap() {
         var list = [];
@@ -744,29 +878,32 @@ var LibraryGLEmulation = {
         };
       };
 
-      /* A tree of map nodes.
-        Uses `KeyView`s to allow descending the tree without garbage.
-        Example: {
-          // Create our map object.
-          var map = new ObjTreeMap();
-
-          // Grab the static keyView for the map.
-          var keyView = map.GetStaticKeyView();
-
-          // Let's make a map for:
-          // root: <undefined>
-          //   1: <undefined>
-          //     2: <undefined>
-          //       5: "Three, sir!"
-          //       3: "Three!"
-
-          // Note how we can chain together `Reset` and `Next` to
-          // easily descend based on multiple key fragments.
-          keyView.Reset().Next(1).Next(2).Next(5).Set("Three, sir!");
-          keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
-        }
-      */
+      /**
+       * A tree of map nodes.
+       * Uses `KeyView`s to allow descending the tree without garbage.
+       * Example: {
+       *   // Create our map object.
+       *   var map = new ObjTreeMap();
+       *
+       *   // Grab the static keyView for the map.
+       *   var keyView = map.GetStaticKeyView();
+       *
+       *   // Let's make a map for:
+       *   // root: <undefined>
+       *   //   1: <undefined>
+       *   //     2: <undefined>
+       *   //       5: "Three, sir!"
+       *   //       3: "Three!"
+       *
+       *   // Note how we can chain together `Reset` and `Next` to
+       *   // easily descend based on multiple key fragments.
+       *   keyView.Reset().Next(1).Next(2).Next(5).Set("Three, sir!");
+       *   keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
+       * }
+       * @constructor
+       */
       function CMapTree() {
+        /** @constructor */
         function CNLNode() {
           var map = new CNaiveListMap();
 
@@ -787,6 +924,7 @@ var LibraryGLEmulation = {
           };
         }
 
+        /** @constructor */
         function CKeyView(root) {
           var cur;
 
@@ -1028,6 +1166,7 @@ var LibraryGLEmulation = {
 
 
       // Classes:
+      /** @constructor */
       function CTexEnv() {
         this.mode = GL_MODULATE;
         this.colorCombiner = GL_MODULATE;
@@ -1108,7 +1247,7 @@ var LibraryGLEmulation = {
         }
         this.computeKey1 = function() {
           var k = this.traverseKey;
-          key = k[this.colorOp[0]] * 4096;
+          var key = k[this.colorOp[0]] * 4096;
           key += k[this.colorOp[1]] * 1024;
           key += k[this.colorOp[2]] * 256;
           key += k[this.alphaOp[0]] * 16;
@@ -1131,6 +1270,7 @@ var LibraryGLEmulation = {
         }
       }
 
+      /** @constructor */
       function CTexUnit() {
         this.env = new CTexEnv();
         this.enabled_tex1D   = false;
@@ -1171,7 +1311,7 @@ var LibraryGLEmulation = {
         var load;
 
         // As an optimization, merge duplicate identical texture loads to one var.
-        while(load = texLoadRegex.exec(lines)) {
+        while (load = texLoadRegex.exec(lines)) {
           var texLoadExpr = load[1];
           var secondOccurrence = lines.slice(load.index+1).indexOf(texLoadExpr);
           if (secondOccurrence != -1) { // And also has a second occurrence of same load expression..
@@ -1462,9 +1602,7 @@ var LibraryGLEmulation = {
           TEX_MATRIX_UNIFORM_PREFIX = uTexMatrixPrefix;
         },
 
-        genAllPassLines: function(resultDest, indentSize) {
-          indentSize = indentSize || 0;
-
+        genAllPassLines: function(resultDest, indentSize = 0) {
           s_requiredTexUnitsForPass.length = 0; // Clear the list.
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
@@ -1933,7 +2071,7 @@ var LibraryGLEmulation = {
         GLImmediate.rendererComponents[name] = 1;
 #if ASSERTIONS
         if (GLImmediate.enabledClientAttributes[name]) {
-          console.log("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
+          out("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
         }
 #endif
         GLImmediate.enabledClientAttributes[name] = true;
@@ -1973,6 +2111,11 @@ var LibraryGLEmulation = {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
+      // To prevent using more than 31 bits add another level to the maptree
+      // and reset the enabledAttributesKey for the next glemulation state bits
+      keyView.next(enabledAttributesKey);
+      enabledAttributesKey = 0;
+
       // By fog state:
       var fogParam = 0;
       if (GLEmulation.fogEnabled) {
@@ -1989,6 +2132,20 @@ var LibraryGLEmulation = {
         }
       }
       enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
+
+      // By clip plane mode
+      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+        enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
+      }
+
+      // By lighting mode and enabled lights
+      enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.lightingEnabled;
+      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+        enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
+      }
+
+      // By alpha testing mode
+      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestEnabled ? (GLEmulation.alphaTestFunc - 0x200) : 0x7);
 
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
@@ -2039,8 +2196,9 @@ var LibraryGLEmulation = {
         hasTextures = true;
       }
 
-      var ret = {
-        init: function init() {
+      /** @constructor */
+      function Renderer() {
+        this.init = function() {
           // For fixed-function shader generation.
           var uTexUnitPrefix = 'u_texUnit';
           var aTexCoordPrefix = 'a_texCoord';
@@ -2112,6 +2270,60 @@ var LibraryGLEmulation = {
               vsPointSizeInit = '  gl_PointSize = u_pointSize;\n';
             }
 
+            var vsClipPlaneDefs = '';
+            var vsClipPlaneInit = '';
+            var fsClipPlaneDefs = '';
+            var fsClipPlanePass = '';
+            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+              if (GLEmulation.clipPlaneEnabled[clipPlaneId]) {
+                vsClipPlaneDefs += 'uniform vec4 u_clipPlaneEquation' + clipPlaneId + ';';
+                vsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
+                vsClipPlaneInit += '  v_clipDistance' + clipPlaneId + ' = dot(ecPosition, u_clipPlaneEquation' + clipPlaneId + ');';
+                fsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
+                fsClipPlanePass += '  if(v_clipDistance' + clipPlaneId + ' < 0.0) discard;';
+              }
+            }
+
+            var vsLightingDefs = '';
+            var vsLightingPass = '';
+            if (GLEmulation.lightingEnabled) {
+              vsLightingDefs += 'attribute vec3 a_normal;';
+              vsLightingDefs += 'uniform mat3 u_normalMatrix;';
+              vsLightingDefs += 'uniform vec4 u_lightModelAmbient;';
+              vsLightingDefs += 'uniform vec4 u_materialAmbient;';
+              vsLightingDefs += 'uniform vec4 u_materialDiffuse;';
+              vsLightingDefs += 'uniform vec4 u_materialSpecular;';
+              vsLightingDefs += 'uniform float u_materialShininess;';
+              vsLightingDefs += 'uniform vec4 u_materialEmission;';
+
+              vsLightingPass += '  vec3 ecNormal = normalize(u_normalMatrix * a_normal);';
+              vsLightingPass += '  v_color.w = u_materialDiffuse.w;';
+              vsLightingPass += '  v_color.xyz = u_materialEmission.xyz;';
+              vsLightingPass += '  v_color.xyz += u_lightModelAmbient.xyz * u_materialAmbient.xyz;';
+
+              for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+                if (GLEmulation.lightEnabled[lightId]) {
+                  vsLightingDefs += 'uniform vec4 u_lightAmbient' + lightId + ';';
+                  vsLightingDefs += 'uniform vec4 u_lightDiffuse' + lightId + ';';
+                  vsLightingDefs += 'uniform vec4 u_lightSpecular' + lightId + ';';
+                  vsLightingDefs += 'uniform vec4 u_lightPosition' + lightId + ';';
+
+                  vsLightingPass += '  {';
+                  vsLightingPass += '    vec3 lightDirection = normalize(u_lightPosition' + lightId + ').xyz;';
+                  vsLightingPass += '    vec3 halfVector = normalize(lightDirection + vec3(0,0,1));';
+                  vsLightingPass += '    vec3 ambient = u_lightAmbient' + lightId + '.xyz * u_materialAmbient.xyz;';
+                  vsLightingPass += '    float diffuseI = max(dot(ecNormal, lightDirection), 0.0);';
+                  vsLightingPass += '    float specularI = max(dot(ecNormal, halfVector), 0.0);';
+                  vsLightingPass += '    vec3 diffuse = diffuseI * u_lightDiffuse' + lightId + '.xyz * u_materialDiffuse.xyz;';
+                  vsLightingPass += '    specularI = (diffuseI > 0.0 && specularI > 0.0) ? exp(u_materialShininess * log(specularI)) : 0.0;';
+                  vsLightingPass += '    vec3 specular = specularI * u_lightSpecular' + lightId + '.xyz * u_materialSpecular.xyz;';
+                  vsLightingPass += '    v_color.xyz += ambient + diffuse + specular;';
+                  vsLightingPass += '  }';
+                }
+              }
+              vsLightingPass += '  v_color = clamp(v_color, 0.0, 1.0);';
+            }
+
             var vsSource = [
               'attribute vec4 a_position;',
               'attribute vec4 a_color;',
@@ -2122,6 +2334,8 @@ var LibraryGLEmulation = {
               'uniform mat4 u_modelView;',
               'uniform mat4 u_projection;',
               vsPointSizeDefs,
+              vsClipPlaneDefs,
+              vsLightingDefs,
               'void main()',
               '{',
               '  vec4 ecPosition = u_modelView * a_position;', // eye-coordinate position
@@ -2130,6 +2344,8 @@ var LibraryGLEmulation = {
               vsTexCoordInits,
               vsFogVaryingInit,
               vsPointSizeInit,
+              vsClipPlaneInit,
+              vsLightingPass,
               '}',
               ''
             ].join('\n').replace(/\n\n+/g, '\n');
@@ -2161,16 +2377,52 @@ var LibraryGLEmulation = {
               fogPass = 'gl_FragColor = vec4(mix(u_fogColor.rgb, gl_FragColor.rgb, ffog(v_fogFragCoord)), gl_FragColor.a);\n';
             }
 
+            var fsAlphaTestDefs = '';
+            var fsAlphaTestPass = '';
+            if (GLEmulation.alphaTestEnabled) {
+              fsAlphaTestDefs = 'uniform float u_alphaTestRef;';
+              switch (GLEmulation.alphaTestFunc) {
+                case 0x200: // GL_NEVER
+                  fsAlphaTestPass = 'discard;';
+                  break;
+                case 0x201: // GL_LESS
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a < u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x202: // GL_EQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a == u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x203: // GL_LEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a <= u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x204: // GL_GREATER
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a > u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x205: // GL_NOTEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a != u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x206: // GL_GEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a >= u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x207: // GL_ALWAYS
+                  fsAlphaTestPass = '';
+                  break;
+              }
+            }
+
             var fsSource = [
               'precision mediump float;',
               texUnitVaryingList,
               texUnitUniformList,
               'varying vec4 v_color;',
               fogHeaderIfNeeded,
+              fsClipPlaneDefs,
+              fsAlphaTestDefs,
               'void main()',
               '{',
+              fsClipPlanePass,
               fsTexEnvPass,
               fogPass,
+              fsAlphaTestPass,
               '}',
               ''
             ].join("\n").replace(/\n\n+/g, '\n');
@@ -2244,6 +2496,7 @@ var LibraryGLEmulation = {
 
           this.modelViewLocation = GLctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = GLctx.getUniformLocation(this.program, 'u_projection');
+          this.normalMatrixLocation = GLctx.getUniformLocation(this.program, 'u_normalMatrix');
 
           this.hasTextures = hasTextures;
           this.hasNormal = GLImmediate.enabledClientAttributes[GLImmediate.NORMAL] &&
@@ -2261,9 +2514,38 @@ var LibraryGLEmulation = {
                            this.fogScaleLocation || this.fogDensityLocation);
 
           this.pointSizeLocation = GLctx.getUniformLocation(this.program, 'u_pointSize');
-        },
 
-        prepare: function prepare() {
+          this.hasClipPlane = false;
+          this.clipPlaneEquationLocation = [];
+          for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+            this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
+            this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
+          }
+
+          this.hasLighting = GLEmulation.lightingEnabled;
+          this.lightModelAmbientLocation = GLctx.getUniformLocation(this.program, 'u_lightModelAmbient');
+          this.materialAmbientLocation = GLctx.getUniformLocation(this.program, 'u_materialAmbient');
+          this.materialDiffuseLocation = GLctx.getUniformLocation(this.program, 'u_materialDiffuse');
+          this.materialSpecularLocation = GLctx.getUniformLocation(this.program, 'u_materialSpecular');
+          this.materialShininessLocation = GLctx.getUniformLocation(this.program, 'u_materialShininess');
+          this.materialEmissionLocation = GLctx.getUniformLocation(this.program, 'u_materialEmission');
+          this.lightAmbientLocation = []
+          this.lightDiffuseLocation = []
+          this.lightSpecularLocation = []
+          this.lightPositionLocation = []
+          for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+            this.lightAmbientLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightAmbient' + lightId);
+            this.lightDiffuseLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightDiffuse' + lightId);
+            this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightSpecular' + lightId);
+            this.lightPositionLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightPosition' + lightId);
+          }
+
+          this.hasAlphaTest = GLEmulation.alphaTestEnabled;
+          this.alphaTestRefLocation = GLctx.getUniformLocation(this.program, 'u_alphaTestRef');
+
+        };
+
+        this.prepare = function() {
           // Calculate the array buffer
           var arrayBuffer;
           if (!GLctx.currentArrayBufferBinding) {
@@ -2304,7 +2586,7 @@ var LibraryGLEmulation = {
           if (canSkip) return;
           GLImmediate.lastRenderer = this;
           GLImmediate.lastProgram = GL.currProgram || this.program;
-          GLImmediate.lastStride == GLImmediate.stride;
+          GLImmediate.lastStride = GLImmediate.stride;
           GLImmediate.matricesModified = false;
 #endif
 
@@ -2318,6 +2600,14 @@ var LibraryGLEmulation = {
           if (this.modelViewLocation && this.modelViewMatrixVersion != GLImmediate.matrixVersion[0/*m*/]) {
             this.modelViewMatrixVersion = GLImmediate.matrixVersion[0/*m*/];
             GLctx.uniformMatrix4fv(this.modelViewLocation, false, GLImmediate.matrix[0/*m*/]);
+
+            // set normal matrix to the upper 3x3 of the inverse transposed current modelview matrix
+            if (GLEmulation.lightEnabled) {
+              var tmpMVinv = GLImmediate.matrixLib.mat4.create(GLImmediate.matrix[0]);
+              GLImmediate.matrixLib.mat4.inverse(tmpMVinv);
+              GLImmediate.matrixLib.mat4.transpose(tmpMVinv);
+              GLctx.uniformMatrix3fv(this.normalMatrixLocation, false, GLImmediate.matrixLib.mat4.toMat3(tmpMVinv));
+            }
           }
           if (this.projectionLocation && this.projectionMatrixVersion != GLImmediate.matrixVersion[1/*p*/]) {
             this.projectionMatrixVersion = GLImmediate.matrixVersion[1/*p*/];
@@ -2415,14 +2705,39 @@ var LibraryGLEmulation = {
             if (this.fogDensityLocation) GLctx.uniform1f(this.fogDensityLocation, GLEmulation.fogDensity);
           }
 
+          if (this.hasClipPlane) {
+            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+              if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
+            }
+          }
+
+          if (this.hasLighting) {
+            if (this.lightModelAmbientLocation) GLctx.uniform4fv(this.lightModelAmbientLocation, GLEmulation.lightModelAmbient);
+            if (this.materialAmbientLocation) GLctx.uniform4fv(this.materialAmbientLocation, GLEmulation.materialAmbient);
+            if (this.materialDiffuseLocation) GLctx.uniform4fv(this.materialDiffuseLocation, GLEmulation.materialDiffuse);
+            if (this.materialSpecularLocation) GLctx.uniform4fv(this.materialSpecularLocation, GLEmulation.materialSpecular);
+            if (this.materialShininessLocation) GLctx.uniform1f(this.materialShininessLocation, GLEmulation.materialShininess[0]);
+            if (this.materialEmissionLocation) GLctx.uniform4fv(this.materialEmissionLocation, GLEmulation.materialEmission);
+            for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+              if (this.lightAmbientLocation[lightId]) GLctx.uniform4fv(this.lightAmbientLocation[lightId], GLEmulation.lightAmbient[lightId]);
+              if (this.lightDiffuseLocation[lightId]) GLctx.uniform4fv(this.lightDiffuseLocation[lightId], GLEmulation.lightDiffuse[lightId]);
+              if (this.lightSpecularLocation[lightId]) GLctx.uniform4fv(this.lightSpecularLocation[lightId], GLEmulation.lightSpecular[lightId]);
+              if (this.lightPositionLocation[lightId]) GLctx.uniform4fv(this.lightPositionLocation[lightId], GLEmulation.lightPosition[lightId]);
+            }
+          }
+
+          if (this.hasAlphaTest) {
+            if (this.alphaTestRefLocation) GLctx.uniform1f(this.alphaTestRefLocation, GLEmulation.alphaTestRef);
+          }
+
           if (GLImmediate.mode == GLctx.POINTS) {
             if (this.pointSizeLocation) {
               GLctx.uniform1f(this.pointSizeLocation, GLEmulation.pointSize);
             }
           }
-        },
+        };
 
-        cleanup: function cleanup() {
+        this.cleanup = function() {
 #if !GL_FFP_ONLY
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
@@ -2454,9 +2769,10 @@ var LibraryGLEmulation = {
           GLImmediate.matricesModified = true;
 #endif
         }
-      };
-      ret.init();
-      return ret;
+
+        this.init();
+      }
+      return new Renderer();
     },
 
     setupFuncs: function() {
@@ -2478,62 +2794,65 @@ var LibraryGLEmulation = {
       }
 
       var glActiveTexture = _glActiveTexture;
-      _glActiveTexture = _emscripten_glActiveTexture = function _glActiveTexture(texture) {
+      _glActiveTexture = _emscripten_glActiveTexture = (texture) => {
         GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
       {{{ updateExport('glActiveTexture') }}}
 
       var glEnable = _glEnable;
-      _glEnable = _emscripten_glEnable = function _glEnable(cap) {
+      _glEnable = _emscripten_glEnable = (cap) => {
         GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
       {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
-      _glDisable = _emscripten_glDisable = function _glDisable(cap) {
+      _glDisable = _emscripten_glDisable = (cap) => {
         GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
       {{{ updateExport('glDisable') }}}
 
-      var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
-      _glTexEnvf = _emscripten_glTexEnvf = function _glTexEnvf(target, pname, param) {
+      var glTexEnvf = (typeof _glTexEnvf != 'undefined') ? _glTexEnvf : () => {};
+      /** @suppress {checkTypes} */
+      _glTexEnvf = _emscripten_glTexEnvf = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvf(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
       {{{ updateExport('glTexEnvf') }}}
 
-      var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
-      _glTexEnvi = _emscripten_glTexEnvi = function _glTexEnvi(target, pname, param) {
+      var glTexEnvi = (typeof _glTexEnvi != 'undefined') ? _glTexEnvi : () => {};
+      /** @suppress {checkTypes} */
+      _glTexEnvi = _emscripten_glTexEnvi = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
       {{{ updateExport('glTexEnvi') }}}
 
-      var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
-      _glTexEnvfv = _emscripten_glTexEnvfv = function _glTexEnvfv(target, pname, param) {
+      var glTexEnvfv = (typeof _glTexEnvfv != 'undefined') ? _glTexEnvfv : () => {};
+      /** @suppress {checkTypes} */
+      _glTexEnvfv = _emscripten_glTexEnvfv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
       {{{ updateExport('glTexEnvfv') }}}
 
-      _glGetTexEnviv = function _glGetTexEnviv(target, pname, param) {
+      _glGetTexEnviv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
       {{{ updateExport('glGetTexEnviv') }}}
 
-      _glGetTexEnvfv = function _glGetTexEnvfv(target, pname, param) {
+      _glGetTexEnvfv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
       {{{ updateExport('glGetTexEnvfv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
-      _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
+      _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
         switch (pname) {
           case 0x8B8D: { // GL_CURRENT_PROGRAM
             // Just query directly so we're working with WebGL objects.
@@ -2561,7 +2880,8 @@ var LibraryGLEmulation = {
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
-      GLImmediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS);
+      // Limit to a maximum of 28 to not overflow the state bits used for renderer caching (31 bits = 3 attributes + 28 texture units).
+      GLImmediate.MAX_TEXTURES = Math.max(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
 
       GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
 
@@ -2800,7 +3120,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  $GLImmediateSetup: {},
   $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GLImmediate.matrixLib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 
@@ -3006,7 +3325,7 @@ var LibraryGLEmulation = {
   },
 
   glFogf: function(pname, param) { // partial support, TODO
-    switch(pname) {
+    switch (pname) {
       case 0xB63: // GL_FOG_START
         GLEmulation.fogStart = param; break;
       case 0xB64: // GL_FOG_END
@@ -3038,7 +3357,7 @@ var LibraryGLEmulation = {
   },
   glFogfv__deps: ['glFogf'],
   glFogfv: function(pname, param) { // partial support, TODO
-    switch(pname) {
+    switch (pname) {
       case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
@@ -3052,7 +3371,7 @@ var LibraryGLEmulation = {
   },
   glFogiv__deps: ['glFogf'],
   glFogiv: function(pname, param) {
-    switch(pname) {
+    switch (pname) {
       case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
@@ -3072,9 +3391,48 @@ var LibraryGLEmulation = {
 
   glPolygonMode: function(){}, // TODO
 
-  glAlphaFunc: function(){}, // TODO
+  glAlphaFunc: function(func, ref) {
+    switch(func) {
+      case 0x200: // GL_NEVER
+      case 0x201: // GL_LESS
+      case 0x202: // GL_EQUAL
+      case 0x203: // GL_LEQUAL
+      case 0x204: // GL_GREATER
+      case 0x205: // GL_NOTEQUAL
+      case 0x206: // GL_GEQUAL
+      case 0x207: // GL_ALWAYS
+        GLEmulation.alphaTestRef = ref;
+        if (GLEmulation.alphaTestFunc != func) {
+          GLEmulation.alphaTestFunc = func;
+          GLImmediate.currentRenderer = null; // alpha test mode is part of the FFP shader state, we must re-lookup the renderer to use.
+        }
+        break;
+      default: // invalid value provided
+#if GL_ASSERTIONS
+        err('glAlphaFunc: Invalid alpha comparison function 0x' + func.toString(16) + ' !');
+#endif
+        break;
+    }
+  },
 
-  glNormal3f: function(){}, // TODO
+  glNormal3f: function(x, y, z) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.NORMAL, 3, GLctx.FLOAT);
+  },
+
+  glNormal3fv__deps: ['glNormal3f'],
+  glNormal3fv: function(p) {
+    _glNormal3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
+  },
+
 
   // Additional non-GLES rendering calls
 
@@ -3195,7 +3553,7 @@ var LibraryGLEmulation = {
     if (!GLctx.currentElementArrayBufferBinding) {
       assert(type == GLctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
     }
-    console.log("DrawElements doesn't actually prepareClientAttributes properly.");
+    out("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
@@ -3415,9 +3773,99 @@ var LibraryGLEmulation = {
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
 #endif
 
-  glLightfv: function() { throw 'glLightfv: TODO' },
-  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
-  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
+  glClipPlane: function(pname, param) {
+    if ((pname >= 0x3000) && (pname < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+      var clipPlaneId = pname - 0x3000;
+
+      GLEmulation.clipPlaneEquation[clipPlaneId][0] = {{{ makeGetValue('param', '0', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][1] = {{{ makeGetValue('param', '8', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][2] = {{{ makeGetValue('param', '16', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][3] = {{{ makeGetValue('param', '24', 'double') }}};
+
+      // apply inverse transposed current modelview matrix when setting clip plane
+      var tmpMV = GLImmediate.matrixLib.mat4.create(GLImmediate.matrix[0]);
+      GLImmediate.matrixLib.mat4.inverse(tmpMV);
+      GLImmediate.matrixLib.mat4.transpose(tmpMV);
+      GLImmediate.matrixLib.mat4.multiplyVec4(tmpMV, GLEmulation.clipPlaneEquation[clipPlaneId]);
+    }
+  },
+
+  glLightfv: function(light, pname, param) {
+    if ((light >= 0x4000) && (light < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
+      var lightId = light - 0x4000;
+
+      if (pname == 0x1200) { // GL_AMBIENT
+        GLEmulation.lightAmbient[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightAmbient[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightAmbient[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightAmbient[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1201) { // GL_DIFFUSE
+        GLEmulation.lightDiffuse[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1202) { // GL_SPECULAR
+        GLEmulation.lightSpecular[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightSpecular[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightSpecular[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightSpecular[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1203) { // GL_POSITION
+        GLEmulation.lightPosition[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightPosition[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightPosition[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightPosition[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+
+        // multiply position with current modelviewmatrix
+        GLImmediate.matrixLib.mat4.multiplyVec4(GLImmediate.matrix[0], GLEmulation.lightPosition[lightId]);
+      } else {
+        throw 'glLightfv: TODO: ' + pname;
+      }
+    }
+  },
+
+  glLightModelf: function(pname, param) {
+    if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
+      GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
+    } else {
+      throw 'glLightModelf: TODO: ' + pname;
+    }
+  },
+
+  glLightModelfv: function(pname, param) { // TODO: GL_LIGHT_MODEL_LOCAL_VIEWER
+    if (pname == 0x0B53) { // GL_LIGHT_MODEL_AMBIENT
+      GLEmulation.lightModelAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.lightModelAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.lightModelAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else {
+      throw 'glLightModelfv: TODO: ' + pname;
+    }
+  },
+
+  glMaterialfv: function(face, pname, param) {
+    if ((face != 0x0404) && (face != 0x0408)) { throw 'glMaterialfv: TODO' + face; } // only GL_FRONT and GL_FRONT_AND_BACK supported
+
+    if (pname == 0x1200) { // GL_AMBIENT
+      GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1201) { // GL_DIFFUSE
+      GLEmulation.materialDiffuse[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialDiffuse[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialDiffuse[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialDiffuse[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1202) { // GL_SPECULAR
+      GLEmulation.materialSpecular[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialSpecular[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialSpecular[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialSpecular[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1601) { // GL_SHININESS
+      GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
+    } else {
+      throw 'glMaterialfv: TODO: ' + pname;
+    }
+  },
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
@@ -3447,6 +3895,75 @@ var LibraryGLEmulation = {
   glDeleteFramebuffersOES : 'glDeleteFramebuffers',
   glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
+
+  // GLU
+
+  gluPerspective: function(fov, aspect, near, far) {
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix[GLImmediate.currentMatrix] =
+      GLImmediate.matrixLib.mat4.perspective(fov, aspect, near, far,
+                                               GLImmediate.matrix[GLImmediate.currentMatrix]);
+  },
+
+  gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrixLib.mat4.lookAt(GLImmediate.matrix[GLImmediate.currentMatrix], [ex, ey, ez],
+        [cx, cy, cz], [ux, uy, uz]);
+  },
+
+  gluProject: function(objX, objY, objZ, model, proj, view, winX, winY, winZ) {
+    // The algorithm for this functions comes from Mesa
+
+    var inVec = new Float32Array(4);
+    var outVec = new Float32Array(4);
+    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
+        [objX, objY, objZ, 1.0], outVec);
+    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
+        outVec, inVec);
+    if (inVec[3] == 0.0) {
+      return 0 /* GL_FALSE */;
+    }
+    inVec[0] /= inVec[3];
+    inVec[1] /= inVec[3];
+    inVec[2] /= inVec[3];
+    // Map x, y and z to range 0-1 */
+    inVec[0] = inVec[0] * 0.5 + 0.5;
+    inVec[1] = inVec[1] * 0.5 + 0.5;
+    inVec[2] = inVec[2] * 0.5 + 0.5;
+    // Map x, y to viewport
+    inVec[0] = inVec[0] * {{{ makeGetValue('view', 2*4, 'i32') }}} + {{{ makeGetValue('view', 0*4, 'i32') }}};
+    inVec[1] = inVec[1] * {{{ makeGetValue('view', 3*4, 'i32') }}} + {{{ makeGetValue('view', 1*4, 'i32') }}};
+
+    {{{ makeSetValue('winX', '0', 'inVec[0]', 'double') }}};
+    {{{ makeSetValue('winY', '0', 'inVec[1]', 'double') }}};
+    {{{ makeSetValue('winZ', '0', 'inVec[2]', 'double') }}};
+
+    return 1 /* GL_TRUE */;
+  },
+
+  gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
+    var result = GLImmediate.matrixLib.vec3.unproject([winX, winY, winZ],
+        {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
+        {{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
+        {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
+
+    if (result === null) {
+      return 0 /* GL_FALSE */;
+    }
+
+    {{{ makeSetValue('objX', '0', 'result[0]', 'double') }}};
+    {{{ makeSetValue('objY', '0', 'result[1]', 'double') }}};
+    {{{ makeSetValue('objZ', '0', 'result[2]', 'double') }}};
+
+    return 1 /* GL_TRUE */;
+  },
+
+  gluOrtho2D__deps: ['glOrtho'],
+  gluOrtho2D: function(left, right, bottom, top) {
+    _glOrtho(left, right, bottom, top, -1, 1);
+  },
 };
 
 // Legacy GL emulation

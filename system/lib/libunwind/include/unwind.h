@@ -1,13 +1,12 @@
 //===------------------------------- unwind.h -----------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //
 // C++ ABI Level 1 ABI documented at:
-//   http://mentorembedded.github.io/cxx-abi/abi-eh.html
+//   https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
 //
 //===----------------------------------------------------------------------===//
 
@@ -112,10 +111,9 @@ typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
        _Unwind_Exception* exceptionObject,
        struct _Unwind_Context* context);
 
-typedef _Unwind_Reason_Code (*__personality_routine)
-      (_Unwind_State state,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
+typedef _Unwind_Reason_Code (*_Unwind_Personality_Fn)(
+    _Unwind_State state, _Unwind_Exception *exceptionObject,
+    struct _Unwind_Context *context);
 #else
 struct _Unwind_Context;   // opaque
 struct _Unwind_Exception; // forward declaration
@@ -127,7 +125,7 @@ struct _Unwind_Exception {
                             _Unwind_Exception *exc);
 #if defined(__SEH__) && !defined(__USING_SJLJ_EXCEPTIONS__)
   uintptr_t private_[6];
-#elif !defined(__USING_WASM_EXCEPTIONS__)
+#elif !defined(__USING_WASM_EXCEPTIONS__) // XXX EMSCRIPTEN
   uintptr_t private_1; // non-zero means forced unwind
   uintptr_t private_2; // holds sp that phase1 found for phase2 to use
 #endif
@@ -151,12 +149,9 @@ typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
      struct _Unwind_Context* context,
      void* stop_parameter );
 
-typedef _Unwind_Reason_Code (*__personality_routine)
-      (int version,
-       _Unwind_Action actions,
-       uint64_t exceptionClass,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
+typedef _Unwind_Reason_Code (*_Unwind_Personality_Fn)(
+    int version, _Unwind_Action actions, uint64_t exceptionClass,
+    _Unwind_Exception *exceptionObject, struct _Unwind_Context *context);
 #endif
 
 #ifdef __cplusplus
@@ -388,10 +383,9 @@ typedef struct _DISPATCHER_CONTEXT DISPATCHER_CONTEXT;
 #endif
 // This is the common wrapper for GCC-style personality functions with SEH.
 extern EXCEPTION_DISPOSITION _GCC_specific_handler(EXCEPTION_RECORD *exc,
-                                                   void *frame,
-                                                   CONTEXT *ctx,
+                                                   void *frame, CONTEXT *ctx,
                                                    DISPATCHER_CONTEXT *disp,
-                                                   __personality_routine pers);
+                                                   _Unwind_Personality_Fn pers);
 #endif
 
 #ifdef __cplusplus

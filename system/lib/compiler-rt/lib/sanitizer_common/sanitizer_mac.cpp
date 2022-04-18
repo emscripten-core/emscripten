@@ -27,9 +27,9 @@
 #include "sanitizer_flags.h"
 #include "sanitizer_internal_defs.h"
 #include "sanitizer_libc.h"
-#include "sanitizer_placement_new.h"
 #include "sanitizer_platform_limits_posix.h"
 #include "sanitizer_procmaps.h"
+#include "sanitizer_ptrauth.h"
 
 #if !SANITIZER_IOS
 #include <crt_externs.h>  // for _NSGetEnviron
@@ -42,6 +42,14 @@ extern char **environ;
 #include <os/trace.h>
 #else
 #define SANITIZER_OS_TRACE 0
+#endif
+
+// import new crash reporting api
+#if defined(__has_include) && __has_include(<CrashReporterClient.h>)
+#define HAVE_CRASHREPORTERCLIENT_H 1
+#include <CrashReporterClient.h>
+#else
+#define HAVE_CRASHREPORTERCLIENT_H 0
 #endif
 
 #if !SANITIZER_IOS
@@ -62,6 +70,7 @@ extern "C" {
 #include <mach/mach_time.h>
 #include <mach/vm_statistics.h>
 #include <malloc/malloc.h>
+#include <os/log.h>
 #include <pthread.h>
 #include <sched.h>
 #include <signal.h>
@@ -133,8 +142,18 @@ uptr internal_munmap(void *addr, uptr length) {
   return munmap(addr, length);
 }
 
+uptr internal_mremap(void *old_address, uptr old_size, uptr new_size, int flags,
+                     void *new_address) {
+  CHECK(false && "internal_mremap is unimplemented on Mac");
+  return 0;
+}
+
 int internal_mprotect(void *addr, uptr length, int prot) {
   return mprotect(addr, length, prot);
+}
+
+int internal_madvise(uptr addr, uptr length, int advice) {
+  return madvise((void *)addr, length, advice);
 }
 
 uptr internal_close(fd_t fd) {
@@ -200,12 +219,14 @@ void internal__exit(int exitcode) {
   _exit(exitcode);
 }
 
-unsigned int internal_sleep(unsigned int seconds) {
-  return sleep(seconds);
-}
+void internal_usleep(u64 useconds) { usleep(useconds); }
 
 uptr internal_getpid() {
   return getpid();
+}
+
+int internal_dlinfo(void *handle, int request, void *p) {
+  UNIMPLEMENTED();
 }
 
 int internal_sigaction(int signum, const void *act, void *oldact) {
@@ -242,7 +263,8 @@ int internal_sysctlbyname(const char *sname, void *oldp, uptr *oldlenp,
                       (size_t)newlen);
 }
 
-static fd_t internal_spawn_impl(const char *argv[], pid_t *pid) {
+static fd_t internal_spawn_impl(const char *argv[], const char *envp[],
+                                pid_t *pid) {
   fd_t master_fd = kInvalidFd;
   fd_t slave_fd = kInvalidFd;
 
@@ -298,8 +320,8 @@ static fd_t internal_spawn_impl(const char *argv[], pid_t *pid) {
 
   // posix_spawn
   char **argv_casted = const_cast<char **>(argv);
-  char **env = GetEnviron();
-  res = posix_spawn(pid, argv[0], &acts, &attrs, argv_casted, env);
+  char **envp_casted = const_cast<char **>(envp);
+  res = posix_spawn(pid, argv[0], &acts, &attrs, argv_casted, envp_casted);
   if (res != 0) return kInvalidFd;
 
   // Disable echo in the new terminal, disable CR.
@@ -316,7 +338,7 @@ static fd_t internal_spawn_impl(const char *argv[], pid_t *pid) {
   return fd;
 }
 
-fd_t internal_spawn(const char *argv[], pid_t *pid) {
+fd_t internal_spawn(const char *argv[], const char *envp[], pid_t *pid) {
   // The client program may close its stdin and/or stdout and/or stderr thus
   // allowing open/posix_openpt to reuse file descriptors 0, 1 or 2. In this
   // case the communication is broken if either the parent or the child tries to
@@ -331,7 +353,7 @@ fd_t internal_spawn(const char *argv[], pid_t *pid) {
       break;
   }
 
-  fd_t fd = internal_spawn_impl(argv, pid);
+  fd_t fd = internal_spawn_impl(argv, envp, pid);
 
   for (; count > 0; count--) {
     internal_close(low_fds[count]);
@@ -382,7 +404,7 @@ void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
   // pthread_get_stacksize_np() returns an incorrect stack size for the main
   // thread on Mavericks. See
   // https://github.com/google/sanitizers/issues/261
-  if ((GetMacosVersion() >= MACOS_VERSION_MAVERICKS) && at_initialization &&
+  if ((GetMacosAlignedVersion() >= MacosVersion(10, 9)) && at_initialization &&
       stacksize == (1 << 19))  {
     struct rlimit rl;
     CHECK_EQ(getrlimit(RLIMIT_STACK, &rl), 0);
@@ -435,7 +457,7 @@ uptr ReadBinaryName(/*out*/char *buf, uptr buf_len) {
   // On OS X the executable path is saved to the stack by dyld. Reading it
   // from there is much faster than calling dladdr, especially for large
   // binaries with symbols.
-  InternalScopedString exe_path(kMaxPathLength);
+  InternalMmapVector<char> exe_path(kMaxPathLength);
   uint32_t size = exe_path.size();
   if (_NSGetExecutablePath(exe_path.data(), &size) == 0 &&
       realpath(exe_path.data(), buf) != 0) {
@@ -487,6 +509,13 @@ void MprotectMallocZones(void *addr, int prot) {
   }
 }
 
+void FutexWait(atomic_uint32_t *p, u32 cmp) {
+  // FIXME: implement actual blocking.
+  sched_yield();
+}
+
+void FutexWake(atomic_uint32_t *p, u32 count) {}
+
 BlockingMutex::BlockingMutex() {
   internal_memset(this, 0, sizeof(*this));
 }
@@ -502,8 +531,8 @@ void BlockingMutex::Unlock() {
   OSSpinLockUnlock((OSSpinLock*)&opaque_storage_);
 }
 
-void BlockingMutex::CheckLocked() {
-  CHECK_NE(*(OSSpinLock*)&opaque_storage_, 0);
+void BlockingMutex::CheckLocked() const {
+  CHECK_NE(*(const OSSpinLock*)&opaque_storage_, 0);
 }
 
 u64 NanoTime() {
@@ -601,68 +630,132 @@ HandleSignalMode GetHandleSignalMode(int signum) {
   return result;
 }
 
-MacosVersion cached_macos_version = MACOS_VERSION_UNINITIALIZED;
+// Offset example:
+// XNU 17 -- macOS 10.13 -- iOS 11 -- tvOS 11 -- watchOS 4
+constexpr u16 GetOSMajorKernelOffset() {
+  if (TARGET_OS_OSX) return 4;
+  if (TARGET_OS_IOS || TARGET_OS_TV) return 6;
+  if (TARGET_OS_WATCH) return 13;
+}
 
-MacosVersion GetMacosVersionInternal() {
-  int mib[2] = { CTL_KERN, KERN_OSRELEASE };
-  char version[100];
-  uptr len = 0, maxlen = sizeof(version) / sizeof(version[0]);
-  for (uptr i = 0; i < maxlen; i++) version[i] = '\0';
-  // Get the version length.
-  CHECK_NE(internal_sysctl(mib, 2, 0, &len, 0, 0), -1);
-  CHECK_LT(len, maxlen);
-  CHECK_NE(internal_sysctl(mib, 2, version, &len, 0, 0), -1);
+using VersStr = char[64];
 
-  // Expect <major>.<minor>(.<patch>)
-  CHECK_GE(len, 3);
-  const char *p = version;
-  int major = internal_simple_strtoll(p, &p, /*base=*/10);
-  if (*p != '.') return MACOS_VERSION_UNKNOWN;
+static uptr ApproximateOSVersionViaKernelVersion(VersStr vers) {
+  u16 kernel_major = GetDarwinKernelVersion().major;
+  u16 offset = GetOSMajorKernelOffset();
+  CHECK_GE(kernel_major, offset);
+  u16 os_major = kernel_major - offset;
+
+  const char *format = "%d.0";
+  if (TARGET_OS_OSX) {
+    if (os_major >= 16) {  // macOS 11+
+      os_major -= 5;
+    } else {  // macOS 10.15 and below
+      format = "10.%d";
+    }
+  }
+  return internal_snprintf(vers, sizeof(VersStr), format, os_major);
+}
+
+static void GetOSVersion(VersStr vers) {
+  uptr len = sizeof(VersStr);
+  if (SANITIZER_IOSSIM) {
+    const char *vers_env = GetEnv("SIMULATOR_RUNTIME_VERSION");
+    if (!vers_env) {
+      Report("ERROR: Running in simulator but SIMULATOR_RUNTIME_VERSION env "
+          "var is not set.\n");
+      Die();
+    }
+    len = internal_strlcpy(vers, vers_env, len);
+  } else {
+    int res =
+        internal_sysctlbyname("kern.osproductversion", vers, &len, nullptr, 0);
+
+    // XNU 17 (macOS 10.13) and below do not provide the sysctl
+    // `kern.osproductversion` entry (res != 0).
+    bool no_os_version = res != 0;
+
+    // For launchd, sanitizer initialization runs before sysctl is setup
+    // (res == 0 && len != strlen(vers), vers is not a valid version).  However,
+    // the kernel version `kern.osrelease` is available.
+    bool launchd = (res == 0 && internal_strlen(vers) < 3);
+    if (launchd) CHECK_EQ(internal_getpid(), 1);
+
+    if (no_os_version || launchd) {
+      len = ApproximateOSVersionViaKernelVersion(vers);
+    }
+  }
+  CHECK_LT(len, sizeof(VersStr));
+}
+
+void ParseVersion(const char *vers, u16 *major, u16 *minor) {
+  // Format: <major>.<minor>[.<patch>]\0
+  CHECK_GE(internal_strlen(vers), 3);
+  const char *p = vers;
+  *major = internal_simple_strtoll(p, &p, /*base=*/10);
+  CHECK_EQ(*p, '.');
   p += 1;
-  int minor = internal_simple_strtoll(p, &p, /*base=*/10);
-  if (*p != '.') return MACOS_VERSION_UNKNOWN;
+  *minor = internal_simple_strtoll(p, &p, /*base=*/10);
+}
 
-  switch (major) {
-    case 9: return MACOS_VERSION_LEOPARD;
-    case 10: return MACOS_VERSION_SNOW_LEOPARD;
-    case 11: return MACOS_VERSION_LION;
-    case 12: return MACOS_VERSION_MOUNTAIN_LION;
-    case 13: return MACOS_VERSION_MAVERICKS;
-    case 14: return MACOS_VERSION_YOSEMITE;
-    case 15: return MACOS_VERSION_EL_CAPITAN;
-    case 16: return MACOS_VERSION_SIERRA;
-    case 17:
-      // Not a typo, 17.5 Darwin Kernel Version maps to High Sierra 10.13.4.
-      if (minor >= 5)
-        return MACOS_VERSION_HIGH_SIERRA_DOT_RELEASE_4;
-      return MACOS_VERSION_HIGH_SIERRA;
-    case 18: return MACOS_VERSION_MOJAVE;
-    case 19: return MACOS_VERSION_CATALINA;
-    default:
-      if (major < 9) return MACOS_VERSION_UNKNOWN;
-      return MACOS_VERSION_UNKNOWN_NEWER;
+// Aligned versions example:
+// macOS 10.15 -- iOS 13 -- tvOS 13 -- watchOS 6
+static void MapToMacos(u16 *major, u16 *minor) {
+  if (TARGET_OS_OSX)
+    return;
+
+  if (TARGET_OS_IOS || TARGET_OS_TV)
+    *major += 2;
+  else if (TARGET_OS_WATCH)
+    *major += 9;
+  else
+    UNREACHABLE("unsupported platform");
+
+  if (*major >= 16) {  // macOS 11+
+    *major -= 5;
+  } else {  // macOS 10.15 and below
+    *minor = *major;
+    *major = 10;
   }
 }
 
-MacosVersion GetMacosVersion() {
-  atomic_uint32_t *cache =
-      reinterpret_cast<atomic_uint32_t*>(&cached_macos_version);
-  MacosVersion result =
-      static_cast<MacosVersion>(atomic_load(cache, memory_order_acquire));
-  if (result == MACOS_VERSION_UNINITIALIZED) {
-    result = GetMacosVersionInternal();
-    atomic_store(cache, result, memory_order_release);
-  }
-  return result;
+static MacosVersion GetMacosAlignedVersionInternal() {
+  VersStr vers = {};
+  GetOSVersion(vers);
+
+  u16 major, minor;
+  ParseVersion(vers, &major, &minor);
+  MapToMacos(&major, &minor);
+
+  return MacosVersion(major, minor);
 }
 
-bool PlatformHasDifferentMemcpyAndMemmove() {
-  // On OS X 10.7 memcpy() and memmove() are both resolved
-  // into memmove$VARIANT$sse42.
-  // See also https://github.com/google/sanitizers/issues/34.
-  // TODO(glider): need to check dynamically that memcpy() and memmove() are
-  // actually the same function.
-  return GetMacosVersion() == MACOS_VERSION_SNOW_LEOPARD;
+static_assert(sizeof(MacosVersion) == sizeof(atomic_uint32_t::Type),
+              "MacosVersion cache size");
+static atomic_uint32_t cached_macos_version;
+
+MacosVersion GetMacosAlignedVersion() {
+  atomic_uint32_t::Type result =
+      atomic_load(&cached_macos_version, memory_order_acquire);
+  if (!result) {
+    MacosVersion version = GetMacosAlignedVersionInternal();
+    result = *reinterpret_cast<atomic_uint32_t::Type *>(&version);
+    atomic_store(&cached_macos_version, result, memory_order_release);
+  }
+  return *reinterpret_cast<MacosVersion *>(&result);
+}
+
+DarwinKernelVersion GetDarwinKernelVersion() {
+  VersStr vers = {};
+  uptr len = sizeof(VersStr);
+  int res = internal_sysctlbyname("kern.osrelease", vers, &len, nullptr, 0);
+  CHECK_EQ(res, 0);
+  CHECK_LT(len, sizeof(VersStr));
+
+  u16 major, minor;
+  ParseVersion(vers, &major, &minor);
+
+  return DarwinKernelVersion(major, minor);
 }
 
 uptr GetRSS() {
@@ -677,13 +770,13 @@ uptr GetRSS() {
   return info.resident_size;
 }
 
-void *internal_start_thread(void(*func)(void *arg), void *arg) {
+void *internal_start_thread(void *(*func)(void *arg), void *arg) {
   // Start the thread with signals blocked, otherwise it can steal user signals.
   __sanitizer_sigset_t set, old;
   internal_sigfillset(&set);
   internal_sigprocmask(SIG_SETMASK, &set, &old);
   pthread_t th;
-  pthread_create(&th, 0, (void*(*)(void *arg))func, arg);
+  pthread_create(&th, 0, func, arg);
   internal_sigprocmask(SIG_SETMASK, &old, 0);
   return th;
 }
@@ -697,7 +790,51 @@ static BlockingMutex syslog_lock(LINKER_INITIALIZED);
 void WriteOneLineToSyslog(const char *s) {
 #if !SANITIZER_GO
   syslog_lock.CheckLocked();
-  asl_log(nullptr, nullptr, ASL_LEVEL_ERR, "%s", s);
+  if (GetMacosAlignedVersion() >= MacosVersion(10, 12)) {
+    os_log_error(OS_LOG_DEFAULT, "%{public}s", s);
+  } else {
+    asl_log(nullptr, nullptr, ASL_LEVEL_ERR, "%s", s);
+  }
+#endif
+}
+
+// buffer to store crash report application information
+static char crashreporter_info_buff[__sanitizer::kErrorMessageBufferSize] = {};
+static BlockingMutex crashreporter_info_mutex(LINKER_INITIALIZED);
+
+extern "C" {
+// Integrate with crash reporter libraries.
+#if HAVE_CRASHREPORTERCLIENT_H
+CRASH_REPORTER_CLIENT_HIDDEN
+struct crashreporter_annotations_t gCRAnnotations
+    __attribute__((section("__DATA," CRASHREPORTER_ANNOTATIONS_SECTION))) = {
+        CRASHREPORTER_ANNOTATIONS_VERSION,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+#if CRASHREPORTER_ANNOTATIONS_VERSION > 4
+        0,
+#endif
+};
+
+#else
+// fall back to old crashreporter api
+static const char *__crashreporter_info__ __attribute__((__used__)) =
+    &crashreporter_info_buff[0];
+asm(".desc ___crashreporter_info__, 0x10");
+#endif
+
+}  // extern "C"
+
+static void CRAppendCrashLogMessage(const char *msg) {
+  BlockingMutexLock l(&crashreporter_info_mutex);
+  internal_strlcat(crashreporter_info_buff, msg,
+                   sizeof(crashreporter_info_buff));
+#if HAVE_CRASHREPORTERCLIENT_H
+  (void)CRSetCrashLogMessage(crashreporter_info_buff);
 #endif
 }
 
@@ -711,7 +848,7 @@ void LogFullErrorReport(const char *buffer) {
 #if !SANITIZER_GO
   // Log with os_trace. This will make it into the crash log.
 #if SANITIZER_OS_TRACE
-  if (GetMacosVersion() >= MACOS_VERSION_YOSEMITE) {
+  if (GetMacosAlignedVersion() >= MacosVersion(10, 10)) {
     // os_trace requires the message (format parameter) to be a string literal.
     if (internal_strncmp(SanitizerToolName, "AddressSanitizer",
                          sizeof("AddressSanitizer") - 1) == 0)
@@ -760,16 +897,24 @@ bool SignalContext::IsTrueFaultingAddress() const {
   return si->si_signo == SIGSEGV && si->si_code != 0;
 }
 
+#if defined(__aarch64__) && defined(arm_thread_state64_get_sp)
+  #define AARCH64_GET_REG(r) \
+    (uptr)ptrauth_strip(     \
+        (void *)arm_thread_state64_get_##r(ucontext->uc_mcontext->__ss), 0)
+#else
+  #define AARCH64_GET_REG(r) ucontext->uc_mcontext->__ss.__##r
+#endif
+
 static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
   ucontext_t *ucontext = (ucontext_t*)context;
 # if defined(__aarch64__)
-  *pc = ucontext->uc_mcontext->__ss.__pc;
+  *pc = AARCH64_GET_REG(pc);
 #   if defined(__IPHONE_8_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_8_0
-  *bp = ucontext->uc_mcontext->__ss.__fp;
+  *bp = AARCH64_GET_REG(fp);
 #   else
-  *bp = ucontext->uc_mcontext->__ss.__lr;
+  *bp = AARCH64_GET_REG(lr);
 #   endif
-  *sp = ucontext->uc_mcontext->__ss.__sp;
+  *sp = AARCH64_GET_REG(sp);
 # elif defined(__x86_64__)
   *pc = ucontext->uc_mcontext->__ss.__rip;
   *bp = ucontext->uc_mcontext->__ss.__rbp;
@@ -787,16 +932,34 @@ static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
 # endif
 }
 
-void SignalContext::InitPcSpBp() { GetPcSpBp(context, &pc, &sp, &bp); }
+void SignalContext::InitPcSpBp() {
+  addr = (uptr)ptrauth_strip((void *)addr, 0);
+  GetPcSpBp(context, &pc, &sp, &bp);
+}
+
+// ASan/TSan use mmap in a way that creates “deallocation gaps” which triggers
+// EXC_GUARD exceptions on macOS 10.15+ (XNU 19.0+).
+static void DisableMmapExcGuardExceptions() {
+  using task_exc_guard_behavior_t = uint32_t;
+  using task_set_exc_guard_behavior_t =
+      kern_return_t(task_t task, task_exc_guard_behavior_t behavior);
+  auto *set_behavior = (task_set_exc_guard_behavior_t *)dlsym(
+      RTLD_DEFAULT, "task_set_exc_guard_behavior");
+  if (set_behavior == nullptr) return;
+  const task_exc_guard_behavior_t task_exc_guard_none = 0;
+  set_behavior(mach_task_self(), task_exc_guard_none);
+}
 
 void InitializePlatformEarly() {
-  // Only use xnu_fast_mmap when on x86_64 and the OS supports it.
+  // Only use xnu_fast_mmap when on x86_64 and the kernel supports it.
   use_xnu_fast_mmap =
 #if defined(__x86_64__)
-      GetMacosVersion() >= MACOS_VERSION_HIGH_SIERRA_DOT_RELEASE_4;
+      GetDarwinKernelVersion() >= DarwinKernelVersion(17, 5);
 #else
       false;
 #endif
+  if (GetDarwinKernelVersion() >= DarwinKernelVersion(19, 0))
+    DisableMmapExcGuardExceptions();
 }
 
 #if !SANITIZER_GO
@@ -837,20 +1000,10 @@ bool ReexecDisabled() {
   return false;
 }
 
-extern "C" SANITIZER_WEAK_ATTRIBUTE double dyldVersionNumber;
-static const double kMinDyldVersionWithAutoInterposition = 360.0;
-
-bool DyldNeedsEnvVariable() {
-  // Although sanitizer support was added to LLVM on OS X 10.7+, GCC users
-  // still may want use them on older systems. On older Darwin platforms, dyld
-  // doesn't export dyldVersionNumber symbol and we simply return true.
-  if (!&dyldVersionNumber) return true;
+static bool DyldNeedsEnvVariable() {
   // If running on OS X 10.11+ or iOS 9.0+, dyld will interpose even if
-  // DYLD_INSERT_LIBRARIES is not set. However, checking OS version via
-  // GetMacosVersion() doesn't work for the simulator. Let's instead check
-  // `dyldVersionNumber`, which is exported by dyld, against a known version
-  // number from the first OS release where this appeared.
-  return dyldVersionNumber < kMinDyldVersionWithAutoInterposition;
+  // DYLD_INSERT_LIBRARIES is not set.
+  return GetMacosAlignedVersion() < MacosVersion(10, 11);
 }
 
 void MaybeReexec() {
@@ -877,7 +1030,7 @@ void MaybeReexec() {
   if (DyldNeedsEnvVariable() && !lib_is_in_env) {
     // DYLD_INSERT_LIBRARIES is not set or does not contain the runtime
     // library.
-    InternalScopedString program_name(1024);
+    InternalMmapVector<char> program_name(1024);
     uint32_t buf_size = program_name.size();
     _NSGetExecutablePath(program_name.data(), &buf_size);
     char *new_env = const_cast<char*>(info.dli_fname);
@@ -996,7 +1149,7 @@ char **GetArgv() {
   return *_NSGetArgv();
 }
 
-#if SANITIZER_IOS
+#if SANITIZER_IOS && !SANITIZER_IOSSIM
 // The task_vm_info struct is normally provided by the macOS SDK, but we need
 // fields only available in 10.12+. Declare the struct manually to be able to
 // build against older SDKs.
@@ -1036,31 +1189,93 @@ static uptr GetTaskInfoMaxAddress() {
 
 uptr GetMaxUserVirtualAddress() {
   static uptr max_vm = GetTaskInfoMaxAddress();
-  if (max_vm != 0)
-    return max_vm - 1;
+  if (max_vm != 0) {
+    const uptr ret_value = max_vm - 1;
+    CHECK_LE(ret_value, SANITIZER_MMAP_RANGE_SIZE);
+    return ret_value;
+  }
 
   // xnu cannot provide vm address limit
 # if SANITIZER_WORDSIZE == 32
-  return 0xffe00000 - 1;
+  constexpr uptr fallback_max_vm = 0xffe00000 - 1;
 # else
-  return 0x200000000 - 1;
+  constexpr uptr fallback_max_vm = 0x200000000 - 1;
 # endif
+  static_assert(fallback_max_vm <= SANITIZER_MMAP_RANGE_SIZE,
+                "Max virtual address must be less than mmap range size.");
+  return fallback_max_vm;
 }
 
 #else // !SANITIZER_IOS
 
 uptr GetMaxUserVirtualAddress() {
 # if SANITIZER_WORDSIZE == 64
-  return (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
+  constexpr uptr max_vm = (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
 # else // SANITIZER_WORDSIZE == 32
   static_assert(SANITIZER_WORDSIZE == 32, "Wrong wordsize");
-  return (1ULL << 32) - 1;  // 0xffffffff;
+  constexpr uptr max_vm = (1ULL << 32) - 1;  // 0xffffffff;
 # endif
+  static_assert(max_vm <= SANITIZER_MMAP_RANGE_SIZE,
+                "Max virtual address must be less than mmap range size.");
+  return max_vm;
 }
 #endif
 
 uptr GetMaxVirtualAddress() {
   return GetMaxUserVirtualAddress();
+}
+
+uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
+                      uptr min_shadow_base_alignment, uptr &high_mem_end) {
+  const uptr granularity = GetMmapGranularity();
+  const uptr alignment =
+      Max<uptr>(granularity << shadow_scale, 1ULL << min_shadow_base_alignment);
+  const uptr left_padding =
+      Max<uptr>(granularity, 1ULL << min_shadow_base_alignment);
+
+  uptr space_size = shadow_size_bytes + left_padding;
+
+  uptr largest_gap_found = 0;
+  uptr max_occupied_addr = 0;
+  VReport(2, "FindDynamicShadowStart, space_size = %p\n", space_size);
+  uptr shadow_start =
+      FindAvailableMemoryRange(space_size, alignment, granularity,
+                               &largest_gap_found, &max_occupied_addr);
+  // If the shadow doesn't fit, restrict the address space to make it fit.
+  if (shadow_start == 0) {
+    VReport(
+        2,
+        "Shadow doesn't fit, largest_gap_found = %p, max_occupied_addr = %p\n",
+        largest_gap_found, max_occupied_addr);
+    uptr new_max_vm = RoundDownTo(largest_gap_found << shadow_scale, alignment);
+    if (new_max_vm < max_occupied_addr) {
+      Report("Unable to find a memory range for dynamic shadow.\n");
+      Report(
+          "space_size = %p, largest_gap_found = %p, max_occupied_addr = %p, "
+          "new_max_vm = %p\n",
+          space_size, largest_gap_found, max_occupied_addr, new_max_vm);
+      CHECK(0 && "cannot place shadow");
+    }
+    RestrictMemoryToMaxAddress(new_max_vm);
+    high_mem_end = new_max_vm - 1;
+    space_size = (high_mem_end >> shadow_scale) + left_padding;
+    VReport(2, "FindDynamicShadowStart, space_size = %p\n", space_size);
+    shadow_start = FindAvailableMemoryRange(space_size, alignment, granularity,
+                                            nullptr, nullptr);
+    if (shadow_start == 0) {
+      Report("Unable to find a memory range after restricting VM.\n");
+      CHECK(0 && "cannot place shadow after restricting vm");
+    }
+  }
+  CHECK_NE((uptr)0, shadow_start);
+  CHECK(IsAligned(shadow_start, alignment));
+  return shadow_start;
+}
+
+uptr MapDynamicShadowAndAliases(uptr shadow_size, uptr alias_size,
+                                uptr num_aliases, uptr ring_buffer_size) {
+  CHECK(false && "HWASan aliasing is unimplemented on Mac");
+  return 0;
 }
 
 uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
@@ -1123,6 +1338,8 @@ void SignalContext::DumpAllRegisters(void *context) {
   ucontext_t *ucontext = (ucontext_t*)context;
 # define DUMPREG64(r) \
     Printf("%s = 0x%016llx  ", #r, ucontext->uc_mcontext->__ss.__ ## r);
+# define DUMPREGA64(r) \
+    Printf("   %s = 0x%016llx  ", #r, AARCH64_GET_REG(r));
 # define DUMPREG32(r) \
     Printf("%s = 0x%08x  ", #r, ucontext->uc_mcontext->__ss.__ ## r);
 # define DUMPREG_(r)   Printf(" "); DUMPREG(r);
@@ -1148,7 +1365,7 @@ void SignalContext::DumpAllRegisters(void *context) {
   DUMPREG(x[16]); DUMPREG(x[17]); DUMPREG(x[18]); DUMPREG(x[19]); Printf("\n");
   DUMPREG(x[20]); DUMPREG(x[21]); DUMPREG(x[22]); DUMPREG(x[23]); Printf("\n");
   DUMPREG(x[24]); DUMPREG(x[25]); DUMPREG(x[26]); DUMPREG(x[27]); Printf("\n");
-  DUMPREG(x[28]); DUMPREG___(fp); DUMPREG___(lr); DUMPREG___(sp); Printf("\n");
+  DUMPREG(x[28]); DUMPREGA64(fp); DUMPREGA64(lr); DUMPREGA64(sp); Printf("\n");
 # elif defined(__arm__)
 #  define DUMPREG(r) DUMPREG32(r)
   DUMPREG_(r[0]); DUMPREG_(r[1]); DUMPREG_(r[2]); DUMPREG_(r[3]); Printf("\n");
@@ -1181,7 +1398,7 @@ void FormatUUID(char *out, uptr size, const u8 *uuid) {
                     uuid[12], uuid[13], uuid[14], uuid[15]);
 }
 
-void PrintModuleMap() {
+void DumpProcessMap() {
   Printf("Process module map:\n");
   MemoryMappingLayout memory_mapping(false);
   InternalMmapVector<LoadedModule> modules;
@@ -1213,6 +1430,8 @@ bool GetRandom(void *buffer, uptr length, bool blocking) {
 u32 GetNumberOfCPUs() {
   return (u32)sysconf(_SC_NPROCESSORS_ONLN);
 }
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
 }  // namespace __sanitizer
 

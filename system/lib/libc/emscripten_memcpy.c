@@ -5,20 +5,28 @@
 #include <stdint.h>
 #include <string.h>
 #include <emscripten/emscripten.h>
+#include "libc.h"
 
+// Use the simple/naive version of memcpy when building with asan
+#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ) || __has_feature(address_sanitizer)
+
+static void *__memcpy(void *dest, const void *src, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  const unsigned char *s = (const unsigned char *)src;
+#pragma clang loop unroll(disable)
+  while(n--) *d++ = *s++;
+  return dest;
+}
+
+#else
+
+#ifndef EMSCRIPTEN_STANDALONE_WASM
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
-void* emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
-
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memcpy
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define memcpy __attribute__((no_sanitize("address"))) emscripten_builtin_memcpy
-#endif
+void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
 #endif
 
-void *memcpy(void *restrict dest, const void *restrict src, size_t n)
-{
+static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 
@@ -26,10 +34,12 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
+#ifndef EMSCRIPTEN_STANDALONE_WASM
   if (n >= 512) {
     emscripten_memcpy_big(dest, src, n);
     return dest;
   }
+#endif
 
   d_end = d + n;
   if ((((uintptr_t)d) & 3) == (((uintptr_t)s) & 3)) {
@@ -88,3 +98,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   }
   return dest;
 }
+
+#endif
+
+weak_alias(__memcpy, emscripten_builtin_memcpy);
+weak_alias(__memcpy, memcpy);

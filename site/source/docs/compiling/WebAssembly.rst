@@ -6,10 +6,7 @@ Building to WebAssembly
 
 WebAssembly is a binary format for executing code on the web, allowing fast start times (smaller download and much faster parsing in browsers when compared to JS or asm.js). Emscripten compiles to WebAssembly by default, but you can also compile to JS for older browsers.
 
-For some historical background, see
-
-- `these slides <https://kripken.github.io/talks/wasm.html>`_ and
-- `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
+For some historical background, see `these slides <https://kripken.github.io/talks/wasm.html>`_ and `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
 
 Setup
 =====
@@ -20,7 +17,7 @@ WebAssembly is emitted by default, without the need for any special flags.
 
 ::
 
-  emcc [..args..] -s WASM=0
+  emcc [..args..] -sWASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
 .. note:: Deciding to compile to wasm or JS can be done at the linking stage: it doesn't affect the object files.
@@ -58,11 +55,12 @@ upgrade from fastcomp to upstream:
     compile and link time.
 
   * You can enable Link Time Optimization (LTO) with the usual llvm flags
-    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times).
-    These flags will make the wasm backend behave more like fastcomp.
+    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times;
+    note, however, that thin LTO is not heavily tested atm and so regular LTO
+    is recommended).
 
   * With fastcomp, LTO optimization passes were not be run by default; for that
-    it was necessry to pass ``--llvm-lto 1``.  With the llvm backend LTO passes
+    it was necessary to pass ``--llvm-lto 1``.  With the llvm backend LTO passes
     will be run on any object files that are in bitcode format.
 
   * Another thing you might notice is that fastcomp's link stage is able to
@@ -125,7 +123,7 @@ Another noticeable effect is that WebAssembly is compiled asynchronously by defa
 Web server setup
 ================
 
-To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME time for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
+To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
 
 In Apache, you can do this with
 

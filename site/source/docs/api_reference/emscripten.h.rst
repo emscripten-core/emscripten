@@ -4,7 +4,7 @@
 emscripten.h
 ============
 
-This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
+This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/emscripten.h>`_.
 
 Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.
 
@@ -107,7 +107,7 @@ Defines
 
   .. code-block:: none
 
-    EM_JS(const char*, get_unicode_str, (), {
+    EM_JS(char*, get_unicode_str, (), {
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
@@ -118,7 +118,7 @@ Defines
     });
 
     int main() {
-      const char* str = get_unicode_str();
+      char* str = get_unicode_str();
       printf("UTF8 string says: %s\n", str);
       // Each call to _malloc() must be paired with free(), or heap memory will leak!
       free(str);
@@ -270,7 +270,7 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -281,7 +281,7 @@ Functions
 
 .. c:function:: int emscripten_run_script_int(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -293,7 +293,7 @@ Functions
 
 .. c:function:: char *emscripten_run_script_string(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If ``-sDYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -481,7 +481,7 @@ Functions
 
   The difference is that ``emscripten_force_exit`` will shut down the runtime even if you previously called :c:func:`emscripten_exit_with_live_runtime` or otherwise kept the runtime alive. In other words, this method gives you the option to completely shut down the runtime after it was kept alive beyond the completion of ``main()``.
 
-  Note that if ``EXIT_RUNTIME`` is not set (which is the case by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-s EXIT_RUNTIME=1`` if you want to be able to exit the runtime.
+  Note that if ``EXIT_RUNTIME`` is not set (which is the case by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-sEXIT_RUNTIME`` if you want to be able to exit the runtime.
 
   :param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
@@ -534,7 +534,7 @@ Functions
 .. _emscripten-h-asynchronous-file-system-api:
 
 Asynchronous File System API
-=========================================
+============================
 
 Typedefs
 --------
@@ -765,9 +765,24 @@ Functions
 
     - *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
+
+  Starts and asyncronous dlopen operation to load a shared library from a
+  filename or URL.  Returns immediately and requires the caller to return to the
+  event loop.  The ``onsuccess`` and ``onerror`` callbacks are used to signal
+  success or failure of the request.  Upon ``onerror`` callback the normal
+  ``dlerror`` C function can be used get the error details.  The flags are the
+  same as those used in the normal ``dlopen`` C function.
+
+  :param const char* filename: The filename (or URLs) of the shared library to load.
+  :param int flags: See dlopen flags.
+  :param void* user_data: User data passed to onsuccess, and onerror callbacks.
+  :param em_dlopen_callback onsuccess: Called if the library was loaded successfully.
+  :param em_arg_callback_func onerror: Called if there as an error loading the library.
+
 
 Asynchronous IndexedDB API
-=====================================
+==========================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
 
@@ -917,6 +932,8 @@ Functions
   Creates a worker.
 
   A worker must be compiled separately from the main program, and with the ``BUILD_AS_WORKER`` flag set to 1.
+  
+  That worker must not be compiled with the ``-pthread`` flag as the POSIX threads implementation and this Worker API are incompatible.
 
   :param url: The URL of the worker script.
   :type url: const char*
@@ -989,7 +1006,7 @@ Defines
 
 .. c:macro:: EM_LOG_WARN
 
-  If specified, prints a warning message.
+  If specified, prints a warning message (combined with :c:data:`EM_LOG_CONSOLE`).
 
 .. c:macro:: EM_LOG_INFO
 
@@ -1001,7 +1018,7 @@ Defines
 
 .. c:macro:: EM_LOG_ERROR
 
-  If specified, prints an error message. If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, an info message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive.
+  If specified, prints an error message (combined with :c:data:`EM_LOG_CONSOLE`). If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, a log message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive. If :c:data:`EM_LOG_CONSOLE` is not specified then the message will be outputed via err() (for :c:data:`EM_LOG_ERROR` or :c:data:`EM_LOG_WARN`) or out() otherwise.
 
 .. c:macro:: EM_LOG_C_STACK
 
@@ -1037,7 +1054,7 @@ Functions
 
   For this command to work, you must build with the following compiler option (as we do not want to increase the build size with this metadata): ::
 
-    -s RETAIN_COMPILER_SETTINGS=1
+    -sRETAIN_COMPILER_SETTINGS
 
   :param name: The compiler setting to return.
   :type name: const char*
@@ -1049,7 +1066,7 @@ Functions
   Returns whether pseudo-synchronous functions can be used.
 
   :rtype: int
-  :returns: 1 if program was compiled with ASYNCIFY=1, 0 otherwise.
+  :returns: 1 if program was compiled with -sASYNCIFY, 0 otherwise.
 
 
 .. c:function:: void emscripten_debugger()
@@ -1088,7 +1105,7 @@ Functions
   The function returns pointer to loaded image or NULL — the pointer should be ``free()``'d. The width/height of the image are written to the ``w`` and ``h`` parameters if the data is valid.
 
   :param path: Full path/filename to the file containing the preloaded image.
-  :type: const char*
+  :type path: const char*
   :param int* w: Width of the image (if data is valid).
   :param int* h: Height of the image (if data is valid).
   :returns: A pointer to the preloaded image or NULL.
@@ -1099,8 +1116,8 @@ Functions
 
   Gets preloaded image data from a C ``FILE*``.
 
-  :param FILE* file: The ``FILE`` containing the preloaded image.
-  :type: const char*
+  :param file: The ``FILE`` containing the preloaded image.
+  :type file: FILE*
   :param int* w: Width of the image (if data is valid).
   :param int* h: Height of the image (if data is valid).
   :returns: A pointer to the preloaded image or NULL.
@@ -1254,7 +1271,7 @@ Typedefs
 
   Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation.
 
-  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_set_align.c>`_.
+  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/main/tests/core/test_set_align.c>`_.
 
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
@@ -1262,7 +1279,7 @@ Typedefs
 Pseudo-synchronous functions
 ============================
 
-These functions require Asyncify (``-s ASYNCIFY=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
+These functions require Asyncify (``-sASYNCIFY``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Sleeping
 --------
@@ -1395,7 +1412,7 @@ Functions
     including rarely-used functions, in which case the lazy-loading may
     not happen at all.
 
-  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+  .. note:: This requires building with ``-sASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

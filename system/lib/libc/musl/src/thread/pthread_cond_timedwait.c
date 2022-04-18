@@ -1,10 +1,5 @@
 #include "pthread_impl.h"
 
-void __pthread_testcancel(void);
-int __pthread_mutex_lock(pthread_mutex_t *);
-int __pthread_mutex_unlock(pthread_mutex_t *);
-int __pthread_setcancelstate(int, int *);
-
 /*
  * struct waiter
  *
@@ -60,10 +55,10 @@ static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 	// primitive is strictly not needed, since it is more like an optimization to avoid spuriously waking
 	// all waiters, just to make them wait on another location immediately afterwards. Here we do exactly
 	// that: wake every waiter.
-	emscripten_futex_wake(l, 0x7FFFFFFF);
+	emscripten_futex_wake(l, INT_MAX);
 #else
 	if (w) __wake(l, 1, 1);
-	else __syscall(SYS_futex, l, FUTEX_REQUEUE|128, 0, 1, r) != -ENOSYS
+	else __syscall(SYS_futex, l, FUTEX_REQUEUE|FUTEX_PRIVATE, 0, 1, r) != -ENOSYS
 		|| __syscall(SYS_futex, l, FUTEX_REQUEUE, 0, 1, r);
 #endif
 }
@@ -168,14 +163,18 @@ relock:
 
 	if (oldstate == WAITING) goto done;
 
-	if (!node.next) a_inc(&m->_m_waiters);
+	if (!node.next && !(m->_m_type & 8))
+		a_inc(&m->_m_waiters);
 
 	/* Unlock the barrier that's holding back the next waiter, and
 	 * either wake it or requeue it to the mutex. */
-	if (node.prev)
-		unlock_requeue(&node.prev->barrier, &m->_m_lock, m->_m_type & 128);
-	else
-		a_dec(&m->_m_waiters);
+	if (node.prev) {
+		int val = m->_m_lock;
+		if (val>0) a_cas(&m->_m_lock, val, val|0x80000000);
+		unlock_requeue(&node.prev->barrier, &m->_m_lock, m->_m_type & (8|128));
+	} else if (!(m->_m_type & 8)) {
+		a_dec(&m->_m_waiters);		
+	}
 
 	/* Since a signal was consumed, cancellation is not permitted. */
 	if (e == ECANCELED) e = 0;
@@ -187,10 +186,6 @@ done:
 		__pthread_testcancel();
 		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
 	}
-
-#ifdef __EMSCRIPTEN__
-	pthread_testcancel();
-#endif
 
 	return e;
 }

@@ -40,10 +40,6 @@ int main() {
   printf("errno: %d\n", errno);
   assert(ret == -1);
   assert(errno == EBADF);
-  errno = 0;
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return 0;
 }

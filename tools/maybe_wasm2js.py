@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Copyright 2019 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -7,7 +7,7 @@
 '''
 This operates on a JS+wasm emitted from compiling with
 
-  -s MAYBE_WASM2JS
+  -sMAYBE_WASM2JS
 
 and it does wasm2js on it. That is, it converts the wasm to JS, and lets
 you run it. You can also pick between the wasm and JS at runtime.
@@ -29,7 +29,9 @@ import os
 import subprocess
 import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools import shared, building
 

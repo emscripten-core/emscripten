@@ -21,7 +21,7 @@ extern "C" int baz() {
 }
 
 int main(int argc, char **argv) {
-#if defined(__wasm__) && defined(GROWTH)
+#if defined(GROWTH)
   EM_ASM({
     // Get an export that isn't in the table (we never took its address in C).
     var baz = asm["baz"];
@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
   EM_ASM({
     removeFunction($0)
   }, f);
-#if __wasm__
-  // In the wasm backend, we can reuse indexes
+
+  // We can reuse indexes
   EM_ASM({
     var beforeLength = wasmTable.length;
     for (var i = 0; i < 10; i++) {
@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
     }
     assert(wasmTable.length === beforeLength);
   });
-  // In the wasm backend, we have a guarantee of index uniqueness for each
-  // function.
+
+  // We guarantee index uniqueness for each function.
   EM_ASM({
     assert(wasmTable.length >= 3);
     assert(addFunction(wasmTable.get(1)) === 1);
@@ -58,7 +58,6 @@ int main(int argc, char **argv) {
   }, &foo, &bar); // taking the addresses here ensures they are in the table
                   // (the optimizer can't remove these uses) which then lets
                   // us assume the table is of a certain size in the test.
-#endif
   printf("ok\n");
   return 0;
 }

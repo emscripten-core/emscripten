@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "pthread_impl.h"
 
 #if __EMSCRIPTEN_PTHREADS__
@@ -17,3 +18,5 @@ int *__errno_location(void)
 	return &__errno_storage;
 }
 #endif
+
+weak_alias(__errno_location, ___errno_location);

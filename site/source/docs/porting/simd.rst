@@ -15,7 +15,7 @@ At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/
 
        #include <wasm_simd128.h>
 
-Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/master/clang/lib/Headers/wasm_simd128.h>`_. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself. Note that most engines will also require an extra flag to enable SIMD. For example, Node requires `--experimental-wasm-simd`.
+Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h>`_. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself. Note that most engines will also require an extra flag to enable SIMD. For example, Node requires `--experimental-wasm-simd`.
 
 WebAssembly SIMD is not supported when using the Fastcomp backend.
 
@@ -31,15 +31,68 @@ When porting native SIMD code, it should be noted that because of portability co
 
  - Cache line prefetch instructions are not available, and calls to these functions will compile, but are treated as no-ops.
 
- - Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-s USE_PTHREADS=1) or as no-ops when multithreading is not enabled (default, -s USE_PTHREADS=0).
+ - Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-sUSE_PTHREADS) or as no-ops when multithreading is not enabled (default, -sUSE_PTHREADS=0).
 
 SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/emscripten-core/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
+
+===========================
+Optimization considerations
+===========================
+
+When porting SIMD code to use WebAssembly SIMD, implementors should be aware of semantic differences between the host hardware and WebAssembly semantics; as acknowledged in the WebAssembly design documentation, "`this sometimes will lead to poor performance <https://github.com/WebAssembly/design/blob/master/Portability.md#assumptions-for-efficient-execution>`_." The following list outlines some WebAssembly SIMD instructions to look out for when performance tuning:
+
+.. list-table:: WebAssembly SIMD instructions with performance implications
+   :widths: 10 10 30
+   :header-rows: 1
+
+   * - WebAssembly SIMD instruction
+     - Hardware architecture
+     - Considerations
+
+   * - [i8x16|i16x8|i32x4|i64x2].[shl|shr_s|shr_u]
+     - x86, arm
+     - Use a constant shift amount to avoid extra instructions checking that it is in bounds.
+
+   * - i8x16.[shl|shr_s|shr_u]
+     - x86
+     - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3446-L3510>`_ (i.e. using 16x8 shifts).
+  
+   * - i64x2.shr_s
+     - x86
+     - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2807-L2825>`_.
+
+   * - i8x16.swizzle
+     - x86
+     - The zeroing behavior does not match x86 (i.e. this instruction zeroes when an index is out-of-range instead of when the most significant bit is 1); use a constant swizzle amount (or i8x16.shuffle) to avoid 3 extra x86 instructions in some runtimes.
+
+   * - [f32x4|f64x2].[min|max]
+     - x86
+     - As with the scalar versions, the NaN propagation semantics force runtimes to emulate with 8+ x86 instructions (e.g., see `v8's emulation <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2661-L2699>`_; if possible, use [f32x4|f64x2].[pmin|pmax] instead (1 x86 instruction).
+
+   * - i32x4.trunc_sat_f32x4_[u|s]
+     - x86
+     - No equivalent x86 semantics; `emulated with 8-14 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3035-L3062>`_.
+
+   * - i32x4.trunc_sat_f64x2_[u|s]_zero
+     - x86
+     - No equivalent x86 semantics; `emulated with 5-6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/codegen/x64/macro-assembler-x64.cc#L2241-L2311>`_.
+
+   * - f32x4.convert_f32x4_u
+     - x86
+     - No equivalent x86 semantics; `emulated with 8 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2591-L2604>`_.
+
+   * - [i8x16|i64x2].mul
+     - x86
+     - Included for orthogonality, these instructions have no equivalent x86 instruction and are `emulated with 10 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2834-L2858>`_.
+
 
 =====================================================
 Compiling SIMD code targeting x86 SSE instruction set
 =====================================================
 
-Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`. SSE2 through AVX are also supported, given the correct compiler flag and headers.
+Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
+
+Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported.
 
 The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -56,6 +109,8 @@ The following legend is used to highlight the expected performance of various in
  - ⚫ the given SSE intrinsic is not available. Referencing the intrinsic will cause a compiler error.
 
 Certain intrinsics in the table below are marked "virtual". This means that there does not actually exist a native x86 SSE instruction set opcode to implement them, but native compilers offer the function as a convenience. Different compilers might generate a different instruction sequence for these.
+
+In addition to consulting the tables below, you can turn on diagnostics for slow, emulated functions by defining the macro `WASM_SIMD_COMPAT_SLOW`. This will print out warnings if you attempt to use any of the slow paths (corresponding to ❌ or 💣 in the legend).
 
 .. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
@@ -100,7 +155,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_sfence
      - ⚠️ A full barrier in multithreaded builds.
    * - _mm_shuffle_ps
-     - 🟡 wasm_v32x4_shuffle. VM must guess type.
+     - 🟡 wasm_i32x4_shuffle. VM must guess type.
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
@@ -114,7 +169,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_storeu_si64
      - 💡 emulated with scalar store
    * - _mm_movemask_ps
-     - 💣 No Wasm SIMD support. Emulated in scalar. `simd/#131 <https://github.com/WebAssembly/simd/issues/131>`_
+     - ✅ wasm_i32x4_bitmask
    * - _mm_move_ss
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_add_ps
@@ -422,17 +477,17 @@ The following table highlights the availability and expected performance of diff
    * - _mm_comineq_sd
      - ❌ scalarized
    * - _mm_cvtepi32_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_convert_low_i32x4
    * - _mm_cvtepi32_ps
      - ✅ wasm_f32x4_convert_i32x4
    * - _mm_cvtpd_epi32
      - ❌ scalarized
    * - _mm_cvtpd_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_demote_f64x2_zero
    * - _mm_cvtps_epi32
      - ❌ scalarized
    * - _mm_cvtps_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_promote_low_f32x4
    * - _mm_cvtsd_f64
      - ✅ wasm_f64x2_extract_lane
    * - _mm_cvtsd_si32
@@ -495,10 +550,14 @@ The following table highlights the availability and expected performance of diff
      - 🟡 wasm_v128_load. VM must guess type.
    * - _mm_loadu_si128
      - 🟡 wasm_v128_load. VM must guess type.
+   * - _mm_loadu_si64
+     - ❌ emulated with const+scalar load+replace lane
    * - _mm_loadu_si32
-     - ❌ emulated with wasm_i32x4_make
+     - ❌ emulated with const+scalar load+replace lane
+   * - _mm_loadu_si16
+     - ❌ emulated with const+scalar load+replace lane
    * - _mm_madd_epi16
-     - ❌ scalarized
+     - ✅ wasm_dot_s_i32x4_i16x8
    * - _mm_maskmoveu_si128
      - ❌ scalarized
    * - _mm_max_epi16
@@ -524,19 +583,19 @@ The following table highlights the availability and expected performance of diff
    * - _mm_move_sd
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_movemask_epi8
-     - ❌ scalarized
+     - ✅ wasm_i8x16_bitmask
    * - _mm_movemask_pd
-     - ❌ scalarized
+     - ✅ wasm_i64x2_bitmask
    * - _mm_mul_epu32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_u64x2_extmul_low_u32x4 + 2 shuffles
    * - _mm_mul_pd
      - ✅ wasm_f64x2_mul
    * - _mm_mul_sd
      - ⚠️ emulated with a shuffle
    * - _mm_mulhi_epi16
-     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
+     - ⚠️ emulated with a 2x SIMD extmul+generic shuffle
    * - _mm_mulhi_epu16
-     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
+     - ⚠️ emulated with a 2x SIMD extmul+generic shuffle
    * - _mm_mullo_epi16
      - ✅ wasm_i16x8_mul
    * - _mm_or_pd
@@ -657,8 +716,12 @@ The following table highlights the availability and expected performance of diff
      - 🟡 wasm_v128_store. VM must guess type.
    * - _mm_storeu_si128
      - 🟡 wasm_v128_store. VM must guess type.
+   * - _mm_storeu_si64
+     - 💡 emulated with extract lane+scalar store
    * - _mm_storeu_si32
-     - 💡 emulated with scalar store
+     - 💡 emulated with extract lane+scalar store
+   * - _mm_storeu_si16
+     - 💡 emulated with extract lane+scalar store
    * - _mm_stream_pd
      - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
    * - _mm_stream_si128
@@ -839,13 +902,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_blendv_ps
      - ⚠️ emulated with a SIMD shr+and+andnot+or
    * - _mm_ceil_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_ceil
    * - _mm_ceil_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_ceil
    * - _mm_ceil_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_ceil_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_cmpeq_epi64
      - ⚠️ emulated with a SIMD cmp+and+shuffle
    * - _mm_cvtepi16_epi32
@@ -861,13 +924,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_cvtepi8_epi64
      - ⚠️ emulated with two SIMD widens+const+cmp+shuffle
    * - _mm_cvtepu16_epi32
-     - ✅ wasm_i32x4_widen_low_u16x8
+     - ✅ wasm_u32x4_extend_low_u16x8
    * - _mm_cvtepu16_epi64
      - ⚠️ emulated with SIMD const+two shuffles
    * - _mm_cvtepu32_epi64
      - ⚠️ emulated with SIMD const+shuffle
    * - _mm_cvtepu8_epi16
-     - ✅ wasm_i16x8_widen_low_u8x16
+     - ✅ wasm_u16x8_extend_low_u8x16
    * - _mm_cvtepu8_epi32
      - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepu8_epi64
@@ -885,13 +948,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_extract_ps
      - ✅ wasm_i32x4_extract_lane
    * - _mm_floor_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_floor
    * - _mm_floor_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_floor
    * - _mm_floor_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_floor_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_insert_epi32
      - ✅ wasm_i32x4_replace_lane
    * - _mm_insert_epi64
@@ -921,19 +984,19 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mpsadbw_epu8
      - 💣 scalarized
    * - _mm_mul_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_i64x2_extmul_low_i32x4 + 2 shuffles
    * - _mm_mullo_epi32
      - ✅ wasm_i32x4_mul
    * - _mm_packus_epi32
      - ✅ wasm_u16x8_narrow_i32x4
    * - _mm_round_pd
-     - 💣 scalarized
+     - ✅ wasm_f64x2_ceil/wasm_f64x2_floor/wasm_f64x2_nearest/wasm_f64x2_trunc
    * - _mm_round_ps
-     - 💣 scalarized
+     - ✅ wasm_f32x4_ceil/wasm_f32x4_floor/wasm_f32x4_nearest/wasm_f32x4_trunc
    * - _mm_round_sd
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_round_ss
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_stream_load_si128
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_test_all_ones
@@ -944,7 +1007,7 @@ The following table highlights the availability and expected performance of diff
      - ❌ scalarized
    * - _mm_testc_si128
      - ❌ scalarized
-   * - _mm_test_nzc_si128
+   * - _mm_testnzc_si128
      - ❌ scalarized
    * - _mm_testz_si128
      - ❌ scalarized
@@ -958,7 +1021,7 @@ The following table highlights the availability and expected performance of diff
    * - Intrinsic name
      - WebAssembly SIMD support
    * - _mm_cmpgt_epi64
-     - ❌ scalarized
+     - ✅ wasm_i64x2_gt
 
 ⚫ The SSE4.2 functions that deal with string comparisons and CRC calculations are not available:
  - _mm_cmpestra, _mm_cmpestrc, _mm_cmpestri, _mm_cmpestrm, _mm_cmpestro, _mm_cmpestrs, _mm_cmpestrz, _mm_cmpistra, _mm_cmpistrc, _mm_cmpistri, _mm_cmpistrm, _mm_cmpistro, _mm_cmpistrs, _mm_cmpistrz, _mm_crc32_u16, _mm_crc32_u32, _mm_crc32_u64, _mm_crc32_u8
@@ -1045,6 +1108,9 @@ Similarly to above, the following legend is used:
 For detailed information on each intrinsic function, refer to `NEON Intrinsics Reference
 <https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/intrinsics>`_.
 
+For the latest NEON intrinsics implementation status, refer to the `SIMDe implementation
+status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.md>`_.
+
 .. list-table:: NEON Intrinsics
    :widths: 20 30
    :header-rows: 1
@@ -1060,47 +1126,47 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vabdl
      - ⚫ Not implemented, will trigger compiler error
    * - vabs
-     - native
+     - ✅ native
    * - vadd
-     - native
+     - ✅ native
    * - vaddl
      - ⚫ Not implemented, will trigger compiler error
    * - vaddlv
      - ⚫ Not implemented, will trigger compiler error
    * - vaddv
      - ⚫ Not implemented, will trigger compiler error
-   * - vaddw 
+   * - vaddw
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vand 
-     - native
+   * - vand
+     - ✅ native
    * - vbic
      - ⚫ Not implemented, will trigger compiler error
    * - vbsl
-     - native
+     - ✅ native
    * - vcagt
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vceq
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vceqz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcge
-     - native
+     - ✅ native
    * - vcgez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcgt
-     - native
+     - ✅ native
    * - vcgtz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcle
-     - native
+     - ✅ native
    * - vclez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcls
      - ⚫ Not implemented, will trigger compiler error
    * - vclt
-     - native
+     - ✅ native
    * - vcltz 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcnt
      - ⚫ Not implemented, will trigger compiler error
    * - vclz
@@ -1116,19 +1182,19 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vdup
      - ⚫ Not implemented, will trigger compiler error
    * - vdup_n
-     - native
+     - ✅ native
    * - veor
-     - native
+     - ✅ native
    * - vext
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vget_lane
-     - native
+     - ✅ native
    * - vhadd
      - ⚫ Not implemented, will trigger compiler error
    * - vhsub
      - ⚫ Not implemented, will trigger compiler error
    * - vld1
-     - native
+     - ✅ native
    * - vld2
      - ⚫ Not implemented, will trigger compiler error
    * - vld3
@@ -1136,15 +1202,15 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vld4
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vmax
-     - native
+     - ✅ native
    * - vmaxv
      - ⚫ Not implemented, will trigger compiler error
    * - vmin
-     - native
+     - ✅ native
    * - vminv
      - ⚫ Not implemented, will trigger compiler error
    * - vmla 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmls
@@ -1152,25 +1218,25 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vmlsl
      - ⚫ Not implemented, will trigger compiler error
    * - vmovl
-     - native
+     - ✅ native
    * - vmul
-     - native
+     - ✅ native
    * - vmul_n 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_high
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmvn
-     - native
+     - ✅ native
    * - vneg
-     - native
+     - ✅ native
    * - vorn
      - ⚫ Not implemented, will trigger compiler error
    * - vorr
-     - native
+     - ✅ native
    * - vpadal
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpadd
@@ -1212,13 +1278,13 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vqsubb
      - ⚫ Not implemented, will trigger compiler error
    * - vqtbl1
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl2
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl3
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl4
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbx1
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqtbx2
@@ -1228,17 +1294,17 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vqtbx4
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrbit
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vreinterpret
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vrev16
-     - native
+     - ✅ native
    * - vrev32
-     - native
+     - ✅ native
    * - vrev64
-     - native
+     - ✅ native
    * - vrhadd
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vrshl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrshr_n
@@ -1246,17 +1312,17 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vrsra_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vset_lane
-     - native
+     - ✅ native
    * - vshl
      - scalaried
    * - vshl_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vshr_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsra_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vst1
-     - native
+     - ✅ native
    * - vst1_lane
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vst2
@@ -1266,9 +1332,9 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vst4
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vsub
-     - native
+     - ✅ native
    * - vsubl
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsubw
      - ⚫ Not implemented, will trigger compiler error
    * - vtbl1

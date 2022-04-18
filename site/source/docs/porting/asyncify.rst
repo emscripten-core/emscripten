@@ -19,8 +19,9 @@ synchronous way.
 
 See the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
-for general background and details of how it works internally. The following
-expands on the Emscripten examples from that post.
+for general background and details of how it works internally (you can also view
+`this talk about Asyncify <https://www.youtube.com/watch?v=qQOP6jqZqf8>`_).
+The following expands on the Emscripten examples from that post.
 
 .. _yielding_to_main_loop:
 
@@ -65,7 +66,7 @@ You can compile that with
 
 ::
 
-    emcc -O3 example.cpp -s ASYNCIFY
+    emcc -O3 example.cpp -sASYNCIFY
 
 .. note:: It's very important to optimize (``-O3`` here) when using Asyncify, as
           unoptimized builds are very large.
@@ -98,8 +99,10 @@ Making async Web APIs behave as if they were synchronous
 Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify
 supports, you can also add your own functions. To do so, you must create a JS
 function that is called from wasm (since Emscripten controls pausing and
-resuming the wasm from the JS runtime). One way to do that is with a JS library
-function; another is to use ``EM_JS``, which we'll use in this next example:
+resuming the wasm from the JS runtime).
+
+One way to do that is with a JS library function. Another is to use
+``EM_ASYNC_JS``, which we'll use in this next example:
 
 .. code-block:: cpp
 
@@ -107,13 +110,12 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
     #include <emscripten.h>
     #include <stdio.h>
 
-    EM_JS(void, do_fetch, (), {
-      Asyncify.handleAsync(async () => {
-        out("waiting for a fetch");
-        const response = await fetch("a.html");
-        out("got the fetch response");
-        // (normally you would do something with the fetch here)
-      });
+    EM_ASYNC_JS(int, do_fetch, (), {
+      out("waiting for a fetch");
+      const response = await fetch("a.html");
+      out("got the fetch response");
+      // (normally you would do something with the fetch here)
+      return 42;
     });
 
     int main() {
@@ -121,51 +123,16 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
       do_fetch();
       puts("after");
     }
-
-If you can't use the modern ``async``-``await`` syntax, there is a variant with an explicit ``wakeUp`` callback too:
-
-.. code-block:: cpp
-
-    // example.c
-    #include <emscripten.h>
-    #include <stdio.h>
-
-    EM_JS(void, do_fetch, (), {
-      Asyncify.handleSleep(wakeUp => {
-        out("waiting for a fetch");
-        fetch("a.html").then(response => {
-          out("got the fetch response");
-          // (normally you would do something with the fetch here)
-          wakeUp();
-        });
-      });
-    });
-
-    int main() {
-      puts("before");
-      do_fetch();
-      puts("after");
-    }
-
-The async operation happens in the ``EM_JS`` function ``do_fetch()``, which
-calls ``Asyncify.handleAsync`` or ``Asyncify.handleSleep``. It gives that
-function the code to be run, and gets a ``wakeUp`` function that it calls in the
-asynchronous future at the right time. After we call ``wakeUp()`` the compiled C
-code resumes normally.
 
 In this example the async operation is a ``fetch``, which means we need to wait
-for a Promise. While that is async, note how the C code in ``main()`` is
-completely synchronous!
+for a Promise. While that operation is async, note how the C code in ``main()``
+is completely synchronous!
 
 To run this example, first compile it with
 
 ::
 
-    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
-
-Note that you must tell the compiler that ``do_fetch()`` can do an
-asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
-instrument the code to allow pausing and resuming; see more details later down.
+    emcc example.c -O3 -o a.html -sASYNCIFY
 
 To run this, you must run a :ref:`local webserver <faq-local-webserver>`
 and then browse to ``http://localhost:8000/a.html``.
@@ -181,80 +148,67 @@ You will see something like this:
 That shows that the C code only continued to execute after the async JS
 completed.
 
+Ways to use async APIs in older engines
+#######################################
+
+If your target JS engine doesn't support the modern ``async/await`` JS
+syntax, you can desugar the above implementation of ``do_fetch`` to use Promises
+directly with ``EM_JS`` and ``Asyncify.handleAsync`` instead:
+
+.. code-block:: cpp
+
+    EM_JS(int, do_fetch, (), {
+      return Asyncify.handleAsync(function () {
+        out("waiting for a fetch");
+        return fetch("a.html").then(function (response) {
+          out("got the fetch response");
+          // (normally you would do something with the fetch here)
+          return 42;
+        });
+      });
+    });
+
+When using this form, the compiler doesn't statically know that ``do_fetch`` is
+asynchronous anymore. Instead, you must tell the compiler that ``do_fetch()``
+can do an asynchronous operation using ``ASYNCIFY_IMPORTS``, otherwise it won't
+instrument the code to allow pausing and resuming (see more details later down):
+
+::
+
+    emcc example.c -O3 -o a.html -sASYNCIFY -sASYNCIFY_IMPORTS=do_fetch
+
+Finally, if you can't use Promises either, you can desugar the example to use
+``Asyncify.handleSleep``, which will pass a ``wakeUp`` callback to your
+function implementation. When this ``wakeUp`` callback is invoked, the C/C++
+code will resume:
+
+.. code-block:: cpp
+
+    EM_JS(int, do_fetch, (), {
+      return Asyncify.handleSleep(function (wakeUp) {
+        out("waiting for a fetch");
+        fetch("a.html").then(function (response) {
+          out("got the fetch response");
+          // (normally you would do something with the fetch here)
+          wakeUp(42);
+        });
+      });
+    });
+
+Note that when using this form, you can't return a value from the function itself.
+Instead, you need to pass it as an argument to the ``wakeUp`` callback and
+propagate it by returning the result of ``Asyncify.handleSleep`` in ``do_fetch``
+itself.
+
 More on ``ASYNCIFY_IMPORTS``
 ############################
 
 As in the above example, you can add JS functions that do an async operation but
-look synchronous from the perspective of C. The key thing is to add such methods
-to ``ASYNCIFY_IMPORTS``, regardless of whether the JS function is from a JS
-library or ``EM_JS``. That list of imports is the list of imports to the wasm
-module that the Asyncify instrumentation must be aware of. Giving it that list
-tells it that all other JS calls will **not** do an async operation, which lets
-it not add overhead where it isn't needed.
-
-Returning values
-################
-
-You can also return values from async JS functions. Here is an example:
-
-.. code-block:: cpp
-
-    // example.c
-    #include <emscripten.h>
-    #include <stdio.h>
-
-    EM_JS(int, get_digest_size, (const char* str), {
-      // Note how we return the output of handleAsync() here.
-      return Asyncify.handleAsync(async () => {
-        const text = UTF8ToString(str);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(text);
-        out("ask for digest for " + text);
-        const digestValue = await window.crypto.subtle.digest("SHA-256", data);
-        out("got digest of length " + digestValue.byteLength);
-        // Return the value as you normally would.
-        return digestValue.byteLength;
-      });
-    });
-
-    int main() {
-      const char* silly = "some silly text";
-      printf("%s's digest size is: %d\n", silly, get_digest_size(silly));
-      return 0;
-    }
-
-You can build this with
-
-::
-
-    ../emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
-
-This example calls the Promise-returning ``window.crypto.subtle()`` API (the
-example is based off of
-`this MDN example <https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#Basic_example>`_
-).
-
-Note that we must propagate the value returned from ``handleSleep()``. The calling C code then
-gets it normally, after the Promise completes.
-
-If you're using the ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
-
-.. code-block:: cpp
-
-    // ...
-    return Asyncify.handleSleep(wakeUp => {
-      const text = UTF8ToString(str);
-      const encoder = new TextEncoder();
-      const data = encoder.encode(text);
-      out("ask for digest for " + text);
-      window.crypto.subtle.digest("SHA-256", data).then(digestValue => {
-        out("got digest of length " + digestValue.byteLength);
-        // Return the value by sending it to wakeUp(). It will then be returned
-        // from handleSleep() on the outside.
-        wakeUp(digestValue.byteLength);
-      });
-    });
-    // ...
+look synchronous from the perspective of C. If you don't use ``EM_ASYNC_JS``,
+it's vital to add such methods to ``ASYNCIFY_IMPORTS``. That list of imports is
+the list of imports to the wasm module that the Asyncify instrumentation must be
+aware of. Giving it that list tells it that all other JS calls will **not** do
+an async operation, which lets it not add overhead where it isn't needed.
 
 Usage with Embind
 #################
@@ -266,11 +220,72 @@ and want to ``await`` a dynamically retrieved ``Promise``, you can call an
 .. code-block:: cpp
 
     val my_object = /* ... */;
-    val result = my_object.call("someAsyncMethod").await();
+    val result = my_object.call<val>("someAsyncMethod").await();
 
 In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
 automatically.
+
+Note that when Asyncify is used with Embind and the code is invoked from
+JavaScript, then it will be implicitly treated as an ``async`` function,
+returning a ``Promise`` to the return value, as demonstrated below.
+
+.. code-block:: cpp
+
+   #include <emscripten/bind.h>
+   #include <emscripten.h>
+
+   static int delayAndReturn(bool sleep) {
+     if (sleep) {
+       emscripten_sleep(0);
+     }
+     return 42;
+   }
+
+   EMSCRIPTEN_BINDINGS(example) {
+     emscripten::function("delayAndReturn", &delayAndReturn);
+   }
+
+Build with
+::
+
+    emcc -O3 example.cpp --bind -sASYNCIFY
+
+Then invoke from JavaScript
+
+.. code-block:: javascript
+
+   let syncResult = Module.delayAndReturn(false);
+   console.log(syncResult); // 42
+   console.log(await syncResult); // also 42 because `await` is no-op
+
+   let asyncResult = Module.delayAndReturn(true);
+   console.log(asyncResult); // Promise { <pending> }
+   console.log(await asyncResult); // 42
+
+In contrast to JavaScript ``async`` functions which always return a ``Promise``,
+the return value is determined at run time, and a ``Promise`` is only returned
+if Asyncify calls are encountered (such as ``emscripten_sleep()``,
+``val::await()``, etc).
+
+If the code path is undetermined, the caller may either check if the returned
+value is an ``instanceof Promise`` or simply ``await`` on the returned value.
+
+Usage with ``ccall``
+####################
+
+To make use of an Asyncify-using wasm export from Javascript, you can use the
+``Module.ccall`` function and pass ``async: true`` to its call options object.
+``ccall`` will then return a Promise, which will resolve with the result of the
+function once the computation completes.
+
+In this example, a function "func" is called which returns a Number.
+
+.. code-block:: javascript
+
+    Module.ccall("func", "number", [], [], {async: true}).then(result => {
+      console.log("js_func: " + result);
+    });
 
 Optimizing
 ##########
@@ -294,19 +309,19 @@ you can tell Asyncify to ignore indirect calls using
 If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
-* ``ASYNCIFY_REMOVE_LIST`` is a list of functions that do not unwind the stack.
+* ``ASYNCIFY_REMOVE`` is a list of functions that do not unwind the stack.
   Asyncify will do its normal whole-program analysis, then remove these
   functions from the list of instrumented functions.
-* ``ASYNCIFY_ADD_LIST`` is a list of functions that do unwind the stack, and
+* ``ASYNCIFY_ADD`` is a list of functions that do unwind the stack, and
   are added after doing the normal whole-program analysis. This is mostly useful
   if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
   functions that need to unwind.
-* ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
+* ``ASYNCIFY_ONLY`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
 
 You can enable the ``ASYNCIFY_ADVISE`` setting, which will tell the compiler to
 output which functions it is currently instrumenting and why. You can then
-determine whether you should add any functions to ``ASYNCIFY_REMOVE_LIST`` or
+determine whether you should add any functions to ``ASYNCIFY_REMOVE`` or
 whether it would be safe to enable ``ASYNCIFY_IGNORE_INDIRECT``. Note that this
 phase of the compiler happens after many optimization phases, and several
 functions maybe be inlined already. To be safe, run it with `-O0`.
@@ -366,8 +381,8 @@ Migrating from older APIs
 #########################
 
 If you have code uses the old Emterpreter-Async API, or the old Asyncify, then
-almost everything should just work when you replace ``-s EMTERPRETIFY`` usage
-with ``-s ASYNCIFY``. In particular all the things like ``emscripten_wget``
+almost everything should just work when you replace ``-sEMTERPRETIFY`` usage
+with ``-sASYNCIFY``. In particular all the things like ``emscripten_wget``
 should just work as they did before.
 
 Some minor differences include:

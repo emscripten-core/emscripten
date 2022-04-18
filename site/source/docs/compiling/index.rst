@@ -19,6 +19,7 @@ This section contains topics about building projects and running the output.
 
    Building-Projects
    WebAssembly
+   Dynamic-Linking
    Running-html-files-with-emrun
    Travis
    Deploying-Pages

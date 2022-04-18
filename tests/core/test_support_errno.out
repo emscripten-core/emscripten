@@ -1,3 +1,0 @@
-rtn     : -1
-errno   : 6
-strerror: Resource temporarily unavailable

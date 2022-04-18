@@ -25,7 +25,7 @@ int main() {
   write(1, "\n", 1);
   // emscripten_log API works
   emscripten_console_log("log");
-  // warnings/errors go to stderr, and are not noticed in this test
+  // warnings/errors go to stderr
   emscripten_console_warn("warn");
   emscripten_console_error("error");
   emscripten_console_log("log2");

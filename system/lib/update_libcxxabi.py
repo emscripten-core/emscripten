@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2019 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -9,13 +9,19 @@ import sys
 import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
+emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 local_root = os.path.join(script_dir, 'libcxxabi')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
 
 
 def main():
-  upstream_root = os.path.join(os.path.abspath(sys.argv[1]), 'libcxxabi')
+  if len(sys.argv) > 1:
+    llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
+  else:
+    llvm_dir = default_llvm_dir
+  upstream_root = os.path.join(llvm_dir, 'libcxxabi')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
   assert os.path.exists(upstream_inc)

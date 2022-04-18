@@ -33,11 +33,9 @@ function stringToAscii(str, outPtr) {
 
 #if TEXTDECODER == 2
 var UTF16Decoder = new TextDecoder('utf-16le');
-#else // TEXTDECODER == 2
-#if TEXTDECODER
-var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
-#endif // TEXTDECODER
-#endif // TEXTDECODER == 2
+#elif TEXTDECODER == 1
+var UTF16Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf-16le') : undefined;
+#endif
 
 function UTF16ToString(ptr, maxBytesToRead) {
 #if ASSERTIONS
@@ -57,7 +55,7 @@ function UTF16ToString(ptr, maxBytesToRead) {
 #if TEXTDECODER != 2
   if (endPtr - ptr > 32 && UTF16Decoder) {
 #endif // TEXTDECODER != 2
-    return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
+    return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'endPtr') }}});
 #if TEXTDECODER != 2
   } else {
 #endif // TEXTDECODER != 2
@@ -256,7 +254,7 @@ function writeArrayToMemory(array, buffer) {
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
-    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+    assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
 #endif
     {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
   }

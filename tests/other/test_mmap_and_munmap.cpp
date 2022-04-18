@@ -190,7 +190,7 @@ int test_unmap_wrong_addr() {
     TEST_START();
     errno = 0;
 
-    ASSERT(munmap(MAP_FAILED, file_len()) == -1 && errno == EINVAL,
+    ASSERT(munmap((void*)0xdeadbeef, file_len()) == -1 && errno == EINVAL,
            "Expected EINVAL, as munmap should fail for wrong addr argument");
     TEST_PASS();
 }
@@ -269,10 +269,6 @@ int main() {
     }
 
     printf("tests_run: %d failures: %d\n", tests_run, failures);
-
-#ifdef REPORT_RESULT
-    REPORT_RESULT(failures);
-#endif
-    return 0;
+    return failures;
 }
 

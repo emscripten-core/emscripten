@@ -71,13 +71,13 @@ The mapping between the IDL definition and the C++ is fairly obvious. The main t
 Generating the bindings glue code
 ---------------------------------
 
-The *bindings generator* (`tools/webidl_binder.py <https://github.com/emscripten-core/emscripten/blob/master/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
+The *bindings generator* (`tools/webidl_binder.py <https://github.com/emscripten-core/emscripten/blob/main/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
 
 For example, to create the glue code files **glue.cpp** and **glue.js** for the IDL file **my_classes.idl**, you would use the following command:
 
 .. code-block:: bash
 
-    python tools/webidl_binder.py my_classes.idl glue
+    tools/webidl_binder my_classes.idl glue
 
 
 
@@ -199,7 +199,7 @@ Pointers, References, Value types (Ref and Value)
 
 C++ arguments and return types can be pointers, references, or value types (allocated on the stack). The IDL file uses different decoration to represent each of these cases.
 
-Undecorated argument and return values in the IDL are assumed to be *pointers* in the C++:
+Undecorated argument and return values of a custom type in the IDL are assumed to be *pointers* in the C++:
 
 .. code-block:: cpp
 
@@ -210,6 +210,8 @@ Undecorated argument and return values in the IDL are assumed to be *pointers* i
 
   // WebIDL
   MyClass process(MyClass input);
+  
+This assumption isn't true for base types like void,int,bool,DOMString,etc.
 
 References should be decorated using ``[Ref]``:
 
@@ -222,6 +224,7 @@ References should be decorated using ``[Ref]``:
 
   // WebIDL
   [Ref] MyClass process([Ref] MyClass input);
+
 
 .. note:: If ``[Ref]`` is omitted on a reference, the generated glue C++ will not compile (it fails when it tries to convert the reference — which it thinks is a pointer — to an object).
 
@@ -483,6 +486,6 @@ The type names in WebIDL are not identical to those in C++. This section shows t
 Test and example code
 =====================
 
-For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
+For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/main/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
 
 Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the `Bullet Physics engine <http://bulletphysics.org/wordpress/>`_ to the Web.

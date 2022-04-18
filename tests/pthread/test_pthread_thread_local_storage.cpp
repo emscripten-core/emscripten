@@ -39,43 +39,54 @@ void *ThreadMain(void *arg)
 	{
 		local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
 //		EM_ASM(err('Thread ' + $0 + ' final verify: Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
-		if (local_keys[i] != NUM_ITERS)
-			pthread_exit((void*)1);
+		assert(local_keys[i] == NUM_ITERS);
 	}
-	pthread_exit(0);
+	return 0;
 }
 
 pthread_t thread[NUM_THREADS];
 
 int numThreadsToCreate = 32;
+int threadCounter = 0;
+_Atomic int destructorCounter = 0;
 
-void CreateThread(int i)
+void CreateThread(long i)
 {
+	printf("CreateThread %ld\n", i);
+	threadCounter++;
 	int rc = pthread_create(&thread[i], NULL, ThreadMain, (void*)i);
 	if (emscripten_has_threading_support()) assert(rc == 0);
 	else assert(rc == EAGAIN);
 }
 
+void destructor1(void* val) {
+	destructorCounter++;
+}
+
 int main()
 {
-	for(int i = 0; i < NUM_KEYS; ++i)
-		pthread_key_create(&keys[i], NULL);
+	for(int i = 0; i < NUM_KEYS; ++i) {
+		if (i == 0)
+			pthread_key_create(&keys[i], destructor1);
+		else
+			pthread_key_create(&keys[i], NULL);
+	}
 
 	// Create initial threads.
-	for(int i = 0; i < NUM_THREADS; ++i)
+	for(long i = 0; i < NUM_THREADS; ++i)
 		CreateThread(i);
 
 	// Join all threads and create more.
 	if (emscripten_has_threading_support())
 	{
-		for(int i = 0; i < NUM_THREADS; ++i)
+		for(long i = 0; i < NUM_THREADS; ++i)
 		{
 			if (thread[i])
 			{
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				EM_ASM(err('Main: Joined thread idx ' + $0 + ' with status ' + $1), i, (int)status);
+				printf("Main: Joined thread idx %ld with status %d\n", i, status);
 				assert(status == 0);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)
@@ -86,10 +97,25 @@ int main()
 			}
 		}
 	}
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+
+	for(int i = 0; i < NUM_THREADS; ++i)
+	{
+			if (thread[i])
+			{
+				int status = 1;
+				int rc = pthread_join(thread[i], (void**)&status);
+				assert(rc == 0);
+				printf("Main: Joined thread idx %d with status %d\n", i, status);
+				assert(status == 0);
+			}
+	}
+	printf("destructorCounter: %d\n", destructorCounter);
+	printf("threadCounter: %d\n", threadCounter);
+	assert(destructorCounter == threadCounter);
 
 	for(int i = 0; i < NUM_KEYS; ++i)
 		pthread_key_delete(keys[i]);
+
+	printf("done\n");
+	return 0;
 }

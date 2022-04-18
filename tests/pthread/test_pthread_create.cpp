@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 
 #define NUM_THREADS 8
@@ -23,7 +22,7 @@ unsigned int global_shared_data[NUM_THREADS];
 
 void *ThreadMain(void *arg)
 {
-	int idx = (int)arg;
+	long idx = (long)arg;
 	unsigned int param = global_shared_data[idx];
 
 #define N 100
@@ -70,22 +69,13 @@ void CreateThread(int i)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	// Create initial threads.
 	for(int i = 0; i < NUM_THREADS; ++i)
 		CreateThread(i);
 
 	// Join all threads and create more.
-        while (numThreadsToCreate > 0)
-        {
+	while (numThreadsToCreate > 0)
+	{
 		for(int i = 0; i < NUM_THREADS; ++i)
 		{
 			if (thread[i])
@@ -104,7 +94,6 @@ int main()
 			}
 		}
 	}
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	printf("All threads joined.\n");
+	return 0;
 }

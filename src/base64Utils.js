@@ -8,7 +8,7 @@
  * Decodes a base64 string.
  * @param {string} input The string to decode.
  */
-var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
+var decodeBase64 = typeof atob == 'function' ? atob : function (input) {
   var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
   var output = '';
@@ -43,15 +43,8 @@ var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
 // Throws error on invalid input.
 function intArrayFromBase64(s) {
 #if ENVIRONMENT_MAY_BE_NODE
-  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
-    var buf;
-    try {
-      // TODO: Update Node.js externs, Closure does not recognize the following Buffer.from()
-      /**@suppress{checkTypes}*/
-      buf = Buffer.from(s, 'base64');
-    } catch (_) {
-      buf = new Buffer(s, 'base64');
-    }
+  if (typeof ENVIRONMENT_IS_NODE == 'boolean' && ENVIRONMENT_IS_NODE) {
+    var buf = Buffer.from(s, 'base64');
     return new Uint8Array(buf['buffer'], buf['byteOffset'], buf['byteLength']);
   }
 #endif

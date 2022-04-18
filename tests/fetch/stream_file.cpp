@@ -12,8 +12,6 @@
 // Compute rudimentary checksum of data
 uint32_t checksum = 0;
 
-int result = 0;
-
 int main()
 {
   emscripten_fetch_attr_t attr;
@@ -28,10 +26,7 @@ int main()
     assert(checksum == 0xA7F8E858U);
     emscripten_fetch_close(fetch);
 
-#ifdef REPORT_RESULT
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(1);
-#endif
+    exit(0);
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
     printf("Downloading.. %.2f%s complete. Received chunk [%llu, %llu[\n", 
@@ -49,4 +44,5 @@ int main()
   };
   attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_STREAM_DATA;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "largefile.txt");
+  return 99;
 }

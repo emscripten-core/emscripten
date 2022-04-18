@@ -5,10 +5,14 @@
  */
 
 var WasiLibrary = {
-  proc_exit__deps: ['exit'],
+  proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {
-    _exit(code);
+#if MINIMAL_RUNTIME
+    throw 'exit(' + code + ')';
+#else
+    procExit(code);
+#endif
   },
 
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
@@ -17,7 +21,7 @@ var WasiLibrary = {
       // Default values.
 #if !DETERMINISTIC
       // Browser language detection #8751
-      var lang = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
 #else
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
@@ -33,7 +37,11 @@ var WasiLibrary = {
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
-        env[x] = ENV[x];
+        // x is a key in ENV; if ENV[x] is undefined, that means it was
+        // explicitly set to be so. We allow user code to do that to
+        // force variables with default values to remain unset.
+        if (ENV[x] === undefined) delete env[x];
+        else env[x] = ENV[x];
       }
       var strings = [];
       for (var x in env) {
@@ -45,6 +53,7 @@ var WasiLibrary = {
   },
 
   environ_sizes_get__deps: ['$getEnvStrings'],
+  environ_sizes_get__nothrow: true,
   environ_sizes_get__sig: 'iii',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = getEnvStrings();
@@ -62,6 +71,7 @@ var WasiLibrary = {
     , '$writeAsciiToMemory'
 #endif
   ],
+  environ_get__nothrow: true,
   environ_get__sig: 'iii',
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
@@ -74,37 +84,45 @@ var WasiLibrary = {
     return 0;
   },
 
+  // In normal (non-standalone) mode arguments are passed direclty
+  // to main, and the `mainArgs` global does not exist.
+#if STANDALONE_WASM
+  args_sizes_get__nothrow: true,
   args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
+    {{{ from64(['pargc', 'pargv_buf_size']) }}};
 #if MAIN_READS_PARAMS
-    {{{ makeSetValue('pargc', 0, 'mainArgs.length', 'i32') }}};
+    {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
     mainArgs.forEach(function(arg) {
       bufSize += arg.length + 1;
     });
-    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', 'i32') }}};
+    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
-    {{{ makeSetValue('pargc', 0, '0', 'i32') }}};
+    {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
 #endif
     return 0;
   },
 
+  args_get__nothrow: true,
   args_get__sig: 'iii',
 #if MINIMAL_RUNTIME && MAIN_READS_PARAMS
   args_get__deps: ['$writeAsciiToMemory'],
 #endif
   args_get: function(argv, argv_buf) {
+    {{{ from64(['argv', 'argv_buf']) }}};
 #if MAIN_READS_PARAMS
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
       var ptr = argv_buf + bufSize;
-      {{{ makeSetValue('argv', 'i * 4', 'ptr', 'i32') }}};
+      {{{ makeSetValue('argv', `i*${Runtime.POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       writeAsciiToMemory(arg, ptr);
       bufSize += arg.length + 1;
     });
 #endif
     return 0;
   },
+#endif
 
   $checkWasiClock: function(clock_id) {
     return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||
@@ -117,8 +135,9 @@ var WasiLibrary = {
   // but the wasm file can't be legalized in standalone mode, which is where
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
+  clock_time_get__nothrow: true,
   clock_time_get__sig: 'iiiii',
-  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
+  clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
     {{{ receiveI64ParamAsI32s('precision') }}}
     if (!checkWasiClock(clk_id)) {
@@ -128,7 +147,7 @@ var WasiLibrary = {
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
-    } else if (_emscripten_get_now_is_monotonic) {
+    } else if (nowIsMonotonic) {
       now = _emscripten_get_now();
     } else {
       return {{{ cDefine('ENOSYS') }}};
@@ -140,8 +159,9 @@ var WasiLibrary = {
     return 0;
   },
 
+  clock_res_get__nothrow: true,
   clock_res_get__sig: 'iii',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefine('EINVAL') }}};
@@ -150,7 +170,7 @@ var WasiLibrary = {
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (_emscripten_get_now_is_monotonic) {
+    } else if (nowIsMonotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       return {{{ cDefine('ENOSYS') }}};
@@ -163,18 +183,21 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-    if (typeof _fflush !== 'undefined') _fflush(0);
+#if hasExportedFunction('___stdio_exit')
+    ___stdio_exit();
+#endif
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1
-  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
+  fd_write__postset: function() {
+    addAtExit('flush_NO_FILESYSTEM()');
+  },
 #endif
   fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
+    {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doWritev(stream, iov, iovcnt);
@@ -182,15 +205,16 @@ var WasiLibrary = {
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+      iov += {{{ C_STRUCTS.iovec.__size__ }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
   },
 
@@ -201,7 +225,7 @@ var WasiLibrary = {
     assert(!offset_high, 'offsets over 2^32 not yet supported');
 #endif
     var num = SYSCALLS.doWritev(stream, iov, iovcnt, offset_low);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 
@@ -230,7 +254,7 @@ var WasiLibrary = {
   fd_read: function(fd, iov, iovcnt, pnum) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 
@@ -241,7 +265,7 @@ var WasiLibrary = {
 #endif
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = SYSCALLS.doReadv(stream, iov, iovcnt, offset_low);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 

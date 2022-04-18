@@ -13,11 +13,11 @@
 
 #include <emscripten.h>
 
+#include "report_result.h"
+
 int main(int argc, char *argv[])
 {
     SDL_Window *window;
-    SDL_Surface *surface;
-    SDL_Cursor *cursor;
 
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -49,7 +49,6 @@ int main(int argc, char *argv[])
 
     SDL_DestroyWindow(window);
     SDL_Quit();
-    REPORT_RESULT(1);
 
     return 0;
 }

@@ -15,7 +15,7 @@ var Module = {{{ EXPORT_NAME }}};
 #if MODULARIZE && EXPORT_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise(function(resolve, reject) {
+Module['ready'] = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
@@ -25,23 +25,29 @@ Module['ready'] = new Promise(function(resolve, reject) {
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process === 'object';
+var ENVIRONMENT_IS_NODE = typeof process == 'object';
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
-var ENVIRONMENT_IS_SHELL = typeof read === 'function';
+var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 #endif
 
-#if ASSERTIONS
+#if ASSERTIONS || USE_PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
-#else
-#if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
+#elif ENVIRONMENT && !ENVIRONMENT.includes(',')
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
-#else
+#elif ENVIRONMENT_MAY_BE_SHELL && ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL;
+#elif ENVIRONMENT_MAY_BE_SHELL
+var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_SHELL;
+#else
+var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
-#endif
+#endif // ASSERTIONS || USE_PTHREADS
+
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -57,7 +63,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM == 2
-  if (typeof WebAssembly !== 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS
@@ -73,7 +79,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM == 2
-  if (typeof WebAssembly !== 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
   else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS
@@ -108,20 +114,19 @@ function ready() {
 #if MODULARIZE && EXPORT_READY_PROMISE
   readyPromiseResolve(Module);
 #endif // MODULARIZE
-#if INVOKE_RUN && hasExportedFunction('_main')
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-    run();
-#if USE_PTHREADS
-  }
-#endif
-#else
-#if ASSERTIONS
+#if INVOKE_RUN && HAS_MAIN
+  {{{ runOnMainThread("run();") }}}
+#elif ASSERTIONS
   console.log('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
 #endif
-#endif
 }
+
+#if POLYFILL
+// See https://caniuse.com/mdn-javascript_builtins_object_assign
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#include "polyfill/objassign.js"
+#endif
+#endif
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -133,20 +138,19 @@ function ready() {
 #if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'function';
-
-#if MODULARIZE
-if (ENVIRONMENT_IS_WORKER) {
-  var buffer = {{{EXPORT_NAME}}}.buffer;
-}
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
+#else
+var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'function';
 #endif
 
-var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
+var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS
 
 {{BODY}}

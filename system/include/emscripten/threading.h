@@ -9,7 +9,10 @@
 
 #include <inttypes.h>
 #include <pthread.h>
-#include <emscripten/html5.h>
+#include <stdarg.h>
+
+#include <emscripten/html5.h>  // for EMSCRIPTEN_RESULT
+#include <emscripten/atomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,86 +34,6 @@ int emscripten_num_logical_cores(void);
 // 'emscripten_num_logical_cores()' to query the number of cores in the system.
 void emscripten_force_num_logical_cores(int cores);
 
-// Atomically stores the given value to the memory location, and returns the
-// value that was there prior to the store.
-uint8_t emscripten_atomic_exchange_u8(void/*uint8_t*/ *addr, uint8_t newVal);
-uint16_t emscripten_atomic_exchange_u16(void/*uint16_t*/ *addr, uint16_t newVal);
-uint32_t emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal);
-uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In asm.js/asm2wasm this is emulated with locks, very slow!
-
-// CAS returns the *old* value that was in the memory location before the
-// operation took place.
-// That is, if the return value when calling this function equals to 'oldVal',
-// then the operation succeeded, otherwise it was ignored.
-uint8_t emscripten_atomic_cas_u8(void/*uint8_t*/ *addr, uint8_t oldVal, uint8_t newVal);
-uint16_t emscripten_atomic_cas_u16(void/*uint16_t*/ *addr, uint16_t oldVal, uint16_t newVal);
-uint32_t emscripten_atomic_cas_u32(void/*uint32_t*/ *addr, uint32_t oldVal, uint32_t newVal);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_cas_u64(void/*uint64_t*/ *addr, uint64_t oldVal, uint64_t newVal);
-
-uint8_t emscripten_atomic_load_u8(const void/*uint8_t*/ *addr);
-uint16_t emscripten_atomic_load_u16(const void/*uint16_t*/ *addr);
-uint32_t emscripten_atomic_load_u32(const void/*uint32_t*/ *addr);
-float emscripten_atomic_load_f32(const void/*float*/ *addr);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_load_u64(const void/*uint64_t*/ *addr);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-double emscripten_atomic_load_f64(const void/*double*/ *addr);
-
-// Returns the value that was stored (i.e. 'val')
-uint8_t emscripten_atomic_store_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_store_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_store_u32(void/*uint32_t*/ *addr, uint32_t val);
-float emscripten_atomic_store_f32(void/*float*/ *addr, float val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_store_u64(void/*uint64_t*/ *addr, uint64_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-double emscripten_atomic_store_f64(void/*double*/ *addr, double val);
-
-void emscripten_atomic_fence(void);
-
-// Each of the functions below (add, sub, and, or, xor) return the value that
-// was in the memory location before the operation occurred.
-uint8_t emscripten_atomic_add_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_add_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_add_u32(void/*uint32_t*/ *addr, uint32_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_add_u64(void/*uint64_t*/ *addr, uint64_t val);
-
-uint8_t emscripten_atomic_sub_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_sub_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_sub_u32(void/*uint32_t*/ *addr, uint32_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_sub_u64(void/*uint64_t*/ *addr, uint64_t val);
-
-uint8_t emscripten_atomic_and_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_and_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_and_u32(void/*uint32_t*/ *addr, uint32_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_and_u64(void/*uint64_t*/ *addr, uint64_t val);
-
-uint8_t emscripten_atomic_or_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_or_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_or_u32(void/*uint32_t*/ *addr, uint32_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_or_u64(void/*uint64_t*/ *addr, uint64_t val);
-
-uint8_t emscripten_atomic_xor_u8(void/*uint8_t*/ *addr, uint8_t val);
-uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
-uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
-// In Wasm, this is a native instruction. In asm.js this is emulated with locks,
-// very slow!
-uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val);
-
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified.
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
@@ -119,40 +42,11 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double 
 // INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
-typedef union em_variant_val
-{
-  int i;
-  int64_t i64;
-  float f;
-  double d;
-  void *vp;
-  char *cp;
-} em_variant_val;
-
-// Proxied C/C++ functions support at most this many arguments. Dispatch is
-// static/strongly typed by signature.
-#define EM_QUEUED_CALL_MAX_ARGS 11
 // Proxied JS function can support a few more arguments than proxied C/C++
 // functions, because the dispatch is variadic and signature independent.
 #define EM_QUEUED_JS_CALL_MAX_ARGS 20
-typedef struct em_queued_call
-{
-  int functionEnum;
-  void *functionPtr;
-  int operationDone;
-  em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
-  em_variant_val returnValue;
 
-  // An optional pointer to a secondary data block that should be free()d when
-  // this queued call is freed.
-  void *satelliteData;
-
-  // If true, the caller has "detached" itself from this call object and the
-  // Emscripten main runtime thread should free up this em_queued_call object
-  // after it has been executed. If false, the caller is in control of the
-  // memory.
-  int calleeDelete;
-} em_queued_call;
+typedef struct em_queued_call em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_0(int function);
@@ -160,39 +54,6 @@ void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
 void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
 void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
-
-typedef void (*em_func_v)(void);
-typedef void (*em_func_vi)(int);
-typedef void (*em_func_vf)(float);
-typedef void (*em_func_vii)(int, int);
-typedef void (*em_func_vif)(int, float);
-typedef void (*em_func_vff)(float, float);
-typedef void (*em_func_viii)(int, int, int);
-typedef void (*em_func_viif)(int, int, float);
-typedef void (*em_func_viff)(int, float, float);
-typedef void (*em_func_vfff)(float, float, float);
-typedef void (*em_func_viiii)(int, int, int, int);
-typedef void (*em_func_viifi)(int, int, float, int);
-typedef void (*em_func_vifff)(int, float, float, float);
-typedef void (*em_func_vffff)(float, float, float, float);
-typedef void (*em_func_viiiii)(int, int, int, int, int);
-typedef void (*em_func_viffff)(int, float, float, float, float);
-typedef void (*em_func_viiiiii)(int, int, int, int, int, int);
-typedef void (*em_func_viiiiiii)(int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiii)(int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiii)(int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiii)(int, int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int, int, int);
-typedef int (*em_func_i)(void);
-typedef int (*em_func_ii)(int);
-typedef int (*em_func_iii)(int, int);
-typedef int (*em_func_iiii)(int, int, int);
-typedef int (*em_func_iiiii)(int, int, int, int);
-typedef int (*em_func_iiiiii)(int, int, int, int, int);
-typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
 // Encode function signatures into a single uint32_t integer.
 // N.B. This encoding scheme is internal to the implementation, and can change
@@ -286,10 +147,8 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_SPECIAL_INTERNAL (1 << 24)
 #define EM_PROXIED_FUNC_SPECIAL(x) (EM_FUNC_SIG_SPECIAL_INTERNAL | ((x) << 20))
 
-#define EM_PROXIED_PTHREAD_CREATE (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIIII)
-#define EM_PROXIED_CREATE_CONTEXT (EM_PROXIED_FUNC_SPECIAL(2) | EM_FUNC_SIG_III)
-#define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(3) | EM_FUNC_SIG_IIII)
-#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(4) | EM_FUNC_SIG_D)
+#define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIII)
+#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_D)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed,
@@ -298,7 +157,7 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 // pthread), the function
 // will be proxied to be called by the main thread.
 //  - Calling emscripten_sync_* functions requires that the application was
-//    compiled with pthreads support enabled (-s USE_PTHREADS=1/2) and that the
+//    compiled with pthreads support enabled (-sUSE_PTHREADS=1/2) and that the
 //    browser supports SharedArrayBuffer specification.
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
 
@@ -332,19 +191,43 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeou
 
 void emscripten_async_waitable_close(em_queued_call *call);
 
-int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC_SIGNATURE sig, void *func_ptr, void *satellite, ...); // internal
-
 // Runs the given function on the specified thread. If we are currently on
 // that target thread then we just execute the call synchronously; otherwise it
 // is queued on that thread to execute asynchronously.
 // Returns 1 if it executed the code (i.e., it was on the target thread), and 0
 // otherwise.
-#define emscripten_dispatch_to_thread(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_args(pthread_t target_thread,
+                                       EM_FUNC_SIGNATURE sig,
+                                       void* func_ptr,
+                                       void* satellite,
+                                       va_list args);
+int emscripten_dispatch_to_thread_(pthread_t target_thread,
+                                   EM_FUNC_SIGNATURE sig,
+                                   void* func_ptr,
+                                   void* satellite,
+                                   ...);
+#define emscripten_dispatch_to_thread(                                         \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_(                                              \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Similar to emscripten_dispatch_to_thread, but always runs the
 // function asynchronously, even if on the same thread. This is less efficient
 // but may be simpler to reason about in some cases.
-#define emscripten_dispatch_to_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
+                                             EM_FUNC_SIGNATURE sig,
+                                             void* func_ptr,
+                                             void* satellite,
+                                             va_list args);
+int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func_ptr,
+                                         void* satellite,
+                                         ...);
+#define emscripten_dispatch_to_thread_async(                                   \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_async_(                                        \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
@@ -380,34 +263,10 @@ pthread_t emscripten_main_browser_thread_id(void);
 //         Asyncify builds.
 void emscripten_thread_sleep(double msecs);
 
-#define EM_THREAD_STATUS int
-#define EM_THREAD_STATUS_NOTSTARTED 0
-#define EM_THREAD_STATUS_RUNNING    1
-#define EM_THREAD_STATUS_SLEEPING   2 // Performing an unconditional sleep (usleep, etc.)
-#define EM_THREAD_STATUS_WAITFUTEX  3 // Waiting for an explicit low-level futex (emscripten_futex_wait)
-#define EM_THREAD_STATUS_WAITMUTEX  4 // Waiting for a pthread_mutex_t
-#define EM_THREAD_STATUS_WAITPROXY  5 // Waiting for a proxied operation to finish.
-#define EM_THREAD_STATUS_FINISHED   6
-#define EM_THREAD_STATUS_NUMFIELDS  7
-
-// Sets the profiler status of the calling thread. This is a no-op if thread
-// profiling is not active.
-// This is an internal function and generally not intended for user code.
-// When thread profiler is not enabled (not building with --threadprofiling),
-// this is a no-op.
-void emscripten_set_current_thread_status(EM_THREAD_STATUS newStatus);
-
-// Sets the profiler status of the calling thread, but only if it was in the
-// expected status beforehand.
-// This is an internal function and generally not intended for user code.
-// When thread profiler is not enabled (not building with --threadprofiling),
-// this is a no-op.
-void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedStatus, EM_THREAD_STATUS newStatus);
-
 // Sets the name of the given thread. Pass pthread_self() as the thread ID to
 // set the name of the calling thread.
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
-// When thread profiler is not enabled (not building with --threadprofiling),
+// When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
 
@@ -423,22 +282,14 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, cons
 // The special value "#canvas" denotes the element stored in Module.canvas.
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str);
 
-struct thread_profiler_block
-{
-  // One of THREAD_STATUS_*
-  int threadStatus;
-  // Wallclock time denoting when the current thread state was entered in.
-  double currentStatusStartTime;
-  // Accumulated duration times denoting how much time has been spent in each
-  // state, in msecs.
-  double timeSpentInStatus[EM_THREAD_STATUS_NUMFIELDS];
-  // A human-readable name for this thread.
-  char name[32];
-};
-
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
 void emscripten_check_blocking_allowed(void);
+
+// Experimental API for syncing loaded code between pthreads.
+void _emscripten_thread_sync_code();
+
+void _emscripten_yield();
 
 #ifdef __cplusplus
 }

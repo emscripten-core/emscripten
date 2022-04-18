@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-// Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
-// memory is created in the wasm, not in JS.)
+// Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
+#if !IMPORTED_MEMORY
+{{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
+#endif
+
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
@@ -20,22 +23,23 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   {
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
+      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY != -1
-      ,
+      // In theory we should not need to emit the maximum if we want "unlimited"
+      // or 4GB of memory, but VMs error on that atm, see
+      // https://github.com/emscripten-core/emscripten/issues/14130
+      // And in the pthreads case we definitely need to emit a maximum. So
+      // always emit one.
       'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
-#endif
 #else
-      ,
       'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
 #endif // ALLOW_MEMORY_GROWTH
-#if USE_PTHREADS
+#if SHARED_MEMORY
       ,
       'shared': true
 #endif
     });
-#if USE_PTHREADS
+#if SHARED_MEMORY
     if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
       err('requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
       if (ENVIRONMENT_IS_NODE) {

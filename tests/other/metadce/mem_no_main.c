@@ -5,5 +5,5 @@ int some_arg;
 
 EMSCRIPTEN_KEEPALIVE
 int foo() {
-  return (int)malloc(some_arg);
+  return (int)(long)malloc(some_arg);
 }

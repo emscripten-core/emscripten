@@ -7,31 +7,31 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-var nodeFS = require('fs');
-var nodePath = require('path');
+const fs = require('fs');
+global.nodePath = require('path');
 
-print = function(x) {
+global.print = (x) => {
   process['stdout'].write(x + '\n');
 };
 
-printErr = function(x) {
+global.printErr = (x) => {
   process['stderr'].write(x + '\n');
 };
 
 function find(filename) {
-  var prefixes = [__dirname, process.cwd()];
-  for (var i = 0; i < prefixes.length; ++i) {
-    var combined = nodePath.join(prefixes[i], filename);
-    if (nodeFS.existsSync(combined)) {
+  const prefixes = [__dirname, process.cwd()];
+  for (let i = 0; i < prefixes.length; ++i) {
+    const combined = nodePath.join(prefixes[i], filename);
+    if (fs.existsSync(combined)) {
       return combined;
     }
   }
   return filename;
 }
 
-read = function(filename) {
-  var absolute = find(filename);
-  return nodeFS.readFileSync(absolute).toString();
+global.read = (filename) => {
+  const absolute = find(filename);
+  return fs.readFileSync(absolute).toString();
 };
 
 function load(f) {
@@ -41,38 +41,22 @@ function load(f) {
 // Basic utilities
 load('utility.js');
 
-// Load settings, can be overridden by commandline
-load('./settings.js');
-load('./settings_internal.js');
+// Load settings from JSON passed on the command line
+const settingsFile = process['argv'][2];
+assert(settingsFile);
 
-var arguments_ = process['argv'].slice(2);
-var settingsFile = arguments_[0];
+const settings = JSON.parse(read(settingsFile));
+Object.assign(global, settings);
 
-if (settingsFile) {
-  var settings = JSON.parse(read(settingsFile));
-  for (var key in settings) {
-    var value = settings[key];
-    if (value[0] == '@') {
-      // response file type thing, workaround for large inputs: value is @path-to-file
-      try {
-        value = JSON.parse(read(value.substr(1)));
-      } catch(e) {
-        // continue normally; assume it is not a response file
-      }
-    }
-    global[key] = eval(JSON.stringify(value));
-  }
-}
+EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
+WASM_EXPORTS = new Set(WASM_EXPORTS);
+SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
+INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 
-EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
-EXCEPTION_CATCHING_ALLOWED = set(EXCEPTION_CATCHING_ALLOWED);
-IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
-INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
-
-RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
+RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG || DYLINK_DEBUG || PTHREADS_DEBUG;
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE, "JS compiler should not run on side modules");
+assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
 
 // Output some info and warnings based on settings
 
@@ -87,19 +71,18 @@ load('parseTools.js');
 load('jsifier.js');
 load('runtime.js');
 
-//===============================
+// ===============================
 // Main
-//===============================
+// ===============================
 
 B = new Benchmarker();
-var dummyData = {functionStubs: []}
 
 try {
-  JSify(dummyData);
+  runJSify();
 
   B.print('glue');
-} catch(err) {
-  if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
+} catch (err) {
+  if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);
   } else {
@@ -113,16 +96,12 @@ try {
   // Instead of process.exit() directly, wait for stdout flush event.
   // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
   // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-  process['stdout']['once']('drain', function () {
-    process['exit'](1);
-  });
+  process['stdout']['once']('drain', () => process['exit'](1));
   // Make sure to print something to force the drain event to occur, in case the
   // stdout buffer was empty.
   console.log(' ');
   // Work around another node bug where sometimes 'drain' is never fired - make
   // another effort to emit the exit status, after a significant delay (if node
   // hasn't fired drain by then, give up)
-  setTimeout(function() {
-    process['exit'](1);
-  }, 500);
+  setTimeout(() => process['exit'](1), 500);
 }

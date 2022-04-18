@@ -3,8 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import contextlib
 import os
 import sys
+from pathlib import Path
 
 from . import diagnostics
 
@@ -19,17 +21,22 @@ def exit_with_error(msg, *args):
 
 
 def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
+  return str(Path(__rootpath__, *pathelems))
 
 
 def safe_ensure_dirs(dirname):
+  os.makedirs(dirname, exist_ok=True)
+
+
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
   try:
-    os.makedirs(dirname)
-  except OSError:
-    # Python 2 compatibility: makedirs does not support exist_ok parameter
-    # Ignore error for already existing dirname as exist_ok does
-    if not os.path.isdir(dirname):
-      raise
+    yield
+  finally:
+    os.chdir(orig_cwd)
 
 
 # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
@@ -62,3 +69,27 @@ def which(program):
             return exe_file + suffix
 
   return None
+
+
+def read_file(file_path):
+  """Read from a file opened in text mode"""
+  with open(file_path) as fh:
+    return fh.read()
+
+
+def read_binary(file_path):
+  """Read from a file opened in binary mode"""
+  with open(file_path, 'rb') as fh:
+    return fh.read()
+
+
+def write_file(file_path, text):
+  """Write to a file opened in text mode"""
+  with open(file_path, 'w') as fh:
+    fh.write(text)
+
+
+def write_binary(file_path, contents):
+  """Write to a file opened in binary mode"""
+  with open(file_path, 'wb') as fh:
+    fh.write(contents)

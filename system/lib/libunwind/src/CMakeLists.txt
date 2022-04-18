@@ -3,23 +3,36 @@
 set(LIBUNWIND_CXX_SOURCES
     libunwind.cpp
     Unwind-EHABI.cpp
-    Unwind-seh.cpp)
-unwind_append_if(LIBUNWIND_CXX_SOURCES APPLE Unwind_AppleExtras.cpp)
+    Unwind-seh.cpp
+    )
+if(APPLE)
+  list(APPEND LIBUNWIND_CXX_SOURCES
+    Unwind_AppleExtras.cpp
+    )
+endif()
 
 set(LIBUNWIND_C_SOURCES
     UnwindLevel1.c
     UnwindLevel1-gcc-ext.c
-    Unwind-sjlj.c)
+    Unwind-sjlj.c
+    )
 set_source_files_properties(${LIBUNWIND_C_SOURCES}
                             PROPERTIES
                               COMPILE_FLAGS "-std=c99")
 
 set(LIBUNWIND_ASM_SOURCES
     UnwindRegistersRestore.S
-    UnwindRegistersSave.S)
-set_source_files_properties(${LIBUNWIND_ASM_SOURCES}
-                            PROPERTIES
-                              LANGUAGE C)
+    UnwindRegistersSave.S
+    )
+if (MINGW OR APPLE)
+  # CMake doesn't build assembly sources for windows/gnu targets properly
+  # (up to current CMake, 3.16), so treat them as C files.
+  # Additionally, CMake ignores OSX_ARCHITECTURE for ASM files when targeting
+  # Apple platforms.
+  set_source_files_properties(${LIBUNWIND_ASM_SOURCES}
+                              PROPERTIES
+                                LANGUAGE C)
+endif()
 
 set(LIBUNWIND_HEADERS
     AddressSpace.hpp
@@ -33,11 +46,14 @@ set(LIBUNWIND_HEADERS
     Registers.hpp
     RWMutex.hpp
     UnwindCursor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/libunwind.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/unwind.h)
-
-unwind_append_if(LIBUNWIND_HEADERS APPLE
-          "${CMAKE_CURRENT_SOURCE_DIR}/../include/mach-o/compact_unwind_encoding.h")
+    ../include/libunwind.h
+    ../include/unwind.h
+    )
+if(APPLE)
+  list(APPEND LIBUNWIND_HEADERS
+    ../include/mach-o/compact_unwind_encoding.h
+    )
+endif()
 
 if (MSVC_IDE)
   # Force them all into the headers dir on MSVC, otherwise they end up at
@@ -51,31 +67,28 @@ set(LIBUNWIND_SOURCES
     ${LIBUNWIND_ASM_SOURCES})
 
 # Generate library list.
-set(libraries)
-unwind_append_if(libraries LIBUNWIND_HAS_C_LIB c)
+add_library_flags_if(LIBUNWIND_HAS_C_LIB c)
 if (LIBUNWIND_USE_COMPILER_RT)
-  list(APPEND libraries "${LIBUNWIND_BUILTINS_LIBRARY}")
+  add_library_flags("${LIBUNWIND_BUILTINS_LIBRARY}")
 else()
-  unwind_append_if(libraries LIBUNWIND_HAS_GCC_S_LIB gcc_s)
-  unwind_append_if(libraries LIBUNWIND_HAS_GCC_LIB gcc)
+  add_library_flags_if(LIBUNWIND_HAS_GCC_S_LIB gcc_s)
+  add_library_flags_if(LIBUNWIND_HAS_GCC_LIB gcc)
 endif()
-unwind_append_if(libraries LIBUNWIND_HAS_DL_LIB dl)
+add_library_flags_if(LIBUNWIND_HAS_DL_LIB dl)
 if (LIBUNWIND_ENABLE_THREADS)
-  unwind_append_if(libraries LIBUNWIND_HAS_PTHREAD_LIB pthread)
+  add_library_flags_if(LIBUNWIND_HAS_PTHREAD_LIB pthread)
+  add_compile_flags_if(LIBUNWIND_WEAK_PTHREAD_LIB -DLIBUNWIND_USE_WEAK_PTHREAD=1)
 endif()
 
 # Setup flags.
-unwind_append_if(LIBUNWIND_CXX_FLAGS LIBUNWIND_HAS_NO_RTTI_FLAG -fno-rtti)
-
-unwind_append_if(LIBUNWIND_LINK_FLAGS LIBUNWIND_HAS_NODEFAULTLIBS_FLAG -nodefaultlibs)
+add_link_flags_if_supported(-nodefaultlibs)
 
 # MINGW_LIBRARIES is defined in config-ix.cmake
-unwind_append_if(libraries MINGW "${MINGW_LIBRARIES}")
+add_library_flags_if(MINGW "${MINGW_LIBRARIES}")
 
-if (LIBUNWIND_HAS_NO_EXCEPTIONS_FLAG AND LIBUNWIND_HAS_FUNWIND_TABLES)
-  list(APPEND LIBUNWIND_COMPILE_FLAGS -fno-exceptions)
-  list(APPEND LIBUNWIND_COMPILE_FLAGS -funwind-tables)
-elseif (LIBUNWIND_ENABLE_SHARED)
+if (LIBUNWIND_ENABLE_SHARED AND
+    NOT (LIBUNWIND_SUPPORTS_FNO_EXCEPTIONS_FLAG AND
+         LIBUNWIND_SUPPORTS_FUNWIND_TABLES_FLAG))
   message(FATAL_ERROR
           "Compiler doesn't support generation of unwind tables if exception "
           "support is disabled.  Building libunwind DSO with runtime dependency "
@@ -83,15 +96,11 @@ elseif (LIBUNWIND_ENABLE_SHARED)
 endif()
 
 if (APPLE)
-  list(APPEND LIBUNWIND_COMPILE_FLAGS "-U__STRICT_ANSI__")
-  list(APPEND LIBUNWIND_LINK_FLAGS
-       "-compatibility_version 1"
-       "-install_name /usr/lib/libunwind.1.dylib")
+  add_compile_flags("-U__STRICT_ANSI__")
+  add_link_flags("-compatibility_version 1" "-install_name /usr/lib/libunwind.1.dylib")
 
   if (CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.6")
-    list(APPEND LIBUNWIND_LINK_FLAGS
-         "-current_version ${LIBUNWIND_VERSION}"
-         "/usr/lib/libSystem.B.dylib")
+    add_link_flags("-current_version ${LIBUNWIND_VERSION}" "/usr/lib/libSystem.B.dylib")
   endif ()
 endif ()
 
@@ -105,27 +114,32 @@ set_property(SOURCE ${LIBUNWIND_CXX_SOURCES}
 set_property(SOURCE ${LIBUNWIND_C_SOURCES}
              APPEND_STRING PROPERTY COMPILE_FLAGS " ${LIBUNWIND_C_FLAGS}")
 
-# Add a object library that contains the compiled source files.
-add_library(unwind_objects OBJECT ${LIBUNWIND_SOURCES} ${LIBUNWIND_HEADERS})
-
-set_target_properties(unwind_objects
-                      PROPERTIES
-                        COMPILE_FLAGS "${LIBUNWIND_COMPILE_FLAGS}"
-                        POSITION_INDEPENDENT_CODE ON)
+# NOTE: avoid implicit dependencies on C++ runtimes.  libunwind uses C++ for
+# ease, but does not rely on C++ at runtime.
+set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 
 # Build the shared library.
 if (LIBUNWIND_ENABLE_SHARED)
-  add_library(unwind_shared SHARED $<TARGET_OBJECTS:unwind_objects>)
+  add_library(unwind_shared SHARED ${LIBUNWIND_SOURCES} ${LIBUNWIND_HEADERS})
+  if(CMAKE_C_COMPILER_ID STREQUAL MSVC)
+    target_compile_options(unwind_shared PRIVATE /GR-)
+  else()
+    target_compile_options(unwind_shared PRIVATE -fno-rtti)
+  endif()
   if(COMMAND llvm_setup_rpath)
     llvm_setup_rpath(unwind_shared)
   endif()
-  target_link_libraries(unwind_shared ${libraries})
-  set_target_properties(unwind_shared
-                        PROPERTIES
-                          LINK_FLAGS    "${LIBUNWIND_LINK_FLAGS}"
-                          OUTPUT_NAME   "unwind"
-                          VERSION       "1.0"
-                          SOVERSION     "1")
+  target_link_libraries(unwind_shared PRIVATE ${LIBUNWIND_LIBRARIES})
+  set_target_properties(unwind_shared PROPERTIES
+    CXX_EXTENSIONS OFF
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED ON
+    COMPILE_FLAGS "${LIBUNWIND_COMPILE_FLAGS}"
+    LINK_FLAGS "${LIBUNWIND_LINK_FLAGS}"
+    LINKER_LANGUAGE C
+    OUTPUT_NAME "unwind"
+    VERSION "1.0"
+    SOVERSION "1")
   list(APPEND LIBUNWIND_BUILD_TARGETS "unwind_shared")
   if (LIBUNWIND_INSTALL_SHARED_LIBRARY)
     list(APPEND LIBUNWIND_INSTALL_TARGETS "unwind_shared")
@@ -134,12 +148,29 @@ endif()
 
 # Build the static library.
 if (LIBUNWIND_ENABLE_STATIC)
-  add_library(unwind_static STATIC $<TARGET_OBJECTS:unwind_objects>)
-  target_link_libraries(unwind_static ${libraries})
-  set_target_properties(unwind_static
-                        PROPERTIES
-                          LINK_FLAGS    "${LIBUNWIND_LINK_FLAGS}"
-                          OUTPUT_NAME   "unwind")
+  add_library(unwind_static STATIC ${LIBUNWIND_SOURCES} ${LIBUNWIND_HEADERS})
+  if(CMAKE_C_COMPILER_ID STREQUAL MSVC)
+    target_compile_options(unwind_static PRIVATE /GR-)
+  else()
+    target_compile_options(unwind_static PRIVATE -fno-rtti)
+  endif()
+  target_link_libraries(unwind_static PRIVATE ${LIBUNWIND_LIBRARIES})
+  set_target_properties(unwind_static PROPERTIES
+    CXX_EXTENSIONS OFF
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED ON
+    COMPILE_FLAGS "${LIBUNWIND_COMPILE_FLAGS}"
+    LINK_FLAGS "${LIBUNWIND_LINK_FLAGS}"
+    LINKER_LANGUAGE C
+    OUTPUT_NAME "unwind")
+
+  if(LIBUNWIND_HERMETIC_STATIC_LIBRARY)
+    append_flags_if_supported(UNWIND_STATIC_LIBRARY_FLAGS -fvisibility=hidden)
+    append_flags_if_supported(UNWIND_STATIC_LIBRARY_FLAGS -fvisibility-global-new-delete-hidden)
+    target_compile_options(unwind_static PRIVATE ${UNWIND_STATIC_LIBRARY_FLAGS})
+    target_compile_definitions(unwind_static PRIVATE _LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS)
+  endif()
+
   list(APPEND LIBUNWIND_BUILD_TARGETS "unwind_static")
   if (LIBUNWIND_INSTALL_STATIC_LIBRARY)
     list(APPEND LIBUNWIND_INSTALL_TARGETS "unwind_static")
@@ -151,8 +182,8 @@ add_custom_target(unwind DEPENDS ${LIBUNWIND_BUILD_TARGETS})
 
 if (LIBUNWIND_INSTALL_LIBRARY)
   install(TARGETS ${LIBUNWIND_INSTALL_TARGETS}
-    LIBRARY DESTINATION ${LIBUNWIND_INSTALL_PREFIX}lib${LIBUNWIND_LIBDIR_SUFFIX} COMPONENT unwind
-    ARCHIVE DESTINATION ${LIBUNWIND_INSTALL_PREFIX}lib${LIBUNWIND_LIBDIR_SUFFIX} COMPONENT unwind)
+    LIBRARY DESTINATION ${LIBUNWIND_INSTALL_PREFIX}${LIBUNWIND_INSTALL_LIBRARY_DIR} COMPONENT unwind
+    ARCHIVE DESTINATION ${LIBUNWIND_INSTALL_PREFIX}${LIBUNWIND_INSTALL_LIBRARY_DIR} COMPONENT unwind)
 endif()
 
 if (NOT CMAKE_CONFIGURATION_TYPES AND LIBUNWIND_INSTALL_LIBRARY)

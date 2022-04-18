@@ -5,8 +5,7 @@
  */
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
-
-{{{ alignMemory }}}
+var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
 
 {{{ getNativeTypeSize }}}
 
@@ -22,19 +21,9 @@ function warnOnce(text) {
 
 #include "runtime_debug.js"
 
-function makeBigInt(low, high, unsigned) {
-  return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
-}
-
 var tempRet0 = 0;
-
-var setTempRet0 = function(value) {
-  tempRet0 = value;
-};
-
-var getTempRet0 = function() {
-  return tempRet0;
-};
+var setTempRet0 = (value) => { tempRet0 = value; };
+var getTempRet0 = () => tempRet0;
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
@@ -43,12 +32,6 @@ function getCompilerSetting(name) {
   if (!(name in compilerSettings)) return 'invalid compiler setting: ' + name;
   return compilerSettings[name];
 }
-#else // RETAIN_COMPILER_SETTINGS
-#if ASSERTIONS
-function getCompilerSetting(name) {
-  throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
-}
-#endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
 #if USE_PTHREADS

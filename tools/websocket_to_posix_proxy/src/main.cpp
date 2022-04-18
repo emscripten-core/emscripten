@@ -1,12 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <memory.h>
+#include <vector>
 #include <sys/types.h>
+
 #include "posix_sockets.h"
 #include "threads.h"
-#include <assert.h>
-#include <vector>
-
 #include "sha1.h"
 #include "websocket_to_posix_proxy.h"
 #include "socket_registry.h"
@@ -34,26 +35,28 @@ static void base64_encode(void *dst, const void *src, size_t len) // thread-safe
 
 #define BUFFER_SIZE 1024
 #define on_error(...) { fprintf(stderr, __VA_ARGS__); fflush(stderr); exit(1); }
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
 // Given a multiline string of HTTP headers, returns a pointer to the beginning of the value of given header inside the string that was passed in.
-static int GetHttpHeader(const char *headers, const char *header, char *out) // thread-safe, re-entrant
+static int GetHttpHeader(const char *headers, const char *header, char *out, int maxBytesOut) // thread-safe, re-entrant
 {
   const char *pos = strstr(headers, header);
   if (!pos) return 0;
   pos += strlen(header);
   const char *end = pos;
-  while(*end != '\r') ++end;
-  memcpy(out, pos, end-pos);
-  out[end-pos] = '\0';
+  while(*end != '\r' && *end != '\n' && *end != '\0') ++end;
+  int numBytesToWrite = MIN((int)(end-pos), maxBytesOut-1);
+  memcpy(out, pos, numBytesToWrite);
+  out[numBytesToWrite] = '\0';
   return (int)(end-pos);
 }
 
 // Sends WebSocket handshake back to the given WebSocket connection.
 void SendHandshake(int fd, const char *request)
 {
-  char key[128];
-  GetHttpHeader(request, "Sec-WebSocket-Key: ", key);
-  const char webSocketGlobalGuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  const char webSocketGlobalGuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // 36 characters long
+  char key[128+sizeof(webSocketGlobalGuid)];
+  GetHttpHeader(request, "Sec-WebSocket-Key: ", key, sizeof(key)/2);
   strcat(key, webSocketGlobalGuid);
 
   char sha1[21];
@@ -325,6 +328,7 @@ THREAD_RETURN_T connection_thread(void *arg)
 // use case, expected to only be proxying one connection at a time - if this proxy bridge is expected to be used
 // for hundreds of connections simultaneously, this mutex should be refactored to be per-connection)
 MUTEX_T webSocketSendLock;
+MUTEX_T socketRegistryLock;
 
 int main(int argc, char *argv[])
 {
@@ -363,6 +367,7 @@ int main(int argc, char *argv[])
   printf("websocket_to_posix_proxy server is now listening for WebSocket connections to ws://localhost:%d/\n", port);
 
   CREATE_MUTEX(&webSocketSendLock);
+  CREATE_MUTEX(&socketRegistryLock);
 
   while (1)
   {

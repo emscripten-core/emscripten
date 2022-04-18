@@ -6,7 +6,7 @@
 
 #include "runtime_safe_heap.js"
 
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) throw text;
@@ -15,27 +15,18 @@ function assert(condition, text) {
 
 /** @param {string|number=} what */
 function abort(what) {
-#if ASSERTIONS
-  throw new Error(what);
-#else
-  throw what;
-#endif
+  throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
+
+#if SAFE_HEAP
+// Globals used by JS i64 conversions (see makeSetValue)
+var tempDouble;
+var tempI64;
+#endif
 
 var tempRet0 = 0;
-var setTempRet0 = function(value) {
-  tempRet0 = value;
-}
-var getTempRet0 = function() {
-  return tempRet0;
-}
-
-function alignUp(x, multiple) {
-  if (x % multiple > 0) {
-    x += multiple - (x % multiple);
-  }
-  return x;
-}
+var setTempRet0 = (value) => { tempRet0 = value };
+var getTempRet0 = () => tempRet0;
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -49,59 +40,30 @@ if (Module['doWasm2JS']) {
 
 #if SINGLE_FILE && WASM == 1 && !WASM2JS
 #include "base64Decode.js"
-Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
+Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
+var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
+#if WASM_BIGINT
+  HEAP64, HEAPU64,
 #endif
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW,
+#endif
+  wasmMemory, buffer, wasmTable;
 
-#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
-var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
-#else
-var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
-#endif
 
-var wasmMemory = new WebAssembly.Memory({
-  'initial': {{{ INITIAL_MEMORY >>> 16 }}}
-#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != -1
-  , 'maximum': wasmMaximumMemory
-#endif
-#if USE_PTHREADS
-  , 'shared': true
-#endif
-  });
-
-var wasmTable;
-var buffer = wasmMemory.buffer;
-
-#if USE_PTHREADS
-}
-#if ASSERTIONS
-assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
-#endif
-
-#if ASSERTIONS
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-assert(buffer.byteLength === {{{ INITIAL_MEMORY }}});
-#if USE_PTHREADS
-}
-#endif
-#endif // ASSERTIONS
-
-#if ALLOW_MEMORY_GROWTH
-// In ALLOW_MEMORY_GROWTH, we need to be able to re-initialize the
-// typed array buffer and heap views to the buffer whenever the heap
-// is resized.
-var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 function updateGlobalBufferAndViews(b) {
+#if ASSERTIONS && SHARED_MEMORY
+  assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+#endif
   buffer = b;
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW = new DataView(b);
+#endif
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);
   HEAP32 = new Int32Array(b);
@@ -110,35 +72,36 @@ function updateGlobalBufferAndViews(b) {
   HEAPU32 = new Uint32Array(b);
   HEAPF32 = new Float32Array(b);
   HEAPF64 = new Float64Array(b);
-}
-updateGlobalBufferAndViews(buffer);
-#else
-// In non-ALLOW_MEMORY_GROWTH scenario, we only need to initialize
-// the heap once, so optimize code size to do it statically here.
-var HEAP8 = new Int8Array(buffer);
-var HEAP16 = new Int16Array(buffer);
-var HEAP32 = new Int32Array(buffer);
-var HEAPU8 = new Uint8Array(buffer);
-var HEAPU16 = new Uint16Array(buffer);
-var HEAPU32 = new Uint32Array(buffer);
-var HEAPF32 = new Float32Array(buffer);
-var HEAPF64 = new Float64Array(buffer);
+#if WASM_BIGINT
+  HEAP64 = new BigInt64Array(b);
+  HEAPU64 = new BigUint64Array(b);
 #endif
+}
 
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
+#if IMPORTED_MEMORY
+#if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
-#if ASSERTIONS
-if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
+  wasmMemory =
+#if WASM_WORKERS
+    Module['mem'] ||
 #endif
-HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
+    new WebAssembly.Memory({
+    'initial': {{{ INITIAL_MEMORY >>> 16 }}}
+#if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
+    , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
 #endif
-
-#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || USES_DYNAMIC_ALLOC)
+#if SHARED_MEMORY
+    , 'shared': true
+#endif
+    });
+  updateGlobalBufferAndViews(wasmMemory.buffer);
+#if USE_PTHREADS
+} else {
+  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
-#endif
+#endif // USE_PTHREADS
+#endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
@@ -155,15 +118,11 @@ var wasmOffsetConverter;
 
 #if EXIT_RUNTIME
 var __ATEXIT__    = []; // functions called during shutdown
+var runtimeExited = false;
 #endif
 
-#if ASSERTIONS || SAFE_HEAP
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
 var runtimeInitialized = false;
-
-// This is always false in minimal_runtime - the runtime does not have a concept
-// of exiting (keeping this variable here for now since it is referenced from
-// generated code)
-var runtimeExited = false;
 #endif
 
 #include "runtime_math.js"

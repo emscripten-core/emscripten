@@ -37,7 +37,7 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int rand_32()
 {
-	return (int)(emscripten_random() * 0x3FFFFFFF);
+	return (int)(emscripten_random() * float(0x3FFFFFFF));
 }
 
 void *ThreadMain(void *arg)
@@ -159,15 +159,6 @@ int main()
 	emscripten_atomic_fence();
 	__sync_synchronize();
 
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
 
@@ -184,10 +175,7 @@ int main()
 		printf("totalRead: %llu, totalWritten: %llu\n", totalRead, totalWritten);
 	else
 		printf("32-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
-#ifdef REPORT_RESULT
-	int result = (totalRead != totalWritten) ? 1 : 0;
-	REPORT_RESULT(result);
-#else
-	EM_ASM(out('Main: Test successfully finished.'));
-#endif
+	printf("Main: Test successfully finished.\n");
+	assert(totalRead == totalWritten);
+	return 0;
 }

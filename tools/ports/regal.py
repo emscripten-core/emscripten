@@ -15,15 +15,15 @@ def needed(settings):
   return settings.USE_REGAL
 
 
-def get_lib_name(ports, settings):
-  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else ''))
+def get_lib_name(settings):
+  return 'libregal' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)
 
-  def create():
+  def create(final):
     logging.info('building port: regal')
     ports.clear_project_build('regal')
 
@@ -46,7 +46,7 @@ def get(ports, settings, shared):
 
     # includes
     source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
-    ports.install_header_dir(source_path_include)
+    ports.install_headers(source_path_include, target='GL')
 
     # build
     srcs_regal = ['regal/RegalShaderInstance.cpp',
@@ -134,18 +134,16 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(ports, settings))
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(get_lib_name(ports, settings))
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
-def process_dependencies(settings):
+def linker_setup(ports, settings):
   settings.FULL_ES2 = 1
 
 

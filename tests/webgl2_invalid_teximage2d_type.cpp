@@ -33,7 +33,5 @@ int main()
   void* data = new char[512];
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, data);
   assert(glGetError() != 0); // We should be getting an error
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

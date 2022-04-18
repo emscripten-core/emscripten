@@ -4,15 +4,15 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
 We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
 The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
 
-If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXTRA_EXPORTED_RUNTIME_METHODS`` (for example, ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'`` will export ``call`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
 
-.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-s ASSERTIONS=1``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
+.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-sASSERTIONS``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
 
 
 .. contents:: Table of Contents
@@ -51,7 +51,7 @@ Calling compiled C functions from JavaScript
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
+        -sEXPORTED_FUNCTIONS=_main,_myfunc"
 
       (Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal:
 
@@ -104,7 +104,7 @@ Calling compiled C functions from JavaScript
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
+        -sEXPORTED_FUNCTIONS=_main,_myfunc
 
       Exported functions can be called as normal:
 
@@ -164,7 +164,7 @@ Conversion functions — strings, pointers and arrays
   Given a pointer ``ptr`` to a null-terminated UTF8-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF8-encoded string in the Emscripten HEAP.
-  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length ``[ptr, ptr+maxBytesToRead)``) N.B. mixing frequent uses of ``UTF8ToString()`` with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
   :returns: A JavaScript ``String`` object
 
 
@@ -219,7 +219,7 @@ Conversion functions — strings, pointers and arrays
   :param str: A JavaScript ``String`` object.
   :type str: String
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
-  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
+  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
 
 
@@ -415,7 +415,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   Module['ALLOC_STACK'] = ALLOC_STACK;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
-  function alignUp(x, multiple)
   function demangle(func)
   function demangleAll(text)
   function parseJSFunc(jsfunc)

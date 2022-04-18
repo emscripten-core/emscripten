@@ -3,7 +3,7 @@
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
 #if !MODULARIZE
-  var Module = {
+  var {{{ EXPORT_NAME }}} = {
 #if USE_PTHREADS
     worker: '{{{ PTHREAD_WORKER_FILE }}}'
 #endif

@@ -5,23 +5,40 @@
 
 import logging
 import os
+import platform
+import sys
 from tools.shared import PIPE, run_process, CLANG_CC, CLANG_CXX
 from tools.utils import MACOS, WINDOWS, path_from_root
-from tools import building
 
 logger = logging.getLogger('clang_native')
 
 
+def get_native_triple():
+  arch = {
+      'aarch64': 'arm64',
+      'arm64': 'arm64',
+      'x86_64': 'x86_64',
+      'AMD64': 'x86_64',
+  }[platform.machine()]
+  OS = {
+      'linux': 'linux',
+      'darwin': 'darwin',
+      'win32': 'windows-msvc',
+  }[sys.platform]
+  return f'{arch}-{OS}'
+
+
 # These extra args need to be passed to Clang when targeting a native host system executable
 def get_clang_native_args():
+  triple = ['--target=' + get_native_triple()]
   if MACOS:
-    return ['-isystem', path_from_root('system', 'include', 'libcxx')]
+    return triple + ['-isystem', path_from_root('system/include/libcxx')]
   elif os.name == 'nt':
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
     # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
-    return ['-DWIN32']
+    return triple + ['-DWIN32']
   else:
-    return []
+    return triple
 
 
 # This environment needs to be present when targeting a native host system executable
@@ -37,13 +54,6 @@ def get_clang_native_env():
   env['CC'] = CLANG_CC
   env['CXX'] = CLANG_CXX
   env['LD'] = CLANG_CXX
-  # get a non-native one, and see if we have some of its effects - remove them if so
-  non_native = building.get_building_env()
-  # the ones that a non-native would modify
-  EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
-  for dangerous in EMSCRIPTEN_MODIFIES:
-    if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
-      del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
 
   if MACOS:
     path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()

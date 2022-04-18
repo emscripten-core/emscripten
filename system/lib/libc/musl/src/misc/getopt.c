@@ -1,10 +1,11 @@
+#define _BSD_SOURCE
 #include <unistd.h>
 #include <wchar.h>
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
-#include "libc.h"
 #include "locale_impl.h"
+#include "stdio_impl.h"
 
 char *optarg;
 int optind=1, opterr=1, optopt, __optpos, __optreset=0;
@@ -16,12 +17,12 @@ void __getopt_msg(const char *a, const char *b, const char *c, size_t l)
 {
 	FILE *f = stderr;
 	b = __lctrans_cur(b);
-	flockfile(f);
+	FLOCK(f);
 	fputs(a, f)>=0
 	&& fwrite(b, strlen(b), 1, f)
 	&& fwrite(c, 1, l, f)==l
 	&& putc('\n', f);
-	funlockfile(f);
+	FUNLOCK(f);
 }
 
 int getopt(int argc, char * const argv[], const char *optstring)
@@ -60,7 +61,6 @@ int getopt(int argc, char * const argv[], const char *optstring)
 		c = 0xfffd; /* replacement char */
 	}
 	optchar = argv[optind]+optpos;
-	optopt = c;
 	optpos += k;
 
 	if (!argv[optind][optpos]) {
@@ -78,23 +78,25 @@ int getopt(int argc, char * const argv[], const char *optstring)
 		if (l>0) i+=l; else i++;
 	} while (l && d != c);
 
-	if (d != c) {
+	if (d != c || c == ':') {
+		optopt = c;
 		if (optstring[0] != ':' && opterr)
 			__getopt_msg(argv[0], ": unrecognized option: ", optchar, k);
 		return '?';
 	}
 	if (optstring[i] == ':') {
-		if (optstring[i+1] == ':') optarg = 0;
-		else if (optind >= argc) {
+		optarg = 0;
+		if (optstring[i+1] != ':' || optpos) {
+			optarg = argv[optind++] + optpos;
+			optpos = 0;
+		}
+		if (optind > argc) {
+			optopt = c;
 			if (optstring[0] == ':') return ':';
 			if (opterr) __getopt_msg(argv[0],
 				": option requires an argument: ",
 				optchar, k);
 			return '?';
-		}
-		if (optstring[i+1] != ':' || optpos) {
-			optarg = argv[optind++] + optpos;
-			optpos = 0;
 		}
 	}
 	return c;

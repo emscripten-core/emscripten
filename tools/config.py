@@ -6,9 +6,11 @@
 import os
 import sys
 import logging
+
+from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
-logger = logging.getLogger('shared')
+logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
@@ -36,9 +38,9 @@ COMPILER_WRAPPER = None
 
 
 def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
+  if x is None or type(x) is list:
+    return x
+  return [x]
 
 
 def fix_js_engine(old, new):
@@ -54,7 +56,7 @@ def root_is_writable():
 
 
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, LLVM_ADD_VERSION, CLANG_ADD_VERSION
+  global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -74,8 +76,9 @@ def normalize_config_settings():
   JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
-    if root_is_writable():
+    if FROZEN_CACHE or root_is_writable():
       CACHE = path_from_root('cache')
     else:
       # Use the legacy method of putting the cache in the user's home directory
@@ -87,10 +90,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if JAVA is None:
-    logger.debug('JAVA not defined in ' + config_file_location() + ', using "java"')
-    JAVA = 'java'
 
   # Tools/paths
   if LLVM_ADD_VERSION is None:
@@ -106,11 +105,11 @@ def parse_config_file():
   Also check EM_<KEY> environment variables to override specific config keys.
   """
   config = {}
-  config_text = open(config_file, 'r').read() if config_file else EM_CONFIG
+  config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, config_file, str(e), config_text)
+    exit_with_error('Error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
@@ -142,56 +141,57 @@ def parse_config_file():
     elif key in config:
       globals()[key] = config[key]
 
+  # In the past the default-generated .emscripten config file would read certain environment
+  # variables. We used generate a warning here but that could generates false positives
+  # See https://github.com/emscripten-core/emsdk/issues/862
+  LEGACY_ENV_VARS = {
+    'LLVM': 'EM_LLVM_ROOT',
+    'BINARYEN': 'EM_BINARYEN_ROOT',
+    'NODE': 'EM_NODE_JS',
+  }
+  for key, new_key in LEGACY_ENV_VARS.items():
+    env_value = os.environ.get(key)
+    if env_value and new_key not in os.environ:
+      logger.debug(f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`')
+
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
     if key not in config:
-      exit_with_error('%s is not defined in %s', key, config_file_location())
+      exit_with_error('%s is not defined in %s', key, EM_CONFIG)
     if not globals()[key]:
-      exit_with_error('%s is set to empty value in %s', key, config_file_location())
+      exit_with_error('%s is set to empty value in %s', key, EM_CONFIG)
 
   if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', config_file_location())
+    exit_with_error('NODE_JS is not defined in %s', EM_CONFIG)
 
   normalize_config_settings()
 
 
-# Returns the location of the emscripten config file.
-def config_file_location():
-  # Handle the case where there is no config file at all (i.e. If EM_CONFIG is passed as python code
-  # direclty on the command line).
-  if not config_file:
-    return '<inline config>'
+def generate_config(path):
+  if os.path.exists(path):
+    exit_with_error(f'config file already exists: `{path}`')
 
-  return config_file
-
-
-def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
-  config_file = config_file[3:] # remove the initial comment
-  config_file = '\n'.join(config_file)
+
+  config_data = utils.read_file(path_from_root('tools/config_template.py'))
+  config_data = config_data.splitlines()[3:] # remove the initial comment
+  config_data = '\n'.join(config_data)
   # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
+  config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
   llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
-  config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
+  config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
-  node = which('nodejs') or which('node') or 'node'
-  config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
+  node = which('node') or which('nodejs') or 'node'
+  config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
 
-  abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  with open(abspath, 'w') as f:
-    f.write(config_file)
+  utils.write_file(path, config_data)
 
-  if first_time:
-    print('''
-==============================================================================
-Welcome to Emscripten!
+  print('''\
+An Emscripten settings file has been generated at:
 
-This is the first time any of the Emscripten tools has been run.
-
-A settings file has been copied to %s, at absolute path: %s
+  %s
 
 It contains our best guesses for the important paths, which are:
 
@@ -199,11 +199,8 @@ It contains our best guesses for the important paths, which are:
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
-Please edit the file if any of those are incorrect.
-
-This command will now exit. When you are done editing those paths, re-run it.
-==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+Please edit the file if any of those are incorrect.\
+''' % (path, llvm_root, node, __rootpath__), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
@@ -221,7 +218,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+# layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
 #  - emsdk/emscipten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.
@@ -237,25 +234,11 @@ emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 user_home_config = os.path.expanduser('~/.emscripten')
 
 if '--em-config' in sys.argv:
-  EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
-  # And now remove it from sys.argv
-  skip = False
-  newargs = []
-  for arg in sys.argv:
-    if not skip and arg != '--em-config':
-      newargs += [arg]
-    elif arg == '--em-config':
-      skip = True
-    elif skip:
-      skip = False
-  sys.argv = newargs
-  if not os.path.isfile(EM_CONFIG):
-    if EM_CONFIG.startswith('-'):
-      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-    if '=' not in EM_CONFIG:
-      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-    else:
-      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+  i = sys.argv.index('--em-config')
+  if len(sys.argv) <= i + 1:
+    exit_with_error('--em-config must be followed by a filename')
+  EM_CONFIG = sys.argv.pop(i + 1)
+  del sys.argv[i]
 elif 'EM_CONFIG' in os.environ:
   EM_CONFIG = os.environ['EM_CONFIG']
 elif os.path.exists(embedded_config):
@@ -265,20 +248,29 @@ elif os.path.exists(emsdk_embedded_config):
 elif os.path.exists(user_home_config):
   EM_CONFIG = user_home_config
 else:
+  # No config file found.  Set EM_CONFIG to a default value
+  # that will get reported in the error below.
   if root_is_writable():
-    generate_config(embedded_config, first_time=True)
+    EM_CONFIG = embedded_config
   else:
-    generate_config(user_home_config, first_time=True)
+    EM_CONFIG = user_home_config
+
+# We used to support inline EM_CONFIG.
+if '\n' in EM_CONFIG:
+  exit_with_error('Inline EM_CONFIG data no longer supported.  Please use a config file.')
+
+EM_CONFIG = os.path.expanduser(EM_CONFIG)
+
+# This command line flag needs to work even in the absence of a config file, so we must process it
+# here at script import time (otherwise the error below will trigger).
+if '--generate-config' in sys.argv:
+  generate_config(EM_CONFIG)
   sys.exit(0)
 
-if '\n' in EM_CONFIG:
-  config_file = None
-  logger.debug('config is specified inline without a file')
-else:
-  config_file = os.path.expanduser(EM_CONFIG)
-  logger.debug('emscripten config is located in ' + config_file)
-  if not os.path.exists(config_file):
-    exit_with_error('emscripten config file not found: ' + config_file)
+if not os.path.exists(EM_CONFIG):
+  exit_with_error(f'config file not found: {EM_CONFIG}.  Please create one by hand or run `emcc --generate-config`')
+
+logger.debug('emscripten config is located in ' + EM_CONFIG)
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
 # make sure that those child processes get the same configuration file by

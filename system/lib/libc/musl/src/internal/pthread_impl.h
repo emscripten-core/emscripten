@@ -5,67 +5,86 @@
 #include <signal.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/mman.h>
 #include "libc.h"
 #include "syscall.h"
 #include "atomic.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
+#include "threading_internal.h"
 #endif
 #include "futex.h"
+
+#include "pthread_arch.h"
 
 #define pthread __pthread
 
 struct pthread {
-// XXX Emscripten: Need some custom thread control structures.
-#ifdef __EMSCRIPTEN__
-	// Note: The specific order of these fields is important, since these are accessed
-	// by direct pointer arithmetic in worker.js.
-	int threadStatus; // 0: thread not exited, 1: exited.
-	int threadExitCode; // Thread exit code.
-	void *profilerBlock; // If --threadprofiling is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
+	/* Part 1 -- these fields may be external or
+	 * internal (accessed via asm) ABI. Do not change. */
+	struct pthread *self;
+#ifndef TLS_ABOVE_TP
+	uintptr_t *dtv;
+#endif
+	// TODO(sbc): Implement circular list of threads
+	//struct pthread *prev, *next; /* non-ABI */
+	uintptr_t sysinfo;
+#ifndef TLS_ABOVE_TP
+#ifdef CANARY_PAD
+	uintptr_t canary_pad;
+#endif
+	uintptr_t canary;
 #endif
 
-	struct pthread *self;
-	void **dtv, *unused1, *unused2;
-	uintptr_t sysinfo;
-	uintptr_t canary, canary2;
-	pid_t tid, pid;
-	int tsd_used, errno_val;
-	volatile int cancel, canceldisable, cancelasync;
-	int detached;
+	/* Part 2 -- implementation details, non-ABI. */
+	int tid;
+	int errno_val;
+	volatile int detach_state;
+	volatile int cancel;
+	volatile unsigned char canceldisable, cancelasync;
+	unsigned char tsd_used:1;
+	unsigned char dlerror_flag:1;
 	unsigned char *map_base;
 	size_t map_size;
 	void *stack;
 	size_t stack_size;
-	void *start_arg;
-	void *(*start)(void *);
+	size_t guard_size;
 	void *result;
 	struct __ptcb *cancelbuf;
 	void **tsd;
-	pthread_attr_t attr;
-	volatile int dead;
 	struct {
 		volatile void *volatile head;
 		long off;
 		volatile void *volatile pending;
 	} robust_list;
-	int unblock_cancel;
+	int h_errno_val;
 	volatile int timer_id;
 	locale_t locale;
-	volatile int killlock[2];
-	volatile int exitlock[2];
-	volatile int startlock[2];
-	unsigned long sigmask[_NSIG/8/sizeof(long)];
+	volatile int killlock[1];
 	char *dlerror_buf;
-	int dlerror_flag;
 	void *stdio_locks;
-	uintptr_t canary_at_end;
-	void **dtv_copy;
+
+	/* Part 3 -- the positions of these fields relative to
+	 * the end of the structure is external and internal ABI. */
+#ifdef TLS_ABOVE_TP
+	uintptr_t canary;
+	uintptr_t *dtv;
+#endif
+
+// XXX Emscripten: Need some custom thread control structures.
+#ifdef __EMSCRIPTEN__
+	// If --threadprofiler is enabled, this pointer is allocated to contain
+	// internal information about the thread state for profiling purposes.
+	thread_profiler_block * _Atomic profilerBlock;
+	int stack_owned;
+#endif
 };
 
-struct __timer {
-	int timerid;
-	pthread_t thread;
+enum {
+	DT_EXITED,
+	DT_EXITING,
+	DT_JOINABLE,
+	DT_DETACHED,
 };
 
 #define __SU (sizeof(size_t)/sizeof(int))
@@ -106,14 +125,24 @@ struct __timer {
 #define _b_waiters2 __u.__vi[4]
 #define _b_inst __u.__p[3]
 
-#include "pthread_arch.h"
-
-#ifndef CANARY
-#define CANARY canary
+#ifndef TP_OFFSET
+#define TP_OFFSET 0
 #endif
 
 #ifndef DTP_OFFSET
 #define DTP_OFFSET 0
+#endif
+
+#ifdef TLS_ABOVE_TP
+#define TP_ADJ(p) ((char *)(p) + sizeof(struct pthread) + TP_OFFSET)
+#define __pthread_self() ((pthread_t)(__get_tp() - sizeof(struct __pthread) - TP_OFFSET))
+#else
+#define TP_ADJ(p) (p)
+#define __pthread_self() ((pthread_t)__get_tp())
+#endif
+
+#ifndef tls_mod_off_t
+#define tls_mod_off_t size_t
 #endif
 
 #define SIGTIMER 32
@@ -128,25 +157,36 @@ struct __timer {
 	((sigset_t *)(const unsigned long [_NSIG/8/sizeof(long)]){ \
 	 0x80000000 })
 
-pthread_t __pthread_self_init(void);
+void *__tls_get_addr(tls_mod_off_t *);
+hidden int __init_tp(void *);
+hidden void *__copy_tls(unsigned char *);
+hidden void __reset_tls();
 
-int __clone(int (*)(void *), void *, int, void *, ...);
-int __set_thread_area(void *);
-int __libc_sigaction(int, const struct sigaction *, struct sigaction *);
-int __libc_sigprocmask(int, const sigset_t *, sigset_t *);
-void __lock(volatile int *);
-void __unmapself(void *, size_t);
+hidden void __membarrier_init(void);
+hidden void __dl_thread_cleanup(void);
+hidden void __testcancel();
+hidden void __do_cleanup_push(struct __ptcb *);
+hidden void __do_cleanup_pop(struct __ptcb *);
+hidden void __pthread_tsd_run_dtors();
 
-void __vm_wait(void);
-void __vm_lock(void);
-void __vm_unlock(void);
+hidden void __pthread_key_delete_synccall(void (*)(void *), void *);
+hidden int __pthread_key_delete_impl(pthread_key_t);
 
-int __timedwait(volatile int *, int, clockid_t, const struct timespec *, int);
-int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec *, int);
-void __wait(volatile int *, volatile int *, int, int);
+extern hidden volatile size_t __pthread_tsd_size;
+extern hidden void *__pthread_tsd_main[];
+extern hidden volatile int __eintr_valid_flag;
+
+hidden int __clone(int (*)(void *), void *, int, void *, ...);
+hidden int __set_thread_area(void *);
+hidden int __libc_sigaction(int, const struct sigaction *, struct sigaction *);
+hidden void __unmapself(void *, size_t);
+
+hidden int __timedwait(volatile int *, int, clockid_t, const struct timespec *, int);
+hidden int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec *, int);
+hidden void __wait(volatile int *, volatile int *, int, int);
 static inline void __wake(volatile void *addr, int cnt, int priv)
 {
-	if (priv) priv = 128;
+	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
 #ifdef __EMSCRIPTEN__
 	emscripten_futex_wake(addr, (cnt)<0?INT_MAX:(cnt));
@@ -155,24 +195,44 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
 #endif
 }
+static inline void __futexwait(volatile void *addr, int val, int priv)
+{
+#ifdef __EMSCRIPTEN__
+	__wait(addr, NULL, val, priv);
+#else
+	if (priv) priv = FUTEX_PRIVATE;
+	__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS ||
+	__syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
+#endif
+}
 
-void __acquire_ptc(void);
-void __release_ptc(void);
-void __inhibit_ptc(void);
+hidden void __acquire_ptc(void);
+hidden void __release_ptc(void);
+hidden void __inhibit_ptc(void);
 
-void __block_all_sigs(void *);
-void __block_app_sigs(void *);
-void __restore_sigs(void *);
+hidden void __tl_lock(void);
+hidden void __tl_unlock(void);
+hidden void __tl_sync(pthread_t);
 
-#define DEFAULT_STACK_SIZE 81920
-#define DEFAULT_GUARD_SIZE PAGE_SIZE
+extern hidden volatile int __thread_list_lock;
+
+extern hidden volatile int __abort_lock[1];
+
+extern hidden unsigned __default_stacksize;
+extern hidden unsigned __default_guardsize;
+
+
+#ifdef __EMSCRIPTEN__
+// Keep in sync with DEFAULT_PTHREAD_STACK_SIZE in settings.js
+#define DEFAULT_STACK_SIZE (2*1024*1024)
+#else
+#define DEFAULT_STACK_SIZE 131072
+#endif
+#define DEFAULT_GUARD_SIZE 8192
+
+#define DEFAULT_STACK_MAX (8<<20)
+#define DEFAULT_GUARD_MAX (1<<20)
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
-#ifdef __EMSCRIPTEN__
-void __emscripten_init_pthread(pthread_t thread);
-#if !__EMSCRIPTEN_PTHREADS__
-pthread_t __emscripten_pthread_stub(void);
-#endif
-#endif
 #endif

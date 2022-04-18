@@ -15,12 +15,12 @@ var emscriptenMemoryProfiler = {
 
   // Allocations of memory blocks larger than this threshold will get their
   // detailed callstack captured and logged at runtime.
-  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? Infinity : 16*1024*1024,
+  trackedCallstackMinSizeBytes: (typeof new Error().stack == 'undefined') ? Infinity : 16*1024*1024,
 
   // Allocations from call sites having more than this many outstanding
   // allocated pointers will get their detailed callstack captured and logged at
   // runtime.
-  trackedCallstackMinAllocCount: (typeof new Error().stack === 'undefined') ? Infinity : 10000,
+  trackedCallstackMinAllocCount: (typeof new Error().stack == 'undefined') ? Infinity : 10000,
 
   // If true, we hook into stackAlloc to be able to catch better estimate of the
   // maximum used STACK space.  You might only ever want to set this to false
@@ -83,8 +83,8 @@ var emscriptenMemoryProfiler = {
   truncDec: function truncDec(f) {
     f = f || 0;
     var str = f.toFixed(2);
-    if (str.indexOf('.00', str.length-3) !== -1) return str.substr(0, str.length-3);
-    else if (str.indexOf('0', str.length-1) !== -1) return str.substr(0, str.length-1);
+    if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
+    else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
     else return str;
   },
 
@@ -104,7 +104,7 @@ var emscriptenMemoryProfiler = {
     var q = v * (1 - f*s);
     var t = v * (1 - (1 - f) * s);
     var r, g, b;
-    switch(h_i) {
+    switch (h_i) {
       case 0: r = v; g = t; b = p; break;
       case 1: r = q; g = v; b = p; break;
       case 2: r = p; g = v; b = t; break;
@@ -161,7 +161,7 @@ var emscriptenMemoryProfiler = {
   },
 
   recordStackWatermark: function() {
-    if (typeof runtimeInitialized === 'undefined' || runtimeInitialized) {
+    if (typeof runtimeInitialized == 'undefined' || runtimeInitialized) {
       var self = emscriptenMemoryProfiler;
       self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
     }
@@ -251,7 +251,7 @@ var emscriptenMemoryProfiler = {
     if (!Module['preRun']) Module['preRun'] = [];
     Module['preRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
 
-    if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc === 'function') {
+    if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
       // Inject stack allocator.
       var prevStackAlloc = stackAlloc;
       var hookedStackAlloc = function(size) {
@@ -262,10 +262,10 @@ var emscriptenMemoryProfiler = {
       stackAlloc = hookedStackAlloc;
     }
 
-    if (location.search.toLowerCase().indexOf('trackbytes=') != -1) {
+    if (location.search.toLowerCase().includes('trackbytes=')) {
       emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
-    if (location.search.toLowerCase().indexOf('trackcount=') != -1) {
+    if (location.search.toLowerCase().includes('trackcount=')) {
       emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 
@@ -368,7 +368,7 @@ var emscriptenMemoryProfiler = {
   },
 
   countOpenALAudioDataSize: function countOpenALAudioDataSize() {
-    if (typeof AL == "undefined" || !AL.currentContext) return 0;
+    if (typeof AL == 'undefined' || !AL.currentContext) return 0;
 
     var totalMemory = 0;
 
@@ -435,9 +435,9 @@ var emscriptenMemoryProfiler = {
   },
 
   printHeapResizeLog: function(heapResizes) {
-    var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
+    var demangler = typeof demangleAll != 'undefined' ? demangleAll : function(x) { return x; };
     var html = '';
-    for(var i = 0; i < heapResizes.length; ++i) {
+    for (var i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
       while(j < heapResizes.length) {
         if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {
@@ -487,7 +487,7 @@ var emscriptenMemoryProfiler = {
       self.canvas.width = document.documentElement.clientWidth - 32;
     }
 
-    if (typeof runtimeInitialized !== 'undefined' && !runtimeInitialized) {
+    if (typeof runtimeInitialized != 'undefined' && !runtimeInitialized) {
       return;
     }
     var stackBase = _emscripten_stack_get_base();
@@ -546,7 +546,7 @@ var emscriptenMemoryProfiler = {
 
     if (document.getElementById('showHeapResizes').checked) {
       // Print heap resize traces.
-      for(var i in self.resizeMemorySources) {
+      for (var i in self.resizeMemorySources) {
         var resize = self.resizeMemorySources[i];
         self.drawContext.fillStyle = resize.color;
         self.fillRect(resize.begin, resize.end, 0.5);
@@ -555,7 +555,7 @@ var emscriptenMemoryProfiler = {
       // Print sbrk() traces.
       var uniqueSources = {};
       var filterWords = document.getElementById('sbrkFilter').value.split(',');
-      for(var i in self.sbrkSources) {
+      for (var i in self.sbrkSources) {
         var sbrk = self.sbrkSources[i];
         var stack = sbrk.stack;
         for (var j in filterWords) {
@@ -602,7 +602,7 @@ var emscriptenMemoryProfiler = {
       html += self.printHeapResizeLog(self.sbrkSources);
       html += '</div>'
     } else {
-      var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
+      var demangler = typeof demangleAll != 'undefined' ? demangleAll : function(x) { return x; };
       // Print out statistics of individual allocations if they were tracked.
       if (Object.keys(self.allocationsAtLoc).length > 0) {
         var calls = [];
@@ -632,6 +632,6 @@ var emscriptenMemoryProfiler = {
 // anymore!
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && typeof process === 'undefined') emscriptenMemoryProfiler.initialize();
+if (typeof Module != 'undefined' && typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') emscriptenMemoryProfiler.initialize();
 
 #endif

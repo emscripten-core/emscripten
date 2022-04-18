@@ -5,7 +5,9 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <SDL/SDL_image.h>
 #include <emscripten.h>
 
@@ -29,7 +31,7 @@ int main() {
   });
 
   printf("Total memory allocated %d Mb\n", result);
-  REPORT_RESULT(result);
+  assert(result == 0);
   return 0;
 }
 

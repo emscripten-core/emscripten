@@ -10,8 +10,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
-// API that gives access to introspecting the Wasm data stack. Build with
-// -lstack.js to use this API.
+// API that gives access to introspecting the Wasm data stack.
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,9 +22,8 @@ uintptr_t emscripten_stack_get_base(void);
 
 // Returns the end address of the wasm stack. This is the address that the stack
 // pointer would point to when the whole stack is in use.  (the address pointed
-// to by the end is not part of the stack itself) Note that in fastcomp, the
-// stack grows up, whereas in wasm backend, it grows down.  So with wasm
-// backend, the address returned by emscripten_stack_get_end() is smaller than
+// to by the end is not part of the stack itself). Note that the stack grows
+// down so the address returned by emscripten_stack_get_end() is smaller than
 // emscripten_stack_get_base().
 uintptr_t emscripten_stack_get_end(void);
 

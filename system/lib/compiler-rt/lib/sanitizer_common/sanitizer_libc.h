@@ -67,10 +67,13 @@ uptr internal_ftruncate(fd_t fd, uptr size);
 
 // OS
 void NORETURN internal__exit(int exitcode);
-unsigned int internal_sleep(unsigned int seconds);
+void internal_sleep(unsigned seconds);
+void internal_usleep(u64 useconds);
 
 uptr internal_getpid();
 uptr internal_getppid();
+
+int internal_dlinfo(void *handle, int request, void *p);
 
 // Threading
 uptr internal_sched_yield();

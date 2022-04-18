@@ -23,22 +23,49 @@
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
+  //
+  // These are trivial wrappers around runtime functions that make these symbols
+  // available to native code.
   // ==========================================================================
 
   getTempRet0__sig: 'i',
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return getTempRet0();
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0: function(val) {
+    setTempRet0(val);
   },
+
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
+  },
+
+  $zeroMemory: function(address, size) {
+#if LEGACY_VM_SUPPORT
+    if (!HEAPU8.fill) {
+      for (var i = 0; i < size; i++) {
+        HEAPU8[address + i] = 0;
+      }
+      return;
+    }
+#endif
+    HEAPU8.fill(0, address, address + size);
+  },
+
+#if SAFE_HEAP
+  // Trivial wrappers around runtime functions that make these symbols available
+  // to native code.
+  segfault: function() { segfault(); },
+  alignfault: function() { alignfault(); },
+#endif
 
   // ==========================================================================
   // JavaScript <-> C string interop
   // ==========================================================================
 
+  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: function(jsString) {
     var length = lengthBytesUTF8(jsString)+1;
     var cString = _malloc(length);
@@ -46,407 +73,39 @@ LibraryManager.library = {
     return cString;
   },
 
-  // ==========================================================================
-  // utime.h
-  // ==========================================================================
-
-  $setFileTime__deps: ['$setErrNo'],
-  $setFileTime: function(path, time) {
-    path = UTF8ToString(path);
-    try {
-      FS.utime(path, time, time);
-      return 0;
-    } catch (e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      setErrNo(e.errno);
-      return -1;
-    }
-  },
-
-  utime__deps: ['$FS', '$setFileTime'],
-  utime__proxy: 'sync',
-  utime__sig: 'iii',
-  utime: function(path, times) {
-    // int utime(const char *path, const struct utimbuf *times);
-    // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
-    var time;
-    if (times) {
-      // NOTE: We don't keep track of access timestamps.
-      time = {{{ makeGetValue('times', C_STRUCTS.utimbuf.modtime, 'i32') }}} * 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
-  utimes__deps: ['$FS', '$setFileTime'],
-  utimes__proxy: 'sync',
-  utimes__sig: 'iii',
-  utimes: function(path, times) {
-    // utimes is just like utime but take an array of 2 times: `struct timeval times[2]`
-    // times[0] is the new access time (which we currently ignore)
-    // times[1] is the new modification time.
-    var time;
-    if (times) {
-      var mtime = times + {{{ C_STRUCTS.timeval.__size__ }}};
-      time = {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_sec, 'i32') }}} * 1000;
-      time += {{{ makeGetValue('mtime', C_STRUCTS.timeval.tv_usec, 'i32') }}} / 1000;
-    } else {
-      time = Date.now();
-    }
-    return setFileTime(path, time);
-  },
-
-  // ==========================================================================
-  // sys/file.h
-  // ==========================================================================
-
-  flock: function(fd, operation) {
-    // int flock(int fd, int operation);
-    // Pretend to succeed
-    return 0;
-  },
-
-  chroot__deps: ['$setErrNo'],
-  chroot__proxy: 'sync',
-  chroot__sig: 'ii',
-  chroot: function(path) {
-    // int chroot(const char *path);
-    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
-    setErrNo({{{ cDefine('EACCES') }}});
-    return -1;
-  },
-
-  fpathconf__deps: ['$setErrNo'],
-  fpathconf__proxy: 'sync',
-  fpathconf__sig: 'iii',
-  fpathconf: function(fildes, name) {
-    // long fpathconf(int fildes, int name);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
-    // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicking glibc.
-    switch (name) {
-      case {{{ cDefine('_PC_LINK_MAX') }}}:
-        return 32000;
-      case {{{ cDefine('_PC_MAX_CANON') }}}:
-      case {{{ cDefine('_PC_MAX_INPUT') }}}:
-      case {{{ cDefine('_PC_NAME_MAX') }}}:
-        return 255;
-      case {{{ cDefine('_PC_PATH_MAX') }}}:
-      case {{{ cDefine('_PC_PIPE_BUF') }}}:
-      case {{{ cDefine('_PC_REC_MIN_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_REC_XFER_ALIGN') }}}:
-      case {{{ cDefine('_PC_ALLOC_SIZE_MIN') }}}:
-        return 4096;
-      case {{{ cDefine('_PC_CHOWN_RESTRICTED') }}}:
-      case {{{ cDefine('_PC_NO_TRUNC') }}}:
-      case {{{ cDefine('_PC_2_SYMLINKS') }}}:
-        return 1;
-      case {{{ cDefine('_PC_VDISABLE') }}}:
-        return 0;
-      case {{{ cDefine('_PC_SYNC_IO') }}}:
-      case {{{ cDefine('_PC_ASYNC_IO') }}}:
-      case {{{ cDefine('_PC_PRIO_IO') }}}:
-      case {{{ cDefine('_PC_SOCK_MAXBUF') }}}:
-      case {{{ cDefine('_PC_REC_INCR_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_REC_MAX_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_SYMLINK_MAX') }}}:
-        return -1;
-      case {{{ cDefine('_PC_FILESIZEBITS') }}}:
-        return 64;
-    }
-    setErrNo({{{ cDefine('EINVAL') }}});
-    return -1;
-  },
-  pathconf: 'fpathconf',
-
-  confstr__deps: ['$setErrNo', '$ENV'],
-  confstr__proxy: 'sync',
-  confstr__sig: 'iiii',
-  confstr: function(name, buf, len) {
-    // size_t confstr(int name, char *buf, size_t len);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
-    var value;
-    switch (name) {
-      case {{{ cDefine('_CS_PATH') }}}:
-        value = ENV['PATH'] || '/';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
-        // Mimicking glibc.
-        value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
-        break;
-      case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
-        // This JS implementation was tested against this glibc version.
-        value = 'glibc 2.14';
-        break;
-      case {{{ cDefine('_CS_GNU_LIBPTHREAD_VERSION') }}}:
-        // We don't support pthreads.
-        value = '';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LIBS') }}}:
-        value = '';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS') }}}:
-        value = '-m32';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS') }}}:
-        value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
-        break;
-      default:
-        setErrNo({{{ cDefine('EINVAL') }}});
-        return 0;
-    }
-    if (len == 0 || buf == 0) {
-      return value.length + 1;
-    } else {
-      var length = Math.min(len, value.length);
-      for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}};
-      }
-      if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}};
-      return i;
-    }
-  },
-
-  execve__deps: ['$setErrNo'],
-  execve__sig: 'iiii',
-  execve: function(path, argv, envp) {
-    // int execve(const char *pathname, char *const argv[],
-    //            char *const envp[]);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
-    // We don't support executing external code.
-    setErrNo({{{ cDefine('ENOEXEC') }}});
-    return -1;
-  },
-
   exit__sig: 'vi',
-  exit: function(status) {
 #if MINIMAL_RUNTIME
-    throw 'exit(' + status + ')';
+  // minimal runtime doesn't do any exit cleanup handling so just
+  // map exit directly to the lower-level proc_exit syscall.
+  exit: 'proc_exit',
+  $exit: 'exit',
 #else
+  exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
     exit(status);
-#endif
-  },
-
-  _exit__sig: 'vi',
-  _exit: 'exit',
-
-  _Exit__sig: 'vi',
-  _Exit: 'exit',
-
-#if MINIMAL_RUNTIME
-  $exit: function(status) {
-    throw 'exit(' + status + ')';
   },
 #endif
 
-  // fork, spawn, etc. all return an error as we don't support multiple
-  // processes.
-  fork__deps: ['$setErrNo'],
-  fork__sig: 'i',
-  fork: function() {
-    // pid_t fork(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
-    // We don't support multiple processes.
-    setErrNo({{{ cDefine('EAGAIN') }}});
-    return -1;
-  },
-  vfork: 'fork',
-  posix_spawn: 'fork',
-
-  setgroups__deps: ['$setErrNo', 'sysconf'],
-  setgroups: function(ngroups, gidset) {
-    // int setgroups(int ngroups, const gid_t *gidset);
-    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
-    if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    } else {
-      // We have just one process/user/group, so it makes no sense to set groups.
-      setErrNo({{{ cDefine('EPERM') }}});
-      return -1;
-    }
-  },
-
-  sysconf__deps: ['$setErrNo'],
-  sysconf__proxy: 'sync',
-  sysconf__sig: 'ii',
-  sysconf: function(name) {
-    // long sysconf(int name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
-    switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
-      case {{{ cDefine('_SC_PHYS_PAGES') }}}:
+  emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
-        var maxHeapSize = 4*1024*1024*1024;
-#else
-        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
+    // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
+    // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
+    // for any code that deals with heap sizes, which would require special
+    // casing all heap size related code to treat 0 specially.
+    return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
 #else // no growth
-        var maxHeapSize = HEAPU8.length;
-#endif
-        return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
-      case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
-      case {{{ cDefine('_SC_BARRIERS') }}}:
-      case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
-      case {{{ cDefine('_SC_CLOCK_SELECTION') }}}:
-      case {{{ cDefine('_SC_CPUTIME') }}}:
-      case {{{ cDefine('_SC_FSYNC') }}}:
-      case {{{ cDefine('_SC_IPV6') }}}:
-      case {{{ cDefine('_SC_MAPPED_FILES') }}}:
-      case {{{ cDefine('_SC_MEMLOCK') }}}:
-      case {{{ cDefine('_SC_MEMLOCK_RANGE') }}}:
-      case {{{ cDefine('_SC_MEMORY_PROTECTION') }}}:
-      case {{{ cDefine('_SC_MESSAGE_PASSING') }}}:
-      case {{{ cDefine('_SC_MONOTONIC_CLOCK') }}}:
-      case {{{ cDefine('_SC_PRIORITIZED_IO') }}}:
-      case {{{ cDefine('_SC_PRIORITY_SCHEDULING') }}}:
-      case {{{ cDefine('_SC_RAW_SOCKETS') }}}:
-      case {{{ cDefine('_SC_READER_WRITER_LOCKS') }}}:
-      case {{{ cDefine('_SC_REALTIME_SIGNALS') }}}:
-      case {{{ cDefine('_SC_SEMAPHORES') }}}:
-      case {{{ cDefine('_SC_SHARED_MEMORY_OBJECTS') }}}:
-      case {{{ cDefine('_SC_SPAWN') }}}:
-      case {{{ cDefine('_SC_SPIN_LOCKS') }}}:
-      case {{{ cDefine('_SC_SYNCHRONIZED_IO') }}}:
-      case {{{ cDefine('_SC_THREAD_ATTR_STACKADDR') }}}:
-      case {{{ cDefine('_SC_THREAD_ATTR_STACKSIZE') }}}:
-      case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
-      case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
-      case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
-      case {{{ cDefine('_SC_THREADS') }}}:
-      case {{{ cDefine('_SC_TIMEOUTS') }}}:
-      case {{{ cDefine('_SC_TIMERS') }}}:
-      case {{{ cDefine('_SC_VERSION') }}}:
-      case {{{ cDefine('_SC_2_C_BIND') }}}:
-      case {{{ cDefine('_SC_2_C_DEV') }}}:
-      case {{{ cDefine('_SC_2_CHAR_TERM') }}}:
-      case {{{ cDefine('_SC_2_LOCALEDEF') }}}:
-      case {{{ cDefine('_SC_2_SW_DEV') }}}:
-      case {{{ cDefine('_SC_2_VERSION') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
-        return 200809;
-      case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
-      case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
-      case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
-      case {{{ cDefine('_SC_XBS5_LPBIG_OFFBIG') }}}:
-      case {{{ cDefine('_SC_AIO_LISTIO_MAX') }}}:
-      case {{{ cDefine('_SC_AIO_MAX') }}}:
-      case {{{ cDefine('_SC_SPORADIC_SERVER') }}}:
-      case {{{ cDefine('_SC_THREAD_SPORADIC_SERVER') }}}:
-      case {{{ cDefine('_SC_TRACE') }}}:
-      case {{{ cDefine('_SC_TRACE_EVENT_FILTER') }}}:
-      case {{{ cDefine('_SC_TRACE_EVENT_NAME_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_INHERIT') }}}:
-      case {{{ cDefine('_SC_TRACE_LOG') }}}:
-      case {{{ cDefine('_SC_TRACE_NAME_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_SYS_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_USER_EVENT_MAX') }}}:
-      case {{{ cDefine('_SC_TYPED_MEMORY_OBJECTS') }}}:
-      case {{{ cDefine('_SC_V6_LP64_OFF64') }}}:
-      case {{{ cDefine('_SC_V6_LPBIG_OFFBIG') }}}:
-      case {{{ cDefine('_SC_2_FORT_DEV') }}}:
-      case {{{ cDefine('_SC_2_FORT_RUN') }}}:
-      case {{{ cDefine('_SC_2_PBS') }}}:
-      case {{{ cDefine('_SC_2_PBS_ACCOUNTING') }}}:
-      case {{{ cDefine('_SC_2_PBS_CHECKPOINT') }}}:
-      case {{{ cDefine('_SC_2_PBS_LOCATE') }}}:
-      case {{{ cDefine('_SC_2_PBS_MESSAGE') }}}:
-      case {{{ cDefine('_SC_2_PBS_TRACK') }}}:
-      case {{{ cDefine('_SC_2_UPE') }}}:
-      case {{{ cDefine('_SC_THREAD_THREADS_MAX') }}}:
-      case {{{ cDefine('_SC_SEM_NSEMS_MAX') }}}:
-      case {{{ cDefine('_SC_SYMLOOP_MAX') }}}:
-      case {{{ cDefine('_SC_TIMER_MAX') }}}:
-        return -1;
-      case {{{ cDefine('_SC_V6_ILP32_OFF32') }}}:
-      case {{{ cDefine('_SC_V6_ILP32_OFFBIG') }}}:
-      case {{{ cDefine('_SC_JOB_CONTROL') }}}:
-      case {{{ cDefine('_SC_REGEXP') }}}:
-      case {{{ cDefine('_SC_SAVED_IDS') }}}:
-      case {{{ cDefine('_SC_SHELL') }}}:
-      case {{{ cDefine('_SC_XBS5_ILP32_OFF32') }}}:
-      case {{{ cDefine('_SC_XBS5_ILP32_OFFBIG') }}}:
-      case {{{ cDefine('_SC_XOPEN_CRYPT') }}}:
-      case {{{ cDefine('_SC_XOPEN_ENH_I18N') }}}:
-      case {{{ cDefine('_SC_XOPEN_LEGACY') }}}:
-      case {{{ cDefine('_SC_XOPEN_REALTIME') }}}:
-      case {{{ cDefine('_SC_XOPEN_REALTIME_THREADS') }}}:
-      case {{{ cDefine('_SC_XOPEN_SHM') }}}:
-      case {{{ cDefine('_SC_XOPEN_UNIX') }}}:
-        return 1;
-      case {{{ cDefine('_SC_THREAD_KEYS_MAX') }}}:
-      case {{{ cDefine('_SC_IOV_MAX') }}}:
-      case {{{ cDefine('_SC_GETGR_R_SIZE_MAX') }}}:
-      case {{{ cDefine('_SC_GETPW_R_SIZE_MAX') }}}:
-      case {{{ cDefine('_SC_OPEN_MAX') }}}:
-        return 1024;
-      case {{{ cDefine('_SC_RTSIG_MAX') }}}:
-      case {{{ cDefine('_SC_EXPR_NEST_MAX') }}}:
-      case {{{ cDefine('_SC_TTY_NAME_MAX') }}}:
-        return 32;
-      case {{{ cDefine('_SC_ATEXIT_MAX') }}}:
-      case {{{ cDefine('_SC_DELAYTIMER_MAX') }}}:
-      case {{{ cDefine('_SC_SEM_VALUE_MAX') }}}:
-        return 2147483647;
-      case {{{ cDefine('_SC_SIGQUEUE_MAX') }}}:
-      case {{{ cDefine('_SC_CHILD_MAX') }}}:
-        return 47839;
-      case {{{ cDefine('_SC_BC_SCALE_MAX') }}}:
-      case {{{ cDefine('_SC_BC_BASE_MAX') }}}:
-        return 99;
-      case {{{ cDefine('_SC_LINE_MAX') }}}:
-      case {{{ cDefine('_SC_BC_DIM_MAX') }}}:
-        return 2048;
-      case {{{ cDefine('_SC_ARG_MAX') }}}: return 2097152;
-      case {{{ cDefine('_SC_NGROUPS_MAX') }}}: return 65536;
-      case {{{ cDefine('_SC_MQ_PRIO_MAX') }}}: return 32768;
-      case {{{ cDefine('_SC_RE_DUP_MAX') }}}: return 32767;
-      case {{{ cDefine('_SC_THREAD_STACK_MIN') }}}: return 16384;
-      case {{{ cDefine('_SC_BC_STRING_MAX') }}}: return 1000;
-      case {{{ cDefine('_SC_XOPEN_VERSION') }}}: return 700;
-      case {{{ cDefine('_SC_LOGIN_NAME_MAX') }}}: return 256;
-      case {{{ cDefine('_SC_COLL_WEIGHTS_MAX') }}}: return 255;
-      case {{{ cDefine('_SC_CLK_TCK') }}}: return 100;
-      case {{{ cDefine('_SC_HOST_NAME_MAX') }}}: return 64;
-      case {{{ cDefine('_SC_AIO_PRIO_DELTA_MAX') }}}: return 20;
-      case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
-      case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
-      case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
-      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: {
-        if (typeof navigator === 'object') return navigator['hardwareConcurrency'] || 1;
-        return 1;
-      }
-    }
-    setErrNo({{{ cDefine('EINVAL') }}});
-    return -1;
-  },
-
-  emscripten_get_heap_size: function() {
     return HEAPU8.length;
+#endif
   },
 
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1 (that is, the default when growth is enabled is to not abort, but you have overridden that)');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -sABORTING_MALLOC (that is, the default when growth is enabled is to not abort, but you have overridden that)');
 #else // ALLOW_MEMORY_GROWTH
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ' + HEAP8.length + ', (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0');
 #endif // ALLOW_MEMORY_GROWTH
 #else // ASSERTIONS
     abort('OOM');
@@ -471,14 +130,14 @@ LibraryManager.library = {
       wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #if MEMORYPROFILER
-      if (typeof emscriptenMemoryProfiler !== 'undefined') {
+      if (typeof emscriptenMemoryProfiler != 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      err('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -486,18 +145,20 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+  emscripten_resize_heap__deps: [
+    'emscripten_get_heap_max',
 #if ASSERTIONS == 2
-  , 'emscripten_get_now'
+    'emscripten_get_now',
 #endif
 #if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
+    '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
-  , '$emscripten_realloc_buffer'
+    '$emscripten_realloc_buffer',
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
+    var oldSize = HEAPU8.length;
     requestedSize = requestedSize >>> 0;
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
@@ -506,14 +167,13 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    var oldSize = _emscripten_get_heap_size();
-    // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
-#if USE_PTHREADS
+    // With multithreaded builds, races can happen (another thread might increase the size
+    // in between), so return a failure, and let the caller retry.
+#if SHARED_MEMORY
     if (requestedSize <= oldSize) {
       return false;
     }
-#endif // USE_PTHREADS
-#if ASSERTIONS && !USE_PTHREADS
+#elif ASSERTIONS
     assert(requestedSize > oldSize);
 #endif
 
@@ -523,23 +183,25 @@ LibraryManager.library = {
 #endif
 
     // Memory resize rules:
-    // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
-    // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
-    //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
-    //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
-    // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
-    // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
-    // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
-    //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
+    // 1.  Always increase heap size to at least the requested size, rounded up
+    //     to next page multiple.
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap
+    //     geometrically: increase the heap size according to
+    //     MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%), At most
+    //     overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+    // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap
+    //     linearly: increase the heap size by at least
+    //     MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 3.  Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by
+    //     MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+    // 4.  If we were unable to allocate as much memory, it may be due to
+    //     over-eager decision to excessively reserve due to (3) above.
+    //     Hence if an allocation fails, cut down on the amount of excess
+    //     growth, in an attempt to succeed to perform a smaller allocation.
 
-#if MAXIMUM_MEMORY != -1
-    // A limit was set for how much we can grow. We should not exceed that
+    // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#else
-    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - {{{ WASM_PAGE_SIZE }}};
-#endif
+    var maxHeapSize = _emscripten_get_heap_max();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -551,11 +213,12 @@ LibraryManager.library = {
 #endif
     }
 
-    var minHeapSize = 16777216;
+    let alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
 
-    // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
-    // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    // Loop through potential heap size increases. If we attempt a too eager
+    // reservation that fails, cut down on the attempted size and reserve a
+    // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+    for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
 #if MEMORY_GROWTH_GEOMETRIC_CAP
@@ -567,7 +230,7 @@ LibraryManager.library = {
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -575,7 +238,7 @@ LibraryManager.library = {
       var replacement = emscripten_realloc_buffer(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+      out('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS
@@ -624,14 +287,12 @@ LibraryManager.library = {
       var cp = require('child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
-      var _W_EXITCODE = function(ret, sig) {
-        return ((ret) << 8 | (sig));
-      }
+      var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
 
       // this really only can happen if process is killed by signal
       if (ret.status === null) {
         // sadly node doesn't expose such function
-        var signalToNumber = function(sig) {
+        var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
             case 'SIGHUP': return 1;
@@ -654,7 +315,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
 
@@ -662,50 +323,21 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  _ZSt9terminatev__deps: ['exit'],
-  _ZSt9terminatev: function() {
-    _exit(-1234);
-  },
-
-#if MINIMAL_RUNTIME && !EXIT_RUNTIME
-  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
-  atexit: function(){},
-  __cxa_atexit: function(){},
-#else
-  atexit__proxy: 'sync',
-  atexit__sig: 'iii',
-  atexit: function(func, arg) {
-#if EXIT_RUNTIME
-    __ATEXIT__.unshift({ func: func, arg: arg });
-#endif
-  },
-  __cxa_atexit: 'atexit',
-
-#endif
-
-  // used in rust, clang when doing thread_local statics
-#if USE_PTHREADS
-  __cxa_thread_atexit: 'pthread_cleanup_push',
-  __cxa_thread_atexit_impl: 'pthread_cleanup_push',
-#else
-  __cxa_thread_atexit: 'atexit',
-  __cxa_thread_atexit_impl: 'atexit',
-#endif
-
-  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
-  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  // TODO: There are currently two abort() functions that get imported to asm
+  // module scope: the built-in runtime function abort(), and this library
+  // function _abort(). Remove one of these, importing two functions for the
+  // same purpose is wasteful.
+  abort__sig: 'v',
   abort: function() {
-#if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
-    throw 'abort';
+#if ASSERTIONS
+    abort('native code called abort()');
 #else
-    abort();
+    abort('');
 #endif
   },
 
   // This object can be modified by the user during startup, which affects
-  // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream).
+  // the initial values of the environment accessible by getenv.
   $ENV: {},
 
   getloadavg: function(loadavg, nelem) {
@@ -719,7 +351,13 @@ LibraryManager.library = {
     return limit;
   },
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
+  // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
+  // variant, so we should never emit emscripten_memcpy_big() in the build.
+  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // the wasm file standalone.
+#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
+
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
   // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
@@ -742,62 +380,28 @@ LibraryManager.library = {
   },
 #endif
 
+#endif
+
   // ==========================================================================
-  // GCC/LLVM specifics
+  // assert.h
   // ==========================================================================
-  __builtin_prefetch: function(){},
 
   __assert_fail__sig: 'viiii',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-  __assert_func: function(filename, line, func, condition) {
-    abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-  },
-
-  __gxx_personality_v0: function() {
-  },
-
-  __gcc_personality_v0: function() {
-  },
-
-  // ==========================================================================
-  // pwd.h
-  // ==========================================================================
-
-  // TODO: Implement.
-  // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
-  getpwuid: function(uid) {
-    return 0; // NULL
-  },
-
-
   // ==========================================================================
   // time.h
   // ==========================================================================
 
-  clock: function() {
-    if (_clock.start === undefined) _clock.start = Date.now();
-    return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
+  _emscripten_date_now__sig: 'j',
+  _emscripten_date_now: function() {
+    return Date.now();
   },
 
-  time: function(ptr) {
-    var ret = (Date.now()/1000)|0;
-    if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
-    }
-    return ret;
-  },
-
-  difftime: function(time1, time0) {
-    return time1 - time0;
-  },
-
-  mktime__deps: ['tzset'],
-  mktime__sig: 'ii',
-  mktime: function(tmPtr) {
-    _tzset();
+  _mktime_js__sig: 'ii',
+  _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -837,13 +441,9 @@ LibraryManager.library = {
 
     return (date.getTime() / 1000)|0;
   },
-  timelocal: 'mktime',
 
-#if MINIMAL_RUNTIME
-  gmtime_r__deps: ['allocateUTF8'],
-#endif
-  gmtime_r__sig: 'iii',
-  gmtime_r: function(time, tmPtr) {
+  _gmtime_js__sig: 'iii',
+  _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -852,21 +452,13 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // Allocate a string "GMT" for us to point to.
-    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-    return tmPtr;
   },
-  __gmtime_r: 'gmtime_r',
 
-  timegm__deps: ['tzset'],
-  timegm: function(tmPtr) {
-    _tzset();
+  _timegm_js__sig: 'ii',
+  _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
@@ -884,10 +476,8 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  localtime_r__deps: ['tzset'],
-  localtime_r__sig: 'iii',
-  localtime_r: function(time, tmPtr) {
-    _tzset();
+  _localtime_js__sig: 'iii',
+  _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
@@ -907,17 +497,11 @@ LibraryManager.library = {
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
-
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
-
-    return tmPtr;
   },
-  __localtime_r: 'localtime_r',
 
-  asctime_r__deps: ['mktime'],
-  asctime_r__sig: 'iii',
-  asctime_r: function(tmPtr, buf) {
+  // musl-internal function used to implement both `asctime` and `asctime_r`
+  __asctime_r__sig: 'iii',
+  __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -944,35 +528,35 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
-  __asctime_r: 'asctime_r',
 
-  ctime_r__deps: ['localtime_r', 'asctime_r'],
-  ctime_r__sig: 'iii',
-  ctime_r: function(time, buf) {
+  $withStackSave__internal: true,
+  $withStackSave: function(f) {
     var stack = stackSave();
-    var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    var ret = f();
     stackRestore(stack);
-    return rv;
-  },
-  __ctime_r: 'ctime_r',
-
-  dysize: function(year) {
-    var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
-    return leap ? 366 : 365;
+    return ret;
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  tzset__proxy: 'sync',
-  tzset__sig: 'v',
-#if MINIMAL_RUNTIME
-  tzset__deps: ['$allocateUTF8'],
-#endif
-  tzset: function() {
+  _tzset_js__deps: ['tzset_impl'],
+  _tzset_js__sig: 'viii',
+  _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (_tzset.called) return;
-    _tzset.called = true;
+    if (__tzset_js.called) return;
+    __tzset_js.called = true;
+    _tzset_impl(timezone, daylight, tzname);
+  },
 
+  tzset_impl__internal: true,
+  tzset_impl__proxy: 'sync',
+  tzset_impl__sig: 'viii',
+  tzset_impl__deps: [
+#if MINIMAL_RUNTIME
+    '$allocateUTF8'
+#endif
+  ],
+  tzset_impl: function(timezone, daylight, tzname) {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
@@ -980,7 +564,7 @@ LibraryManager.library = {
     var summerOffset = summer.getTimezoneOffset();
 
     // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
     // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
@@ -989,9 +573,9 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('__get_timezone()', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', 'i32') }}};
 
-    {{{ makeSetValue('__get_daylight()', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
+    {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -1003,18 +587,12 @@ LibraryManager.library = {
     var summerNamePtr = allocateUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
     } else {
-      {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
     }
-  },
-
-  stime__deps: ['$setErrNo'],
-  stime: function(when) {
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
   },
 
   __map_file__deps: ['$setErrNo'],
@@ -1041,7 +619,7 @@ LibraryManager.library = {
   _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
   _addDays: function(date, days) {
     var newDate = new Date(date.getTime());
-    while(days > 0) {
+    while (days > 0) {
       var leap = __isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
       var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
@@ -1073,6 +651,7 @@ LibraryManager.library = {
     , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
+  strftime__sig: 'iiiii',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -1135,7 +714,7 @@ LibraryManager.library = {
     var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     function leadingSomething(value, digits, character) {
-      var str = typeof value === 'number' ? value.toString() : (value || '');
+      var str = typeof value == 'number' ? value.toString() : (value || '');
       while (str.length < digits) {
         str = character[0]+str;
       }
@@ -1278,23 +857,8 @@ LibraryManager.library = {
         return date.tm_wday || 7;
       },
       '%U': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Sunday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year+1900, 0, 1);
-        var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Sunday?
-        if (compareByDay(firstSunday, endDate) < 0) {
-          // calculate difference in days between first Sunday and endDate
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstSundayUntilEndJanuary = 31-firstSunday.getDate();
-          var days = firstSundayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-
-        return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - date.tm_wday;
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%V': function(date) {
         // Replaced by the week number of the year (Monday as the first day of the week)
@@ -1302,54 +866,35 @@ LibraryManager.library = {
         // or more days in the new year, then it is considered week 1.
         // Otherwise, it is the last week of the previous year, and the next week is week 1.
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
-        var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        var endDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
-          // if given date is before this years first week, then it belongs to the 53rd week of last year
-          return '53';
+        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
+        // If 1 Jan is just 1-3 days past Monday, the previous week
+        // is also in this year.
+        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
+          val++;
         }
-
-        if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
-          // if given date is after next years first week, then it belongs to the 01th week of next year
-          return '01';
+        if (!val) {
+          val = 52;
+          // If 31 December of prev year a Thursday, or Friday of a
+          // leap year, then the prev year has 53 weeks.
+          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
+          if (dec31 == 4 || (dec31 == 5 && __isLeapYear(date.tm_year%400-1))) {
+            val++;
+          }
+        } else if (val == 53) {
+          // If 1 January is not a Thursday, and not a Wednesday of a
+          // leap year, then this year has only 52 weeks.
+          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
+          if (jan1 != 4 && (jan1 != 3 || !__isLeapYear(date.tm_year)))
+            val = 1;
         }
-
-        // given date is in between CW 01..53 of this calendar year
-        var daysDifference;
-        if (firstWeekStartThisYear.getFullYear() < date.tm_year+1900) {
-          // first CW of this year starts last year
-          daysDifference = date.tm_yday+32-firstWeekStartThisYear.getDate()
-        } else {
-          // first CW of this year starts this year
-          daysDifference = date.tm_yday+1-firstWeekStartThisYear.getDate();
-        }
-        return leadingNulls(Math.ceil(daysDifference/7), 2);
+        return leadingNulls(val, 2);
       },
       '%w': function(date) {
         return date.tm_wday;
       },
       '%W': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53].
-        // The first Monday of January is the first day of week 1;
-        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year, 0, 1);
-        var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
-        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-
-        // is target date after the first Monday?
-        if (compareByDay(firstMonday, endDate) < 0) {
-          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
-          var firstMondayUntilEndJanuary = 31-firstMonday.getDate();
-          var days = firstMondayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
-          return leadingNulls(Math.ceil(days/7), 2);
-        }
-        return compareByDay(firstMonday, janFirst) === 0 ? '01': '00';
+        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
+        return leadingNulls(Math.floor(days / 7), 2);
       },
       '%y': function(date) {
         // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
@@ -1376,11 +921,16 @@ LibraryManager.library = {
         return '%';
       }
     };
+
+    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
+    // re-inject them after processing.
+    pattern = pattern.replace(/%%/g, '\0\0')
     for (var rule in EXPANSION_RULES_2) {
-      if (pattern.indexOf(rule) >= 0) {
+      if (pattern.includes(rule)) {
         pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
       }
     }
+    pattern = pattern.replace(/\0\0/g, '%')
 
     var bytes = intArrayFromString(pattern, false);
     if (bytes.length > maxsize) {
@@ -1475,7 +1025,7 @@ LibraryManager.library = {
 
     function initDate() {
       function fixup(value, min, max) {
-        return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
+        return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
         year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
@@ -1491,7 +1041,7 @@ LibraryManager.library = {
       var date = initDate();
       var value;
 
-      var getMatch = function(symbol) {
+      var getMatch = (symbol) => {
         var pos = capture.indexOf(symbol);
         // check if symbol appears in regexp
         if (pos >= 0) {
@@ -1645,297 +1195,172 @@ LibraryManager.library = {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
-  getdate: function(string) {
-    // struct tm *getdate(const char *string);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
-    // TODO: Implement.
-    return 0;
-  },
-
-  timespec_get__deps: ['clock_gettime', '$setErrNo'],
-  timespec_get: function(ts, base) {
-    //int timespec_get(struct timespec *ts, int base);
-    if (base !== {{{ cDefine('TIME_UTC') }}}) {
-      // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return 0;
-    }
-    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
-    return ret < 0 ? 0 : base;
-  },
-
-  // ==========================================================================
-  // sys/time.h
-  // ==========================================================================
-
-  clock_gettime__sig: 'iii',
-  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_gettime: function(clk_id, tp) {
-    // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    var now;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      now = Date.now();
-    } else if ((clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} || clk_id === {{{ cDefine('CLOCK_MONOTONIC_RAW') }}}) && _emscripten_get_now_is_monotonic) {
-      now = _emscripten_get_now();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
-    return 0;
-  },
-  __clock_gettime__sig: 'iii',
-  __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$setErrNo'],
-  clock_getres: function(clk_id, res) {
-    // int clock_getres(clockid_t clk_id, struct timespec *res);
-    var nsec;
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
-      nsec = _emscripten_get_now_res();
-    } else {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
-    return 0;
-  },
-  clock_getcpuclockid: function(pid, clk_id) {
-    if (pid < 0) return {{{ cDefine('ESRCH') }}};
-    if (pid !== 0 && pid !== {{{ PROCINFO.pid }}}) return {{{ cDefine('ENOSYS') }}};
-    if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
-    return 0;
-  },
-  // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
-  gettimeofday: function(ptr) {
-    var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
-    return 0;
-  },
-
-  // ==========================================================================
-  // sys/timeb.h
-  // ==========================================================================
-
-  ftime: function(p) {
-    var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
-    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
-  },
-
-  // ==========================================================================
-  // sys/times.h
-  // ==========================================================================
-
-  times: function(buffer) {
-    // clock_t times(struct tms *buffer);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
-    // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
-    if (buffer !== 0) {
-      _memset(buffer, 0, {{{ C_STRUCTS.tms.__size__ }}});
-    }
-    return 0;
-  },
-
-  // ==========================================================================
-  // sys/types.h
-  // ==========================================================================
-  // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
-  makedev__sig: 'iii',
-  makedev: function(maj, min) {
-    return ((maj) << 8 | (min));
-  },
-  gnu_dev_makedev: 'makedev',
-  major__sig: 'ii',
-  major: function(dev) {
-    return ((dev) >> 8);
-  },
-  gnu_dev_major: 'major',
-  minor__sig: 'ii',
-  minor: function(dev) {
-    return ((dev) & 0xff);
-  },
-  gnu_dev_minor: 'minor',
-
   // ==========================================================================
   // setjmp.h
   // ==========================================================================
 
-  longjmp__sig: 'vii',
-#if SUPPORT_LONGJMP
-  longjmp: function(env, value) {
-    _setThrew(env, value || 1);
-    throw 'longjmp';
-  },
-#else
+#if SUPPORT_LONGJMP == 'emscripten'
+  _emscripten_throw_longjmp__sig: 'v',
+  _emscripten_throw_longjmp: function() { throw Infinity; },
+#endif
+
+#if !SUPPORT_LONGJMP
+#if !INCLUDE_FULL_LIBRARY
+  // These are in order to print helpful error messages when either longjmp of
+  // setjmp is used.
   longjmp__deps: [function() {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
+  get setjmp__deps() {
+    return this.longjmp__deps;
+  },
+  // This is to print the correct error message when a program is built with
+  // SUPPORT_LONGJMP=1 but linked with SUPPORT_LONGJMP=0. When a program is
+  // built with SUPPORT_LONGJMP=1, the object file contains references of not
+  // longjmp but _emscripten_throw_longjmp, which is called from
+  // emscripten_longjmp.
+  _emscripten_throw_longjmp: function() { error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)'); },
+  get _emscripten_throw_longjmp__deps() {
+    return this.longjmp__deps;
+  },
+#endif
   // will never be emitted, as the dep errors at compile time
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
-#endif
-  // TODO: remove these aliases if/when the LLVM backend can stop emitting them
-  // (it emits them atm as they are generated by an IR pass, at at that time
-  // they each have a different signature - it is only at the wasm level that
-  // they become identical).
-  emscripten_longjmp__sig: 'vii',
-  emscripten_longjmp: 'longjmp',
-
-  // ==========================================================================
-  // sys/wait.h
-  // ==========================================================================
-
-  wait__deps: ['$setErrNo'],
-  wait__sig: 'ii',
-  wait: function(stat_loc) {
-    // pid_t wait(int *stat_loc);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
-    // Makes no sense in a single-process environment.
-    setErrNo({{{ cDefine('ECHILD') }}});
-    return -1;
+  setjmp: function(env, value) {
+    abort('setjmp not supported');
   },
-  // NOTE: These aren't really the same, but we use the same stub for them all.
-  waitid: 'wait',
-  waitpid: 'wait',
-  wait3: 'wait',
-  wait4: 'wait',
+#endif
 
   // ==========================================================================
   // errno.h
   // ==========================================================================
 
-  $ERRNO_CODES: {
-    EPERM: {{{ cDefine('EPERM') }}},
-    ENOENT: {{{ cDefine('ENOENT') }}},
-    ESRCH: {{{ cDefine('ESRCH') }}},
-    EINTR: {{{ cDefine('EINTR') }}},
-    EIO: {{{ cDefine('EIO') }}},
-    ENXIO: {{{ cDefine('ENXIO') }}},
-    E2BIG: {{{ cDefine('E2BIG') }}},
-    ENOEXEC: {{{ cDefine('ENOEXEC') }}},
-    EBADF: {{{ cDefine('EBADF') }}},
-    ECHILD: {{{ cDefine('ECHILD') }}},
-    EAGAIN: {{{ cDefine('EAGAIN') }}},
-    EWOULDBLOCK: {{{ cDefine('EWOULDBLOCK') }}},
-    ENOMEM: {{{ cDefine('ENOMEM') }}},
-    EACCES: {{{ cDefine('EACCES') }}},
-    EFAULT: {{{ cDefine('EFAULT') }}},
-    ENOTBLK: {{{ cDefine('ENOTBLK') }}},
-    EBUSY: {{{ cDefine('EBUSY') }}},
-    EEXIST: {{{ cDefine('EEXIST') }}},
-    EXDEV: {{{ cDefine('EXDEV') }}},
-    ENODEV: {{{ cDefine('ENODEV') }}},
-    ENOTDIR: {{{ cDefine('ENOTDIR') }}},
-    EISDIR: {{{ cDefine('EISDIR') }}},
-    EINVAL: {{{ cDefine('EINVAL') }}},
-    ENFILE: {{{ cDefine('ENFILE') }}},
-    EMFILE: {{{ cDefine('EMFILE') }}},
-    ENOTTY: {{{ cDefine('ENOTTY') }}},
-    ETXTBSY: {{{ cDefine('ETXTBSY') }}},
-    EFBIG: {{{ cDefine('EFBIG') }}},
-    ENOSPC: {{{ cDefine('ENOSPC') }}},
-    ESPIPE: {{{ cDefine('ESPIPE') }}},
-    EROFS: {{{ cDefine('EROFS') }}},
-    EMLINK: {{{ cDefine('EMLINK') }}},
-    EPIPE: {{{ cDefine('EPIPE') }}},
-    EDOM: {{{ cDefine('EDOM') }}},
-    ERANGE: {{{ cDefine('ERANGE') }}},
-    ENOMSG: {{{ cDefine('ENOMSG') }}},
-    EIDRM: {{{ cDefine('EIDRM') }}},
-    ECHRNG: {{{ cDefine('ECHRNG') }}},
-    EL2NSYNC: {{{ cDefine('EL2NSYNC') }}},
-    EL3HLT: {{{ cDefine('EL3HLT') }}},
-    EL3RST: {{{ cDefine('EL3RST') }}},
-    ELNRNG: {{{ cDefine('ELNRNG') }}},
-    EUNATCH: {{{ cDefine('EUNATCH') }}},
-    ENOCSI: {{{ cDefine('ENOCSI') }}},
-    EL2HLT: {{{ cDefine('EL2HLT') }}},
-    EDEADLK: {{{ cDefine('EDEADLK') }}},
-    ENOLCK: {{{ cDefine('ENOLCK') }}},
-    EBADE: {{{ cDefine('EBADE') }}},
-    EBADR: {{{ cDefine('EBADR') }}},
-    EXFULL: {{{ cDefine('EXFULL') }}},
-    ENOANO: {{{ cDefine('ENOANO') }}},
-    EBADRQC: {{{ cDefine('EBADRQC') }}},
-    EBADSLT: {{{ cDefine('EBADSLT') }}},
-    EDEADLOCK: {{{ cDefine('EDEADLOCK') }}},
-    EBFONT: {{{ cDefine('EBFONT') }}},
-    ENOSTR: {{{ cDefine('ENOSTR') }}},
-    ENODATA: {{{ cDefine('ENODATA') }}},
-    ETIME: {{{ cDefine('ETIME') }}},
-    ENOSR: {{{ cDefine('ENOSR') }}},
-    ENONET: {{{ cDefine('ENONET') }}},
-    ENOPKG: {{{ cDefine('ENOPKG') }}},
-    EREMOTE: {{{ cDefine('EREMOTE') }}},
-    ENOLINK: {{{ cDefine('ENOLINK') }}},
-    EADV: {{{ cDefine('EADV') }}},
-    ESRMNT: {{{ cDefine('ESRMNT') }}},
-    ECOMM: {{{ cDefine('ECOMM') }}},
-    EPROTO: {{{ cDefine('EPROTO') }}},
-    EMULTIHOP: {{{ cDefine('EMULTIHOP') }}},
-    EDOTDOT: {{{ cDefine('EDOTDOT') }}},
-    EBADMSG: {{{ cDefine('EBADMSG') }}},
-    ENOTUNIQ: {{{ cDefine('ENOTUNIQ') }}},
-    EBADFD: {{{ cDefine('EBADFD') }}},
-    EREMCHG: {{{ cDefine('EREMCHG') }}},
-    ELIBACC: {{{ cDefine('ELIBACC') }}},
-    ELIBBAD: {{{ cDefine('ELIBBAD') }}},
-    ELIBSCN: {{{ cDefine('ELIBSCN') }}},
-    ELIBMAX: {{{ cDefine('ELIBMAX') }}},
-    ELIBEXEC: {{{ cDefine('ELIBEXEC') }}},
-    ENOSYS: {{{ cDefine('ENOSYS') }}},
-    ENOTEMPTY: {{{ cDefine('ENOTEMPTY') }}},
-    ENAMETOOLONG: {{{ cDefine('ENAMETOOLONG') }}},
-    ELOOP: {{{ cDefine('ELOOP') }}},
-    EOPNOTSUPP: {{{ cDefine('EOPNOTSUPP') }}},
-    EPFNOSUPPORT: {{{ cDefine('EPFNOSUPPORT') }}},
-    ECONNRESET: {{{ cDefine('ECONNRESET') }}},
-    ENOBUFS: {{{ cDefine('ENOBUFS') }}},
-    EAFNOSUPPORT: {{{ cDefine('EAFNOSUPPORT') }}},
-    EPROTOTYPE: {{{ cDefine('EPROTOTYPE') }}},
-    ENOTSOCK: {{{ cDefine('ENOTSOCK') }}},
-    ENOPROTOOPT: {{{ cDefine('ENOPROTOOPT') }}},
-    ESHUTDOWN: {{{ cDefine('ESHUTDOWN') }}},
-    ECONNREFUSED: {{{ cDefine('ECONNREFUSED') }}},
-    EADDRINUSE: {{{ cDefine('EADDRINUSE') }}},
-    ECONNABORTED: {{{ cDefine('ECONNABORTED') }}},
-    ENETUNREACH: {{{ cDefine('ENETUNREACH') }}},
-    ENETDOWN: {{{ cDefine('ENETDOWN') }}},
-    ETIMEDOUT: {{{ cDefine('ETIMEDOUT') }}},
-    EHOSTDOWN: {{{ cDefine('EHOSTDOWN') }}},
-    EHOSTUNREACH: {{{ cDefine('EHOSTUNREACH') }}},
-    EINPROGRESS: {{{ cDefine('EINPROGRESS') }}},
-    EALREADY: {{{ cDefine('EALREADY') }}},
-    EDESTADDRREQ: {{{ cDefine('EDESTADDRREQ') }}},
-    EMSGSIZE: {{{ cDefine('EMSGSIZE') }}},
-    EPROTONOSUPPORT: {{{ cDefine('EPROTONOSUPPORT') }}},
-    ESOCKTNOSUPPORT: {{{ cDefine('ESOCKTNOSUPPORT') }}},
-    EADDRNOTAVAIL: {{{ cDefine('EADDRNOTAVAIL') }}},
-    ENETRESET: {{{ cDefine('ENETRESET') }}},
-    EISCONN: {{{ cDefine('EISCONN') }}},
-    ENOTCONN: {{{ cDefine('ENOTCONN') }}},
-    ETOOMANYREFS: {{{ cDefine('ETOOMANYREFS') }}},
-    EUSERS: {{{ cDefine('EUSERS') }}},
-    EDQUOT: {{{ cDefine('EDQUOT') }}},
-    ESTALE: {{{ cDefine('ESTALE') }}},
-    ENOTSUP: {{{ cDefine('ENOTSUP') }}},
-    ENOMEDIUM: {{{ cDefine('ENOMEDIUM') }}},
-    EILSEQ: {{{ cDefine('EILSEQ') }}},
-    EOVERFLOW: {{{ cDefine('EOVERFLOW') }}},
-    ECANCELED: {{{ cDefine('ECANCELED') }}},
-    ENOTRECOVERABLE: {{{ cDefine('ENOTRECOVERABLE') }}},
-    EOWNERDEAD: {{{ cDefine('EOWNERDEAD') }}},
-    ESTRPIPE: {{{ cDefine('ESTRPIPE') }}},
-  },
+  $ERRNO_CODES__postset: `ERRNO_CODES = {
+    'EPERM': {{{ cDefine('EPERM') }}},
+    'ENOENT': {{{ cDefine('ENOENT') }}},
+    'ESRCH': {{{ cDefine('ESRCH') }}},
+    'EINTR': {{{ cDefine('EINTR') }}},
+    'EIO': {{{ cDefine('EIO') }}},
+    'ENXIO': {{{ cDefine('ENXIO') }}},
+    'E2BIG': {{{ cDefine('E2BIG') }}},
+    'ENOEXEC': {{{ cDefine('ENOEXEC') }}},
+    'EBADF': {{{ cDefine('EBADF') }}},
+    'ECHILD': {{{ cDefine('ECHILD') }}},
+    'EAGAIN': {{{ cDefine('EAGAIN') }}},
+    'EWOULDBLOCK': {{{ cDefine('EWOULDBLOCK') }}},
+    'ENOMEM': {{{ cDefine('ENOMEM') }}},
+    'EACCES': {{{ cDefine('EACCES') }}},
+    'EFAULT': {{{ cDefine('EFAULT') }}},
+    'ENOTBLK': {{{ cDefine('ENOTBLK') }}},
+    'EBUSY': {{{ cDefine('EBUSY') }}},
+    'EEXIST': {{{ cDefine('EEXIST') }}},
+    'EXDEV': {{{ cDefine('EXDEV') }}},
+    'ENODEV': {{{ cDefine('ENODEV') }}},
+    'ENOTDIR': {{{ cDefine('ENOTDIR') }}},
+    'EISDIR': {{{ cDefine('EISDIR') }}},
+    'EINVAL': {{{ cDefine('EINVAL') }}},
+    'ENFILE': {{{ cDefine('ENFILE') }}},
+    'EMFILE': {{{ cDefine('EMFILE') }}},
+    'ENOTTY': {{{ cDefine('ENOTTY') }}},
+    'ETXTBSY': {{{ cDefine('ETXTBSY') }}},
+    'EFBIG': {{{ cDefine('EFBIG') }}},
+    'ENOSPC': {{{ cDefine('ENOSPC') }}},
+    'ESPIPE': {{{ cDefine('ESPIPE') }}},
+    'EROFS': {{{ cDefine('EROFS') }}},
+    'EMLINK': {{{ cDefine('EMLINK') }}},
+    'EPIPE': {{{ cDefine('EPIPE') }}},
+    'EDOM': {{{ cDefine('EDOM') }}},
+    'ERANGE': {{{ cDefine('ERANGE') }}},
+    'ENOMSG': {{{ cDefine('ENOMSG') }}},
+    'EIDRM': {{{ cDefine('EIDRM') }}},
+    'ECHRNG': {{{ cDefine('ECHRNG') }}},
+    'EL2NSYNC': {{{ cDefine('EL2NSYNC') }}},
+    'EL3HLT': {{{ cDefine('EL3HLT') }}},
+    'EL3RST': {{{ cDefine('EL3RST') }}},
+    'ELNRNG': {{{ cDefine('ELNRNG') }}},
+    'EUNATCH': {{{ cDefine('EUNATCH') }}},
+    'ENOCSI': {{{ cDefine('ENOCSI') }}},
+    'EL2HLT': {{{ cDefine('EL2HLT') }}},
+    'EDEADLK': {{{ cDefine('EDEADLK') }}},
+    'ENOLCK': {{{ cDefine('ENOLCK') }}},
+    'EBADE': {{{ cDefine('EBADE') }}},
+    'EBADR': {{{ cDefine('EBADR') }}},
+    'EXFULL': {{{ cDefine('EXFULL') }}},
+    'ENOANO': {{{ cDefine('ENOANO') }}},
+    'EBADRQC': {{{ cDefine('EBADRQC') }}},
+    'EBADSLT': {{{ cDefine('EBADSLT') }}},
+    'EDEADLOCK': {{{ cDefine('EDEADLOCK') }}},
+    'EBFONT': {{{ cDefine('EBFONT') }}},
+    'ENOSTR': {{{ cDefine('ENOSTR') }}},
+    'ENODATA': {{{ cDefine('ENODATA') }}},
+    'ETIME': {{{ cDefine('ETIME') }}},
+    'ENOSR': {{{ cDefine('ENOSR') }}},
+    'ENONET': {{{ cDefine('ENONET') }}},
+    'ENOPKG': {{{ cDefine('ENOPKG') }}},
+    'EREMOTE': {{{ cDefine('EREMOTE') }}},
+    'ENOLINK': {{{ cDefine('ENOLINK') }}},
+    'EADV': {{{ cDefine('EADV') }}},
+    'ESRMNT': {{{ cDefine('ESRMNT') }}},
+    'ECOMM': {{{ cDefine('ECOMM') }}},
+    'EPROTO': {{{ cDefine('EPROTO') }}},
+    'EMULTIHOP': {{{ cDefine('EMULTIHOP') }}},
+    'EDOTDOT': {{{ cDefine('EDOTDOT') }}},
+    'EBADMSG': {{{ cDefine('EBADMSG') }}},
+    'ENOTUNIQ': {{{ cDefine('ENOTUNIQ') }}},
+    'EBADFD': {{{ cDefine('EBADFD') }}},
+    'EREMCHG': {{{ cDefine('EREMCHG') }}},
+    'ELIBACC': {{{ cDefine('ELIBACC') }}},
+    'ELIBBAD': {{{ cDefine('ELIBBAD') }}},
+    'ELIBSCN': {{{ cDefine('ELIBSCN') }}},
+    'ELIBMAX': {{{ cDefine('ELIBMAX') }}},
+    'ELIBEXEC': {{{ cDefine('ELIBEXEC') }}},
+    'ENOSYS': {{{ cDefine('ENOSYS') }}},
+    'ENOTEMPTY': {{{ cDefine('ENOTEMPTY') }}},
+    'ENAMETOOLONG': {{{ cDefine('ENAMETOOLONG') }}},
+    'ELOOP': {{{ cDefine('ELOOP') }}},
+    'EOPNOTSUPP': {{{ cDefine('EOPNOTSUPP') }}},
+    'EPFNOSUPPORT': {{{ cDefine('EPFNOSUPPORT') }}},
+    'ECONNRESET': {{{ cDefine('ECONNRESET') }}},
+    'ENOBUFS': {{{ cDefine('ENOBUFS') }}},
+    'EAFNOSUPPORT': {{{ cDefine('EAFNOSUPPORT') }}},
+    'EPROTOTYPE': {{{ cDefine('EPROTOTYPE') }}},
+    'ENOTSOCK': {{{ cDefine('ENOTSOCK') }}},
+    'ENOPROTOOPT': {{{ cDefine('ENOPROTOOPT') }}},
+    'ESHUTDOWN': {{{ cDefine('ESHUTDOWN') }}},
+    'ECONNREFUSED': {{{ cDefine('ECONNREFUSED') }}},
+    'EADDRINUSE': {{{ cDefine('EADDRINUSE') }}},
+    'ECONNABORTED': {{{ cDefine('ECONNABORTED') }}},
+    'ENETUNREACH': {{{ cDefine('ENETUNREACH') }}},
+    'ENETDOWN': {{{ cDefine('ENETDOWN') }}},
+    'ETIMEDOUT': {{{ cDefine('ETIMEDOUT') }}},
+    'EHOSTDOWN': {{{ cDefine('EHOSTDOWN') }}},
+    'EHOSTUNREACH': {{{ cDefine('EHOSTUNREACH') }}},
+    'EINPROGRESS': {{{ cDefine('EINPROGRESS') }}},
+    'EALREADY': {{{ cDefine('EALREADY') }}},
+    'EDESTADDRREQ': {{{ cDefine('EDESTADDRREQ') }}},
+    'EMSGSIZE': {{{ cDefine('EMSGSIZE') }}},
+    'EPROTONOSUPPORT': {{{ cDefine('EPROTONOSUPPORT') }}},
+    'ESOCKTNOSUPPORT': {{{ cDefine('ESOCKTNOSUPPORT') }}},
+    'EADDRNOTAVAIL': {{{ cDefine('EADDRNOTAVAIL') }}},
+    'ENETRESET': {{{ cDefine('ENETRESET') }}},
+    'EISCONN': {{{ cDefine('EISCONN') }}},
+    'ENOTCONN': {{{ cDefine('ENOTCONN') }}},
+    'ETOOMANYREFS': {{{ cDefine('ETOOMANYREFS') }}},
+    'EUSERS': {{{ cDefine('EUSERS') }}},
+    'EDQUOT': {{{ cDefine('EDQUOT') }}},
+    'ESTALE': {{{ cDefine('ESTALE') }}},
+    'ENOTSUP': {{{ cDefine('ENOTSUP') }}},
+    'ENOMEDIUM': {{{ cDefine('ENOMEDIUM') }}},
+    'EILSEQ': {{{ cDefine('EILSEQ') }}},
+    'EOVERFLOW': {{{ cDefine('EOVERFLOW') }}},
+    'ECANCELED': {{{ cDefine('ECANCELED') }}},
+    'ENOTRECOVERABLE': {{{ cDefine('ENOTRECOVERABLE') }}},
+    'EOWNERDEAD': {{{ cDefine('EOWNERDEAD') }}},
+    'ESTRPIPE': {{{ cDefine('ESTRPIPE') }}},
+  };`,
+  $ERRNO_CODES: {},
   $ERRNO_MESSAGES: {
     0: 'Success',
     {{{ cDefine('EPERM') }}}: 'Not super-user',
@@ -2074,26 +1499,12 @@ LibraryManager.library = {
   },
 #endif
 
-  // ==========================================================================
-  // arpa/inet.h
-  // ==========================================================================
-
 #if PROXY_POSIX_SOCKETS == 0
-  // old ipv4 only functions
-  inet_addr__deps: ['_inet_pton4_raw'],
-  inet_addr: function(ptr) {
-    var addr = __inet_pton4_raw(UTF8ToString(ptr));
-    if (addr === null) {
-      return -1;
-    }
-    return addr;
-  },
-
   // ==========================================================================
   // netdb.h
   // ==========================================================================
 
-  _inet_pton4_raw: function(str) {
+  $inetPton4: function(str) {
     var b = str.split('.');
     for (var i = 0; i < 4; i++) {
       var tmp = Number(b[i]);
@@ -2102,11 +1513,11 @@ LibraryManager.library = {
     }
     return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
   },
-  _inet_ntop4_raw: function(addr) {
+  $inetNtop4: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons', 'ntohs', '$jstoi_q'],
-  _inet_pton6_raw: function(str) {
+  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6: function(str) {
     var words;
     var w, offset, z, i;
     /* http://home.deds.nl/~aeron/regex/ */
@@ -2119,7 +1530,7 @@ LibraryManager.library = {
       return [0, 0, 0, 0, 0, 0, 0, 0];
     }
     // Z placeholder to keep track of zeros when splitting the string on ":"
-    if (str.indexOf("::") === 0) {
+    if (str.startsWith("::")) {
       str = str.replace("::", "Z:"); // leading zeros case
     } else {
       str = str.replace("::", ":Z:");
@@ -2138,7 +1549,7 @@ LibraryManager.library = {
 
     offset = 0; z = 0;
     for (w=0; w < words.length; w++) {
-      if (typeof words[w] === 'string') {
+      if (typeof words[w] == 'string') {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
@@ -2161,19 +1572,8 @@ LibraryManager.library = {
       (parts[7] << 16) | parts[6]
     ];
   },
-  _inet_pton6__deps: ['_inet_pton6_raw'],
-  _inet_pton6: function(src, dst) {
-    var ints = __inet_pton6_raw(UTF8ToString(src));
-    if (ints === null) {
-      return 0;
-    }
-    for (var i = 0; i < 4; i++) {
-      {{{ makeSetValue('dst', 'i*4', 'ints[i]', 'i32') }}};
-    }
-    return 1;
-  },
-  _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
-  _inet_ntop6_raw: function(ints) {
+  $inetNtop6__deps: ['$inetNtop4', 'ntohs'],
+  $inetNtop6: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
     //  128-bits are split into eight 16-bit words
@@ -2217,7 +1617,7 @@ LibraryManager.library = {
 
     if (hasipv4) {
       // low-order 32-bits store an IPv4 address (bytes 13 to 16) (last 2 words)
-      v4part = __inet_ntop4_raw(parts[6] | (parts[7] << 16));
+      v4part = inetNtop4(parts[6] | (parts[7] << 16));
       // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
       if (parts[5] === -1) {
         str = "::ffff:";
@@ -2228,8 +1628,8 @@ LibraryManager.library = {
       if (parts[5] === 0) {
         str = "::";
         //special case IPv6 addresses
-        if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if(v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
+        if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
         return str;
       }
@@ -2270,8 +1670,8 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
-  _read_sockaddr: function (sa, salen) {
+  $readSockaddr__deps: ['$Sockets', '$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
     var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
@@ -2283,7 +1683,7 @@ LibraryManager.library = {
           return { errno: {{{ cDefine('EINVAL') }}} };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
-        addr = __inet_ntop4_raw(addr);
+        addr = inetNtop4(addr);
         break;
       case {{{ cDefine('AF_INET6') }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
@@ -2295,7 +1695,7 @@ LibraryManager.library = {
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+8, 'i32') }}},
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+12, 'i32') }}}
         ];
-        addr = __inet_ntop6_raw(addr);
+        addr = inetNtop6(addr);
         break;
       default:
         return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
@@ -2303,38 +1703,44 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  _write_sockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
-  _write_sockaddr: function (sa, family, addr, port) {
+  $writeSockaddr__docs: '/** @param {number=} addrlen */',
+  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
+  $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
-        addr = __inet_pton4_raw(addr);
+        addr = inetPton4(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
+        }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
-        addr = __inet_pton6_raw(addr);
+        addr = inetPton6(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
+        }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_family, 'family', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'addr[0]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+4, 'addr[1]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+8, 'addr[2]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+12, 'addr[3]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_flowinfo, '0', 'i32') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_scope_id, '0', 'i32') }}};
         break;
       default:
-        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
+        return {{{ cDefine('EAFNOSUPPORT') }}};
     }
-    // kind of lame, but let's match _read_sockaddr's interface
-    return {};
+    return 0;
   },
 
   // We can't actually resolve hostnames in the browser, so instead
   // we're generating fake IP addresses with lookup_name that we can
   // resolve later on with lookup_addr.
   // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
-  $DNS__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
+  $DNS__deps: ['$inetPton4', '$inetPton6'],
   $DNS: {
     address_map: {
       id: 1,
@@ -2344,11 +1750,11 @@ LibraryManager.library = {
 
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
-      var res = __inet_pton4_raw(name);
+      var res = inetPton4(name);
       if (res !== null) {
         return name;
       }
-      res = __inet_pton6_raw(name);
+      res = inetPton6(name);
       if (res !== null) {
         return name;
       }
@@ -2381,7 +1787,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2391,7 +1797,7 @@ LibraryManager.library = {
       return null;
     }
     addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
-    var host = __inet_ntop4_raw(addr);
+    var host = inetNtop4(addr);
     var lookup = DNS.lookup_addr(host);
     if (lookup) {
       host = lookup;
@@ -2399,13 +1805,14 @@ LibraryManager.library = {
     return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
+  gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
 
+  $getHostByName__deps: ['malloc', '$DNS', '$inetPton4'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
@@ -2421,12 +1828,12 @@ LibraryManager.library = {
     var addrListBuf = _malloc(12);
     {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}};
     {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}};
-    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}};
+    {{{ makeSetValue('addrListBuf', '8', 'inetPton4(DNS.lookup_name(name))', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
     return ret;
   },
 
-  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
   gethostbyname_r__sig: 'iiiiiii',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
@@ -2438,7 +1845,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo__sig: 'iiiii',
   getaddrinfo: function(node, service, hint, out) {
@@ -2457,17 +1864,17 @@ LibraryManager.library = {
 
     function allocaddrinfo(family, type, proto, canon, addr, port) {
       var sa, salen, ai;
-      var res;
+      var errno;
 
       salen = family === {{{ cDefine('AF_INET6') }}} ?
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
         {{{ C_STRUCTS.sockaddr_in.__size__ }}};
       addr = family === {{{ cDefine('AF_INET6') }}} ?
-        __inet_ntop6_raw(addr) :
-        __inet_ntop4_raw(addr);
+        inetNtop6(addr) :
+        inetNtop4(addr);
       sa = _malloc(salen);
-      res = __write_sockaddr(sa, family, addr, port);
-      assert(!res.errno);
+      errno = writeSockaddr(sa, family, addr, port);
+      assert(!errno);
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
@@ -2562,7 +1969,7 @@ LibraryManager.library = {
     // try as a numeric address
     //
     node = UTF8ToString(node);
-    addr = __inet_pton4_raw(node);
+    addr = inetPton4(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
       if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
@@ -2575,7 +1982,7 @@ LibraryManager.library = {
         return {{{ cDefine('EAI_NONAME') }}};
       }
     } else {
-      addr = __inet_pton6_raw(node);
+      addr = inetPton6(node);
       if (addr !== null) {
         // incoming node is a valid ipv6 address
         if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
@@ -2599,7 +2006,7 @@ LibraryManager.library = {
     //
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
-    addr = __inet_pton4_raw(node);
+    addr = inetPton4(node);
     if (family === {{{ cDefine('AF_UNSPEC') }}}) {
       family = {{{ cDefine('AF_INET') }}};
     } else if (family === {{{ cDefine('AF_INET6') }}}) {
@@ -2610,9 +2017,9 @@ LibraryManager.library = {
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '_read_sockaddr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
-    var info = __read_sockaddr(sa, salen);
+    var info = readSockaddr(sa, salen);
     if (info.errno) {
       return {{{ cDefine('EAI_FAMILY') }}};
     }
@@ -2652,48 +2059,6 @@ LibraryManager.library = {
     }
 
     return 0;
-  },
-  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
-  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
-  $GAI_ERRNO_MESSAGES: {},
-
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
-  gai_strerror: function(val) {
-    var buflen = 256;
-
-    // On first call to gai_strerror we initialise the buffer and populate the error messages.
-    if (!_gai_strerror.buffer) {
-        _gai_strerror.buffer = _malloc(buflen);
-
-        GAI_ERRNO_MESSAGES['0'] = 'Success';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_BADFLAGS') }}}] = 'Invalid value for \'ai_flags\' field';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_NONAME') }}}] = 'NAME or SERVICE is unknown';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_AGAIN') }}}] = 'Temporary failure in name resolution';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAIL') }}}] = 'Non-recoverable failure in name res';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAMILY') }}}] = '\'ai_family\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SOCKTYPE') }}}] = '\'ai_socktype\' not supported';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SERVICE') }}}] = 'SERVICE not supported for \'ai_socktype\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_MEMORY') }}}] = 'Memory allocation failure';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SYSTEM') }}}] = 'System error returned in \'errno\'';
-        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_OVERFLOW') }}}] = 'Argument buffer overflow';
-    }
-
-    var msg = 'Unknown error';
-
-    if (val in GAI_ERRNO_MESSAGES) {
-      if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
-        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above.
-      } else {
-        msg = GAI_ERRNO_MESSAGES[val];
-      }
-    }
-
-    writeAsciiToMemory(msg, _gai_strerror.buffer);
-    return _gai_strerror.buffer;
   },
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
@@ -2794,8 +2159,8 @@ LibraryManager.library = {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
+    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
+    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
@@ -2818,32 +2183,12 @@ LibraryManager.library = {
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
-  // pwd.h
-
-  getpwnam: function() { throw 'getpwnam: TODO' },
-  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
-  getpwuid: function() { throw 'getpwuid: TODO' },
-  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
-  setpwent: function() { throw 'setpwent: TODO' },
-  getpwent: function() { throw 'getpwent: TODO' },
-  endpwent: function() { throw 'endpwent: TODO' },
-
-  // grp.h
-
-  getgrgid: function() { throw 'getgrgid: TODO' },
-  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
-  getgrnam: function() { throw 'getgrnam: TODO' },
-  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
-  getgrent: function() { throw 'getgrent: TODO' },
-  endgrent: function() { throw 'endgrent: TODO' },
-  setgrent: function() { throw 'setgrent: TODO' },
-
   // random.h
 
   // TODO: consider allowing the API to get a parameter for the number of
   // bytes.
   $getRandomDevice: function() {
-    if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
       var randomBuffer = new Uint8Array(1);
       return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
@@ -2874,9 +2219,25 @@ LibraryManager.library = {
       _getentropy.randomDevice = getRandomDevice();
     }
     for (var i = 0; i < size; i++) {
-      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
+      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}};
     }
     return 0;
+  },
+
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['raise', '$callUserCallback'],
+  alarm: function(seconds) {
+    setTimeout(function() {
+      callUserCallback(function() {
+        _raise({{{ cDefine('SIGALRM') }}});
+      });
+    }, seconds*1000);
+  },
+
+  // Helper for raise() to avoid signature mismatch failures:
+  // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler: function(fp, sig) {
+    {{{ makeDynCall('vi', 'fp') }}}(sig);
   },
 
   // ==========================================================================
@@ -2894,6 +2255,10 @@ LibraryManager.library = {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
+  // We use builtin_malloc and builtin_free here because otherwise lsan will
+  // report the last returned string as a leak.
+  emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
+  emscripten_run_script_string__sig: 'ii',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2903,9 +2268,9 @@ LibraryManager.library = {
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
+      if (me.bufferSize) _emscripten_builtin_free(me.buffer);
       me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
+      me.buffer = _emscripten_builtin_malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
@@ -2919,7 +2284,7 @@ LibraryManager.library = {
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function() {\n" +
+                               "  _emscripten_get_now = () => {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -2927,25 +2292,26 @@ LibraryManager.library = {
 #endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
+// N.b. Wasm workers do not provide this kind of clock synchronization.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-                               "if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow != 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
+                               "if (typeof performance != 'undefined' && performance.now) {\n" +
+                               "  _emscripten_get_now = () => performance.now();\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
                                // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-                               "_emscripten_get_now = function() { return performance.now(); }\n",
+                               "_emscripten_get_now = () => performance.now();\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
@@ -2955,12 +2321,12 @@ LibraryManager.library = {
     } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-    if (typeof dateNow !== 'undefined') {
+    if (typeof dateNow != 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-    if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
+    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
@@ -2973,20 +2339,27 @@ LibraryManager.library = {
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
+  $nowIsMonotonic__internal: true,
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-  emscripten_get_now_is_monotonic: `
-     ((typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+  $nowIsMonotonic: `
+     ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      || (typeof dateNow !== 'undefined')
+      || (typeof dateNow != 'undefined')
 #endif
     );`,
 #else
   // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-  emscripten_get_now_is_monotonic: 'true;',
+  $nowIsMonotonic: 'true;',
 #endif
+
+  _emscripten_get_now_is_monotonic__internal: true,
+  _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
+  _emscripten_get_now_is_monotonic: function() {
+    return nowIsMonotonic;
+  },
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -3014,7 +2387,7 @@ LibraryManager.library = {
         str += ", ";
       }
       first = false;
-      if (typeof a === 'number' || typeof a === 'string') {
+      if (typeof a == 'number' || typeof a == 'string') {
         str += a;
       } else {
         str += '(' + typeof a + ')';
@@ -3037,37 +2410,47 @@ LibraryManager.library = {
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
-    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everything up to these from the output.
+    // Find the symbols in the callstack that corresponds to the functions that
+    // report callstack information, and remove everything up to these from the
+    // output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+    if (flags & {{{ cDefine('EM_LOG_DEMANGLE') }}}) {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
-    // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
-    if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
+    // If user requested to see the original source stack, but no source map
+    // information is available, just fall back to showing the JS stack.
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= 8/*EM_LOG_C_STACK*/;
-      flags |= 16/*EM_LOG_JS_STACK*/;
+      flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
+      flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
     }
 
     var stack_args = null;
-    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
-      // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
+    if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
+      // To get the actual parameters to the functions, traverse the stack via
+      // the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
-      while (stack_args[1].indexOf('_emscripten_') >= 0)
+      while (stack_args[1].includes('_emscripten_'))
         stack_args = traverseStack(stack_args[0]);
     }
 
     // Process all lines:
     var lines = callstack.split('\n');
     callstack = '';
-    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
-    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
-    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
+    // New FF30 with column info: extract components of form:
+    // '       Object._main@http://server.com:4324:12'
+    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
+    // Old FF without column info: extract components of form:
+    // '       Object._main@http://server.com:4324'
+    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?');
+    // Extract components of form:
+    // '    at Object._main (http://server.com/file.html:4324:12)'
+    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)');
 
     for (var l in lines) {
       var line = lines[l];
@@ -3090,9 +2473,12 @@ LibraryManager.library = {
           symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
-          column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          // Old Firefox doesn't carry column information, but in new FF30, it
+          // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          column = parts[4]|0;
         } else {
-          // Was not able to extract this line for demangling/sourcemapping purposes. Output it as-is.
+          // Was not able to extract this line for demangling/sourcemapping
+          // purposes. Output it as-is.
           callstack += line + '\n';
           continue;
         }
@@ -3100,25 +2486,26 @@ LibraryManager.library = {
 
       var haveSourceMap = false;
 
-      if (flags & 8/*EM_LOG_C_STACK*/) {
+      if (flags & {{{ cDefine('EM_LOG_C_STACK') }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
         haveSourceMap = (orig && orig.source);
         if (haveSourceMap) {
-          if (flags & 64/*EM_LOG_NO_PATHS*/) {
+          if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
           callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
-      if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
-        if (flags & 64/*EM_LOG_NO_PATHS*/) {
+      if ((flags & {{{ cDefine('EM_LOG_JS_STACK') }}}) || !haveSourceMap) {
+        if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
-      // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
-      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
+      // If we are still keeping track with the callstack by traversing via
+      // 'arguments.callee', print the function parameters as well.
+      if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
@@ -3147,24 +2534,24 @@ LibraryManager.library = {
 
   emscripten_log_js__deps: ['emscripten_get_callstack_js'],
   emscripten_log_js: function(flags, str) {
-    if (flags & 24/*EM_LOG_C_STACK | EM_LOG_JS_STACK*/) {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
     }
 
-    if (flags & 1 /*EM_LOG_CONSOLE*/) {
-      if (flags & 4 /*EM_LOG_ERROR*/) {
+    if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
+      if (flags & {{{ cDefine('EM_LOG_ERROR') }}}) {
         console.error(str);
-      } else if (flags & 2 /*EM_LOG_WARN*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_WARN') }}}) {
         console.warn(str);
-      } else if (flags & 512 /*EM_LOG_INFO*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_INFO') }}}) {
         console.info(str);
-      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_DEBUG') }}}) {
         console.debug(str);
       } else {
         console.log(str);
       }
-    } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
+    } else if (flags & {{{ cDefine('EM_LOG_ERROR') | cDefine('EM_LOG_WARN') }}}) {
       err(str);
     } else {
       out(str);
@@ -3178,18 +2565,26 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  // We never free the return values of this function so we need to allocate
+  // using builtin_malloc to avoid LSan reporting these as leaks.
+  emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
   emscripten_get_compiler_setting: function(name) {
+#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret === 'number') return ret;
+    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
-    var fullname = name + '__str';
-    var fullret = cache[fullname];
+    var fullret = cache[name];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+    cache[name] = _emscripten_builtin_malloc(ret.length + 1);
+    stringToUTF8(ret + '', cache[name], ret.length + 1);
+    return cache[name];
+#else
+    throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
+#endif
   },
 
   emscripten_has_asyncify: function() {
@@ -3209,9 +2604,14 @@ LibraryManager.library = {
   // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
-  emscripten_generate_pc: function(frame) {
+  $convertFrameToPC__docs: '/** @returns {number} */',
+  $convertFrameToPC__internal: true,
+  $convertFrameToPC: function(frame) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
+#else
+#if ASSERTIONS
+    assert(wasmOffsetConverter);
 #endif
     var match;
 
@@ -3224,124 +2624,138 @@ LibraryManager.library = {
       // we pack index and offset into a "return address"
       return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
-      // if we are in js, we can use the js line number as the "return address"
-      // this should work for wasm2js and fastcomp
-      // we tag the high bit to distinguish this from wasm addresses
+      // If we are in js, we can use the js line number as the "return address".
+      // This should work for wasm2js.  We tag the high bit to distinguish this
+      // from wasm addresses.
       return 0x80000000 | +match[1];
-    } else {
-      // return 0 if we can't find any
-      return 0;
     }
+#endif
+    // return 0 if we can't find any
+    return 0;
   },
 
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_generate_pc'],
+  emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: function(level) {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return _emscripten_generate_pc(callstack[level + 2]);
+    return convertFrameToPC(callstack[level + 3]);
   },
 
   $UNWIND_CACHE: {},
 
-  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so that
-  // our representation of the program counter is mapped to the line of the stack trace
-  // for every line in the stack trace. This allows emscripten_pc_get_* to lookup the
-  // line of the stack trace from the PC and return meaningful information.
+  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so
+  // that our representation of the program counter is mapped to the line of the
+  // stack trace for every line in the stack trace. This allows
+  // emscripten_pc_get_* to lookup the line of the stack trace from the PC and
+  // return meaningful information.
   //
-  // Additionally, it saves a copy of the entire stack trace and the return address of
-  // the caller. This is because there are two common forms of a stack trace.
-  // The first form starts the stack trace at the caller of the function requesting a stack
-  // trace. In this case, the function can simply walk down the stack from the return address
-  // using emscripten_return_address with increasing values for level.
-  // The second form starts the stack trace at the current function. This requires a helper
-  // function to get the program counter. This helper function will return the return address.
-  // This is the program counter at the call site. But there is a problem: when calling into
-  // code that performs stack unwinding, the program counter has changed since execution
-  // continued from calling the helper function. So we can't just walk down the stack and expect
-  // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
-  // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
-  // will have to call emscripten_stack_snapshot to cache the stack. We also return the return
-  // address of the caller so the PC helper function does not need to call
-  // emscripten_return_address, saving a lot of time.
+  // Additionally, it saves a copy of the entire stack trace and the return
+  // address of the caller. This is because there are two common forms of a
+  // stack trace.  The first form starts the stack trace at the caller of the
+  // function requesting a stack trace. In this case, the function can simply
+  // walk down the stack from the return address using emscripten_return_address
+  // with increasing values for level.  The second form starts the stack trace
+  // at the current function. This requires a helper function to get the program
+  // counter. This helper function will return the return address.  This is the
+  // program counter at the call site. But there is a problem: when calling into
+  // code that performs stack unwinding, the program counter has changed since
+  // execution continued from calling the helper function. So we can't just walk
+  // down the stack and expect to see the PC value we got. By caching the call
+  // stack, we can call emscripten_stack_unwind with the PC value and use that
+  // to unwind the cached stack. Naturally, the PC helper function will have to
+  // call emscripten_stack_snapshot to cache the stack. We also return the
+  // return address of the caller so the PC helper function does not need to
+  // call emscripten_return_address, saving a lot of time.
   //
-  // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
-  // how many functions to skip from the stack. However, existing libraries do not work this way.
-  // For example, compiler-rt's sanitizer_common library has macros GET_CALLER_PC_BP_SP and
-  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases stated above,
-  // respectively. Then, it passes the PC, BP, SP values along until some other function uses them
-  // to unwind. On standard machines, the stack can be unwound by treating BP as a linked list.
-  // This makes PC unnecessary to walk the stack, since walking is done with BP, which remains
-  // valid until the function returns. But on Emscripten, BP does not exist, at least in
-  // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
-  // a PC value that may no longer be on the execution stack, and so we are forced to cache the
-  // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  // One might expect that a sensible solution is to call the stack unwinder and
+  // explicitly tell it how many functions to skip from the stack. However,
+  // existing libraries do not work this way.  For example, compiler-rt's
+  // sanitizer_common library has macros GET_CALLER_PC_BP_SP and
+  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases
+  // stated above, respectively. Then, it passes the PC, BP, SP values along
+  // until some other function uses them to unwind. On standard machines, the
+  // stack can be unwound by treating BP as a linked list.  This makes PC
+  // unnecessary to walk the stack, since walking is done with BP, which remains
+  // valid until the function returns. But on Emscripten, BP does not exist, at
+  // least in JavaScript frames, so we have to rely on PC values. Therefore, we
+  // must be able to unwind from a PC value that may no longer be on the
+  // execution stack, and so we are forced to cache the entire call stack.
+  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
   emscripten_stack_snapshot: function () {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
-    __emscripten_save_in_unwind_cache(callstack);
+    saveInUnwindCache(callstack);
 
-    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
-    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can
+    // unwind from this spot.
+    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[3]);
     UNWIND_CACHE.last_stack = callstack;
     return UNWIND_CACHE.last_addr;
   },
 
-  _emscripten_save_in_unwind_cache__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  _emscripten_save_in_unwind_cache: function (callstack) {
-    callstack.forEach(function (frame) {
-      var pc = _emscripten_generate_pc(frame);
+  $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $saveInUnwindCache__internal: true,
+  $saveInUnwindCache: function (callstack) {
+    callstack.forEach((frame) => {
+      var pc = convertFrameToPC(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
       }
     });
   },
 
-  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
-  // addr must be the return address of the last call to emscripten_stack_snapshot, or this
-  // function will instead use the current call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for
+  // how this is used.  addr must be the return address of the last call to
+  // emscripten_stack_snapshot, or this function will instead use the current
+  // call stack.
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
       stack = UNWIND_CACHE.last_stack;
     } else {
-      stack = new Error().stack.split('\n');
+      stack = jsStackTrace().split('\n');
       if (stack[0] == 'Error') {
         stack.shift();
       }
-      __emscripten_save_in_unwind_cache(stack);
+      saveInUnwindCache(stack);
     }
 
-    var offset = 2;
-    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr) {
+    var offset = 3;
+    while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
       ++offset;
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', 0, true) }}};
     }
     return i;
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
+#if USE_OFFSET_CONVERTER
+  emscripten_pc_get_function__deps: [
+    '$UNWIND_CACHE',
+    'free',
 #if MINIMAL_RUNTIME
-    , '$allocateUTF8'
+    '$allocateUTF8',
 #endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
+  emscripten_pc_get_function__noleakcheck: true,
+#endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
-#endif
+    abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
+#else
     var name;
     if (pc & 0x80000000) {
       // If this is a JavaScript function, try looking it up in the unwind cache.
@@ -3359,15 +2773,14 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-      _emscripten_pc_get_function.ret = allocateUTF8(name);
-    });
+    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name);
     return _emscripten_pc_get_function.ret;
+#endif
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  emscripten_pc_get_source_js: function (pc) {
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation: function(pc) {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -3398,33 +2811,33 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
+  emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
-    });
+    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_line: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
   },
 
   // Look up the column number from our stack frame cache with our PC representation.
-  emscripten_pc_get_column__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_column: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 
@@ -3436,52 +2849,33 @@ LibraryManager.library = {
 #endif
   },
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
+  // to malloc, free, and memalign.
   $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
-#if USE_ASAN
-                             , 'emscripten_builtin_memset'
-#endif
                             ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: function (func) {
-    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
-    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
-    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
+    var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free != 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
-#if USE_ASAN
-    var prev_memset = typeof _memset !== 'undefined' ? _memset : undefined
-    _memset = _emscripten_builtin_memset;
-#endif
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
       _memalign = prev_memalign;
       _free = prev_free;
-#if USE_ASAN
-      _memset = prev_memset;
-#endif
     }
   },
-
-  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
-  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return withBuiltinMalloc(function () {
-      return syscallMmap2(addr, len, prot, flags, fd, off);
-    });
-  },
-
-  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
-  emscripten_builtin_munmap: function (addr, len) {
-    return withBuiltinMalloc(function () {
-      return syscallMunmap(addr, len);
-    });
-  },
+#endif
 
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
+    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -3495,27 +2889,33 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
 #endif
       // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
-      var double = ch < 105;
-      if (double && (buf & 1)) buf++;
-      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      var readAsmConstArgsDouble = ch < 105;
+      if (readAsmConstArgsDouble && (buf & 1)) buf++;
+      readAsmConstArgsArray.push(readAsmConstArgsDouble ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
     return readAsmConstArgsArray;
   },
 
   emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
 #endif
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+
+  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3537,6 +2937,9 @@ LibraryManager.library = {
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
@@ -3553,18 +2956,12 @@ LibraryManager.library = {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
+  $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
-    var asmjsMangle = function(x) {
-      var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-    };
-
-#if ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process !== "undefined" ? global : this);
-#else
+#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
+    var global_object = (typeof process != "undefined" ? global : this);
+#elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
-#endif
 #else
     var global_object = this;
 #endif
@@ -3597,6 +2994,7 @@ LibraryManager.library = {
     return Number(str);
   },
 
+#if LINK_AS_CXX
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -3626,6 +3024,7 @@ LibraryManager.library = {
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
   },
+#endif
 
   // autodebugging
 
@@ -3650,10 +3049,16 @@ LibraryManager.library = {
 
   // special runtime support
 
+#if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
-  __handle_stack_overflow: function() {
-    abort('stack overflow')
+  __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
+  __handle_stack_overflow: function(requested) {
+    requested = requested >>> 0;
+    abort('stack overflow (Attempt to set SP to 0x' + requested.toString(16) +
+          ', with stack limits [0x' + _emscripten_stack_get_end().toString(16) +
+          ' - 0x' + _emscripten_stack_get_base().toString(16) + '])');
   },
+#endif
 
   $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
@@ -3685,6 +3090,8 @@ LibraryManager.library = {
   // without user interaction.
   // If @elements is not provided, we default to the document and canvas
   // elements, which handle common use cases.
+  // TODO(sbc): Remove seemingly unused elements argument
+  $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
   $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: function(ctx, elements) {
     if (!elements) {
@@ -3701,10 +3108,15 @@ LibraryManager.library = {
     });
   },
 
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
+#if MINIMAL_RUNTIME
+    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
+    assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
       assert(args.length === sig.substring(1).replace(/j/g, '--').length);
@@ -3712,63 +3124,70 @@ LibraryManager.library = {
       assert(sig.length == 1);
     }
 #endif
-    if (args && args.length) {
-      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
-    }
-    return Module['dynCall_' + sig].call(null, ptr);
+#if MINIMAL_RUNTIME
+    var f = dynCalls[sig];
+#else
+    var f = Module["dynCall_" + sig];
+#endif
+    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
-  $dynCall__deps: ['$dynCallLegacy'],
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
-#if !USE_LEGACY_DYNCALLS
-    assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+#if ASSERTIONS && !DYNCALLS
+    assert(sig.includes('j'), 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
     return function() {
-      argCache.length = arguments.length;
-      for (var i = 0; i < arguments.length; i++) {
-        argCache[i] = arguments[i];
-      }
+      argCache.length = 0;
+      Object.assign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
     };
   },
 #endif
 
-  $dynCall: function (sig, ptr, args) {
-#if USE_LEGACY_DYNCALLS
+  $dynCall__docs: '/** @param {Object=} args */',
+  $dynCall: function(sig, ptr, args) {
+#if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
     // part of thier signature, so we rely the dynCall functions generated by
     // wasm-emscripten-finalize
-    if (sig.indexOf('j') != -1) {
+    if (sig.includes('j')) {
       return dynCallLegacy(sig, ptr, args);
     }
 #endif
 #if ASSERTIONS
-    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+    assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
-    return wasmTable.get(ptr).apply(null, args)
+    return getWasmTableEntry(ptr).apply(null, args)
 #endif
   },
 
+  $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
-    while(callbacks.length > 0) {
+    while (callbacks.length > 0) {
       var callback = callbacks.shift();
       if (typeof callback == 'function') {
         callback(Module); // Pass the module as the first argument.
         continue;
       }
       var func = callback.func;
-      if (typeof func === 'number') {
+      if (typeof func == 'number') {
         if (callback.arg === undefined) {
+          // Run the wasm function ptr with signature 'v'. If no function
+          // with such signature was exported, this call does not need
+          // to be emitted (and would confuse Closure)
           {{{ makeDynCall('v', 'func') }}}();
         } else {
+          // If any function with signature 'vi' was exported, run
+          // the callback with that signature.
           {{{ makeDynCall('vi', 'func') }}}(callback.arg);
         }
       } else {
@@ -3776,6 +3195,354 @@ LibraryManager.library = {
       }
     }
   },
+
+#if SHRINK_LEVEL == 0
+  // A mirror copy of contents of wasmTable in JS side, to avoid relatively
+  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  $wasmTableMirror__internal: true,
+  $wasmTableMirror: [],
+
+  $setWasmTableEntry__internal: true,
+  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
+    // functions so we need to call it here to retrieve the potential wrapper correctly
+    // instead of just storing 'func' directly into wasmTableMirror
+    wasmTableMirror[idx] = wasmTable.get(idx);
+  },
+
+  $getWasmTableEntry__internal: true,
+  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry: function(funcPtr) {
+    var func = wasmTableMirror[funcPtr];
+    if (!func) {
+      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+    }
+#if ASSERTIONS
+    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+#endif
+    return func;
+  },
+
+#else
+
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+  },
+
+  $getWasmTableEntry: function(funcPtr) {
+    // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
+    // code size, but directly access wasmTable, which is a bit slower as uncached.
+    return wasmTable.get(funcPtr);
+  },
+#endif // SHRINK_LEVEL == 0
+
+  // Callable in pthread without __proxy needed.
+  emscripten_exit_with_live_runtime__sig: 'v',
+#if !MINIMAL_RUNTIME
+  emscripten_exit_with_live_runtime__deps: ['$runtimeKeepalivePush'],
+#endif
+  emscripten_exit_with_live_runtime: function() {
+    {{{ runtimeKeepalivePush() }}}
+    throw 'unwind';
+  },
+
+#if MINIMAL_RUNTIME
+  emscripten_force_exit__deps: ['exit'],
+#endif
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
+  emscripten_force_exit: function(status) {
+#if !EXIT_RUNTIME && ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
+#endif
+#if MINIMAL_RUNTIME
+    _exit(status);
+#else
+    noExitRuntime = false;
+#if EXIT_RUNTIME
+    runtimeKeepaliveCounter = 0;
+#endif
+    exit(status);
+#endif
+  },
+
+  _emscripten_out__sig: 'vi',
+  _emscripten_out: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    out(UTF8ToString(str));
+  },
+
+  _emscripten_err__sig: 'vi',
+  _emscripten_err: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    err(UTF8ToString(str));
+  },
+
+  // Use program_invocation_short_name and program_invocation_name in compiled
+  // programs. This function is for implementing them.
+  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname: function(str, len) {
+  #if !MINIMAL_RUNTIME
+  #if ASSERTIONS
+    assert(typeof str == 'number');
+    assert(typeof len == 'number');
+  #endif
+    stringToUTF8(thisProgram, str, len);
+  #endif
+  },
+
+  emscripten_console_log__sig: 'vi',
+  emscripten_console_log: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.log(UTF8ToString(str));
+  },
+
+  emscripten_console_warn__sig: 'vi',
+  emscripten_console_warn: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.warn(UTF8ToString(str));
+  },
+
+  emscripten_console_error__sig: 'vi',
+  emscripten_console_error: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.error(UTF8ToString(str));
+  },
+
+  emscripten_throw_number: function(number) {
+    throw number;
+  },
+
+  emscripten_throw_string: function(str) {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    throw UTF8ToString(str);
+  },
+
+#if !MINIMAL_RUNTIME
+  $handleException: function(e) {
+    // Certain exception types we do not treat as errors since they are used for
+    // internal control flow.
+    // 1. ExitStatus, which is thrown by exit()
+    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+    //    that wish to return to JS event loop.
+    if (e instanceof ExitStatus || e == 'unwind') {
+      return EXITSTATUS;
+    }
+#if MINIMAL_RUNTIME
+    throw e;
+#else
+    quit_(1, e);
+#endif
+  },
+
+  // Callable in pthread without __proxy needed.
+  $runtimeKeepalivePush__sig: 'v',
+  $runtimeKeepalivePush: function() {
+#if EXIT_RUNTIME
+    runtimeKeepaliveCounter += 1;
+#if RUNTIME_DEBUG
+    err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#endif
+#endif
+  },
+
+  $runtimeKeepalivePop__sig: 'v',
+  $runtimeKeepalivePop: function() {
+#if EXIT_RUNTIME
+#if ASSERTIONS
+    assert(runtimeKeepaliveCounter > 0);
+#endif
+    runtimeKeepaliveCounter -= 1;
+#if RUNTIME_DEBUG
+    err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#endif
+#endif
+  },
+
+  // Used to call user callbacks from the embedder / event loop.  For example
+  // setTimeout or any other kind of event handler that calls into user case
+  // needs to use this wrapper.
+  //
+  // The job of this wrapper is the handle emscripten-specfic exceptions such
+  // as ExitStatus and 'unwind' and prevent these from escaping to the top
+  // level.
+  $callUserCallback__deps: ['$handleException',
+#if EXIT_RUNTIME || USE_PTHREADS
+    '$maybeExit',
+#endif
+  ],
+  $callUserCallback__docs: '/** @param {boolean=} synchronous */',
+  $callUserCallback: function(func, synchronous) {
+#if EXIT_RUNTIME
+    if (runtimeExited || ABORT) {
+#else
+    if (ABORT) {
+#endif
+#if ASSERTIONS
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
+#endif
+      return;
+    }
+    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
+    if (synchronous) {
+      func();
+      return;
+    }
+    try {
+      func();
+#if EXIT_RUNTIME || USE_PTHREADS
+#if USE_PTHREADS && !EXIT_RUNTIME
+      if (ENVIRONMENT_IS_PTHREAD)
+#endif
+        maybeExit();
+#endif
+    } catch (e) {
+      handleException(e);
+    }
+  },
+
+  $maybeExit__deps: ['exit', '$handleException',
+#if USE_PTHREADS
+    '_emscripten_thread_exit',
+#endif
+  ],
+  $maybeExit: function() {
+#if EXIT_RUNTIME
+#if RUNTIME_DEBUG
+    err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+#endif
+    if (!keepRuntimeAlive()) {
+#if RUNTIME_DEBUG
+      err('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+#endif
+      try {
+#if USE_PTHREADS
+        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
+        else
+#endif
+        _exit(EXITSTATUS);
+      } catch (e) {
+        handleException(e);
+      }
+    }
+#endif // EXIT_RUNTIME
+  },
+#else
+  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
+  $callUserCallback: function(func) {
+    func();
+  },
+#endif
+
+  $safeSetTimeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+   '$runtimeKeepalivePush',
+   '$runtimeKeepalivePop',
+#endif
+  ],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout: function(func, timeout) {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(function() {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
+  },
+
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
+  },
+
+  $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
+  $asyncLoad: function(url, onload, onerror, noRunDep) {
+    var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
+    readAsync(url, function(arrayBuffer) {
+      assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+      onload(new Uint8Array(arrayBuffer));
+      if (dep) removeRunDependency(dep);
+    }, function(event) {
+      if (onerror) {
+        onerror();
+      } else {
+        throw 'Loading data file "' + url + '" failed.';
+      }
+    });
+    if (dep) addRunDependency(dep);
+  },
+
+  $alignMemory: function(size, alignment) {
+#if ASSERTIONS
+    assert(alignment, "alignment argument is required");
+#endif
+    return Math.ceil(size / alignment) * alignment;
+  },
+
+  // Allocate memory for an mmap operation. This allocates space of the right
+  // page-aligned size, and clears the allocated space.
+  $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
+  $mmapAlloc: function(size) {
+#if hasExportedFunction('_emscripten_builtin_memalign')
+    size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
+    var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
+    if (!ptr) return 0;
+    zeroMemory(ptr, size);
+    return ptr;
+#elif ASSERTIONS
+    abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
+#else
+    abort();
+#endif
+  },
+
+#if RELOCATABLE
+  // Globals that are normally exported from the wasm module but in relocatable
+  // mode are created here and imported by the module.
+  // Mark with `__import` so these are usable from native code.  This is needed
+  // because, by default, only functions can be be imported.
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
+  __stack_pointer__import: true,
+  // tell the memory segments where to place themselves
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
+  __memory_base__import: true,
+  // the wasm backend reserves slot 0 for the NULL function pointer
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
+  __table_base__import: true,
+#if MEMORY64
+  __table_base32: 1,
+#endif
+  // To support such allocations during startup, track them on __heap_base and
+  // then when the main module is loaded it reads that value and uses it to
+  // initialize sbrk (the main module is relocatable itself, and so it does not
+  // have __heap_base hardcoded into it - it receives it from JS as an extern
+  // global, basically).
+  __heap_base: '{{{ to64(HEAP_BASE) }}}',
+  __heap_base__import: true,
+#if EXCEPTION_HANDLING
+  // In dynamic linking we define tags here and feed them to each module
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __cpp_exception__import: true,
+#endif
+#if SUPPORT_LONGJMP == 'wasm'
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __c_longjmp_import: true,
+#endif
+#endif
 };
 
 function autoAddDeps(object, name) {

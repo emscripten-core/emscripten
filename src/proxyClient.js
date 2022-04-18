@@ -6,19 +6,25 @@
 
 // proxy to/from worker
 
-if (typeof Module === 'undefined') {
+if (typeof Module == 'undefined') {
   console.warn('no Module object defined - cannot proxy canvas rendering and input events, etc.');
   Module = {
-    print: function(x) {
-      console.log(x);
-    },
-    printErr: function(x) {
-      console.log(x);
-    },
     canvas: {
       addEventListener: function() {},
       getBoundingClientRect: function() { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 } },
     },
+  };
+}
+
+if (!Object.hasOwnProperty(Module, 'print')) {
+  Module['print'] = function(x) {
+    console.log(x);
+  };
+}
+
+if (!Object.hasOwnProperty(Module, 'printErr')) {
+  Module['printErr'] = function(x) {
+    console.error(x);
   };
 }
 
@@ -205,7 +211,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'Image': {
       assert(data.method === 'src');
       var img = new Image();
-      img.onload = function() {
+      img.onload = () => {
         assert(img.complete);
         var canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -215,7 +221,7 @@ worker.onmessage = function worker_onmessage(event) {
         var imageData = ctx.getImageData(0, 0, img.width, img.height);
         worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data, preMain: true });
       };
-      img.onerror = function() {
+      img.onerror = () => {
         worker.postMessage({ target: 'Image', method: 'onerror', id: data.id, preMain: true });
       };
       img.src = data.src;
@@ -262,8 +268,7 @@ worker.onmessage = function worker_onmessage(event) {
   }
 };
 
-function postCustomMessage(data, options) {
-  options = options || {};
+function postCustomMessage(data, options = {}) {
   worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
 }
 
@@ -272,7 +277,7 @@ function cloneObject(event) {
   for (var x in event) {
     if (x == x.toUpperCase()) continue;
     var prop = event[x];
-    if (typeof prop === 'number' || typeof prop === 'string') ret[x] = prop;
+    if (typeof prop == 'number' || typeof prop == 'string') ret[x] = prop;
   }
   return ret;
 };
