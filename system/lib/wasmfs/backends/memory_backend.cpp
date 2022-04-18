@@ -66,6 +66,7 @@ bool MemoryDirectory::insertMove(const std::string& name,
       break;
     }
   }
+  removeChild(name);
   insertChild(name, file);
   return true;
 }
