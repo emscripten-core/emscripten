@@ -36,7 +36,8 @@ logger = logging.getLogger("test_core")
 
 
 def wasm_simd(f):
-  def decorated(self):
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
     self.require_v8()
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
@@ -45,7 +46,7 @@ def wasm_simd(f):
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    f(self)
+    f(self, *args, **kwargs)
   return decorated
 
 
@@ -6378,12 +6379,17 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
-  def test_sse4_2(self):
+  @parameterized({
+      '': (False,),
+      '2': (True,)
+  })
+  def test_sse4(self, use_4_2):
+    msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([shared.CLANG_CXX, src, msse4, '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_2', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse4.2', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), msse4, '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
