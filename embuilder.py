@@ -195,8 +195,8 @@ def main():
     tasks = system_tasks + PORTS
     auto_tasks = True
   if auto_tasks:
-    # cocos2d: must be ported, errors on
-    # "Cannot recognize the target platform; are you targeting an unsupported platform?"
+    # There are some ports that we don't want to build as part
+    # of ALL since the are not well tested or widely used:
     skip_tasks = ['cocos2d']
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
