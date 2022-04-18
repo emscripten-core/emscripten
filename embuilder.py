@@ -16,6 +16,7 @@ import argparse
 import logging
 import sys
 import time
+from contextlib import contextmanager
 
 from tools import shared
 from tools import system_libs
@@ -92,22 +93,30 @@ Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
 
 
-def clear_port(port_name):
-  ports.clear_port(port_name, settings)
-
-
-def build_port(port_name):
-  if port_name in PORT_VARIANTS:
-    port_name, extra_settings = PORT_VARIANTS[port_name]
+@contextmanager
+def get_port_variant(name):
+  if name in PORT_VARIANTS:
+    name, extra_settings = PORT_VARIANTS[name]
     old_settings = settings.dict().copy()
     for key, value in extra_settings.items():
       setattr(settings, key, value)
   else:
     old_settings = None
 
-  ports.build_port(port_name, settings)
+  yield name
+
   if old_settings:
     settings.dict().update(old_settings)
+
+
+def clear_port(port_name):
+  with get_port_variant(port_name) as port_name:
+    ports.clear_port(port_name, settings)
+
+
+def build_port(port_name):
+  with get_port_variant(port_name) as port_name:
+    ports.build_port(port_name, settings)
 
 
 def get_system_tasks():
