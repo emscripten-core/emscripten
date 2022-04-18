@@ -37,7 +37,7 @@ logger = logging.getLogger("test_core")
 
 def wasm_simd(f):
   @wraps(f)
-  def decorated(self, *args):
+  def decorated(self, *args, **kwargs):
     self.require_v8()
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
@@ -46,7 +46,7 @@ def wasm_simd(f):
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    f(self, *args)
+    f(self, *args, **kwargs)
   return decorated
 
 
