@@ -63,7 +63,8 @@ int main() {
   write_and_read(msg, fd, msg);
 
   // Try appending to the end of the backend File.
-  write_and_read(msg, fd, "Test with a new backend file\nTest with a new backend file\n");
+  write_and_read(
+    msg, fd, "Test with a new backend file\nTest with a new backend file\n");
 
   // Verify that the size of the backend File has increased.
   assert(fstat(fd, &file) != -1);
