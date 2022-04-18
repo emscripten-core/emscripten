@@ -152,6 +152,10 @@ public:
   };
 
 private:
+  // The directory cache, or `dcache`, stores `File` objects for the children of
+  // each directory so that subsequent lookups do not need to query the backend.
+  // It also supports cross-backend mount point children that are stored
+  // exclusively in the cache and not reflected in any backend.
   enum class DCacheKind { Normal, Mount };
   struct DCacheEntry {
     DCacheKind kind;
