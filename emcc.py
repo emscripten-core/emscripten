@@ -151,7 +151,7 @@ EXTRA_INCOMING_JS_API = [
 ]
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 COMPILE_ONLY_FLAGS = {'--default-obj-ext'}
 LINK_ONLY_FLAGS = {
@@ -794,10 +794,11 @@ def emsdk_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
     cflags += ['-D__SSE4_1__=1']
 
+  # Handle both -msse4.2 and its alias -msse4.
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     cflags += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     cflags += ['-D__AVX__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
