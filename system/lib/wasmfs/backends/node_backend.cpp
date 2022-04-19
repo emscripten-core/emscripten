@@ -300,6 +300,11 @@ public:
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
     return std::make_shared<NodeDirectory>(mode, this, mountPath);
   }
+
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    // TODO
+    abort();
+  }
 };
 
 // TODO: symlink

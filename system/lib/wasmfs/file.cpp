@@ -216,12 +216,4 @@ std::vector<Directory::Entry> Directory::Handle::getEntries() {
   return entries;
 }
 
-//
-// Symlink
-//
-
-size_t Symlink::getSize() {
-  return target.size();
-}
-
 } // namespace wasmfs

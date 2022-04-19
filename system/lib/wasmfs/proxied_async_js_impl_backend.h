@@ -11,6 +11,7 @@
 
 #include "async_callback.h"
 #include "backend.h"
+#include "memory_backend.h"
 #include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
@@ -213,6 +214,14 @@ public:
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
+  }
+
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
+    return std::make_shared<MemoryDirectory>(mode, this);
+  }
+
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    return std::make_shared<MemorySymlink>(target, this);
   }
 };
 

@@ -212,24 +212,19 @@ protected:
 };
 
 class Symlink : public File {
-protected:
-  // The target file that this symlink points to. This is constant as symlinks
-  // cannot be modified to point to different things.
-  const std::string target;
-
-  size_t getSize() override;
-
 public:
   static constexpr FileKind expectedKind = File::SymlinkKind;
   // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
   // not matter, so that value will never be read (what matters is the mode of
   // the target).
-  Symlink(std::string target, backend_t backend)
-    : File(File::SymlinkKind, 0, backend), target(target) {}
+  Symlink(backend_t backend) : File(File::SymlinkKind, 0, backend) {}
   virtual ~Symlink() = default;
 
   // Constant, and therefore thread-safe, and can be done without locking.
-  const std::string& getTarget() { return target; }
+  virtual std::string getTarget() const = 0;
+
+protected:
+  size_t getSize() override { return getTarget().size(); }
 };
 
 class File::Handle {

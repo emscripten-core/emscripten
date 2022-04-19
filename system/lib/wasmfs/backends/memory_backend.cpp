@@ -76,6 +76,12 @@ public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode, this);
   }
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
+    return std::make_shared<MemoryDirectory>(mode, this);
+  }
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    return std::make_shared<MemorySymlink>(target, this);
+  }
 };
 
 backend_t createMemoryFileBackend() {
