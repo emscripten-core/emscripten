@@ -31,11 +31,11 @@
 #include <utime.h>
 
 #include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/proxying.h>
 #include <emscripten/stack.h>
+#include <emscripten/threading.h>
 
 #include "threading_internal.h"
-#include "proxying.h"
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = a->_a_transferredcanvases;

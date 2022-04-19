@@ -1,9 +1,8 @@
 #include <cassert>
 #include <condition_variable>
+#include <emscripten/proxying.h>
 #include <iostream>
 #include <sched.h>
-
-#include "proxying.h"
 
 using namespace emscripten;
 
