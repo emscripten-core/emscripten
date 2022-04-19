@@ -77,14 +77,6 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
-    doMkdir: function(path, mode) {
-      // remove a trailing slash, if one - /a/b/ has basename of '', but
-      // we want to create b in the context of this function
-      path = PATH.normalize(path);
-      if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
-      FS.mkdir(path, mode, 0);
-      return 0;
-    },
     doMknod: function(path, mode, dev) {
       // we don't want this in the JS API as it uses mknod to create all nodes.
       switch (mode & {{{ cDefine('S_IFMT') }}}) {
@@ -263,10 +255,6 @@ var SyscallsLibrary = {
     new_path = SYSCALLS.getStr(new_path);
     FS.rename(old_path, new_path);
     return 0;
-  },
-  __syscall_mkdir: function(path, mode) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doMkdir(path, mode);
   },
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
@@ -885,7 +873,12 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    return SYSCALLS.doMkdir(path, mode);
+    // remove a trailing slash, if one - /a/b/ has basename of '', but
+    // we want to create b in the context of this function
+    path = PATH.normalize(path);
+    if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
+    FS.mkdir(path, mode, 0);
+    return 0;
   },
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG

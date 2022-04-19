@@ -554,10 +554,6 @@ int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
 }
 
-int __syscall_mkdir(intptr_t path, int mode) {
-  return doMkdir(path::parseParent((char*)path), mode);
-}
-
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
                               __wasi_filedelta_t offset,
                               __wasi_whence_t whence,
