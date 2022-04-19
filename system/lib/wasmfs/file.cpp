@@ -40,11 +40,12 @@ void DataFile::Handle::preloadFromJS(int index) {
 // Directory
 //
 
-void Directory::Handle::finishInsertingChild(const std::string& name,
-                                             std::shared_ptr<File> child) {
+void Directory::Handle::cacheChild(const std::string& name,
+                                   std::shared_ptr<File> child,
+                                   DCacheKind kind) {
   // Update the dcache and set the child's parent.
   auto& dcache = getDir()->dcache;
-  auto [_, inserted] = dcache.insert({name, {DCacheKind::Normal, child}});
+  auto [_, inserted] = dcache.insert({name, {kind, child}});
   assert(inserted && "inserted child already existed!");
   assert(child->locked().getParent() == nullptr);
   child->locked().setParent(getDir());
@@ -66,12 +67,13 @@ std::shared_ptr<File> Directory::Handle::getChild(const std::string& name) {
   if (auto it = dcache.find(name); it != dcache.end()) {
     return it->second.file;
   }
-  // Otherwise check whether the backend knows about the child.
+  // Otherwise check whether the backend contains an underlying file we don't
+  // know about.
   auto child = getDir()->getChild(name);
   if (!child) {
     return nullptr;
   }
-  finishInsertingChild(name, child);
+  cacheChild(name, child, DCacheKind::Normal);
   return child;
 }
 
@@ -82,12 +84,7 @@ bool Directory::Handle::mountChild(const std::string& name,
   if (!getParent()) {
     return false;
   }
-  // Insert the entry into the cache and set its parent.
-  auto [_, inserted] =
-    getDir()->dcache.insert({name, {DCacheKind::Mount, child}});
-  assert(inserted && "mountChild called when file already existed!");
-  assert(child->locked().getParent() == nullptr);
-  child->locked().setParent(getDir());
+  cacheChild(name, child, DCacheKind::Mount);
   return true;
 }
 
@@ -101,7 +98,7 @@ Directory::Handle::insertDataFile(const std::string& name, mode_t mode) {
   if (!child) {
     return nullptr;
   }
-  finishInsertingChild(name, child);
+  cacheChild(name, child, DCacheKind::Normal);
   return child;
 }
 
@@ -115,7 +112,7 @@ Directory::Handle::insertDirectory(const std::string& name, mode_t mode) {
   if (!child) {
     return nullptr;
   }
-  finishInsertingChild(name, child);
+  cacheChild(name, child, DCacheKind::Normal);
   return child;
 }
 
@@ -130,10 +127,13 @@ Directory::Handle::insertSymlink(const std::string& name,
   if (!child) {
     return nullptr;
   }
-  finishInsertingChild(name, child);
+  cacheChild(name, child, DCacheKind::Normal);
   return child;
 }
 
+// TODO: consider moving this to be `Backend::move` to avoid asymmetry between
+// the source and destination directories and/or taking `Directory::Handle`
+// arguments to prove that the directories have already been locked.
 bool Directory::Handle::insertMove(const std::string& name,
                                    std::shared_ptr<File> file) {
   // Cannot insert into an unlinked directory.

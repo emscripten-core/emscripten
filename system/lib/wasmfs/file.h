@@ -296,14 +296,17 @@ public:
 
 class Directory::Handle : public File::Handle {
   std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
-  void finishInsertingChild(const std::string& name,
-                            std::shared_ptr<File> child);
+  void cacheChild(const std::string& name,
+                  std::shared_ptr<File> child,
+                  DCacheKind kind);
 
 public:
   Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
   Handle(std::shared_ptr<File> directory, std::defer_lock_t)
     : File::Handle(directory, std::defer_lock) {}
 
+  // Retrieve the child if it is in the dcache and otherwise forward the request
+  // to the backend, caching any `File` object it returns.
   std::shared_ptr<File> getChild(const std::string& name);
 
   // Add a child to this directory's entry cache without actually inserting it

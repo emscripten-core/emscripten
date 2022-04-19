@@ -122,8 +122,7 @@ public:
   void close() {
     if (--openCount == 0) {
       _wasmfs_node_close(fd);
-      fd = -1;
-      openFlags = 0;
+      *this = NodeState(path);
     }
   }
 };
