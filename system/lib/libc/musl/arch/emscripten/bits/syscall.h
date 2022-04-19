@@ -4,7 +4,6 @@
 #define SYS_getpid		 __syscall_getpid
 #define SYS_pause		 __syscall_pause
 #define SYS_sync		 __syscall_sync
-#define SYS_mkdir		 __syscall_mkdir
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
 #define SYS_pipe		 __syscall_pipe

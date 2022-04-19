@@ -160,6 +160,7 @@ def no_windows(note=''):
 def requires_native_clang(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_LACKS_NATIVE_CLANG:
       return self.skipTest('native clang tests are disabled')

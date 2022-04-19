@@ -112,7 +112,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
 
 In addition to consulting the tables below, you can turn on diagnostics for slow, emulated functions by defining the macro `WASM_SIMD_COMPAT_SLOW`. This will print out warnings if you attempt to use any of the slow paths (corresponding to ❌ or 💣 in the legend).
 
-.. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h>
+.. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
    :header-rows: 1
 
@@ -346,7 +346,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE2 intrinsics. Refer to `Intel Intrinsics Guide on SSE2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE2>`_.
 
-.. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h>
+.. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h> and -msse2
    :widths: 20 30
    :header-rows: 1
 
@@ -798,7 +798,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE3>`_.
 
-.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h>
+.. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h> and -msse3
    :widths: 20 30
    :header-rows: 1
 
@@ -837,7 +837,7 @@ The following table highlights the availability and expected performance of diff
 
 The following table highlights the availability and expected performance of different SSSE3 intrinsics. Refer to `Intel Intrinsics Guide on SSSE3 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSSE3>`_.
 
-.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h>
+.. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h> and -mssse3
    :widths: 20 30
    :header-rows: 1
 
@@ -883,7 +883,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different SSE4.1 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_1>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse4.1
    :widths: 20 30
    :header-rows: 1
 
@@ -1014,7 +1014,7 @@ The following table highlights the availability and expected performance of diff
 
 The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
-.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h>
+.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h> and -msse4.2
    :widths: 20 30
    :header-rows: 1
 
@@ -1030,7 +1030,7 @@ Any code referencing these intrinsics will not compile.
 
 The following table highlights the availability and expected performance of different AVX intrinsics. Refer to `Intel Intrinsics Guide on AVX <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX>`_.
 
-.. list-table:: x86 AVX intrinsics available via #include <immintrin.h>
+.. list-table:: x86 AVX intrinsics available via #include <immintrin.h> and -mavx
    :widths: 20 30
    :header-rows: 1
 
