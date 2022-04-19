@@ -35,6 +35,13 @@ const backend_t NullBackend = nullptr;
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
 
+// An abstract representation of an underlying file. All `File` objects
+// correspond to underlying (real or conceptual) files in a file system managed
+// by some backend, but not all underlying files have a corresponding `File`
+// object. For example, a persistent backend may contain some files that have
+// not yet been discovered by WasmFS and that therefore do not yet have
+// corresponding `File` objects. Backends override the `File` family of classes
+// to implement the mapping from `File` objects to their underlying files.
 class File : public std::enable_shared_from_this<File> {
 public:
   enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
@@ -164,10 +171,11 @@ private:
   // TODO: Use a cache data structure with smaller code size.
   std::map<std::string, DCacheEntry> dcache;
 
-  // Return the file with the given name or null if there is none.
+  // Return the `File` object corresponding to the file with the given name or
+  // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
 
-  // Inserts a file with the given name, kind, and mode. Returns a `File`
+  // Inserts a file with the given name, kind, and mode. Returns a `File` object
   // corresponding to the newly created file or nullptr if the new file could
   // not be created. Assumes a child with this name does not already exist.
   virtual std::shared_ptr<DataFile> insertDataFile(const std::string& name,
