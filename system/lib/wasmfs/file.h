@@ -328,7 +328,8 @@ public:
   // directory with the new `name`, possibly overwriting another file that
   // already exists with that name. The old directory may be the same as this
   // directory. On success, return `true`. Otherwise return `false` without
-  // changing any underlying state.
+  // changing any underlying state. This should only be called from renameat
+  // with the locks on the old and new parents already held.
   bool insertMove(const std::string& name, std::shared_ptr<File> file);
 
   // Remove the file with the given name, returning `true` on success or if the
