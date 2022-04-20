@@ -26,8 +26,6 @@ void looper_main() {
 }
 
 void returner_main() {
-  // Process the queue in case any work came in while we were starting up.
-  queue.execute();
   emscripten_exit_with_live_runtime();
 }
 

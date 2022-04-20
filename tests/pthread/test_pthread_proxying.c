@@ -29,8 +29,6 @@ void* looper_main(void* arg) {
 }
 
 void* returner_main(void* queue) {
-  // Process the queue in case any work came in while we were starting up.
-  emscripten_proxy_execute_queue(queue);
   emscripten_exit_with_live_runtime();
 }
 

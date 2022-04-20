@@ -20,20 +20,6 @@ have been queued for the current thread. Alternatively, queued work will execute
 automatically if the target thread returns to the JS event loop, for example via
 ``emscripten_exit_with_live_runtime``.
 
-.. note::
-
-  In situations where the target thread depends on returning to the JS event
-  loop to automatically execute tasks and the proxying of tasks races with the
-  initialization of the target thread, it is possible that the internal
-  notification to execute the queue will arrive before the target thread has
-  been initialized. When that happens the notification is dropped and the queue
-  is not executed.
-
-  This problem can be worked around by either ensuring the target thread is
-  running before proxying work to it or by explicitly calling
-  ``emscripten_proxy_execute_queue`` on the target thread when it starts up to
-  execute any work that may have arrived during thread startup.
-
 See `test_pthread_proxying.c`_ and `test_pthread_proxying_cpp.cpp`_ for examples
 of how to use the proxying API.
 
