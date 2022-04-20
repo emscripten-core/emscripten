@@ -661,7 +661,7 @@ Functions
 
   This is an **experimental** "more feature-complete" version of :c:func:`emscripten_async_wget`.
 
-  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.). See :ref:`preloading-files` for more information on preloading files.
+  Preload plug-ins are at this time *not* executed on the downloaded data. You may want to call :c:func:`emscripten_run_preload_plugins` in the ``onload`` callback if you want to be able to use the downloaded file with ``IMG_Load`` and such.
 
 
   When the file is ready the ``onload`` callback will be called with the object pointers given in ``arg`` and ``file``. During the download the ``onprogress`` callback is called.
