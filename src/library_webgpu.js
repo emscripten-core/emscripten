@@ -1535,24 +1535,36 @@ var LibraryWebGPU = {
       if (dsaPtr === 0) return undefined;
 
       var depthLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}};
+      var depthStoreOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthStoreOp) }}};
       var depthClearValue = {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthClearValue, 'float') }}};
+      
       var stencilLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}};
+      var stencilStoreOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}};
       var stencilClearValue = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilClearValue) }}};
 
-      return {
+      var desc = {
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.view) }}}),
         "depthClearValue": depthClearValue,
-        "depthLoadOp": WebGPU.LoadOp[depthLoadOpInt],
-        "depthStoreOp": WebGPU.StoreOp[
-          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthStoreOp) }}}],
         "depthReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthReadOnly) }}},
         "stencilClearValue": stencilClearValue,
-        "stencilLoadOp": WebGPU.LoadOp[stencilLoadOpInt],
-        "stencilStoreOp": WebGPU.StoreOp[
-          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
       };
+
+      if (depthLoadOpInt !== {{{ gpu.LoadOp.Undefined }}}) {
+        desc["depthLoadOp"] = WebGPU.LoadOp[depthLoadOpInt];
+      }
+      if (depthLoadOpInt !== {{{ gpu.StoreOp.Undefined }}}) {
+        desc["depthStoreOp"] = WebGPU.StoreOp[depthStoreOpInt];
+      }
+      if (stencilLoadOpInt !== {{{ gpu.LoadOp.Undefined }}}) {
+        desc["stencilLoadOp"] = WebGPU.LoadOp[stencilLoadOpInt];
+      }
+      if (stencilStoreOpInt !== {{{ gpu.StoreOp.Undefined }}}) {
+        desc["stencilStoreOp"] = WebGPU.StoreOp[stencilStoreOpInt];
+      }
+
+      return desc;
     }
 
     function makeRenderPassDescriptor(descriptor) {
