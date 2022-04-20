@@ -1,11 +1,10 @@
 #include <assert.h>
 #include <emscripten/console.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <unistd.h>
-
-#include "proxying.h"
 
 // The first two queues will be zombies and the next two will be created just to
 // cull the zombies.

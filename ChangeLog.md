@@ -25,6 +25,9 @@ See docs/process.md for more on how version tagging works.
   (#16589)
 - A warning is now issued when passing C++-only settings such
   `-sEXCEPTION_CATCHING_ALLOWED` when not linking as C++. (#16609)
+- Introduce a new [proxying
+  API](https://emscripten.org/docs/api_reference/proxying.h.html) for proxying
+  work between threads.
 
 3.1.8 - 03/24/2022
 ------------------

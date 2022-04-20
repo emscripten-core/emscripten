@@ -1,12 +1,11 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "proxying.h"
 
 // The worker threads we will use. `looper` sits in a loop, continuously
 // processing work as it becomes available, while `returner` returns to the JS
