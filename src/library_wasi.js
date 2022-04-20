@@ -234,19 +234,15 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
-#else
-#if PROXY_POSIX_SOCKETS
+#elif PROXY_POSIX_SOCKETS
     // close() is a tricky function because it can be used to close both regular file descriptors
     // and POSIX network socket handles, hence an implementation would need to track for each
     // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
     // option, use shutdown() to close a socket, and this function should behave like a no-op.
     warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
-#else
-#if ASSERTIONS
+#elif ASSERTIONS
     abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-#endif
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
     return 0;
   },
 
