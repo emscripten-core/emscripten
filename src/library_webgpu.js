@@ -1520,8 +1520,6 @@ var LibraryWebGPU = {
         "clearValue": clearValue,
         "loadOp":  WebGPU.LoadOp[loadOpInt],
         "storeOp": WebGPU.StoreOp[storeOpInt],
-        // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        "loadValue": loadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : clearValue,
       };
     }
 
@@ -1901,12 +1899,7 @@ var LibraryWebGPU = {
 
   wgpuComputePassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // wgpuRenderPass
@@ -2040,12 +2033,7 @@ var LibraryWebGPU = {
 
   wgpuRenderPassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // Render bundle encoder
