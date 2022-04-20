@@ -4,8 +4,7 @@
 proxying.h
 ==========
 
-The Emscripten `proxying.h
-<https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/proxying.h>`_
+The Emscripten `proxying.h`_
 API provides a mechanism for dispatching work to be executed by a target thread
 and optionally blocking until that work has been completed. This is particularly
 useful in a Web context where certain JS APIs can only be called on particular
@@ -15,19 +14,28 @@ a synchronous interface. The calling thread can proxy the asynchronous task to a
 dedicated worker thread and wait until the worker thread eventually marks the
 task as complete, possibly after returning multiple times to the JS event loop.
 
-Work on proxying queues can be executed in two ways. First, the user may
-explicitly call ``emscripten_proxy_execute_queue`` to execute any tasks that
-have been queued for the current thread. Alternatively, if the target thread
-returns to the JS event loop, for example via
-``emscripten_exit_with_live_runtime``, the proxying queue implementation will
-``postMessage`` the target thread to wake it up and tell it to automatically run
-the enqueued work.
+On the target thread, queued work can be executed in two ways. First, the user
+may explicitly call ``emscripten_proxy_execute_queue`` to execute any tasks that
+have been queued for the current thread. Alternatively, queued work will execute
+automatically if the target thread returns to the JS event loop, for example via
+``emscripten_exit_with_live_runtime``.
 
-See `test_pthread_proxying.c
-<https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying.c>`_
-and `test_pthread_proxying_cpp.cpp
-<https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying_cpp.cpp>`_
-for examples of how to use the proxying API.
+.. note::
+
+  In situations where the target thread depends on returning to the JS event
+  loop to automatically execute tasks and the proxying of tasks races with the
+  initialization of the target thread, it is possible that the internal
+  notification to execute the queue will arrive before the target thread has
+  been initialized. When that happens the notification is dropped and the queue
+  is not executed.
+
+  This problem can be worked around by either ensuring the target thread is
+  running before proxying work to it or by explicitly calling
+  ``emscripten_proxy_execute_queue`` on the target thread when it starts up to
+  execute any work that may have arrived during thread startup.
+
+See `test_pthread_proxying.c`_ and `test_pthread_proxying_cpp.cpp`_ for examples
+of how to use the proxying API.
 
 API Reference
 =============
@@ -37,10 +45,8 @@ Types
 
 .. c:type:: em_proxying_queue*
 
-  An opaque handle to a set of thread-local work queues to which work can be
-  asynchronously or synchronously proxied from other threads. When work is
-  proxied to a queue on a particular thread, that thread is notified to start
-  processing work from that queue if it is not already doing so.
+  An opaque handle to a set of thread-local work queues (one per thread) to
+  which work can be asynchronously or synchronously proxied from other threads.
 
   Proxied work can only be completed on live thread runtimes, so users must
   ensure either that all proxied work is completed before a thread exits or that
@@ -83,23 +89,22 @@ Functions
 .. c:function:: int emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (\*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
-  thread then return immediately. Returns 1 if the work was successfully
-  enqueued and the target thread notified or 0 otherwise.
+  thread then return immediately without waiting for ``func`` to be executed.
+  Returns 1 if the work was successfully enqueued or 0 otherwise.
 
 .. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (\*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
-  thread then wait for ``func`` to be executed before returning. Returns 1 if
-  the ``func`` was successfully completed and 0 otherwise.
+  thread then wait for ``func`` to be executed synchronously before returning.
+  Returns 1 if the ``func`` was successfully completed and 0 otherwise.
 
 .. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (\*func)(em_proxying_ctx*, void*), void* arg)
 
-  Enqueue ``func`` to be called with argument `arg`` on the given queue and
-  thread and wait for it to be executed and for the task to be marked finished
-  with ``emscripten_proxying_finish`` before returning. ``func`` need not call
+  The same as ``emscripten_proxy_sync`` except that instead of waiting for the
+  proxied function to return, it waits for the proxied task to be explicitly
+  marked finished with ``emscripten_proxying_finish``. ``func`` need not call
   ``emscripten_proxying_finish`` itself; it could instead store the context
   pointer and call ``emscripten_proxying_finish`` at an arbitrary later time.
-  Returns 1 if the task was successfully completed and 0 otherwise.
 
 C++ API
 -------
@@ -142,3 +147,7 @@ defined within namespace ``emscripten``.
     Calls ``emscripten_proxy_sync_with_ctx`` to execute ``func``, returning ``true``
     if the function was successfully marked done with
     ``emscripten_proxying_finish`` or ``ProxyingCtx::finish`` and ``false`` otherwise.
+
+.. _proxying.h: https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/proxying.h
+.. _test_pthread_proxying.c: https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying.c
+.. _test_pthread_proxying_cpp.cpp: https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying_cpp.cpp
