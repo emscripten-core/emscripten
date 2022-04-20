@@ -161,14 +161,6 @@ def also_with_threads(f):
   return decorated
 
 
-# Today we only support the wasm backend so any tests that is disabled under the llvm
-# backend is always disabled.
-# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
-def no_wasm_backend(note=''):
-  assert not callable(note)
-  return unittest.skip(note)
-
-
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
@@ -3291,7 +3283,6 @@ window.close = function() {
       '-sINITIAL_MEMORY=33554432'
     ])
 
-  @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
@@ -4646,19 +4637,19 @@ window.close = function() {
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
-  @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
+  @unittest.skip("emscripten_fetch_wait relies on an asm.js-based web worker")
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/sync_fetch_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
+  @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/idb_store.cpp', args=['-sUSE_PTHREADS', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
+  @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])

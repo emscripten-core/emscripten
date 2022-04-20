@@ -1443,7 +1443,7 @@ var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
 // [link]
-var USE_COCOS2D = false;
+var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
 // [link]
