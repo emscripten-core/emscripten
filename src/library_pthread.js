@@ -1044,38 +1044,19 @@ var LibraryPThread = {
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
-  // Thread-local guard variable for one-time init of the JS state.
-  $initializedJS: false,
-
-  // A list of queues that receive work before thread initialization.
-  $pendingNotifiedProxyingQueues: [],
-
-  $executeNotifiedProxyingQueue__deps: ['$pendingNotifiedProxyingQueues',
-                                        '$initializedJS'],
   $executeNotifiedProxyingQueue: function(queue) {
-    if (_pthread_self()) {
-#if ASSERTIONS
-      try {
-#endif
-        // Only execute the queue if we have a live pthread runtime. We
-        // implement pthread_self to return 0 if there is no live runtime.
-        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
-        //       `runtimeExited` is correctly unset on workers.
+    try {
+      // Only execute the queue if we have a live pthread runtime. We
+      // implement pthread_self to return 0 if there is no live runtime.
+      // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+      //       `runtimeExited` is correctly unset on workers.
+      if (_pthread_self()) {
         _emscripten_proxy_execute_queue(queue);
-#if ASSERTIONS
-      } catch(e) {
-        err('unwinding from proxied functions can result in dropped work and deadlocks!');
-        throw e;
       }
-#endif
-    } else if (ENVIRONMENT_IS_WORKER && !initializedJS) {
-      // We are on a worker and waiting for a pthread runtime to be initialized.
-      // Defer executing this queue until the runtime is initialized.
-      pendingNotifiedProxyingQueues.push(queue);
-      return;
+    } finally {
+      // Always decrement the ref count.
+      Atomics.sub(HEAP32, queue >> 2, 1);
     }
-    // We are done handling this notification, so decrement the refcount.
-    Atomics.sub(HEAP32, queue >> 2, 1);
   },
 
   _emscripten_notify_proxying_queue__deps: ['$executeNotifiedProxyingQueue'],

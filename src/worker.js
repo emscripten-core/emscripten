@@ -51,6 +51,13 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
+// Thread-local guard variable for one-time init of the JS state
+var initializedJS = false;
+
+// Proxying queues that were notified before the thread started and need to be
+// executed as part of startup.
+var pendingNotifiedProxyingQueues = [];
+
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -290,7 +297,12 @@ self.onmessage = (e) => {
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processProxyingQueue') {
-      executeNotifiedProxyingQueue(e.data.queue);
+      if (initializedJS) {
+        executeNotifiedProxyingQueue(e.data.queue);
+      } else {
+        // Defer executing this queue until the runtime is initialized.
+        pendingNotifiedProxyingQueues.push(e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
