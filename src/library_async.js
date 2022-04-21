@@ -79,11 +79,11 @@ mergeInto(LibraryManager.library, {
                 throw new Error('Missing __sig for ' + x);
               }
 #endif
+              var type = getTypeDescription(sig, original);
+              type.results = ['externref'];
               imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
-                new WebAssembly.Function({
-                  parameters: ['i32', 'i32', 'i32'],
-                  results: ['externref']
-                }, original)
+                new WebAssembly.Function(type),
+                original
               );
             }
 #endif
