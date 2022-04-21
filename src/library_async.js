@@ -64,6 +64,11 @@ mergeInto(LibraryManager.library, {
     },
 
     instrumentWasmImports: function(imports) {
+#if ASYNCIFY == 2
+      // TODO we could perhaps add an init function and put this there, but
+      //      this should work for now.
+      Asyncify.suspender = new WebAssembly.Suspender();
+#endif
       var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
       for (var x in imports) {
         (function(x) {
@@ -82,8 +87,7 @@ mergeInto(LibraryManager.library, {
               var type = getTypeDescription(sig, original);
               type.results = ['externref'];
               imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
-                new WebAssembly.Function(type),
-                original
+                new WebAssembly.Function(type, original)
               );
             }
 #endif
@@ -126,11 +130,6 @@ mergeInto(LibraryManager.library, {
     },
 
     instrumentWasmExports: function(exports) {
-#if ASYNCIFY == 2
-      // TODO we could perhaps add an init function and put this there, but
-      //      this should work for now.
-      Asyncify.suspender = new WebAssembly.Suspender();
-#endif
       var ret = {};
       for (var x in exports) {
         (function(x) {
