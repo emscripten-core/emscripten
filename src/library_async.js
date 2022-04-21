@@ -50,7 +50,13 @@ mergeInto(LibraryManager.library, {
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 #if ASYNCIFY == 2
+    // The global suspender object used with the VM's stack switching Promise
+    // API.
     suspender: null,
+    // The promise that is being suspended on in the VM atm, or null.
+    promise: null,
+    // The function we should call to resolve the promise at the right time.
+    promiseResolve: null,
 #endif
 
     getCallStackId: function(funcName) {
@@ -188,7 +194,9 @@ mergeInto(LibraryManager.library, {
         {{{ runtimeKeepalivePush(); }}}
         Asyncify.state = Asyncify.State.Normal;
         // Keep the runtime alive so that a re-wind can be done later.
+#if ASYNCIFY == 1
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
+#endif
         if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
         }
@@ -293,7 +301,11 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
+#if ASYNCIFY == 2
+          Asyncify.promiseResolve(handleSleepReturnValue);
+#else
           runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
+#endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -342,10 +354,19 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
+#if ASYNCIFY == 2
+          // Return a Promise to get the browser's stack switching logic to run.
+          Asyncify.promise = new Promise((resolve, reject) => {
+            // Stash the resolve hook so we can call it at the proper time.
+            Asyncify.promiseResolve = resolve;
+            // TODO: handle rejection
+          });
+#else
+          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
+#endif
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
