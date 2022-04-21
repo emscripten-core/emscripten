@@ -72,14 +72,20 @@ mergeInto(LibraryManager.library, {
             var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
                                    x.startsWith('__asyncjs__');
 #if ASYNCIFY == 2
-            console.log("sig:", original.sig);
-            throw 'waka';
-            imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
-              new WebAssembly.Function({
-                parameters: ['i32', 'i32', 'i32'],
-                results: ['externref']
-              }, original)
-            );
+            if (isAsyncifyImport) {
+              var sig = original.sig;
+#if ASSERTIONS
+              if (!sig) {
+                throw new Error('Missing __sig for ' + x);
+              }
+#endif
+              imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
+                new WebAssembly.Function({
+                  parameters: ['i32', 'i32', 'i32'],
+                  results: ['externref']
+                }, original)
+              );
+            }
 #endif
 #if ASSERTIONS
             imports[x] = function() {
@@ -362,6 +368,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
+  emscripten_sleep__sig: 'vi', // TODO: others
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
