@@ -246,6 +246,8 @@ def with_asyncify_and_stack_switching(f):
     if stack_switching:
       self.set_setting('ASYNCIFY', 2)
       self.require_v8()
+      # enable stack switching and other relevant features (like reference types
+      # for the return value of externref)
       self.v8_args.append('--wasm-staging')
       self.v8_args.append('--experimental-wasm-stack-switching')
       f(self)
@@ -7747,6 +7749,7 @@ void* operator new(size_t size) {
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('ASYNCIFY')
 
     create_file('main.c',  r'''
 #include <stdio.h>

@@ -11926,6 +11926,8 @@ void foo() {}
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   def test_stack_switching_size(self):
+    # use iostream code here to purposefully get a fairly large wasm file, so
+    # that our size comparisons later are meaningful
     create_file('main.cpp', r'''
       #include <emscripten.h>
       #include <iostream>
@@ -11953,7 +11955,7 @@ void foo() {}
     stack_switching_size = os.path.getsize('a.out.wasm')
     print(stack_switching_size)
 
-    # Also compare to code size without asyncify or stack switching.
+    # also compare to code size without asyncify or stack switching
     self.run_process([EMXX, 'main.cpp', '-Os'])
     nothing_size = os.path.getsize('a.out.wasm')
     print(nothing_size)

@@ -49,7 +49,14 @@ mergeInto(LibraryManager.library, {
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
+
 #if ASYNCIFY == 2
+    // TODO: Stack switching support could be implemented without all the
+    //       asyncify infrastructure, perhaps as code on the size instead of
+    //       ifdefs. That might be cleaner, and it would avoid overhead like the
+    //       malloc() asyncify does (we could ifdef it out, but it's even more
+    //       ifdefing).
+
     // The global suspender object used with the VM's stack switching Promise
     // API.
     suspender: null,
@@ -82,23 +89,25 @@ mergeInto(LibraryManager.library, {
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
+          var sig = original.sig;
           if (typeof original == 'function') {
             var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
                                    x.startsWith('__asyncjs__');
 #if ASYNCIFY == 2
             if (isAsyncifyImport) {
-              var sig = original.sig;
 #if ASSERTIONS
               if (!sig) {
                 throw new Error('Missing __sig for ' + x);
               }
 #endif
               var type = getTypeDescription(sig, original);
+              // Regardless of the original result type of the function, as it
+              // is now expected to potentially return a Promise, change it to
+              // an externref.
               type.results = ['externref'];
               imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
                 new WebAssembly.Function(type, original)
               );
-              imports[x].sig = original.sig; // XXX see comment below
             }
 #endif
 #if ASSERTIONS
@@ -131,7 +140,7 @@ mergeInto(LibraryManager.library, {
             // The dynamic library loader needs to be able to read .sig
             // properties, so that it knows function signatures when it adds
             // them to the table.
-            imports[x].sig = original.sig;
+            imports[x].sig = sig;
 #endif // MAIN_MODULE
 #endif // ASSERTIONS
           }
