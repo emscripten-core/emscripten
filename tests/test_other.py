@@ -11924,3 +11924,31 @@ void foo() {}
     self.assertIn(b'.debug', read_binary('hello_world.o'))
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
+
+  def test_stack_switching_size(self):
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+      int main() {
+        printf("nap time\n");
+        emscripten_sleep(1);
+        printf("i am awake\n");
+      }
+    ''')
+    expected = 'nap time\ni am awake\n'
+
+    self.run_process([EMCC, 'main.c', '-Os', '-sASYNCIFY'])
+    self.assertContained(expected, self.run_js('a.out.js'))
+    asyncify_size = os.path.getsize('a.out.wasm')
+
+    self.run_process([EMCC, 'main.c', '-Os', '-sASYNCIFY=2'])
+    self.assertContained(expected, self.run_js('a.out.js', engine=V8_ENGINE))
+    stack_switching_size = os.path.getsize('a.out.wasm')
+
+    # Also compare to code size without asyncify or stack switching.
+    self.run_process([EMCC, 'main.c', '-Os'])
+    nothing_size = os.path.getsize('a.out.wasm')
+
+    # stack switching does not asyncify the code, which means it can be tiny
+    self.assertLess(stack_switching_size, 0.1 * asyncify_size)
+    self.assertLess(abs(stack_switching_size - nothing_size), 0.1 * nothing_size)
