@@ -3791,13 +3791,21 @@ int main()
 ''')
 
     IMPLICIT_WARNING = "warning: implicit declaration of function 'strnlen' is invalid in C99"
+    IMPLICIT_WARNING_NEW = "warning: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
+
     IMPLICIT_ERROR = "error: implicit declaration of function 'strnlen' is invalid in C99"
+    IMPLICIT_ERROR_NEW = "error: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
+
     INCOMPATIBLE_WARNINGS = ('warning: incompatible pointer types', 'warning: incompatible function pointer types')
+    IMPLICIT_WARNINGS = (IMPLICIT_WARNING, IMPLICIT_WARNING_NEW)
+    IMPLICIT_ERRORS = (IMPLICIT_ERROR, IMPLICIT_ERROR_NEW)
 
     for opts, expected, compile_expected in [
-      ([], None, [IMPLICIT_ERROR]),
-      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNING]), # turn error into warning
-      (['-Wno-implicit-function-declaration'], ['hello '], []), # turn error into nothing at all (runtime output is incorrect)
+      ([], None, [IMPLICIT_ERRORS]),
+      # turn error into warning
+      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNINGS]),
+      # turn error into nothing at all (runtime output is incorrect)
+      (['-Wno-implicit-function-declaration'], ['hello '], []),
     ]:
       print(opts, expected)
       try_delete('a.out.js')
