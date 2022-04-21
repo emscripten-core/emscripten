@@ -7744,7 +7744,6 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
   @no_memory64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -7805,6 +7804,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @no_memory64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
