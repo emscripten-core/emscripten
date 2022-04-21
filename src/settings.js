@@ -825,8 +825,10 @@ var ASYNCIFY_ADVISE = false;
 var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
+//  1: Minimal logging.
+//  2: Verbose logging.
 // [link]
-var ASYNCIFY_DEBUG = false;
+var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use

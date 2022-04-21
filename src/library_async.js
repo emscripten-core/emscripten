@@ -64,6 +64,9 @@ mergeInto(LibraryManager.library, {
     },
 
     instrumentWasmImports: function(imports) {
+#if ASYNCIFY_DEBUG
+      err('asyncify instrumenting imports');
+#endif
 #if ASYNCIFY == 2
       // TODO we could perhaps add an init function and put this there, but
       //      this should work for now.
@@ -89,6 +92,7 @@ mergeInto(LibraryManager.library, {
               imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
                 new WebAssembly.Function(type, original)
               );
+              imports[x].sig = original.sig; // XXX see comment below
             }
 #endif
 #if ASSERTIONS
@@ -130,12 +134,18 @@ mergeInto(LibraryManager.library, {
     },
 
     instrumentWasmExports: function(exports) {
+#if ASYNCIFY_DEBUG
+      err('asyncify instrumenting exports');
+#endif
       var ret = {};
       for (var x in exports) {
         (function(x) {
           var original = exports[x];
 #if ASYNCIFY == 2
-          ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
+          // TODO: need a list of all suspending exports.
+          if (x === 'main') {
+            ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
+          }
 #endif
           if (typeof original == 'function') {
             ret[x] = function() {
