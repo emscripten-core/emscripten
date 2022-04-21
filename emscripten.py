@@ -840,7 +840,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   module = []
 
   module.append('var asmLibraryArg = %s;\n' % sending)
-  if settings.ASYNCIFY and settings.ASSERTIONS:
+  if settings.ASYNCIFY:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
   if not settings.MINIMAL_RUNTIME:

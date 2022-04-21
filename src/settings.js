@@ -721,11 +721,18 @@ var NODEJS_CATCH_EXIT = true;
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
-// Whether to transform the code using asyncify. This makes it possible to
-// call JS functions from synchronous-looking code in C/C++.
-// See https://emscripten.org/docs/porting/asyncify.html
+// Whether to support async operations in the compiled code. This makes it
+// possible to call JS functions from synchronous-looking code in C/C++.
+//  1: Run binaryen's Asyncify pass to transform the code using asyncify. This
+//     emits a normal wasm file in the end, so it works everywhere, but it has a
+//     significant cost in terms of code size and speed.
+//     See https://emscripten.org/docs/porting/asyncify.html
+//  2: Depend on VM support for the wasm stack switching proposal. This allows
+//     async operations to happen without the overhead of modifying the wasm.
+//     TODO: document which of the following flags are still relevant in this
+//           mode (e.g. IGNORE_INDIRECT etc. are not needed)
 // [link]
-var ASYNCIFY = false;
+var ASYNCIFY = 0;
 
 // Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to

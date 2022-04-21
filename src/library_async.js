@@ -49,6 +49,9 @@ mergeInto(LibraryManager.library, {
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
+#if ASYNCIFY == 2
+    suspender: null,
+#endif
 
     getCallStackId: function(funcName) {
       var id = Asyncify.callStackNameToId[funcName];
@@ -60,13 +63,25 @@ mergeInto(LibraryManager.library, {
       return id;
     },
 
-#if ASSERTIONS
     instrumentWasmImports: function(imports) {
       var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
           if (typeof original == 'function') {
+            var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+                                   x.startsWith('__asyncjs__');
+#if ASYNCIFY == 2
+            console.log("sig:", original.sig);
+            throw 'waka';
+            imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
+              new WebAssembly.Function({
+                parameters: ['i32', 'i32', 'i32'],
+                results: ['externref']
+              }, original)
+            );
+#endif
+#if ASSERTIONS
             imports[x] = function() {
               var originalAsyncifyState = Asyncify.state;
               try {
@@ -74,8 +89,6 @@ mergeInto(LibraryManager.library, {
               } finally {
                 // Only asyncify-declared imports are allowed to change the
                 // state.
-                var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
-                                       x.startsWith('__asyncjs__');
                 // Changing the state from normal to disabled is allowed (in any
                 // function) as that is what shutdown does (and we don't have an
                 // explicit list of shutdown imports).
@@ -93,24 +106,33 @@ mergeInto(LibraryManager.library, {
                   throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
-            }
+            };
 #if MAIN_MODULE
             // The dynamic library loader needs to be able to read .sig
             // properties, so that it knows function signatures when it adds
             // them to the table.
             imports[x].sig = original.sig;
-#endif
+#endif // MAIN_MODULE
+#enduf // ASSERTIONS
           }
         })(x);
       }
+#endif // ASSERTIONS
     },
-#endif
 
     instrumentWasmExports: function(exports) {
+#if ASYNCIFY == 2
+      // TODO we could perhaps add an init function and put this there, but
+      //      this should work for now.
+      Asyncify.suspender = new WebAssembly.Suspender();
+#endif
       var ret = {};
       for (var x in exports) {
         (function(x) {
           var original = exports[x];
+#if ASYNCIFY == 2
+          ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
+#endif
           if (typeof original == 'function') {
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2

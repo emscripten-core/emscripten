@@ -552,7 +552,7 @@ def get_binaryen_passes():
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
     # be able to further process them.
     passes += ['--fpcast-emu']
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -3293,7 +3293,7 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info += 1
   if options.emit_symbol_map:
     intermediate_debug_info += 1
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     intermediate_debug_info += 1
   # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
   # also strips the Names section. so to emit just the Names section we don't
@@ -3313,7 +3313,7 @@ def phase_binaryen(target, options, wasm_target):
       passes += ['--strip-producers']
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY == 1:
       intermediate_debug_info -= 1
     if intermediate_debug_info and should_run_binaryen_optimizer():
       # See https://github.com/emscripten-core/emscripten/issues/15269
