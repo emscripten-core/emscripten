@@ -1201,7 +1201,7 @@
             "nextInChain": 0
         },
         "__cxa_exception": {
-            "__size__": 20,
+            "__size__": 24,
             "adjustedPtr": 16,
             "caught": 12,
             "exceptionDestructor": 8,

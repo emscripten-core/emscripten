@@ -89,6 +89,7 @@ def optimize_syscalls(declares):
       'fd_seek',
       'fd_write',
       'fd_close',
+      'fd_fdstat_get',
     }):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))

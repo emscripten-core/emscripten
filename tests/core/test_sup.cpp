@@ -20,13 +20,11 @@ int main()
 {
   #define TEST(struc) \
   { \
-    struc *s = 0; \
-    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, (long)&(s->a), (long)&(s->b), (long)&(s->c), (long)&(s->later), sizeof(struc)); \
+    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, offsetof(struc, a), offsetof(struc, b), offsetof(struc, c), offsetof(struc, later), sizeof(struc)); \
   }
   #define TEST_ARR(struc) \
   { \
-    struc *s = 0; \
-    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, (long)&(s->a[0]), (long)&(s->a[1]), (long)&(s->a[2]), (long)&(s->later), sizeof(struc)); \
+    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, offsetof(struc, a[0]), offsetof(struc, a[1]), offsetof(struc, a[2]), offsetof(struc, later), sizeof(struc)); \
   }
   printf("sizeofs:%zu,%zu\n", sizeof(S6), sizeof(S6z));
   TEST(C___);

@@ -28,7 +28,13 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
   uint8_t caught;
   uint8_t rethrown;
   void *adjustedPtr;
+  // Add padding to ensure that the size of __cxa_exception is a multiple of
+  // the maximum useful alignment for the target machine.  This ensures that
+  // the thrown object that follows has that correct alignment.
+  void *padding;
 };
+
+static_assert(sizeof(__cxa_exception) % alignof(max_align_t) == 0, "__cxa_exception must have a size that is multipl of max alignment");
 
 #else
 
