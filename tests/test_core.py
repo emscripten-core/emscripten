@@ -167,8 +167,7 @@ def can_do_standalone(self):
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
       not self.get_setting('MEMORY64') and \
-      '-fsanitize=address' not in self.emcc_args and \
-      '-fsanitize=leak' not in self.emcc_args
+      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
 
 def also_with_wasmfs(func):
@@ -284,6 +283,36 @@ def no_lsan(note):
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_ubsan(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if '-fsanitize=undefined' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_sanitize(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if any(a.startswith('-fsanitize=') for a in self.emcc_args):
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
@@ -465,6 +494,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_i64_umul.c')
 
   @also_with_standalone_wasm()
+  @no_ubsan('contains UB')
   def test_i64_precise(self):
     self.do_core_test('test_i64_precise.c')
 
@@ -660,13 +690,12 @@ class TestCoreBase(RunnerCore):
         double y;
       };
 
-      int main(int argc, char **argv)
-      {
+      int main(int argc, char **argv) {
         int base = argc-1;
-        Object *o = NULL;
+        Object o[10];
         printf("%zu,%zu\n", sizeof(Object), sizeof(Principal));
-        printf("%ld,%ld,%ld,%ld\n", (long)&o[base].type, (long)&o[base].intg, (long)&o[base].real, (long)&o[base].name);
-        printf("%ld,%ld,%ld,%ld\n", (long)&o[base+1].type, (long)&o[base+1].intg, (long)&o[base+1].real, (long)&o[base+1].name);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base].type - (long)o, (long)&o[base].intg - (long)o, (long)&o[base].real - (long)o, (long)&o[base].name - (long)o);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base+1].type - (long)o, (long)&o[base+1].intg - (long)o, (long)&o[base+1].real - (long)o, (long)&o[base+1].name - (long)o);
         Principal p, q;
         p.x = p.y = q.x = q.y = 0;
         p.a.type = A;
@@ -897,8 +926,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_core_test('test_stack_placement.c')
 
-  @no_asan('asan does not support main modules')
-  @no_lsan('asan does not support main modules')
+  @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
     self.set_setting('TOTAL_STACK', 1024)
@@ -980,6 +1008,7 @@ base align: 0, 0, 0, 0'''])
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
+  @no_ubsan('UBSan changes memory consumption')
   def test_emmalloc_memory_statistics(self, *args):
 
     self.set_setting('MALLOC', 'emmalloc')
@@ -2237,6 +2266,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sTOTAL_STACK=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_memory_growth_step.c')
 
+  @no_ubsan('UBSan seems to effect the precise memory usage')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2332,12 +2362,14 @@ int main(int argc, char **argv) {
 59899: 598995989959899
 Success!''')
 
+  @no_ubsan('local count too large for VMs')
   def test_indirectbr(self):
     self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
     self.do_core_test('test_indirectbr.c')
 
   @no_asan('local count too large for VMs')
+  @no_ubsan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
     self.do_core_test('test_indirectbr_many.c')
@@ -2348,26 +2380,24 @@ Success!''')
       #include <string.h>
 
       #pragma pack(push,1)
-      typedef struct header
-      {
+      typedef struct header {
           unsigned char  id;
           unsigned short colour;
           unsigned char  desc;
       } header;
       #pragma pack(pop)
 
-      typedef struct fatheader
-      {
+      typedef struct fatheader {
           unsigned char  id;
           unsigned short colour;
           unsigned char  desc;
       } fatheader;
 
       int main( int argc, const char *argv[] ) {
-        header h, *ph = 0;
-        fatheader fh, *pfh = 0;
-        printf("*%zu,%ld,%ld*\\n", sizeof(header), (long)((long)&h.desc - (long)&h.id), (long)(&ph[1])-(long)(&ph[0]));
-        printf("*%zu,%ld,%ld*\\n", sizeof(fatheader), (long)((long)&fh.desc - (long)&fh.id), (long)(&pfh[1])-(long)(&pfh[0]));
+        header ph[2];
+        fatheader pfh[2];
+        printf("*%zu,%ld,%ld*\\n", sizeof(header), offsetof(header, desc) - offsetof(header, id), (long)(&ph[1])-(long)(&ph[0]));
+        printf("*%zu,%ld,%ld*\\n", sizeof(fatheader), offsetof(fatheader, desc) - offsetof(fatheader, id), (long)(&pfh[1])-(long)(&pfh[0]));
         return 0;
       }
       '''
@@ -2790,7 +2820,7 @@ The current type of b is: 9
     self.do_core_test('stackAlloc.cpp')
 
   def test_nestedstructs(self):
-    src = '''
+    src = r'''
       #include <stdio.h>
       #include "emscripten.h"
 
@@ -2817,16 +2847,34 @@ The current type of b is: 9
 
       struct hashtable : hashset {
         hashtable() {
-          base *b = NULL;
-          entry *e = NULL;
-          chain *c = NULL;
-          printf("*%zu,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld*\\n",
+          base b;
+          entry e;
+          chain c;
+          printf("*%zu,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld*\n",
             sizeof(base),
-            long(&(b->x)), long(&(b->y)), long(&(b->a)), long(&(b->b)), long(&(b->c)),
+            long(&b.x) - long(&b),
+            long(&b.y) - long(&b),
+            long(&b.a) - long(&b),
+            long(&b.b) - long(&b),
+            long(&b.c) - long(&b),
             sizeof(hashtableentry),
-            long(&(e->key)), long(&(e->data)), long(&(e->data.x)), long(&(e->data.y)), long(&(e->data.a)), long(&(e->data.b)), long(&(e->data.c)),
+            long(&e.key) - long(&e),
+            long(&e.data) - long(&e),
+            long(&e.data.x) - long(&e),
+            long(&e.data.y) - long(&e),
+            long(&e.data.a) - long(&e),
+            long(&e.data.b) - long(&e),
+            long(&e.data.c) - long(&e),
             sizeof(hashset::chain),
-            long(&(c->elem)), long(&(c->next)), long(&(c->elem.key)), long(&(c->elem.data)), long(&(c->elem.data.x)), long(&(c->elem.data.y)), long(&(c->elem.data.a)), long(&(c->elem.data.b)), long(&(c->elem.data.c))
+            long(&c.elem) - long(&c),
+            long(&c.next) - long(&c),
+            long(&c.elem.key) - long(&c),
+            long(&c.elem.data) - long(&c),
+            long(&c.elem.data.x) - long(&c),
+            long(&c.elem.data.y) - long(&c),
+            long(&c.elem.data.a) - long(&c),
+            long(&c.elem.data.b) - long(&c),
+            long(&c.elem.data.c) - long(&c)
           );
         }
       };
@@ -2849,19 +2897,23 @@ The current type of b is: 9
 
         // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
         // one is aligned properly. Also handle char; char; etc. properly.
-        B *b = NULL;
-        printf("*%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%zu*\\n", long(b), long(&(b->buffer)), long(&(b->buffer[0])), long(&(b->buffer[1])), long(&(b->buffer[2])),
-                                                  long(&(b->last)), long(&(b->laster)), long(&(b->laster2)), sizeof(B));
+        B b;
+        printf("*%ld,%ld,%ld,%ld,%ld,%ld,%ld,%zu*\n", long(&b.buffer) - long(&b),
+                                                      long(&b.buffer[0]) - long(&b),
+                                                      long(&b.buffer[1]) - long(&b),
+                                                      long(&b.buffer[2]) - long(&b),
+                                                      long(&b.last) - long(&b),
+                                                      long(&b.laster) - long(&b),
+                                                      long(&b.laster2) - long(&b),
+                                                      sizeof(B));
 
         // Part 3 - bitfields, and small structures
-        Bits *b2 = NULL;
-        printf("*%zu*\\n", sizeof(Bits));
-
+        printf("*%zu*\n", sizeof(Bits));
         return 0;
       }
       '''
     # Bloated memory; same layout as C/C++
-    self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+    self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,1,2,64,68,69,72*\n*2*')
 
   def prep_dlfcn_main(self):
     self.set_setting('NODERAWFS')
@@ -6311,6 +6363,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
+  @no_ubsan('test contains UB')
   def test_sse1(self):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -8038,8 +8091,7 @@ Module['onRuntimeInitialized'] = function() {
       verify_broken()
 
   # Test basic wasm2js functionality in all core compilation modes.
-  @no_asan('no wasm2js support yet in asan')
-  @no_lsan('no wasm2js support yet in lsan')
+  @no_sanitize('no wasm2js support yet in sanitizers')
   def test_wasm2js(self):
     if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8054,8 +8106,7 @@ Module['onRuntimeInitialized'] = function() {
     else:
       self.assertNotExists('test_hello_world.js.mem')
 
-  @no_asan('no wasm2js support yet in asan')
-  @no_lsan('no wasm2js support yet in lsan')
+  @no_sanitize('no wasm2js support yet in sanitizers')
   def test_maybe_wasm2js(self):
     if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -9235,6 +9286,7 @@ core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
+ubsan = make_run('ubsan', emcc_args=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
 asan = make_run('asan', emcc_args=['-fsanitize=address', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
 asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
