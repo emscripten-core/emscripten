@@ -1513,6 +1513,7 @@ def setup_pthreads(target):
     '__emscripten_thread_crashed',
     '_emscripten_tls_init',
     '_pthread_self',
+    'executeNotifiedProxyingQueue',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
