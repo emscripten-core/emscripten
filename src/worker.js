@@ -224,7 +224,7 @@ self.onmessage = (e) => {
         // initialized. Only do this once because it is only possible for
         // proxying notifications to arrive before thread initialization on
         // fresh workers.
-        for (let queue of pendingNotifiedProxyingQueues) {
+        for (const queue of pendingNotifiedProxyingQueues) {
           executeNotifiedProxyingQueue(queue);
         }
         pendingNotifiedProxyingQueues = [];
