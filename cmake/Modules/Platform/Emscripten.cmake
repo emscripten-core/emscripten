@@ -108,8 +108,7 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 endif()
 
 if ("${CMAKE_STRIP}" STREQUAL "")
-  # see https://github.com/emscripten-core/emscripten/issues/16430
-  set(CMAKE_STRIP "llvm-strip" CACHE FILEPATH "Emscripten compatible strip command")
+  set(CMAKE_STRIP "${EMSCRIPTEN_ROOT_PATH}/emstrip${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten strip")
 endif()
 
 if ("${CMAKE_C_COMPILER_AR}" STREQUAL "")
