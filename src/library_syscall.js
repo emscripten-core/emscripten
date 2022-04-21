@@ -77,47 +77,7 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
-    doReadv: function(stream, iov, iovcnt, offset) {
-      var ret = 0;
-      for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
-        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
-        iov += {{{ C_STRUCTS.iovec.__size__ }}};
-        var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
-        if (curr < 0) return -1;
-        ret += curr;
-        if (curr < len) break; // nothing more to read
-      }
-      return ret;
-    },
-    doWritev: function(stream, iov, iovcnt, offset) {
-      var ret = 0;
-      for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
-        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
-        iov += {{{ C_STRUCTS.iovec.__size__ }}};
-        var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
-        if (curr < 0) return -1;
-        ret += curr;
-      }
-      return ret;
-    },
-#else
-    // MEMFS filesystem disabled lite handling of stdout and stderr:
-    buffers: [null, [], []], // 1 => stdout, 2 => stderr
-    printChar: function(stream, curr) {
-      var buffer = SYSCALLS.buffers[stream];
-#if ASSERTIONS
-      assert(buffer);
 #endif
-      if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
-        buffer.length = 0;
-      } else {
-        buffer.push(curr);
-      }
-    },
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
     // arguments handling
 
