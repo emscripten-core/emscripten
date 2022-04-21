@@ -336,7 +336,10 @@ function ${name}(${args}) {
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(finalName)) && !noExport) {
         contentText += `\nModule["${finalName}"] = ${finalName};`;
       }
-      if (MAIN_MODULE && sig) {
+      // Main modules need signatures to create proper wrappers. Stack switching
+      // need signatures so we can create a proper WebAssembly.Function with the
+      // signature for the Promise API.
+      if (sig && (MAIN_MODULE || ASYNCIFY == 2)) {
         contentText += `\n${finalName}.sig = '${sig}';`;
       }
 

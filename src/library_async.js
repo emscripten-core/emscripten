@@ -374,7 +374,9 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY: stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
+#if ASYNCIFY == 1
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
+#endif
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
