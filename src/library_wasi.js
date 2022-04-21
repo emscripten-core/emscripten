@@ -219,6 +219,7 @@ var WasiLibrary = {
   },
 
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
 #if ASSERTIONS
@@ -227,6 +228,11 @@ var WasiLibrary = {
     var num = SYSCALLS.doWritev(stream, iov, iovcnt, offset_low);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_pwrite called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif
   },
 
   fd_close__sig: 'ii',
@@ -234,27 +240,37 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
+    return 0;
 #elif PROXY_POSIX_SOCKETS
     // close() is a tricky function because it can be used to close both regular file descriptors
     // and POSIX network socket handles, hence an implementation would need to track for each
     // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
     // option, use shutdown() to close a socket, and this function should behave like a no-op.
     warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
-#elif ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
     return 0;
+#elif ASSERTIONS
+    abort('fd_close called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
   fd_read__sig: 'iiiii',
   fd_read: function(fd, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
 #if ASSERTIONS
     assert(!offset_high, 'offsets over 2^32 not yet supported');
@@ -263,9 +279,15 @@ var WasiLibrary = {
     var num = SYSCALLS.doReadv(stream, iov, iovcnt, offset_low);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_pread called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif
   },
 
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
@@ -275,14 +297,18 @@ var WasiLibrary = {
     var DOUBLE_LIMIT = 0x20000000000000; // 2^53
     // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
     if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
+      return {{{ cDefine('EOVERFLOW') }}};
     }
 
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
     return 0;
+#else
+    return {{{ cDefine('ESPIPE') }}};
+#endif
   },
+
   fd_fdstat_get__sig: 'iii',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -306,6 +332,7 @@ var WasiLibrary = {
 
   fd_sync__sig: 'ii',
   fd_sync: function(fd) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
@@ -329,6 +356,11 @@ var WasiLibrary = {
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // ASYNCIFY
+#elif ASSERTIONS
+    abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };
 
