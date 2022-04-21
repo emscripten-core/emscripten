@@ -113,11 +113,10 @@ mergeInto(LibraryManager.library, {
             // them to the table.
             imports[x].sig = original.sig;
 #endif // MAIN_MODULE
-#enduf // ASSERTIONS
+#endif // ASSERTIONS
           }
         })(x);
       }
-#endif // ASSERTIONS
     },
 
     instrumentWasmExports: function(exports) {
