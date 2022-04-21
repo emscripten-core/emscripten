@@ -11940,15 +11940,25 @@ void foo() {}
     self.run_process([EMCC, 'main.c', '-Os', '-sASYNCIFY'])
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
+    print(asyncify_size)
 
-    self.run_process([EMCC, 'main.c', '-Os', '-sASYNCIFY=2'])
-    self.assertContained(expected, self.run_js('a.out.js', engine=V8_ENGINE))
+    self.run_process([EMCC, 'main.c', '-Os', '-sASYNCIFY=2', '-sENVIRONMENT=shell'])
+    # run in v8 with stack switching and other relevant features (like reference
+    # types for the return value of externref)
+    v8 = config.V8_ENGINE + [
+      '--wasm-staging',
+      '--experimental-wasm-stack-switching'
+    ]
+    self.assertContained(expected, self.run_js('a.out.js', engine=v8))
     stack_switching_size = os.path.getsize('a.out.wasm')
+    print(stack_switching_size)
 
     # Also compare to code size without asyncify or stack switching.
     self.run_process([EMCC, 'main.c', '-Os'])
     nothing_size = os.path.getsize('a.out.wasm')
+    print(nothing_size)
 
     # stack switching does not asyncify the code, which means it can be tiny
+    # FIXME: asyncify pulls in malloc, so a tiny program doesn't show the issue
     self.assertLess(stack_switching_size, 0.1 * asyncify_size)
     self.assertLess(abs(stack_switching_size - nothing_size), 0.1 * nothing_size)
