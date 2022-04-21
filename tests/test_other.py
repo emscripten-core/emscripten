@@ -11924,3 +11924,7 @@ void foo() {}
     self.assertIn(b'.debug', read_binary('hello_world.o'))
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
+
+  def test_no_cfi(self):
+    err = self.expect_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')])
+    self.assertContained('emcc: error: emscripten does not currently support -fsanitize=cfi', err)

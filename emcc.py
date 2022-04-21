@@ -267,7 +267,6 @@ class EmccOptions:
     self.use_preload_plugins = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
-    self.cfi = False
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
@@ -3209,8 +3208,8 @@ def parse_args(newargs):
       options.default_object_extension = consume_arg()
       if not options.default_object_extension.startswith('.'):
         options.default_object_extension = '.' + options.default_object_extension
-    elif arg == '-fsanitize=cfi':
-      options.cfi = True
+    elif arg.startswith('-fsanitize=cfi'):
+      exit_with_error('emscripten does not currently support -fsanitize=cfi')
     elif check_arg('--output_eol'):
       style = consume_arg()
       if style.lower() == 'windows':
