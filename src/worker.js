@@ -225,7 +225,7 @@ self.onmessage = (e) => {
         // proxying notifications to arrive before thread initialization on
         // fresh workers.
         for (const queue of pendingNotifiedProxyingQueues) {
-          Module['executeNotifiedProxyingQueue'](queue);
+          executeNotifiedProxyingQueue(queue);
         }
         pendingNotifiedProxyingQueues = [];
         initializedJS = true;
@@ -298,7 +298,7 @@ self.onmessage = (e) => {
       // no-op
     } else if (e.data.cmd === 'processProxyingQueue') {
       if (initializedJS) {
-        Module['executeNotifiedProxyingQueue'](e.data.queue);
+        executeNotifiedProxyingQueue(e.data.queue);
       } else {
         // Defer executing this queue until the runtime is initialized.
         pendingNotifiedProxyingQueues.push(e.data.queue);
