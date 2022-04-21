@@ -11964,3 +11964,7 @@ void foo() {}
     # to the normal "nothing" size, and much smaller than the asyncified size
     self.assertLess(stack_switching_size, 0.60 * asyncify_size)
     self.assertLess(abs(stack_switching_size - nothing_size), 0.01 * nothing_size)
+
+  def test_no_cfi(self):
+    err = self.expect_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')])
+    self.assertContained('emcc: error: emscripten does not currently support -fsanitize=cfi', err)

@@ -375,6 +375,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in ASan yet')
     if '-fsanitize=leak' in self.emcc_args:
       self.skipTest('no dynamic linking support in LSan yet')
+    if '-fsanitize=undefined' in self.emcc_args:
+      self.skipTest('no dynamic linking support in UBSan yet')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
