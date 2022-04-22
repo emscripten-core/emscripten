@@ -654,7 +654,6 @@ function createExportWrapper(name, fixedasm) {
     if (!fixedasm) {
       asm = Module['asm'];
     }
-    console.log('actual export:', asm[name]);
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
 #if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -1005,12 +1004,6 @@ function createWasm() {
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
 #endif
   };
-  console.log('imports:');
-  for (var x in info) {
-    for (var y in info[x]) {
-      console.log('  ', x, ':', y, ' - ', info[x][y]);
-    }
-  }
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
