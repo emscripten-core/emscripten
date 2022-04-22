@@ -9174,6 +9174,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
+  @also_with_wasm_bigint
+  def test_js_library_i64_params(self):
+    # Tests the defineI64Param and receiveI64ParamAsDouble helpers that are
+    # used to recieve i64 argument in syscalls.
+    self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
+    self.do_core_test('js_library_i64_params.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
