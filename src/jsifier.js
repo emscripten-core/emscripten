@@ -399,15 +399,10 @@ function ${name}(${args}) {
     print(pre);
 
     // Print out global variables and postsets TODO: batching
-    const legalizedI64sDefault = legalizedI64s;
-    legalizedI64s = false;
-
     runJSify(true);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
-
-    legalizedI64s = legalizedI64sDefault;
 
     if (USE_PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
