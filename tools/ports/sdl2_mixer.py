@@ -7,8 +7,8 @@ import os
 import shutil
 import logging
 
-TAG = 'release-2.0.2'
-HASH = 'b9d03061d177f20f4e03f3e3553afd7bfe0c05da7b9a774312b389318e747cf9724e0475e9afff6a64ce31bab0217e2afb2619d75556753fbbb6ecafa9775219'
+TAG = 'release-2.0.4'
+HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
 
 deps = ['sdl2']
 
@@ -32,13 +32,13 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-  ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_mixer', 'https://github.com/libsdl-org/SDL_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
   libname = get_lib_name(settings)
 
   def create(final):
     logging.info('building port: sdl2_mixer')
 
-    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
     dest_path = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
 
     shutil.rmtree(dest_path, ignore_errors=True)
