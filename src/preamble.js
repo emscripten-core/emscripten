@@ -1004,6 +1004,12 @@ function createWasm() {
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
 #endif
   };
+  console.log('imports:');
+  for (var x in info) {
+    for (var y in info[x]) {
+      console.log('  ', x, ':', y, ' - ', info[x][y]);
+    }
+  }
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup

@@ -176,7 +176,9 @@ function callMain(args) {
     // that if we get here main returned zero.
     var ret = 0;
 #else
+    console.log('calling entry, state:', Asyncify.state);
     var ret = entryFunction(argc, argv);
+    console.log('returned from entry, state:', Asyncify.state, ret);
 #endif // STANDALONE_WASM
 
 #if BENCHMARK
