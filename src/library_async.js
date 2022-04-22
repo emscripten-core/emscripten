@@ -111,9 +111,6 @@ mergeInto(LibraryManager.library, {
               imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
                 new WebAssembly.Function(type, original)
               );
-#if ASYNCIFY_DEBUG
-              err('          suspendOnReturnedPromise =>', imports[x]);
-#endif
             }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
@@ -169,10 +166,6 @@ mergeInto(LibraryManager.library, {
             err('asyncify: returnPromiseOnSuspend for', x, original);
 #endif
             ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
-            original.foobar = 'waka';
-#if ASYNCIFY_DEBUG
-            err('          returnPromiseOnSuspend =>', ret[x]);
-#endif
           }
 #endif
           if (typeof original == 'function') {
@@ -182,7 +175,6 @@ mergeInto(LibraryManager.library, {
 #endif
               Asyncify.exportCallStack.push(x);
               try {
-                console.log('calling original now', x, original, original.foobar);
                 return original.apply(null, arguments);
               } finally {
                 if (!ABORT) {
@@ -391,15 +383,11 @@ mergeInto(LibraryManager.library, {
           }
 #if ASYNCIFY == 2
           // Return a Promise to get the browser's stack switching logic to run.
-          Asyncify.promise = new Promise((resolve, reject) => {
+          return Asyncify.promise = new Promise((resolve, reject) => {
             // Stash the resolve hook so we can call it at the proper time.
             Asyncify.promiseResolve = resolve;
             // TODO: handle rejection
           });
-#if ASYNCIFY_DEBUG
-          err('ASYNCIFY: returning a promise to pause the stack', Asyncify.promise, 'at', new Error().stack);
-#endif
-          return Asyncify.promise;
 #else
           runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
 #endif

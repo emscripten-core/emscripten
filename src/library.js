@@ -3457,10 +3457,8 @@ LibraryManager.library = {
   ],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
-    console.log('set timeout for', timeout);
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
-      console.log('call that timeout for', timeout);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
     }, timeout);
