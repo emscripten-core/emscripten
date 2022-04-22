@@ -214,12 +214,6 @@ function makeInlineCalculation(expression, value, tempVar) {
   return '(' + expression.replace(/VALUE/g, value) + ')';
 }
 
-// Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
-function makeI64(low, high) {
-  high = high || '0';
-  return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
-}
-
 // XXX Make all i64 parts signed
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64 value, represented by a low and high i32 pair.
@@ -239,9 +233,8 @@ function splitI64(value, floatConversion) {
   //
   // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
 
-  const lowInput = legalizedI64s ? value : 'VALUE';
-  if (floatConversion) lowInput = asmFloatToInt(lowInput);
-  const low = lowInput + '>>>0';
+  if (floatConversion) value = asmFloatToInt(value);
+  const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
         '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
@@ -256,10 +249,7 @@ function splitI64(value, floatConversion) {
       value,
       'tempDouble',
   );
-  if (legalizedI64s) {
-    return [low, high];
-  }
-  return makeI64(low, high);
+  return [low, high];
 }
 
 // Misc
@@ -752,10 +742,6 @@ function makeSignOp(value, type, op, force, ignore) {
   }
   return value;
 }
-
-// We do not legalize globals, but do legalize function lines. This will be true in the latter case
-// eslint-disable-next-line prefer-const
-global.legalizedI64s = true;
 
 function stripCorrections(param) {
   let m;
