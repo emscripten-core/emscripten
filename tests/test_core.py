@@ -72,10 +72,11 @@ def also_with_wasm_bigint(f):
   assert callable(f)
 
   def metafunc(self, with_bigint):
-    assert self.get_setting('WASM_BIGINT') is None
     if with_bigint:
       if not self.is_wasm():
         self.skipTest('wasm2js does not support WASM_BIGINT')
+      if self.get_setting('WASM_BIGINT') is not None:
+        self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
       self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
@@ -3373,6 +3374,9 @@ Var: 42
     # want to look at this
     if not self.get_setting('WASMFS'):
       data_exports = get_data_exports('test_dlfcn_self.wasm')
+      # Certain exports are removed by wasm-emscripten-finalize, but this
+      # tool is not run in all configurations, so ignore these exports.
+      data_exports = [d for d in data_exports if d not in ('__start_em_asm', '__stop_em_asm')]
       data_exports = '\n'.join(sorted(data_exports)) + '\n'
       self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
@@ -6865,6 +6869,8 @@ void* operator new(size_t size) {
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
+    if self.get_setting('WASM_BIGINT'):
+      self.skipTest('not compatible with WASM_BIGINT')
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS=1', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall']),
@@ -7954,7 +7960,7 @@ Module['onRuntimeInitialized'] = function() {
     if self.is_wasm():
       filename = 'test_asyncify_lists.wasm'
       # there should be no name section. sanitizers, however, always enable that
-      if not is_sanitizing(self.emcc_args):
+      if not is_sanitizing(self.emcc_args) and '--profiling-funcs' not in self.emcc_args:
         self.assertFalse(webassembly.Module(filename).has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
@@ -9295,6 +9301,9 @@ wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1
 core0s = make_run('core2s', emcc_args=['-g'], settings={'SAFE_HEAP': 1})
 core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+
+bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
+                  node_args=['--experimental-wasm-bigint'])
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
