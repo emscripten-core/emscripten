@@ -2616,7 +2616,9 @@ The current type of b is: 9
     if modularize:
       self.set_setting('MODULARIZE')
       self.set_setting('EXPORT_NAME=ModuleFactory')
-      create_file('extern-post.js', 'ModuleFactory();')
+      # Only instantiate the module on the main thread.
+      create_file('extern-post.js',
+                  'if (typeof importScripts != "function") ModuleFactory();')
       args = ['--extern-post-js=extern-post.js']
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
                                  interleaved_output=False, emcc_args=args)
