@@ -11942,7 +11942,6 @@ void foo() {}
     self.run_process([EMXX, 'main.cpp', '-Os', '-sASYNCIFY'])
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
-    print(asyncify_size)
 
     self.run_process([EMXX, 'main.cpp', '-Os', '-sASYNCIFY=2', '-sENVIRONMENT=shell'])
     # run in v8 with stack switching and other relevant features (like reference
@@ -11953,12 +11952,10 @@ void foo() {}
     ]
     self.assertContained(expected, self.run_js('a.out.js', engine=v8))
     stack_switching_size = os.path.getsize('a.out.wasm')
-    print(stack_switching_size)
 
     # also compare to code size without asyncify or stack switching
     self.run_process([EMXX, 'main.cpp', '-Os'])
     nothing_size = os.path.getsize('a.out.wasm')
-    print(nothing_size)
 
     # stack switching does not asyncify the code, which means it is very close
     # to the normal "nothing" size, and much smaller than the asyncified size
