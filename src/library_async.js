@@ -276,14 +276,25 @@ mergeInto(LibraryManager.library, {
     },
 
     doRewind: function(ptr) {
+#if ASYNCIFY == 2
+      // Resolve the promise. The VM will resume the wasm on the next event loop
+      // turn.
+      Asyncify.promiseResolve(Asyncify.handleSleepReturnValue);
+      setTimeout(() => {
+        // This timeout happens after the wasm has been resumed; we can stop
+        // artificially keeping the runtime alive at that time.
+        {{{ runtimeKeepalivePop(); }}}
+      });
+#else
       var start = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: start:', start);
 #endif
-      // Once we have rewound and the stack we no longer need to artificially keep
-      // the runtime alive.
+      // Once we have rewound and the stack we no longer need to artificially
+      // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
       return start();
+#endif
     },
 
     handleSleep: function(startAsync) {
@@ -324,9 +335,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-#if ASYNCIFY == 2
-          Asyncify.promiseResolve(handleSleepReturnValue);
-#else
+#if ASYNCIFY == 1
           runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
 #endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
@@ -430,7 +439,8 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep__sig: 'vi', // TODO: others
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
-    Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
+    // TODO: add return in the others.
+    return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
