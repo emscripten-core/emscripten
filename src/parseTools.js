@@ -689,6 +689,16 @@ function getHeapForType(type) {
   assert(false, 'bad heap type: ' + type);
 }
 
+function makeReturn64(value) {
+  if (WASM_BIGINT) {
+    return `BigInt(${value})`;
+  }
+  const pair = splitI64(value);
+  // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
+  // element `c`
+  return `(setTempRet0(${pair[1]}), ${pair[0]})`;
+}
+
 function makeThrow(what) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
     what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
@@ -1100,17 +1110,14 @@ function receiveI64ParamAsI32s(name) {
   return '';
 }
 
-// TODO: use this in library_wasi.js and other places. but we need to add an
-//       error-handling hook here.
-function receiveI64ParamAsDouble(name) {
+function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = Number(${name}_bigint);`;
+    return `var ${name} = bigintToI53Checked(${name}_bigint); if (isNaN(${name})) return ${onError};`;
   }
-
-  // Combine the i32 params. Use an unsigned operator on low and shift high by
-  // 32 bits.
-  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  // Covert the high/low pair to a Number, checking for
+  // overflow of the I53 range and returning onError in that case.
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
 }
 
 function sendI64Argument(low, high) {

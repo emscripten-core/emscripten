@@ -1,3 +1,7 @@
+MAX_SAFE_INTEGER: 9007199254740992
+MIN_SAFE_INTEGER: -9007199254740992
+
+test_makeGetValue:
 i32: -12345678
 u32: edcba988
 u32 legacy: edcba988
@@ -9,4 +13,40 @@ u8: 88
 u8 legacy: 88
 ptr: edcba988
 ptr: edcba988
+
+test_receiveI64ParamAsI53:
+arg1: 42
+arg2: -42
+rtn = 0
+
+test_receiveI64ParamAsI53:
+arg1: 9007199254740992
+arg2: -9007199254740992
+rtn = 0
+
+test_receiveI64ParamAsI53:
+rtn = -1
+
+test_receiveI64ParamAsI53:
+rtn = -1
+
+test_receiveI64ParamAsDouble:
+arg1: 42
+arg2: -42
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: 9007199254740992
+arg2: -9007199254740992
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: 9007199254740992
+arg2: 0
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: -9007199254740992
+arg2: 0
+rtn = 0
 done

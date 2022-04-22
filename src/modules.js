@@ -36,6 +36,7 @@ global.LibraryManager = {
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
+      'library_int53.js',
       'library_formatString.js',
       'library_getvalue.js',
       'library_math.js',
@@ -44,7 +45,6 @@ global.LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_int53.js',
       'library_dylink.js',
       'library_eventloop.js',
     ];
