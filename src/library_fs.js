@@ -1050,7 +1050,7 @@ FS.staticInit();` +
         }
       }
       // do truncation if necessary
-      if ((flags & {{{ cDefine('O_TRUNC')}}})) {
+      if ((flags & {{{ cDefine('O_TRUNC')}}}) && !created) {
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
