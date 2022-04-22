@@ -6,6 +6,10 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#define SANITIZER
+#endif
+
 // The first two queues will be zombies and the next two will be created just to
 // cull the zombies.
 em_proxying_queue* queues[4];
