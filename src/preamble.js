@@ -654,6 +654,7 @@ function createExportWrapper(name, fixedasm) {
     if (!fixedasm) {
       asm = Module['asm'];
     }
+    console.log('actual export:', asm[name]);
     assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
 #if EXIT_RUNTIME
     assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');

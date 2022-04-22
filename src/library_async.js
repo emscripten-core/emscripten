@@ -169,6 +169,7 @@ mergeInto(LibraryManager.library, {
             err('asyncify: returnPromiseOnSuspend for', x, original);
 #endif
             ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
+            original.foobar = 'waka';
 #if ASYNCIFY_DEBUG
             err('          returnPromiseOnSuspend =>', ret[x]);
 #endif
@@ -181,6 +182,7 @@ mergeInto(LibraryManager.library, {
 #endif
               Asyncify.exportCallStack.push(x);
               try {
+                console.log('calling original now', x, original, original.foobar);
                 return original.apply(null, arguments);
               } finally {
                 if (!ABORT) {
