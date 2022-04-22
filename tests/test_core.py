@@ -2609,6 +2609,8 @@ The current type of b is: 9
       'modularize': (True,),
   })
   def test_pthread_proxying(self, modularize):
+    if modularize and self.get_setting('WASM') == 0:
+      self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('INITIAL_MEMORY=32mb')
