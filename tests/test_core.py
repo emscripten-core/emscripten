@@ -2604,12 +2604,26 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
-  def test_pthread_proxying(self):
+  @parameterized({
+      '': (False,),
+      'modularize': (True,),
+  })
+  def test_pthread_proxying(self, modularize):
+    if modularize and self.get_setting('WASM') == 0:
+      self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('INITIAL_MEMORY=32mb')
+    args = []
+    if modularize:
+      self.set_setting('MODULARIZE')
+      self.set_setting('EXPORT_NAME=ModuleFactory')
+      # Only instantiate the module on the main thread.
+      create_file('extern-post.js',
+                  'if (typeof importScripts != "function") ModuleFactory();')
+      args = ['--extern-post-js=extern-post.js']
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
-                                 interleaved_output=False)
+                                 interleaved_output=False, emcc_args=args)
 
   @node_pthreads
   @no_wasm2js('occasionally hangs in wasm2js (#16569)')

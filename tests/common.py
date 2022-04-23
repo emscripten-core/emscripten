@@ -190,6 +190,7 @@ def require_v8(func):
 
 
 def node_pthreads(f):
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
     f(self, *args, **kwargs)
