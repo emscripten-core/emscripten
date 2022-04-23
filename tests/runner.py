@@ -64,6 +64,7 @@ passing_core_test_modes = [
   'wasm2jsz',
   'asan',
   'lsan',
+  'ubsan',
 ]
 
 # The default core test mode, used when none is specified
@@ -88,6 +89,7 @@ misc_test_modes = [
   'wasmfs',
   'wasm64',
   'wasm64l',
+  'bigint',
 ]
 
 
