@@ -1025,8 +1025,8 @@ var LibraryDylink = {
 #endif
 
 #if ASYNCIFY
-      if (symbol in GOT && GOT[symbol].value != 0) {
-        return GOT[symbol].value;
+      if ('orig' in result) {
+        result = result.orig;
       }
 #endif
       // Insert the function into the wasm table.  If its a direct wasm function

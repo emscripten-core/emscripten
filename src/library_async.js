@@ -187,6 +187,9 @@ mergeInto(LibraryManager.library, {
                 }
               }
             };
+#if MAIN_MODULE
+            ret[x].orig = original;
+#endif
           } else {
             ret[x] = original;
           }
