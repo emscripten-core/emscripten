@@ -9,6 +9,9 @@ mergeInto(LibraryManager.library, {
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
+#if LibraryManager.has('library_fsfs.js')
+    '$FSFS',
+#endif
 #if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
@@ -1463,6 +1466,9 @@ FS.staticInit();` +
         'MEMFS': MEMFS,
 #if LibraryManager.has('library_idbfs.js')
         'IDBFS': IDBFS,
+#endif
+#if LibraryManager.has('library_fsfs.js')
+        'FSFS': FSFS,
 #endif
 #if LibraryManager.has('library_nodefs.js')
         'NODEFS': NODEFS,

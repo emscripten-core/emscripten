@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.10
 ------
+- A new file system interface using the browser File System Access API is
+  available: `-lfsfs.js`
 
 3.1.9 - 04/21/2022
 ------------------

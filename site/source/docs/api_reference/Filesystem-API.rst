@@ -57,7 +57,7 @@ However, due to JavaScript's event-driven nature, most *persistent* storage opti
 File systems
 ============
 
-.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS <filesystem-api-proxyfs>`).
+.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lfsfs.js`` (:ref:`FSFS <filesystem-api-fsfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS <filesystem-api-proxyfs>`).
 
 .. _filesystem-api-memfs:
 
@@ -98,6 +98,20 @@ IDBFS
 The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which when called will persist any operations to an ``IndexedDB`` instance.
 
 This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory.
+
+.. _filesystem-api-fsfs:
+
+FSFS
+-----
+
+.. note:: This file system is only for use when running code inside a browser.
+
+The *FSFS* file system implements the :js:func:`FS.syncfs` interface, which when called will persist any operations to the attached ``FileSystemDirectoryHandle``.
+
+This uses the `File System Access API <https://web.dev/file-system-access/>`_. To use, pass a ``FileSystemDirectoryHandle`` as ``opts.dirHandle``, which can be created via:
+
+-  `navigator.storage.getDirectory()` – this is the Origin Private File System, currently only supported by Safari and Chromium browsers
+-  `self.showDirectoryPicker()` – currently only supported by Chromium browsers
 
 .. _filesystem-api-workerfs:
 
@@ -233,7 +247,7 @@ File system API
   Responsible for iterating and synchronizing all mounted file systems in an
   asynchronous fashion.
 
-  .. note:: Currently, only the :ref:`filesystem-api-idbfs` file system implements the
+  .. note:: Currently, only :ref:`filesystem-api-idbfs` and :ref:`filesystem-api-fsfs` file systems implement the
     interfaces needed for synchronization. All other file systems are completely
     synchronous and don't require synchronization.
 

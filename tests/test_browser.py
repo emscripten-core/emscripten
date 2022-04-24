@@ -1353,6 +1353,12 @@ keydown(100);keyup(100); // trigger the end
     self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
     self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
 
+  @no_firefox('does not support FS Access API')
+  def test_fs_fsfs_sync(self):
+    secret = str(time.time())
+    self.btest(test_file('fs/test_fsfs_sync.c'), '1', args=['-lfsfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lfsfs.js'])
+    self.btest(test_file('fs/test_fsfs_sync.c'), '1', args=['-lfsfs.js', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lfsfs.js'])
+
   def test_fs_memfs_fsync(self):
     args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
     secret = str(time.time())
