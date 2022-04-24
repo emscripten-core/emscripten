@@ -194,7 +194,6 @@ mergeInto(LibraryManager.library, {
     },
     removeLocalEntry: (path, callback) => {
       try {
-        var lookup = FS.lookupPath(path);
         var stat = FS.stat(path);
 
         if (FS.isDir(stat.mode)) {
