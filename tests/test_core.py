@@ -5848,7 +5848,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('NODERAWFS')
     create_file('pre.js', '''
 const { execSync } = require('child_process');
-const process = require('process'); 
+const process = require('process');
 
 let openFilesPre;
 
