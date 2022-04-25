@@ -216,9 +216,10 @@ function makeInlineCalculation(expression, value, tempVar) {
 
 // XXX Make all i64 parts signed
 
-// Splits a number (an integer in a double, possibly > 32 bits) into an i64 value, represented by a low and high i32 pair.
+// Splits a number (an integer in a double, possibly > 32 bits) into an i64
+// value, represented by a low and high i32 pair.
 // Will suffer from rounding.
-function splitI64(value, floatConversion) {
+function splitI64(value) {
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -227,13 +228,14 @@ function splitI64(value, floatConversion) {
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
-  // We need to min on positive values here, since our input might be a double, and large values are rounded, so they can
-  // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
-  // HEAP32 or |0'd, etc.
+  // We need to min on positive values here, since our input might be a double,
+  // and large values are rounded, so they can be slightly higher than expected.
+  // And if we get 4294967296, that will turn into a 0 if put into a HEAP32 or
+  // |0'd, etc.
   //
-  // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
+  // For negatives, we need to ensure a -1 if the value is overall negative,
+  // even if not significant negative component
 
-  if (floatConversion) value = asmFloatToInt(value);
   const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
