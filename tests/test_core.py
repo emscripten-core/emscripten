@@ -6544,6 +6544,7 @@ void* operator new(size_t size) {
                 no_build=True)
 
   @no_asan('local count too large for VMs')
+  @no_ubsan('local count too large for VMs')
   @is_slow_test
   def test_sqlite(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
@@ -6613,6 +6614,7 @@ void* operator new(size_t size) {
 
   @needs_make('make')
   @is_slow_test
+  @no_asan('it seems that bullet contains UB')
   @parameterized({
     'cmake': (True,),
     'autoconf': (False,)
@@ -6776,6 +6778,7 @@ void* operator new(size_t size) {
       # The OpenJPEG CMake will build several executables (which we need parts
       # of in our testing, see above), so we must enable the flag for them all.
       with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
+        self.emcc_args.append('-Wno-unused-command-line-argument')
         do_test_openjpeg()
     else:
       do_test_openjpeg()
