@@ -41,6 +41,11 @@ void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
                                    const char* name,
                                    int* child_id);
 
+void _wasmfs_opfs_move(em_proxying_ctx* ctx,
+                       int file_id,
+                       int new_dir_id,
+                       const char* name);
+
 void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
                                int dir_id,
                                const char* name);
@@ -213,8 +218,12 @@ private:
 
   bool insertMove(const std::string& name,
                   std::shared_ptr<File> file) override {
-    // OPFS does not support rename (or does it???)
-    return false;
+    auto old_file = std::static_pointer_cast<OPFSFile>(file);
+    proxy([&](auto ctx) {
+      _wasmfs_opfs_move(ctx.ctx, old_file->fileID, dirID, name.c_str());
+    });
+    // TODO: Handle errors.
+    return true;
   }
 
   bool removeChild(const std::string& name) override {

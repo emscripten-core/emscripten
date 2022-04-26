@@ -2,6 +2,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -94,9 +95,17 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
   emscripten_console_log("closed file");
 
-  err = unlink("/opfs/working/foo.txt");
+  err = rename("/opfs/working/foo.txt", "/opfs/foo.txt");
   assert(err == 0);
   err = access("/opfs/working/foo.txt", F_OK);
+  assert(err == -1);
+  err = access("/opfs/foo.txt", F_OK);
+  assert(err == 0);
+  emscripten_console_log("moved file");
+
+  err = unlink("/opfs/foo.txt");
+  assert(err == 0);
+  err = access("/opfs/foo.txt", F_OK);
   assert(err == -1);
   emscripten_console_log("removed OPFS file");
 

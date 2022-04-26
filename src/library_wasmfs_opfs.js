@@ -155,6 +155,15 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
+  _wasmfs_opfs_move__deps: ['$wasmfsOPFSFiles', '$wasmfsOPFSDirectories'],
+  _wasmfs_opfs_move: async function(ctx, file_id, new_dir_id, name_p) {
+    let name = UTF8ToString(name_p);
+    let file_handle = wasmfsOPFSFiles.get(file_id);
+    let new_dir_handle = wasmfsOPFSDirectories.get(new_dir_id);
+    await file_handle.move(new_dir_handle, name);
+    _emscripten_proxy_finish(ctx);
+  },
+
   _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSFree', '$wasmfsOPFSDirectories'],
   _wasmfs_opfs_remove_child: async function(ctx, dir_id, name_p) {
     let name = UTF8ToString(name_p);
