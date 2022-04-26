@@ -1028,12 +1028,12 @@ LibraryManager.library = {
         return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
-        year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
-        month: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32', 0, 0, 1) }}}, 0, 11),
-        day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32', 0, 0, 1) }}}, 1, 31),
-        hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32', 0, 0, 1) }}}, 0, 23),
-        min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32', 0, 0, 1) }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32', 0, 0, 1) }}}, 0, 59)
+        year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', undefined, undefined, /*ignore=*/true) }}} + 1900 , 1970, 9999),
+        month: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32', undefined, undefined, /*ignore=*/true) }}}, 0, 11),
+        day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32', undefined, undefined, /*ignore=*/true) }}}, 1, 31),
+        hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32', undefined, undefined, /*ignore=*/true) }}}, 0, 23),
+        min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32', undefined, undefined, /*ignore=*/true) }}}, 0, 59),
+        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32', undefined, undefined, /*ignore=*/true) }}}, 0, 59)
       };
     };
 
@@ -2735,7 +2735,7 @@ LibraryManager.library = {
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', 0, true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', undefined, /*ignore=*/true) }}};
     }
     return i;
   },
