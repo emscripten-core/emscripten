@@ -5841,28 +5841,6 @@ Module['onRuntimeInitialized'] = function() {
     self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c')
 
-  @no_windows("test is Linux-specific")
-  @no_mac("test is Linux-specific")
-  @require_node
-  def test_unistd_close_leak_noderawfs(self):
-    self.set_setting('NODERAWFS')
-    create_file('pre.js', '''
-const { execSync } = require('child_process');
-const process = require('process');
-
-let openFilesPre;
-
-Module['preRun'] = function() {
-  openFilesPre = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-}
-Module['postRun'] = function() {
-  const openFilesPost = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-  assert(openFilesPre == openFilesPost, 'File descriptors should not leak');
-}
-''')
-    self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run_in_out_file_test('unistd/close.c', js_engines=[config.NODE_JS])
-
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
     self.do_run_in_out_file_test('unistd/sysconf.c')
