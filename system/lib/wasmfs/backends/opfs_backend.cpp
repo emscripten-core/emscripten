@@ -213,18 +213,14 @@ private:
 
   bool insertMove(const std::string& name,
                   std::shared_ptr<File> file) override {
-    // OPFS does not support rename.
+    // OPFS does not support rename (or does it???)
     return false;
   }
 
-  bool removeChild(
-    const std::string& name /*, std::shared_ptr<File> child*/) override {
+  bool removeChild(const std::string& name) override {
     proxy([&](auto ctx) {
       _wasmfs_opfs_remove_child(ctx.ctx, dirID, name.c_str());
     });
-    // if (child) {
-    //   // TODO: call `close` on the handle then delete it and free the ID.
-    // }
     return true;
   }
 
