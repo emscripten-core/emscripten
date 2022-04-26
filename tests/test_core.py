@@ -6614,7 +6614,7 @@ void* operator new(size_t size) {
 
   @needs_make('make')
   @is_slow_test
-  @no_asan('it seems that bullet contains UB')
+  @no_ubsan('it seems that bullet contains UB')
   @parameterized({
     'cmake': (True,),
     'autoconf': (False,)
