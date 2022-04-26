@@ -8368,6 +8368,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       print(occurances)
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
@@ -8378,6 +8379,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @parameterized({
     'default': ([],),
     'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
@@ -8393,6 +8395,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('small_hello_world.c'), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @parameterized({
     'fs': ('FORCE_FILESYSTEM',),
     'nofs': ('NO_FILESYSTEM',),
@@ -8409,6 +8412,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('hello_world.c'), 'hello, world!')
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
@@ -8422,6 +8426,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('small_hello_world.c'), 'hello')
 
   # Tests global initializer with -sMINIMAL_RUNTIME
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
