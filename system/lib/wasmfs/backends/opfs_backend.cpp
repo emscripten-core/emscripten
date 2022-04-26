@@ -10,9 +10,7 @@
 #include "wasmfs.h"
 #include <stdlib.h>
 
-namespace wasmfs {
-
-using ProxyWorker = emscripten::ProxyWorker;
+using namespace wasmfs;
 
 extern "C" {
 
@@ -78,6 +76,10 @@ void _wasmfs_opfs_set_size(em_proxying_ctx* ctx, int access_id, uint32_t size);
 void _wasmfs_opfs_flush(em_proxying_ctx* ctx, int access_id);
 
 } // extern "C"
+
+namespace {
+
+using ProxyWorker = emscripten::ProxyWorker;
 
 class OPFSFile : public DataFile {
 public:
@@ -249,6 +251,8 @@ public:
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // No way to support a raw file without a parent directory.
+    // TODO: update the core system to document this as a possible result of
+    // `createFile` and to handle it gracefully.
     return nullptr;
   }
 
@@ -263,6 +267,8 @@ public:
   }
 };
 
+} // anonymous namespace
+
 extern "C" {
 
 backend_t wasmfs_create_opfs_backend() {
@@ -275,5 +281,3 @@ void EMSCRIPTEN_KEEPALIVE _wasmfs_opfs_record_entry(
 }
 
 } // extern "C"
-
-} // namespace wasmfs

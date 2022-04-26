@@ -30,12 +30,14 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsOPFSAllocate: function(ids, handle) {
-    let id = ids.allocated.length;
+    let id;
     if (ids.free.length > 0) {
       id = ids.free.pop();
+      ids.allocated[id] = handle;
+    } else {
+      id = ids.allocated.length;
+      ids.allocated.push(handle);
     }
-    assert(ids.allocated[id] === undefined);
-    ids.allocated[id] = handle;
     return id;
   },
 
@@ -65,21 +67,21 @@ mergeInto(LibraryManager.library, {
                                      '$wasmfsOPFSDirectories',
                                      '$wasmfsOPFSFiles'],
   $wasmfsOPFSGetOrCreateFile: async function(parent, name, create) {
-    let parent_handle = wasmfsOPFSDirectories.get(parent);
-    assert(parent_handle !== undefined);
-    let file_handle;
+    let parentHandle = wasmfsOPFSDirectories.get(parent);
+    assert(parentHandle !== undefined);
+    let fileHandle;
     try {
-      file_handle = await parent_handle.getFileHandle(name, {create: create});
-    } catch (err) {
-      if (err.name === "NotFoundError") {
+      fileHandle = await parentHandle.getFileHandle(name, {create: create});
+    } catch (e) {
+      if (e.name === "NotFoundError") {
         return -1;
       }
-      if (err.name === "TypeMismatchError") {
+      if (e.name === "TypeMismatchError") {
         return -2;
       }
-      abort("Unknown exception " + err.name);
+      throw e;
     }
-    return wasmfsOPFSAllocate(wasmfsOPFSFiles, file_handle);
+    return wasmfsOPFSAllocate(wasmfsOPFSFiles, fileHandle);
   },
 
   // Return the file ID for the directory with `name` under `parent`, creating
@@ -91,158 +93,158 @@ mergeInto(LibraryManager.library, {
   $wasmfsOPFSGetOrCreateDir__deps: ['$wasmfsOPFSAllocate',
                                     '$wasmfsOPFSDirectories'],
   $wasmfsOPFSGetOrCreateDir: async function(parent, name, create) {
-    let parent_handle = wasmfsOPFSDirectories.get(parent);
-    assert(parent_handle !== undefined);
-    let child_handle;
+    let parentHandle = wasmfsOPFSDirectories.get(parent);
+    assert(parentHandle !== undefined);
+    let childHandle;
     try {
-      child_handle =
-          await parent_handle.getDirectoryHandle(name, {create: create});
-    } catch (err) {
-      if (err.name === "NotFoundError") {
+      childHandle =
+          await parentHandle.getDirectoryHandle(name, {create: create});
+    } catch (e) {
+      if (e.name === "NotFoundError") {
         return -1;
       }
-      if (err.name === "TypeMismatchError") {
+      if (e.name === "TypeMismatchError") {
         return -2;
       }
-      abort("Unknown exception " + err.name);
+      abort("Unknown exception " + e.name);
     }
-    return wasmfsOPFSAllocate(wasmfsOPFSDirectories, child_handle);
+    return wasmfsOPFSAllocate(wasmfsOPFSDirectories, childHandle);
   },
 
   _wasmfs_opfs_get_child__deps: ['$wasmfsOPFSGetOrCreateFile',
                                  '$wasmfsOPFSGetOrCreateDir'],
   _wasmfs_opfs_get_child:
-      async function(ctx, parent, name_p, child_type_p, child_id_p) {
-    let name = UTF8ToString(name_p);
-    let child_type = 1;
-    let child_id = await wasmfsOPFSGetOrCreateFile(parent, name, false);
-    if (child_id == -2) {
-      child_type = 2;
-      child_id = await wasmfsOPFSGetOrCreateDir(parent, name, false);
+      async function(ctx, parent, namePtr, childTypePtr, childIDPtr) {
+    let name = UTF8ToString(namePtr);
+    let childType = 1;
+    let childID = await wasmfsOPFSGetOrCreateFile(parent, name, false);
+    if (childID == -2) {
+      childType = 2;
+      childID = await wasmfsOPFSGetOrCreateDir(parent, name, false);
     }
-    {{{ makeSetValue('child_type_p', 0, 'child_type', 'i32') }}};
-    {{{ makeSetValue('child_id_p', 0, 'child_id', 'i32') }}};
+    {{{ makeSetValue('childTypePtr', 0, 'childType', 'i32') }}};
+    {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_get_entries__deps: [],
-  _wasmfs_opfs_get_entries: async function(ctx, dir_id, entries) {
-    let dir_handle = wasmfsOPFSDirectories.get(dir_id);
-    for await (const [name, child] of dir_handle.entries()) {
+  _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
+    let dirHandle = wasmfsOPFSDirectories.get(dirID);
+    for await (const [name, child] of dirHandle.entries()) {
       withStackSave(() => {
-        let name_p = allocateUTF8OnStack(name);
+        let namePtr = allocateUTF8OnStack(name);
         // TODO: Figure out how to use `cDefine` here
         let type = child.kind == "file" ? 1 : 2;
-        __wasmfs_opfs_record_entry(entries, name_p, type)
+        __wasmfs_opfs_record_entry(entries, namePtr, type)
       });
     }
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
-  _wasmfs_opfs_insert_file: async function(ctx, parent, name_p, child_id_p) {
-    let name = UTF8ToString(name_p);
-    let child_id = await wasmfsOPFSGetOrCreateFile(parent, name, true);
-    {{{ makeSetValue('child_id_p', 0, 'child_id', 'i32') }}};
+  _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr) {
+    let name = UTF8ToString(namePtr);
+    let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
+    {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir'],
-  _wasmfs_opfs_insert_directory: async function(ctx, parent, name_p, child_id_p) {
-    let name = UTF8ToString(name_p);
-    let child_id = await wasmfsOPFSGetOrCreateDir(parent, name, true);
-    {{{ makeSetValue('child_id_p', 0, 'child_id', 'i32') }}};
+  _wasmfs_opfs_insert_directory: async function(ctx, parent, namePtr, childIDPtr) {
+    let name = UTF8ToString(namePtr);
+    let childID = await wasmfsOPFSGetOrCreateDir(parent, name, true);
+    {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_move__deps: ['$wasmfsOPFSFiles', '$wasmfsOPFSDirectories'],
-  _wasmfs_opfs_move: async function(ctx, file_id, new_dir_id, name_p) {
-    let name = UTF8ToString(name_p);
-    let file_handle = wasmfsOPFSFiles.get(file_id);
-    let new_dir_handle = wasmfsOPFSDirectories.get(new_dir_id);
-    await file_handle.move(new_dir_handle, name);
+  _wasmfs_opfs_move: async function(ctx, fileID, newDirID, namePtr) {
+    let name = UTF8ToString(namePtr);
+    let fileHandle = wasmfsOPFSFiles.get(fileID);
+    let newDirHandle = wasmfsOPFSDirectories.get(newDirID);
+    await fileHandle.move(newDirHandle, name);
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSFree', '$wasmfsOPFSDirectories'],
-  _wasmfs_opfs_remove_child: async function(ctx, dir_id, name_p) {
-    let name = UTF8ToString(name_p);
-    let dir_handle = wasmfsOPFSDirectories.get(dir_id);
-    await dir_handle.removeEntry(name);
+  _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr) {
+    let name = UTF8ToString(namePtr);
+    let dirHandle = wasmfsOPFSDirectories.get(dirID);
+    await dirHandle.removeEntry(name);
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_free_file__deps: ['$wasmfsOPFSFree', '$wasmfsOPFSFiles'],
-  _wasmfs_opfs_free_file: function(file_id) {
-    wasmfsOPFSFree(wasmfsOPFSFiles, file_id);
+  _wasmfs_opfs_free_file: function(fileID) {
+    wasmfsOPFSFree(wasmfsOPFSFiles, fileID);
   },
 
   _wasmfs_opfs_free_directory__deps: ['$wasmfsOPFSFree',
                                       '$wasmfsOPFSDirectories'],
-  _wasmfs_opfs_free_directory: function(dir_id) {
-    wasmfsOPFSFree(wasmfsOPFSDirectories, dir_id);
+  _wasmfs_opfs_free_directory: function(dirID) {
+    wasmfsOPFSFree(wasmfsOPFSDirectories, dirID);
   },
 
   _wasmfs_opfs_open__deps: ['$wasmfsOPFSAllocate',
                             '$wasmfsOPFSFiles',
                             '$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_open: async function(ctx, file_id, access_id_p) {
-    let file_handle = wasmfsOPFSFiles.get(file_id);
-    let access_id;
+  _wasmfs_opfs_open: async function(ctx, fileID, accessIDPtr) {
+    let fileHandle = wasmfsOPFSFiles.get(fileID);
+    let accessID;
     try {
-      let access_handle = await file_handle.createSyncAccessHandle();
-      access_id = wasmfsOPFSAllocate(wasmfsOPFSAccesses, access_handle);
-    } catch (err) {
-      if (err.name === "InvalidStateError") {
-        access_id = -1;
+      let accessHandle = await fileHandle.createSyncAccessHandle();
+      accessID = wasmfsOPFSAllocate(wasmfsOPFSAccesses, accessHandle);
+    } catch (e) {
+      if (e.name === "InvalidStateError") {
+        accessID = -1;
       }
       abort("Unknown error opening file");
     }
-    {{{ makeSetValue('access_id_p', 0, 'access_id', 'i32') }}};
+    {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_close__deps: ['$wasmfsOPFSFree', '$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_close: async function(ctx, access_id) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    await access_handle.close();
-    wasmfsOPFSFree(wasmfsOPFSAccesses, access_id);
+  _wasmfs_opfs_close: async function(ctx, accessID) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    await accessHandle.close();
+    wasmfsOPFSFree(wasmfsOPFSAccesses, accessID);
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_read__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_read: function(access_id, buf_p, len, pos) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    let data = HEAPU8.subarray(buf_p, buf_p + len);
-    return access_handle.read(data, {at: pos});
+  _wasmfs_opfs_read: function(accessID, bufPtr, len, pos) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    let data = HEAPU8.subarray(bufPtr, bufPtr + len);
+    return accessHandle.read(data, {at: pos});
   },
 
   _wasmfs_opfs_write__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_write: function(access_id, buf_p, len, pos, nwritten_p) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    let data = HEAPU8.subarray(buf_p, buf_p + len);
-    return access_handle.write(data, {at: pos});
+  _wasmfs_opfs_write: function(accessID, bufPtr, len, pos, nwrittenPtr) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    let data = HEAPU8.subarray(bufPtr, bufPtr + len);
+    return accessHandle.write(data, {at: pos});
   },
 
   _wasmfs_opfs_get_size__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_get_size: async function(ctx, access_id, size_p) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    let size = await access_handle.getSize();
-    {{{ makeSetValue('size_p', 0, 'size', 'i32') }}};
+  _wasmfs_opfs_get_size: async function(ctx, accessID, sizePtr) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    let size = await accessHandle.getSize();
+    {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_set_size__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_set_size: async function(ctx, access_id, size) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    await access_handle.truncate(size);
+  _wasmfs_opfs_set_size: async function(ctx, accessID, size) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    await accessHandle.truncate(size);
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_flush__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_flush: async function(ctx, access_id) {
-    let access_handle = wasmfsOPFSAccesses.get(access_id);
-    await access_handle.flush();
+  _wasmfs_opfs_flush: async function(ctx, accessID) {
+    let accessHandle = wasmfsOPFSAccesses.get(accessID);
+    await accessHandle.flush();
     _emscripten_proxy_finish(ctx);
   }
 });
