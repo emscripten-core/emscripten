@@ -5857,7 +5857,7 @@ Module['preRun'] = function() {
 }
 Module['postRun'] = function() {
   const openFilesPost = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-  assert(openFilesPre == openFilesPost, 'File descriptor was leaked');
+  assert(openFilesPre == openFilesPost, 'File descriptors should not leak');
 }
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
