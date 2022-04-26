@@ -8041,7 +8041,13 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and self.is_optimizing() and '-g' not in self.emcc_args and '-fsanitize=leak' not in self.emcc_args:
+    if not conditional and self.is_optimizing() and \
+       '-g' not in self.emcc_args and \
+       '-fsanitize=leak' not in self.emcc_args and \
+       not self.get_setting('WASMFS'):
+      # TODO: WasmFS has not yet been optimized for code size, and the general
+      #       increase it causes mixes up code size measurements like this.
+      #       See https://github.com/emscripten-core/emscripten/issues/16005
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
