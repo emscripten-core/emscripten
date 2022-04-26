@@ -366,9 +366,7 @@ function makeSetTempDouble(i, type, value) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
-  assert(!forceAsm, 'forceAsm is no longer supported');
-
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
   if (type == 'double' && (align < 8)) {
     const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
     const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
@@ -417,9 +415,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (slab.substr(slab.length - 2) == '64') {
     ret = `Number(${ret})`;
   }
-  if (forceAsm) {
-    ret = asmCoercion(ret, type);
-  }
   return ret;
 }
 
@@ -438,12 +433,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {number} align: TODO
  * @param {bool} noSafe: TODO
  * @param {string} sep: TODO
- * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
-  assert(!forcedAlign, 'forcedAlign is no longer supported');
-
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';') {
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +

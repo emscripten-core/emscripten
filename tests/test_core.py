@@ -1229,6 +1229,7 @@ int main()
     for support_longjmp in [0, 1]:
       self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):
     self.set_setting('EXCEPTION_DEBUG')
@@ -6614,7 +6615,7 @@ void* operator new(size_t size) {
 
   @needs_make('make')
   @is_slow_test
-  @no_asan('it seems that bullet contains UB')
+  @no_ubsan('it seems that bullet contains UB')
   @parameterized({
     'cmake': (True,),
     'autoconf': (False,)
@@ -8041,7 +8042,13 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and self.is_optimizing() and '-g' not in self.emcc_args and '-fsanitize=leak' not in self.emcc_args:
+    if not conditional and self.is_optimizing() and \
+       '-g' not in self.emcc_args and \
+       '-fsanitize=leak' not in self.emcc_args and \
+       not self.get_setting('WASMFS'):
+      # TODO: WasmFS has not yet been optimized for code size, and the general
+      #       increase it causes mixes up code size measurements like this.
+      #       See https://github.com/emscripten-core/emscripten/issues/16005
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
@@ -8367,6 +8374,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       print(occurances)
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
@@ -8377,6 +8385,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @parameterized({
     'default': ([],),
     'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
@@ -8392,6 +8401,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('small_hello_world.c'), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @parameterized({
     'fs': ('FORCE_FILESYSTEM',),
     'nofs': ('NO_FILESYSTEM',),
@@ -8408,6 +8418,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('hello_world.c'), 'hello, world!')
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
@@ -8421,6 +8432,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('small_hello_world.c'), 'hello')
 
   # Tests global initializer with -sMINIMAL_RUNTIME
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
