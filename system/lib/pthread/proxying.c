@@ -269,23 +269,24 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
   pthread_mutex_unlock(&zombie_list_head.mutex);
 }
 
-// Not thread safe. Returns -1 if there are no tasks for the thread.
-static int get_tasks_index_for_thread(em_proxying_queue* q, pthread_t thread) {
+// Not thread safe. Returns NULL if there are no tasks for the thread.
+static task_queue* get_tasks_for_thread(em_proxying_queue* q,
+                                        pthread_t thread) {
   assert(q != NULL);
   for (int i = 0; i < q->size; i++) {
     if (pthread_equal(q->task_queues[i]->thread, thread)) {
-      return i;
+      return q->task_queues[i];
     }
   }
-  return -1;
+  return NULL;
 }
 
 // Not thread safe.
 static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
                                                pthread_t thread) {
-  int tasks_index = get_tasks_index_for_thread(q, thread);
-  if (tasks_index != -1) {
-    return q->task_queues[tasks_index];
+  task_queue* tasks = get_tasks_for_thread(q, thread);
+  if (tasks != NULL) {
+    return tasks;
   }
   // There were no tasks for the thread; initialize a new task_queue. If there
   // are not enough queues, allocate more.
@@ -300,7 +301,7 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
     q->capacity = new_capacity;
   }
   // Initialize the next available task queue.
-  task_queue* tasks = task_queue_create(thread);
+  tasks = task_queue_create(thread);
   if (tasks == NULL) {
     return NULL;
   }
@@ -328,8 +329,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   pthread_mutex_lock(&q->mutex);
-  int tasks_index = get_tasks_index_for_thread(q, pthread_self());
-  task_queue* tasks = tasks_index == -1 ? NULL : q->task_queues[tasks_index];
+  task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   if (tasks == NULL || tasks->processing) {
     // No tasks for this thread or they are already being processed.
     goto end;
@@ -343,8 +343,6 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     pthread_mutex_unlock(&q->mutex);
     t.func(t.arg);
     pthread_mutex_lock(&q->mutex);
-    // The tasks might have been reallocated, so recalculate the pointer.
-    tasks = q->task_queues[tasks_index];
   }
   tasks->processing = 0;
 
