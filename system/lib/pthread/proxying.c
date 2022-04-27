@@ -340,7 +340,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   if (tasks != NULL) {
     pthread_mutex_lock(&tasks->mutex);
     if (!tasks->processing) {
-      // Found the task queue; process the tasks.
+      // Found the task queue and it is not already being processed; process it.
       tasks->processing = 1;
       while (!task_queue_is_empty(tasks)) {
         task t = task_queue_dequeue(tasks);
