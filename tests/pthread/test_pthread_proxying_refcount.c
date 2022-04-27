@@ -4,6 +4,7 @@
 #include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <time.h>
 #include <unistd.h>
 
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
@@ -35,12 +36,15 @@ void __attribute__((noinline)) free(void* ptr) {
 
 #endif // SANITIZER
 
+_Atomic int started = 0;
 _Atomic int should_execute = 0;
 _Atomic int executed[2] = {};
 
 void task(void* arg) { *(_Atomic int*)arg = 1; }
 
 void* execute_and_free_queue(void* arg) {
+  started = 1;
+
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
   }
@@ -57,15 +61,20 @@ void* execute_and_free_queue(void* arg) {
 }
 
 int main() {
-  emscripten_console_log("start");
   for (int i = 0; i < 2; i++) {
     queues[i] = em_proxying_queue_create();
     assert(queues[i]);
   }
 
-  // Create the worker and send it tasks.
+  // Create the worker.
   pthread_t worker;
   pthread_create(&worker, NULL, execute_and_free_queue, NULL);
+
+  // Wait for it to start.
+  while (!started) {
+  }
+
+  // Send the worker tasks and tell it to execute them.
   for (int i = 0; i < 2; i++) {
     emscripten_proxy_async(queues[i], worker, task, &executed[i]);
   }
@@ -75,9 +84,10 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Break the queue abstraction to wait for the refcounts to be decreased.
-  while (*(_Atomic int*)queues[0] || *(_Atomic int*)queues[1]) {
-  }
+  // Wait 50ms for the notification to be received.
+  struct timespec ts;
+  ts.tv_nsec = 50 * 1000 * 1000;
+  nanosleep(&ts, NULL);
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.
@@ -110,6 +120,4 @@ int main() {
   // The new queue should have been immediately freed.
   assert(queues_freed[3]);
 #endif // SANITIZER
-
-  emscripten_console_log("done");
 }
