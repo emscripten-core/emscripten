@@ -1818,6 +1818,13 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('libpng passes test', output)
 
+  @node_pthreads
+  def test_libpng_with_pthreads(self):
+    shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
+    self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-sUSE_PTHREADS'], output_filename='a.out.js')
+    output = self.run_js('a.out.js')
+    self.assertContained('libpng passes test', output)
+
   def test_giflib(self):
     shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
     self.emcc(test_file('third_party/giflib/giftext.c'), ['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'], output_filename='a.out.js')
@@ -9698,8 +9705,21 @@ int main(void) {
     'sync': ['-sWASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
-    self.do_runf(test_file('other/test_offset_converter.c'), 'ok',
-                 emcc_args=['-sUSE_OFFSET_CONVERTER', '--profiling-funcs'] + list(args))
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ptrToString'])
+    self.emcc_args += ['--profiling-funcs']
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok', emcc_args=list(args))
+
+  @parameterized({
+    '': [],
+    'sync': ['-sWASM_ASYNC_COMPILATION=0'],
+  })
+  def test_offset_converter_source_map(self, *args):
+    self.set_setting('USE_OFFSET_CONVERTER')
+    self.set_setting('LOAD_SOURCE_MAP')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ptrToString'])
+    self.emcc_args += ['-gsource-map', '-DUSE_SOURCE_MAP']
+    self.do_runf(test_file('other/test_offset_converter.c'), 'ok', emcc_args=list(args))
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
@@ -11623,6 +11643,28 @@ void foo() {}
 
   def test_unistd_fstatfs(self):
     self.do_run_in_out_file_test('unistd/fstatfs.c')
+
+  @no_windows("test is Linux-specific")
+  @no_mac("test is Linux-specific")
+  @require_node
+  def test_unistd_close_noderawfs(self):
+    self.set_setting('NODERAWFS')
+    create_file('pre.js', '''
+const { execSync } = require('child_process');
+const process = require('process');
+
+let openFilesPre;
+
+Module['preRun'] = function() {
+  openFilesPre = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
+}
+Module['postRun'] = function() {
+  const openFilesPost = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
+  assert(openFilesPre == openFilesPost, 'File descriptors should not leak');
+}
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run_in_out_file_test('unistd/close.c', js_engines=[config.NODE_JS])
 
   # WASMFS tests
 

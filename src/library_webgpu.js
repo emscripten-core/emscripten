@@ -1520,8 +1520,6 @@ var LibraryWebGPU = {
         "clearValue": clearValue,
         "loadOp":  WebGPU.LoadOp[loadOpInt],
         "storeOp": WebGPU.StoreOp[storeOpInt],
-        // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        "loadValue": loadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : clearValue,
       };
     }
 
@@ -1536,27 +1534,21 @@ var LibraryWebGPU = {
     function makeDepthStencilAttachment(dsaPtr) {
       if (dsaPtr === 0) return undefined;
 
-      var depthLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}};
-      var depthClearValue = {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthClearValue, 'float') }}};
-      var stencilLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}};
-      var stencilClearValue = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilClearValue) }}};
-
       return {
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.view) }}}),
-        "depthClearValue": depthClearValue,
-        "depthLoadOp": WebGPU.LoadOp[depthLoadOpInt],
+        "depthClearValue": {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthClearValue, 'float') }}},
+        "depthLoadOp": WebGPU.LoadOp[
+          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}}],
         "depthStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthStoreOp) }}}],
         "depthReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthReadOnly) }}},
-        "stencilClearValue": stencilClearValue,
-        "stencilLoadOp": WebGPU.LoadOp[stencilLoadOpInt],
+        "stencilClearValue": {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilClearValue) }}},
+        "stencilLoadOp": WebGPU.LoadOp[
+          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}}],
         "stencilStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
-        // TODO(shrekshao): remove deprecated path once browser (chrome) API update comes to stable (M101)
-        "depthLoadValue": depthLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : depthClearValue,
-        "stencilLoadValue": stencilLoadOpInt === {{{ gpu.LoadOp.Load }}} ? 'load' : stencilClearValue,
       };
     }
 
@@ -1904,12 +1896,7 @@ var LibraryWebGPU = {
 
   wgpuComputePassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // wgpuRenderPass
@@ -2043,12 +2030,7 @@ var LibraryWebGPU = {
 
   wgpuRenderPassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // Render bundle encoder

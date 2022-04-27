@@ -18,6 +18,10 @@ def needed(settings):
   return settings.USE_LIBPNG
 
 
+def get_lib_name(settings):
+  return 'libpng' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+
+
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
   ports.fetch_project('libpng', 'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)
@@ -34,13 +38,17 @@ def get(ports, settings, shared):
     Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
     ports.install_headers(dest_path)
 
-    ports.build_port(dest_path, final, flags=['-sUSE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    flags = ['-sUSE_ZLIB=1']
+    if settings.USE_PTHREADS:
+      flags += ['-sUSE_PTHREADS=1']
 
-  return [shared.Cache.get_lib('libpng.a', create, what='port')]
+    ports.build_port(dest_path, final, flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libpng.a')
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):
