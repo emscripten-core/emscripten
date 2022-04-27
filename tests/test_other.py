@@ -1818,6 +1818,13 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('libpng passes test', output)
 
+  @node_pthreads
+  def test_libpng_with_pthreads(self):
+    shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
+    self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-sUSE_PTHREADS'], output_filename='a.out.js')
+    output = self.run_js('a.out.js')
+    self.assertContained('libpng passes test', output)
+
   def test_giflib(self):
     shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
     self.emcc(test_file('third_party/giflib/giftext.c'), ['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'], output_filename='a.out.js')
