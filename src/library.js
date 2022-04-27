@@ -2735,7 +2735,7 @@ LibraryManager.library = {
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', undefined, /*ignore=*/true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32') }}};
     }
     return i;
   },
