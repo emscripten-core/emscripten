@@ -85,10 +85,15 @@ typedef struct task_queue {
   int tail;
 } task_queue;
 
-static int task_queue_init(task_queue* tasks, pthread_t thread) {
+static task_queue* task_queue_create(pthread_t thread) {
+  task_queue* tasks = malloc(sizeof(task_queue));
+  if (tasks == NULL) {
+    return NULL;
+  }
   task* task_buffer = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
   if (task_buffer == NULL) {
-    return 0;
+    free(tasks);
+    return NULL;
   }
   *tasks = (task_queue){.thread = thread,
                         .processing = 0,
@@ -96,10 +101,13 @@ static int task_queue_init(task_queue* tasks, pthread_t thread) {
                         .capacity = TASK_QUEUE_INITIAL_CAPACITY,
                         .head = 0,
                         .tail = 0};
-  return 1;
+  return tasks;
 }
 
-static void task_queue_deinit(task_queue* tasks) { free(tasks->tasks); }
+static void task_queue_destroy(task_queue* tasks) {
+  free(tasks->tasks);
+  free(tasks);
+}
 
 // Not thread safe.
 static int task_queue_is_empty(task_queue* tasks) {
@@ -170,8 +178,8 @@ struct em_proxying_queue {
   em_proxying_queue* zombie_next;
   // Protects all accesses to task_queues, size, and capacity.
   pthread_mutex_t mutex;
-  // `size` task queues stored in an array of size `capacity`.
-  task_queue* task_queues;
+  // `size` task queue pointers stored in an array of size `capacity`.
+  task_queue** task_queues;
   int size;
   int capacity;
 };
@@ -200,7 +208,7 @@ static em_proxying_queue zombie_list_head = {.zombie_prev = &zombie_list_head,
 static void em_proxying_queue_free(em_proxying_queue* q) {
   pthread_mutex_destroy(&q->mutex);
   for (int i = 0; i < q->size; i++) {
-    task_queue_deinit(&q->task_queues[i]);
+    task_queue_destroy(q->task_queues[i]);
   }
   free(q->task_queues);
   free(q);
@@ -265,7 +273,7 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
 static int get_tasks_index_for_thread(em_proxying_queue* q, pthread_t thread) {
   assert(q != NULL);
   for (int i = 0; i < q->size; i++) {
-    if (pthread_equal(q->task_queues[i].thread, thread)) {
+    if (pthread_equal(q->task_queues[i]->thread, thread)) {
       return i;
     }
   }
@@ -277,14 +285,14 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
                                                pthread_t thread) {
   int tasks_index = get_tasks_index_for_thread(q, thread);
   if (tasks_index != -1) {
-    return &q->task_queues[tasks_index];
+    return q->task_queues[tasks_index];
   }
   // There were no tasks for the thread; initialize a new task_queue. If there
   // are not enough queues, allocate more.
   if (q->size == q->capacity) {
     int new_capacity = q->capacity == 0 ? 1 : q->capacity * 2;
-    task_queue* new_task_queues =
-      realloc(q->task_queues, sizeof(task_queue) * new_capacity);
+    task_queue** new_task_queues =
+      realloc(q->task_queues, sizeof(task_queue*) * new_capacity);
     if (new_task_queues == NULL) {
       return NULL;
     }
@@ -292,11 +300,11 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
     q->capacity = new_capacity;
   }
   // Initialize the next available task queue.
-  task_queue* tasks = &q->task_queues[q->size];
-  if (!task_queue_init(tasks, thread)) {
+  task_queue* tasks = task_queue_create(thread);
+  if (tasks == NULL) {
     return NULL;
   }
-  q->size++;
+  q->task_queues[q->size++] = tasks;
   return tasks;
 }
 
@@ -321,7 +329,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 
   pthread_mutex_lock(&q->mutex);
   int tasks_index = get_tasks_index_for_thread(q, pthread_self());
-  task_queue* tasks = tasks_index == -1 ? NULL : &q->task_queues[tasks_index];
+  task_queue* tasks = tasks_index == -1 ? NULL : q->task_queues[tasks_index];
   if (tasks == NULL || tasks->processing) {
     // No tasks for this thread or they are already being processed.
     goto end;
@@ -336,7 +344,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     t.func(t.arg);
     pthread_mutex_lock(&q->mutex);
     // The tasks might have been reallocated, so recalculate the pointer.
-    tasks = &q->task_queues[tasks_index];
+    tasks = q->task_queues[tasks_index];
   }
   tasks->processing = 0;
 
