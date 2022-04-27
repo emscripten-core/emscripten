@@ -43,7 +43,7 @@ $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
 $emscripten_stack_set_limits
 $emscripten_tls_init
-$get_tasks_index_for_thread
+$get_tasks_for_thread
 $init_file_lock
 $init_mparams
 $main

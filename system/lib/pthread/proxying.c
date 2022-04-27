@@ -85,36 +85,44 @@ typedef struct task_queue {
   int tail;
 } task_queue;
 
-static int task_queue_init(task_queue* tasks, pthread_t thread) {
-  task* task_buffer = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
-  if (task_buffer == NULL) {
-    return 0;
+static task_queue* task_queue_create(pthread_t thread) {
+  task_queue* queue = malloc(sizeof(task_queue));
+  if (queue == NULL) {
+    return NULL;
   }
-  *tasks = (task_queue){.thread = thread,
+  task* tasks = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
+  if (tasks == NULL) {
+    free(queue);
+    return NULL;
+  }
+  *queue = (task_queue){.thread = thread,
                         .processing = 0,
-                        .tasks = task_buffer,
+                        .tasks = tasks,
                         .capacity = TASK_QUEUE_INITIAL_CAPACITY,
                         .head = 0,
                         .tail = 0};
-  return 1;
+  return queue;
 }
 
-static void task_queue_deinit(task_queue* tasks) { free(tasks->tasks); }
-
-// Not thread safe.
-static int task_queue_is_empty(task_queue* tasks) {
-  return tasks->head == tasks->tail;
+static void task_queue_destroy(task_queue* queue) {
+  free(queue->tasks);
+  free(queue);
 }
 
 // Not thread safe.
-static int task_queue_full(task_queue* tasks) {
-  return tasks->head == (tasks->tail + 1) % tasks->capacity;
+static int task_queue_is_empty(task_queue* queue) {
+  return queue->head == queue->tail;
+}
+
+// Not thread safe.
+static int task_queue_full(task_queue* queue) {
+  return queue->head == (queue->tail + 1) % queue->capacity;
 }
 
 // // Not thread safe. Returns 1 on success and 0 on failure.
-static int task_queue_grow(task_queue* tasks) {
+static int task_queue_grow(task_queue* queue) {
   // Allocate a larger task queue.
-  int new_capacity = tasks->capacity * 2;
+  int new_capacity = queue->capacity * 2;
   task* new_tasks = malloc(sizeof(task) * new_capacity);
   if (new_tasks == NULL) {
     return 0;
@@ -123,41 +131,41 @@ static int task_queue_grow(task_queue* tasks) {
   // buffer. There are two cases to handle: either the queue wraps around the
   // end of the old buffer or it does not.
   int queued_tasks;
-  if (tasks->head <= tasks->tail) {
+  if (queue->head <= queue->tail) {
     // No wrap. Copy the tasks in one chunk.
-    queued_tasks = tasks->tail - tasks->head;
-    memcpy(new_tasks, &tasks->tasks[tasks->head], sizeof(task) * queued_tasks);
+    queued_tasks = queue->tail - queue->head;
+    memcpy(new_tasks, &queue->tasks[queue->head], sizeof(task) * queued_tasks);
   } else {
     // Wrap. Copy `first_queued` tasks up to the end of the old buffer and
     // `last_queued` tasks at the beginning of the old buffer.
-    int first_queued = tasks->capacity - tasks->head;
-    int last_queued = tasks->tail;
+    int first_queued = queue->capacity - queue->head;
+    int last_queued = queue->tail;
     queued_tasks = first_queued + last_queued;
-    memcpy(new_tasks, &tasks->tasks[tasks->head], sizeof(task) * first_queued);
-    memcpy(new_tasks + first_queued, tasks->tasks, sizeof(task) * last_queued);
+    memcpy(new_tasks, &queue->tasks[queue->head], sizeof(task) * first_queued);
+    memcpy(new_tasks + first_queued, queue->tasks, sizeof(task) * last_queued);
   }
-  free(tasks->tasks);
-  tasks->tasks = new_tasks;
-  tasks->capacity = new_capacity;
-  tasks->head = 0;
-  tasks->tail = queued_tasks;
+  free(queue->tasks);
+  queue->tasks = new_tasks;
+  queue->capacity = new_capacity;
+  queue->head = 0;
+  queue->tail = queued_tasks;
   return 1;
 }
 
 // Not thread safe. Returns 1 on success and 0 on failure.
-static int task_queue_enqueue(task_queue* tasks, task t) {
-  if (task_queue_full(tasks) && !task_queue_grow(tasks)) {
+static int task_queue_enqueue(task_queue* queue, task t) {
+  if (task_queue_full(queue) && !task_queue_grow(queue)) {
     return 0;
   }
-  tasks->tasks[tasks->tail] = t;
-  tasks->tail = (tasks->tail + 1) % tasks->capacity;
+  queue->tasks[queue->tail] = t;
+  queue->tail = (queue->tail + 1) % queue->capacity;
   return 1;
 }
 
 // Not thread safe. Assumes the queue is not empty.
-static task task_queue_dequeue(task_queue* tasks) {
-  task t = tasks->tasks[tasks->head];
-  tasks->head = (tasks->head + 1) % tasks->capacity;
+static task task_queue_dequeue(task_queue* queue) {
+  task t = queue->tasks[queue->head];
+  queue->head = (queue->head + 1) % queue->capacity;
   return t;
 }
 
@@ -170,8 +178,8 @@ struct em_proxying_queue {
   em_proxying_queue* zombie_next;
   // Protects all accesses to task_queues, size, and capacity.
   pthread_mutex_t mutex;
-  // `size` task queues stored in an array of size `capacity`.
-  task_queue* task_queues;
+  // `size` task queue pointers stored in an array of size `capacity`.
+  task_queue** task_queues;
   int size;
   int capacity;
 };
@@ -200,7 +208,7 @@ static em_proxying_queue zombie_list_head = {.zombie_prev = &zombie_list_head,
 static void em_proxying_queue_free(em_proxying_queue* q) {
   pthread_mutex_destroy(&q->mutex);
   for (int i = 0; i < q->size; i++) {
-    task_queue_deinit(&q->task_queues[i]);
+    task_queue_destroy(q->task_queues[i]);
   }
   free(q->task_queues);
   free(q);
@@ -261,30 +269,31 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
   pthread_mutex_unlock(&zombie_list_head.mutex);
 }
 
-// Not thread safe. Returns -1 if there are no tasks for the thread.
-static int get_tasks_index_for_thread(em_proxying_queue* q, pthread_t thread) {
+// Not thread safe. Returns NULL if there are no tasks for the thread.
+static task_queue* get_tasks_for_thread(em_proxying_queue* q,
+                                        pthread_t thread) {
   assert(q != NULL);
   for (int i = 0; i < q->size; i++) {
-    if (pthread_equal(q->task_queues[i].thread, thread)) {
-      return i;
+    if (pthread_equal(q->task_queues[i]->thread, thread)) {
+      return q->task_queues[i];
     }
   }
-  return -1;
+  return NULL;
 }
 
 // Not thread safe.
 static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
                                                pthread_t thread) {
-  int tasks_index = get_tasks_index_for_thread(q, thread);
-  if (tasks_index != -1) {
-    return &q->task_queues[tasks_index];
+  task_queue* tasks = get_tasks_for_thread(q, thread);
+  if (tasks != NULL) {
+    return tasks;
   }
   // There were no tasks for the thread; initialize a new task_queue. If there
   // are not enough queues, allocate more.
   if (q->size == q->capacity) {
     int new_capacity = q->capacity == 0 ? 1 : q->capacity * 2;
-    task_queue* new_task_queues =
-      realloc(q->task_queues, sizeof(task_queue) * new_capacity);
+    task_queue** new_task_queues =
+      realloc(q->task_queues, sizeof(task_queue*) * new_capacity);
     if (new_task_queues == NULL) {
       return NULL;
     }
@@ -292,11 +301,11 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
     q->capacity = new_capacity;
   }
   // Initialize the next available task queue.
-  task_queue* tasks = &q->task_queues[q->size];
-  if (!task_queue_init(tasks, thread)) {
+  tasks = task_queue_create(thread);
+  if (tasks == NULL) {
     return NULL;
   }
-  q->size++;
+  q->task_queues[q->size++] = tasks;
   return tasks;
 }
 
@@ -320,8 +329,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   pthread_mutex_lock(&q->mutex);
-  int tasks_index = get_tasks_index_for_thread(q, pthread_self());
-  task_queue* tasks = tasks_index == -1 ? NULL : &q->task_queues[tasks_index];
+  task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   if (tasks == NULL || tasks->processing) {
     // No tasks for this thread or they are already being processed.
     goto end;
@@ -335,8 +343,6 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     pthread_mutex_unlock(&q->mutex);
     t.func(t.arg);
     pthread_mutex_lock(&q->mutex);
-    // The tasks might have been reallocated, so recalculate the pointer.
-    tasks = &q->task_queues[tasks_index];
   }
   tasks->processing = 0;
 
