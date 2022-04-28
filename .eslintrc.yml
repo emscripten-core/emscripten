@@ -51,6 +51,7 @@ ignorePatterns:
 rules:
   #max-len: ["error", 100]
   max-len: "off"
+  no-multi-spaces: "off"
   require-jsdoc: "off"
   no-unused-vars: "off"
   arrow-body-style: ["error", "as-needed"]

@@ -189,7 +189,7 @@ function pointerT(x) {
 }
 
 function isIntImplemented(type) {
-  return type[0] == 'i' || isPointerType(type);
+  return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
 }
 
 // Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
@@ -368,6 +368,17 @@ function makeSetTempDouble(i, type, value) {
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+  if (typeof unsigned !== 'undefined') {
+    // TODO(sbc): make this into an error at some point.
+    printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
+    if (unsigned && type.startsWith('i')) {
+      type = 'u' + type.slice(1);
+    }
+  } else if (type.startsWith('u')) {
+    // Set `unsigned` based on the type name.
+    unsigned = true;
+  }
+
   if (type == 'double' && (align < 8)) {
     const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
     const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
@@ -411,7 +422,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     }
   }
 
-  const slab = getHeapForType(type, unsigned);
+  const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
   if (slab.substr(slab.length - 2) == '64') {
     ret = `Number(${ret})`;
@@ -646,28 +657,29 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
   return getFastValue(ptr, '+', pos, 'i32');
 }
 
-function getHeapForType(type, unsigned) {
+function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
     type = POINTER_TYPE;
   }
+  if (WASM_BIGINT) {
+    switch (type) {
+      case 'i64': return 'HEAP64';
+      case 'u64': return 'HEAPU64';
+    }
+  }
   switch (type) {
-    case 'i1':
-    case 'i8':
-      return unsigned ? 'HEAPU8' : 'HEAP8';
-    case 'i16':
-      return unsigned ? 'HEAPU16' : 'HEAP16';
-    case 'i64':
-      if (WASM_BIGINT) {
-        return unsigned ? 'HEAPU64' : 'HEAP64';
-      }
-      // fall through
-    case 'i32':
-      return unsigned ? 'HEAPU32' : 'HEAP32';
-    case 'double':
-      return 'HEAPF64';
-    case 'float':
-      return 'HEAPF32';
+    case 'i1':     // fallthrough
+    case 'i8':     return 'HEAP8';
+    case 'u8':     return 'HEAPU8';
+    case 'i16':    return 'HEAP16';
+    case 'u16':    return 'HEAPU16';
+    case 'i64':    // fallthrough
+    case 'i32':    return 'HEAP32';
+    case 'u64':    // fallthrough
+    case 'u32':    return 'HEAPU32';
+    case 'double': return 'HEAPF64';
+    case 'float':  return 'HEAPF32';
   }
   assert(false, 'bad heap type: ' + type);
 }
@@ -695,7 +707,7 @@ function makeSignOp(value, type, op, force, ignore) {
   if (!value) return value;
   let bits;
   let full;
-  if (type[0] === 'i') {
+  if (type[0] === 'i' || type[0] === 'u') {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
@@ -704,7 +716,7 @@ function makeSignOp(value, type, op, force, ignore) {
     }
   }
   if ((ignore) && !force) return value;
-  if (type[0] === 'i') {
+  if (type[0] === 'i' || type[0] === 'u') {
     // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
     if (ignore) {
