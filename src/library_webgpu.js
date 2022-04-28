@@ -61,11 +61,11 @@
       return '(' + makeGetValue(struct, offset, 'i8') + ' !== 0)';
     },
     makeGetU32: function(struct, offset) {
-      return makeGetValue(struct, offset, 'i32', false, true);
+      return makeGetValue(struct, offset, 'u32');
     },
     makeGetU64: function(struct, offset) {
-      var l = makeGetValue(struct, offset, 'i32', false, true);
-      var h = makeGetValue('(' + struct + ' + 4)', offset, 'i32', false, true)
+      var l = makeGetValue(struct, offset, 'u32');
+      var h = makeGetValue('(' + struct + ' + 4)', offset, 'u32')
       return h + ' * 0x100000000 + ' + l
     },
     makeCheck: function(str) {

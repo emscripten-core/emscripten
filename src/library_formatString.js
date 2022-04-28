@@ -418,7 +418,7 @@ mergeInto(LibraryManager.library, {
             }
             if (arg) {
               for (var i = 0; i < argLength; i++) {
-                ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+                ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
               ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
