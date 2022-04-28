@@ -91,7 +91,7 @@ typedef struct task_queue {
 
 // Send a postMessage notification containing the task_queue pointer to the
 // target thread so it will execute the queue when it returns to the event loop.
-// Alos pass in the current thread and main thread ids to minimize calls back
+// Also pass in the current thread and main thread ids to minimize calls back
 // into Wasm.
 extern int _emscripten_notify_task_queue(pthread_t target_thread,
                                          pthread_t curr_thread,
