@@ -740,10 +740,10 @@ class libc(MuslInternalLibrary,
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
-    self.non_lto_files = self.get_non_lto_files()
+    self.non_lto_files = self.get_libcall_files()
     super().__init__(**kwargs)
 
-  def get_non_lto_files(self):
+  def get_libcall_files(self):
     # Combining static linking with LTO is tricky under LLVM.  The codegen that
     # happens during LTO can generate references to new symbols that didn't exist
     # in the linker inputs themselves.
@@ -753,9 +753,7 @@ class libc(MuslInternalLibrary,
     # cannot be added to link.  Another way of putting it: by the time LTO happens
     # the decision about which bitcode symbols to compile has already been made.
     # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
-    # To solve this we put all such libcalls in a separate library that, like
-    # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
-    # CompilerRTLibrary).
+    # To solve this we force certain parts of libc to never be compiled as LTO/bitcode.
     # Note that this also includes things that may be depended on by those
     # functions - fmin uses signbit, for example, so signbit must be here (so if
     # fmin is added by codegen, it will have all it needs).
@@ -795,6 +793,11 @@ class libc(MuslInternalLibrary,
     iprintf_files = files_in_path(
       path='system/lib/libc/musl/src/stdio',
       filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+                 'getc.c',
+                 'fputc.c',
+                 'fgets.c',
+                 'putc.c', 'putc_unlocked.c',
+                 'putchar.c', 'putchar_unlocked.c',
                  'printf.c', 'puts.c', '__lockfile.c'])
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
@@ -1002,6 +1005,12 @@ class libc(MuslInternalLibrary,
                  ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
+
+    # Check for missing file in non_lto_files list.  Do this here
+    # rather than in the constructor so it only happens when the
+    # library is actually built (not when its instantiated).
+    for f in self.non_lto_files:
+      assert os.path.exists(f), f
 
     return libc_files
 
