@@ -77,10 +77,6 @@ var USE_LSAN = false;
 // by -fsanitize=leak instead of used directly.
 var USE_ASAN = false;
 
-// Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
-var LOAD_SOURCE_MAP = false;
-
 // Whether embind has been enabled.
 var EMBIND = false;
 

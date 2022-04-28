@@ -76,10 +76,11 @@ typedef struct task_queue {
   // The target thread for this task_queue. Immutable and accessible without
   // acquiring the mutex.
   pthread_t thread;
-  // Recursion guard. TODO: We disallow recursive processing because that's what
-  // the old proxying API does, so it is safer to start with the same behavior.
-  // Experiment with relaxing this restriction once the old API uses these
-  // queues as well.
+  // Recursion guard. Only accessed on the target thread, so there's no need to
+  // hold the lock when accessing it. TODO: We disallow recursive processing
+  // because that's what the old proxying API does, so it is safer to start with
+  // the same behavior. Experiment with relaxing this restriction once the old
+  // API uses these queues as well.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
@@ -88,6 +89,7 @@ typedef struct task_queue {
   int head;
   int tail;
 } task_queue;
+
 
 // Send a postMessage notification containing the task_queue pointer to the
 // target thread so it will execute the queue when it returns to the event loop.
@@ -334,21 +336,18 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 // Exported for use in worker.js, but otherwise an internal function.
 EMSCRIPTEN_KEEPALIVE
 void _emscripten_proxy_execute_task_queue(task_queue* tasks) {
+  tasks->processing = 1;
   pthread_mutex_lock(&tasks->mutex);
-  if (!tasks->processing) {
-    // Found the task queue and it is not already being processed; process it.
-    tasks->processing = 1;
-    while (!task_queue_is_empty(tasks)) {
-      task t = task_queue_dequeue(tasks);
-      // Unlock while the task is running to allow more work to be queued in
-      // parallel.
-      pthread_mutex_unlock(&tasks->mutex);
-      t.func(t.arg);
-      pthread_mutex_lock(&tasks->mutex);
-    }
-    tasks->processing = 0;
+  while (!task_queue_is_empty(tasks)) {
+    task t = task_queue_dequeue(tasks);
+    // Unlock while the task is running to allow more work to be queued in
+    // parallel.
+    pthread_mutex_unlock(&tasks->mutex);
+    t.func(t.arg);
+    pthread_mutex_lock(&tasks->mutex);
   }
   pthread_mutex_unlock(&tasks->mutex);
+  tasks->processing = 0;
 }
 
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
@@ -372,7 +371,8 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   pthread_mutex_unlock(&q->mutex);
 
-  if (tasks != NULL) {
+  if (tasks != NULL && !tasks->processing) {
+    // Found the task queue and it is not already being processed; process it.
     _emscripten_proxy_execute_task_queue(tasks);
   }
 

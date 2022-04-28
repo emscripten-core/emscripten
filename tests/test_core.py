@@ -8031,7 +8031,7 @@ Module['onRuntimeInitialized'] = function() {
   })
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
-      self.skipTest('TODO: fails stack check')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/16828')
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
     self.set_setting('MALLOC', 'emmalloc')
