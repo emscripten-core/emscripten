@@ -110,7 +110,7 @@ static task_queue* task_queue_create(pthread_t thread) {
     free(queue);
     return NULL;
   }
-  *queue = (task_queue){.notification = NO_NOTIFICATION,
+  *queue = (task_queue){.notification = NOTIFICATION_NONE,
                         .mutex = PTHREAD_MUTEX_INITIALIZER,
                         .thread = thread,
                         .processing = 0,
@@ -232,7 +232,7 @@ static void em_proxying_queue_free(em_proxying_queue* q) {
 // new notification.
 static int has_notification(em_proxying_queue* q) {
   for (int i = 0; i < q->size; i++) {
-    if (q->task_queues[i]->notification != NO_NOTIFICATION) {
+    if (q->task_queues[i]->notification != NOTIFICATION_NONE) {
       return 1;
     }
   }
@@ -405,8 +405,8 @@ int emscripten_proxy_async(em_proxying_queue* q,
   // work. In case it does not, the new notification will ensure the work is
   // still executed.
   notification_state previous =
-    atomic_exchange(&tasks->notification, PENDING_NOTIFICATION);
-  if (previous != PENDING_NOTIFICATION) {
+    atomic_exchange(&tasks->notification, NOTIFICATION_PENDING);
+  if (previous != NOTIFICATION_PENDING) {
     _emscripten_notify_task_queue(target_thread,
                                   pthread_self(),
                                   emscripten_main_browser_thread_id(),
