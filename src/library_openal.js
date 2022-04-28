@@ -3055,13 +3055,6 @@ var LibraryOpenAL = {
   alGetString__proxy: 'sync',
   alGetString__sig: 'ii',
   alGetString: function(param) {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      err('alGetString() called without a valid context');
-#endif
-      return 0;
-    }
-
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
     }
@@ -3104,7 +3097,13 @@ var LibraryOpenAL = {
       ret = ret.trim();
       break;
     default:
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      if (AL.currentCtx) {
+        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      } else {
+  #if OPENAL_DEBUG
+        err('alGetString() called without a valid context');
+  #endif
+      }
       return 0;
     }
 
