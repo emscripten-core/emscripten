@@ -2,10 +2,11 @@
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
+ *
+ * Helpers and tools for use at compile time by JavaScript library files.
+ *
+ * Tests live in tests/other/test_parseTools.js.
  */
-
-// Various tools for parsing LLVM. Utilities of various sorts, that are
-// specific to Emscripten (and hence not in utility.js).
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
