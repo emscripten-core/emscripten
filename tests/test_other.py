@@ -2616,8 +2616,8 @@ int f() {
     assert metadata['files'][1]['start'] == len('data1') and metadata['files'][1]['end'] == len('data1') + len('data2') and metadata['files'][1]['filename'] == '/subdir/data2.txt'
     assert metadata['remote_package_size'] == len('data1') + len('data2')
 
-    # can only assert the uuid format is correct, the uuid's value is expected to differ in between invocation
-    uuid.UUID(metadata['package_uuid'], version=4)
+    # package_uuid is only generated when --use-preload-cache
+    self.assertNotIn('package_uuid', metadata)
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'

@@ -706,7 +706,6 @@ def generate_js(data_target, data_files, metadata):
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
-    package_uuid = uuid.uuid4()
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
     remote_package_name = os.path.basename(package_name)
@@ -726,13 +725,14 @@ def generate_js(data_target, data_files, metadata):
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    metadata['package_uuid'] = str(package_uuid)
     ret += '''
-      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
-      var PACKAGE_UUID = metadata['package_uuid'];\n'''
+      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
 
     if options.use_preload_cache:
+      package_uuid = uuid.uuid4()
+      metadata['package_uuid'] = str(package_uuid)
       code += r'''
+        var PACKAGE_UUID = metadata['package_uuid'];
         var indexedDB;
         if (typeof window === 'object') {
           indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
