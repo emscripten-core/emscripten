@@ -4,7 +4,6 @@
 #include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <time.h>
 #include <unistd.h>
 
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
@@ -36,15 +35,18 @@ void __attribute__((noinline)) free(void* ptr) {
 
 #endif // SANITIZER
 
-_Atomic int started = 0;
 _Atomic int should_execute = 0;
 _Atomic int executed[2] = {};
+_Atomic int processed = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void register_processed(void) {
+  processed++;
+}
 
 void task(void* arg) { *(_Atomic int*)arg = 1; }
 
 void* execute_and_free_queue(void* arg) {
-  started = 1;
-
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
   }
@@ -55,26 +57,35 @@ void* execute_and_free_queue(void* arg) {
     em_proxying_queue_destroy(queues[i]);
   }
 
+  // Wrap the normal worker event listener so that we can determine when our
+  // proxying events have been received and handled.
+  EM_ASM({
+      var oldOnMessage = onmessage;
+      onmessage = (e) => {
+        oldOnMessage(e);
+        if (e.data.cmd == 'processProxyingQueue') {
+          _register_processed();
+        }
+      };
+    });
+
   // Exit with a live runtime so the queued work notification is received and we
-  // try to execute the queue again, even though it has been destroyed.
+  // try to execute the queue again, even though we already executed all its
+  // work and we are now just waiting for the notifications to be received so we
+  // can free it.
   emscripten_exit_with_live_runtime();
 }
 
 int main() {
+  emscripten_console_log("start");
   for (int i = 0; i < 2; i++) {
     queues[i] = em_proxying_queue_create();
     assert(queues[i]);
   }
 
-  // Create the worker.
+  // Create the worker and send it tasks.
   pthread_t worker;
   pthread_create(&worker, NULL, execute_and_free_queue, NULL);
-
-  // Wait for it to start.
-  while (!started) {
-  }
-
-  // Send the worker tasks and tell it to execute them.
   for (int i = 0; i < 2; i++) {
     emscripten_proxy_async(queues[i], worker, task, &executed[i]);
   }
@@ -84,10 +95,9 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait 50ms for the notification to be received.
-  struct timespec ts;
-  ts.tv_nsec = 50 * 1000 * 1000;
-  nanosleep(&ts, NULL);
+  // Wait for the notifications to be received.
+  while (processed < 2) {
+  }
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.
@@ -120,4 +130,6 @@ int main() {
   // The new queue should have been immediately freed.
   assert(queues_freed[3]);
 #endif // SANITIZER
+
+  emscripten_console_log("done");
 }
