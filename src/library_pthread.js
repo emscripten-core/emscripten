@@ -1046,7 +1046,7 @@ var LibraryPThread = {
 
   $executeNotifiedProxyingQueue: function(queue) {
     // Set the notification state to processing.
-    Atomics.store(HEAP32, queue >> 2, 1);
+    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('RECEIVED_NOTIFICATION') }}});
     // Only execute the queue if we have a live pthread runtime. We
     // implement pthread_self to return 0 if there is no live runtime.
     // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
@@ -1056,7 +1056,9 @@ var LibraryPThread = {
     }
     // Set the notification state to none as long as a new notification has not
     // been sent while we were processing.
-    Atomics.compareExchange(HEAP32, queue >> 2, 1, 0);
+    Atomics.compareExchange(HEAP32, queue >> 2,
+                            {{{ cDefine('RECEIVED_NOTIFICATION') }}},
+                            {{{ cDefine('NO_NOTIFICATION') }}});
   },
 
   _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],

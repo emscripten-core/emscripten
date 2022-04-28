@@ -56,5 +56,13 @@
                 "offset"
             ]
         }
+    },
+    {
+        "file": "proxying_notification_state.h",
+        "defines": [
+            "NO_NOTIFICATION",
+            "RECEIVED_NOTIFICATION",
+            "PENDING_NOTIFICATION"
+        ]
     }
 ]

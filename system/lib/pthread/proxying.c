@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "proxying_notification_state.h"
+
 #define TASK_QUEUE_INITIAL_CAPACITY 128
 
 // Proxy Queue Lifetime Management
@@ -62,12 +64,6 @@ typedef struct task {
   void (*func)(void*);
   void* arg;
 } task;
-
-typedef enum notification_state {
-  NO_NOTIFICATION,
-  RECEIVED_NOTIFICATION,
-  PENDING_NOTIFICATION,
-} notification_state;
 
 // A task queue for a particular thread. Organized into a linked list of
 // task_queues for different threads.
