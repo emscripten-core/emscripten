@@ -52,9 +52,9 @@ mergeInto(LibraryManager.library, {
     // pointer
     val = {{{ makeGetValue('ptr', '0', 'void*') }}};
     out('ptr: ' + val.toString(16))
-    assert(val == -0x12345678);
+    assert(val == 0xedcba988);
     val = {{{ makeGetValue('ptr', '0', 'i32*') }}};
     out('ptr: ' + val.toString(16))
-    assert(val == -0x12345678);
+    assert(val == 0xedcba988);
   }
 });

@@ -7,6 +7,6 @@ u16 legacy: a988
 i8: -78
 u8: 88
 u8 legacy: 88
-ptr: -12345678
-ptr: -12345678
+ptr: edcba988
+ptr: edcba988
 done
