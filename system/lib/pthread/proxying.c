@@ -70,12 +70,16 @@ typedef struct task {
 // A task queue for a particular thread. Organized into a linked list of
 // task_queues for different threads.
 typedef struct task_queue {
-  // The target thread for this task_queue.
+  // Protects all modifications to mutable `task_queue` state.
+  pthread_mutex_t mutex;
+  // The target thread for this task_queue. Immutable and accessible without
+  // acquiring the mutex.
   pthread_t thread;
-  // Recursion guard. TODO: We disallow recursive processing because that's what
-  // the old proxying API does, so it is safer to start with the same behavior.
-  // Experiment with relaxing this restriction once the old API uses these
-  // queues as well.
+  // Recursion guard. Only accessed on the target thread, so there's no need to
+  // hold the lock when accessing it. TODO: We disallow recursive processing
+  // because that's what the old proxying API does, so it is safer to start with
+  // the same behavior. Experiment with relaxing this restriction once the old
+  // API uses these queues as well.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
@@ -95,7 +99,8 @@ static task_queue* task_queue_create(pthread_t thread) {
     free(queue);
     return NULL;
   }
-  *queue = (task_queue){.thread = thread,
+  *queue = (task_queue){.mutex = PTHREAD_MUTEX_INITIALIZER,
+                        .thread = thread,
                         .processing = 0,
                         .tasks = tasks,
                         .capacity = TASK_QUEUE_INITIAL_CAPACITY,
@@ -105,6 +110,7 @@ static task_queue* task_queue_create(pthread_t thread) {
 }
 
 static void task_queue_destroy(task_queue* queue) {
+  pthread_mutex_destroy(&queue->mutex);
   free(queue->tasks);
   free(queue);
 }
@@ -119,7 +125,7 @@ static int task_queue_full(task_queue* queue) {
   return queue->head == (queue->tail + 1) % queue->capacity;
 }
 
-// // Not thread safe. Returns 1 on success and 0 on failure.
+// Not thread safe. Returns 1 on success and 0 on failure.
 static int task_queue_grow(task_queue* queue) {
   // Allocate a larger task queue.
   int new_capacity = queue->capacity * 2;
@@ -199,7 +205,7 @@ em_proxying_queue* emscripten_proxy_get_system_queue(void) {
 }
 
 // The head of the zombie list. Its mutex protects access to the list and its
-// other fields are not used..
+// other fields are not used.
 static em_proxying_queue zombie_list_head = {.zombie_prev = &zombie_list_head,
                                              .zombie_next = &zombie_list_head,
                                              .mutex =
@@ -330,24 +336,24 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_tasks_for_thread(q, pthread_self());
-  if (tasks == NULL || tasks->processing) {
-    // No tasks for this thread or they are already being processed.
-    goto end;
-  }
-  // Found the task queue; process the tasks.
-  tasks->processing = 1;
-  while (!task_queue_is_empty(tasks)) {
-    task t = task_queue_dequeue(tasks);
-    // Unlock while the task is running to allow more work to be queued in
-    // parallel.
-    pthread_mutex_unlock(&q->mutex);
-    t.func(t.arg);
-    pthread_mutex_lock(&q->mutex);
-  }
-  tasks->processing = 0;
-
-end:
   pthread_mutex_unlock(&q->mutex);
+
+  if (tasks != NULL && !tasks->processing) {
+    // Found the task queue and it is not already being processed; process it.
+    tasks->processing = 1;
+    pthread_mutex_lock(&tasks->mutex);
+    while (!task_queue_is_empty(tasks)) {
+      task t = task_queue_dequeue(tasks);
+      // Unlock while the task is running to allow more work to be queued in
+      // parallel.
+      pthread_mutex_unlock(&tasks->mutex);
+      t.func(t.arg);
+      pthread_mutex_lock(&tasks->mutex);
+    }
+    pthread_mutex_unlock(&tasks->mutex);
+    tasks->processing = 0;
+  }
+
   if (is_system_queue) {
     executing_system_queue = 0;
   }
@@ -360,14 +366,17 @@ int emscripten_proxy_async(em_proxying_queue* q,
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
-  if (tasks == NULL) {
-    goto failed;
-  }
-  int empty = task_queue_is_empty(tasks);
-  if (!task_queue_enqueue(tasks, (task){func, arg})) {
-    goto failed;
-  }
   pthread_mutex_unlock(&q->mutex);
+  if (tasks == NULL) {
+    return 0;
+  }
+  pthread_mutex_lock(&tasks->mutex);
+  int empty = task_queue_is_empty(tasks);
+  int enqueued = task_queue_enqueue(tasks, (task){func, arg});
+  pthread_mutex_unlock(&tasks->mutex);
+  if (!enqueued) {
+    return 0;
+  }
   // If the queue was previously empty, notify the target thread to process it.
   // Otherwise, the target thread was already notified when the existing work
   // was enqueued so we don't need to notify it again.
@@ -377,10 +386,6 @@ int emscripten_proxy_async(em_proxying_queue* q,
       target_thread, pthread_self(), emscripten_main_browser_thread_id(), q);
   }
   return 1;
-
-failed:
-  pthread_mutex_unlock(&q->mutex);
-  return 0;
 }
 
 struct em_proxying_ctx {
