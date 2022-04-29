@@ -789,11 +789,12 @@ f.close()
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
     self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
-  def test_cmake_find_sdl2(self):
-    os.mkdir('build')
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_sdl2')], cwd='build')
-    self.run_process(['cmake', '--build', 'build'])
-    self.assertContained('SDL version: 2.0.', self.run_js('build/sdl2.js'))
+  def test_cmake_find_modules(self):
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')])
+    self.run_process(['cmake', '--build', '.'])
+    output = self.run_js('test_prog.js')
+    self.assertContained('AL_VERSION: 1.1', output)
+    self.assertContained('SDL version: 2.0.', output)
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
