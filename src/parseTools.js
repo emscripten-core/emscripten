@@ -685,14 +685,6 @@ function getHeapForType(type) {
   assert(false, 'bad heap type: ' + type);
 }
 
-// Takes a pair of return values, stashes one in tempRet0 and returns the other.
-// Should probably be renamed to `makeReturn64` but keeping this old name in
-// case external JS library code uses this name.
-function makeStructuralReturn(values) {
-  assert(values.length == 2);
-  return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
-}
-
 function makeThrow(what) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
     what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
