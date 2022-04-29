@@ -44,7 +44,12 @@ using oflags_t = uint32_t;
 // to implement the mapping from `File` objects to their underlying files.
 class File : public std::enable_shared_from_this<File> {
 public:
-  enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
+  enum FileKind {
+    UnknownKind = 0,
+    DataFileKind = 1,
+    DirectoryKind = 2,
+    SymlinkKind = 3
+  };
 
   const FileKind kind;
 

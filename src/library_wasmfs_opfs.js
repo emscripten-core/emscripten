@@ -134,8 +134,9 @@ mergeInto(LibraryManager.library, {
     for await (const [name, child] of dirHandle.entries()) {
       withStackSave(() => {
         let namePtr = allocateUTF8OnStack(name);
-        // TODO: Figure out how to use `cDefine` here
-        let type = child.kind == "file" ? 1 : 2;
+        let type = child.kind == "file" ?
+            {{{ cDefine('File::DataFileKind') }}} :
+            {{{ cDefine('File::DirectoryKind') }}};
         __wasmfs_opfs_record_entry(entries, namePtr, type)
       });
     }
