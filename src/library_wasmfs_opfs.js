@@ -10,6 +10,7 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+      assert(this.allocated[i] !== undefined);
       return this.allocated[i];
     }
   },
@@ -18,6 +19,7 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+      assert(this.allocated[i] !== undefined);
       return this.allocated[i];
     }
   },
@@ -26,6 +28,7 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+      assert(this.allocated[i] !== undefined);
       return this.allocated[i];
     }
   },
@@ -69,7 +72,6 @@ mergeInto(LibraryManager.library, {
                                      '$wasmfsOPFSFiles'],
   $wasmfsOPFSGetOrCreateFile: async function(parent, name, create) {
     let parentHandle = wasmfsOPFSDirectories.get(parent);
-    assert(parentHandle !== undefined);
     let fileHandle;
     try {
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
@@ -95,7 +97,6 @@ mergeInto(LibraryManager.library, {
                                     '$wasmfsOPFSDirectories'],
   $wasmfsOPFSGetOrCreateDir: async function(parent, name, create) {
     let parentHandle = wasmfsOPFSDirectories.get(parent);
-    assert(parentHandle !== undefined);
     let childHandle;
     try {
       childHandle =
@@ -131,7 +132,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_get_entries__deps: [],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
     let dirHandle = wasmfsOPFSDirectories.get(dirID);
-    for await (const [name, child] of dirHandle.entries()) {
+    for await (let [name, child] of dirHandle.entries()) {
       withStackSave(() => {
         let namePtr = allocateUTF8OnStack(name);
         let type = child.kind == "file" ?
