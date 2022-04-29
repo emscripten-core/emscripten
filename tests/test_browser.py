@@ -5296,7 +5296,7 @@ window.close = function() {
 
   @requires_threads
   def test_wasmfs_opfs(self):
-    trest = test_file('wasmfs/wasmfs_opfs.c')
+    test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
