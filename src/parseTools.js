@@ -660,7 +660,8 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
-    type = POINTER_TYPE;
+    // TODO(sbc): Make POINTER_TYPE u32/u64 rather than i32/i64
+    type = 'u' + POINTER_TYPE.slice(1);
   }
   if (WASM_BIGINT) {
     switch (type) {
