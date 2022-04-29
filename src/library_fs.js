@@ -990,7 +990,7 @@ FS.staticInit();` +
         timestamp: Math.max(atime, mtime)
       });
     },
-    open: (path, flags, mode, fd_start, fd_end) => {
+    open: (path, flags, mode) => {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
@@ -1070,7 +1070,7 @@ FS.staticInit();` +
         // used by the file family libc calls (fopen, fwrite, ferror, etc.)
         ungotten: [],
         error: false
-      }, fd_start, fd_end);
+      });
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
