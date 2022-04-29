@@ -401,6 +401,11 @@ var LibraryWebGPU = {
       'uint16',
       'uint32',
     ],
+    LoadOp: [
+      undefined,
+      'clear',
+      'load',
+    ],
     PipelineStatisticName: [
       'vertex-shader-invocations',
       'clipper-invocations',
