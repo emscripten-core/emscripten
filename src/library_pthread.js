@@ -1045,22 +1045,24 @@ var LibraryPThread = {
   },
 
   $executeNotifiedProxyingQueue: function(queue) {
-    try {
-      // Only execute the queue if we have a live pthread runtime. We
-      // implement pthread_self to return 0 if there is no live runtime.
-      // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
-      //       `runtimeExited` is correctly unset on workers.
-      if (_pthread_self()) {
-        _emscripten_proxy_execute_queue(queue);
-      }
-    } finally {
-      // Always decrement the ref count.
-      Atomics.sub(HEAP32, queue >> 2, 1);
+    // Set the notification state to processing.
+    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
+    // Only execute the queue if we have a live pthread runtime. We
+    // implement pthread_self to return 0 if there is no live runtime.
+    // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+    //       `runtimeExited` is correctly unset on workers.
+    if (_pthread_self()) {
+      __emscripten_proxy_execute_task_queue(queue);
     }
+    // Set the notification state to none as long as a new notification has not
+    // been sent while we were processing.
+    Atomics.compareExchange(HEAP32, queue >> 2,
+                            {{{ cDefine('NOTIFICATION_RECEIVED') }}},
+                            {{{ cDefine('NOTIFICATION_NONE') }}});
   },
 
-  _emscripten_notify_proxying_queue__deps: ['$executeNotifiedProxyingQueue'],
-  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+  _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
+  _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));
     } else if (ENVIRONMENT_IS_PTHREAD) {
