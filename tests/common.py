@@ -245,6 +245,27 @@ def also_with_minimal_runtime(f):
   return metafunc
 
 
+def also_with_wasm_bigint(f):
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
+      if self.get_setting('WASM_BIGINT') is not None:
+        self.skipTest('redundant in bigint test config')
+      self.set_setting('WASM_BIGINT')
+      self.require_node()
+      self.node_args.append('--experimental-wasm-bigint')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
+  return metafunc
+
+
 def ensure_dir(dirname):
   dirname = Path(dirname)
   dirname.mkdir(parents=True, exist_ok=True)
