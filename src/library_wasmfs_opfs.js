@@ -5,6 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
+  // TODO: Generate these ID pools from a common utility.
   $wasmfsOPFSDirectories: {
     allocated: [],
     free: [],
