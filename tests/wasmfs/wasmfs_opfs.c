@@ -12,25 +12,39 @@
 #include <emscripten/console.h>
 #include <emscripten/wasmfs.h>
 
+// Define WASMFS_SETUP then WASMFS_RESUME to run the test as two separate
+// programs to test persistence. Alternatively, define neither and run the full
+// test as a single program.
+
 int main(int argc, char* argv[]) {
+  int err, fd;
+  const char* msg = "Hello, OPFS!";
+
   emscripten_console_log("starting main");
 
   backend_t opfs = wasmfs_create_opfs_backend();
   emscripten_console_log("created OPFS backend");
 
-  int err = wasmfs_create_directory("/opfs", 0777, opfs);
+  err = wasmfs_create_directory("/opfs", 0777, opfs);
   assert(err == 0);
   emscripten_console_log("mounted OPFS root directory");
+
+#ifdef WASMFS_RESUME
+
+  fd = open("/opfs/working/foo.txt", O_RDWR);
+  assert(fd > 0);
+  emscripten_console_log("opened existing OPFS file");
+
+#else // !WASMFS_RESUME
 
   err = mkdir("/opfs/working", 0777);
   assert(err == 0);
   emscripten_console_log("created OPFS directory");
 
-  int fd = open("/opfs/working/foo.txt", O_RDWR | O_CREAT | O_EXCL, 0777);
+  fd = open("/opfs/working/foo.txt", O_RDWR | O_CREAT | O_EXCL, 0777);
   assert(fd > 0);
   emscripten_console_log("created OPFS file");
 
-  const char* msg = "Hello, OPFS!";
   int nwritten = write(fd, msg, strlen(msg));
   assert(nwritten == strlen(msg));
   emscripten_console_logf("wrote message: %s (%d)", msg, nwritten);
@@ -38,6 +52,8 @@ int main(int argc, char* argv[]) {
   int off = lseek(fd, 0, SEEK_SET);
   assert(off == 0);
   emscripten_console_log("seeked");
+
+#endif // !WASMFS_RESUME
 
   char buf[100] = {};
   int nread = read(fd, buf, 100);
@@ -53,6 +69,8 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
   assert(stat.st_size == strlen(msg));
   emscripten_console_log("statted");
+
+#ifndef WASMFS_SETUP
 
   err = ftruncate(fd, 100);
   assert(err == 0);
@@ -116,4 +134,6 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("removed OPFS directory");
 
   emscripten_console_log("done");
+
+#endif // !WASMFS_SETUP
 }

@@ -5296,8 +5296,10 @@ window.close = function() {
 
   @requires_threads
   def test_wasmfs_opfs(self):
-    self.btest_exit(test_file('wasmfs/wasmfs_opfs.c'),
-                    args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD'])
+    trest = test_file('wasmfs/wasmfs_opfs.c')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
+    self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
+    self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
