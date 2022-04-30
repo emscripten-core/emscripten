@@ -432,6 +432,7 @@ function exportRuntime() {
     'callMain',
     'abort',
     'keepRuntimeAlive',
+    'wasmMemory',
   ];
 
   if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
@@ -479,27 +480,13 @@ function exportRuntime() {
       'lengthBytesUTF32',
       'allocateUTF8',
       'allocateUTF8OnStack',
+      'ExitStatus',
     ]);
   }
 
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-  }
-
-  if (USE_PTHREADS) {
-    // In pthreads mode, the following functions always need to be exported to
-    // Module for closure compiler, and also for MODULARIZE (so worker.js can
-    // access them).
-    const threadExports = ['PThread', 'wasmMemory'];
-    if (!MINIMAL_RUNTIME) {
-      threadExports.push('ExitStatus');
-    }
-
-    threadExports.forEach((x) => {
-      EXPORTED_RUNTIME_METHODS_SET.add(x);
-      runtimeElements.push(x);
-    });
   }
 
   if (SUPPORT_BASE64_EMBEDDING) {
