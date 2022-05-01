@@ -404,10 +404,14 @@ var LibraryGLFW = {
     onKeydown: function(event) {
       GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
 
-      // This logic comes directly from the sdl implementation. We cannot
-      // call preventDefault on all keydown events otherwise onKeyPress will
-      // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+      // Prevent default browser handling of various navigation keys, currently:
+      // Backspace, Tab, Arrow keys, PgUp, PgDn, Home, End, Insert, Delete.
+      if([8, 9, 32, 33, 34, 35, 36, 37, 38, 39, 40, 45, 46].includes(event.keyCode)) {
+
+        if(event.keyCode === 32) {
+          // Fake a char event for space key. ImGui and no doubt more need this.
+          getWasmTableEntry(GLFW.active.charFunc)(GLFW.active.id, event.keyCode);
+        }
         event.preventDefault();
       }
     },
