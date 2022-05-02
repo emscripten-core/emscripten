@@ -91,7 +91,7 @@
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
-    WHOLE_MAP_SIZE: -1, // indicate 32-bit uint max
+    WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
     AdapterType: {
       Unknown: 3,
     },
@@ -1815,7 +1815,7 @@ var LibraryWebGPU = {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     var mapped;
     try {
@@ -1842,7 +1842,7 @@ var LibraryWebGPU = {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
 #if ASSERTIONS
@@ -1887,7 +1887,7 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
