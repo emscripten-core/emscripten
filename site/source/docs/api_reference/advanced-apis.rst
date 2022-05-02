@@ -30,13 +30,19 @@ compiler.
 The options in **settings.js** are normally set as command line parameters to
 *emcc*::
 
-  emcc -s OPT=VALUE
+  emcc -sOPT=VALUE
 
 While it is possible to edit **settings.js** manually, this is *highly
 discouraged*. In general **settings.js** defines low-level options that should
 not be modified. Note also that the compiler changes some options depending on
 other settings. For example, ``ASSERTIONS`` is enabled by default, but disabled
 in optimized builds (``-O1+``).
+
+.. note::
+  For more information on what options can be used to configure Emscripten, read
+  ``src/settings.js`` or visit
+  `the emsettings page <https://emsettings.surma.technology>`_.
+
 
 preamble.js
 ===========

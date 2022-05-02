@@ -655,7 +655,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
+def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
@@ -913,7 +913,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
     logger.error('Closure compiler run failed:\n')
   elif len(proc.stderr.strip()) > 0:
     if settings.CLOSURE_WARNINGS == 'error':
-      logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
+      logger.error('Closure compiler completed with warnings and -sCLOSURE_WARNINGS=error enabled, aborting!\n')
     elif settings.CLOSURE_WARNINGS == 'warn':
       logger.warn('Closure compiler completed with warnings:\n')
 
@@ -946,7 +946,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if settings.CLOSURE_WARNINGS == 'error':
-      exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+      exit_with_error('closure compiler produced warnings and -sCLOSURE_WARNINGS=error enabled')
 
   return outfile
 
@@ -1405,8 +1405,8 @@ def map_to_js_libs(library_name):
   return (None, None)
 
 
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will have the same effect as
-# -s USE_SDL=2.
+# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
+# have the same effect as -sUSE_SDL=2.
 def map_and_apply_to_settings(library_name):
   # most libraries just work, because the -l name matches the name of the
   # library we build. however, if a library has variations, which cause us to
@@ -1484,21 +1484,6 @@ binaryen_kept_debug_info = False
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and \
-     (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
-    # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we use source maps (which are
-    # implemented separately from dwarf).
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    cmd += ['--strip-dwarf']
   cmd += args
   if infile:
     cmd += [infile]
@@ -1511,7 +1496,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       # legalization. show a clear error for those (as the flags the user passed
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
+        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 0:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
@@ -1534,8 +1519,22 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(*args, **kwargs):
-  return run_binaryen_command('wasm-opt', *args, **kwargs)
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+  if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
+    # remove any dwarf debug info sections, if the debug level is <3, as
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
+    # note that we add this pass first, so that it doesn't interfere with
+    # the final set of passes (which may generate stack IR, and nothing
+    # should be run after that)
+    # TODO: if lld can strip dwarf then we don't need this. atm though it can
+    #       only strip all debug info or none, which includes the name section
+    #       which we may need
+    # TODO: once fastcomp is gone, either remove source maps entirely, or
+    #       support them by emitting a source map at the end from the dwarf,
+    #       and use llvm-objcopy to remove that final dwarf
+    args.insert(0, '--strip-dwarf')
+  return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
 save_intermediate_counter = 0

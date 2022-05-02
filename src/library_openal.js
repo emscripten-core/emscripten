@@ -3055,13 +3055,6 @@ var LibraryOpenAL = {
   alGetString__proxy: 'sync',
   alGetString__sig: 'ii',
   alGetString: function(param) {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      err('alGetString() called without a valid context');
-#endif
-      return 0;
-    }
-
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
     }
@@ -3104,7 +3097,13 @@ var LibraryOpenAL = {
       ret = ret.trim();
       break;
     default:
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      if (AL.currentCtx) {
+        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      } else {
+  #if OPENAL_DEBUG
+        err('alGetString() called without a valid context');
+  #endif
+      }
       return 0;
     }
 
@@ -4294,7 +4293,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1012 /* AL_PLAYING */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1012 /* AL_PLAYING */);
     }
   },
 
@@ -4344,7 +4344,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1014 /* AL_STOPPED */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
     }
   },
 
@@ -4397,7 +4398,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1011 /* AL_INITIAL */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1011 /* AL_INITIAL */);
     }
   },
 
@@ -4447,7 +4449,8 @@ var LibraryOpenAL = {
     }
 
     for (var i = 0; i < count; ++i) {
-      AL.setSourceState({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, 0x1013 /* AL_PAUSED */);
+      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1013 /* AL_PAUSED */);
     }
   },
 

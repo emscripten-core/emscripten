@@ -400,7 +400,9 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function(){};
+        FS.FSStream = /** @constructor */ function() {
+          this.shared = { };
+        };
         FS.FSStream.prototype = {
           object: {
             get: function() { return this.node; },
@@ -414,7 +416,15 @@ FS.staticInit();` +
           },
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
-          }
+          },
+          flags: {
+            get: function() { return this.shared.flags; },
+            set: function(val) { this.shared.flags = val; },
+          },
+          position : {
+            get function() { return this.shared.position; },
+            set: function(val) { this.shared.position = val; },
+          },
         };
       }
       // clone it, so we can return an instance of FSStream
@@ -980,7 +990,7 @@ FS.staticInit();` +
         timestamp: Math.max(atime, mtime)
       });
     },
-    open: (path, flags, mode, fd_start, fd_end) => {
+    open: (path, flags, mode) => {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
@@ -1040,7 +1050,7 @@ FS.staticInit();` +
         }
       }
       // do truncation if necessary
-      if ((flags & {{{ cDefine('O_TRUNC')}}})) {
+      if ((flags & {{{ cDefine('O_TRUNC')}}}) && !created) {
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
@@ -1060,7 +1070,7 @@ FS.staticInit();` +
         // used by the file family libc calls (fopen, fwrite, ferror, etc.)
         ungotten: [],
         error: false
-      }, fd_start, fd_end);
+      });
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);

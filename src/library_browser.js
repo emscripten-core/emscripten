@@ -713,7 +713,7 @@ var LibraryBrowser = {
     setFullscreenCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
@@ -724,7 +724,7 @@ var LibraryBrowser = {
     setWindowedCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
@@ -777,36 +777,6 @@ var LibraryBrowser = {
         }
       }
     },
-  },
-
-  $funcWrappers: {},
-
-  $getFuncWrapper__deps: ['$funcWrappers', '$dynCall'],
-  $getFuncWrapper: function(func, sig) {
-    if (!func) return; // on null pointer, return undefined
-    assert(sig);
-    if (!funcWrappers[sig]) {
-      funcWrappers[sig] = {};
-    }
-    var sigCache = funcWrappers[sig];
-    if (!sigCache[func]) {
-      // optimize away arguments usage in common cases
-      if (sig.length === 1) {
-        sigCache[func] = function dynCall_wrapper() {
-          return dynCall(sig, func);
-        };
-      } else if (sig.length === 2) {
-        sigCache[func] = function dynCall_wrapper(arg) {
-          return dynCall(sig, func, [arg]);
-        };
-      } else {
-        // general case
-        sigCache[func] = function dynCall_wrapper() {
-          return dynCall(sig, func, Array.prototype.slice.call(arguments));
-        };
-      }
-    }
-    return sigCache[func];
   },
 
   emscripten_run_preload_plugins__deps: ['$PATH',

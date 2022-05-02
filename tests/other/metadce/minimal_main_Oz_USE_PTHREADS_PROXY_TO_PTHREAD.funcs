@@ -15,6 +15,7 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
 $_do_call
+$_emscripten_proxy_execute_task_queue
 $_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
@@ -38,12 +39,11 @@ $emscripten_async_run_in_main_thread
 $emscripten_futex_wait
 $emscripten_futex_wake
 $emscripten_main_thread_process_queued_calls
-$emscripten_proxy_execute_queue
 $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
 $emscripten_stack_set_limits
 $emscripten_tls_init
-$get_tasks_index_for_thread
+$get_tasks_for_thread
 $init_file_lock
 $init_mparams
 $main

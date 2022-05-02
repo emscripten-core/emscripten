@@ -43,4 +43,18 @@ addOnPostRun(function() {
   catch(e) {
     out(e);
   }
+  out("wasmTableMirror");
+  if (typeof wasmTableMirror !== "undefined") {
+
+    try {
+      // Make sure wasmTableMirror matches wasmTable after wasmTable.get override
+      var testFunc = function() {};
+      var funcId = addFunction(testFunc, "v");
+      assert(wasmTableMirror[funcId] == wasmTable.get(funcId), "wasmTableMirror is out of sync with wasmTable!");
+    }
+    catch(e) {
+      out(e);
+    }
+  }
+  out("wasmTableMirror done");
 })

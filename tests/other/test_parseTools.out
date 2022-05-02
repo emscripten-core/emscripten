@@ -1,0 +1,12 @@
+i32: -12345678
+u32: edcba988
+u32 legacy: edcba988
+i16: -5678
+u16: a988
+u16 legacy: a988
+i8: -78
+u8: 88
+u8 legacy: 88
+ptr: edcba988
+ptr: edcba988
+done

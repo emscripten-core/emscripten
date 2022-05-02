@@ -183,27 +183,79 @@ var WasiLibrary = {
     return 0;
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  $doReadv__docs: '/** @param {number=} offset */',
+  $doReadv: function(stream, iov, iovcnt, offset) {
+    var ret = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+      iov += {{{ C_STRUCTS.iovec.__size__ }}};
+      var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      if (curr < 0) return -1;
+      ret += curr;
+      if (curr < len) break; // nothing more to read
+    }
+    return ret;
+  },
+  $doWritev__docs: '/** @param {number=} offset */',
+  $doWritev: function(stream, iov, iovcnt, offset) {
+    var ret = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+      iov += {{{ C_STRUCTS.iovec.__size__ }}};
+      var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      if (curr < 0) return -1;
+      ret += curr;
+    }
+    return ret;
+  },
+#else
+  // MEMFS filesystem disabled lite handling of stdout and stderr:
+  $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
+  $printCharBuffers__internal: true,
+  $printChar__internal: true,
+  $printChar__deps: ['$printCharBuffers'],
+  $printChar: function(stream, curr) {
+    var buffer = printCharBuffers[stream];
+#if ASSERTIONS
+    assert(buffer);
+#endif
+    if (curr === 0 || curr === {{{ charCode('\n') }}}) {
+      (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+      buffer.length = 0;
+    } else {
+      buffer.push(curr);
+    }
+  },
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_write__deps: ['$doWritev'],
+#elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
+  $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
 #if hasExportedFunction('___stdio_exit')
     ___stdio_exit();
 #endif
-    var buffers = SYSCALLS.buffers;
-    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
+    if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
+    if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
-  fd_write__deps: ['$flush_NO_FILESYSTEM'],
+  fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: function() {
     addAtExit('flush_NO_FILESYSTEM()');
   },
+#else
+  fd_write__deps: ['$printChar'],
 #endif
   fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
     {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
+    var num = doWritev(stream, iov, iovcnt);
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
@@ -212,7 +264,7 @@ var WasiLibrary = {
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
       for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
+        printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;
     }
@@ -221,15 +273,24 @@ var WasiLibrary = {
     return 0;
   },
 
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_pwrite__deps: ['$doWritev'],
+#endif
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
 #if ASSERTIONS
     assert(!offset_high, 'offsets over 2^32 not yet supported');
 #endif
-    var num = SYSCALLS.doWritev(stream, iov, iovcnt, offset_low);
+    var num = doWritev(stream, iov, iovcnt, offset_low);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_pwrite called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif
   },
 
   fd_close__sig: 'ii',
@@ -237,42 +298,60 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
-#else
-#if PROXY_POSIX_SOCKETS
+    return 0;
+#elif PROXY_POSIX_SOCKETS
     // close() is a tricky function because it can be used to close both regular file descriptors
     // and POSIX network socket handles, hence an implementation would need to track for each
     // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
     // option, use shutdown() to close a socket, and this function should behave like a no-op.
     warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-#endif
     return 0;
+#elif ASSERTIONS
+    abort('fd_close called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
   fd_read__sig: 'iiiii',
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_read__deps: ['$doReadv'],
+#endif
   fd_read: function(fd, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var num = SYSCALLS.doReadv(stream, iov, iovcnt);
+    var num = doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_pread__deps: ['$doReadv'],
+#endif
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
 #if ASSERTIONS
     assert(!offset_high, 'offsets over 2^32 not yet supported');
 #endif
     var stream = SYSCALLS.getStreamFromFD(fd)
-    var num = SYSCALLS.doReadv(stream, iov, iovcnt, offset_low);
+    var num = doReadv(stream, iov, iovcnt, offset_low);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
+#elif ASSERTIONS
+    abort('fd_pread called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif
   },
 
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
@@ -282,14 +361,18 @@ var WasiLibrary = {
     var DOUBLE_LIMIT = 0x20000000000000; // 2^53
     // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
     if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
+      return {{{ cDefine('EOVERFLOW') }}};
     }
 
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
     return 0;
+#else
+    return {{{ cDefine('ESPIPE') }}};
+#endif
   },
+
   fd_fdstat_get__sig: 'iii',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -313,6 +396,7 @@ var WasiLibrary = {
 
   fd_sync__sig: 'ii',
   fd_sync: function(fd) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
@@ -336,6 +420,11 @@ var WasiLibrary = {
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // ASYNCIFY
+#elif ASSERTIONS
+    abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
+#else
+    return {{{ cDefine('ENOSYS') }}};
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };
 

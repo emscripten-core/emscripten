@@ -14,19 +14,20 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <syscall_arch.h>
 
 #include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include "paths.h"
 #include "pipe_backend.h"
+#include "streams.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -44,7 +45,7 @@ extern "C" {
 
 using namespace wasmfs;
 
-int __syscall_dup3(long oldfd, long newfd, long flags) {
+int __syscall_dup3(int oldfd, int newfd, int flags) {
   if (flags & !O_CLOEXEC) {
     // TODO: Test this case.
     return -EINVAL;
@@ -68,7 +69,7 @@ int __syscall_dup3(long oldfd, long newfd, long flags) {
   return newfd;
 }
 
-int __syscall_dup(long fd) {
+int __syscall_dup(int fd) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Check that an open file exists corresponding to the given fd.
@@ -105,6 +106,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   // TODO: Check open file access mode for write permissions.
 
   auto lockedOpenFile = openFile->locked();
+  assert(lockedOpenFile.getFile());
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -284,6 +286,11 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+int __syscall_fdatasync(int fd) {
+  // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
+  return __wasi_fd_sync(fd);
+}
+
 backend_t wasmfs_get_backend_by_fd(int fd) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
@@ -303,34 +310,19 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
-int __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
+static
+
+int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  std::shared_ptr<File> file;
-  if ((flags & AT_EMPTY_PATH) && strcmp((char*)path, "") == 0) {
-    // Don't parse a path, just use `dirfd` directly.
-    if (dirfd == AT_FDCWD) {
-      // TODO: Test this case.
-      file = wasmFS.getCWD();
-    } else {
-      auto openFile = wasmFS.getFileTable().locked().getEntry(dirfd);
-      if (!openFile) {
-        return -EBADF;
-      }
-      file = openFile->locked().getFile();
-    }
-  } else {
-    // Parse the relative path.
-    // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-    auto parsed = path::parseFile((char*)path, dirfd);
-    if (auto err = parsed.getError()) {
-      return err;
-    }
-    file = parsed.getFile();
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
   }
+  auto file = parsed.getFile();
 
   // Extract the information from the file.
   auto lockedFile = file->locked();
@@ -362,22 +354,28 @@ int __syscall_fstatat64(long dirfd, long path, long buf, long flags) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-int __syscall_stat64(long path, long buf) {
+int __syscall_stat64(intptr_t path, intptr_t buf) {
   return __syscall_fstatat64(AT_FDCWD, path, buf, 0);
 }
 
-int __syscall_lstat64(long path, long buf) {
+int __syscall_lstat64(intptr_t path, intptr_t buf) {
   return __syscall_fstatat64(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-int __syscall_fstat64(long fd, long buf) {
-  return __syscall_fstatat64(fd, (long)"", buf, AT_EMPTY_PATH);
+int __syscall_fstat64(int fd, intptr_t buf) {
+  return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
 }
 
+// When calling doOpen(), we may request an FD be returned, or we may not need
+// that return value (in which case no FD need be allocated, and we return 0 on
+// success).
+enum class OpenReturnMode { FD, Nothing };
+
 static __wasi_fd_t doOpen(path::ParsedParent parsed,
-                          long flags,
+                          int flags,
                           mode_t mode,
-                          backend_t backend = NullBackend) {
+                          backend_t backend = NullBackend,
+                          OpenReturnMode returnMode = OpenReturnMode::FD) {
   int accessMode = (flags & O_ACCMODE);
   if (accessMode != O_WRONLY && accessMode != O_RDONLY &&
       accessMode != O_RDWR) {
@@ -424,14 +422,24 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       }
 
       // TODO: Check write permissions on the parent directory.
-      // TODO: Forbid mounting new backends except under the root backend.
+      std::shared_ptr<File> created;
+      if (backend == parent->getBackend()) {
+        created = lockedParent.insertDataFile(std::string(childName), mode);
+      } else {
+        created = backend->createFile(mode);
+        bool mounted = lockedParent.mountChild(std::string(childName), created);
+        assert(mounted);
+      }
       // TODO: Check that the insert actually succeeds.
-      auto created = backend->createFile(mode);
-      lockedParent.insertChild(std::string(childName), created);
+      if (returnMode == OpenReturnMode::Nothing) {
+        return 0;
+      }
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
+
+  // TODO: Return EISDIR if child is a directory and write access is requested.
 
   // Check user permissions.
   auto fileMode = child->locked().getMode();
@@ -463,11 +471,12 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent((char*)pathname), O_CREAT, mode, backend);
+  return doOpen(
+    path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_openat(long dirfd, long path, long flags, ...) {
+int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   mode_t mode = 0;
   va_list v1;
   va_start(v1, flags);
@@ -477,8 +486,23 @@ int __syscall_openat(long dirfd, long path, long flags, ...) {
   return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
-static long
-doMkdir(path::ParsedParent parsed, long mode, backend_t backend = NullBackend) {
+int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+  assert(dev == 0); // TODO: support special devices
+  if (mode & S_IFDIR) {
+    return -EINVAL;
+  }
+  if (mode & S_IFIFO) {
+    return -EPERM;
+  }
+  return doOpen(path::parseParent((char*)path, dirfd),
+                O_CREAT | O_EXCL,
+                mode,
+                NullBackend,
+                OpenReturnMode::Nothing);
+}
+
+static int
+doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -500,6 +524,10 @@ doMkdir(path::ParsedParent parsed, long mode, backend_t backend = NullBackend) {
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   mode &= S_IRWXUGO | S_ISVTX;
 
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
   // By default, the backend that the directory is created in is the same as
   // the parent directory. However, if a backend is passed as a parameter,
   // then that backend is used.
@@ -507,11 +535,16 @@ doMkdir(path::ParsedParent parsed, long mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  // TODO: Check write permissions in the parent.
-  // TODO: Forbid mounting new backends except under the root backend.
+  std::shared_ptr<File> created;
+  if (backend == parent->getBackend()) {
+    created = lockedParent.insertDirectory(childName, mode);
+  } else {
+    created = backend->createDirectory(mode);
+    bool mounted = lockedParent.mountChild(childName, created);
+    assert(mounted);
+  }
+
   // TODO: Check that the insertion is successful.
-  auto created = backend->createDirectory(mode);
-  lockedParent.insertChild(childName, created);
 
   // Update the times.
   auto lockedFile = created->locked();
@@ -525,19 +558,15 @@ doMkdir(path::ParsedParent parsed, long mode, backend_t backend = NullBackend) {
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char* path, long mode, backend_t backend) {
-  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), long>,
+int wasmfs_create_directory(char* path, int mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
   return doMkdir(path::parseParent(path), mode, backend);
 }
 
 // TODO: Test this.
-int __syscall_mkdirat(long dirfd, long path, long mode) {
+int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
-}
-
-int __syscall_mkdir(long path, long mode) {
-  return doMkdir(path::parseParent((char*)path), mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
@@ -580,7 +609,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
-long doChdir(std::shared_ptr<File>& file) {
+int doChdir(std::shared_ptr<File>& file) {
   auto dir = file->dynCast<Directory>();
   if (!dir) {
     return -ENOTDIR;
@@ -589,7 +618,7 @@ long doChdir(std::shared_ptr<File>& file) {
   return 0;
 }
 
-int __syscall_chdir(long path) {
+int __syscall_chdir(intptr_t path) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -597,7 +626,7 @@ int __syscall_chdir(long path) {
   return doChdir(parsed.getFile());
 }
 
-int __syscall_fchdir(long fd) {
+int __syscall_fchdir(int fd) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -605,7 +634,7 @@ int __syscall_fchdir(long fd) {
   return doChdir(openFile->locked().getFile());
 }
 
-int __syscall_getcwd(long buf, long size) {
+int __syscall_getcwd(intptr_t buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -674,7 +703,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_unlinkat(long dirfd, long path, long flags) {
+int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -736,11 +765,11 @@ int __syscall_unlinkat(long dirfd, long path, long flags) {
   return 0;
 }
 
-int __syscall_rmdir(long path) {
+int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-int __syscall_getdents64(long fd, long dirp, long count) {
+int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   dirent* result = (dirent*)dirp;
 
   // Check if the result buffer is too small.
@@ -813,10 +842,10 @@ int __syscall_getdents64(long fd, long dirp, long count) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_renameat(long olddirfd,
-                       long oldpath,
-                       long newdirfd,
-                       long newpath) {
+int __syscall_renameat(int olddirfd,
+                       intptr_t oldpath,
+                       int newdirfd,
+                       intptr_t newpath) {
   // Rename is the only syscall that needs to (or is allowed to) acquire locks
   // on two directories at once. It requires locks on both the old and new
   // parent directories to ensure that the moved file can be atomically removed
@@ -886,7 +915,7 @@ int __syscall_renameat(long olddirfd,
     }
   }
 
-  // The new file must be removed if it already exists.
+  // The new file will be removed if it already exists.
   if (newFile) {
     if (auto newDir = newFile->dynCast<Directory>()) {
       // Cannot overwrite a directory with a non-directory.
@@ -904,32 +933,21 @@ int __syscall_renameat(long olddirfd,
         return -ENOTDIR;
       }
     }
-
-    // Remove the overwritten file.
-    if (!lockedNewParent.removeChild(newFileName)) {
-      return -EPERM;
-    }
   }
 
-  // Unlink the oldpath and add the oldpath to the new parent dir.
-  if (!lockedOldParent.removeChild(oldFileName)) {
-    // TODO: Put the file that was going to be overwritten back!
+  // Perform the move.
+  if (!lockedNewParent.insertMove(newFileName, oldFile)) {
     return -EPERM;
   }
-  if (!lockedNewParent.insertChild(newFileName, oldFile)) {
-    // TODO: Put all the removed files back!
-    return -EPERM;
-  }
-
   return 0;
 }
 
-int __syscall_rename(long oldpath, long newpath) {
+int __syscall_rename(intptr_t oldpath, intptr_t newpath) {
   return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_symlinkat(long target, long newdirfd, long linkpath) {
+int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   auto parsed = path::parseParent((char*)linkpath, newdirfd);
   if (auto err = parsed.getError()) {
     return err;
@@ -943,22 +961,18 @@ int __syscall_symlinkat(long target, long newdirfd, long linkpath) {
   if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
-
-  auto backend = parent->getBackend();
-  auto created = backend->createSymlink((char*)target);
-  if (!lockedParent.insertChild(childName, created)) {
+  if (!lockedParent.insertSymlink(childName, (char*)target)) {
     return -EPERM;
   }
-
   return 0;
 }
 
-int __syscall_symlink(long target, long linkpath) {
+int __syscall_symlink(intptr_t target, intptr_t linkpath) {
   return __syscall_symlinkat(target, AT_FDCWD, linkpath);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
+int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
   auto parsed = path::parseFile((char*)path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
@@ -974,7 +988,7 @@ int __syscall_readlinkat(long dirfd, long path, long buf, long bufsize) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_utimensat(long dirFD, long path_, long times_, long flags) {
+int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   const char* path = (const char*)path_;
   const struct timespec* times = (const struct timespec*)times_;
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
@@ -1008,7 +1022,7 @@ int __syscall_utimensat(long dirFD, long path_, long times_, long flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat(long dirfd, long path, long mode, ...) {
+int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   int flags = 0;
   va_list v1;
   va_start(v1, mode);
@@ -1028,12 +1042,33 @@ int __syscall_fchmodat(long dirfd, long path, long mode, ...) {
   return 0;
 }
 
-int __syscall_chmod(long path, long mode) {
+int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
+int __syscall_fchownat(
+  int dirfd, intptr_t path, int owner, int group, int flags) {
+  // Only accept valid flags.
+  if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
+    // TODO: Test this case.
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+
+  // Ignore the actual owner and group because we don't track those.
+  // TODO: Update metadata time stamp.
+  return 0;
+}
+
+int __syscall_fchown32(int fd, int owner, int group) {
+  return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
+}
+
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_faccessat(long dirfd, long path, long amode, long flags) {
+int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
@@ -1066,7 +1101,7 @@ int __syscall_faccessat(long dirfd, long path, long amode, long flags) {
   return 0;
 }
 
-static long doTruncate(std::shared_ptr<File>& file, off_t size) {
+static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
@@ -1089,7 +1124,7 @@ static long doTruncate(std::shared_ptr<File>& file, off_t size) {
   return 0;
 }
 
-int __syscall_truncate64(long path, uint64_t size) {
+int __syscall_truncate64(intptr_t path, uint64_t size) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1097,7 +1132,7 @@ int __syscall_truncate64(long path, uint64_t size) {
   return doTruncate(parsed.getFile(), size);
 }
 
-int __syscall_ftruncate64(long fd, uint64_t size) {
+int __syscall_ftruncate64(int fd, uint64_t size) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1112,7 +1147,49 @@ int __syscall_ftruncate64(long fd, uint64_t size) {
   return ret;
 }
 
-int __syscall_pipe(long fd) {
+static bool isTTY(std::shared_ptr<File>& file) {
+  // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
+  //       nothing else.
+  return file == StdinFile::getSingleton() ||
+         file == StdoutFile::getSingleton() ||
+         file == StderrFile::getSingleton();
+}
+
+int __syscall_ioctl(int fd, int request, ...) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!isTTY(openFile->locked().getFile())) {
+    return -ENOTTY;
+  }
+  // TODO: Full TTY support. For now this is limited, and matches the old FS.
+  switch (request) {
+    case TCGETA:
+    case TCGETS:
+    case TCSETA:
+    case TCSETAW:
+    case TCSETAF:
+    case TCSETS:
+    case TCSETSW:
+    case TCSETSF:
+    case TIOCGWINSZ:
+    case TIOCSWINSZ: {
+      // TTY operations that we do nothing for anyhow can just be ignored.
+      return -0;
+    }
+    case TIOCGPGRP:
+    case TIOCSPGRP: {
+      // TODO We should get/set the group number here.
+      return -EINVAL;
+    }
+    default: {
+      abort();
+    }
+  }
+}
+
+int __syscall_pipe(intptr_t fd) {
   auto* fds = (__wasi_fd_t*)fd;
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
@@ -1133,13 +1210,13 @@ int __syscall_pipe(long fd) {
 }
 
 // int poll(struct pollfd* fds, nfds_t nfds, int timeout);
-int __syscall_poll(long fds_, long nfds, long timeout) {
+int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   struct pollfd* fds = (struct pollfd*)fds_;
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
   // of nonzero such masks, which is our return value.
-  long nonzero = 0;
+  int nonzero = 0;
   for (nfds_t i = 0; i < nfds; i++) {
     auto* pollfd = &fds[i];
     auto fd = pollfd->fd;
@@ -1153,7 +1230,7 @@ int __syscall_poll(long fds_, long nfds, long timeout) {
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
       mask = 0;
-      auto flags = openFile->getFlags();
+      auto flags = openFile->locked().getFlags();
       auto readBit = pollfd->events & POLLOUT;
       if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
         mask |= readBit;
@@ -1181,6 +1258,208 @@ int __syscall_poll(long fds_, long nfds, long timeout) {
   //       to web limitations, which we should perhaps revisit (especially with
   //       pthreads and asyncify).
   return nonzero;
+}
+
+int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+  assert(mode == 0); // TODO, but other modes were never supported in the old FS
+
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  // TODO: support for symlinks.
+  if (!dataFile) {
+    return -ENODEV;
+  }
+
+  auto locked = dataFile->locked();
+  if (!(locked.getMode() & WASMFS_PERM_WRITE)) {
+    return -EBADF;
+  }
+
+  if (off < 0 || len <= 0) {
+    return -EINVAL;
+  }
+
+  // TODO: We silently do nothing if the stream does not support allocation, but
+  //       in principle we should return EOPNOTSUPP.
+  // TODO: We could only fill zeros for regions that were completely unused
+  //       before, which for a backend with sparse data storage could make a
+  //       difference. For that we'd need a new backend API.
+  auto newNeededSize = off + len;
+  if (newNeededSize > locked.getSize()) {
+    locked.setSize(newNeededSize);
+  }
+
+  return 0;
+}
+
+int __syscall_fcntl64(int fd, int cmd, ...) {
+  auto fileTable = wasmFS.getFileTable().locked();
+  auto openFile = fileTable.getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  switch (cmd) {
+    case F_DUPFD: {
+      int newfd;
+      va_list v1;
+      va_start(v1, cmd);
+      newfd = va_arg(v1, int);
+      va_end(v1);
+      if (newfd < 0) {
+        return -EINVAL;
+      }
+
+      // Find the first available fd at arg or after.
+      // TODO: Should we check for a limit on the max FD number, if we have one?
+      while (1) {
+        if (!fileTable.getEntry(newfd)) {
+          fileTable.setEntry(newfd, openFile);
+          return newfd;
+        }
+        newfd++;
+      }
+    }
+    case F_GETFD:
+    case F_SETFD:
+      // FD_CLOEXEC makes no sense for a single process.
+      return 0;
+    case F_GETFL:
+      return openFile->locked().getFlags();
+    case F_SETFL: {
+      int flags;
+      va_list v1;
+      va_start(v1, cmd);
+      flags = va_arg(v1, int);
+      va_end(v1);
+      // This syscall should ignore most flags.
+      flags = flags & ~(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL |
+                        O_NOCTTY | O_TRUNC);
+      // Also ignore this flag which musl always adds constantly, but does not
+      // matter for us.
+      flags = flags & ~O_LARGEFILE;
+      // On linux only a few flags can be modified, and we support only a subset
+      // of those. Error on anything else.
+      auto supportedFlags = flags & O_APPEND;
+      if (flags != supportedFlags) {
+        return -EINVAL;
+      }
+      openFile->locked().setFlags(flags);
+      return 0;
+    }
+    case F_GETLK: {
+      // If these constants differ then we'd need a case for both.
+      static_assert(F_GETLK == F_GETLK64);
+      flock* data;
+      va_list v1;
+      va_start(v1, cmd);
+      data = va_arg(v1, flock*);
+      va_end(v1);
+      // We're always unlocked for now, until we implement byte-range locks.
+      data->l_type = F_UNLCK;
+      return 0;
+    }
+    case F_SETLK:
+    case F_SETLKW: {
+      static_assert(F_SETLK == F_SETLK64);
+      static_assert(F_SETLKW == F_SETLKW64);
+      // Always error for now, until we implement byte-range locks.
+      return -EACCES;
+    }
+    case F_GETOWN_EX:
+    case F_SETOWN:
+      // These are for sockets. We don't have them fully implemented yet.
+      return -EINVAL;
+    case F_GETOWN:
+      // Work around what seems to be a musl bug, where they do not set errno
+      // in the caller. This has been an issue since the JS filesystem and had
+      // the same workaround there.
+      errno = EINVAL;
+      return -1;
+    default: {
+      // TODO: support any remaining cmds
+      return -EINVAL;
+    }
+  }
+}
+
+// Stubs (at least for now)
+
+int __syscall_accept4(int sockfd,
+                      intptr_t addr,
+                      intptr_t addrlen,
+                      int flags,
+                      int dummy1,
+                      int dummy2) {
+  return -ENOSYS;
+}
+
+int __syscall_bind(
+  int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_connect(
+  int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_socket(
+  int domain, int type, int protocol, int dummy1, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_listen(
+  int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4) {
+  return -ENOSYS;
+}
+
+int __syscall_getsockopt(int sockfd,
+                         int level,
+                         int optname,
+                         intptr_t optval,
+                         intptr_t optlen,
+                         int dummy) {
+  return -ENOSYS;
+}
+
+int __syscall_getsockname(
+  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_getpeername(
+  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
+}
+
+int __syscall_sendto(
+  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, size_t alen) {
+  return -ENOSYS;
+}
+
+int __syscall_sendmsg(
+  int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
+  return -ENOSYS;
+}
+
+int __syscall_recvfrom(int sockfd,
+                       intptr_t msg,
+                       size_t len,
+                       int flags,
+                       intptr_t addr,
+                       intptr_t alen) {
+  return -ENOSYS;
+}
+
+int __syscall_recvmsg(
+  int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
+  return -ENOSYS;
 }
 
 } // extern "C"

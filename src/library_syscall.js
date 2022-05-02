@@ -21,7 +21,7 @@ var SyscallsLibrary = {
 
     // shared utilities
     calculateAt: function(dirfd, path, allowEmpty) {
-      if (path[0] === '/') {
+      if (PATH.isAbs(path)) {
         return path;
       }
       // relative path
@@ -77,101 +77,7 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
-    doMkdir: function(path, mode) {
-      // remove a trailing slash, if one - /a/b/ has basename of '', but
-      // we want to create b in the context of this function
-      path = PATH.normalize(path);
-      if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
-      FS.mkdir(path, mode, 0);
-      return 0;
-    },
-    doMknod: function(path, mode, dev) {
-      // we don't want this in the JS API as it uses mknod to create all nodes.
-      switch (mode & {{{ cDefine('S_IFMT') }}}) {
-        case {{{ cDefine('S_IFREG') }}}:
-        case {{{ cDefine('S_IFCHR') }}}:
-        case {{{ cDefine('S_IFBLK') }}}:
-        case {{{ cDefine('S_IFIFO') }}}:
-        case {{{ cDefine('S_IFSOCK') }}}:
-          break;
-        default: return -{{{ cDefine('EINVAL') }}};
-      }
-      FS.mknod(path, mode, dev);
-      return 0;
-    },
-    doReadlink: function(path, buf, bufsize) {
-      if (bufsize <= 0) return -{{{ cDefine('EINVAL') }}};
-      var ret = FS.readlink(path);
-
-      var len = Math.min(bufsize, lengthBytesUTF8(ret));
-      var endChar = HEAP8[buf+len];
-      stringToUTF8(ret, buf, bufsize+1);
-      // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
-      // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
-      HEAP8[buf+len] = endChar;
-
-      return len;
-    },
-    doAccess: function(path, amode) {
-      if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
-        // need a valid mode
-        return -{{{ cDefine('EINVAL') }}};
-      }
-      var lookup = FS.lookupPath(path, { follow: true });
-      var node = lookup.node;
-      if (!node) {
-        return -{{{ cDefine('ENOENT') }}};
-      }
-      var perms = '';
-      if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
-      if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
-      if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
-      if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
-        return -{{{ cDefine('EACCES') }}};
-      }
-      return 0;
-    },
-    doReadv: function(stream, iov, iovcnt, offset) {
-      var ret = 0;
-      for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
-        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
-        iov += {{{ C_STRUCTS.iovec.__size__ }}};
-        var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
-        if (curr < 0) return -1;
-        ret += curr;
-        if (curr < len) break; // nothing more to read
-      }
-      return ret;
-    },
-    doWritev: function(stream, iov, iovcnt, offset) {
-      var ret = 0;
-      for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
-        var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
-        iov += {{{ C_STRUCTS.iovec.__size__ }}};
-        var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
-        if (curr < 0) return -1;
-        ret += curr;
-      }
-      return ret;
-    },
-#else
-    // MEMFS filesystem disabled lite handling of stdout and stderr:
-    buffers: [null, [], []], // 1 => stdout, 2 => stderr
-    printChar: function(stream, curr) {
-      var buffer = SYSCALLS.buffers[stream];
-#if ASSERTIONS
-      assert(buffer);
 #endif
-      if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
-        buffer.length = 0;
-      } else {
-        buffer.push(curr);
-      }
-    },
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
     // arguments handling
 
@@ -253,10 +159,6 @@ var SyscallsLibrary = {
     FS.chdir(path);
     return 0;
   },
-  __syscall_mknod: function(path, mode, dev) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doMknod(path, mode, dev);
-  },
   __syscall_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
@@ -268,10 +170,6 @@ var SyscallsLibrary = {
     FS.rename(old_path, new_path);
     return 0;
   },
-  __syscall_mkdir: function(path, mode) {
-    path = SYSCALLS.getStr(path);
-    return SYSCALLS.doMkdir(path, mode);
-  },
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.rmdir(path);
@@ -279,7 +177,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.open(old.path, old.flags, 0).fd;
+    return FS.createStream(old, 0).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: function(fdPtr) {
@@ -361,7 +259,11 @@ var SyscallsLibrary = {
     FS.fchmod(fd, mode);
     return 0;
   },
-#if PROXY_POSIX_SOCKETS == 0
+// When building with PROXY_POSIX_SOCKETS the socket syscalls are implemented
+// natively in libsockets.a.
+// When building with WASMFS the socket syscalls are implemented natively in
+// libwasmfs.a.
+#if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
   $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
   $getSocketFromFD: function(fd) {
     var socket = SOCKFS.getSocket(fd);
@@ -798,7 +700,7 @@ var SyscallsLibrary = {
           return -{{{ cDefine('EINVAL') }}};
         }
         var newStream;
-        newStream = FS.open(stream.path, stream.flags, 0, arg);
+        newStream = FS.createStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefine('F_GETFD') }}}:
@@ -885,7 +787,12 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    return SYSCALLS.doMkdir(path, mode);
+    // remove a trailing slash, if one - /a/b/ has basename of '', but
+    // we want to create b in the context of this function
+    path = PATH.normalize(path);
+    if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
+    FS.mkdir(path, mode, 0);
+    return 0;
   },
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
@@ -893,7 +800,18 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    return SYSCALLS.doMknod(path, mode, dev);
+    // we don't want this in the JS API as it uses mknod to create all nodes.
+    switch (mode & {{{ cDefine('S_IFMT') }}}) {
+      case {{{ cDefine('S_IFREG') }}}:
+      case {{{ cDefine('S_IFCHR') }}}:
+      case {{{ cDefine('S_IFBLK') }}}:
+      case {{{ cDefine('S_IFIFO') }}}:
+      case {{{ cDefine('S_IFSOCK') }}}:
+        break;
+      default: return -{{{ cDefine('EINVAL') }}};
+    }
+    FS.mknod(path, mode, dev);
+    return 0;
   },
   __syscall_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
@@ -956,7 +874,16 @@ var SyscallsLibrary = {
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    return SYSCALLS.doReadlink(path, buf, bufsize);
+    if (bufsize <= 0) return -{{{ cDefine('EINVAL') }}};
+    var ret = FS.readlink(path);
+
+    var len = Math.min(bufsize, lengthBytesUTF8(ret));
+    var endChar = HEAP8[buf+len];
+    stringToUTF8(ret, buf, bufsize+1);
+    // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
+    // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
+    HEAP8[buf+len] = endChar;
+    return len;
   },
   __syscall_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
@@ -976,7 +903,23 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
-    return SYSCALLS.doAccess(path, amode);
+    if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
+      // need a valid mode
+      return -{{{ cDefine('EINVAL') }}};
+    }
+    var lookup = FS.lookupPath(path, { follow: true });
+    var node = lookup.node;
+    if (!node) {
+      return -{{{ cDefine('ENOENT') }}};
+    }
+    var perms = '';
+    if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
+    if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
+    if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
+    if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
+      return -{{{ cDefine('EACCES') }}};
+    }
+    return 0;
   },
   __syscall_utimensat: function(dirfd, path, times, flags) {
     path = SYSCALLS.getStr(path);
@@ -1017,7 +960,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     var suggest = FS.getStream(suggestFD);
     if (suggest) FS.close(suggest);
-    return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
+    return FS.createStream(old, suggestFD, suggestFD + 1).fd;
   },
 };
 

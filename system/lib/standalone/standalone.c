@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <malloc.h>
+#include <syscall_arch.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -68,11 +69,22 @@ const unsigned char * __map_file(const char *pathname, size_t *size) {
   return NULL;
 }
 
-long _mmap_js(long addr, long length, long prot, long flags, long fd, long offset, int* allocated) {
+intptr_t _mmap_js(intptr_t addr,
+                  size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  size_t offset,
+                  int* allocated) {
   return -ENOSYS;
 }
 
-long _munmap_js(long addr, long length, long prot, long flags, long fd, long offset) {
+int _munmap_js(intptr_t addr,
+               size_t length,
+               int prot,
+               int flags,
+               int fd,
+               size_t offset) {
   return -ENOSYS;
 }
 
@@ -83,18 +95,24 @@ long _munmap_js(long addr, long length, long prot, long flags, long fd, long off
 // Mark this as weak so that wasmfs does not collide with it. That is, if wasmfs
 // is in use, we want to use that and not this.
 __attribute__((__weak__))
-long __syscall_openat(int dirfd, const char* path, long flags, ...) {
-  if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
-  if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
-  if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
+int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+  if (!strcmp((const char*)path, "/dev/stdin")) {
+    return STDIN_FILENO;
+  }
+  if (!strcmp((const char*)path, "/dev/stdout")) {
+    return STDOUT_FILENO;
+  }
+  if (!strcmp((const char*)path, "/dev/stderr")) {
+    return STDERR_FILENO;
+  }
   return -EPERM;
 }
 
-int __syscall_ioctl(int fd, int op, ...) {
+__attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
   return -ENOSYS;
 }
 
-long __syscall_fcntl64(long fd, long cmd, ...) {
+__attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 

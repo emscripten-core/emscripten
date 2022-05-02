@@ -2,10 +2,11 @@
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
+ *
+ * Helpers and tools for use at compile time by JavaScript library files.
+ *
+ * Tests live in tests/other/test_parseTools.js.
  */
-
-// Various tools for parsing LLVM. Utilities of various sorts, that are
-// specific to Emscripten (and hence not in utility.js).
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
@@ -188,7 +189,7 @@ function pointerT(x) {
 }
 
 function isIntImplemented(type) {
-  return type[0] == 'i' || isPointerType(type);
+  return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
 }
 
 // Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
@@ -214,17 +215,12 @@ function makeInlineCalculation(expression, value, tempVar) {
   return '(' + expression.replace(/VALUE/g, value) + ')';
 }
 
-// Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
-function makeI64(low, high) {
-  high = high || '0';
-  return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
-}
-
 // XXX Make all i64 parts signed
 
-// Splits a number (an integer in a double, possibly > 32 bits) into an i64 value, represented by a low and high i32 pair.
+// Splits a number (an integer in a double, possibly > 32 bits) into an i64
+// value, represented by a low and high i32 pair.
 // Will suffer from rounding.
-function splitI64(value, floatConversion) {
+function splitI64(value) {
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -233,15 +229,15 @@ function splitI64(value, floatConversion) {
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
-  // We need to min on positive values here, since our input might be a double, and large values are rounded, so they can
-  // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
-  // HEAP32 or |0'd, etc.
+  // We need to min on positive values here, since our input might be a double,
+  // and large values are rounded, so they can be slightly higher than expected.
+  // And if we get 4294967296, that will turn into a 0 if put into a HEAP32 or
+  // |0'd, etc.
   //
-  // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
+  // For negatives, we need to ensure a -1 if the value is overall negative,
+  // even if not significant negative component
 
-  const lowInput = legalizedI64s ? value : 'VALUE';
-  if (floatConversion) lowInput = asmFloatToInt(lowInput);
-  const low = lowInput + '>>>0';
+  const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
         '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
@@ -256,10 +252,7 @@ function splitI64(value, floatConversion) {
       value,
       'tempDouble',
   );
-  if (legalizedI64s) {
-    return [low, high];
-  }
-  return makeI64(low, high);
+  return [low, high];
 }
 
 // Misc
@@ -374,8 +367,17 @@ function makeSetTempDouble(i, type, value) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
-  assert(!forceAsm, 'forceAsm is no longer supported');
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+  if (typeof unsigned !== 'undefined') {
+    // TODO(sbc): make this into an error at some point.
+    printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
+    if (unsigned && type.startsWith('i')) {
+      type = 'u' + type.slice(1);
+    }
+  } else if (type.startsWith('u')) {
+    // Set `unsigned` based on the type name.
+    unsigned = true;
+  }
 
   if (type == 'double' && (align < 8)) {
     const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
@@ -420,13 +422,10 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     }
   }
 
-  const slab = getHeapForType(type, unsigned);
+  const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
   if (slab.substr(slab.length - 2) == '64') {
     ret = `Number(${ret})`;
-  }
-  if (forceAsm) {
-    ret = asmCoercion(ret, type);
   }
   return ret;
 }
@@ -446,12 +445,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {number} align: TODO
  * @param {bool} noSafe: TODO
  * @param {string} sep: TODO
- * @param {bool} forcedAlign: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';', forcedAlign) {
-  assert(!forcedAlign, 'forcedAlign is no longer supported');
-
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';') {
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
@@ -661,45 +657,37 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
   return getFastValue(ptr, '+', pos, 'i32');
 }
 
-function getHeapForType(type, unsigned) {
+function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
-    type = POINTER_TYPE;
+    // TODO(sbc): Make POINTER_TYPE u32/u64 rather than i32/i64
+    type = 'u' + POINTER_TYPE.slice(1);
+  }
+  if (WASM_BIGINT) {
+    switch (type) {
+      case 'i64': return 'HEAP64';
+      case 'u64': return 'HEAPU64';
+    }
   }
   switch (type) {
-    case 'i1':
-    case 'i8':
-      return unsigned ? 'HEAPU8' : 'HEAP8';
-    case 'i16':
-      return unsigned ? 'HEAPU16' : 'HEAP16';
-    case 'i64':
-      if (WASM_BIGINT) {
-        return unsigned ? 'HEAPU64' : 'HEAP64';
-      }
-      // fall through
-    case '<4 x i32>':
-    case 'i32':
-      return unsigned ? 'HEAPU32' : 'HEAP32';
-    case 'double':
-      return 'HEAPF64';
-    case '<4 x float>':
-    case 'float':
-      return 'HEAPF32';
+    case 'i1':     // fallthrough
+    case 'i8':     return 'HEAP8';
+    case 'u8':     return 'HEAPU8';
+    case 'i16':    return 'HEAP16';
+    case 'u16':    return 'HEAPU16';
+    case 'i64':    // fallthrough
+    case 'i32':    return 'HEAP32';
+    case 'u64':    // fallthrough
+    case 'u32':    return 'HEAPU32';
+    case 'double': return 'HEAPF64';
+    case 'float':  return 'HEAPF32';
   }
   assert(false, 'bad heap type: ' + type);
 }
 
-// Takes a pair of return values, stashes one in tempRet0 and returns the other.
-// Should probably be renamed to `makeReturn64` but keeping this old name in
-// case external JS library code uses this name.
-function makeStructuralReturn(values) {
-  assert(values.length == 2);
-  return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
-}
-
 function makeThrow(what) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s NO_DISABLE_EXCEPTION_CATCHING or -s EXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
     if (MAIN_MODULE) {
       what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
@@ -712,7 +700,7 @@ function makeSignOp(value, type, op, force, ignore) {
   if (!value) return value;
   let bits;
   let full;
-  if (type[0] === 'i') {
+  if (type[0] === 'i' || type[0] === 'u') {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
@@ -721,7 +709,7 @@ function makeSignOp(value, type, op, force, ignore) {
     }
   }
   if ((ignore) && !force) return value;
-  if (type[0] === 'i') {
+  if (type[0] === 'i' || type[0] === 'u') {
     // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
     if (ignore) {
@@ -754,10 +742,6 @@ function makeSignOp(value, type, op, force, ignore) {
   }
   return value;
 }
-
-// We do not legalize globals, but do legalize function lines. This will be true in the latter case
-// eslint-disable-next-line prefer-const
-global.legalizedI64s = true;
 
 function stripCorrections(param) {
   let m;

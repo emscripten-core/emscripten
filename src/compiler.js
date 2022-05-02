@@ -68,6 +68,9 @@ if (VERBOSE) {
 
 load('modules.js');
 load('parseTools.js');
+if (!STRICT) {
+  load('parseTools_legacy.js');
+}
 load('jsifier.js');
 load('runtime.js');
 

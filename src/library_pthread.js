@@ -17,7 +17,7 @@
 #error "USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
 #if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker."
+#error "--proxy-to-worker is not supported with -sUSE_PTHREADS>0! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
 #endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
@@ -268,10 +268,7 @@ var LibraryPThread = {
         }
 
         if (cmd === 'processProxyingQueue') {
-          // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-          _emscripten_proxy_execute_queue(d['queue']);
-          // Decrement the ref count
-          Atomics.sub(HEAP32, d['queue'] >> 2, 1);
+          executeNotifiedProxyingQueue(d['queue']);
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -406,7 +403,7 @@ var LibraryPThread = {
           );
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
         } else
- #endif
+#endif
         PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
@@ -435,9 +432,9 @@ var LibraryPThread = {
 #if ASSERTIONS
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
-        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
+        'If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`.'
 #if PTHREAD_POOL_SIZE_STRICT == 1
-        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-sPTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
         );
 #endif // ASSERTIONS
@@ -452,10 +449,6 @@ var LibraryPThread = {
       }
       return PThread.unusedWorkers.pop();
     }
-  },
-
-  $ptrToString: function(ptr) {
-    return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
   $killThread__deps: ['_emscripten_thread_free_data'],
@@ -707,7 +700,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
+        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -755,7 +748,7 @@ var LibraryPThread = {
             // be able to transfer control to offscreen, but WebGL can be
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
-            err('pthread_create: Build with -s OFFSCREEN_FRAMEBUFFER=1 to enable fallback proxying of GL commands from pthread to main thread.');
+            err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
             return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
 #endif
           }
@@ -939,7 +932,7 @@ var LibraryPThread = {
       var b = args >> 3;
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
-  #if WASM_BIGINT
+#if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
           HEAP64[b + 2*i] = BigInt(1);
@@ -949,9 +942,9 @@ var LibraryPThread = {
           HEAP64[b + 2*i] = BigInt(0);
           HEAPF64[b + 2*i + 1] = arg;
         }
-  #else
+#else
         HEAPF64[b + i] = arg;
-  #endif
+#endif
       }
       return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     });
@@ -1051,19 +1044,27 @@ var LibraryPThread = {
     return {{{ makeDynCall('ii', 'ptr') }}}(arg);
   },
 
-  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+  $executeNotifiedProxyingQueue: function(queue) {
+    // Set the notification state to processing.
+    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
+    // Only execute the queue if we have a live pthread runtime. We
+    // implement pthread_self to return 0 if there is no live runtime.
+    // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+    //       `runtimeExited` is correctly unset on workers.
+    if (_pthread_self()) {
+      __emscripten_proxy_execute_task_queue(queue);
+    }
+    // Set the notification state to none as long as a new notification has not
+    // been sent while we were processing.
+    Atomics.compareExchange(HEAP32, queue >> 2,
+                            {{{ cDefine('NOTIFICATION_RECEIVED') }}},
+                            {{{ cDefine('NOTIFICATION_NONE') }}});
+  },
+
+  _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
+  _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => {
-        // Only execute the queue if we have a live pthread runtime. We
-        // implement pthread_self to return 0 if there is no live runtime.
-        // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
-        //       `runtimeExited` is correctly unset on workers.
-        if (_pthread_self()) {
-          _emscripten_proxy_execute_queue(queue);
-        }
-        // Decrement the ref count
-        Atomics.sub(HEAP32, queue >> 2, 1);
-      });
+      setTimeout(() => executeNotifiedProxyingQueue(queue));
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {

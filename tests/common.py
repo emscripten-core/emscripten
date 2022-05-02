@@ -160,6 +160,7 @@ def no_windows(note=''):
 def requires_native_clang(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_LACKS_NATIVE_CLANG:
       return self.skipTest('native clang tests are disabled')
@@ -189,6 +190,7 @@ def require_v8(func):
 
 
 def node_pthreads(f):
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
     f(self, *args, **kwargs)
@@ -240,6 +242,27 @@ def also_with_minimal_runtime(f):
 
   metafunc._parameterize = {'': (False,),
                             'minimal_runtime': (True,)}
+  return metafunc
+
+
+def also_with_wasm_bigint(f):
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
+      if self.get_setting('WASM_BIGINT') is not None:
+        self.skipTest('redundant in bigint test config')
+      self.set_setting('WASM_BIGINT')
+      self.require_node()
+      self.node_args.append('--experimental-wasm-bigint')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
   return metafunc
 
 
@@ -374,6 +397,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in ASan yet')
     if '-fsanitize=leak' in self.emcc_args:
       self.skipTest('no dynamic linking support in LSan yet')
+    if '-fsanitize=undefined' in self.emcc_args:
+      self.skipTest('no dynamic linking support in UBSan yet')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
@@ -390,6 +415,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+    if self.get_setting('MEMORY64') == 1:
+      self.skipTest("MEMORY64=1 tests don't yet run under node")
     self.js_engines = [config.NODE_JS]
 
   def setup_node_pthreads(self):
@@ -1201,6 +1228,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return poppler + freetype
 
   def get_zlib_library(self):
+    # TODO: remove -Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
+    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                               configure=['cmake', '.'],

@@ -162,7 +162,7 @@ var LibraryGLEmulation = {
       // Add some emulation workarounds
       err('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 1
-      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
+      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -sGL_UNSAFE_OPTS=0');
 #endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
@@ -3065,7 +3065,7 @@ var LibraryGLEmulation = {
           assert(!GLctx.currentElementArrayBufferBinding);
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
-            var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
+            var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
             GLImmediate.firstVertex = Math.min(GLImmediate.firstVertex, currIndex);
             GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
           }

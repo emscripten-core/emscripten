@@ -72,7 +72,7 @@ global.LibraryManager = {
     }
 
     if (FILESYSTEM) {
-      // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
+      // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',
         'library_memfs.js',
@@ -210,14 +210,14 @@ global.LibraryManager = {
           if (VERBOSE) {
             error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
           } else {
-            error('use -s VERBOSE to see more details');
+            error('use -sVERBOSE to see more details');
           }
         } else {
           error(`failure to process js library "${filename}": ${details}`);
           if (VERBOSE) {
             error(`original source:\n=============\n${src}\n=============`);
           } else {
-            error('use -s VERBOSE to see more details');
+            error('use -sVERBOSE to see more details');
           }
         }
         throw e;
@@ -326,11 +326,16 @@ function isFSPrefixed(name) {
 
 // forcing the filesystem exports a few things by default
 function isExportedByForceFilesystem(name) {
+  if (!WASMFS) {
+    // The old FS has some functionality that WasmFS lacks.
+    if (name === 'FS_createLazyFile' ||
+        name === 'FS_createDevice') {
+      return true;
+    }
+  }
   return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
-         name === 'FS_createLazyFile' ||
-         name === 'FS_createDevice' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
          name === 'removeRunDependency';
@@ -417,7 +422,6 @@ function exportRuntime() {
     'registerFunctions',
     'addFunction',
     'removeFunction',
-    'getFuncWrapper',
     'prettyPrint',
     'dynCall',
     'getCompilerSetting',
@@ -430,6 +434,18 @@ function exportRuntime() {
     'keepRuntimeAlive',
   ];
 
+  if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
+    runtimeElements = runtimeElements.concat([
+      'GROWABLE_HEAP_I8',
+      'GROWABLE_HEAP_U8',
+      'GROWABLE_HEAP_I16',
+      'GROWABLE_HEAP_U16',
+      'GROWABLE_HEAP_I32',
+      'GROWABLE_HEAP_U32',
+      'GROWABLE_HEAP_F32',
+      'GROWABLE_HEAP_F64',
+    ]);
+  }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
   }

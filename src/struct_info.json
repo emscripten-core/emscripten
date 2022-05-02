@@ -1288,11 +1288,11 @@
                 "view",
                 "depthLoadOp",
                 "depthStoreOp",
-                "clearDepth",
+                "depthClearValue",
                 "depthReadOnly",
                 "stencilLoadOp",
                 "stencilStoreOp",
-                "clearStencil",
+                "stencilClearValue",
                 "stencilReadOnly"
             ],
             "WGPURequestAdapterOptions": [
@@ -1451,7 +1451,7 @@
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
-                "clearColor"
+                "clearValue"
             ],
             "WGPURequiredLimits": [
                 "nextInChain",

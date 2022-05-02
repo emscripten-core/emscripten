@@ -61,11 +61,11 @@
       return '(' + makeGetValue(struct, offset, 'i8') + ' !== 0)';
     },
     makeGetU32: function(struct, offset) {
-      return makeGetValue(struct, offset, 'i32', false, true);
+      return makeGetValue(struct, offset, 'u32');
     },
     makeGetU64: function(struct, offset) {
-      var l = makeGetValue(struct, offset, 'i32', false, true);
-      var h = makeGetValue('(' + struct + ' + 4)', offset, 'i32', false, true)
+      var l = makeGetValue(struct, offset, 'u32');
+      var h = makeGetValue('(' + struct + ' + 4)', offset, 'u32')
       return h + ' * 0x100000000 + ' + l
     },
     makeCheck: function(str) {
@@ -112,8 +112,14 @@
       Fifo: 2,
     },
     LoadOp: {
-      Clear: 0,
-      Load: 1,
+      Undefined: 0,
+      Clear: 1,
+      Load: 2,
+    },
+    StoreOp: {
+      Undefined: 0,
+      Store: 1,
+      Discard: 2,
     },
     MapMode: {
       None: 0,
@@ -390,6 +396,11 @@ var LibraryWebGPU = {
       undefined,
       'uint16',
       'uint32',
+    ],
+    LoadOp: [
+      undefined,
+      'clear',
+      'load',
     ],
     PipelineStatisticName: [
       'vertex-shader-invocations',
@@ -1491,19 +1502,24 @@ var LibraryWebGPU = {
     function makeColorAttachment(caPtr) {
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
-          assert(loadOpInt === {{{ gpu.LoadOp.Clear }}} || loadOpInt === {{{ gpu.LoadOp.Load }}});
+          assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
       #endif
-      var loadValue = loadOpInt ? 'load' :
-        WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearColor }}});
+
+      var storeOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.storeOp) }}};
+      #if ASSERTIONS
+          assert(storeOpInt !== {{{ gpu.StoreOp.Undefined }}});
+      #endif
+
+      var clearValue = WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}});
 
       return {
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}}),
         "resolveTarget": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.resolveTarget) }}}),
-        "storeOp": WebGPU.StoreOp[
-          {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.storeOp) }}}],
-        "loadValue": loadValue,
+        "clearValue": clearValue,
+        "loadOp":  WebGPU.LoadOp[loadOpInt],
+        "storeOp": WebGPU.StoreOp[storeOpInt],
       };
     }
 
@@ -1518,30 +1534,20 @@ var LibraryWebGPU = {
     function makeDepthStencilAttachment(dsaPtr) {
       if (dsaPtr === 0) return undefined;
 
-      var depthLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}};
-      #if ASSERTIONS
-          assert(depthLoadOpInt === {{{ gpu.LoadOp.Clear }}} || depthLoadOpInt === {{{ gpu.LoadOp.Load }}});
-      #endif
-      var depthLoadValue = depthLoadOpInt ? 'load' :
-        {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearDepth, 'float') }}};
-
-      var stencilLoadOpInt = {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}};
-      #if ASSERTIONS
-          assert(stencilLoadOpInt === {{{ gpu.LoadOp.Clear }}} || stencilLoadOpInt === {{{ gpu.LoadOp.Load }}});
-      #endif
-      var stencilLoadValue = stencilLoadOpInt ? 'load' :
-        {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.clearStencil) }}};
-
       return {
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.view) }}}),
+        "depthClearValue": {{{ makeGetValue('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthClearValue, 'float') }}},
+        "depthLoadOp": WebGPU.LoadOp[
+          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthLoadOp) }}}],
         "depthStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthStoreOp) }}}],
-        "depthLoadValue": depthLoadValue,
         "depthReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.depthReadOnly) }}},
+        "stencilClearValue": {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilClearValue) }}},
+        "stencilLoadOp": WebGPU.LoadOp[
+          {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilLoadOp) }}}],
         "stencilStoreOp": WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilStoreOp) }}}],
-        "stencilLoadValue": stencilLoadValue,
         "stencilReadOnly": {{{ gpu.makeGetBool('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachment.stencilReadOnly) }}},
       };
     }
@@ -1576,9 +1582,9 @@ var LibraryWebGPU = {
 
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     commandEncoder["clearBuffer"](
-      buffer, 
+      buffer,
       {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}},
-      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}} 
+      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}}
     );
   },
 
@@ -1890,12 +1896,7 @@ var LibraryWebGPU = {
 
   wgpuComputePassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // wgpuRenderPass
@@ -2029,12 +2030,7 @@ var LibraryWebGPU = {
 
   wgpuRenderPassEncoderEnd: function(passId) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    // TODO(shrekshao): remove once this API change moves to stable (e.g. in Chrome)
-    if (pass["end"]) {
-      pass["end"]();
-    } else {
-      pass["endPass"]();
-    }
+    pass["end"]();
   },
 
   // Render bundle encoder

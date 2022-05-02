@@ -283,6 +283,9 @@
         "MAP_PRIVATE": 2,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
+        "NOTIFICATION_NONE": 0,
+        "NOTIFICATION_PENDING": 2,
+        "NOTIFICATION_RECEIVED": 1,
         "O_ACCMODE": 2097155,
         "O_APPEND": 1024,
         "O_CLOEXEC": 524288,
@@ -1015,7 +1018,7 @@
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 48,
-            "clearColor": 16,
+            "clearValue": 16,
             "loadOp": 8,
             "resolveTarget": 4,
             "storeOp": 12,
@@ -1023,11 +1026,11 @@
         },
         "WGPURenderPassDepthStencilAttachment": {
             "__size__": 36,
-            "clearDepth": 12,
-            "clearStencil": 28,
+            "depthClearValue": 12,
             "depthLoadOp": 4,
             "depthReadOnly": 16,
             "depthStoreOp": 8,
+            "stencilClearValue": 28,
             "stencilLoadOp": 20,
             "stencilReadOnly": 32,
             "stencilStoreOp": 24,
@@ -1201,7 +1204,8 @@
             "nextInChain": 0
         },
         "__cxa_exception": {
-            "__size__": 16,
+            "__size__": 24,
+            "adjustedPtr": 16,
             "caught": 12,
             "exceptionDestructor": 8,
             "exceptionType": 4,

@@ -129,7 +129,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    GLctx['getBufferSubData'](target, offset, HEAPU8, data, size);
+    size && GLctx['getBufferSubData'](target, offset, HEAPU8, data, size);
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -846,7 +846,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count);
+    count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count);
   },
 
   glUniform2uiv__sig: 'viii',
@@ -856,7 +856,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*2);
+    count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*2);
   },
 
   glUniform3uiv__sig: 'viii',
@@ -866,7 +866,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*3);
+    count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*3);
   },
 
   glUniform4uiv__sig: 'viii',
@@ -876,7 +876,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
-    GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*4);
+    count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*4);
   },
 
   glUniformMatrix2x3fv__sig: 'viiii',
@@ -886,7 +886,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
+    count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix3x2fv__sig: 'viiii',
@@ -896,7 +896,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
+    count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix2x4fv__sig: 'viiii',
@@ -906,7 +906,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
+    count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix4x2fv__sig: 'viiii',
@@ -916,7 +916,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
+    count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix3x4fv__sig: 'viiii',
@@ -926,7 +926,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
+    count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glUniformMatrix4x3fv__sig: 'viiii',
@@ -936,7 +936,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
-    GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
+    count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glVertexAttribI4iv__sig: 'vii',
@@ -1126,10 +1126,10 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
 
 #if MAX_WEBGL_VERSION >= 2
 
-// If user passes -s MAX_WEBGL_VERSION >= 2 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
+// If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in WebGL 1), then WebGL2 library should not
 // be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -s MAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
+  throw 'In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
