@@ -16,6 +16,8 @@
 // programs to test persistence. Alternatively, define neither and run the full
 // test as a single program.
 
+void cleanup(void);
+
 int main(int argc, char* argv[]) {
   int err, fd;
   const char* msg = "Hello, OPFS!";
@@ -36,6 +38,9 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("opened existing OPFS file");
 
 #else // !WASMFS_RESUME
+
+  // Remove old files if they exist.
+  cleanup();
 
   err = mkdir("/opfs/working", 0777);
   assert(err == 0);
@@ -136,4 +141,10 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("done");
 
 #endif // !WASMFS_SETUP
+}
+
+void cleanup(void) {
+  unlink("/opfs/working/foo.txt");
+  rmdir("/opfs/working");
+  unlink("/opfs/foo.txt");
 }

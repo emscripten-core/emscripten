@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
       if (e.name === "TypeMismatchError") {
         return -2;
       }
-      abort("Unknown exception " + e.name);
+      throw e;
     }
     return wasmfsOPFSAllocate(wasmfsOPFSDirectories, childHandle);
   },
@@ -195,13 +195,20 @@ mergeInto(LibraryManager.library, {
     let fileHandle = wasmfsOPFSFiles.get(fileID);
     let accessID;
     try {
-      let accessHandle = await fileHandle.createSyncAccessHandle();
+      let accessHandle;
+      // TODO: Remove this once the Access Handles API has settled.
+      if (FileSystemFileHandle.prototype.createSyncAccessHandle.length == 0) {
+        accessHandle = await fileHandle.createSyncAccessHandle();
+      } else {
+        accessHandle = await fileHandle.createSyncAccessHandle(
+            {mode: "in-place"});
+      }
       accessID = wasmfsOPFSAllocate(wasmfsOPFSAccesses, accessHandle);
     } catch (e) {
       if (e.name === "InvalidStateError") {
         accessID = -1;
       }
-      abort("Unknown error opening file");
+      throw e;
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
