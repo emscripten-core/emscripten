@@ -385,8 +385,6 @@ function exportRuntime() {
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
-    'intArrayFromString',
-    'intArrayToString',
     'ccall',
     'cwrap',
     'setValue',
@@ -397,15 +395,11 @@ function exportRuntime() {
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'stackTrace',
     'addOnPreRun',
     'addOnInit',
     'addOnPreMain',
     'addOnExit',
     'addOnPostRun',
-    'writeStringToMemory',
-    'writeArrayToMemory',
-    'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
     'FS_createFolder',
@@ -423,7 +417,6 @@ function exportRuntime() {
     'addFunction',
     'removeFunction',
     'prettyPrint',
-    'dynCall',
     'getCompilerSetting',
     'print',
     'printErr',
@@ -455,14 +448,6 @@ function exportRuntime() {
     runtimeElements.push('WasmSourceMap');
   }
 
-  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
-  // '$ which indicates they are JS methods.
-  for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
-      runtimeElements.push(ident.substr(1));
-    }
-  }
-
   if (!MINIMAL_RUNTIME) {
     // MINIMAL_RUNTIME has moved these functions to library_strings.js
     runtimeElements = runtimeElements.concat([
@@ -481,6 +466,11 @@ function exportRuntime() {
       'allocateUTF8',
       'allocateUTF8OnStack',
       'ExitStatus',
+      'intArrayFromString',
+      'intArrayToString',
+      'writeStringToMemory',
+      'writeArrayToMemory',
+      'writeAsciiToMemory',
     ]);
   }
 
@@ -502,14 +492,29 @@ function exportRuntime() {
       runtimeElements.push(name);
     }
   }
+
+
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  const runtimeElementsSet = new Set(runtimeElements);
+  for (const ident in LibraryManager.library) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
+      const jsname = ident.substr(1);
+      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
+      runtimeElements.push(jsname);
+    }
+  }
+
   const runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
+    const runtimeElementsSet = new Set(runtimeElements);
+    const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
+      if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
         printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
