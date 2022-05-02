@@ -1536,9 +1536,10 @@ def setup_pthreads(target):
 
   include_and_export('establishStackSpace')
   include_and_export('invokeEntryPoint')
+  include_and_export('PThread')
   if not settings.MINIMAL_RUNTIME:
     # keepRuntimeAlive does not apply to MINIMAL_RUNTIME.
-    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive']
+    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive', 'ExitStatus', 'wasmMemory']
 
   if settings.MODULARIZE:
     if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':

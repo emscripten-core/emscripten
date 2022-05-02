@@ -28,21 +28,20 @@ function setValue(ptr, value, type = 'i8', noSafe) {
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, /*noSafe=*/true) }}}; break;
       default: abort('invalid type for setValue: ' + type);
     }
-  } else {
-#endif
-    switch (type) {
-      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
-      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
-      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
-      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
-      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
-#if SAFE_HEAP
+    // unreachable
+    return;
   }
 #endif
+  switch (type) {
+    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
+    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
+    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
+    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
+    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+    default: abort('invalid type for setValue: ' + type);
+  }
 }
 
 /** @param {number} ptr
@@ -62,22 +61,20 @@ function getValue(ptr, type = 'i8', noSafe) {
       case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, /*noSafe=*/true) }}};
       default: abort('invalid type for getValue: ' + type);
     }
-  } else {
-#endif
-    switch (type) {
-      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
-      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
-      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
-      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
-      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
-      case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
-      case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-      default: abort('invalid type for getValue: ' + type);
-    }
-#if SAFE_HEAP
+    // unreachable
+    return;
   }
 #endif
-  return null;
+  switch (type) {
+    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
+    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
+    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
+    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
+    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
+    case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
+    case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+    default: abort('invalid type for getValue: ' + type);
+  }
 }
 #endif // SAFE_HEAP || !MINIMAL_RUNTIME
 
