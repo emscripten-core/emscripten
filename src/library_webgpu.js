@@ -91,7 +91,7 @@
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
-    WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
+    WHOLE_MAP_SIZE: -1, // indicate 32-bit uint max
     AdapterType: {
       Unknown: 3,
     },
@@ -1809,12 +1809,13 @@ var LibraryWebGPU = {
 
   // wgpuBuffer
 
+  // In webgpu.h offset and size are passed in as size_t.
+  // And we assume that size_t is always 32bit in emscripten.
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
-    if (size === 0) size = undefined;
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     var mapped;
     try {
@@ -1835,12 +1836,13 @@ var LibraryWebGPU = {
     return data;
   },
 
+  // In webgpu.h offset and size are passed in as size_t.
+  // And we assume that size_t is always 32bit in emscripten.
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
-    if (size === 0) size = undefined;
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
 #if ASSERTIONS
@@ -1870,6 +1872,8 @@ var LibraryWebGPU = {
     return data;
   },
 
+  // In webgpu.h offset and size are passed in as size_t.
+  // And we assume that size_t is always 32bit in emscripten.
   wgpuBufferMapAsync__deps: [
     '$callUserCallback',
 #if !MINIMAL_RUNTIME
@@ -1883,11 +1887,7 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    // Handle the defaulting of size required by WebGPU
-    // We want to check against gpu.WHOLE_MAP_SIZE but the size seems to come in as int32_t
-    if (size === -1) {
-      size = undefined;
-    }
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
