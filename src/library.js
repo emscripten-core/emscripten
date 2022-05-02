@@ -2315,7 +2315,7 @@ LibraryManager.library = {
 #endif
 
   $emscriptenGetTimeZone: function() {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone;
   },
   
   _emscripten_get_timezone_js__deps: ['$emscriptenGetTimeZone'],
