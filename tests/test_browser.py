@@ -5295,6 +5295,7 @@ window.close = function() {
                     args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
 
   @requires_threads
+  @no_firefox('no OPFS support yet')
   def test_wasmfs_opfs(self):
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
