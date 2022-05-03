@@ -4563,6 +4563,7 @@ window.close = function() {
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4584,6 +4585,7 @@ window.close = function() {
                     args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
@@ -4610,6 +4612,7 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4617,18 +4620,21 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
