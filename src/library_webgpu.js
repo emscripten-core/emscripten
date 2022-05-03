@@ -1449,6 +1449,13 @@ var LibraryWebGPU = {
     return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
   },
 
+  // wgpuQuerySet
+
+  wgpuQuerySetSetLabel: function(querySetId, labelPtr) {
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    querySet.label = UTF8ToString(labelPtr);
+  },
+
   // wgpuQueue
 
   wgpuQueueSetLabel: function(queueId, labelPtr) {
