@@ -729,7 +729,7 @@ var LibraryWebGPU = {
     return queueId;
   },
 
-  wgpuDeviceHasFeatures: function(deviceId, feature) {
+  wgpuDeviceHasFeature: function(deviceId, feature) {
     abort('TODO: wgpuDeviceHasFeatures unimplemented');
   },
 
