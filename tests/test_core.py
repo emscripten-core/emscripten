@@ -27,7 +27,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, require_v8, require_node
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
+from common import EMTEST_REBASELINE, NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -442,7 +442,13 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     self.emcc_args += ['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling]']
-    self.do_core_test('test_int53.c', interleaved_output=False)
+   
+    if EMTEST_REBASELINE:
+      self.run_process([EMCC, test_file('core/test_int53.c'), '-o', Path('a.js'), '-DGENERATE_ANSWERS'] + self.emcc_args)
+      ret = self.run_process(config.NODE_JS + [Path('a.js')], stdout=PIPE).stdout
+      open(test_file('core/test_int53.out'), 'w').write(ret)
+    else:
+      self.do_core_test('test_int53.c', interleaved_output=False)
 
   def test_i64(self):
     self.do_core_test('test_i64.c')
