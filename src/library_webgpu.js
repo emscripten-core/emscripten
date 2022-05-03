@@ -672,7 +672,13 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceEnumerateFeatures: function(deviceId, featuresOutPtr) {
-    abort('TODO: wgpuDeviceEnumerateFeatures unimplemented');
+    var device = WebGPU.mgrDevice.get(deviceId);
+    var offset = 0;
+    for (var feature of device.features) {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+      offset += 4;
+    }
   },
 
   wgpuDeviceDestroy: function(deviceId) { WebGPU.mgrDevice.get(deviceId)["destroy"](); },
@@ -729,8 +735,9 @@ var LibraryWebGPU = {
     return queueId;
   },
 
-  wgpuDeviceHasFeature: function(deviceId, feature) {
-    abort('TODO: wgpuDeviceHasFeatures unimplemented');
+  wgpuDeviceHasFeature: function(deviceId, featureEnumValue) {
+    var device = WebGPU.mgrDevice.get(deviceId);
+    return device.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
   wgpuDevicePushErrorScope: function(deviceId, filter) {
@@ -2398,7 +2405,13 @@ var LibraryWebGPU = {
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: function(adapterId, featuresOutPtr) {
-    abort('TODO: wgpuAdapterEnumerateFeatures unimplemented');
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    var offset = 0;
+    for (var feature of adapter.features) {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+      offset += 4;
+    }
   },
 
   wgpuAdapterGetProperties: function(adapterId, properties) {
@@ -2415,8 +2428,9 @@ var LibraryWebGPU = {
     abort('TODO: wgpuAdapterGetLimits unimplemented');
   },
 
-  wgpuAdapterHasFeature: function(adapterId, feature) {
-    abort('TODO: wgpuAdapterHasFeature unimplemented');
+  wgpuAdapterHasFeature: function(adapterId, featureEnumValue) {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    return adapter.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
   wgpuAdapterRequestDevice__deps: [
@@ -2584,6 +2598,12 @@ var LibraryWebGPU = {
     return 0;
   },
 };
+
+// Inverted index used by EnumerateFeatures/HasFeature
+LibraryWebGPU.$WebGPU.FeatureNameString2Enum = {};
+for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
+  LibraryWebGPU.$WebGPU.FeatureNameString2Enum[LibraryWebGPU.$WebGPU.FeatureName[value]] = value;
+}
 
 autoAddDeps(LibraryWebGPU, '$WebGPU');
 mergeInto(LibraryManager.library, LibraryWebGPU);
