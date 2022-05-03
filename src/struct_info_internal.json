@@ -49,15 +49,6 @@
         }
     },
     {
-        "file": "async_callback.h",
-        "structs": {
-            "CallbackState": [
-                "result",
-                "offset"
-            ]
-        }
-    },
-    {
         "file": "proxying_notification_state.h",
         "defines": [
             "NOTIFICATION_NONE",
