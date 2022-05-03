@@ -349,7 +349,7 @@ Useful Links
 ============
 
 - `Blogpost about reading compiler output <http://mozakai.blogspot.com/2014/06/looking-through-emscripten-output.html>`_.
-- `GDC 2014: Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`_ (Debugging slides).
+- `GDC 2014: Getting started with asm.js and Emscripten <https://web.archive.org/web/20140325222509/http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`_ (Debugging slides).
 
 Need help?
 ==========
