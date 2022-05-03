@@ -8254,11 +8254,8 @@ int main() {
     stderr = self.expect_fail([EMXX, 'src.cpp', '-O2'])
     # wasm backend output doesn't have spaces in the EM_ASM function bodies
     self.assertContained(('''
-var ASM_CONSTS = [function() { var x = !<->5.; }];
-                                        ^
-''', '''
-  1025: function() {var x = !<->5.;}
-                             ^
+  1025: () => { var x = !<->5.; }
+                         ^
 '''), stderr)
 
   def test_js_optimizer_chunk_size_determinism(self):
