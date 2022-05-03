@@ -71,6 +71,7 @@ void emscripten_asm_const_async_on_main_thread(
     float: 'f', \
     double: 'd', \
     int: 'i', \
+    long long: 'j', \
     unsigned: 'i', \
     default: 'i')
 
@@ -140,6 +141,8 @@ template<> struct __em_asm_sig<long> { static const char value = 'i'; };
 template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; };
 template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
 template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
+template<> struct __em_asm_sig<long long> { static const char value = 'j'; };
+template<> struct __em_asm_sig<unsigned long long> { static const char value = 'j'; };
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
 
 // Explicit support for enums, they're passed as int via variadic arguments.
