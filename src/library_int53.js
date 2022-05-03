@@ -106,6 +106,17 @@ mergeInto(LibraryManager.library, {
     return (lo >>> 0) + hi * 4294967296;
   },
 
+  // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
+  // represent 53 bits of precision. Returns a NaN if the number exceeds the safe
+  // integer range representable by a Number (x > 9007199254740992 || x < -9007199254740992)
+  $convertI32PairToI53Checked: function(lo, hi) {
+#if ASSERTIONS
+    assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
+    assert(hi === (hi|0));                    // hi should be a i32
+#endif
+    return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
+  },
+
   // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision.
   // TODO: Add $convertU32PairToI53Signaling() variant.

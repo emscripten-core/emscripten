@@ -451,6 +451,15 @@ class TestCoreBase(RunnerCore):
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
 
+  def test_int53_convertI32PairToI53Checked(self):
+    self.emcc_args += ['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53Checked]']
+    if EMTEST_REBASELINE:
+      self.run_process([EMCC, test_file('core/test_convertI32PairToI53Checked.cpp'), '-o', Path('a.js'), '-DGENERATE_ANSWERS'] + self.emcc_args)
+      ret = self.run_process(config.NODE_JS + [Path('a.js')], stdout=PIPE).stdout
+      open(test_file('core/test_convertI32PairToI53Checked.out'), 'w').write(ret)
+    else:
+      self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
+
   def test_i64(self):
     self.do_core_test('test_i64.c')
 
