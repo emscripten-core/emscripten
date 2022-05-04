@@ -1310,16 +1310,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
-
       elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
-        '''
-          To get logging to the console from browser tests, add this to
-          print/printErr/the exception handler in src/shell.html:
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
-            xhr.send();
-        '''
         print('[client logging:', unquote_plus(self.path), ']')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
