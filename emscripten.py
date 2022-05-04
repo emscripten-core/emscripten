@@ -579,7 +579,7 @@ def finalize_wasm(infile, outfile, memfile):
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata['asmConsts'].items():
-    const = trim_asm_const_body(const)
+    body = trim_asm_const_body(const)
     args = []
     max_arity = 16
     arity = 0
@@ -588,8 +588,14 @@ def create_asm_consts(metadata):
         arity = i + 1
     for i in range(arity):
       args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') {' + const + '}'
-    asm_consts[int(addr)] = const
+    args = ', '.join(args)
+    if 'arguments' in body:
+      # arrow functions don't bind `arguments` so we have to use
+      # the old function syntax in this case
+      func = f'function({args}) {{ {body} }}'
+    else:
+      func = f'({args}) => {{ {body} }}'
+    asm_consts[int(addr)] = func
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts
@@ -607,7 +613,8 @@ def create_em_js(metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
+    args = ','.join(arg_names)
+    func = f'function {name}({args}) {body}'
     em_js_funcs.append(func)
 
   return em_js_funcs
