@@ -992,6 +992,8 @@ def package_files(options, target):
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     file_args.append('--no-node')
   if options.embed_files:
+    if settings.MEMORY64:
+      file_args += ['--wasm64']
     object_file = in_temp('embedded_files.o')
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
