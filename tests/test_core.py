@@ -446,7 +446,7 @@ class TestCoreBase(RunnerCore):
 
     if common.EMTEST_REBASELINE:
       self.run_process([EMCC, test_file('core/test_int53.c'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.emcc_args)
-      ret = self.run_process(config.NODE_JS + [Path('a.js')], stdout=PIPE).stdout
+      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
       open(test_file('core/test_int53.out'), 'w').write(ret)
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
