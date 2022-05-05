@@ -132,9 +132,8 @@ protected:
 
   // TODO: Allow backends to override the version of read with multiple iovecs
   // to make it possible to implement pipes. See #16269.
-  virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
-  virtual __wasi_errno_t
-  write(const uint8_t* buf, size_t len, off_t offset) = 0;
+  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
+  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized (often backends have an efficient way to do this
@@ -283,10 +282,10 @@ public:
   void open(oflags_t flags) { getFile()->open(flags); }
   void close() { getFile()->close(); }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
   }
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
 

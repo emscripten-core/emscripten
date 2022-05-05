@@ -93,20 +93,23 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
                                     size_t iovs_len,
                                     __wasi_size_t* nwritten,
                                     __wasi_filesize_t offset = 0) {
-  if (iovs_len < 0 || offset < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
-
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
-
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
+  auto lockedOpenFile = openFile->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    offset = lockedOpenFile.getPosition();
+  }
+
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   // TODO: Check open file access mode for write permissions.
 
-  auto lockedOpenFile = openFile->locked();
-  assert(lockedOpenFile.getFile());
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -117,25 +120,10 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
 
   auto lockedFile = file->locked();
 
-  off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.getPosition()
-                       : offset;
-  off_t oldOffset = currOffset;
-  auto finish = [&] {
-    *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState &&
-        lockedOpenFile.getFile()->isSeekable()) {
-      lockedOpenFile.setPosition(currOffset);
-    }
-  };
+  size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     off_t len = iovs[i].buf_len;
-
-    // Check if the sum of the buf_len values overflows an off_t (63 bits).
-    if (addWillOverFlow(currOffset, len)) {
-      return __WASI_ERRNO_FBIG;
-    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
@@ -143,88 +131,102 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       return __WASI_ERRNO_INVAL;
     }
 
-    auto result = lockedFile.write(buf, len, currOffset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      finish();
-      return result;
+    // Check if the sum of the buf_len values overflows an off_t (63 bits).
+    if (addWillOverFlow(offset, (__wasi_filesize_t)bytesWritten)) {
+      return __WASI_ERRNO_FBIG;
     }
-    currOffset += len;
+
+    auto result = lockedFile.write(buf, len, offset + bytesWritten);
+    if (result < 0) {
+      // This individual write failed. Report the error unless we've already
+      // written some bytes, in which case report a successful short write.
+      if (bytesWritten > 0) {
+        break;
+      }
+      return -result;
+    }
+    // The write was successful.
+    bytesWritten += result;
+    if (result < len) {
+      // The read was short, so stop here.
+      break;
+    }
   }
-  finish();
+  *nwritten = bytesWritten;
+  if (setOffset == OffsetHandling::OpenFileState &&
+      lockedOpenFile.getFile()->isSeekable()) {
+    lockedOpenFile.setPosition(offset + bytesWritten);
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
 // Internal read function called by __wasi_fd_read and __wasi_fd_pread
 // Receives an open file state offset.
 // Optionally sets open file state offset.
+// TODO: combine this with writeAtOffset because the code is nearly identical.
 static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
                                    __wasi_fd_t fd,
                                    const __wasi_iovec_t* iovs,
                                    size_t iovs_len,
                                    __wasi_size_t* nread,
                                    __wasi_filesize_t offset = 0) {
-  if (iovs_len < 0 || offset < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
-
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
-
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
+  auto lockedOpenFile = openFile->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    offset = lockedOpenFile.getPosition();
+  }
+
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   // TODO: Check open file access mode for read permissions.
 
-  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
 
   auto lockedFile = file->locked();
 
-  off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.getPosition()
-                       : offset;
-  off_t oldOffset = currOffset;
-  auto finish = [&] {
-    *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState &&
-        lockedOpenFile.getFile()->isSeekable()) {
-      lockedOpenFile.setPosition(currOffset);
-    }
-  };
-  size_t size = lockedFile.getSize();
+  size_t bytesRead = 0;
   for (size_t i = 0; i < iovs_len; i++) {
-    // Check if currOffset has exceeded size of file data.
-    ssize_t dataLeft = size - currOffset;
-    if (dataLeft <= 0) {
-      break;
-    }
-
     uint8_t* buf = iovs[i].buf;
+    size_t len = iovs[i].buf_len;
 
-    // Check if buf_len specifies a positive length buffer
-    // but buf is a null pointer.
-    if (!buf && iovs[i].buf_len > 0) {
+    if (!buf && len > 0) {
       return __WASI_ERRNO_INVAL;
     }
 
-    size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
-
-    auto result = lockedFile.read(buf, bytesToRead, currOffset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      finish();
-      return result;
+    // TODO: Check for overflow when adding offset + bytesRead.
+    auto result = lockedFile.read(buf, len, offset + bytesRead);
+    if (result < 0) {
+      // This individual read failed. Report the error unless we've already read
+      // some bytes, in which case report a successful short read.
+      if (bytesRead > 0) {
+        break;
+      }
+      return -result;
     }
-    currOffset += bytesToRead;
+    // The read was successful.
+    bytesRead += result;
+    if (result < len) {
+      // The read was short, so stop here.
+      break;
+    }
   }
-  finish();
+  *nread = bytesRead;
+  if (setOffset == OffsetHandling::OpenFileState &&
+      lockedOpenFile.getFile()->isSeekable()) {
+    lockedOpenFile.setPosition(offset + bytesRead);
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 

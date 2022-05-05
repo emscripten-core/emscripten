@@ -26,22 +26,22 @@ class PipeFile : public DataFile {
   void open(oflags_t) override {}
   void close() override {}
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     for (size_t i = 0; i < len; i++) {
       data->push(buf[i]);
     }
-    return __WASI_ERRNO_SUCCESS;
+    return len;
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     for (size_t i = 0; i < len; i++) {
       if (data->empty()) {
-        return __WASI_ERRNO_INVAL;
+        return i;
       }
       buf[i] = data->front();
       data->pop();
     }
-    return __WASI_ERRNO_SUCCESS;
+    return len;
   }
 
   void flush() override {}

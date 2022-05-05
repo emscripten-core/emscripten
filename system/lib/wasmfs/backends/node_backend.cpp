@@ -163,25 +163,21 @@ private:
 
   void close() override { state.close(); }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;
     if (auto err = _wasmfs_node_read(state.getFD(), buf, len, offset, &nread)) {
-      return err;
+      return -err;
     }
-    // TODO: Add a way to report the actual bytes read. We currently assume the
-    // available bytes can't change under us.
-    return __WASI_ERRNO_SUCCESS;
+    return nread;
   }
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nwritten;
     if (auto err =
           _wasmfs_node_write(state.getFD(), buf, len, offset, &nwritten)) {
-      return err;
+      return -err;
     }
-    // TODO: Add a way to report the actual bytes written. We currently assume
-    // the write cannot be short.
-    return __WASI_ERRNO_SUCCESS;
+    return nwritten;
   }
 
   void flush() override {
