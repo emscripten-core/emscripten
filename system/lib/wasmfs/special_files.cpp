@@ -7,6 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include <emscripten/html5.h>
+#include <unistd.h>
 #include <vector>
 #include <wasi/api.h>
 
@@ -113,6 +114,31 @@ public:
   StderrFile() {}
 };
 
+class RandomFile : public DataFile {
+  void open(oflags_t) override {}
+  void close() override {}
+
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    return -__WASI_ERRNO_INVAL;
+  }
+
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    uint8_t* end = buf + len;
+    for (; buf < end; buf += 256) {
+      int err = getentropy(buf, std::min(end - buf, 256l));
+      assert(err == 0);
+    }
+    return len;
+  };
+
+  void flush() override {}
+  size_t getSize() override { return 0; }
+  void setSize(size_t size) override {}
+
+public:
+  RandomFile() : DataFile(S_IRUGO, NullBackend, S_IFCHR) { seekable = false; }
+};
+
 } // anonymous namespace
 
 std::shared_ptr<DataFile> getStdin() {
@@ -128,6 +154,16 @@ std::shared_ptr<DataFile> getStdout() {
 std::shared_ptr<DataFile> getStderr() {
   static auto stderr = std::make_shared<StderrFile>();
   return stderr;
+}
+
+std::shared_ptr<DataFile> getRandom() {
+  static auto random = std::make_shared<RandomFile>();
+  return random;
+}
+
+std::shared_ptr<DataFile> getURandom() {
+  static auto urandom = std::make_shared<RandomFile>();
+  return urandom;
 }
 
 } // namespace wasmfs::SpecialFiles
