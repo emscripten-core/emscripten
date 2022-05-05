@@ -673,12 +673,15 @@ var LibraryWebGPU = {
 
   wgpuDeviceEnumerateFeatures: function(deviceId, featuresOutPtr) {
     var device = WebGPU.mgrDevice.get(deviceId);
-    var offset = 0;
-    for (var feature of device.features) {
-      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-      {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-      offset += 4;
+    if (featuresOutPtr !== 0) {
+      var offset = 0;
+      device.features.forEach(feature => {
+        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+        offset += 4;
+      });
     }
+    return device.features.size;
   },
 
   wgpuDeviceDestroy: function(deviceId) { WebGPU.mgrDevice.get(deviceId)["destroy"](); },
@@ -1824,12 +1827,15 @@ var LibraryWebGPU = {
   // wgpuBuffer
 
   // In webgpu.h offset and size are passed in as size_t.
-  // And we assume that size_t is always 32bit in emscripten.
+  // And library_webgpu assumes that size_t is always 32bit in emscripten.
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
+
+    size = size >>> 0;
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     var mapped;
     try {
@@ -1851,12 +1857,15 @@ var LibraryWebGPU = {
   },
 
   // In webgpu.h offset and size are passed in as size_t.
-  // And we assume that size_t is always 32bit in emscripten.
+  // And library_webgpu assumes that size_t is always 32bit in emscripten.
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
-    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
+
+    size = size >>> 0;
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
 #if ASSERTIONS
@@ -1887,7 +1896,7 @@ var LibraryWebGPU = {
   },
 
   // In webgpu.h offset and size are passed in as size_t.
-  // And we assume that size_t is always 32bit in emscripten.
+  // And library_webgpu assumes that size_t is always 32bit in emscripten.
   wgpuBufferMapAsync__deps: [
     '$callUserCallback',
 #if !MINIMAL_RUNTIME
@@ -1901,7 +1910,8 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    if ((size >>> 0) === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    size = size >>> 0;
+    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
@@ -2331,7 +2341,7 @@ var LibraryWebGPU = {
 #if ASSERTIONS
     assert(canvas instanceof HTMLCanvasElement);
 #endif
-    const context = canvas.getContext('webgpu');
+    var context = canvas.getContext('webgpu');
 #if ASSERTIONS
     assert(context);
 #endif
@@ -2406,12 +2416,15 @@ var LibraryWebGPU = {
 
   wgpuAdapterEnumerateFeatures: function(adapterId, featuresOutPtr) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    var offset = 0;
-    for (var feature of adapter.features) {
-      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-      {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-      offset += 4;
+    if (featuresOutPtr !== 0) {
+      var offset = 0;
+      adapter.features.forEach(feature => {
+        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+        offset += 4;
+      });
     }
+    return adapter.features.size;
   },
 
   wgpuAdapterGetProperties: function(adapterId, properties) {
@@ -2546,7 +2559,7 @@ var LibraryWebGPU = {
   wgpuSurfaceGetPreferredFormat: function(surfaceId, adapterId) {
     var context = WebGPU.mgrSurface.get(surfaceId);
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    const format = context["getPreferredFormat"](adapter);
+    var format = context["getPreferredFormat"](adapter);
     return WebGPU.PreferredFormat[format];
   },
 
