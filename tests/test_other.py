@@ -11648,14 +11648,14 @@ void foo() {}
 const {{ execSync }} = require('child_process');
 const process = require('process');
 
-const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\n"';
+const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\n" || true';
 let openFilesPre;
 
 Module['preRun'] = function() {{
-  openFilesPre = execSync(cmd).toString();
+  openFilesPre = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
 }}
 Module['postRun'] = function() {{
-  const openFilesPost = execSync(cmd).toString();
+  const openFilesPost = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
   assert(openFilesPre == openFilesPost, 'File descriptors should not leak. \\n' +
     'Pre: \\n' + openFilesPre +
     'Post: \\n' + openFilesPost);
