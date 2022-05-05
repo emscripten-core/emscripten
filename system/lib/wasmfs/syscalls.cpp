@@ -27,7 +27,7 @@
 #include "file_table.h"
 #include "paths.h"
 #include "pipe_backend.h"
-#include "streams.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -1150,9 +1150,8 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
 static bool isTTY(std::shared_ptr<File>& file) {
   // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
   //       nothing else.
-  return file == StdinFile::getSingleton() ||
-         file == StdoutFile::getSingleton() ||
-         file == StderrFile::getSingleton();
+  return file == SpecialFiles::getStdin() ||
+         file == SpecialFiles::getStdout() || file == SpecialFiles::getStderr();
 }
 
 int __syscall_ioctl(int fd, int request, ...) {
