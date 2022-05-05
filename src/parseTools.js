@@ -424,7 +424,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
-  if (slab.substr(slab.length - 2) == '64') {
+  if (!WASM_BIGINT && slab.substr(slab.length - 2) == '64') {
     ret = `Number(${ret})`;
   }
   return ret;
