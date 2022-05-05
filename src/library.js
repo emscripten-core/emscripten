@@ -87,6 +87,8 @@ LibraryManager.library = {
   },
 #endif
 
+  // Returns a pointer ('p'), which means an i32 on wasm32 and an i64 wasm64
+  emscripten_get_heap_max__sig: 'p',
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
     // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
@@ -357,6 +359,7 @@ LibraryManager.library = {
   // the wasm file standalone.
 #if SHRINK_LEVEL < 2 && !STANDALONE_WASM
 
+  emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -3304,7 +3307,7 @@ LibraryManager.library = {
   #endif
   },
 
-  emscripten_console_log__sig: 'vi',
+  emscripten_console_log__sig: 'vp',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3312,7 +3315,7 @@ LibraryManager.library = {
     console.log(UTF8ToString(str));
   },
 
-  emscripten_console_warn__sig: 'vi',
+  emscripten_console_warn__sig: 'vp',
   emscripten_console_warn: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3320,7 +3323,7 @@ LibraryManager.library = {
     console.warn(UTF8ToString(str));
   },
 
-  emscripten_console_error__sig: 'vi',
+  emscripten_console_error__sig: 'vp',
   emscripten_console_error: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');

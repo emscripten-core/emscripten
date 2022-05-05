@@ -54,7 +54,7 @@ var WasiLibrary = {
 
   environ_sizes_get__deps: ['$getEnvStrings'],
   environ_sizes_get__nothrow: true,
-  environ_sizes_get__sig: 'iii',
+  environ_sizes_get__sig: 'ipp',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
@@ -72,7 +72,7 @@ var WasiLibrary = {
 #endif
   ],
   environ_get__nothrow: true,
-  environ_get__sig: 'iii',
+  environ_get__sig: 'ipp',
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
     getEnvStrings().forEach(function(string, i) {
@@ -88,7 +88,7 @@ var WasiLibrary = {
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,
-  args_sizes_get__sig: 'iii',
+  args_sizes_get__sig: 'ipp',
   args_sizes_get: function(pargc, pargv_buf_size) {
     {{{ from64(['pargc', 'pargv_buf_size']) }}};
 #if MAIN_READS_PARAMS
@@ -105,7 +105,7 @@ var WasiLibrary = {
   },
 
   args_get__nothrow: true,
-  args_get__sig: 'iii',
+  args_get__sig: 'ipp',
 #if MINIMAL_RUNTIME && MAIN_READS_PARAMS
   args_get__deps: ['$writeAsciiToMemory'],
 #endif
@@ -136,7 +136,7 @@ var WasiLibrary = {
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__nothrow: true,
-  clock_time_get__sig: 'iiiii',
+  clock_time_get__sig: 'iijp',
   clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
     {{{ receiveI64ParamAsI32s('precision') }}}
@@ -160,7 +160,7 @@ var WasiLibrary = {
   },
 
   clock_res_get__nothrow: true,
-  clock_res_get__sig: 'iii',
+  clock_res_get__sig: 'iip',
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     if (!checkWasiClock(clk_id)) {
@@ -247,7 +247,7 @@ var WasiLibrary = {
 #else
   fd_write__deps: ['$printChar'],
 #endif
-  fd_write__sig: 'iiiii',
+  fd_write__sig: 'iippp',
   fd_write: function(fd, iov, iovcnt, pnum) {
     {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -310,7 +310,7 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  fd_read__sig: 'iiiii',
+  fd_read__sig: 'iippp',
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_read__deps: ['$doReadv'],
 #endif
@@ -330,6 +330,7 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_pread__deps: ['$doReadv'],
 #endif
+  fd_pread__sig: 'iippjp',
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
@@ -347,6 +348,7 @@ var WasiLibrary = {
 #endif
   },
 
+  fd_seek__sig: 'iijip',
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI32s('offset') }}}
@@ -370,7 +372,7 @@ var WasiLibrary = {
 #endif
   },
 
-  fd_fdstat_get__sig: 'iii',
+  fd_fdstat_get__sig: 'iip',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);

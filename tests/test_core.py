@@ -9256,6 +9256,12 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v
   return TT
 
 
+# Note: We add --profiling-funcs to many of these modes (especially
+# modes under active development) since it makes debugging test
+# failures easier.  The downside of this approach is that we are not
+# testing the default mode (i.e. without `--profiling-funcs`).  See:
+# https://github.com/emscripten-core/emscripten/pull/15480
+
 # Main wasm test modes
 core0 = make_run('core0', emcc_args=['-O0'])
 core0g = make_run('core0g', emcc_args=['-O0', '-g'])
@@ -9267,10 +9273,10 @@ cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', emcc_args=[], settings={'MEMORY64': 1},
+wasm64 = make_run('wasm64', emcc_args=['--profiling-funcs'], settings={'MEMORY64': 1},
                   require_v8=True, v8_args=['--experimental-wasm-memory64'])
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', emcc_args=[], settings={'MEMORY64': 2},
+wasm64l = make_run('wasm64l', emcc_args=['--profiling-funcs'], settings={'MEMORY64': 2},
                    node_args=['--experimental-wasm-bigint'])
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
