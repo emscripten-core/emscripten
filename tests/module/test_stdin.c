@@ -28,7 +28,7 @@ void main_loop() {
       if (ret != EOF) putc(ret, stdout);
       if (ret == '\n') line++;
     } else if (line > 0) {
-      ret = scanf("%10s", str);
+      ret = scanf("%9s", str);
       if (ret > 0) puts(str);
     }
 

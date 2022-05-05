@@ -868,7 +868,7 @@ class TestCoreBase(RunnerCore):
 
     building.link_to_object(['main.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.emcc('all.o', self.get_emcc_args(), 'all.js')
+    self.emcc('all.o', output_filename='all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
 
   def test_if(self):
@@ -7485,7 +7485,7 @@ void* operator new(size_t size) {
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.emcc_args
-    self.emcc('src.cpp', self.get_emcc_args(), out_filename)
+    self.emcc('src.cpp', output_filename=out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7538,7 +7538,7 @@ void* operator new(size_t size) {
     wasm_filename = 'a.out.wasm'
     shutil.copyfile(test_file('core/test_dwarf.c'), 'test_dwarf.c')
 
-    self.emcc('test_dwarf.c', self.get_emcc_args(), js_filename)
+    self.emcc('test_dwarf.c', output_filename=js_filename)
 
     out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
