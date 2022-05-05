@@ -113,12 +113,13 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  _mmap_js__sig: 'pppiiipp',
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  _mmap_js: function(addr, len, prot, flags, fd, off, allocated, builtin) {
+  _mmap_js: function(addr, len, prot, flags, fd, off, allocated) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var info = FS.getStream(fd);
     if (!info) return -{{{ cDefine('EBADF') }}};
@@ -139,6 +140,7 @@ var SyscallsLibrary = {
     '$FS',
 #endif
   ],
+  _munmap_js__sig: 'vppiiip',
   _munmap_js: function(addr, len, prot, flags, fd, offset) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
