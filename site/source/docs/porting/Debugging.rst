@@ -158,7 +158,7 @@ returns the ``what`` function call result.
 
 .. code-block:: cpp
 
-  #include <bind.h>
+  #include <emscripten/bind.h>
 
   std::string getExceptionMessage(intptr_t exceptionPtr) {
     return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
@@ -168,6 +168,7 @@ returns the ``what`` function call result.
     emscripten::function("getExceptionMessage", &getExceptionMessage);
   };
 
+This requires using the linker flag ``--bind``.
 Once such a function has been created, exception handling code in javascript
 can call it when receiving an exception from WASM. Here the function is used
 in order to log the thrown exception.
