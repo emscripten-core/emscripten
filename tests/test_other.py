@@ -1011,6 +1011,7 @@ int main() {
       }
     ''')
 
+    self.emcc_args.remove('-Werror')
     self.emcc('libA.c', ['-shared'], output_filename='libA.so')
 
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
@@ -1158,6 +1159,8 @@ int f() {
         return 0;
       }
     ''')
+
+    self.emcc_args.remove('-Werror')
     self.emcc('libA.c', ['-shared'], output_filename='libA.so')
     self.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
     self.assertContained('result: 1', self.run_js('a.out.js'))
@@ -1846,6 +1849,8 @@ int f() {
     self.assertContained('ALL OK', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_bzip2(self):
+    self.emcc_args.remove('-Werror')
+    self.emcc_args.append('-Wno-pointer-sign')
     self.emcc(test_file('bzip2_test.c'), ['-sUSE_BZIP2=1'], output_filename='a.out.js')
     self.assertContained("usage: unzcrash filename", self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 

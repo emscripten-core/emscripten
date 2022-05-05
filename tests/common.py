@@ -935,7 +935,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    cmd = [compiler_for(filename), filename] + args
+    cmd = [compiler_for(filename), filename] + self.get_emcc_args(ldflags='-c' not in args) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
