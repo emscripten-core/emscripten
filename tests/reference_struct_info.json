@@ -847,9 +847,17 @@
             "type": 8
         },
         "WGPUComputePassDescriptor": {
-            "__size__": 8,
+            "__size__": 16,
             "label": 4,
-            "nextInChain": 0
+            "nextInChain": 0,
+            "timestampWriteCount": 8,
+            "timestampWrites": 12
+        },
+        "WGPUComputePassTimestampWrite": {
+            "__size__": 12,
+            "location": 8,
+            "queryIndex": 4,
+            "querySet": 0
         },
         "WGPUComputePipelineDescriptor": {
             "__size__": 32,
@@ -879,7 +887,8 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 20,
+            "__size__": 28,
+            "defaultQueue": 20,
             "label": 4,
             "nextInChain": 0,
             "requiredFeatures": 12,
@@ -1004,6 +1013,11 @@
             "pipelineStatisticsCount": 20,
             "type": 8
         },
+        "WGPUQueueDescriptor": {
+            "__size__": 8,
+            "label": 4,
+            "nextInChain": 0
+        },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -1041,13 +1055,21 @@
             "view": 0
         },
         "WGPURenderPassDescriptor": {
-            "__size__": 24,
+            "__size__": 32,
             "colorAttachmentCount": 8,
             "colorAttachments": 12,
             "depthStencilAttachment": 16,
             "label": 4,
             "nextInChain": 0,
-            "occlusionQuerySet": 20
+            "occlusionQuerySet": 20,
+            "timestampWriteCount": 24,
+            "timestampWrites": 28
+        },
+        "WGPURenderPassTimestampWrite": {
+            "__size__": 12,
+            "location": 8,
+            "queryIndex": 4,
+            "querySet": 0
         },
         "WGPURenderPipelineDescriptor": {
             "__size__": 84,
@@ -1162,7 +1184,7 @@
             "rowsPerImage": 20
         },
         "WGPUTextureDescriptor": {
-            "__size__": 40,
+            "__size__": 48,
             "dimension": 12,
             "format": 28,
             "label": 4,
@@ -1170,7 +1192,9 @@
             "nextInChain": 0,
             "sampleCount": 36,
             "size": 16,
-            "usage": 8
+            "usage": 8,
+            "viewFormatCount": 40,
+            "viewFormats": 44
         },
         "WGPUTextureViewDescriptor": {
             "__size__": 36,
