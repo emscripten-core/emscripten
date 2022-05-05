@@ -7235,25 +7235,7 @@ int main() {
     print('Running metadce test: %s:' % filename, args, expected_exists,
           expected_not_exists, check_sent, check_imports, check_exports, check_funcs)
     filename = test_file('other/metadce', filename)
-
-    def clean_arg(arg):
-      return arg.replace('-', '')
-
-    def args_to_filename(args):
-      result = ''
-      for a in args:
-        a = a.replace('-s', '')
-        a = a.replace('-', '')
-        a = a.replace('=1', '')
-        a = a.replace('=[]', '_NONE')
-        a = a.replace('=', '_')
-        if a:
-          result += '_' + a
-
-      return result
-
-    expected_basename = os.path.splitext(filename)[0]
-    expected_basename += args_to_filename(args)
+    expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find asmLibraryArg
     build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()
