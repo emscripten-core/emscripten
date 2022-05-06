@@ -37,6 +37,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_formatString.js',
+      'library_getvalue.js',
       'library_math.js',
       'library_path.js',
       'library_syscall.js',
@@ -388,8 +389,6 @@ function exportRuntime() {
   let runtimeElements = [
     'ccall',
     'cwrap',
-    'setValue',
-    'getValue',
     'allocate',
     'UTF8ArrayToString',
     'UTF8ToString',

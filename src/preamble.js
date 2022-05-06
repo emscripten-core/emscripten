@@ -42,7 +42,13 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
+#if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
 
 // Wasm globals
 
