@@ -221,5 +221,6 @@ def get_deps_info():
 
   if settings.WASMFS:
     _deps_info['wasmfs_create_opfs_backend'] = ['emscripten_proxy_finish']
+    _deps_info['wasmfs_create_fetch_backend'] = ['emscripten_proxy_finish']
 
   return _deps_info
