@@ -5223,7 +5223,7 @@ window.close = function() {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
