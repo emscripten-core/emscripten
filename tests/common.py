@@ -1229,9 +1229,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def get_zlib_library(self):
     return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=['cmake', '.'],
-                              make=['cmake', '--build', '.'],
-                              make_args=[])
+                            configure=['cmake', '.'],
+                            make=['cmake', '--build', '.'],
+                            make_args=[])
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
