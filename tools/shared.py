@@ -675,14 +675,6 @@ def get_llvm_target():
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
 
-# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
-# 0: disabled.
-# 1: Log stderr of subprocess spawns.
-# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
-# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
-EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
-TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
-
 set_version_globals()
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))

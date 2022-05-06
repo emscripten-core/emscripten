@@ -29,13 +29,13 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
-from common import also_with_minimal_runtime, also_with_wasm_bigint
+from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE
 from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
@@ -655,13 +655,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        self.run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
+        self.run_process(cmd, env=env, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EMTEST_BUILD_VERBOSE >= 1 else PIPE)
 
         # Build
         cmd = conf['build']
-        if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+        if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        self.run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
+        self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
         self.assertExists(tempdirname + '/' + output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
         # Run through node, if CMake produced a .js file.

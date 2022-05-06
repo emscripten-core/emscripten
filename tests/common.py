@@ -31,9 +31,8 @@ import clang_native
 import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config
 
 logger = logging.getLogger('common')
@@ -59,6 +58,15 @@ EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
 EMTEST_FORCE64 = None
+
+# Verbosity level control for subprocess calls to configure + make.
+# 0: disabled.
+# 1: Log stderr of configure/make.
+# 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
+EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+if 'EM_BUILD_VERBOSE' in os.environ:
+  exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -1765,8 +1773,8 @@ def build_library(name,
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EM_BUILD_VERBOSE < 2 else None
-          stderr = err if EM_BUILD_VERBOSE < 1 else None
+          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
+          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
           shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
@@ -1787,14 +1795,14 @@ def build_library(name,
   def open_make_err(mode='r'):
     return open(os.path.join(project_dir, 'make.err'), mode)
 
-  if EM_BUILD_VERBOSE >= 3:
+  if EMTEST_BUILD_VERBOSE >= 3:
     make_args += ['VERBOSE=1']
 
   try:
     with open_make_out('w') as make_out:
       with open_make_err('w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
         shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
                            cwd=project_dir)
   except subprocess.CalledProcessError:
