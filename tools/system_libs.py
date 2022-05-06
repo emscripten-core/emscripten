@@ -708,7 +708,8 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_ops.S',
         'stack_limits.S',
         'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c'
+        'emscripten_exception_builtins.c',
+        'exception_builtins.S'
       ])
 
 

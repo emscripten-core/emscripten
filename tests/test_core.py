@@ -1639,6 +1639,20 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
+  @with_both_eh_sjlj
+  def test_terminate_abort(self):
+    # std::terminate eventually calls abort(). We used ti implement abort() with
+    # throwing a JS exception, but this can be again caught by std::terminate's
+    # cleanup and cause an infinite loop. When Wasm EH is enabled, abort() is
+    # implemented by a trap now.
+    err = self.do_run(r'''
+#include <exception>
+int main() {
+  std::terminate();
+}
+''', assert_returncode=NON_ZERO)
+    self.assertNotContained('Maximum call stack size exceeded', err)
+
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
     # constructors, so iostream works in global constructors
