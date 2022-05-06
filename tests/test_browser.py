@@ -659,6 +659,7 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             window.onerror = function(error) {
+              window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
               var xhr = new XMLHttpRequest();
@@ -2587,6 +2588,18 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_html5_core(self, opts):
+    if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
+      # In this mode an exception can be thrown by the browser, and we don't
+      # want the test to fail in that case so we override the error handling.
+      create_file('pre.js', '''
+      window.disableErrorReporting = true;
+      window.addEventListener('error', (event) => {
+        if (!event.message.includes('exception:fullscreen error')) {
+          report_error(event);
+        }
+      });
+      ''')
+      self.emcc_args.append('--pre-js=pre.js')
     self.btest(test_file('test_html5_core.c'), args=opts, expected='0')
 
   @requires_threads
