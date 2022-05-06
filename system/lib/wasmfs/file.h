@@ -130,8 +130,10 @@ protected:
   virtual void open(oflags_t flags) = 0;
   virtual void close() = 0;
 
-  // TODO: Allow backends to override the version of read with multiple iovecs
-  // to make it possible to implement pipes. See #16269.
+  // Return the accessed length or a negative error code. It is not an error to
+  // access fewer bytes than requested.
+  // TODO: Allow backends to override the version of read with
+  // multiple iovecs to make it possible to implement pipes. See #16269.
   virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 

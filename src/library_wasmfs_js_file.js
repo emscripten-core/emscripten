@@ -17,19 +17,23 @@ mergeInto(LibraryManager.library, {
         wasmFS$JSMemoryFiles[file] = undefined;
       },
       write: (file, buffer, length, offset) => {
-        if (!wasmFS$JSMemoryFiles[file]) {
-          // Initialize typed array on first write operation.
-          wasmFS$JSMemoryFiles[file] = new Uint8Array(offset + length);
+        try {
+          if (!wasmFS$JSMemoryFiles[file]) {
+            // Initialize typed array on first write operation.
+            wasmFS$JSMemoryFiles[file] = new Uint8Array(offset + length);
+          }
+          if (offset + length > wasmFS$JSMemoryFiles[file].length) {
+            // Resize the typed array if the length of the write buffer exceeds its capacity.
+            var oldContents = wasmFS$JSMemoryFiles[file];
+            var newContents = new Uint8Array(offset + length);
+            newContents.set(oldContents);
+            wasmFS$JSMemoryFiles[file] = newContents;
+          }
+          wasmFS$JSMemoryFiles[file].set(HEAPU8.subarray(buffer, buffer + length), offset);
+          return length;
+        } catch (err) {
+          return -{{{ cDefine('EIO') }}};
         }
-        if (offset + length > wasmFS$JSMemoryFiles[file].length) {
-          // Resize the typed array if the length of the write buffer exceeds its capacity.
-          var oldContents = wasmFS$JSMemoryFiles[file];
-          var newContents = new Uint8Array(offset + length);
-          newContents.set(oldContents);
-          wasmFS$JSMemoryFiles[file] = newContents;
-        }
-        wasmFS$JSMemoryFiles[file].set(HEAPU8.subarray(buffer, buffer + length), offset);
-        return length;
       },
       read: (file, buffer, length, offset) => {
         var fileData = wasmFS$JSMemoryFiles[file];
