@@ -1227,7 +1227,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-
   def get_zlib_library(self, cmake):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
@@ -1248,7 +1247,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
     self.emcc_args = old_args
     return rtn
-
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
