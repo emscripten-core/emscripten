@@ -20,10 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.11
 ------
-- Bug fixes
+- The `EM_BUILD_VERBOSE` environment variable only effects test code these days
+  and therefore was renamed to `EMTEST_BUILD_VERBOSE`.
 
 3.1.10 - 05/02/2022
 -------------------
+- Bug fixes
 
 3.1.9 - 04/21/2022
 ------------------
