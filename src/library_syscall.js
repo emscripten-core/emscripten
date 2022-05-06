@@ -121,9 +121,13 @@ var SyscallsLibrary = {
   ],
   _mmap_js: function(addr, len, prot, flags, fd, off, allocated) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    var info = FS.getStream(fd);
-    if (!info) return -{{{ cDefine('EBADF') }}};
-    var res = FS.mmap(info, addr, len, off, prot, flags);
+    if (addr !== 0) {
+      // We don't currently support location hints for the address of the mapping
+      return -{{{ cDefine('EINVAL') }}};
+    }
+    var stream = FS.getStream(fd);
+    if (!stream) return -{{{ cDefine('EBADF') }}};
+    var res = FS.mmap(stream, len, off, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
 #if CAN_ADDRESS_2GB
