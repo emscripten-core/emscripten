@@ -1531,6 +1531,10 @@ def setup_pthreads(target):
   if settings.PROXY_TO_PTHREAD:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
 
+  # All proxying async backends will need this.
+  if settings.WASMFS:
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]

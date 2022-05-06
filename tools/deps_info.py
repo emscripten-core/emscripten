@@ -219,8 +219,4 @@ def get_deps_info():
   if settings.USE_PTHREADS:
     _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['emscripten_dispatch_to_thread_']
 
-  if settings.WASMFS:
-    _deps_info['wasmfs_create_opfs_backend'] = ['emscripten_proxy_finish']
-    _deps_info['wasmfs_create_fetch_backend'] = ['emscripten_proxy_finish']
-
   return _deps_info
