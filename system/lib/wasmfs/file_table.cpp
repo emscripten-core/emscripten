@@ -7,17 +7,17 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file_table.h"
-#include "streams.h"
+#include "special_files.h"
 
 namespace wasmfs {
 
 FileTable::FileTable() {
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDONLY, SpecialFiles::getStdin()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, StdoutFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStdout()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, StderrFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStderr()));
 }
 
 std::shared_ptr<OpenFileState> FileTable::Handle::getEntry(__wasi_fd_t fd) {

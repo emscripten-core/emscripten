@@ -10,7 +10,7 @@
 
 #include "memory_backend.h"
 #include "paths.h"
-#include "streams.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -49,8 +49,8 @@ WasmFS::~WasmFS() {
   // Note that we lock here, although strictly speaking it is unnecessary given
   // that we are in the destructor of WasmFS: nothing can possibly be running
   // on files at this time.
-  StdoutFile::getSingleton()->locked().flush();
-  StderrFile::getSingleton()->locked().flush();
+  SpecialFiles::getStdout()->locked().flush();
+  SpecialFiles::getStderr()->locked().flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.
@@ -71,9 +71,9 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   lockedRoot.mountChild("dev", devDirectory);
   auto lockedDev = devDirectory->locked();
 
-  lockedDev.mountChild("stdin", StdinFile::getSingleton());
-  lockedDev.mountChild("stdout", StdoutFile::getSingleton());
-  lockedDev.mountChild("stderr", StderrFile::getSingleton());
+  lockedDev.mountChild("stdin", SpecialFiles::getStdin());
+  lockedDev.mountChild("stdout", SpecialFiles::getStdout());
+  lockedDev.mountChild("stderr", SpecialFiles::getStderr());
 
   return rootDirectory;
 }
