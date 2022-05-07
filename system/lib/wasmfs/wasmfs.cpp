@@ -74,6 +74,8 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   lockedDev.mountChild("stdin", SpecialFiles::getStdin());
   lockedDev.mountChild("stdout", SpecialFiles::getStdout());
   lockedDev.mountChild("stderr", SpecialFiles::getStderr());
+  lockedDev.mountChild("random", SpecialFiles::getRandom());
+  lockedDev.mountChild("urandom", SpecialFiles::getURandom());
 
   return rootDirectory;
 }

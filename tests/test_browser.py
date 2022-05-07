@@ -702,6 +702,7 @@ If manually bisecting:
     # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  @also_with_wasmfs
   def test_dev_random(self):
     self.btest_exit(Path('filesystem/dev_random.cpp'))
 

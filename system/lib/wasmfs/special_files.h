@@ -18,4 +18,10 @@ std::shared_ptr<DataFile> getStdout();
 // /dev/stderr
 std::shared_ptr<DataFile> getStderr();
 
+// /dev/random
+std::shared_ptr<DataFile> getRandom();
+
+// /dev/urandom
+std::shared_ptr<DataFile> getURandom();
+
 } // namespace wasmfs::SpecialFiles
