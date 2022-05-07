@@ -122,6 +122,7 @@ protected:
 };
 
 class DataFile : public File {
+protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked.
@@ -176,6 +177,7 @@ private:
   // TODO: Use a cache data structure with smaller code size.
   std::map<std::string, DCacheEntry> dcache;
 
+protected:
   // Return the `File` object corresponding to the file with the given name or
   // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;

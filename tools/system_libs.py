@@ -1502,7 +1502,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'file_table.cpp',
                    'js_api.cpp',
                    'paths.cpp',
-                   'streams.cpp',
+                   'special_files.cpp',
                    'support.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp'])

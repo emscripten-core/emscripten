@@ -176,9 +176,14 @@ function needsQuoting(ident) {
 
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = 'i' + POINTER_BITS;
-
+const POINTER_TYPE = 'u' + POINTER_BITS;
 const SIZE_TYPE = POINTER_TYPE;
+
+// Similar to POINTER_TYPE, but this is the actual wasm type that is
+// used in practice, while POINTER_TYPE is the more refined internal
+// type (that is unsigned, where as core wasm does not have unsigned
+// types).
+const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -196,7 +201,7 @@ function isIntImplemented(type) {
 function getBits(type, allowPointers) {
   if (allowPointers && isPointerType(type)) return POINTER_SIZE;
   if (!type) return 0;
-  if (type[0] == 'i') {
+  if (type[0] == 'i' || type[0] == 'u') {
     const left = type.substr(1);
     if (!isNumber(left)) return 0;
     return parseInt(left);
@@ -660,8 +665,7 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
-    // TODO(sbc): Make POINTER_TYPE u32/u64 rather than i32/i64
-    type = 'u' + POINTER_TYPE.slice(1);
+    type = POINTER_TYPE;
   }
   if (WASM_BIGINT) {
     switch (type) {
