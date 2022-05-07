@@ -11648,7 +11648,7 @@ void foo() {}
 const {{ execSync }} = require('child_process');
 const process = require('process');
 
-const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\n" || true';
+const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\\\n" || true';
 let openFilesPre;
 
 Module['preRun'] = function() {{
