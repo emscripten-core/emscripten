@@ -31,14 +31,14 @@ class ProxiedFile : public DataFile {
   }
 
   // Read and write operations are forwarded via the proxying mechanism.
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    __wasi_errno_t result;
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
     proxy([&]() { result = baseFile->locked().write(buf, len, offset); });
     return result;
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    __wasi_errno_t result;
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
     proxy([&]() { result = baseFile->locked().read(buf, len, offset); });
     return result;
   }
