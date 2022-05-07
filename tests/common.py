@@ -1243,6 +1243,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args.append('-Wno-shift-negative-value')
     # adler32.c uses K&R sytyle function declarations
     self.emcc_args.append('-Wno-deprecated-non-prototype')
+    # Work around configure-script error. TODO: remove when
+    # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
+    self.emcc_args.append('-Wno-pointer-sign')
     if cmake:
       rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                              configure=['cmake', '.'],
