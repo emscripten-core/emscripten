@@ -23,14 +23,5 @@
             "wasmfs::File::DirectoryKind",
             "wasmfs::File::SymlinkKind"
         ]
-    },
-    {
-        "file": "async_callback.h",
-        "structs": {
-            "CallbackState": [
-                "result",
-                "offset"
-            ]
-        }
     }
 ]

@@ -60,65 +60,52 @@ mergeInto(LibraryManager.library, {
   //       WASM_BIGINT so the pointer is just a single argument, just like in
   //       wasm32).
   _wasmfs_jsimpl_async_alloc_file__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-  _wasmfs_jsimpl_async_alloc_file: async function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_alloc_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    {{{ runtimeKeepalivePush() }}}
     await wasmFS$backends[backend].allocFile(file);
-    {{{ runtimeKeepalivePop() }}}
-    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_free_file__deps:  ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-  _wasmfs_jsimpl_async_free_file: async function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_free_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    {{{ runtimeKeepalivePush() }}}
     await wasmFS$backends[backend].freeFile(file);
-    {{{ runtimeKeepalivePop() }}}
-    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_write__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-  _wasmfs_jsimpl_async_write: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+  _wasmfs_jsimpl_async_write: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    {{{ runtimeKeepalivePush() }}}
-    var size = await wasmFS$backends[backend].write(file, buffer, length, offset);
-    {{{ runtimeKeepalivePop() }}}
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
-    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    var result = await wasmFS$backends[backend].write(file, buffer, length, offset);
+    {{{ makeSetValue('result_p', 0, 'result', 'i64') }}};
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_read__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-  _wasmfs_jsimpl_async_read: async function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}, fptr, arg) {
+  _wasmfs_jsimpl_async_read: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    {{{ runtimeKeepalivePush() }}}
-    var size = await wasmFS$backends[backend].read(file, buffer, length, offset);
-    {{{ runtimeKeepalivePop() }}}
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
-    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    var result = await wasmFS$backends[backend].read(file, buffer, length, offset);
+    {{{ makeSetValue('result_p', 0, 'result', 'i32') }}};
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_get_size__deps:  ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-  _wasmfs_jsimpl_async_get_size: async function(backend, file, fptr, arg) {
+  _wasmfs_jsimpl_async_get_size: async function(ctx, backend, file, size_p) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    {{{ runtimeKeepalivePush() }}}
     var size = await wasmFS$backends[backend].getSize(file);
-    {{{ runtimeKeepalivePop() }}}
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.result, '0', 'i32') }}};
-    {{{ makeSetValue('arg', C_STRUCTS.CallbackState.offset, 'size', 'i64') }}};
-    {{{ makeDynCall('vi', 'fptr') }}}(arg);
+    {{{ makeSetValue('size_p', 0, 'size', 'i64') }}};
+    _emscripten_proxy_finish(ctx);
   },
 });
