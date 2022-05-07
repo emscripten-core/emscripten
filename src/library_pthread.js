@@ -676,7 +676,7 @@ var LibraryPThread = {
     // Proxied canvases string pointer -1 is used as a special token to fetch
     // whatever canvases were passed to build in -s
     // OFFSCREENCANVASES_TO_PTHREAD= command line.
-    if (transferredCanvasNames == -1) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
+    if (transferredCanvasNames == (-1 >>> 0)) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     else
 #endif
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
