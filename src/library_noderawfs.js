@@ -174,14 +174,10 @@ mergeInto(LibraryManager.library, {
     allocate: function() {
       throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
     },
-    mmap: function(stream, address, length, position, prot, flags) {
+    mmap: function(stream, length, position, prot, flags) {
       if (stream.stream_ops) {
         // this stream is created by in-memory filesystem
-        return VFS.mmap(stream, address, length, position, prot, flags);
-      }
-      if (address !== 0) {
-        // We don't currently support location hints for the address of the mapping
-        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        return VFS.mmap(stream, length, position, prot, flags);
       }
 
       var ptr = mmapAlloc(length);

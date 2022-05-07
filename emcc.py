@@ -992,6 +992,8 @@ def package_files(options, target):
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     file_args.append('--no-node')
   if options.embed_files:
+    if settings.MEMORY64:
+      file_args += ['--wasm64']
     object_file = in_temp('embedded_files.o')
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
@@ -1529,6 +1531,10 @@ def setup_pthreads(target):
   if settings.PROXY_TO_PTHREAD:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
 
+  # All proxying async backends will need this.
+  if settings.WASMFS:
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
@@ -1817,6 +1823,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
+    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE

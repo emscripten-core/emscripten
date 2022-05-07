@@ -12,10 +12,11 @@ executors:
       - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
-      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
+      EMTEST_BUILD_VERBOSE: "2"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -380,7 +381,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world wasm64l.test_mmap wasm64l.test_unistd_* skip:wasm64l.test_unistd_sysconf"
+          test_targets: "wasm64.test_hello_world wasm64l.test_hello_world wasm64l.test_mmap wasm64l.test_unistd_* skip:wasm64l.test_unistd_sysconf wasm64l.test_mmap_file"
   test-other:
     executor: bionic
     steps:

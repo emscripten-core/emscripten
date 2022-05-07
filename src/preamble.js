@@ -42,7 +42,13 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
+#if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
 
 // Wasm globals
 
@@ -778,6 +784,12 @@ function instrumentWasmExportsForMemory64(exports) {
         // return an i64
         replacement = () => {
           var r = Number(original());
+          return r;
+        };
+      } else if (name === 'emscripten_builtin_memalign') {
+        // get two i64, return an i64
+        replacement = (x, y) => {
+          var r = Number(original(BigInt(x), BigInt(y)));
           return r;
         };
       } else if (name === 'main') {

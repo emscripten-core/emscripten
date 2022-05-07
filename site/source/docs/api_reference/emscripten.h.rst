@@ -361,6 +361,8 @@ Functions
 
   .. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` in the calling thread by applying the timing mode specified by the parameter ``fps``. To specify a different timing mode for the current thread, call the function :c:func:`emscripten_set_main_loop_timing` after setting up the main loop.
 
+  .. note:: Currently, using `the new Wasm exception handling <https://emscripten.org/docs/porting/exceptions.html#webassembly-exception-handling-proposal>`_ and ``simulate_infinite_loop`` == true at the same time does not work yet in C++ projects that have objects with destructors on the stack at the time of the call.
+
   :param em_callback_func func: C function to set as main event loop for the calling thread.
   :param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
   :param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.

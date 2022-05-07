@@ -298,11 +298,7 @@ mergeInto(LibraryManager.library, {
 
         return position;
       },
-      mmap: (stream, address, length, position, prot, flags) => {
-        if (address !== 0) {
-          // We don't currently support location hints for the address of the mapping
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
-        }
+      mmap: (stream, length, position, prot, flags) => {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }

@@ -131,20 +131,16 @@ private:
     }
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;
     proxy([&]() { nread = _wasmfs_opfs_read(accessID, buf, len, offset); });
-    // TODO: Add a way to report the actual bytes read. We currently assume the
-    // available bytes can't change under us.
-    return __WASI_ERRNO_SUCCESS;
+    return nread;
   }
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nwritten;
     proxy([&]() { nwritten = _wasmfs_opfs_write(accessID, buf, len, offset); });
-    // TODO: Add a way to report the actual bytes written. We currently assume
-    // the write cannot be short.
-    return __WASI_ERRNO_SUCCESS;
+    return nwritten;
   }
 
   void flush() override {

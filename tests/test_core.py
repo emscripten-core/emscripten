@@ -868,7 +868,7 @@ class TestCoreBase(RunnerCore):
 
     building.link_to_object(['main.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.emcc('all.o', self.get_emcc_args(), 'all.js')
+    self.emcc('all.o', output_filename='all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
 
   def test_if(self):
@@ -4920,9 +4920,11 @@ main main sees -524, -534, 72.
   @needs_make('mingw32-make')
   @needs_dylink
   def test_dylink_zlib(self):
-    self.emcc_args += ['-Wno-shift-negative-value', '-I' + test_file('third_party/zlib')]
     self.set_setting('RELOCATABLE')
-    zlib_archive = self.get_zlib_library()
+    zlib_archive = self.get_zlib_library(cmake=WINDOWS)
+    # example.c uses K&R style function declarations
+    self.emcc_args.append('-Wno-deprecated-non-prototype')
+    self.emcc_args.append('-I' + test_file('third_party/zlib'))
     self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
                      side=zlib_archive,
                      expected=read_file(test_file('core/test_zlib.out')),
@@ -6579,27 +6581,18 @@ void* operator new(size_t size) {
       self.skipTest("Windows cannot run configure sh scripts")
 
     self.maybe_closure()
-
-    self.emcc_args.append('-Wno-shift-negative-value')
-    self.emcc_args.append('-Wno-pointer-sign')
-
     if '-g' in self.emcc_args:
       self.emcc_args.append('-gsource-map') # more source maps coverage
 
-    if use_cmake:
-      make_args = []
-      configure = ['cmake', '.']
-    else:
-      make_args = ['libz.a']
-      configure = ['sh', './configure']
+    zlib = self.get_zlib_library(use_cmake)
 
-    # TODO: remove Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
-    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
+    # example.c uses K&R style function declarations
+    self.emcc_args += ['-Wno-deprecated-non-prototype']
     self.do_run_from_file(
         test_file('third_party/zlib/example.c'),
         test_file('core/test_zlib.out'),
-        libraries=self.get_library('third_party/zlib', 'libz.a', make_args=make_args, configure=configure),
-        includes=[test_file('third_party/zlib'), 'building', 'zlib'])
+        libraries=zlib,
+        includes=[test_file('third_party/zlib')])
 
   @needs_make('make')
   @is_slow_test
@@ -7485,7 +7478,7 @@ void* operator new(size_t size) {
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.emcc_args
-    self.emcc('src.cpp', self.get_emcc_args(), out_filename)
+    self.emcc('src.cpp', output_filename=out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7538,7 +7531,7 @@ void* operator new(size_t size) {
     wasm_filename = 'a.out.wasm'
     shutil.copyfile(test_file('core/test_dwarf.c'), 'test_dwarf.c')
 
-    self.emcc('test_dwarf.c', self.get_emcc_args(), js_filename)
+    self.emcc('test_dwarf.c', output_filename=js_filename)
 
     out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 

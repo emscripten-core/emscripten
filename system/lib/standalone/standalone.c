@@ -116,6 +116,13 @@ __attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
+// There is no good source of entropy without an import. Make this weak so that
+// it can be replaced with a pRNG or a proper import.
+__attribute__((__weak__))
+int getentropy(void* buffer, size_t length) {
+  abort();
+}
+
 // Emscripten additions
 
 extern void emscripten_notify_memory_growth(size_t memory_index);

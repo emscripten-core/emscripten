@@ -29,13 +29,13 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
-from common import also_with_minimal_runtime, also_with_wasm_bigint
+from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE
 from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
@@ -655,13 +655,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        self.run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
+        self.run_process(cmd, env=env, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EMTEST_BUILD_VERBOSE >= 1 else PIPE)
 
         # Build
         cmd = conf['build']
-        if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+        if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        self.run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
+        self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
         self.assertExists(tempdirname + '/' + output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
         # Run through node, if CMake produced a .js file.
@@ -1011,6 +1011,7 @@ int main() {
       }
     ''')
 
+    self.emcc_args.remove('-Werror')
     self.emcc('libA.c', ['-shared'], output_filename='libA.so')
 
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
@@ -1158,6 +1159,8 @@ int f() {
         return 0;
       }
     ''')
+
+    self.emcc_args.remove('-Werror')
     self.emcc('libA.c', ['-shared'], output_filename='libA.so')
     self.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
     self.assertContained('result: 1', self.run_js('a.out.js'))
@@ -1846,6 +1849,8 @@ int f() {
     self.assertContained('ALL OK', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_bzip2(self):
+    self.emcc_args.remove('-Werror')
+    self.emcc_args.append('-Wno-pointer-sign')
     self.emcc(test_file('bzip2_test.c'), ['-sUSE_BZIP2=1'], output_filename='a.out.js')
     self.assertContained("usage: unzcrash filename", self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
@@ -7235,25 +7240,7 @@ int main() {
     print('Running metadce test: %s:' % filename, args, expected_exists,
           expected_not_exists, check_sent, check_imports, check_exports, check_funcs)
     filename = test_file('other/metadce', filename)
-
-    def clean_arg(arg):
-      return arg.replace('-', '')
-
-    def args_to_filename(args):
-      result = ''
-      for a in args:
-        a = a.replace('-s', '')
-        a = a.replace('-', '')
-        a = a.replace('=1', '')
-        a = a.replace('=[]', '_NONE')
-        a = a.replace('=', '_')
-        if a:
-          result += '_' + a
-
-      return result
-
-    expected_basename = os.path.splitext(filename)[0]
-    expected_basename += args_to_filename(args)
+    expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find asmLibraryArg
     build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()

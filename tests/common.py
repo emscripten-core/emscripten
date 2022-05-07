@@ -31,9 +31,8 @@ import clang_native
 import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config
 
 logger = logging.getLogger('common')
@@ -59,6 +58,15 @@ EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
 EMTEST_FORCE64 = None
+
+# Verbosity level control for subprocess calls to configure + make.
+# 0: disabled.
+# 1: Log stderr of configure/make.
+# 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
+EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+if 'EM_BUILD_VERBOSE' in os.environ:
+  exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -935,7 +943,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    cmd = [compiler_for(filename), filename] + args
+    cmd = [compiler_for(filename), filename] + self.get_emcc_args(ldflags='-c' not in args) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
@@ -1092,7 +1100,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     banned = [b[0] for b in self.banned_js_engines if b]
     return [engine for engine in js_engines if engine and engine[0] not in banned]
 
-  def do_run(self, src, expected_output, force_c=False, **kwargs):
+  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1101,21 +1109,21 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         filename = 'src.cpp'
       write_file(filename, src)
-    self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
     return self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
+    return self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     expected = read_file(outfile)
-    self._build_and_run(srcfile, expected, **kwargs)
+    return self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
@@ -1227,15 +1235,26 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self):
-    # TODO: remove -Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
-    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
-    if WINDOWS:
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=['cmake', '.'],
-                              make=['cmake', '--build', '.'],
-                              make_args=[])
-    return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+  def get_zlib_library(self, cmake):
+    assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
+
+    old_args = self.emcc_args.copy()
+    # inflate.c does -1L << 16
+    self.emcc_args.append('-Wno-shift-negative-value')
+    # adler32.c uses K&R sytyle function declarations
+    self.emcc_args.append('-Wno-deprecated-non-prototype')
+    # Work around configure-script error. TODO: remove when
+    # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
+    self.emcc_args.append('-Wno-pointer-sign')
+    if cmake:
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
+                             configure=['cmake', '.'],
+                             make=['cmake', '--build', '.', '--'],
+                             make_args=[])
+    else:
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+    self.emcc_args = old_args
+    return rtn
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
@@ -1757,8 +1776,8 @@ def build_library(name,
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EM_BUILD_VERBOSE < 2 else None
-          stderr = err if EM_BUILD_VERBOSE < 1 else None
+          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
+          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
           shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
@@ -1779,14 +1798,14 @@ def build_library(name,
   def open_make_err(mode='r'):
     return open(os.path.join(project_dir, 'make.err'), mode)
 
-  if EM_BUILD_VERBOSE >= 3:
+  if EMTEST_BUILD_VERBOSE >= 3:
     make_args += ['VERBOSE=1']
 
   try:
     with open_make_out('w') as make_out:
       with open_make_err('w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
         shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
                            cwd=project_dir)
   except subprocess.CalledProcessError:

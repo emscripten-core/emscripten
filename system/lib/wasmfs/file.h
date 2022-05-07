@@ -122,6 +122,7 @@ protected:
 };
 
 class DataFile : public File {
+protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked.
@@ -129,11 +130,12 @@ class DataFile : public File {
   virtual void open(oflags_t flags) = 0;
   virtual void close() = 0;
 
-  // TODO: Allow backends to override the version of read with multiple iovecs
-  // to make it possible to implement pipes. See #16269.
-  virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
-  virtual __wasi_errno_t
-  write(const uint8_t* buf, size_t len, off_t offset) = 0;
+  // Return the accessed length or a negative error code. It is not an error to
+  // access fewer bytes than requested.
+  // TODO: Allow backends to override the version of read with
+  // multiple iovecs to make it possible to implement pipes. See #16269.
+  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
+  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized (often backends have an efficient way to do this
@@ -176,6 +178,7 @@ private:
   // TODO: Use a cache data structure with smaller code size.
   std::map<std::string, DCacheEntry> dcache;
 
+protected:
   // Return the `File` object corresponding to the file with the given name or
   // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
@@ -281,10 +284,10 @@ public:
   void open(oflags_t flags) { getFile()->open(flags); }
   void close() { getFile()->close(); }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
   }
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
 
