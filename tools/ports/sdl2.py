@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '4b8d69a41687e5f6f4b05f7fd9804dd9fcac0347'
-HASH = '2d4d577c7584da22306b05a44bc08200460a33cd414fed2dc948e2a86e7b2d1a5cbc13bacadb63618823ba63c210f21c570adbab39f7645bf902196fa91c6b4e'
+TAG = 'release-2.0.22'
+HASH = '6fe4ae7e4b0093f442b67954fcb74ad90974dc6552d1feb7dfd8d5e4b2e5ad5176038f24d803d1530b078d3d9210b37ea83ab811bd4c8c96cf8a5db5dd02b61a'
 SUBDIR = 'SDL-' + TAG
 
 
@@ -28,8 +28,8 @@ def get(ports, settings, shared):
     ports.install_headers(source_include_path, target='SDL2')
 
     # build
-    srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c
-    atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
+    srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_list.c SDL_log.c
+    atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
     audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
