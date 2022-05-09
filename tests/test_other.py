@@ -11901,6 +11901,10 @@ Module['postRun'] = function() {
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
+  @also_with_minimal_runtime
+  def test_wasm_worker_closure(self):
+    self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
+
   def test_debug_opt_warning(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
     self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
