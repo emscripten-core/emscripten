@@ -1639,6 +1639,24 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
+  @with_both_eh_sjlj
+  def test_std_terminate(self):
+    # std::terminate eventually calls abort(), which is implemented with
+    # throwing a JS exception, which used to cause an infinite loop that
+    # exhausted the call stack. The reason is std::terminate is marked
+    # 'noexcept' in the upstream LLVM, which generates cleanuppads that call
+    # std::terminate in case of an unexpected second exception happens while
+    # aborting, and our abort() was considered as that second exception. We
+    # removed 'noexcept' from std::terminate signature when Wasm EH is enabled
+    # to avoid this issue.
+    err = self.do_run(r'''
+#include <exception>
+int main() {
+  std::terminate();
+}
+''', assert_returncode=NON_ZERO)
+    self.assertNotContained('Maximum call stack size exceeded', err)
+
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
     # constructors, so iostream works in global constructors

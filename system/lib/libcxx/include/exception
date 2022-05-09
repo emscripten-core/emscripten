@@ -45,7 +45,11 @@ unexpected_handler get_unexpected() noexcept;
 typedef void (*terminate_handler)();
 terminate_handler set_terminate(terminate_handler  f ) noexcept;
 terminate_handler get_terminate() noexcept;
+#ifdef __USING_WASM_EXCEPTIONS__
+[[noreturn]] void terminate();
+#else
 [[noreturn]] void terminate() noexcept;
+#endif
 
 bool uncaught_exception()  noexcept;
 int  uncaught_exceptions() noexcept;  // C++17
@@ -128,7 +132,11 @@ _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void unexpected();
 typedef void (*terminate_handler)();
 _LIBCPP_FUNC_VIS terminate_handler set_terminate(terminate_handler) _NOEXCEPT;
 _LIBCPP_FUNC_VIS terminate_handler get_terminate() _NOEXCEPT;
+#ifdef __USING_WASM_EXCEPTIONS__
+_LIBCPP_NORETURN _LIBCPP_FUNC_VIS void terminate();
+#else
 _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void terminate() _NOEXCEPT;
+#endif
 
 _LIBCPP_FUNC_VIS bool uncaught_exception() _NOEXCEPT;
 _LIBCPP_FUNC_VIS _LIBCPP_AVAILABILITY_UNCAUGHT_EXCEPTIONS int uncaught_exceptions() _NOEXCEPT;

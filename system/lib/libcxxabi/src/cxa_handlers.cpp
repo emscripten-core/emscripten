@@ -50,7 +50,13 @@ get_terminate() noexcept
 }
 
 void
+#ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm EH, a JS exception thrown by abort() is caught by 'noexcept' cleanup
+// from which std::__terminate is called again, causing an infinite loop
+__terminate(terminate_handler func)
+#else
 __terminate(terminate_handler func) noexcept
+#endif
 {
 #ifndef _LIBCXXABI_NO_EXCEPTIONS
     try
@@ -71,7 +77,13 @@ __terminate(terminate_handler func) noexcept
 
 __attribute__((noreturn))
 void
+#ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm EH, a JS exception thrown by abort() is caught by 'noexcept' cleanup
+// from which std::terminate is called again, causing an infinite loop
+terminate()
+#else
 terminate() noexcept
+#endif
 {
 #if !defined(_LIBCXXABI_NO_EXCEPTIONS) && !defined(__USING_EMSCRIPTEN_EXCEPTIONS__)
     // If there might be an uncaught exception
