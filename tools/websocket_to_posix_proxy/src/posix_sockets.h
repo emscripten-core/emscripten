@@ -20,6 +20,8 @@
 #define SEND_FORMATTING_SPECIFIER "%ld"
 #define CLOSE_SOCKET(x) close(x)
 
+#define CREATE_SOCKET_CALL_RETURNS_AN_ERROR(x) ((x) < 0)
+#define SOCKET_API_CALL_RETURNS_AN_ERROR(x) ((x) < 0)
 #define GET_SOCKET_ERROR() (errno)
 
 #define PRINT_SOCKET_ERROR(errorCode) do { \
@@ -39,6 +41,15 @@
 #define SEND_RET_TYPE int
 #define SEND_FORMATTING_SPECIFIER "%d"
 #define CLOSE_SOCKET(x) closesocket(x)
+
+// Winsock documentation states that the "BSD style of error checking "will not work on Windows":
+// https://docs.microsoft.com/en-us/windows/win32/winsock/return-values-on-function-failure-2
+// but instead must check against SOCKET_ERROR or INVALID_SOCKET
+
+// On Windows, API calls that return a socket should test against INVALID_SOCKET:
+// https://docs.microsoft.com/en-us/windows/win32/winsock/handling-winsock-errors
+#define CREATE_SOCKET_CALL_RETURNS_AN_ERROR(x) ((x) == INVALID_SOCKET)
+#define SOCKET_API_CALL_RETURNS_AN_ERROR(x) ((x) == SOCKET_ERROR)
 
 #define GET_SOCKET_ERROR() (WSAGetLastError())
 
