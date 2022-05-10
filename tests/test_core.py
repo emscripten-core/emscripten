@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
-from tools.utils import WINDOWS, MACOS
+from tools.utils import WINDOWS, MACOS, write_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -447,7 +447,7 @@ class TestCoreBase(RunnerCore):
     if common.EMTEST_REBASELINE:
       self.run_process([EMCC, test_file('core/test_int53.c'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.emcc_args)
       ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-      open(test_file('core/test_int53.out'), 'w').write(ret)
+      write_file(test_file('core/test_int53.out'), ret)
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
 
@@ -456,7 +456,7 @@ class TestCoreBase(RunnerCore):
     if common.EMTEST_REBASELINE:
       self.run_process([EMCC, test_file('core/test_convertI32PairToI53Checked.cpp'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.emcc_args)
       ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-      open(test_file('core/test_convertI32PairToI53Checked.out'), 'w').write(ret)
+      write_file(test_file('core/test_convertI32PairToI53Checked.out'), ret)
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
