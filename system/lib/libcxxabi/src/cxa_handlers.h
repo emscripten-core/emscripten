@@ -26,6 +26,8 @@ __unexpected(unexpected_handler func);
 _LIBCXXABI_HIDDEN _LIBCXXABI_NORETURN
 void
 #ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm EH, a JS exception thrown by abort() is caught by 'noexcept' cleanup
+// // from which std::__terminate is called again, causing an infinite loop
 __terminate(terminate_handler func);
 #else
 __terminate(terminate_handler func) noexcept;
