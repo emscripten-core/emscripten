@@ -25,7 +25,11 @@ __unexpected(unexpected_handler func);
 
 _LIBCXXABI_HIDDEN _LIBCXXABI_NORETURN
 void
+#ifdef __USING_WASM_EXCEPTIONS__
 __terminate(terminate_handler func);
+#else
+__terminate(terminate_handler func) noexcept;
+#endif
 
 }  // std
 
