@@ -709,7 +709,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_limits.S',
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c',
-        'exception_builtins.c'
+        '__trap.c'
       ])
 
 
