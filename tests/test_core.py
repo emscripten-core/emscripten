@@ -9210,7 +9210,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_wasm_bigint
   def test_js_library_i64_params(self):
-    # Tests the defineI64Param and receiveI64ParamAsDouble helpers that are
+    # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')

@@ -1,7 +1,32 @@
 // Tests for JS library compile time helpers defined in parseTools.js
 
 mergeInto(LibraryManager.library, {
+  test_receiveI64ParamAsI53__deps: i53ConversionDeps,
+  test_receiveI64ParamAsI53: function({{{ defineI64Param('arg1') }}},
+                                      {{{ defineI64Param('arg2') }}}) {
+    out('\ntest_receiveI64ParamAsI53:');
+    {{{ receiveI64ParamAsI53('arg1', '-1') }}};
+    out('arg1: ' + arg1);
+    {{{ receiveI64ParamAsI53('arg2', '-2') }}};
+    out('arg2: ' + arg2);
+    return 0;
+  },
+
+  // receiveI64ParamAsDoulbe is a legacy function that is no longer
+  // used within emscripten, but we continue to test it in case
+  // there are external users.
+  test_receiveI64ParamAsDouble: function({{{ defineI64Param('arg1') }}},
+                                         {{{ defineI64Param('arg2') }}}) {
+    out('\ntest_receiveI64ParamAsDouble:');
+    {{{ receiveI64ParamAsDouble('arg1') }}};
+    out('arg1: ' + arg1);
+    {{{ receiveI64ParamAsDouble('arg2') }}};
+    out('arg2: ' + arg2);
+    return 0;
+  },
+
   test_makeGetValue: function(ptr) {
+    out('\ntest_makeGetValue:');
     let val;
 
     // i32
