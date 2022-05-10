@@ -1330,7 +1330,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
