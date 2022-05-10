@@ -105,6 +105,25 @@ mergeInto(LibraryManager.library, {
     return (lo >>> 0) + hi * 4294967296;
   },
 
+  // Same as convertI32PairToI53(), but throws a RangeError if the input number
+  // is outside the +/-2^53 range.
+  $convertI32PairToI53Signaling: function(lo, hi) {
+#if ASSERTIONS
+    assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
+    assert(hi === (hi|0));                    // hi should be a i32
+#endif
+    if (((hi + 0x200000) >>> 0 < 0x400001 - !!lo)) {
+      return (lo >>> 0) + hi * 4294967296;
+    }
+
+#if ASSERTIONS
+    throw 'RangeError in convertI32PairToI53Signaling(): input value pair lo='
+          + lo + ', hi=' + hi + ' is out of range of int53';
+#else
+    throw 'RangeError:' + num;
+#endif
+  },
+
   // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision. Returns a NaN if the number exceeds the safe
   // integer range representable by a Number (x > 9007199254740992 || x < -9007199254740992)
