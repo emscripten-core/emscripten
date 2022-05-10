@@ -103,6 +103,9 @@ function getCFunc(ident) {
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
+#if MEMORY64
+    'pointer': (p) => {{{ to64('p') }}},
+#endif
     'string': function(str) {
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
@@ -111,17 +114,23 @@ function ccall(ident, returnType, argTypes, args, opts) {
         ret = stackAlloc(len);
         stringToUTF8(str, ret, len);
       }
-      return ret;
+      return {{{ to64('ret') }}};
     },
     'array': function(arr) {
       var ret = stackAlloc(arr.length);
       writeArrayToMemory(arr, ret);
-      return ret;
+      return {{{ to64('ret') }}};
     }
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      {{{ from64('ret') }}}
+      return UTF8ToString(ret);
+    }
+#if MEMORY64
+    if (returnType === 'pointer') return Number(ret);
+#endif
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
