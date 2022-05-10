@@ -83,18 +83,32 @@ mergeInto(LibraryManager.library, {
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromI64Signaling() variant.
   $readI53FromI64: function(ptr) {
-    return HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
+    var result = HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
+#if ASSERTIONS
+    var lo = HEAPU32[ptr>>2];
+    var hi = HEAP32[ptr+4>>2];
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('readI53FromI64() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
+#endif
+    return result;
   },
 
   // Reads a 64-bit unsigned integer from the WebAssembly heap and
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromU64Signaling() variant.
   $readI53FromU64: function(ptr) {
-    return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
+    var result = HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
+#if ASSERTIONS
+    var lo = HEAPU32[ptr>>2];
+    var hi = HEAPU32[ptr+4>>2];
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('readI53FromU64() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
+#endif
+    return result;
   },
 
-  // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
-  // represent 53 bits of precision.
+  // Converts the given 32-bit low-high pair to a signed JavaScript number value
+  // (with rounding beyond +/- 2^53).
+  // The result will have the sign of the high word.
+  // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertI32PairToI53Signaling() variant.
   $convertI32PairToI53: function(lo, hi) {
 #if ASSERTIONS
@@ -103,13 +117,22 @@ mergeInto(LibraryManager.library, {
     // convertU32PairToI53())
     assert(hi === (hi|0));
 #endif
-    return (lo >>> 0) + hi * 4294967296;
+    var result = (lo >>> 0) + hi * 4294967296;
+#if ASSERTIONS
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('convertI32PairToI53() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
+#endif
+    return result;
   },
 
-  // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
-  // represent 53 bits of precision.
+  // Converts the given 32-bit low-high pair to an unsigned JavaScript number value
+  // (with rounding beyond 2^53).
+  // The signedness of each word doesn't matter; they will be bit-cast to u32.
   // TODO: Add $convertU32PairToI53Signaling() variant.
   $convertU32PairToI53: function(lo, hi) {
-    return (lo >>> 0) + (hi >>> 0) * 4294967296;
-  }
+    var result = (lo >>> 0) + (hi >>> 0) * 4294967296;
+#if ASSERTIONS
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('convertU32PairToI53() resulted in rounding (lo=0x' + lo + ', hi=0x' + hi + ') to 0x' + result.toString(16));
+#endif
+    return result;
+  },
 });
