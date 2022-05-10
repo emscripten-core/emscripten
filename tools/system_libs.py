@@ -714,6 +714,9 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
 class libnoexit(Library):
   name = 'libnoexit'
+  # __cxa_atexit calls can be generated during LTO the implemenation cannot
+  # itself be LTO.  See `get_libcall_files` below for more details.
+  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -780,6 +783,10 @@ class libc(MuslInternalLibrary,
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
+    exit_files = files_in_path(
+        path='system/lib/libc/musl/src/exit',
+        filenames=['atexit.c'])
+
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
@@ -802,7 +809,7 @@ class libc(MuslInternalLibrary,
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + other_files + iprintf_files
+    return math_files + exit_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
