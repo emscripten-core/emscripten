@@ -46,6 +46,8 @@ typedef void (*terminate_handler)();
 terminate_handler set_terminate(terminate_handler  f ) noexcept;
 terminate_handler get_terminate() noexcept;
 #ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm EH, a JS exception thrown by abort() is caught by 'noexcept' cleanup
+// // from which std::__terminate is called again, causing an infinite loop
 [[noreturn]] void terminate();
 #else
 [[noreturn]] void terminate() noexcept;
@@ -133,6 +135,8 @@ typedef void (*terminate_handler)();
 _LIBCPP_FUNC_VIS terminate_handler set_terminate(terminate_handler) _NOEXCEPT;
 _LIBCPP_FUNC_VIS terminate_handler get_terminate() _NOEXCEPT;
 #ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm EH, a JS exception thrown by abort() is caught by 'noexcept' cleanup
+// // from which std::__terminate is called again, causing an infinite loop
 _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void terminate();
 #else
 _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void terminate() _NOEXCEPT;
