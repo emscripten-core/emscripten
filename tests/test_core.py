@@ -1641,7 +1641,7 @@ int main () {
 
   @with_both_eh_sjlj
   def test_terminate_abort(self):
-    # std::terminate eventually calls abort(). We used ti implement abort() with
+    # std::terminate eventually calls abort(). We used to implement abort() with
     # throwing a JS exception, but this can be again caught by std::terminate's
     # cleanup and cause an infinite loop. When Wasm EH is enabled, abort() is
     # implemented by a trap now.

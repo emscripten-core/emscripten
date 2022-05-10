@@ -605,18 +605,18 @@ function abort(what) {
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
-  // FIXME This is not working now, because Wasm EH currently does not assume
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
   // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
   // a trap or not based on a hidden field within the object. So at the moment
-  // we don't have a way of throwing a trap from JS. TODO Make a JS API that
-  // allows this.
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if EXCEPTION_HANDLING == 1
-  // In the meantime, we resort to wasm code for trapping.
+  // See above, in the meantime, we resort to wasm code for trapping.
   ___trap();
 #else
   /** @suppress {checkTypes} */
