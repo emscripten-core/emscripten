@@ -11963,3 +11963,14 @@ Module['postRun'] = function() {
   @also_with_wasm_bigint
   def test_parseTools(self):
     self.do_other_test('test_parseTools.c', emcc_args=['--js-library', test_file('other/test_parseTools.js')])
+
+  def test_lto_atexit(self):
+    self.emcc_args.append('-flto')
+
+    # Without EXIT_RUNTIME we don't expect the dtor to run at all
+    output = self.do_runf(test_file('other/test_lto_atexit.c'), 'main done')
+    self.assertNotContained('my_dtor', output)
+
+    # With EXIT_RUNTIME we expect to see the dtor running.
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
