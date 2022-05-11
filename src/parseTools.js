@@ -177,7 +177,11 @@ function needsQuoting(ident) {
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+
 const SIZE_TYPE = POINTER_TYPE;
+
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
