@@ -1655,6 +1655,24 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
+  @with_both_eh_sjlj
+  def test_abort_no_dtors(self):
+    # abort() should not run destructors
+    out = self.do_run(r'''
+#include <stdlib.h>
+#include <iostream>
+
+struct Foo {
+  ~Foo() { std::cout << "Destructing Foo" << std::endl; }
+};
+
+int main() {
+  Foo f;
+  abort();
+}
+''', assert_returncode=NON_ZERO)
+    self.assertNotContained('Destructing Foo', out)
+
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
     # constructors, so iostream works in global constructors
