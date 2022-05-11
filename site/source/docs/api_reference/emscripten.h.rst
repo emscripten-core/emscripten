@@ -1042,7 +1042,7 @@ Defines
 Functions
 ---------
 
-.. c:function:: int emscripten_get_compiler_setting(const char *name)
+.. c:function:: long emscripten_get_compiler_setting(const char *name)
 
   Returns the value of a compiler setting.
 
@@ -1050,7 +1050,7 @@ Functions
 
     emscripten_get_compiler_setting("INITIAL_MEMORY")
 
-  For values containing anything other than an integer, a string is returned (you will need to cast the ``int`` return value to a ``char*``).
+  For values containing anything other than an integer, a string is returned (you will need to cast the ``long`` return value to a ``char*``).
 
   Some useful things this can do is provide the version of Emscripten (“EMSCRIPTEN_VERSION”), the optimization level (“OPT_LEVEL”), debug level (“DEBUG_LEVEL”), etc.
 

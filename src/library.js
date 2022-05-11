@@ -2572,6 +2572,7 @@ LibraryManager.library = {
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
+  emscripten_get_compiler_setting__sig: 'pp',
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);

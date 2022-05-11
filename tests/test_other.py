@@ -9445,7 +9445,7 @@ int main () {
     #include <emscripten.h>
 
     int main() {
-      printf("%d %d\n",
+      printf("%ld %ld\n",
         emscripten_get_compiler_setting("BINARYEN_ASYNC_COMPILATION"),
         emscripten_get_compiler_setting("WASM_ASYNC_COMPILATION"));
       return 0;
