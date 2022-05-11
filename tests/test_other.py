@@ -11649,7 +11649,7 @@ Module['postRun'] = function() {
 }
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run_in_out_file_test('unistd/close.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/close.c')
 
   # WASMFS tests
 

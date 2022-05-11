@@ -1089,16 +1089,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
-  def filtered_js_engines(self, js_engines=None):
-    if js_engines is None:
-      js_engines = self.js_engines
-    for engine in js_engines:
+  def filtered_js_engines(self):
+    for engine in self.js_engines:
       assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) in (list, type(None))
     banned = [b[0] for b in self.banned_js_engines if b]
-    return [engine for engine in js_engines if engine and engine[0] not in banned]
+    return [engine for engine in self.js_engines if engine and engine[0] not in banned]
 
   def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
@@ -1128,7 +1126,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
                      no_build=False,
-                     js_engines=None, libraries=[],
+                     libraries=[],
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
@@ -1145,7 +1143,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                            output_basename=output_basename)
     self.assertExists(js_file)
 
-    engines = self.filtered_js_engines(js_engines)
+    engines = self.filtered_js_engines()
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.

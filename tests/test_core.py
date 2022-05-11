@@ -518,11 +518,12 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
   @no_wasm2js('wasm_bigint')
+  @require_node
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
     self.node_args += ['--experimental-wasm-bigint']
-    self.do_core_test('test_i64_invoke_bigint.cpp', js_engines=[config.NODE_JS])
+    self.do_core_test('test_i64_invoke_bigint.cpp')
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
@@ -5404,15 +5405,17 @@ Module = {
   def test_fwrite_0(self):
     self.do_core_test('test_fwrite_0.c')
 
-  def test_fgetc_ungetc(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS'])
+  })
+  def test_fgetc_ungetc(self, fs):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      print(fs)
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_runf(test_file('stdio/test_fgetc_ungetc.c'), 'success', js_engines=[config.NODE_JS])
+    self.emcc_args += ['-D' + fs]
+    if fs == 'NODEFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js']
+    self.do_runf(test_file('stdio/test_fgetc_ungetc.c'), 'success')
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -5811,6 +5814,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test(test_file('test_signals.c'))
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @require_node
   def test_unistd_access(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
@@ -5823,13 +5827,13 @@ Module['onRuntimeInitialized'] = function() {
         self.emcc_args += ['-sFORCE_FILESYSTEM']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
+      self.do_run_in_out_file_test('unistd/access.c')
     # Node.js fs.chmod is nearly no-op on Windows
     # TODO: NODERAWFS in WasmFS
     if not WINDOWS and not self.get_setting('WASMFS'):
       self.emcc_args = orig_compiler_opts
       self.set_setting('NODERAWFS')
-      self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
+      self.do_run_in_out_file_test('unistd/access.c')
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
@@ -5847,19 +5851,22 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
 
-  def test_unistd_truncate(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS'])
+  })
+  def test_unistd_truncate(self, fs):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if self.get_setting('WASMFS'):
-        if fs == 'NODEFS':
-          # TODO: NODEFS in WasmFS
-          continue
-        self.emcc_args += ['-sFORCE_FILESYSTEM']
+    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+    if self.get_setting('WASMFS'):
       if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
+        self.skipTest('TODO: NODEFS in WasmFS')
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+    if fs == 'NODEFS':
+      self.emcc_args += ['-lnodefs.js']
+      self.require_node()
+    self.do_run_in_out_file_test('unistd/truncate.c')
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
@@ -5884,33 +5891,36 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  def test_unistd_unlink(self):
-    self.clear()
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      if fs == 'NODEFS' and self.get_setting('WASMFS'):
-        # TODO: NODEFS in WasmFS
-        continue
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
-      # so skip testing those bits on that combination.
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-        if WINDOWS:
-          self.emcc_args += ['-DNO_SYMLINK=1']
-        if MACOS:
-          continue
-      self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS']),
+    'noderawfs': (['NODERAWFS']),
+  })
+  def test_unistd_unlink(self, fs):
+    if fs in ('NODEFS', 'NODERAWFS'):
+      self.require_node()
+      if self.get_setting('WASMFS'):
+        self.skipTest('NODEFS in WasmFS')
+
+    self.emcc_args += ['-D' + fs]
+    # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
+    # so skip testing those bits on that combination.
+    if fs == 'NODEFS':
+      self.emcc_args += ['-lnodefs.js']
+      if WINDOWS:
+        self.emcc_args += ['-DNO_SYMLINK=1']
+      if MACOS:
+        self.skipTest()
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
-    if not WINDOWS and not MACOS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
+    if fs == 'NODERAWFS':
+      self.set_setting('NODERAWFS')
       # 0 if root user
       if os.geteuid() == 0:
         self.emcc_args += ['-DSKIP_ACCESS_TESTS']
-      self.set_setting('NODERAWFS')
-      self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+
+    self.do_runf(test_file('unistd/unlink.c'), 'success')
 
   @parameterized({
     'memfs': (['-DMEMFS'], False),
@@ -5960,14 +5970,18 @@ Module['onRuntimeInitialized'] = function() {
       self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  def test_unistd_misc(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS']),
+  })
+  def test_unistd_misc(self, fs):
     self.set_setting('LLD_REPORT_UNDEFINED')
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
+    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+    if fs == 'NODEFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js']
+    self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
