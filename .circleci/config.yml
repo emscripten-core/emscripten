@@ -381,7 +381,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l.test_hello_world wasm64l.test_mmap wasm64l.test_unistd_* skip:wasm64l.test_unistd_sysconf wasm64l.test_mmap_file wasm64l.test_ccall wasm64l.test_signals"
+          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l.test_hello_world wasm64l.test_mmap wasm64l.test_unistd_* skip:wasm64l.test_unistd_sysconf wasm64l.test_mmap_file wasm64l.test_ccall wasm64l.test_signals wasm64l.test_emscripten_get_compiler_setting"
   test-other:
     executor: bionic
     steps:

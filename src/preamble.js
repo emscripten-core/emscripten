@@ -785,7 +785,7 @@ function instrumentWasmExportsForMemory64(exports) {
     (function(name) {
       var original = exports[name];
       var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc') {
+      if (name === 'stackAlloc' || name === 'malloc' || name === 'emscripten_builtin_malloc') {
         // get one i64, return an i64
         replacement = (x) => {
           var r = Number(original(BigInt(x)));
