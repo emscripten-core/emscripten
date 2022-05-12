@@ -66,13 +66,11 @@ void emscripten_asm_const_async_on_main_thread(
 
 // We can use the generic selection C11 feature (that clang supports pre-C11
 // as an extension) to emulate function overloading in C.
-// All pointer types should go through the default case.
+// All other types, including *all* pointer types go through the default case.
 #define _EM_ASM_SIG_CHAR(x) _Generic((x), \
     float: 'f', \
     double: 'd', \
-    int: 'i', \
     long long: 'j', \
-    unsigned: 'i', \
     default: 'i')
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
