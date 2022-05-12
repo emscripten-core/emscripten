@@ -459,6 +459,8 @@ function ${name}(${args}) {
       print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
 
       print(preprocess(read('arrayUtils.js')));
+    } else if (FILESYSTEM) {
+      print(preprocess(read('arrayUtils.js')));
     }
 
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {

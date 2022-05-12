@@ -835,7 +835,7 @@ def create_receiving(exports):
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
-        receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
+        receiving += [dynCallAssignment + mangled + ' = Module["' + mangled + '"] = asm["' + s + '"];']
     else:
       if settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
@@ -849,7 +849,7 @@ def create_receiving(exports):
           # that multithreaded MODULARIZEd builds can export on.
           receiving += [asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports_that_are_not_initializers]
         else:
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
+          receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
       else:
         receiving += make_export_wrappers(exports, delay_assignment)
   else:
