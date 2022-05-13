@@ -103,6 +103,9 @@ function getCFunc(ident) {
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
+#if MEMORY64
+    'pointer': (p) => {{{ to64('p') }}},
+#endif
     'string': function(str) {
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
@@ -111,17 +114,23 @@ function ccall(ident, returnType, argTypes, args, opts) {
         ret = stackAlloc(len);
         stringToUTF8(str, ret, len);
       }
-      return ret;
+      return {{{ to64('ret') }}};
     },
     'array': function(arr) {
       var ret = stackAlloc(arr.length);
       writeArrayToMemory(arr, ret);
-      return ret;
+      return {{{ to64('ret') }}};
     }
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      {{{ from64('ret') }}}
+      return UTF8ToString(ret);
+    }
+#if MEMORY64
+    if (returnType === 'pointer') return Number(ret);
+#endif
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -605,12 +614,20 @@ function abort(what) {
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
+  // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
+  // a trap or not based on a hidden field within the object. So at the moment
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
+#if EXCEPTION_HANDLING == 1
+  // See above, in the meantime, we resort to wasm code for trapping.
+  ___trap();
+#else
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -621,6 +638,7 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
+#endif
 }
 
 // {{MEM_INITIALIZER}}
@@ -767,7 +785,7 @@ function instrumentWasmExportsForMemory64(exports) {
     (function(name) {
       var original = exports[name];
       var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc') {
+      if (name === 'stackAlloc' || name === 'malloc' || name === 'emscripten_builtin_malloc') {
         // get one i64, return an i64
         replacement = (x) => {
           var r = Number(original(BigInt(x)));

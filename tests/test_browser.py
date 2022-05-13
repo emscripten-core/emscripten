@@ -659,6 +659,7 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             window.onerror = function(error) {
+              window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
               var xhr = new XMLHttpRequest();
@@ -2587,6 +2588,18 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_html5_core(self, opts):
+    if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
+      # In this mode an exception can be thrown by the browser, and we don't
+      # want the test to fail in that case so we override the error handling.
+      create_file('pre.js', '''
+      window.disableErrorReporting = true;
+      window.addEventListener('error', (event) => {
+        if (!event.message.includes('exception:fullscreen error')) {
+          report_error(event);
+        }
+      });
+      ''')
+      self.emcc_args.append('--pre-js=pre.js')
     self.btest(test_file('test_html5_core.c'), args=opts, expected='0')
 
   @requires_threads
@@ -5224,7 +5237,7 @@ window.close = function() {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime

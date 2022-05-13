@@ -177,7 +177,11 @@ function needsQuoting(ident) {
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+
 const SIZE_TYPE = POINTER_TYPE;
+
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
@@ -689,6 +693,16 @@ function getHeapForType(type) {
   assert(false, 'bad heap type: ' + type);
 }
 
+function makeReturn64(value) {
+  if (WASM_BIGINT) {
+    return `BigInt(${value})`;
+  }
+  const pair = splitI64(value);
+  // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
+  // element `c`
+  return `(setTempRet0(${pair[1]}), ${pair[0]})`;
+}
+
 function makeThrow(what) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
     what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
@@ -812,6 +826,33 @@ function makeDynCall(sig, funcPtr) {
   }
   args = args.join(', ');
 
+  const needArgConversion = MEMORY64 && sig.includes('p');
+  let callArgs = args;
+  if (needArgConversion) {
+    callArgs = [];
+    for (let i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') {
+        callArgs.push(`BigInt(a${i})`);
+      } else {
+        callArgs.push(`a${i}`);
+      }
+    }
+    callArgs = callArgs.join(', ');
+  }
+
+  // Normalize any 'p' characters to either 'j' (wasm64) or 'i' (wasm32)
+  if (sig.includes('p')) {
+    let normalizedSig = '';
+    for (let sigChr of sig) {
+      if (sigChr == 'p') {
+        sigChr = MEMORY64 ? 'j' : 'i';
+      }
+      normalizedSig += sigChr;
+    }
+    sig = normalizedSig;
+  }
+
+
   if (funcPtr === undefined) {
     printErr(`warning: ${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
@@ -827,9 +868,9 @@ Please update to new syntax.`);
           return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
         }
       }
-      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${callArgs}) })`;
     } else {
-      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${callArgs}) })`;
     }
   }
 
@@ -844,13 +885,15 @@ Please update to new syntax.`);
 
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
-      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
-    } else {
-      return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
+      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]); })`;
     }
-  } else {
-    return `getWasmTableEntry(${funcPtr})`;
+    return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
   }
+
+  if (needArgConversion) {
+    return `(function(${args}) { ${returnExpr} getWasmTableEntry(${funcPtr}).call(null, ${callArgs}) })`;
+  }
+  return `getWasmTableEntry(${funcPtr})`;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
@@ -1100,17 +1143,14 @@ function receiveI64ParamAsI32s(name) {
   return '';
 }
 
-// TODO: use this in library_wasi.js and other places. but we need to add an
-//       error-handling hook here.
-function receiveI64ParamAsDouble(name) {
+function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = Number(${name}_bigint);`;
+    return `var ${name} = bigintToI53Checked(${name}_bigint); if (isNaN(${name})) return ${onError};`;
   }
-
-  // Combine the i32 params. Use an unsigned operator on low and shift high by
-  // 32 bits.
-  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  // Covert the high/low pair to a Number, checking for
+  // overflow of the I53 range and returning onError in that case.
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
 }
 
 function sendI64Argument(low, high) {

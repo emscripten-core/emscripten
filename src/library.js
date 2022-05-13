@@ -2239,6 +2239,7 @@ LibraryManager.library = {
 
   // Helper for raise() to avoid signature mismatch failures:
   // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler__sig: 'vpi',
   __call_sighandler: function(fp, sig) {
     {{{ makeDynCall('vi', 'fp') }}}(sig);
   },
@@ -2571,6 +2572,7 @@ LibraryManager.library = {
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
+  emscripten_get_compiler_setting__sig: 'pp',
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2873,7 +2875,12 @@ LibraryManager.library = {
 #endif
 
   $readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
+  $readAsmConstArgs__deps: [
+    '$readAsmConstArgsArray',
+#if MEMORY64
+    '$readI53FromI64',
+#endif
+  ],
   $readAsmConstArgs: function(sigPtr, buf) {
     {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
@@ -2889,14 +2896,28 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/ || ch === 106 /*'j'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
-#if !WASM_BIGINT
-      assert(ch !== 106/*'j'*/, "i64 arguments to ASM_JS function are not available without WASM_BIGINT");
+      var chr = String.fromCharCode(ch);
+      var validChars = ['d', 'f', 'i'];
+#if WASM_BIGINT
+      // In WASM_BIGINT mode we support passing i64 values as bigint.
+      validChars.push('j');
 #endif
+#if MEMORY64
+      // In MEMORY64 mode we also support passing i64 pointer types which
+      // get automatically converted to int53/Double.
+      validChars.push('p');
+#endif
+      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
 #endif
       // Floats are always passed as doubles, and doubles and int64s take up 8
       // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != 105) & buf;
+      buf += (ch != 105/*i*/) & buf;
+#if MEMORY64
+      // Special case for pointers under wasm64 which we read as int53 Numbers.
+      if (ch == 112/*p*/) {
+        readAsmConstArgsArray.push(readI53FromI64(buf++ << 2));
+      } else
+#endif
       readAsmConstArgsArray.push(
         ch == 105/*i*/ ? HEAP32[buf] :
 #if WASM_BIGINT
@@ -2910,7 +2931,7 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
-  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__sig: 'ippp',
   emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
@@ -2920,9 +2941,23 @@ LibraryManager.library = {
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
+#if MEMORY64
+    return Number(ASM_CONSTS[code].apply(null, args));
+#else
     return ASM_CONSTS[code].apply(null, args);
+#endif
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+
+#if MEMORY64
+  emscripten_asm_const_ptr__sig: 'pppp',
+  emscripten_asm_const_ptr__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
+    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+  },
+#else
+  emscripten_asm_const_ptr: 'emscripten_asm_const_int',
+#endif
 
   $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {

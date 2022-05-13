@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
-from tools.utils import WINDOWS, MACOS
+from tools.utils import WINDOWS, MACOS, write_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -447,9 +447,18 @@ class TestCoreBase(RunnerCore):
     if common.EMTEST_REBASELINE:
       self.run_process([EMCC, test_file('core/test_int53.c'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.emcc_args)
       ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-      open(test_file('core/test_int53.out'), 'w').write(ret)
+      write_file(test_file('core/test_int53.out'), ret)
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
+
+  def test_int53_convertI32PairToI53Checked(self):
+    self.emcc_args += ['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53Checked]']
+    if common.EMTEST_REBASELINE:
+      self.run_process([EMCC, test_file('core/test_convertI32PairToI53Checked.cpp'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.emcc_args)
+      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+      write_file(test_file('core/test_convertI32PairToI53Checked.out'), ret)
+    else:
+      self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
   def test_i64(self):
     self.do_core_test('test_i64.c')
@@ -509,11 +518,12 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
   @no_wasm2js('wasm_bigint')
+  @require_node
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
     self.node_args += ['--experimental-wasm-bigint']
-    self.do_core_test('test_i64_invoke_bigint.cpp', js_engines=[config.NODE_JS])
+    self.do_core_test('test_i64_invoke_bigint.cpp')
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
@@ -1646,6 +1656,24 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
+  @with_both_eh_sjlj
+  def test_abort_no_dtors(self):
+    # abort() should not run destructors
+    out = self.do_run(r'''
+#include <stdlib.h>
+#include <iostream>
+
+struct Foo {
+  ~Foo() { std::cout << "Destructing Foo" << std::endl; }
+};
+
+int main() {
+  Foo f;
+  abort();
+}
+''', assert_returncode=NON_ZERO)
+    self.assertNotContained('Destructing Foo', out)
+
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
     # constructors, so iostream works in global constructors
@@ -2074,6 +2102,8 @@ int main(int argc, char **argv) {
 
   def test_em_asm(self):
     self.do_core_test('test_em_asm.cpp')
+
+  def test_em_asm_c(self):
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm.cpp', force_c=True)
 
@@ -2111,6 +2141,8 @@ int main(int argc, char **argv) {
 
   def test_em_asm_types(self):
     self.do_core_test('test_em_asm_types.cpp')
+
+  def test_em_asm_types_c(self):
     self.do_core_test('test_em_asm_types.cpp', force_c=True)
 
   def test_em_asm_unused_arguments(self):
@@ -5377,15 +5409,17 @@ Module = {
   def test_fwrite_0(self):
     self.do_core_test('test_fwrite_0.c')
 
-  def test_fgetc_ungetc(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS'])
+  })
+  def test_fgetc_ungetc(self, fs):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      print(fs)
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_runf(test_file('stdio/test_fgetc_ungetc.c'), 'success', js_engines=[config.NODE_JS])
+    self.emcc_args += ['-D' + fs]
+    if fs == 'NODEFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js']
+    self.do_runf(test_file('stdio/test_fgetc_ungetc.c'), 'success')
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -5784,6 +5818,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test(test_file('test_signals.c'))
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @require_node
   def test_unistd_access(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
@@ -5796,13 +5831,13 @@ Module['onRuntimeInitialized'] = function() {
         self.emcc_args += ['-sFORCE_FILESYSTEM']
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
+      self.do_run_in_out_file_test('unistd/access.c')
     # Node.js fs.chmod is nearly no-op on Windows
     # TODO: NODERAWFS in WasmFS
     if not WINDOWS and not self.get_setting('WASMFS'):
       self.emcc_args = orig_compiler_opts
       self.set_setting('NODERAWFS')
-      self.do_run_in_out_file_test('unistd/access.c', js_engines=[config.NODE_JS])
+      self.do_run_in_out_file_test('unistd/access.c')
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
@@ -5820,19 +5855,22 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
 
-  def test_unistd_truncate(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS'])
+  })
+  def test_unistd_truncate(self, fs):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if self.get_setting('WASMFS'):
-        if fs == 'NODEFS':
-          # TODO: NODEFS in WasmFS
-          continue
-        self.emcc_args += ['-sFORCE_FILESYSTEM']
+    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+    if self.get_setting('WASMFS'):
       if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
+        self.skipTest('TODO: NODEFS in WasmFS')
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+    if fs == 'NODEFS':
+      self.emcc_args += ['-lnodefs.js']
+      self.require_node()
+    self.do_run_in_out_file_test('unistd/truncate.c')
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
@@ -5857,33 +5895,36 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  def test_unistd_unlink(self):
-    self.clear()
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      if fs == 'NODEFS' and self.get_setting('WASMFS'):
-        # TODO: NODEFS in WasmFS
-        continue
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
-      # so skip testing those bits on that combination.
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-        if WINDOWS:
-          self.emcc_args += ['-DNO_SYMLINK=1']
-        if MACOS:
-          continue
-      self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS']),
+    'noderawfs': (['NODERAWFS']),
+  })
+  def test_unistd_unlink(self, fs):
+    if fs in ('NODEFS', 'NODERAWFS'):
+      self.require_node()
+      if self.get_setting('WASMFS'):
+        self.skipTest('NODEFS in WasmFS')
+
+    self.emcc_args += ['-D' + fs]
+    # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
+    # so skip testing those bits on that combination.
+    if fs == 'NODEFS':
+      self.emcc_args += ['-lnodefs.js']
+      if WINDOWS:
+        self.emcc_args += ['-DNO_SYMLINK=1']
+      if MACOS:
+        self.skipTest('only tested on linux')
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
-    if not WINDOWS and not MACOS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
+    if fs == 'NODERAWFS':
+      self.set_setting('NODERAWFS')
       # 0 if root user
       if os.geteuid() == 0:
         self.emcc_args += ['-DSKIP_ACCESS_TESTS']
-      self.set_setting('NODERAWFS')
-      self.do_runf(test_file('unistd/unlink.c'), 'success', js_engines=[config.NODE_JS])
+
+    self.do_runf(test_file('unistd/unlink.c'), 'success')
 
   @parameterized({
     'memfs': (['-DMEMFS'], False),
@@ -5933,14 +5974,18 @@ Module['onRuntimeInitialized'] = function() {
       self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  def test_unistd_misc(self):
+  @parameterized({
+    '': (['MEMFS']),
+    'nodefs': (['NODEFS']),
+  })
+  def test_unistd_misc(self, fs):
     self.set_setting('LLD_REPORT_UNDEFINED')
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
+    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+    if fs == 'NODEFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js']
+    self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
@@ -9201,7 +9246,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_wasm_bigint
   def test_js_library_i64_params(self):
-    # Tests the defineI64Param and receiveI64ParamAsDouble helpers that are
+    # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')

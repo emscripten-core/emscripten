@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 106
+EXPECTED_BINARYEN_VERSION = 108
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
@@ -1294,7 +1294,6 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
-  # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)

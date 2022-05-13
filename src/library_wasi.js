@@ -138,8 +138,7 @@ var WasiLibrary = {
   clock_time_get__nothrow: true,
   clock_time_get__sig: 'iijp',
   clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
-  clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
-    {{{ receiveI64ParamAsI32s('precision') }}}
+  clock_time_get: function(clk_id, {{{ defineI64Param('ignored_precision') }}}, ptime) {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefine('EINVAL') }}};
     }
@@ -270,17 +269,16 @@ var WasiLibrary = {
     return 0;
   },
 
+  fd_pwrite__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pwrite__deps: ['$doWritev'],
+    '$doWritev',
 #endif
+  ].concat(i53ConversionDeps),
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
-#if ASSERTIONS
-    assert(!offset_high, 'offsets over 2^32 not yet supported');
-#endif
-    var num = doWritev(stream, iov, iovcnt, offset_low);
+    var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
 #elif ASSERTIONS
@@ -327,18 +325,17 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  fd_pread__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pread__deps: ['$doReadv'],
+    '$doReadv',
 #endif
+  ].concat(i53ConversionDeps),
   fd_pread__sig: 'iippjp',
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
-#if ASSERTIONS
-    assert(!offset_high, 'offsets over 2^32 not yet supported');
-#endif
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
-    var num = doReadv(stream, iov, iovcnt, offset_low);
+    var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
 #elif ASSERTIONS
@@ -349,20 +346,11 @@ var WasiLibrary = {
   },
 
   fd_seek__sig: 'iijip',
+  fd_seek__deps: i53ConversionDeps,
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return {{{ cDefine('EOVERFLOW') }}};
-    }
-
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state

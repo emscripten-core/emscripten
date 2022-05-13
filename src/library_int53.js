@@ -93,9 +93,8 @@ mergeInto(LibraryManager.library, {
     return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
   },
 
-  // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
-  // represent 53 bits of precision.
-  // TODO: Add $convertI32PairToI53Signaling() variant.
+  // Converts the given signed 32-bit low-high pair to a JavaScript Number that
+  // can represent 53 bits of precision.
   $convertI32PairToI53: function(lo, hi) {
 #if ASSERTIONS
     // This function should not be getting called with too large unsigned numbers
@@ -106,10 +105,40 @@ mergeInto(LibraryManager.library, {
     return (lo >>> 0) + hi * 4294967296;
   },
 
+  // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
+  // represent 53 bits of precision. Returns a NaN if the number exceeds the safe
+  // integer range representable by a Number (x > 9007199254740992 || x < -9007199254740992)
+  $convertI32PairToI53Checked: function(lo, hi) {
+#if ASSERTIONS
+    assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
+    assert(hi === (hi|0));                    // hi should be a i32
+#endif
+    return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
+  },
+
   // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision.
-  // TODO: Add $convertU32PairToI53Signaling() variant.
+  // TODO: Add $convertU32PairToI53Checked() variant.
   $convertU32PairToI53: function(lo, hi) {
     return (lo >>> 0) + (hi >>> 0) * 4294967296;
-  }
+  },
+
+#if WASM_BIGINT
+  $MAX_INT53: '{{{ Math.pow(2, 53) }}}',
+  $MIN_INT53: '-{{{ Math.pow(2, 53) }}}',
+  // Counvert a bigint value (usually coming from Wasm->JS call) into an int53
+  // JS Number.  This is used when we have an incoming i64 that we know is a
+  // pointer or size_t and is expected to be withing the int53 range.
+  // Returns NaN if the incoming bigint is outside the range.
+  $bigintToI53Checked__deps: ['$MAX_INT53', '$MIN_INT53'],
+  $bigintToI53Checked: function(num) {
+    return (num < MIN_INT53 || num > MAX_INT53) ? NaN : Number(num);
+  },
+#endif
 });
+
+#if WASM_BIGINT
+global.i53ConversionDeps = ['$bigintToI53Checked'];
+#else
+global.i53ConversionDeps = ['$convertI32PairToI53Checked'];
+#endif

@@ -625,15 +625,17 @@ var SyscallsLibrary = {
     return cwdLengthInBytes;
   },
   __syscall_truncate64__sig: 'ipj',
+  __syscall_truncate64__deps: i53ConversionDeps,
   __syscall_truncate64: function(path, {{{ defineI64Param('length') }}}) {
-    {{{ receiveI64ParamAsDouble('length') }}}
+    {{{ receiveI64ParamAsI53('length', -cDefine('EOVERFLOW')) }}}
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
   __syscall_ftruncate64__sig: 'iij',
+  __syscall_ftruncate64__deps: i53ConversionDeps,
   __syscall_ftruncate64: function(fd, {{{ defineI64Param('length') }}}) {
-    {{{ receiveI64ParamAsDouble('length') }}}
+    {{{ receiveI64ParamAsI53('length', -cDefine('EOVERFLOW')) }}}
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -967,9 +969,10 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;
   },
+  __syscall_fallocate__deps: i53ConversionDeps,
   __syscall_fallocate: function(fd, mode, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('len') }}}) {
-    {{{ receiveI64ParamAsDouble('offset') }}}
-    {{{ receiveI64ParamAsDouble('len') }}}
+    {{{ receiveI64ParamAsI53('offset', -cDefine('EOVERFLOW')) }}}
+    {{{ receiveI64ParamAsI53('len', -cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
 #if ASSERTIONS
     assert(mode === 0);

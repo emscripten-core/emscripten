@@ -6770,7 +6770,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'i64 arguments to ASM_JS function are not available without WASM_BIGINT'
+    expected = 'Invalid character 106("j") in readAsmConstArgs!'
     self.do_runf(test_file('other/test_em_asm_i64.cpp'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO)
@@ -7350,6 +7350,8 @@ int main() {
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
                   '-sDEMANGLE_SUPPORT'], [], ['waka']), # noqa
+    # Wasm EH's code size increase is smaller than that of Emscripten EH
+    'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
@@ -7660,7 +7662,8 @@ int main() {
 
   @parameterized({
     'noexcept': [],
-    'except': ['-sDISABLE_EXCEPTION_CATCHING=0']
+    'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
+    'except_wasm': ['-fwasm-exceptions']
   })
   def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
@@ -9451,7 +9454,7 @@ int main () {
     #include <emscripten.h>
 
     int main() {
-      printf("%d %d\n",
+      printf("%ld %ld\n",
         emscripten_get_compiler_setting("BINARYEN_ASYNC_COMPILATION"),
         emscripten_get_compiler_setting("WASM_ASYNC_COMPILATION"));
       return 0;
@@ -11655,7 +11658,7 @@ Module['postRun'] = function() {
 }
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run_in_out_file_test('unistd/close.c', js_engines=[config.NODE_JS])
+    self.do_run_in_out_file_test('unistd/close.c')
 
   # WASMFS tests
 
@@ -11910,6 +11913,10 @@ Module['postRun'] = function() {
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
+  @also_with_minimal_runtime
+  def test_wasm_worker_closure(self):
+    self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
+
   def test_debug_opt_warning(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
     self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
@@ -11965,3 +11972,14 @@ Module['postRun'] = function() {
   @also_with_wasm_bigint
   def test_parseTools(self):
     self.do_other_test('test_parseTools.c', emcc_args=['--js-library', test_file('other/test_parseTools.js')])
+
+  def test_lto_atexit(self):
+    self.emcc_args.append('-flto')
+
+    # Without EXIT_RUNTIME we don't expect the dtor to run at all
+    output = self.do_runf(test_file('other/test_lto_atexit.c'), 'main done')
+    self.assertNotContained('my_dtor', output)
+
+    # With EXIT_RUNTIME we expect to see the dtor running.
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
