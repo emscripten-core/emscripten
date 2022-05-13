@@ -6761,7 +6761,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'i64 arguments to ASM_JS function are not available without WASM_BIGINT'
+    expected = 'Invalid character 106("j") in readAsmConstArgs!'
     self.do_runf(test_file('other/test_em_asm_i64.cpp'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO)

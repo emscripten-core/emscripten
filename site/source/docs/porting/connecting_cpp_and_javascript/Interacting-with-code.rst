@@ -319,8 +319,8 @@ for example::
 
 This will show ``I received: 100``.
 
-You can also receive values back, for example the following will print out ``I received: 100``
-and then ``101``::
+You can also receive values back, for example the following will print out ``I
+received: 100`` and then ``101``::
 
    int x = EM_ASM_INT({
      console.log('I received: ' + $0);
@@ -332,9 +332,12 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 
 .. note::
 
-   - You need to specify if the return value is an ``int`` or a ``double``
-     using the appropriate macro :c:macro:`EM_ASM_INT` or
-     :c:macro:`EM_ASM_DOUBLE`.
+   - You need to specify if the return value is an ``int``, ``double``
+     or pointer type using the appropriate macro :c:macro:`EM_ASM_INT`,
+     :c:macro:`EM_ASM_DOUBLE` or :c:macro:`EM_ASM_PTR`.
+     (:c:macro:`EM_ASM_PTR` is the same as :c:macro:`EM_ASM_INT` unless
+     ``MEMORY64`` is used, so is mostly needed in code that wants to be
+     compatible with ``MEMORY64``).
    - The input values appear as ``$0``, ``$1``, etc.
    - ``return`` is used to provide the value sent from JavaScript back to C.
    - See how ``{`` and ``}`` are used here to enclose the code. This is

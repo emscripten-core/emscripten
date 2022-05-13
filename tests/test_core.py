@@ -2102,6 +2102,8 @@ int main(int argc, char **argv) {
 
   def test_em_asm(self):
     self.do_core_test('test_em_asm.cpp')
+
+  def test_em_asm_c(self):
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm.cpp', force_c=True)
 
@@ -2139,6 +2141,8 @@ int main(int argc, char **argv) {
 
   def test_em_asm_types(self):
     self.do_core_test('test_em_asm_types.cpp')
+
+  def test_em_asm_types_c(self):
     self.do_core_test('test_em_asm_types.cpp', force_c=True)
 
   def test_em_asm_unused_arguments(self):
