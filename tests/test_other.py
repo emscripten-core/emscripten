@@ -11904,13 +11904,25 @@ Module['postRun'] = function() {
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
+  @parameterized({
+    # we will warn here since -O2 runs the optimizer and -g enables DWARF
+    'O2_g': (True, ['-O2', '-g'],),
+    # asyncify will force wasm-opt to run as well, so we warn here too
+    'asyncify_g': (True, ['-sASYNCIFY', '-g'],),
+    # with --profiling-funcs however we do not use DWARF (we just emit the
+    # names section) and will not warn.
+    'O2_pfuncs': (False, ['-O2', '--profiling-funcs'],),
+  })
+  def test_debug_opt_warning(self, should_fail, args):
+    if should_fail:
+      err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror'] + args)
+      self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
+    else:
+      self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
+
   @also_with_minimal_runtime
   def test_wasm_worker_closure(self):
     self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
-
-  def test_debug_opt_warning(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
-    self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
 
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))

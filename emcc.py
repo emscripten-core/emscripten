@@ -3332,8 +3332,10 @@ def phase_binaryen(target, options, wasm_target):
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY:
       intermediate_debug_info -= 1
-    if intermediate_debug_info and should_run_binaryen_optimizer():
-      # See https://github.com/emscripten-core/emscripten/issues/15269
+    # currently binaryen's DWARF support will limit some optimizations; warn on
+    # that. see https://github.com/emscripten-core/emscripten/issues/15269
+    dwarf_info = settings.DEBUG_LEVEL >= 3
+    if dwarf_info:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     building.run_wasm_opt(wasm_target,
                           wasm_target,
