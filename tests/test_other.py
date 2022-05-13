@@ -11924,10 +11924,6 @@ Module['postRun'] = function() {
   def test_wasm_worker_closure(self):
     self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
 
-  def test_debug_opt_warning(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-O2', '-g', '-Werror'])
-    self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
-
   def test_clock_nanosleep(self):
     self.do_runf(test_file('other/test_clock_nanosleep.c'))
 
