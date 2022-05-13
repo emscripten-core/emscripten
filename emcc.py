@@ -1524,9 +1524,6 @@ def setup_pthreads(target):
   # set location of worker.js
   settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
 
-  # memalign is used to ensure allocated thread stacks are aligned.
-  settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
-
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
