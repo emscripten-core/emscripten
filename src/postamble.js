@@ -147,14 +147,15 @@ function callMain(args) {
   mainArgs = [thisProgram].concat(args)
 #elif MAIN_READS_PARAMS
   args = args || [];
+  args.unshift(thisProgram);
 
-  var argc = args.length+1;
+  var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
-  HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
-  for (var i = 1; i < argc; i++) {
-    HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
-  }
-  HEAP32[(argv >> 2) + argc] = 0;
+  var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
+  args.forEach((arg) => {
+    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
+  });
+  {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
 #else
   var argc = 0;
   var argv = 0;

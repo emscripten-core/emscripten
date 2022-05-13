@@ -151,7 +151,7 @@ EXTRA_INCOMING_JS_API = [
 ]
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 COMPILE_ONLY_FLAGS = {'--default-obj-ext'}
 LINK_ONLY_FLAGS = {
@@ -267,7 +267,6 @@ class EmccOptions:
     self.use_preload_plugins = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
-    self.cfi = False
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
@@ -794,10 +793,11 @@ def emsdk_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
     cflags += ['-D__SSE4_1__=1']
 
+  # Handle both -msse4.2 and its alias -msse4.
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
     cflags += ['-D__SSE4_2__=1']
 
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     cflags += ['-D__AVX__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
@@ -992,6 +992,8 @@ def package_files(options, target):
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     file_args.append('--no-node')
   if options.embed_files:
+    if settings.MEMORY64:
+      file_args += ['--wasm64']
     object_file = in_temp('embedded_files.o')
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
@@ -1512,6 +1514,7 @@ def setup_pthreads(target):
     '__emscripten_thread_crashed',
     '_emscripten_tls_init',
     '_pthread_self',
+    'executeNotifiedProxyingQueue',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
@@ -1528,6 +1531,10 @@ def setup_pthreads(target):
   if settings.PROXY_TO_PTHREAD:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
 
+  # All proxying async backends will need this.
+  if settings.WASMFS:
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
@@ -1535,9 +1542,10 @@ def setup_pthreads(target):
 
   include_and_export('establishStackSpace')
   include_and_export('invokeEntryPoint')
+  include_and_export('PThread')
   if not settings.MINIMAL_RUNTIME:
     # keepRuntimeAlive does not apply to MINIMAL_RUNTIME.
-    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive']
+    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive', 'ExitStatus', 'wasmMemory']
 
   if settings.MODULARIZE:
     if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
@@ -1796,8 +1804,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
-  if options.emrun and settings.MINIMAL_RUNTIME:
-    exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
+  if options.emrun:
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
+    if options.oformat != OFormat.HTML:
+      exit_with_error('--emrun is only compatible with html output')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
@@ -1812,6 +1823,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
+    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -2485,8 +2498,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
-  if settings.WASM2JS and settings.GENERATE_SOURCE_MAP:
-    exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+  if settings.WASM2JS:
+    if settings.GENERATE_SOURCE_MAP:
+      exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+    if settings.WASM_BIGINT:
+      exit_with_error('wasm2js does not support WASM_BIGINT')
+    if settings.MEMORY64:
+      exit_with_error('wasm2js does not support MEMORY64')
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
@@ -2551,6 +2569,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
     if settings.SUPPORT_LONGJMP == 'wasm':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
+
+  if settings.EXCEPTION_HANDLING:
+    settings.REQUIRED_EXPORTS += ['__trap']
 
   return target, wasm_target
 
@@ -3019,7 +3040,7 @@ def parse_args(newargs):
         options.requested_level = 2
         settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=1')
-      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + arg, clamp=True)
+      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
@@ -3068,14 +3089,14 @@ def parse_args(newargs):
       requested_level = strip_prefix(arg, '-g') or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
-        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + arg)
+        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
-          newargs[i] = ''
+          newargs[i] = '-g0'
         else:
-          # for 3+, report -g to clang as -g4 etc. are not accepted
-          newargs[i] = '-g'
+          # for 3+, report -g3 to clang as -g4 etc. are not accepted
+          newargs[i] = '-g3'
           if settings.DEBUG_LEVEL == 4:
             settings.GENERATE_SOURCE_MAP = 1
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
@@ -3205,8 +3226,8 @@ def parse_args(newargs):
       options.default_object_extension = consume_arg()
       if not options.default_object_extension.startswith('.'):
         options.default_object_extension = '.' + options.default_object_extension
-    elif arg == '-fsanitize=cfi':
-      options.cfi = True
+    elif arg.startswith('-fsanitize=cfi'):
+      exit_with_error('emscripten does not currently support -fsanitize=cfi')
     elif check_arg('--output_eol'):
       style = consume_arg()
       if style.lower() == 'windows':
@@ -3977,13 +3998,13 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   try:
     level = int(level_string)
   except ValueError:
-    raise Exception(err_msg)
+    exit_with_error(err_msg)
   if clamp:
     if level > max_level:
       logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
       level = max_level
   if not 0 <= level <= max_level:
-    raise Exception(err_msg)
+    exit_with_error(err_msg)
   return level
 
 

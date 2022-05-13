@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 105
+EXPECTED_BINARYEN_VERSION = 108
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
@@ -655,7 +655,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
+def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
@@ -1294,7 +1294,6 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
-  # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)
@@ -1484,21 +1483,6 @@ binaryen_kept_debug_info = False
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and \
-     (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
-    # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we use source maps (which are
-    # implemented separately from dwarf).
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    cmd += ['--strip-dwarf']
   cmd += args
   if infile:
     cmd += [infile]
@@ -1534,8 +1518,22 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(*args, **kwargs):
-  return run_binaryen_command('wasm-opt', *args, **kwargs)
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+  if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
+    # remove any dwarf debug info sections, if the debug level is <3, as
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
+    # note that we add this pass first, so that it doesn't interfere with
+    # the final set of passes (which may generate stack IR, and nothing
+    # should be run after that)
+    # TODO: if lld can strip dwarf then we don't need this. atm though it can
+    #       only strip all debug info or none, which includes the name section
+    #       which we may need
+    # TODO: once fastcomp is gone, either remove source maps entirely, or
+    #       support them by emitting a source map at the end from the dwarf,
+    #       and use llvm-objcopy to remove that final dwarf
+    args.insert(0, '--strip-dwarf')
+  return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
 save_intermediate_counter = 0

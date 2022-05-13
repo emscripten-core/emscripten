@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "backend.h"
 #include "file.h"
 #include <emscripten/threading.h>
 
@@ -20,8 +21,8 @@ class MemoryFile : public DataFile {
 
   void open(oflags_t) override {}
   void close() override {}
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override;
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override;
   void flush() override {}
   size_t getSize() override { return buffer.size(); }
   void setSize(size_t size) override { return buffer.resize(size); }
@@ -51,16 +52,57 @@ class MemoryDirectory : public Directory {
 
   std::vector<ChildEntry>::iterator findEntry(const std::string& name);
 
-  std::shared_ptr<File> getChild(const std::string& name) override;
+  void insertChild(const std::string& name, std::shared_ptr<File> child) {
+    assert(findEntry(name) == entries.end());
+    entries.push_back({name, child});
+  }
+
+  std::shared_ptr<File> getChild(const std::string& name) override {
+    return nullptr;
+  }
+
   bool removeChild(const std::string& name) override;
-  std::shared_ptr<File> insertChild(const std::string& name,
-                                    std::shared_ptr<File> file) override;
-  std::string getName(std::shared_ptr<File> file) override;
+
+  std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                           mode_t mode) override {
+    auto child = getBackend()->createFile(mode);
+    insertChild(name, child);
+    return child;
+  }
+
+  std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                             mode_t mode) override {
+    auto child = getBackend()->createDirectory(mode);
+    insertChild(name, child);
+    return child;
+  }
+
+  std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                         const std::string& target) override {
+    auto child = getBackend()->createSymlink(target);
+    insertChild(name, child);
+    return child;
+  }
+
+  bool insertMove(const std::string& name, std::shared_ptr<File> file) override;
+
   size_t getNumEntries() override { return entries.size(); }
   std::vector<Directory::Entry> getEntries() override;
 
 public:
   MemoryDirectory(mode_t mode, backend_t backend) : Directory(mode, backend) {}
 };
+
+class MemorySymlink : public Symlink {
+  std::string target;
+
+  std::string getTarget() const override { return target; }
+
+public:
+  MemorySymlink(const std::string& target, backend_t backend)
+    : Symlink(backend), target(target) {}
+};
+
+backend_t createMemoryFileBackend();
 
 } // namespace wasmfs

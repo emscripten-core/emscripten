@@ -56,36 +56,73 @@ int _wasmfs_node_write(
 class NodeState {
   // Map all separate WasmFS opens of a file to a single underlying fd.
   size_t openCount = 0;
-  int fd = 0;
+  oflags_t openFlags = 0;
+  int fd = -1;
 
 public:
   std::string path;
+
   NodeState(std::string path) : path(path) {}
+
   int getFD() {
     assert(openCount > 0);
     return fd;
   }
+
   bool isOpen() { return openCount > 0; }
-  void open(oflags_t flags) {
-    if (openCount++ == 0) {
+
+  // Attempt to open the file with the given flags, returning 0 on success or an
+  // error code.
+  int open(oflags_t flags) {
+    int result = 0;
+    if (openCount == 0) {
+      // No existing fd, so open a fresh one.
       switch (flags) {
         case O_RDONLY:
-          fd = _wasmfs_node_open(path.c_str(), "r");
+          result = _wasmfs_node_open(path.c_str(), "r");
           break;
         case O_WRONLY:
-          fd = _wasmfs_node_open(path.c_str(), "w");
+          result = _wasmfs_node_open(path.c_str(), "w");
           break;
         case O_RDWR:
-          fd = _wasmfs_node_open(path.c_str(), "r+");
+          result = _wasmfs_node_open(path.c_str(), "r+");
           break;
         default:
           WASMFS_UNREACHABLE("Unexpected open access mode");
       }
+      if (result < 0) {
+        return result;
+      }
+      // Fall through to update our state with the new result.
+    } else if ((openFlags == O_RDONLY &&
+                (flags == O_WRONLY || flags == O_RDWR)) ||
+               (openFlags == O_WRONLY &&
+                (flags == O_RDONLY || flags == O_RDWR))) {
+      // We already have a file descriptor, but we need to replace it with a new
+      // fd with more access.
+      result = _wasmfs_node_open(path.c_str(), "r+");
+      if (result < 0) {
+        return result;
+      }
+      // Success! Close the old fd before updating it.
+      _wasmfs_node_close(fd);
+      // Fall through to update our state with the new result.
+    } else {
+      // Reuse the existing file descriptor.
+      ++openCount;
+      return 0;
     }
+    // Update our state for the new fd.
+    fd = result;
+    openFlags = flags;
+    ++openCount;
+    return 0;
   }
+
   void close() {
     if (--openCount == 0) {
       _wasmfs_node_close(fd);
+      *this = NodeState(path);
     }
   }
 };
@@ -119,28 +156,28 @@ private:
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 
-  void open(oflags_t flags) override { state.open(flags); }
-  void close() override { state.close(); }
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    uint32_t nread;
-    if (auto err = _wasmfs_node_read(state.getFD(), buf, len, offset, &nread)) {
-      return err;
-    }
-    // TODO: Add a way to report the actual bytes read. We currently assume the
-    // available bytes can't change under us.
-    return __WASI_ERRNO_SUCCESS;
+  void open(oflags_t flags) override {
+    // TODO: Properly report errors.
+    state.open(flags);
   }
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  void close() override { state.close(); }
+
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    uint32_t nread;
+    if (auto err = _wasmfs_node_read(state.getFD(), buf, len, offset, &nread)) {
+      return -err;
+    }
+    return nread;
+  }
+
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nwritten;
     if (auto err =
           _wasmfs_node_write(state.getFD(), buf, len, offset, &nwritten)) {
-      return err;
+      return -err;
     }
-    // TODO: Add a way to report the actual bytes written. We currently assume
-    // the write cannot be short.
-    return __WASI_ERRNO_SUCCESS;
+    return nwritten;
   }
 
   void flush() override {
@@ -168,19 +205,17 @@ private:
     if (_wasmfs_node_get_mode(childPath.c_str(), &mode)) {
       return nullptr;
     }
-    std::shared_ptr<File> child;
     if (S_ISREG(mode)) {
-      child = std::make_shared<NodeFile>(mode, getBackend(), childPath);
+      return std::make_shared<NodeFile>(mode, getBackend(), childPath);
     } else if (S_ISDIR(mode)) {
-      child = std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
+      return std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
     } else if (S_ISLNK(mode)) {
       // return std::make_shared<NodeSymlink>(mode, getBackend(), childPath);
+      return nullptr;
     } else {
       // Unrecognized file kind not made visible to WasmFS.
       return nullptr;
     }
-    child->locked().setParent(shared_from_this()->cast<Directory>());
-    return child;
   }
 
   bool removeChild(const std::string& name) override {
@@ -198,36 +233,34 @@ private:
     return true;
   }
 
-  std::shared_ptr<File> insertChild(const std::string& name,
-                                    std::shared_ptr<File> file) override {
+  std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                           mode_t mode) override {
     auto childPath = getChildPath(name);
-    auto mode = file->locked().getMode();
-    if (file->is<DataFile>()) {
-      if (_wasmfs_node_insert_file(childPath.c_str(), mode)) {
-        return nullptr;
-      }
-      std::static_pointer_cast<NodeFile>(file)->state.path = childPath;
-      return file;
-    } else if (file->is<Directory>()) {
-      if (_wasmfs_node_insert_directory(childPath.c_str(), mode)) {
-        return nullptr;
-      }
-      std::static_pointer_cast<NodeDirectory>(file)->state.path = childPath;
-      return file;
-    } else if (file->is<Symlink>()) {
-      // fs.linkSync(target, name)
-      assert(false && "Symlinks not implemented");
-      return nullptr;
-    } else {
-      assert(false && "Unimplemented file kind");
+    if (_wasmfs_node_insert_file(childPath.c_str(), mode)) {
       return nullptr;
     }
-    return nullptr;
+    return std::make_shared<NodeFile>(mode, getBackend(), childPath);
   }
 
-  std::string getName(std::shared_ptr<File> file) override {
-    WASMFS_UNREACHABLE("TODO: implement NodeDirectory::getName");
-    return "";
+  std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                             mode_t mode) override {
+    auto childPath = getChildPath(name);
+    if (_wasmfs_node_insert_directory(childPath.c_str(), mode)) {
+      return nullptr;
+    }
+    return std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
+  }
+
+  std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                         const std::string& target) override {
+    // TODO
+    abort();
+  }
+
+  bool insertMove(const std::string& name,
+                  std::shared_ptr<File> file) override {
+    // TODO
+    abort();
   }
 
   size_t getNumEntries() override {
@@ -261,6 +294,11 @@ public:
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
     return std::make_shared<NodeDirectory>(mode, this, mountPath);
+  }
+
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    // TODO
+    abort();
   }
 };
 

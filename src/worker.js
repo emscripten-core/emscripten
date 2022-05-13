@@ -51,10 +51,12 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
-// Thread-local:
-#if EMBIND
-var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
-#endif
+// Thread-local guard variable for one-time init of the JS state
+var initializedJS = false;
+
+// Proxying queues that were notified before the thread started and need to be
+// executed as part of startup.
+var pendingNotifiedProxyingQueues = [];
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -211,14 +213,23 @@ self.onmessage = (e) => {
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].threadInit();
 
-#if EMBIND
-      // Embind must initialize itself on all threads, as it generates support JS.
-      // We only do this once per worker since they get reused
       if (!initializedJS) {
+#if EMBIND
+        // Embind must initialize itself on all threads, as it generates support JS.
+        // We only do this once per worker since they get reused
         Module['___embind_register_native_and_builtin_types']();
+#endif // EMBIND
+
+        // Execute any proxied work that came in before the thread was
+        // initialized. Only do this once because it is only possible for
+        // proxying notifications to arrive before thread initialization on
+        // fresh workers.
+        pendingNotifiedProxyingQueues.forEach(queue => {
+          Module['executeNotifiedProxyingQueue'](queue);
+        });
+        pendingNotifiedProxyingQueues = [];
         initializedJS = true;
       }
-#endif // EMBIND
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -286,7 +297,12 @@ self.onmessage = (e) => {
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processProxyingQueue') {
-      executeNotifiedProxyingQueue(e.data.queue);
+      if (initializedJS) {
+        Module['executeNotifiedProxyingQueue'](e.data.queue);
+      } else {
+        // Defer executing this queue until the runtime is initialized.
+        pendingNotifiedProxyingQueues.push(e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);

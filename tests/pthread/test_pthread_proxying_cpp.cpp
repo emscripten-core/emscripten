@@ -1,9 +1,8 @@
 #include <cassert>
 #include <condition_variable>
+#include <emscripten/proxying.h>
 #include <iostream>
 #include <sched.h>
-
-#include "proxying.h"
 
 using namespace emscripten;
 
@@ -27,8 +26,6 @@ void looper_main() {
 }
 
 void returner_main() {
-  // Process the queue in case any work came in while we were starting up.
-  queue.execute();
   emscripten_exit_with_live_runtime();
 }
 

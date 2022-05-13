@@ -666,11 +666,11 @@ var LibraryGLFW = {
             var data = GLFW.joys[joy];
 
             for (var i = 0; i < gamepad.buttons.length;  ++i) {
-              setValue(data.buttons + i, gamepad.buttons[i].pressed, 'i8');
+              {{{ makeSetValue('data.buttons + i', '0', 'gamepad.buttons[i].pressed', 'i8') }}};
             }
 
             for (var i = 0; i < gamepad.axes.length; ++i) {
-              setValue(data.axes + i*4, gamepad.axes[i], 'float');
+              {{{ makeSetValue('data.axes + i*4', '0', 'gamepad.axes[i]', 'float') }}};
             }
           } else {
             if (GLFW.joys[joy]) {
@@ -780,7 +780,7 @@ var LibraryGLFW = {
 
         var filename = allocateUTF8(path);
         filenamesArray.push(filename);
-        setValue(filenames + i*4, filename, 'i8*');
+        {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
       }
 
       for (var i = 0; i < count; ++i) {
@@ -897,13 +897,13 @@ var LibraryGLFW = {
     },
 
     getCursorPos: function(winid, x, y) {
-      setValue(x, Browser.mouseX, 'double');
-      setValue(y, Browser.mouseY, 'double');
+      {{{ makeSetValue('x', '0', 'Browser.mouseX', 'double') }}};
+      {{{ makeSetValue('y', '0', 'Browser.mouseY', 'double') }}};
     },
 
     getMousePos: function(winid, x, y) {
-      setValue(x, Browser.mouseX, 'i32');
-      setValue(y, Browser.mouseY, 'i32');
+      {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
+      {{{ makeSetValue('y', '0', 'Browser.mouseY', 'i32') }}};
     },
 
     setCursorPos: function(winid, x, y) {
@@ -920,11 +920,11 @@ var LibraryGLFW = {
       }
 
       if (x) {
-        setValue(x, wx, 'i32');
+        {{{ makeSetValue('x', '0', 'wx', 'i32') }}};
       }
 
       if (y) {
-        setValue(y, wy, 'i32');
+        {{{ makeSetValue('y', '0', 'wy', 'i32') }}};
       }
     },
 
@@ -946,11 +946,11 @@ var LibraryGLFW = {
       }
 
       if (width) {
-        setValue(width, ww, 'i32');
+        {{{ makeSetValue('width', '0', 'ww', 'i32') }}};
       }
 
       if (height) {
-        setValue(height, wh, 'i32');
+        {{{ makeSetValue('height', '0', 'wh', 'i32') }}};
       }
     },
 
@@ -1168,15 +1168,15 @@ var LibraryGLFW = {
   glfwGetVersion__sig: 'viii',
   glfwGetVersion: function(major, minor, rev) {
 #if USE_GLFW == 2
-    setValue(major, 2, 'i32');
-    setValue(minor, 7, 'i32');
-    setValue(rev, 7, 'i32');
+    {{{ makeSetValue('major', '0', '2', 'i32') }}};
+    {{{ makeSetValue('minor', '0', '7', 'i32') }}};
+    {{{ makeSetValue('rev', '0', '7', 'i32') }}};
 #endif
 
 #if USE_GLFW == 3
-    setValue(major, 3, 'i32');
-    setValue(minor, 2, 'i32');
-    setValue(rev, 1, 'i32');
+    {{{ makeSetValue('major', '0', '3', 'i32') }}};
+    {{{ makeSetValue('minor', '0', '2', 'i32') }}};
+    {{{ makeSetValue('rev', '0', '1', 'i32') }}};
 #endif
   },
 
@@ -1242,10 +1242,10 @@ var LibraryGLFW = {
 
   glfwGetMonitors__sig: 'ii',
   glfwGetMonitors: function(count) {
-    setValue(count, 1, 'i32');
+    {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
       GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
-      setValue(GLFW.monitors, 1, 'i32');
+      {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;
   },
@@ -1257,8 +1257,8 @@ var LibraryGLFW = {
 
   glfwGetMonitorPos__sig: 'viii',
   glfwGetMonitorPos: function(monitor, x, y) {
-    setValue(x, 0, 'i32');
-    setValue(y, 0, 'i32');
+    {{{ makeSetValue('x', '0', '0', 'i32') }}};
+    {{{ makeSetValue('y', '0', '0', 'i32') }}};
   },
 
   glfwGetMonitorPhysicalSize__sig: 'viii',
@@ -1267,8 +1267,8 @@ var LibraryGLFW = {
     // Maybe with platform specific ccalls?
     //
     // Lets report 0 now which is wrong as it can get for end user.
-    setValue(width, 0, 'i32');
-    setValue(height, 0, 'i32');
+    {{{ makeSetValue('width', '0', '0', 'i32') }}};
+    {{{ makeSetValue('height', '0', '0', 'i32') }}};
   },
 
   glfwGetMonitorName__sig: 'ii',
@@ -1289,7 +1289,7 @@ var LibraryGLFW = {
   // TODO: implement
   glfwGetVideoModes__sig: 'iii',
   glfwGetVideoModes: function(monitor, count) {
-    setValue(count, 0, 'i32');
+    {{{ makeSetValue('count', '0', '0', 'i32') }}};
     return 0;
   },
 
@@ -1382,11 +1382,11 @@ var LibraryGLFW = {
     }
 
     if (width) {
-      setValue(width, ww, 'i32');
+      {{{ makeSetValue('width', '0', 'ww', 'i32') }}};
     }
 
     if (height) {
-      setValue(height, wh, 'i32');
+      {{{ makeSetValue('height', '0', 'wh', 'i32') }}};
     }
   },
 
@@ -1647,11 +1647,11 @@ var LibraryGLFW = {
 
     var state = GLFW.joys[joy];
     if (!state || !state.axes) {
-      setValue(count, 0, 'i32');
+      {{{ makeSetValue('count', '0', '0', 'i32') }}};
       return;
     }
 
-    setValue(count, state.axesCount, 'i32');
+    {{{ makeSetValue('count', '0', 'state.axesCount', 'i32') }}};
     return state.axes;
   },
 
@@ -1661,11 +1661,11 @@ var LibraryGLFW = {
 
     var state = GLFW.joys[joy];
     if (!state || !state.buttons) {
-      setValue(count, 0, 'i32');
+      {{{ makeSetValue('count', '0', '0', 'i32') }}};
       return;
     }
 
-    setValue(count, state.buttonsCount, 'i32');
+    {{{ makeSetValue('count', '0', 'state.buttonsCount', 'i32') }}};
     return state.buttons;
   },
 
@@ -1841,9 +1841,9 @@ var LibraryGLFW = {
   },
 
   glfwGetGLVersion: function(major, minor, rev) {
-    setValue(major, 0, 'i32');
-    setValue(minor, 0, 'i32');
-    setValue(rev, 1, 'i32');
+    {{{ makeSetValue('major', '0', '0', 'i32') }}};
+    {{{ makeSetValue('minor', '0', '0', 'i32') }}};
+    {{{ makeSetValue('rev', '0', '1', 'i32') }}};
   },
 
   glfwCreateThread: function(fun, arg) {

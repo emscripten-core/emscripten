@@ -74,6 +74,10 @@ int main() {
   // sync from memory state to persisted and then
   // run 'success'
   EM_ASM(
+    // Ensure IndexedDB is closed at exit.
+    Module['onExit'] = function() {
+      assert(Object.keys(IDBFS.dbs).length == 0);
+    };
     FS.syncfs(function (err) {
       assert(!err);
       ccall('success', 'v');

@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <emscripten/html5.h>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <sys/stat.h>
@@ -24,6 +25,7 @@ namespace wasmfs {
 
 class Backend;
 class Directory;
+class Symlink;
 
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
@@ -33,9 +35,21 @@ const backend_t NullBackend = nullptr;
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
 
+// An abstract representation of an underlying file. All `File` objects
+// correspond to underlying (real or conceptual) files in a file system managed
+// by some backend, but not all underlying files have a corresponding `File`
+// object. For example, a persistent backend may contain some files that have
+// not yet been discovered by WasmFS and that therefore do not yet have
+// corresponding `File` objects. Backends override the `File` family of classes
+// to implement the mapping from `File` objects to their underlying files.
 class File : public std::enable_shared_from_this<File> {
 public:
-  enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
+  enum FileKind {
+    UnknownKind = 0,
+    DataFileKind = 1,
+    DirectoryKind = 2,
+    SymlinkKind = 3
+  };
 
   const FileKind kind;
 
@@ -108,6 +122,7 @@ protected:
 };
 
 class DataFile : public File {
+protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked.
@@ -115,11 +130,12 @@ class DataFile : public File {
   virtual void open(oflags_t flags) = 0;
   virtual void close() = 0;
 
-  // TODO: Allow backends to override the version of read with multiple iovecs
-  // to make it possible to implement pipes. See #16269.
-  virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
-  virtual __wasi_errno_t
-  write(const uint8_t* buf, size_t len, off_t offset) = 0;
+  // Return the accessed length or a negative error code. It is not an error to
+  // access fewer bytes than requested.
+  // TODO: Allow backends to override the version of read with
+  // multiple iovecs to make it possible to implement pipes. See #16269.
+  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
+  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized (often backends have an efficient way to do this
@@ -150,22 +166,49 @@ public:
   };
 
 private:
-  // Return the file with the given name or null if there is none.
+  // The directory cache, or `dcache`, stores `File` objects for the children of
+  // each directory so that subsequent lookups do not need to query the backend.
+  // It also supports cross-backend mount point children that are stored
+  // exclusively in the cache and not reflected in any backend.
+  enum class DCacheKind { Normal, Mount };
+  struct DCacheEntry {
+    DCacheKind kind;
+    std::shared_ptr<File> file;
+  };
+  // TODO: Use a cache data structure with smaller code size.
+  std::map<std::string, DCacheEntry> dcache;
+
+protected:
+  // Return the `File` object corresponding to the file with the given name or
+  // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
+
+  // Inserts a file with the given name, kind, and mode. Returns a `File` object
+  // corresponding to the newly created file or nullptr if the new file could
+  // not be created. Assumes a child with this name does not already exist.
+  virtual std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                                   mode_t mode) = 0;
+  virtual std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                                     mode_t mode) = 0;
+  virtual std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                                 const std::string& target) = 0;
+
+  // Move the file represented by `file` from its current directory to this
+  // directory with the new `name`, possibly overwriting another file that
+  // already exists with that name. The old directory may be the same as this
+  // directory. On success, return `true`. Otherwise return `false` without
+  // changing any underlying state.
+  virtual bool insertMove(const std::string& name,
+                          std::shared_ptr<File> file) = 0;
+
   // Remove the file with the given name, returning `true` on success or if the
-  // child has already been removed.
+  // child has already been removed or returning `false` if the child cannot be
+  // removed.
   virtual bool removeChild(const std::string& name) = 0;
-  // Insert the given file with the given name if there is not already an entry
-  // with the same name. Returns the inserted file or the preexisting file or
-  // null if the file could not be inserted and there was also no preexisting
-  // file.
-  virtual std::shared_ptr<File> insertChild(const std::string& name,
-                                            std::shared_ptr<File> file) = 0;
-  // Return the name of the file if it is contained within this directory or an
-  // empty string if it is not.
-  virtual std::string getName(std::shared_ptr<File> file) = 0;
+
   // The number of entries in this directory.
   virtual size_t getNumEntries() = 0;
+
   // The list of entries in this directory.
   virtual std::vector<Directory::Entry> getEntries() = 0;
 
@@ -185,24 +228,19 @@ protected:
 };
 
 class Symlink : public File {
-protected:
-  // The target file that this symlink points to. This is constant as symlinks
-  // cannot be modified to point to different things.
-  const std::string target;
-
-  size_t getSize() override;
-
 public:
   static constexpr FileKind expectedKind = File::SymlinkKind;
   // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
   // not matter, so that value will never be read (what matters is the mode of
   // the target).
-  Symlink(std::string target, backend_t backend)
-    : File(File::SymlinkKind, 0, backend), target(target) {}
+  Symlink(backend_t backend) : File(File::SymlinkKind, 0, backend) {}
   virtual ~Symlink() = default;
 
   // Constant, and therefore thread-safe, and can be done without locking.
-  const std::string& getTarget() { return target; }
+  virtual std::string getTarget() const = 0;
+
+protected:
+  size_t getSize() override { return getTarget().size(); }
 };
 
 class File::Handle {
@@ -246,10 +284,10 @@ public:
   void open(oflags_t flags) { getFile()->open(flags); }
   void close() { getFile()->close(); }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
   }
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
 
@@ -266,33 +304,51 @@ public:
 
 class Directory::Handle : public File::Handle {
   std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
+  void cacheChild(const std::string& name,
+                  std::shared_ptr<File> child,
+                  DCacheKind kind);
 
 public:
   Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
   Handle(std::shared_ptr<File> directory, std::defer_lock_t)
     : File::Handle(directory, std::defer_lock) {}
 
-  std::shared_ptr<File> getChild(const std::string& name) {
-    // Unlinked directories must be empty, without even "." or ".."
-    if (!getParent()) {
-      return nullptr;
-    }
-    if (name == ".") {
-      return file;
-    }
-    if (name == "..") {
-      return getParent();
-    }
-    return getDir()->getChild(name);
-  }
+  // Retrieve the child if it is in the dcache and otherwise forward the request
+  // to the backend, caching any `File` object it returns.
+  std::shared_ptr<File> getChild(const std::string& name);
+
+  // Add a child to this directory's entry cache without actually inserting it
+  // in the underlying backend. Assumes a child with this name does not already
+  // exist. Return `true` on success and `false` otherwise.
+  bool mountChild(const std::string& name, std::shared_ptr<File> file);
+
+  // Insert a child of the given name, kind, and mode in the underlying backend,
+  // which will allocate and return a corresponding `File` on success or return
+  // nullptr otherwise. Assumes a child with this name does not already exist.
+  std::shared_ptr<DataFile> insertDataFile(const std::string& name,
+                                           mode_t mode);
+  std::shared_ptr<Directory> insertDirectory(const std::string& name,
+                                             mode_t mode);
+  std::shared_ptr<Symlink> insertSymlink(const std::string& name,
+                                         const std::string& target);
+
+  // Move the file represented by `file` from its current directory to this
+  // directory with the new `name`, possibly overwriting another file that
+  // already exists with that name. The old directory may be the same as this
+  // directory. On success, return `true`. Otherwise return `false` without
+  // changing any underlying state. This should only be called from renameat
+  // with the locks on the old and new parents already held.
+  bool insertMove(const std::string& name, std::shared_ptr<File> file);
+
+  // Remove the file with the given name, returning `true` on success or if the
+  // vhild has already been removed or returning `false` if the child cannot be
+  // removed.
   bool removeChild(const std::string& name);
-  std::shared_ptr<File> insertChild(const std::string& name,
-                                    std::shared_ptr<File> file);
-  std::string getName(std::shared_ptr<File> file) {
-    return getDir()->getName(file);
-  }
-  size_t getNumEntries() { return getDir()->getNumEntries(); }
-  std::vector<Directory::Entry> getEntries() { return getDir()->getEntries(); }
+
+  std::string getName(std::shared_ptr<File> file);
+
+  size_t getNumEntries();
+  std::vector<Directory::Entry> getEntries();
 };
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }

@@ -9,6 +9,7 @@
 
 #include "backend.h"
 #include "file.h"
+#include "memory_backend.h"
 #include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
@@ -30,14 +31,14 @@ class ProxiedFile : public DataFile {
   }
 
   // Read and write operations are forwarded via the proxying mechanism.
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    __wasi_errno_t result;
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
     proxy([&]() { result = baseFile->locked().write(buf, len, offset); });
     return result;
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    __wasi_errno_t result;
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
     proxy([&]() { result = baseFile->locked().read(buf, len, offset); });
     return result;
   }
@@ -76,6 +77,7 @@ public:
     proxy([&]() { baseFile = nullptr; });
   }
 };
+
 class ProxiedBackend : public Backend {
   backend_t backend;
   // ProxiedBackend uses the proxy member to create files on a thread.
@@ -91,6 +93,17 @@ public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // This creates a file on a thread specified by the proxy member.
     return std::make_shared<ProxiedFile>(mode, this, backend, proxy);
+  }
+
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
+    // TODO: This is not generally correct, but happens to work for the JS
+    // backend.
+    return std::make_shared<MemoryDirectory>(mode, this);
+  }
+
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    // TODO.
+    abort();
   }
 };
 

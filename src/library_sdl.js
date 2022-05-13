@@ -364,12 +364,12 @@ var LibrarySDL = {
       }
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.flags, 'flags', 'i32') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', 'void*') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', POINTER_TYPE) }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.w, 'width', 'i32') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}};  // assuming RGBA or indexed for now,
                                                                                         // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', POINTER_TYPE) }}};
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.x, '0', 'i32') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.y, '0', 'i32') }}};
@@ -467,7 +467,7 @@ var LibrarySDL = {
       for (var y = startY; y < endY; ++y) {
         var base = y * fullWidth;
         for (var x = startX; x < endX; ++x) {
-          data32[base + x] = colors32[{{{ makeGetValue('buffer + base + x', '0', 'i8', null, true) }}}];
+          data32[base + x] = colors32[{{{ makeGetValue('buffer + base + x', '0', 'u8') }}}];
         }
       }
     },
@@ -1201,16 +1201,16 @@ var LibrarySDL = {
         }
         if (audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
-            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16', 0, 0) }}}) / 0x8000;
+            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16') }}}) / 0x8000;
           }
         } else if (audio.format == {{{ cDefine('AUDIO_U8') }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
-            var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
+            var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8') }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
         } else if (audio.format == {{{ cDefine('AUDIO_F32') }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
-            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
+            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
         } else {
           throw 'Invalid SDL audio format ' + audio.format + '!';
@@ -1555,14 +1555,14 @@ var LibrarySDL = {
 
     if (!surfData.buffer) {
       surfData.buffer = _malloc(surfData.width * surfData.height * 4);
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', 'void*') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', POINTER_TYPE) }}};
     }
 
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', 'void*') }}};
+    {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', POINTER_TYPE) }}};
 
     if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
 
@@ -1708,7 +1708,7 @@ var LibrarySDL = {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           // See comment above about signs
-          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}} * 4;
+          var val = {{{ makeGetValue('s++', '0', 'u8') }}} * 4;
           var start = base + x*4;
           data[start]   = colors[val];
           data[start+1] = colors[val+1];
@@ -1887,7 +1887,7 @@ var LibrarySDL = {
       var baseOfDst = row * pitchOfDst;
 
       for (var col = 0; col < width * 4; ++col) {
-        image.data[baseOfDst + col] = {{{ makeGetValue('pixels', 'baseOfDst + col', 'i8', null, true) }}};
+        image.data[baseOfDst + col] = {{{ makeGetValue('pixels', 'baseOfDst + col', 'u8') }}};
       }
     }
 
@@ -2148,9 +2148,9 @@ var LibrarySDL = {
 
     for (var i = 0; i < nColors; ++i) {
       var index = (firstColor + i) * 4;
-      surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'i8', null, true) }}};
-      surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}};
-      surfData.colors[index + 2] = {{{ makeGetValue('colors', 'i*4 + 2', 'i8', null, true) }}};
+      surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'u8') }}};
+      surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'u8') }}};
+      surfData.colors[index + 2] = {{{ makeGetValue('colors', 'i*4 + 2', 'u8') }}};
       surfData.colors[index + 3] = 255; // opaque
     }
 
@@ -2347,9 +2347,9 @@ var LibrarySDL = {
           var sourcePtr = raw.data;
           var destPtr = 0;
           for (var i = 0; i < pixels; i++) {
-            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
-            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
-            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = 255;
           }
         } else if (raw.bpp == 2) {
@@ -2359,8 +2359,8 @@ var LibrarySDL = {
           var sourcePtr = raw.data;
           var destPtr = 0;
           for (var i = 0; i < pixels; i++) {
-            var gray = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
-            var alpha = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            var gray = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
+            var alpha = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = gray;
             data[destPtr++] = gray;
             data[destPtr++] = gray;
@@ -2373,7 +2373,7 @@ var LibrarySDL = {
           var sourcePtr = raw.data;
           var destPtr = 0;
           for (var i = 0; i < pixels; i++) {
-            var value = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            var value = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = value;
             data[destPtr++] = value;
             data[destPtr++] = value;
@@ -2425,12 +2425,12 @@ var LibrarySDL = {
   SDL_OpenAudio: function(desired, obtained) {
     try {
       SDL.audio = {
-        freq: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.freq, 'i32', 0, 1) }}},
-        format: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.format, 'i16', 0, 1) }}},
-        channels: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.channels, 'i8', 0, 1) }}},
-        samples: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.samples, 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
-        callback: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.callback, 'void*', 0, 1) }}},
-        userdata: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.userdata, 'void*', 0, 1) }}},
+        freq: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.freq, 'u32') }}},
+        format: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.format, 'u16') }}},
+        channels: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.channels, 'u8') }}},
+        samples: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.samples, 'u16') }}}, // Samples in the CB buffer per single sound channel.
+        callback: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.callback, POINTER_TYPE) }}},
+        userdata: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.userdata, POINTER_TYPE) }}},
         paused: true,
         timer: null
       };
@@ -2897,7 +2897,7 @@ var LibrarySDL = {
     var numSamples = len >> 1; // len is the length in bytes, and the array contains 16-bit PCM values
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
-      buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+      buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16') }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
     }
 
     if (SDL.webAudioAvailable()) {

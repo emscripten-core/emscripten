@@ -713,7 +713,7 @@ var LibraryBrowser = {
     setFullscreenCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
@@ -724,7 +724,7 @@ var LibraryBrowser = {
     setWindowedCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }

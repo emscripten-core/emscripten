@@ -161,14 +161,6 @@ def also_with_threads(f):
   return decorated
 
 
-# Today we only support the wasm backend so any tests that is disabled under the llvm
-# backend is always disabled.
-# TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
-def no_wasm_backend(note=''):
-  assert not callable(note)
-  return unittest.skip(note)
-
-
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
@@ -667,6 +659,7 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             window.onerror = function(error) {
+              window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
               var xhr = new XMLHttpRequest();
@@ -710,6 +703,7 @@ If manually bisecting:
     # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  @also_with_wasmfs
   def test_dev_random(self):
     self.btest_exit(Path('filesystem/dev_random.cpp'))
 
@@ -2594,6 +2588,18 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_html5_core(self, opts):
+    if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
+      # In this mode an exception can be thrown by the browser, and we don't
+      # want the test to fail in that case so we override the error handling.
+      create_file('pre.js', '''
+      window.disableErrorReporting = true;
+      window.addEventListener('error', (event) => {
+        if (!event.message.includes('exception:fullscreen error')) {
+          report_error(event);
+        }
+      });
+      ''')
+      self.emcc_args.append('--pre-js=pre.js')
     self.btest(test_file('test_html5_core.c'), args=opts, expected='0')
 
   @requires_threads
@@ -3291,7 +3297,6 @@ window.close = function() {
       '-sINITIAL_MEMORY=33554432'
     ])
 
-  @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
@@ -4572,6 +4577,7 @@ window.close = function() {
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4593,6 +4599,7 @@ window.close = function() {
                     args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
@@ -4619,6 +4626,7 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4626,18 +4634,21 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
@@ -4646,19 +4657,19 @@ window.close = function() {
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
-  @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
+  @unittest.skip("emscripten_fetch_wait relies on an asm.js-based web worker")
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/sync_fetch_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
+  @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/idb_store.cpp', args=['-sUSE_PTHREADS', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
-  @no_wasm_backend("WASM2JS does not yet support pthreads")
+  @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
@@ -5226,7 +5237,7 @@ window.close = function() {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
@@ -5302,6 +5313,14 @@ window.close = function() {
     create_file('data.dat', 'hello, fetch')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
                     args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
+
+  @requires_threads
+  @no_firefox('no OPFS support yet')
+  def test_wasmfs_opfs(self):
+    test = test_file('wasmfs/wasmfs_opfs.c')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
+    self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
+    self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):

@@ -42,6 +42,9 @@ high level it consists of:
 - :ref:`fiber-h`:
   API for working with Fibers (co-operative threads)
 
+- :ref:`proxying-h`:
+  API for synchronously or asynchronously proxying work to a target pthread.
+
 - :ref:`api-reference-advanced-apis`:
   APIs for advanced users/core developers.
 
@@ -59,5 +62,6 @@ high level it consists of:
    bind.h
    trace.h
    fiber.h
+   proxying.h
    wasm_workers
    advanced-apis

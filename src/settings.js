@@ -1443,7 +1443,7 @@ var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
 // [link]
-var USE_COCOS2D = false;
+var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
 // [link]
@@ -1843,6 +1843,10 @@ var ASAN_SHADOW_SIZE = -1
 // across function boundaries.
 // [link]
 var USE_OFFSET_CONVERTER = false;
+
+// Whether we should load the WASM source map at runtime.
+// This is enabled automatically when using -g4 with sanitizers.
+var LOAD_SOURCE_MAP = false;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
 // report undefined symbols within the binary.  Without this option the linker

@@ -277,6 +277,10 @@ Testing negative losslessIntegers:
   readI53FromI64: 0xffe0000000000000
 
 Testing preciseUnsignedIntegers:
+9007199254740994 (0x20000000000002):
+  convertU32PairToI53: 0x20000000000002: error difference: 0
+  readI53FromU64: 0x20000000000002: error difference: 0
+
 9223372036854775808 (0x8000000000000000):
   convertU32PairToI53: 0x8000000000000000: error difference: 0
   readI53FromU64: 0x8000000000000000: error difference: 0
@@ -334,6 +338,10 @@ Testing preciseUnsignedIntegers:
   readI53FromU64: 0x7ffffffffffffc00: error difference: 0
 
 Testing preciseNegativeIntegers:
+18437736874454810622 (0xffdffffffffffffe):
+  convertI32PairToI53: 0xffdffffffffffffe: error difference: 0
+  readI53FromI64: 0xffdffffffffffffe: error difference: 0
+
 18434126399458488750 (0xffd32c4ac85fb1ae):
   convertI32PairToI53: 0xffd32c4ac85fb1ae: error difference: 0
   readI53FromI64: 0xffd32c4ac85fb1ae: error difference: 0
@@ -379,6 +387,9 @@ Testing preciseNegativeIntegers:
   readI53FromI64: 0x8b7b357a4c942c00: error difference: 0
 
 Testing impreciseUnsignedIntegers:
+9007199254740992.000000:
+  writeI53ToI64: 0x20000000000000 (9007199254740992): error difference: 0
+
 127505432520080112.000000:
   writeI53ToI64: 0x1c4fd83ec4abaf0 (127505432520080112): error difference: 0
 
@@ -434,6 +445,9 @@ Testing impreciseUnsignedIntegers:
   writeI53ToI64: 0x0 (0): error difference: -1.84467e+19
 
 Testing impreciseNegativeIntegers:
+-9007199254740992.000000:
+  writeI53ToI64: 0xffe0000000000000 (-9007199254740992): error difference: 0
+
 -133996157760400112.000000:
   writeI53ToI64: 0xfe23f334576c9510 (-133996157760400112): error difference: 0
 

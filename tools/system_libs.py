@@ -708,12 +708,16 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_ops.S',
         'stack_limits.S',
         'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c'
+        'emscripten_exception_builtins.c',
+        '__trap.c',
       ])
 
 
 class libnoexit(Library):
   name = 'libnoexit'
+  # __cxa_atexit calls can be generated during LTO the implemenation cannot
+  # itself be LTO.  See `get_libcall_files` below for more details.
+  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -740,10 +744,10 @@ class libc(MuslInternalLibrary,
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
-    self.non_lto_files = self.get_non_lto_files()
+    self.non_lto_files = self.get_libcall_files()
     super().__init__(**kwargs)
 
-  def get_non_lto_files(self):
+  def get_libcall_files(self):
     # Combining static linking with LTO is tricky under LLVM.  The codegen that
     # happens during LTO can generate references to new symbols that didn't exist
     # in the linker inputs themselves.
@@ -753,9 +757,7 @@ class libc(MuslInternalLibrary,
     # cannot be added to link.  Another way of putting it: by the time LTO happens
     # the decision about which bitcode symbols to compile has already been made.
     # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
-    # To solve this we put all such libcalls in a separate library that, like
-    # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
-    # CompilerRTLibrary).
+    # To solve this we force certain parts of libc to never be compiled as LTO/bitcode.
     # Note that this also includes things that may be depended on by those
     # functions - fmin uses signbit, for example, so signbit must be here (so if
     # fmin is added by codegen, it will have all it needs).
@@ -782,6 +784,10 @@ class libc(MuslInternalLibrary,
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
+    exit_files = files_in_path(
+        path='system/lib/libc/musl/src/exit',
+        filenames=['atexit.c'])
+
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
@@ -795,11 +801,16 @@ class libc(MuslInternalLibrary,
     iprintf_files = files_in_path(
       path='system/lib/libc/musl/src/stdio',
       filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+                 'getc.c',
+                 'fputc.c',
+                 'fgets.c',
+                 'putc.c', 'putc_unlocked.c',
+                 'putchar.c', 'putchar_unlocked.c',
                  'printf.c', 'puts.c', '__lockfile.c'])
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + other_files + iprintf_files
+    return math_files + exit_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
@@ -1002,6 +1013,12 @@ class libc(MuslInternalLibrary,
                  ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
+
+    # Check for missing file in non_lto_files list.  Do this here
+    # rather than in the constructor so it only happens when the
+    # library is actually built (not when its instantiated).
+    for f in self.non_lto_files:
+      assert os.path.exists(f), f
 
     return libc_files
 
@@ -1484,6 +1501,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
+                   'opfs_backend.cpp',
                    'proxied_file_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',
@@ -1491,7 +1509,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'file_table.cpp',
                    'js_api.cpp',
                    'paths.cpp',
-                   'streams.cpp',
+                   'special_files.cpp',
                    'support.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp'])

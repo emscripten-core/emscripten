@@ -73,7 +73,7 @@ WasmSourceMap.prototype.lookup = function (offset) {
     return null;
   }
   return {
-    source: this.sources[info.source],
+    file: this.sources[info.source],
     line: info.line,
     column: info.column,
     name: this.names[info.name],

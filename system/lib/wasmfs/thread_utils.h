@@ -10,7 +10,7 @@
 #include <functional>
 #include <thread>
 
-#include <proxying.h>
+#include <emscripten/proxying.h>
 
 namespace emscripten {
 

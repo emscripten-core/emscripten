@@ -11,7 +11,7 @@ if (NOT OPENAL_FOUND)
 	SET(OPENAL_FOUND TRUE)
 
 	# For Emscripten-compiled apps in the test suite (test_alut), this is expected...
-	SET(OPENAL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+	SET(OPENAL_INCLUDE_DIR "${EMSCRIPTEN_SYSROOT}/include")
 	# ... but the stock FindOpenAL.cmake would have returned this.
 	#SET(OPENAL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/AL")
 
@@ -19,7 +19,7 @@ if (NOT OPENAL_FOUND)
 	SET(OPENAL_LIBRARY "-lopenal")
 	SET(OPENAL_LIB "-lopenal")
 
-	set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${EMSCRIPTEN_ROOT_PATH}/system/include" "${EMSCRIPTEN_ROOT_PATH}/system/include/AL")
+	set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${OPENAL_INCLUDE_DIR}" "${OPENAL_INCLUDE_DIR}/AL")
 
 	MARK_AS_ADVANCED(OPENAL_LIBRARY OPENAL_INCLUDE_DIR)
 endif()
