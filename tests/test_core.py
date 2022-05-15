@@ -3985,7 +3985,7 @@ ok
     create_file('liblib.c', r'''
         #include <stdio.h>
         #include <emscripten/emscripten.h>
- 
+
         int side_module_run()
         {
           printf("before sleep\n");
