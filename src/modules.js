@@ -21,7 +21,7 @@ function genArgSequence(n) {
 global.libraryFunctions = [];
 
 global.LibraryManager = {
-  library: null,
+  library: {},
   structs: {},
   loaded: false,
   libraries: [],
@@ -31,7 +31,8 @@ global.LibraryManager = {
   },
 
   load: function() {
-    if (this.library) return;
+    assert(!this.loaded);
+    this.loaded = true;
 
     // Core system libraries (always linked against)
     let libraries = [
@@ -302,8 +303,6 @@ global.LibraryManager = {
         }
       }
     }
-
-    this.loaded = true;
   },
 };
 

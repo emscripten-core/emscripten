@@ -11,8 +11,8 @@
 assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
 #endif
 
-assert(!LibraryManager.library);
-LibraryManager.library = {
+assert(Object.keys(LibraryManager.library).length === 0);
+mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks: function() {},
   $handleException: function(e) { if (!e instanceof ExitStatus && !e == 'unwind') throw e; },
-};
+});
