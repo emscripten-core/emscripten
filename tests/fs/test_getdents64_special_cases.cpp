@@ -44,7 +44,7 @@ void doTest(const std::string& uniqueDirName, const std::string& fileName)
 
         printf("d.d_name = %s\n", d.d_name);
 
-        // If it need to be, the name was truncated.
+        // If it needed to be, the name was truncated.
         assert(strlen(d.d_name) <= 255);
     }
 }
