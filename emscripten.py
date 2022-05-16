@@ -777,6 +777,9 @@ def create_sending(invoke_funcs, metadata):
 def make_export_wrappers(exports, delay_assignment):
   wrappers = []
   for name in exports:
+    # Tags cannot be wrapped in createExportWrapper
+    if name == '__cpp_exception':
+      continue
     mangled = asmjs_mangle(name)
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for

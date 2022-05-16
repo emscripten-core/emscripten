@@ -2576,7 +2576,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
 
   if settings.EXCEPTION_HANDLING:
-    settings.REQUIRED_EXPORTS += ['__trap']
+    settings.REQUIRED_EXPORTS += ['__trap', '__cpp_exception']
 
   return target, wasm_target
 

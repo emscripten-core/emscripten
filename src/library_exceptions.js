@@ -5,6 +5,7 @@
  */
 
 var LibraryExceptions = {
+#if !EXCEPTION_HANDLING
   $uncaughtExceptionCount: '0',
   $exceptionLast: '0',
   $exceptionCaught: ' []',
@@ -391,14 +392,60 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
-#if !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessage__deps: ['__get_exception_message', 'free'],
-  $getExceptionMessage: function(excPtr) {
-    var utf8_addr = ___get_exception_message(excPtr);
+#endif
+#if !DISABLE_EXCEPTION_CATCHING || EXCEPTION_HANDLING
+#if EXCEPTION_HANDLING
+  $getCppExceptionTag: function() {
+    return Module['asm']['__cpp_exception'];
+  },
+
+  $getCppExceptionThrownObject__deps: ['$getCppExceptionTag'],
+  $getCppExceptionThrownObject: function(ex) {
+    return ex.getArg(getCppExceptionTag(), 0);
+  },
+
+  $incrementExceptionRefcount__deps: ['__increment_wasm_exception_refcount', '$getCppExceptionThrownObject'],
+  $incrementExceptionRefcount: function(ptr) {
+    var thrown = getCppExceptionThrownObject(ptr);
+    ___increment_wasm_exception_refcount(thrown);
+  },
+
+  $decrementExceptionRefcount__deps: ['__decrement_wasm_exception_refcount', '$getCppExceptionThrownObject'],
+  $decrementExceptionRefcount: function(ptr) {
+    var thrown = getCppExceptionThrownObject(ptr);
+    ___decrement_wasm_exception_refcount(thrown);
+  },
+
+  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObject'],
+  $getExceptionMessage: function(ptr) {
+    // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
+    // thrown value from it.
+    var obj = getCppExceptionThrownObject(ptr);
+    var utf8_addr = ___get_exception_message(obj);
     var result = UTF8ToString(utf8_addr);
     _free(utf8_addr);
     return result;
   },
+
+#else // !DISABLE_EXCEPTION_CATCHING
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: function(ptr) {
+    ___cxa_increment_exception_refcount(ptr);
+  },
+
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: function(ptr) {
+    ___cxa_decrement_exception_refcount(ptr);
+  },
+
+  $getExceptionMessage__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessage: function(ptr) {
+    var utf8_addr = ___get_exception_message(ptr);
+    var result = UTF8ToString(utf8_addr);
+    _free(utf8_addr);
+    return result;
+  },
+#endif
 #endif
 };
 

@@ -1608,10 +1608,19 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
+  @with_both_eh_sjlj
   def test_exception_message(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
+    if '-fwasm-exceptions' in self.emcc_args:
+      exports = self.get_setting('EXPORTED_FUNCTIONS')
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+
+    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
+    # details.
+    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
+      self.emcc_args.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
+
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1651,9 +1660,17 @@ int main(int argc, char **argv)
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
-                  ___cxa_increment_exception_refcount(p);
+#ifdef __USING_EMSCRIPTEN_EXCEPTION__
+                  // FIXME Currently Wasm EH and Emscripten EH increases
+                  // refcounts in different places. Wasm EH sets the refcount to
+                  // 1 when throwing, and decrease it in __cxa_end_catch.
+                  // Emscripten EH sets the refcount to 0 when throwing, and
+                  // increase it in __cxa_begin_catch, and decrase it in
+                  // __cxa_end_catch. Fix this inconsistency later.
+                  incrementExceptionRefcount(p);
+#endif
                   console.log(getExceptionMessage(p));
-                  ___cxa_decrement_exception_refcount(p);
+                  decrementExceptionRefcount(p);
               }
             }
           });
