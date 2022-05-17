@@ -1417,9 +1417,8 @@ intptr_t _mmap_js(intptr_t addr,
   // to write to file opened in read-only mode with MAP_PRIVATE flag,
   // as all modifications will be visible only in the memory of
   // the current process.
-  if ((prot & PROT_WRITE) != 0
-      && (flags & MAP_PRIVATE) == 0
-      && (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
+  if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+      (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
     return -EACCES;
   }
   if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
