@@ -66,30 +66,24 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 
 // Mark these as weak so that wasmfs does not collide with it. That is, if
 // wasmfs is in use, we want to use that and not this.
-__attribute__((__weak__))
-const unsigned char * __map_file(const char *pathname, size_t *size) {
+__attribute__((__weak__)) const unsigned char* __map_file(const char* pathname,
+                                                          size_t* size) {
   errno = ENOSYS;
   return NULL;
 }
 
-__attribute__((__weak__))
-intptr_t _mmap_js(intptr_t addr,
-                  size_t length,
-                  int prot,
-                  int flags,
-                  int fd,
-                  size_t offset,
-                  int* allocated) {
+__attribute__((__weak__)) intptr_t _mmap_js(intptr_t addr,
+                                            size_t length,
+                                            int prot,
+                                            int flags,
+                                            int fd,
+                                            size_t offset,
+                                            int* allocated) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__))
-int _munmap_js(intptr_t addr,
-               size_t length,
-               int prot,
-               int flags,
-               int fd,
-               size_t offset) {
+__attribute__((__weak__)) int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
   return -ENOSYS;
 }
 
