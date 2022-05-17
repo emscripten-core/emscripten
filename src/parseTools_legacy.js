@@ -17,7 +17,7 @@ function makeStructuralReturn(values) {
 function receiveI64ParamAsDouble(name) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = Number(${name}_bigint);`;
+    return `${name} = Number(${name});`;
   }
   // Combine the i32 params. Use an unsigned operator on low and shift high by
   // 32 bits.
