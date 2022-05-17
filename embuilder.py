@@ -27,6 +27,7 @@ import emscripten
 # Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
+    'libcompiler_rt-wasm-sjlj',
     'libc',
     'libc-debug',
     'libc-optz',
@@ -53,8 +54,14 @@ MINIMAL_TASKS = [
     'struct_info',
     'libstandalonewasm',
     'crt1',
+    'crtbegin'
     'libunwind-except',
     'libnoexit',
+    'libubsan_rt',
+    'libwasm_workers_stub-debug',
+    'libwebgpu_cpp',
+    'libfetch',
+    'libsockets_proxy',
 ]
 
 # Variant builds that we want to support for certain ports
