@@ -50,6 +50,7 @@ MINIMAL_TASKS = [
     'libGL',
     'libhtml5',
     'libsockets',
+    'libsockets_proxy',
     'libstubs',
     'libstubs-debug',
     'struct_info',
@@ -62,7 +63,6 @@ MINIMAL_TASKS = [
     'libwasm_workers_stub-debug',
     'libwebgpu_cpp',
     'libfetch',
-    'libsockets_proxy',
 ]
 
 # Variant builds that we want to support for certain ports
