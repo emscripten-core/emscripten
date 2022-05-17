@@ -1408,38 +1408,38 @@ intptr_t _mmap_js(intptr_t addr,
     return -EBADF;
   }
 
-  // TODO: release this lock earlier
-  auto lockedOpenFile = openFile->locked();
+  std::shared_ptr<DataFile> file;
 
-  // User requests writing to file (prot & PROT_WRITE != 0).
-  // Checking if we have permissions to write to the file unless
-  // MAP_PRIVATE flag is set. According to POSIX spec it is possible
-  // to write to file opened in read-only mode with MAP_PRIVATE flag,
-  // as all modifications will be visible only in the memory of
-  // the current process.
-  if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
-      (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
-    return -EACCES;
-  }
-  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
-    return -EACCES;
+  // Keep the open file info locked only for as long as we need that.
+  {
+    auto lockedOpenFile = openFile->locked();
+
+    // Check permissions. We always need read permissions, since we need to read
+    // the data in the file to map it.
+    if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+      return -EACCES;
+    }
+
+    // According to the POSIX spec it is possible to write to a file opened in
+    // read-only mode with MAP_PRIVATE flag, as all modifications will be
+    // visible only in the memory of the current process.
+    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+        (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
+      return -EACCES;
+    }
+
+    file = lockedOpenFile.getFile()->dynCast<DataFile>();
   }
 
-#if 0 // Add hook?
-  if (!stream.stream_ops.mmap) {
-    return -ENODEV;
-  }
-#endif
-
-  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
   if (!file) {
     return -ENODEV;
   }
 
-  // TODO: handle MAP_PRIVATE
+  // TODO: handle MAP_PRIVATE in an optimal way from here
   // TODO: optimize here, do not always allocate + copy into a new region
+
   // Align to a wasm page size, as we expect in the future to get wasm
-  // primtives to do this work, and those would presumably be aligned to a page
+  // primitives to do this work, and those would presumably be aligned to a page
   // size. Aligning now avoids confusion later.
   uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
@@ -1454,14 +1454,14 @@ intptr_t _mmap_js(intptr_t addr,
     return written;
   }
 
-  // From here on, we have succeeded, and can mark the allocation.
+  // From here on, we have succeeded, and can mark the allocation as having
+  // occurred (which means that the caller has the responsibility to free it).
   *allocated = true;
 
   // The read must be of a valid amount, or we have had an internal logic error.
   assert(written <= length);
 
   // mmap clears any extra bytes after the data itself.
-  // TODO: do this after the write, and only the unwritten bytes
   memset(ptr + written, 0, length - written);
 
   return (intptr_t)ptr;
