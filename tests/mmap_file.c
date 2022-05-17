@@ -14,18 +14,10 @@
 int main() {
     printf("*\n");
     FILE *f = fopen("data.dat", "r");
-puts("a1");
     char *m;
     m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
-puts("a2");
-EM_ASM({
-  console.log('ptr', $0);
-}, m);
-printf("a2b: %p", m);
     for (int i = 0; i < 20; i++) putchar(m[i]);
-puts("a3");
     munmap(m, 9000);
-puts("a4");
     printf("\n");
     m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 4096);
     for (int i = 0; i < 20; i++) putchar(m[i]);
