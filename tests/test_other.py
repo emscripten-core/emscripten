@@ -11722,6 +11722,8 @@ Module['postRun'] = function() {
 
   def test_wasmfs_before_preload(self):
     self.set_setting('WASMFS')
+    os.mkdir('js_backend_files')
+    create_file('js_backend_files/file.dat', 'data')
     self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
