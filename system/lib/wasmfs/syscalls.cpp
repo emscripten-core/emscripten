@@ -8,6 +8,7 @@
 
 #include <dirent.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
@@ -15,6 +16,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <syscall_arch.h>
 #include <unistd.h>
@@ -1406,18 +1408,21 @@ intptr_t _mmap_js(intptr_t addr,
     return -EBADF;
   }
 
+  // TODO: release this lock earlier
+  auto lockedOpenFile = openFile->locked();
+
   // User requests writing to file (prot & PROT_WRITE != 0).
   // Checking if we have permissions to write to the file unless
   // MAP_PRIVATE flag is set. According to POSIX spec it is possible
   // to write to file opened in read-only mode with MAP_PRIVATE flag,
   // as all modifications will be visible only in the memory of
   // the current process.
-  if ((prot & PROT_WRITE) !== 0
-      && (flags & MAP_PRIVATE) === 0
-      && (stream.flags & O_ACCMODE) !== O_RDWR) {
+  if ((prot & PROT_WRITE) != 0
+      && (flags & MAP_PRIVATE) == 0
+      && (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
     return -EACCES;
   }
-  if ((stream.flags & O_ACCMODE) === O_WRONLY) {
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
     return -EACCES;
   }
 
@@ -1427,20 +1432,23 @@ intptr_t _mmap_js(intptr_t addr,
   }
 #endif
 
-  auto* file = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
   if (!file) {
     return -ENODEV;
   }
 
   // TODO: handle MAP_PRIVATE
   // TODO: optimize here, do not always allocate + copy into a new region
-  void* ptr = memalign(WASM_PAGE_SIZE, length);
+  // Align to a wasm page size, as we expect in the future to get wasm
+  // primtives to do this work, and those would presumably be aligned to a page
+  // size. Aligning now avoids confusion later.
+  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
     return -ENOMEM;
   }
   *allocated = true;
 
-  auto written = file.locked().read(ptr, length, offset);
+  auto written = file->locked().read(ptr, length, offset);
   if (written < 0) {
     // The read failed. Report the error, but first free the allocation.
     free(ptr);
@@ -1457,7 +1465,7 @@ intptr_t _mmap_js(intptr_t addr,
   // TODO: do this after the write, and only the unwritten bytes
   memset(ptr + written, 0, length - written);
 
-  return ptr;
+  return (intptr_t)ptr;
 }
 
 // Stubs (at least for now)
