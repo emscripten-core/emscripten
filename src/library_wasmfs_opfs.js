@@ -131,7 +131,17 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_get_entries__deps: [],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
-abort();
+    let dirHandle = wasmfsOPFSDirectories.get(dirID);
+    for await (let [name, child] of dirHandle.entries()) {
+      withStackSave(() => {
+        let namePtr = allocateUTF8OnStack(name);
+        let type = child.kind == "file" ?
+            {{{ cDefine('File::DataFileKind') }}} :
+            {{{ cDefine('File::DirectoryKind') }}};
+        __wasmfs_opfs_record_entry(entries, namePtr, type)
+      });
+    }
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
