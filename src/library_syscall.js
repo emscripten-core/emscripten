@@ -120,7 +120,9 @@ var SyscallsLibrary = {
 #endif
   ],
   _mmap_js: function(addr, len, prot, flags, fd, off, allocated) {
+console.log('mmap_js');
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+console.log('mmap_js1');
     if (addr !== 0) {
       // We don't currently support location hints for the address of the mapping
       return -{{{ cDefine('EINVAL') }}};
@@ -135,6 +137,7 @@ var SyscallsLibrary = {
 #endif
     return ptr;
 #else // no filesystem support; report lack of support
+console.log('mmap_js2');
     return -{{{ cDefine('ENOSYS') }}};
 #endif
   },

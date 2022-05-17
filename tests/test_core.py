@@ -6355,18 +6355,17 @@ void* operator new(size_t size) {
     self.do_core_test('test_mmap.c')
 
   def test_mmap_file(self):
-    for extra_args in [[]]:
-      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-      x = 'data from the file........'
-      s = ''
-      while len(s) < 9000:
-        if len(s) + len(x) < 9000:
-          s += x
-          continue
-        s += '.'
-      assert len(s) == 9000
-      create_file('data.dat', s)
-      self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+    self.emcc_args += ['--embed-file', 'data.dat']
+    x = 'data from the file........'
+    s = ''
+    while len(s) < 9000:
+      if len(s) + len(x) < 9000:
+        s += x
+        continue
+      s += '.'
+    assert len(s) == 9000
+    create_file('data.dat', s)
+    self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
   @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
@@ -9351,7 +9350,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-sWASM=0', '-DWASMFS', '-sSAFE_HEAP', '--profiling'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core0s = make_run('core2s', emcc_args=['-g'], settings={'SAFE_HEAP': 1})

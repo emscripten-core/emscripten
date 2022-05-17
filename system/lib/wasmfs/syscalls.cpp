@@ -1389,6 +1389,90 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
+intptr_t _mmap_js(intptr_t addr,
+                  size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  size_t offset,
+                  int* allocated) {
+  if (addr != 0) {
+    // We don't currently support location hints for the address of the mapping.
+    return -EINVAL;
+  }
+
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  // User requests writing to file (prot & PROT_WRITE != 0).
+  // Checking if we have permissions to write to the file unless
+  // MAP_PRIVATE flag is set. According to POSIX spec it is possible
+  // to write to file opened in read-only mode with MAP_PRIVATE flag,
+  // as all modifications will be visible only in the memory of
+  // the current process.
+  if ((prot & PROT_WRITE) !== 0
+      && (flags & MAP_PRIVATE) === 0
+      && (stream.flags & O_ACCMODE) !== O_RDWR) {
+    return -EACCES;
+  }
+  if ((stream.flags & O_ACCMODE) === O_WRONLY) {
+    return -EACCES;
+  }
+
+#if 0 // Add hook?
+  if (!stream.stream_ops.mmap) {
+    return -ENODEV;
+  }
+#endif
+
+  auto lockedOpenFile = openFile->locked();
+  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  if (!file) {
+    return -ENODEV;
+  }
+
+  var ptr;
+  var allocated;
+  var contents = stream.node.contents;
+  // Only make a new copy when MAP_PRIVATE is specified.
+  if (!(flags & MAP_PRIVATE) && contents.buffer === buffer) {
+    // We can't emulate MAP_SHARED when the file is not backed by the buffer
+    // we're mapping to (e.g. the HEAP buffer).
+    allocated = false;
+    ptr = contents.byteOffset;
+  } else {
+    // Try to avoid unnecessary slices.
+    if (position > 0 || position + length < contents.length) {
+      if (contents.subarray) {
+        contents = contents.subarray(position, position + length);
+      } else {
+        contents = Array.prototype.slice.call(contents, position, position + length);
+      }
+    }
+    allocated = true;
+    ptr = mmapAlloc(length);
+    if (!ptr) {
+      return -ENOMEM;
+    }
+#if CAN_ADDRESS_2GB
+    ptr >>>= 0;
+#endif
+    HEAP8.set(contents, ptr);
+  }
+  .return { ptr: ptr, allocated: allocated };
+
+
+
+
+  var res = FS.mmap(stream, len, off, prot, flags);
+  var ptr = res.ptr;
+  *allocated = ...res.allocated...
+
+  return ptr;
+}
+
 // Stubs (at least for now)
 
 int __syscall_accept4(int sockfd,
