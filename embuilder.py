@@ -182,7 +182,10 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 2
-    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t and 'fetch' not in t]
+    # Disable things in memory64 that do not build yet, which includes emmalloc,
+    # Fetch, and sanitizers.
+    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t and
+                        'fetch' not in t and 'san' not in t]
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
