@@ -1427,48 +1427,35 @@ intptr_t _mmap_js(intptr_t addr,
   }
 #endif
 
-  auto lockedOpenFile = openFile->locked();
-  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  auto* file = openFile->locked().getFile()->dynCast<DataFile>();
   if (!file) {
     return -ENODEV;
   }
 
-  var ptr;
-  var allocated;
-  var contents = stream.node.contents;
-  // Only make a new copy when MAP_PRIVATE is specified.
-  if (!(flags & MAP_PRIVATE) && contents.buffer === buffer) {
-    // We can't emulate MAP_SHARED when the file is not backed by the buffer
-    // we're mapping to (e.g. the HEAP buffer).
-    allocated = false;
-    ptr = contents.byteOffset;
-  } else {
-    // Try to avoid unnecessary slices.
-    if (position > 0 || position + length < contents.length) {
-      if (contents.subarray) {
-        contents = contents.subarray(position, position + length);
-      } else {
-        contents = Array.prototype.slice.call(contents, position, position + length);
-      }
-    }
-    allocated = true;
-    ptr = mmapAlloc(length);
-    if (!ptr) {
-      return -ENOMEM;
-    }
-#if CAN_ADDRESS_2GB
-    ptr >>>= 0;
-#endif
-    HEAP8.set(contents, ptr);
+  // TODO: handle MAP_PRIVATE
+  // TODO: optimize here, do not always allocate + copy into a new region
+  void* ptr = memalign(WASM_PAGE_SIZE, length);
+  if (!ptr) {
+    return -ENOMEM;
   }
-  .return { ptr: ptr, allocated: allocated };
+  *allocated = true;
 
+  auto written = file.locked().read(ptr, length, offset);
+  if (written < 0) {
+    // The read failed. Report the error, but first free the allocation.
+    free(ptr);
+    return written;
+  }
 
+  // From here on, we have succeeded, and can mark the allocation.
+  *allocated = true;
 
+  // The read must be of a valid amount, or we have had an internal logic error.
+  assert(written <= length);
 
-  var res = FS.mmap(stream, len, off, prot, flags);
-  var ptr = res.ptr;
-  *allocated = ...res.allocated...
+  // mmap clears any extra bytes after the data itself.
+  // TODO: do this after the write, and only the unwritten bytes
+  memset(ptr + written, 0, length - written);
 
   return ptr;
 }
