@@ -31,6 +31,8 @@ MINIMAL_TASKS = [
     'libcompiler_rt-wasm-sjlj',
     'libc',
     'libc-debug',
+    'libc-mt',
+    'libc-mt-debug',
     'libc-optz',
     'libc-optz-debug',
     'libc++abi',
@@ -66,6 +68,7 @@ MINIMAL_TASKS = [
     'libwasm_workers_stub-debug',
     'libwebgpu_cpp',
     'libfetch',
+    'libwasmfs',
 ]
 
 # Variant builds that we want to support for certain ports
