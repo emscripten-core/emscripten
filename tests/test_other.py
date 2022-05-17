@@ -3298,7 +3298,10 @@ mergeInto(LibraryManager.library, {
     '<' : 0,
     'white space' : 1
   },
-  printf__deps: ['__internal_data', 'fprintf']
+  foo__deps: ['__internal_data'],
+  foo: function() {
+    return 0;
+  }
 });
 ''')
 
