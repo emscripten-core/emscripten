@@ -42,7 +42,13 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
+#if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
 
 // Wasm globals
 
@@ -97,6 +103,9 @@ function getCFunc(ident) {
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
+#if MEMORY64
+    'pointer': (p) => {{{ to64('p') }}},
+#endif
     'string': function(str) {
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
@@ -105,17 +114,23 @@ function ccall(ident, returnType, argTypes, args, opts) {
         ret = stackAlloc(len);
         stringToUTF8(str, ret, len);
       }
-      return ret;
+      return {{{ to64('ret') }}};
     },
     'array': function(arr) {
       var ret = stackAlloc(arr.length);
       writeArrayToMemory(arr, ret);
-      return ret;
+      return {{{ to64('ret') }}};
     }
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      {{{ from64('ret') }}}
+      return UTF8ToString(ret);
+    }
+#if MEMORY64
+    if (returnType === 'pointer') return Number(ret);
+#endif
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -306,8 +321,8 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #else // IMPORTED_MEMORY
 #if ASSERTIONS
 // If memory is defined in wasm, the user can't provide it.
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -s IMPORTED_MEMORY to define wasmMemory externally');
-assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -s IMPORTED_MEMORY to define wasmMemory dynamically');
+assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
+assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // ASSERTIONS
 #endif // IMPORTED_MEMORY
 
@@ -593,18 +608,26 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  what += '. Build with -s ASSERTIONS=1 for more info.';
+  what += '. Build with -sASSERTIONS for more info.';
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
+  // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
+  // a trap or not based on a hidden field within the object. So at the moment
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
+#if EXCEPTION_HANDLING == 1
+  // See above, in the meantime, we resort to wasm code for trapping.
+  ___trap();
+#else
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -615,6 +638,7 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
+#endif
 }
 
 // {{MEM_INITIALIZER}}
@@ -625,7 +649,7 @@ function abort(what) {
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
-    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
+    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
   },
   init: function() { FS.error() },
   createDataFile: function() { FS.error() },
@@ -761,7 +785,7 @@ function instrumentWasmExportsForMemory64(exports) {
     (function(name) {
       var original = exports[name];
       var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc') {
+      if (name === 'stackAlloc' || name === 'malloc' || name === 'emscripten_builtin_malloc') {
         // get one i64, return an i64
         replacement = (x) => {
           var r = Number(original(BigInt(x)));
@@ -778,6 +802,12 @@ function instrumentWasmExportsForMemory64(exports) {
         // return an i64
         replacement = () => {
           var r = Number(original());
+          return r;
+        };
+      } else if (name === 'emscripten_builtin_memalign') {
+        // get two i64, return an i64
+        replacement = (x, y) => {
+          var r = Number(original(BigInt(x), BigInt(y)));
           return r;
         };
       } else if (name === 'main') {

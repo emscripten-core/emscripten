@@ -82,18 +82,18 @@ mergeInto(LibraryManager.library, {
       var ret;
       argIndex = prepVararg(argIndex, type);
       if (type === 'double') {
-        ret = {{{ makeGetValue('argIndex', 0, 'double', undefined, undefined, true) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'double') }}};
         argIndex += 8;
       } else if (type == 'i64') {
-        ret = [{{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true, 4) }}},
-               {{{ makeGetValue('argIndex', 4, 'i32', undefined, undefined, true, 4) }}}];
+        ret = [{{{ makeGetValue('argIndex', 0, 'i32') }}},
+               {{{ makeGetValue('argIndex', 4, 'i32') }}}];
         argIndex += 8;
       } else {
 #if ASSERTIONS
         assert((argIndex & 3) === 0);
 #endif
         type = 'i32'; // varargs are always i32, i64, or double
-        ret = {{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'i32') }}};
         argIndex += 4;
       }
       return ret;
@@ -418,7 +418,7 @@ mergeInto(LibraryManager.library, {
             }
             if (arg) {
               for (var i = 0; i < argLength; i++) {
-                ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+                ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
               ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));

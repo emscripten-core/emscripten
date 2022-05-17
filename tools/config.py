@@ -137,6 +137,8 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
+      if env_value == '':
+        env_value = None
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]

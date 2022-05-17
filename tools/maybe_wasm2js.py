@@ -7,7 +7,7 @@
 '''
 This operates on a JS+wasm emitted from compiling with
 
-  -s MAYBE_WASM2JS
+  -sMAYBE_WASM2JS
 
 and it does wasm2js on it. That is, it converts the wasm to JS, and lets
 you run it. You can also pick between the wasm and JS at runtime.

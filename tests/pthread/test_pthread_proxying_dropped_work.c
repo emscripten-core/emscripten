@@ -1,10 +1,9 @@
 #include <assert.h>
 #include <emscripten/console.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <unistd.h>
-
-#include "proxying.h"
 
 em_proxying_queue* queue;
 

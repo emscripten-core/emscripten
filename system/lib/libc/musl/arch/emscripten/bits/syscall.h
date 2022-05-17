@@ -1,11 +1,9 @@
 #define SYS_link		  __syscall_link
 #define SYS_chdir		 __syscall_chdir
-#define SYS_mknod		 __syscall_mknod
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
 #define SYS_pause		 __syscall_pause
 #define SYS_sync		 __syscall_sync
-#define SYS_mkdir		 __syscall_mkdir
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
 #define SYS_pipe		 __syscall_pipe

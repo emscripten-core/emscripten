@@ -206,13 +206,13 @@ mergeInto(LibraryManager.library, {
 // However its implementation is faulty: https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
 // Firefox Nightly 86.0a1 (2021-01-15) does not yet have it, https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
 // And at the time of writing, no other browser has it either.
-#if MIN_EDGE_VERSION != TARGET_NOT_SUPPORTED || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+#if MIN_EDGE_VERSION < 91 || MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
-  // Also always polyfill in Chrome-based browsers, where Atomics.waitAsync is broken,
+  // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is broken until Chrome 91,
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || navigator.userAgent.indexOf('Chrome') != -1) { \n"+
+  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) { \n"+
 "let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];\n"+
 "function __Atomics_pollWaitAsyncAddresses() {\n"+
 "  let now = performance.now();\n"+
@@ -259,7 +259,7 @@ mergeInto(LibraryManager.library, {
   _emscripten_atomic_live_wait_asyncs: '{}',
   _emscripten_atomic_live_wait_asyncs_counter: '0',
 
-  emscripten_atomic_wait_async__deps: ['_emscripten_atomic_wait_states', '_emscripten_atomic_live_wait_asyncs', '_emscripten_atomic_live_wait_asyncs_counter'],
+  emscripten_atomic_wait_async__deps: ['_emscripten_atomic_wait_states', '_emscripten_atomic_live_wait_asyncs', '_emscripten_atomic_live_wait_asyncs_counter', '$jstoi_q'],
   emscripten_atomic_wait_async: function(addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) {
     let wait = Atomics['waitAsync'](HEAP32, addr >> 2, val, maxWaitMilliseconds);
     if (!wait.async) return __emscripten_atomic_wait_states.indexOf(wait.value);
@@ -340,9 +340,9 @@ mergeInto(LibraryManager.library, {
     };
     let tryAcquireLock = () => {
       do {
-        let val = Atomics.compareExchange(HEAPU32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
+        var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        var wait = Atomics['waitAsync'](HEAPU32, lock >> 2, val, maxWaitMilliseconds);
+        var wait = Atomics['waitAsync'](HEAP32, lock >> 2, val, maxWaitMilliseconds);
       } while(wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
@@ -362,12 +362,12 @@ mergeInto(LibraryManager.library, {
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
-        let ret = Atomics.compareExchange(HEAPU32, sem >> 2,
+        let ret = Atomics.compareExchange(HEAP32, sem >> 2,
                                           val, /* We expect this many semaphore resoures to be available*/
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
-        let wait = Atomics['waitAsync'](HEAPU32, sem >> 2, ret, maxWaitMilliseconds);
+        let wait = Atomics['waitAsync'](HEAP32, sem >> 2, ret, maxWaitMilliseconds);
       } while(wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');

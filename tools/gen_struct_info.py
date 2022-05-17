@@ -434,12 +434,13 @@ def main(args):
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
     '-I' + utils.path_from_root('system/lib/pthread/'),
-    '-I' + utils.path_from_root('system/lib/wasmfs/'),
   ]
 
   cxxflags = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
     '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
+    '-I' + utils.path_from_root('system/lib/wasmfs/'),
+    '-std=c++17',
   ]
 
   # Look for structs in all passed headers.

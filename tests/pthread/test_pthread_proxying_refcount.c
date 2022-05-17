@@ -1,11 +1,14 @@
 #include <assert.h>
 #include <emscripten/console.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "proxying.h"
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#define SANITIZER
+#endif
 
 // The first two queues will be zombies and the next two will be created just to
 // cull the zombies.
@@ -34,6 +37,12 @@ void __attribute__((noinline)) free(void* ptr) {
 
 _Atomic int should_execute = 0;
 _Atomic int executed[2] = {};
+_Atomic int processed = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void register_processed(void) {
+  processed++;
+}
 
 void task(void* arg) { *(_Atomic int*)arg = 1; }
 
@@ -48,8 +57,22 @@ void* execute_and_free_queue(void* arg) {
     em_proxying_queue_destroy(queues[i]);
   }
 
+  // Wrap the normal worker event listener so that we can determine when our
+  // proxying events have been received and handled.
+  EM_ASM({
+      var oldOnMessage = onmessage;
+      onmessage = (e) => {
+        oldOnMessage(e);
+        if (e.data.cmd == 'processProxyingQueue') {
+          _register_processed();
+        }
+      };
+    });
+
   // Exit with a live runtime so the queued work notification is received and we
-  // try to execute the queue again, even though it has been destroyed.
+  // try to execute the queue again, even though we already executed all its
+  // work and we are now just waiting for the notifications to be received so we
+  // can free it.
   emscripten_exit_with_live_runtime();
 }
 
@@ -72,8 +95,8 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Break the queue abstraction to wait for the refcounts to be decreased.
-  while (*(_Atomic int*)queues[0] || *(_Atomic int*)queues[1]) {
+  // Wait for the notifications to be received.
+  while (processed < 2) {
   }
 
 #ifndef SANITIZER

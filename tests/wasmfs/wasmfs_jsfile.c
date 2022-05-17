@@ -17,7 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-void write_and_read(const char* msg, int fd) {
+void write_and_read(const char* msg, int fd, const char* expected) {
   char buf[200] = {};
   errno = 0;
   write(fd, msg, strlen(msg));
@@ -28,6 +28,7 @@ void write_and_read(const char* msg, int fd) {
   read(fd, buf, sizeof(buf));
   assert(errno == 0);
   printf("%s\n", buf);
+  assert(strcmp(buf, expected) == 0);
 }
 
 static backend_t make_js_file_backend(void* arg) {
@@ -52,7 +53,7 @@ int main() {
 
   // Try writing to and reading from the file.
   const char* msg = "Test with a new backend file\n";
-  write_and_read(msg, fd);
+  write_and_read(msg, fd, msg);
 
   // Verify that the size of the backend File is the same as the written buffer.
   assert(fstat(fd, &file) != -1);
@@ -60,10 +61,11 @@ int main() {
 
   // Try seeking to the beginning of the file and overwriting its contents.
   assert(lseek(fd, 0, SEEK_SET) != -1);
-  write_and_read(msg, fd);
+  write_and_read(msg, fd, msg);
 
   // Try appending to the end of the backend File.
-  write_and_read(msg, fd);
+  write_and_read(
+    msg, fd, "Test with a new backend file\nTest with a new backend file\n");
 
   // Verify that the size of the backend File has increased.
   assert(fstat(fd, &file) != -1);
@@ -83,7 +85,7 @@ int main() {
   const char* msg2 =
     "Test with a backend file created under a backend directory\n";
 
-  write_and_read(msg2, fd2);
+  write_and_read(msg2, fd2, msg2);
 
   // Check that the backend file has the correct backend type.
   assert(wasmfs_get_backend_by_fd(fd2) == backend);
@@ -95,7 +97,7 @@ int main() {
 
   const char* msg3 =
     "Test with an in-memory file created under a backend directory\n";
-  write_and_read(msg3, fd3);
+  write_and_read(msg3, fd3, msg3);
 
   // Create a new backend file under root.
   int fd4 = wasmfs_create_file("/testfile2", 0777, backend);

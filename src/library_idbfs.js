@@ -6,6 +6,10 @@
 
 mergeInto(LibraryManager.library, {
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
+  $IDBFS__postset: function() {
+    addAtExit('IDBFS.quit();');
+    return '';
+  },
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
@@ -34,6 +38,10 @@ mergeInto(LibraryManager.library, {
           IDBFS.reconcile(src, dst, callback);
         });
       });
+    },
+    quit: () => {
+      Object.values(IDBFS.dbs).forEach((value) => value.close());
+      IDBFS.dbs = {};
     },
     getDB: (name, callback) => {
       // check the cache first
@@ -186,7 +194,6 @@ mergeInto(LibraryManager.library, {
     },
     removeLocalEntry: (path, callback) => {
       try {
-        var lookup = FS.lookupPath(path);
         var stat = FS.stat(path);
 
         if (FS.isDir(stat.mode)) {

@@ -90,6 +90,46 @@ function runJSify(functionsOnly) {
     });
   }
 
+  function convertPointerParams(snippet, sig) {
+    // Automatically convert any incoming pointer arguments from BigInt
+    // to double (this limits the range to int53).
+    // And convert the return value if the function returns a pointer.
+    return modifyFunction(snippet, (name, args, body) => {
+      const argNames = args.split(',');
+      let newArgs = [];
+      let argConvertions = '';
+      for (let i = 1; i < sig.length; i++) {
+        const name = argNames[i - 1];
+        if (sig[i] == 'p') {
+          argConvertions += `${name} = Number(${name})\n`;
+          newArgs.push(`Number(${name})`);
+        } else {
+          newArgs.push(name);
+        }
+      }
+
+      if (sig[0] == 'p') {
+        // For functions that return a pointer we need to convert
+        // the return value too, which means we need to wrap the
+        // body in an inner function.
+        newArgs = newArgs.join(',');
+        return `\
+function ${name}(${args}) {
+  var ret = ((${args}) => { ${body} })(${newArgs});
+  return BigInt(ret);
+}`;
+      }
+
+      // Otherwise no inner function is needed and we covert the arguments
+      // before executing the function body.
+      return `\
+function ${name}(${args}) {
+  ${argConvertions};
+  ${body};
+}`;
+    });
+  }
+
   function processLibraryFunction(snippet, ident, finalName) {
     // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
@@ -109,6 +149,12 @@ function ${name}(${args}) {
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
+    }
+    if (MEMORY64) {
+      const sig = LibraryManager.library[ident + '__sig'];
+      if (sig && sig.includes('p')) {
+        snippet = convertPointerParams(snippet, sig);
+      }
     }
     return snippet;
   }
@@ -163,9 +209,9 @@ function ${name}(${args}) {
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
             if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
-              warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
+              warnOnce('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
-            warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`');
+            warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
             warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
@@ -399,15 +445,10 @@ function ${name}(${args}) {
     print(pre);
 
     // Print out global variables and postsets TODO: batching
-    const legalizedI64sDefault = legalizedI64s;
-    legalizedI64s = false;
-
     runJSify(true);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
-
-    legalizedI64s = legalizedI64sDefault;
 
     if (USE_PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');

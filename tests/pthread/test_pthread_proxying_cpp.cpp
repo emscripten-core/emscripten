@@ -1,9 +1,8 @@
 #include <cassert>
 #include <condition_variable>
+#include <emscripten/proxying.h>
 #include <iostream>
 #include <sched.h>
-
-#include "proxying.h"
 
 using namespace emscripten;
 
@@ -19,9 +18,6 @@ ProxyingQueue queue;
 // Whether `looper` should exit.
 std::atomic<bool> should_quit{false};
 
-// Whether `returner` has spun up.
-std::atomic<bool> has_begun{false};
-
 void looper_main() {
   while (!should_quit) {
     queue.execute();
@@ -30,7 +26,6 @@ void looper_main() {
 }
 
 void returner_main() {
-  has_begun = 1;
   emscripten_exit_with_live_runtime();
 }
 
@@ -138,11 +133,6 @@ void test_proxy_sync_with_ctx(void) {
 int main(int argc, char* argv[]) {
   looper = std::thread(looper_main);
   returner = std::thread(returner_main);
-
-  // `returner` can't process its queue until it starts up.
-  while (!has_begun) {
-    sched_yield();
-  }
 
   test_proxy_async();
   test_proxy_sync();

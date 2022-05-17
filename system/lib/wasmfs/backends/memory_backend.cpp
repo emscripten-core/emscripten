@@ -13,22 +13,22 @@
 
 namespace wasmfs {
 
-__wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
+ssize_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
     buffer.resize(offset + len);
   }
   std::memcpy(&buffer[offset], buf, len);
-
-  return __WASI_ERRNO_SUCCESS;
+  return len;
 }
 
-__wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
-  // The caller should have already checked that the offset + len does
-  // not exceed the file's size.
-  assert(offset + len <= buffer.size());
+ssize_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
+  if (offset >= buffer.size()) {
+    len = 0;
+  } else if (offset + len >= buffer.size()) {
+    len = buffer.size() - offset;
+  }
   std::memcpy(buf, &buffer[offset], len);
-
-  return __WASI_ERRNO_SUCCESS;
+  return len;
 }
 
 std::vector<MemoryDirectory::ChildEntry>::iterator
@@ -38,40 +38,12 @@ MemoryDirectory::findEntry(const std::string& name) {
   });
 }
 
-std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->child;
-  }
-  return nullptr;
-}
-
 bool MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
-  if (entry == entries.end()) {
-    return false;
-  }
-  entries.erase(entry);
-  return true;
-}
-
-std::shared_ptr<File> MemoryDirectory::insertChild(const std::string& name,
-                                                   std::shared_ptr<File> file) {
-  if (auto entry = findEntry(name); entry != entries.end()) {
-    return entry->child;
-  }
-  entries.push_back({name, file});
-  return file;
-}
-
-std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
-  auto entry =
-    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
-      return entry.child == file;
-    });
   if (entry != entries.end()) {
-    return entry->name;
+    entries.erase(entry);
   }
-  return {};
+  return true;
 }
 
 std::vector<Directory::Entry> MemoryDirectory::getEntries() {
@@ -83,10 +55,32 @@ std::vector<Directory::Entry> MemoryDirectory::getEntries() {
   return result;
 }
 
+bool MemoryDirectory::insertMove(const std::string& name,
+                                 std::shared_ptr<File> file) {
+  auto& oldEntries =
+    std::static_pointer_cast<MemoryDirectory>(file->locked().getParent())
+      ->entries;
+  for (auto it = oldEntries.begin(); it != oldEntries.end(); ++it) {
+    if (it->child == file) {
+      oldEntries.erase(it);
+      break;
+    }
+  }
+  removeChild(name);
+  insertChild(name, file);
+  return true;
+}
+
 class MemoryFileBackend : public Backend {
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode, this);
+  }
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
+    return std::make_shared<MemoryDirectory>(mode, this);
+  }
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    return std::make_shared<MemorySymlink>(target, this);
   }
 };
 

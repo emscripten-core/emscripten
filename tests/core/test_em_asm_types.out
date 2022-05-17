@@ -5,10 +5,13 @@ char 10
 signed char -10
 unsigned char 10
 short -20
+signed short -20
 unsigned short 20
 int -30
+signed int -30
 unsigned int 30
 long -40
+signed long -40
 unsigned long 40
 bit field 3
 bool 1

@@ -203,7 +203,7 @@ var LibraryHtml5WebGL = {
 #else
     if (contextAttributes.explicitSwapControl) {
 #if GL_DEBUG
-      err('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
+      err('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -sOFFSCREENCANVAS_SUPPORT to enable targeting the experimental OffscreenCanvas specification, or rebuild with -sOFFSCREEN_FRAMEBUFFER to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
       return 0;
     }
@@ -360,7 +360,7 @@ var LibraryHtml5WebGL = {
 
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
     // Switch-board that pulls in code for all GL extensions, even if those are not used :/
-    // Build with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS = 0 to avoid this.
+    // Build with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 to avoid this.
 
 #if MIN_WEBGL_VERSION == 1
     // Obtain function entry points to WebGL 1 extension related functions.
@@ -385,7 +385,7 @@ var LibraryHtml5WebGL = {
          'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance',
          'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
-      err('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
+      err('When building with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
 #endif

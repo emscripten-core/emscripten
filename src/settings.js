@@ -8,10 +8,10 @@
 // Various compiler settings. These are simply variables present when the
 // JS compiler runs. To set them, do something like:
 //
-//   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
+//   emcc -sOPTION1=VALUE1 -sOPTION2=VALUE2 [..other stuff..]
 //
-// For convenience and readability `-s OPTION` expands to `-s OPTION=1`
-// and `-s NO_OPTION` expands to `-s OPTION=0` (assuming OPTION is a valid
+// For convenience and readability `-sOPTION` expands to `-sOPTION=1`
+// and `-sNO_OPTION` expands to `-sOPTION=0` (assuming OPTION is a valid
 // option).
 //
 // See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
@@ -509,17 +509,17 @@ var GL_EXPLICIT_UNIFORM_LOCATION = false;
 // extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
 var GL_EXPLICIT_UNIFORM_BINDING = false;
 
-// Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
+// Deprecated. Pass -sMAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = false;
 
-// Specifies the lowest WebGL version to target. Pass -s MIN_WEBGL_VERSION=1
-// to enable targeting WebGL 1, and -s MIN_WEBGL_VERSION=2 to drop support
+// Specifies the lowest WebGL version to target. Pass -sMIN_WEBGL_VERSION=1
+// to enable targeting WebGL 1, and -sMIN_WEBGL_VERSION=2 to drop support
 // for WebGL 1.0
 // [link]
 var MIN_WEBGL_VERSION = 1;
 
-// Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
+// Specifies the highest WebGL version to target. Pass -sMAX_WEBGL_VERSION=2
 // to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
 // will default to creating a WebGL 2 context if no version is specified.
 // Note that there is no automatic fallback to WebGL1 if WebGL2 is not supported
@@ -605,7 +605,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 // Set this to enable compatibility emulations for old JavaScript engines. This gives you
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
-//  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
+//  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 //  * Work around old Chromium WebGL 1 bug (-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -sWASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
@@ -1045,7 +1045,7 @@ var PROXY_TO_PTHREAD = false;
 var LINKABLE = false;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
-// Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
+// Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
@@ -1214,7 +1214,7 @@ var EXPORT_NAME = 'Module';
 // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
 //
 // When this flag is set, the following features (linker flags) are unavailable:
-//  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
+//  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
 // Embind: uses eval() to jit functions for speed.
 //
@@ -1227,7 +1227,7 @@ var EXPORT_NAME = 'Module';
 // - the functions ccall() and cwrap() are still available, but they are restricted to only
 //   being able to call functions that have been exported in the Module object in advance.
 //
-// When set to -s DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
+// When set to -sDYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
 // to warnings instead of throwing an exception.
 // [link]
 var DYNAMIC_EXECUTION = 1;
@@ -1443,7 +1443,7 @@ var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
 // [link]
-var USE_COCOS2D = false;
+var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
 // [link]
@@ -1484,7 +1484,7 @@ var WASM_WORKERS = 0;
 // repeatedly yield back to the JS event loop in order for the thread to
 // actually start.
 // If your application needs to be able to synchronously create new threads,
-// you can pre-create a pthread pool by specifying -s PTHREAD_POOL_SIZE=x,
+// you can pre-create a pthread pool by specifying -sPTHREAD_POOL_SIZE=x,
 // in which case the specified number of Workers will be preloaded into a pool
 // before the application starts, and that many threads can then be available
 // for synchronous creation.
@@ -1518,8 +1518,8 @@ var PTHREAD_POOL_SIZE_STRICT = 1;
 // If your application does not need the ability to synchronously create
 // threads, but it would still like to opportunistically speed up initial thread
 // startup time by prewarming a pool of Workers, you can specify the size of
-// the pool with -s PTHREAD_POOL_SIZE=x, but then also specify
-// -s PTHREAD_POOL_DELAY_LOAD=1, which will cause the runtime to not wait up at
+// the pool with -sPTHREAD_POOL_SIZE=x, but then also specify
+// -sPTHREAD_POOL_DELAY_LOAD, which will cause the runtime to not wait up at
 // startup for the Worker pool to finish loading. Instead, the runtime will
 // immediately start up and the Worker pool will asynchronously spin up in
 // parallel on the background. This can shorten the time that pthread_create()
@@ -1630,7 +1630,7 @@ var OFFSCREENCANVASES_TO_PTHREAD = "#canvas";
 // to present the rendered content on screen.
 //
 // The OffscreenCanvas feature also enables explicit GL frame swapping support,
-// and also, -s OFFSCREEN_FRAMEBUFFER=1 feature can be used to polyfill support
+// and also, -sOFFSCREEN_FRAMEBUFFER feature can be used to polyfill support
 // for accessing WebGL in multiple threads in the absence of OffscreenCanvas
 // support in browser, at the cost of some performance and latency.
 // OffscreenCanvas and Offscreen Framebuffer support can be enabled at the same
@@ -1687,7 +1687,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox
 // versions >= MIN_FIREFOX_VERSION
-// are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support
+// are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
 // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
 // [link]
@@ -1711,13 +1711,13 @@ var MIN_SAFARI_VERSION = 120000;
 var MIN_IE_VERSION = 0x7FFFFFFF;
 
 // Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
-// flavor) to target. E.g. pass -s MIN_EDGE_VERSION=40 to drop support for
+// flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
 // EdgeHTML 39 and older.
 // Edge 44.17763 was released on November 13, 2018
 // [link]
 var MIN_EDGE_VERSION = 44;
 
-// Specifies the oldest version of Chrome. E.g. pass -s MIN_CHROME_VERSION=58 to
+// Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 75.0.3770 was released on 2019-06-04
 // [link]
@@ -1818,7 +1818,7 @@ var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 // set of optimization passes run by html-minifier depends on debug and
 // optimization levels. In -g2 and higher, no minification is performed. In -g1,
 // minification is done, but whitespace is retained. Minification requires at
-// least -O1 or -Os to be used. Pass -s MINIFY_HTML=0 to explicitly choose to
+// least -O1 or -Os to be used. Pass -sMINIFY_HTML=0 to explicitly choose to
 // disable HTML minification altogether.
 // [link]
 var MINIFY_HTML = true;
@@ -1843,6 +1843,10 @@ var ASAN_SHADOW_SIZE = -1
 // across function boundaries.
 // [link]
 var USE_OFFSET_CONVERTER = false;
+
+// Whether we should load the WASM source map at runtime.
+// This is enabled automatically when using -g4 with sanitizers.
+var LOAD_SOURCE_MAP = false;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
 // report undefined symbols within the binary.  Without this option the linker

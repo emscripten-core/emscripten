@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "async_callback.h"
 #include "backend.h"
+#include "memory_backend.h"
 #include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
@@ -40,52 +40,39 @@
 
 using js_index_t = uint32_t;
 
-// A callback state that also adds the C++ component for resuming. This is only
-// needed on the C++ side, but needs to be passed around as part of this
-// struct when we go through C and JS.
-struct CppCallbackState : public CallbackState {
-  // The function to call to resume execution.
-  emscripten::SyncToAsync::Callback resume;
-};
-
 extern "C" {
+
 // JSImpl async API.
-
-// An async callback with no extra parameters.
-typedef void (*async_callback_t)(CppCallbackState* state);
-
-void _wasmfs_jsimpl_async_alloc_file(js_index_t backend,
-                                     js_index_t index,
-                                     async_callback_t callback,
-                                     CppCallbackState* state);
-void _wasmfs_jsimpl_async_free_file(js_index_t backend,
-                                    js_index_t index,
-                                    async_callback_t callback,
-                                    CppCallbackState* state);
-void _wasmfs_jsimpl_async_write(js_index_t backend,
+void _wasmfs_jsimpl_async_alloc_file(em_proxying_ctx* ctx,
+                                     js_index_t backend,
+                                     js_index_t index);
+void _wasmfs_jsimpl_async_free_file(em_proxying_ctx* ctx,
+                                    js_index_t backend,
+                                    js_index_t index);
+void _wasmfs_jsimpl_async_write(em_proxying_ctx* ctx,
+                                js_index_t backend,
                                 js_index_t index,
                                 const uint8_t* buffer,
                                 size_t length,
                                 off_t offset,
-                                async_callback_t callback,
-                                CppCallbackState* state);
-void _wasmfs_jsimpl_async_read(js_index_t backend,
+                                ssize_t* result);
+void _wasmfs_jsimpl_async_read(em_proxying_ctx* ctx,
+                               js_index_t backend,
                                js_index_t index,
                                const uint8_t* buffer,
                                size_t length,
                                off_t offset,
-                               async_callback_t callback,
-                               CppCallbackState* state);
-void _wasmfs_jsimpl_async_get_size(js_index_t backend,
+                               ssize_t* result);
+void _wasmfs_jsimpl_async_get_size(em_proxying_ctx* ctx,
+                                   js_index_t backend,
                                    js_index_t index,
-                                   async_callback_t callback,
-                                   CppCallbackState* state);
+                                   size_t* result);
 }
 
 namespace wasmfs {
 
 class ProxiedAsyncJSImplFile : public DataFile {
-  emscripten::SyncToAsync& proxy;
+  emscripten::ProxyWorker& proxy;
 
   js_index_t getBackendIndex() {
     static_assert(sizeof(backend_t) == sizeof(js_index_t), "TODO: wasm64");
@@ -101,64 +88,33 @@ class ProxiedAsyncJSImplFile : public DataFile {
   void open(oflags_t) override {}
   void close() override {}
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    CppCallbackState state;
-
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
-
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
+    proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_write(
-        getBackendIndex(),
-        getFileIndex(),
-        buf,
-        len,
-        offset,
-        [](CppCallbackState* state) { (*state->resume)(); },
-        &state);
+        ctx.ctx, getBackendIndex(), getFileIndex(), buf, len, offset, &result);
     });
-
-    return state.result;
+    return result;
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // The caller should have already checked that the offset + len does
-    // not exceed the file's size.
-    assert(offset + len <= getSize());
-
-    CppCallbackState state;
-
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
-
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    ssize_t result;
+    proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_read(
-        getBackendIndex(),
-        getFileIndex(),
-        buf,
-        len,
-        offset,
-        [](CppCallbackState* state) { (*state->resume)(); },
-        &state);
+        ctx.ctx, getBackendIndex(), getFileIndex(), buf, len, offset, &result);
     });
-
-    return state.result;
+    return result;
   }
 
   void flush() override {}
 
   size_t getSize() override {
-    CppCallbackState state;
-
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
-
+    size_t result;
+    proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_get_size(
-        getBackendIndex(),
-        getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
-        &state);
+        ctx.ctx, getBackendIndex(), getFileIndex(), &result);
     });
-
-    return state.offset;
+    return result;
   }
 
   void setSize(size_t size) override {
@@ -168,51 +124,45 @@ class ProxiedAsyncJSImplFile : public DataFile {
 public:
   ProxiedAsyncJSImplFile(mode_t mode,
                          backend_t backend,
-                         emscripten::SyncToAsync& proxy)
+                         emscripten::ProxyWorker& proxy)
     : DataFile(mode, backend), proxy(proxy) {
-    CppCallbackState state;
-
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
-
+    proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_alloc_file(
-        getBackendIndex(),
-        getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
-        &state);
+        ctx.ctx, getBackendIndex(), getFileIndex());
     });
   }
 
   ~ProxiedAsyncJSImplFile() {
-    CppCallbackState state;
-
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      state.resume = resume;
-
+    proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_free_file(
-        getBackendIndex(),
-        getFileIndex(),
-        [](CppCallbackState* state) { (*state->resume)(); },
-        &state);
+        ctx.ctx, getBackendIndex(), getFileIndex());
     });
   }
 };
 
 class ProxiedAsyncJSBackend : public Backend {
-  emscripten::SyncToAsync proxy;
+  emscripten::ProxyWorker proxy;
 
 public:
   // Receives as a parameter a function to call on the proxied thread, which is
   // useful for doing setup there.
   ProxiedAsyncJSBackend(std::function<void(backend_t)> setupOnThread) {
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+    proxy([&](auto ctx) {
       setupOnThread(this);
-      (*resume)();
+      ctx.finish();
     });
   }
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<ProxiedAsyncJSImplFile>(mode, this, proxy);
+  }
+
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
+    return std::make_shared<MemoryDirectory>(mode, this);
+  }
+
+  std::shared_ptr<Symlink> createSymlink(std::string target) override {
+    return std::make_shared<MemorySymlink>(target, this);
   }
 };
 

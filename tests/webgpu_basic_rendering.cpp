@@ -45,15 +45,15 @@ void GetDevice(void (*callback)(wgpu::Device)) {
 }
 
 static const char shaderCode[] = R"(
-    [[stage(vertex)]]
-    fn main_v([[builtin(vertex_index)]] idx: u32) -> [[builtin(position)]] vec4<f32> {
+    @stage(vertex)
+    fn main_v(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
         var pos = array<vec2<f32>, 3>(
             vec2<f32>(0.0, 0.5), vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, -0.5));
         return vec4<f32>(pos[idx], 0.0, 1.0);
     }
 
-    [[stage(fragment)]]
-    fn main_f() -> [[location(0)]] vec4<f32> {
+    @stage(fragment)
+    fn main_f() -> @location(0) vec4<f32> {
         return vec4<f32>(0.0, 0.502, 1.0, 1.0); // 0x80/0xff ~= 0.502
     }
 )";
@@ -106,17 +106,24 @@ void init() {
         fragmentState.targetCount = 1;
         fragmentState.targets = &colorTargetState;
 
+        wgpu::DepthStencilState depthStencilState{};
+        depthStencilState.format = wgpu::TextureFormat::Depth32Float;
+
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);
         descriptor.vertex.module = shaderModule;
         descriptor.vertex.entryPoint = "main_v";
         descriptor.fragment = &fragmentState;
         descriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+        descriptor.depthStencil = &depthStencilState;
         pipeline = device.CreateRenderPipeline(&descriptor);
     }
 }
 
-void render(wgpu::TextureView view) {
+// The depth stencil attachment isn't really needed to draw the triangle
+// and doesn't really affect the render result.
+// But having one should give us a slightly better test coverage for the compile of the depth stencil descriptor.
+void render(wgpu::TextureView view, wgpu::TextureView depthStencilView) {
     wgpu::RenderPassColorAttachment attachment{};
     attachment.view = view;
     attachment.loadOp = wgpu::LoadOp::Clear;
@@ -126,6 +133,14 @@ void render(wgpu::TextureView view) {
     wgpu::RenderPassDescriptor renderpass{};
     renderpass.colorAttachmentCount = 1;
     renderpass.colorAttachments = &attachment;
+
+    wgpu::RenderPassDepthStencilAttachment depthStencilAttachment = {};
+    depthStencilAttachment.view = depthStencilView;
+    depthStencilAttachment.depthClearValue = 0;
+    depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
+    depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
+
+    renderpass.depthStencilAttachment = &depthStencilAttachment;
 
     wgpu::CommandBuffer commands;
     {
@@ -284,7 +299,15 @@ void doRenderTest() {
         descriptor.format = wgpu::TextureFormat::BGRA8Unorm;
         readbackTexture = device.CreateTexture(&descriptor);
     }
-    render(readbackTexture.CreateView());
+    wgpu::Texture depthTexture;
+    {
+        wgpu::TextureDescriptor descriptor{};
+        descriptor.usage = wgpu::TextureUsage::RenderAttachment;
+        descriptor.size = {1, 1, 1};
+        descriptor.format = wgpu::TextureFormat::Depth32Float;
+        depthTexture = device.CreateTexture(&descriptor);
+    }
+    render(readbackTexture.CreateView(), depthTexture.CreateView());
 
     {
         wgpu::BufferDescriptor descriptor{};
@@ -315,10 +338,13 @@ void doRenderTest() {
 }
 
 wgpu::SwapChain swapChain;
+wgpu::TextureView canvasDepthStencilView;
+const uint32_t kWidth = 300;
+const uint32_t kHeight = 150;
 
 void frame() {
     wgpu::TextureView backbuffer = swapChain.GetCurrentTextureView();
-    render(backbuffer);
+    render(backbuffer, canvasDepthStencilView);
 
     // TODO: Read back from the canvas with drawImage() (or something) and
     // check the result.
@@ -350,10 +376,18 @@ void run() {
         wgpu::SwapChainDescriptor scDesc{};
         scDesc.usage = wgpu::TextureUsage::RenderAttachment;
         scDesc.format = wgpu::TextureFormat::BGRA8Unorm;
-        scDesc.width = 300;
-        scDesc.height = 150;
+        scDesc.width = kWidth;
+        scDesc.height = kHeight;
         scDesc.presentMode = wgpu::PresentMode::Fifo;
         swapChain = device.CreateSwapChain(surface, &scDesc);
+
+        {
+            wgpu::TextureDescriptor descriptor{};
+            descriptor.usage = wgpu::TextureUsage::RenderAttachment;
+            descriptor.size = {kWidth, kHeight, 1};
+            descriptor.format = wgpu::TextureFormat::Depth32Float;
+            canvasDepthStencilView = device.CreateTexture(&descriptor).CreateView();
+        }
     }
     emscripten_set_main_loop(frame, 0, false);
 }

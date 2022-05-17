@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-void longjmp_side();
+void longjmp_side(jmp_buf* buf);
 
 static void* thread_main(void *arg) {
   jmp_buf buf;

@@ -48,6 +48,8 @@ backend_t wasmfs_create_fetch_backend(const char* base_url);
 
 backend_t wasmfs_create_node_backend(const char* root);
 
+backend_t wasmfs_create_opfs_backend(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -365,7 +365,7 @@ var LibraryHTML5 = {
   $findEventTarget__deps: ['$specialHTMLTargets'],
   $findEventTarget: function(target) {
 #if ASSERTIONS
-    warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
+    warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
 #endif
     try {
       // The sensible "default" target varies between events, but use window as the default
@@ -1214,11 +1214,11 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  JSEvents_requestFullscreen__deps: ['$JSEvents', 'JSEvents_resizeCanvasForFullscreen'],
-  JSEvents_requestFullscreen: function(target, strategy) {
+  $JSEvents_requestFullscreen__deps: ['$JSEvents', '$JSEvents_resizeCanvasForFullscreen'],
+  $JSEvents_requestFullscreen: function(target, strategy) {
     // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
     if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
-      _JSEvents_resizeCanvasForFullscreen(target, strategy);
+      JSEvents_resizeCanvasForFullscreen(target, strategy);
     }
 
     if (target.requestFullscreen) {
@@ -1254,8 +1254,8 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  JSEvents_resizeCanvasForFullscreen__deps: ['$registerRestoreOldStyle', '$getCanvasElementSize', '$setLetterbox', '$setCanvasElementSize', '$getBoundingClientRect'],
-  JSEvents_resizeCanvasForFullscreen: function(target, strategy) {
+  $JSEvents_resizeCanvasForFullscreen__deps: ['$registerRestoreOldStyle', '$getCanvasElementSize', '$setLetterbox', '$setCanvasElementSize', '$getBoundingClientRect'],
+  $JSEvents_resizeCanvasForFullscreen: function(target, strategy) {
     var restoreOldStyle = registerRestoreOldStyle(target);
     var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
     var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
@@ -1533,7 +1533,7 @@ var LibraryHTML5 = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  $doRequestFullscreen__deps: ['$JSEvents', '$setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '$getCanvasElementSize', '$setCanvasElementSize', 'JSEvents_requestFullscreen', '$findEventTarget'],
+  $doRequestFullscreen__deps: ['$JSEvents', '$setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '$getCanvasElementSize', '$setCanvasElementSize', '$JSEvents_requestFullscreen', '$findEventTarget'],
   $doRequestFullscreen: function(target, strategy) {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1563,7 +1563,7 @@ var LibraryHTML5 = {
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (strategy.deferUntilInEventHandler) {
-        JSEvents.deferCall(_JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
+        JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
@@ -1571,7 +1571,7 @@ var LibraryHTML5 = {
     }
 #endif
 
-    return _JSEvents_requestFullscreen(target, strategy);
+    return JSEvents_requestFullscreen(target, strategy);
   },
 
   emscripten_request_fullscreen__deps: ['$doRequestFullscreen'],
@@ -1612,7 +1612,7 @@ var LibraryHTML5 = {
     return doRequestFullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$setLetterbox', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$registerRestoreOldStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$getCanvasElementSize', '$setCanvasElementSize', 'JSEvents_resizeCanvasForFullscreen', '$findEventTarget'],
+  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$setLetterbox', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$registerRestoreOldStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$getCanvasElementSize', '$setCanvasElementSize', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen__sig: 'iii',
   emscripten_enter_soft_fullscreen: function(target, fullscreenStrategy) {
@@ -1635,7 +1635,7 @@ var LibraryHTML5 = {
         softFullscreen: true
     };
 
-    var restoreOldStyle = _JSEvents_resizeCanvasForFullscreen(target, strategy);
+    var restoreOldStyle = JSEvents_resizeCanvasForFullscreen(target, strategy);
 
     document.documentElement.style.overflow = 'hidden';  // Firefox, Chrome
     document.body.scroll = "no"; // IE11
@@ -1682,14 +1682,14 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '$currentFullscreenStrategy', 'JSEvents_requestFullscreen', '$specialHTMLTargets'],
+  emscripten_exit_fullscreen__deps: ['$JSEvents', '$currentFullscreenStrategy', '$JSEvents_requestFullscreen', '$specialHTMLTargets'],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // Make sure no queued up calls will fire after this.
-    JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
+    JSEvents.removeDeferredCalls(JSEvents_requestFullscreen);
 #endif
 
     var d = specialHTMLTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
@@ -2458,7 +2458,7 @@ var LibraryHTML5 = {
 #if GL_DEBUG
         err('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
 #endif
-        // TODO: Add -s CANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
+        // TODO: Add -sCANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
         canvas.GLctxObject.GLctx.viewport(0, 0, width, height);
       }

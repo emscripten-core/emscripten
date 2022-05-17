@@ -10,7 +10,7 @@
 
 #include "memory_backend.h"
 #include "paths.h"
-#include "streams.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -49,8 +49,8 @@ WasmFS::~WasmFS() {
   // Note that we lock here, although strictly speaking it is unnecessary given
   // that we are in the destructor of WasmFS: nothing can possibly be running
   // on files at this time.
-  StdoutFile::getSingleton()->locked().flush();
-  StderrFile::getSingleton()->locked().flush();
+  SpecialFiles::getStdout()->locked().flush();
+  SpecialFiles::getStderr()->locked().flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.
@@ -68,12 +68,14 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
 
   auto devDirectory =
     std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO, rootBackend);
-  lockedRoot.insertChild("dev", devDirectory);
+  lockedRoot.mountChild("dev", devDirectory);
   auto lockedDev = devDirectory->locked();
 
-  lockedDev.insertChild("stdin", StdinFile::getSingleton());
-  lockedDev.insertChild("stdout", StdoutFile::getSingleton());
-  lockedDev.insertChild("stderr", StderrFile::getSingleton());
+  lockedDev.mountChild("stdin", SpecialFiles::getStdin());
+  lockedDev.mountChild("stdout", SpecialFiles::getStdout());
+  lockedDev.mountChild("stderr", SpecialFiles::getStderr());
+  lockedDev.mountChild("random", SpecialFiles::getRandom());
+  lockedDev.mountChild("urandom", SpecialFiles::getURandom());
 
   return rootDirectory;
 }
@@ -122,8 +124,8 @@ void WasmFS::preloadFiles() {
     char childName[PATH_MAX] = {};
     _wasmfs_get_preloaded_child_path(i, childName);
 
-    auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
-    auto inserted = parentDir->locked().insertChild(childName, created);
+    auto inserted =
+      parentDir->locked().insertDirectory(childName, S_IRUGO | S_IXUGO);
     assert(inserted && "TODO: handle preload insertion errors");
   }
 
@@ -139,10 +141,9 @@ void WasmFS::preloadFiles() {
       abort();
     }
     auto& [parent, childName] = parsed.getParentChild();
-    auto created = rootBackend->createFile((mode_t)mode);
-    auto inserted =
-      parent->locked().insertChild(std::string(childName), created);
-    assert(inserted && "TODO: handle preload insertion errors");
+    auto created =
+      parent->locked().insertDataFile(std::string(childName), (mode_t)mode);
+    assert(created && "TODO: handle preload insertion errors");
     created->locked().preloadFromJS(i);
   }
 }

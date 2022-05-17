@@ -21,7 +21,7 @@ extern "C" {
                                   Use this function to manually manage the memory that a Worker should use.
                                   This function does not use any dynamic memory allocation.
 
-   Returns an ID that represents the given Worker. If not building with Wasm workers enabled (-s WASM_WORKERS=0),
+   Returns an ID that represents the given Worker. If not building with Wasm workers enabled (-sWASM_WORKERS=0),
    these functions will return 0 to denote failure.
    Note that the Worker will be loaded up asynchronously, and initially will not be executing any code. Use
    emscripten_wasm_worker_post_function_*() set of functions to start executing code on the Worker. */
@@ -32,11 +32,11 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress,
 // posted functions. Note that this function is not C++ RAII safe, but you must manually coordinate to release any
 // resources from the given Worker that it may have allocated from the heap or may have stored on its TLS slots.
 // There are no TLS destructors that would execute.
-// Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
+// Exists, but is a no-op if not building with Wasm Workers enabled (-sWASM_WORKERS=0)
 void emscripten_terminate_wasm_worker(emscripten_wasm_worker_t id);
 
 // Note the comment on emscripten_terminate_wasm_worker(id) about thread destruction.
-// Exists, but is a no-op if not building with Wasm Workers enabled (-s WASM_WORKERS=0)
+// Exists, but is a no-op if not building with Wasm Workers enabled (-sWASM_WORKERS=0)
 void emscripten_terminate_all_wasm_workers(void);
 
 // Returns EM_TRUE if the current thread is executing a Wasm Worker, EM_FALSE otherwise.
