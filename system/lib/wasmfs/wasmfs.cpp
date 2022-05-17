@@ -40,9 +40,7 @@ void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
 // If the user does not implement this hook, do nothing.
-__attribute__((weak))
-extern "C" void wasmfs_before_preload(void) {
-}
+__attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
 
 // Set up global data structures and preload files.
 WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {

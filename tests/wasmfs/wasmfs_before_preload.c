@@ -20,7 +20,8 @@ void wasmfs_before_preload(void) {
   // backend).
   my_js_file_backend = wasmfs_create_js_file_backend();
   assert(my_js_file_backend);
-  int result = wasmfs_create_directory("/js_backend_files", 0777, my_js_file_backend);
+  int result =
+    wasmfs_create_directory("/js_backend_files", 0777, my_js_file_backend);
   assert(result == 0);
 }
 
@@ -32,7 +33,8 @@ int main() {
   assert(default_backend != my_js_file_backend);
 
   // The preloaded file uses the js backend we created during startup.
-  backend_t file_backend = wasmfs_get_backend_by_path("/js_backend_files/file.dat");
+  backend_t file_backend =
+    wasmfs_get_backend_by_path("/js_backend_files/file.dat");
   assert(file_backend == my_js_file_backend);
 
   emscripten_console_log("success");
