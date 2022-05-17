@@ -179,7 +179,7 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 2
-    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
+    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t and 'fetch' not in t]
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
