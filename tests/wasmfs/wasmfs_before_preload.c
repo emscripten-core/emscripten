@@ -19,6 +19,7 @@ void wasmfs_before_preload(void) {
   // so that the preloaded files end up stored there (instead of in the default
   // backend).
   my_js_file_backend = wasmfs_create_js_file_backend();
+  assert(my_js_file_backend);
   int result = wasmfs_create_directory("/js_backend_files", 0777, my_js_file_backend);
   assert(result == 0);
 }
