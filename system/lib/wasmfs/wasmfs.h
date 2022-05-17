@@ -37,11 +37,7 @@ class WasmFS {
   void preloadFiles();
 
 public:
-  // Set up global data structures and preload files.
-  WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
-    preloadFiles();
-  }
-
+  WasmFS();
   ~WasmFS();
 
   FileTable& getFileTable() { return fileTable; }

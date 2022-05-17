@@ -50,6 +50,15 @@ backend_t wasmfs_create_node_backend(const char* root);
 
 backend_t wasmfs_create_opfs_backend(void);
 
+// Hooks
+
+// A hook users can do to run code during WasmFS startup. This hook happens
+// before file preloading, so user code could create backends and mount them,
+// which would then affect in which backend the preloaded files are loaded (the
+// preloaded files have paths, and so they are added to that path and whichever
+// backend is present there).
+void wasmfs_before_preload(void);
+
 #ifdef __cplusplus
 }
 #endif

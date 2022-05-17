@@ -39,6 +39,17 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
+// If the user does not implement this hook, do nothing.
+__attribute__((weak))
+extern "C" void wasmfs_before_preload(void) {
+}
+
+// Set up global data structures and preload files.
+WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  wasmfs_before_preload();
+  preloadFiles();
+}
+
 WasmFS::~WasmFS() {
   // Flush musl libc streams.
   // TODO: Integrate musl exit() which would call this for us. That might also
