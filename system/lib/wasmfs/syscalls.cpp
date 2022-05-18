@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
@@ -611,7 +612,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
-int doChdir(std::shared_ptr<File>& file) {
+static int doChdir(std::shared_ptr<File>& file) {
   auto dir = file->dynCast<Directory>();
   if (!dir) {
     return -ENOTDIR;
@@ -1396,6 +1397,44 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       return -EINVAL;
     }
   }
+}
+
+static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+  if (size != sizeof(struct statfs)) {
+    // We only know how to write to a standard statfs, not even a truncated one.
+    return -EINVAL;
+  }
+
+  // NOTE: None of the constants here are true. We're just returning safe and
+  //       sane values, that match the long-existing JS FS behavior (except for
+  //       the inode number, where we can do better).
+  buf->f_bsize = 4096;
+  buf->f_frsize = 4096;
+  buf->f_blocks = 1000000;
+  buf->f_bfree = 500000;
+  buf->f_bavail = 500000;
+  buf->f_files = file->getIno();
+  buf->f_ffree = 1000000;
+  buf->f_fsid = {0, 0};
+  buf->f_flags = ST_NOSUID;
+  buf->f_namelen = 255;
+  return 0;
+}
+
+int __syscall_statfs64(intptr_t path, size_t size, intptr_t buf) {
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doStatFS(parsed.getFile(), size, (struct statfs*)buf);
+}
+
+int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
 }
 
 // Stubs (at least for now)
