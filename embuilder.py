@@ -44,6 +44,7 @@ MINIMAL_TASKS = [
     'libal',
     'libdlmalloc',
     'libdlmalloc-debug',
+    'libdlmalloc-mt',
     'libemmalloc',
     'libemmalloc-debug',
     'libemmalloc-memvalidate',
