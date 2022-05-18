@@ -612,7 +612,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
-int doChdir(std::shared_ptr<File>& file) {
+static int doChdir(std::shared_ptr<File>& file) {
   auto dir = file->dynCast<Directory>();
   if (!dir) {
     return -ENOTDIR;
@@ -1390,7 +1390,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   if (size != sizeof(struct statfs)) {
     // We only know how to write to a standard statfs, not even a truncated one.
     return -EINVAL;
