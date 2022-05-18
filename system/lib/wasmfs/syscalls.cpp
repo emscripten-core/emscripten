@@ -1041,7 +1041,10 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  parsed.getFile()->locked().setMode(mode);
+  auto lockedFile = parsed.getFile()->locked();
+  lockedFile.setMode(mode);
+  // On POSIX, ctime is updated on metadata changes, like chmod.
+  lockedFile.setCTime(time(NULL));
   return 0;
 }
 
@@ -1054,7 +1057,9 @@ int __syscall_fchmod(int fd, int mode) {
   if (!openFile) {
     return -EBADF;
   }
-  openFile->locked().getFile()->locked().setMode(mode);
+  auto lockedFile = openFile->locked().getFile()->locked();
+  lockedFile.setMode(mode);
+  lockedFile.setCTime(time(NULL));
   return 0;
 }
 
