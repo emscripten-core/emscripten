@@ -28,49 +28,54 @@ import emscripten
 # Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
-    'libcompiler_rt-mt',
-    'libcompiler_rt-wasm-sjlj',
     'libc',
     'libc-debug',
-    'libc-mt',
-    'libc-mt-debug',
     'libc-optz',
     'libc-optz-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
-    'libc++abi-mt',
-    'libc++abi-mt-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
-    'libc++-mt',
-    'libc++-mt-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-noerrno',
     'libdlmalloc-debug',
-    'libdlmalloc-mt',
     'libemmalloc',
     'libemmalloc-debug',
     'libemmalloc-memvalidate',
     'libemmalloc-verbose',
     'libemmalloc-memvalidate-verbose',
     'libGL',
-    'libGL-emu',
-    'libGL-mt',
     'libhtml5',
     'libsockets',
-    'libsockets_proxy',
-    'libsockets-mt',
     'libstubs',
     'libstubs-debug',
     'struct_info',
     'libstandalonewasm',
     'crt1',
-    'crtbegin',
     'libunwind-except',
     'libnoexit',
+]
+
+# Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
+# CI (which has slightly more tests than other modes that want to use MINIMAL)
+MINIMAL_PIC_TASKS = [
+    'libcompiler_rt-mt',
+    'libcompiler_rt-wasm-sjlj',
+    'libc-mt',
+    'libc-mt-debug',
+    'libc++abi-mt',
+    'libc++abi-mt-noexcept',
+    'libc++-mt',
+    'libc++-mt-noexcept',
+    'libdlmalloc-mt',
+    'libGL-emu',
+    'libGL-mt',
+    'libsockets_proxy',
+    'libsockets-mt',
+    'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
     'libwasm_workers_stub-debug',
@@ -193,11 +198,7 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 2
-    # Disable things in memory64 that do not build yet, which includes emmalloc,
-    # Fetch, sanitizers, pthreads, and wasmfs.
-    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t and
-                        'fetch' not in t and 'san' not in t and
-                        '-mt' not in t and 'wasmfs' not in t]
+    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
@@ -216,6 +217,9 @@ def main():
     auto_tasks = True
   elif 'MINIMAL' in tasks:
     tasks = MINIMAL_TASKS
+    auto_tasks = True
+  elif 'MINIMAL_PIC' in tasks:
+    tasks = MINIMAL_PIC_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = system_tasks + PORTS
