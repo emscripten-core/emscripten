@@ -445,7 +445,7 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
-  _gmtime_js__sig: 'iii',
+  _gmtime_js__sig: 'ipp',
   _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -460,7 +460,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
-  _timegm_js__sig: 'ii',
+  _timegm_js__sig: 'ip',
   _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -479,7 +479,7 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
-  _localtime_js__sig: 'iii',
+  _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -543,7 +543,7 @@ mergeInto(LibraryManager.library, {
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
   _tzset_js__deps: ['tzset_impl'],
-  _tzset_js__sig: 'viii',
+  _tzset_js__sig: 'vppp',
   _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (__tzset_js.called) return;
@@ -654,7 +654,7 @@ mergeInto(LibraryManager.library, {
     , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
-  strftime__sig: 'iiiii',
+  strftime__sig: 'ppppp',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
