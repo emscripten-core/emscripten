@@ -38,7 +38,7 @@ static backend_t make_js_file_backend(void* arg) {
 int main() {
   backend_t backend;
 #ifndef PROXYING
-  backend = make_js_file_backend();
+  backend = make_js_file_backend(NULL);
 #else
   backend = wasmfs_create_proxied_backend(make_js_file_backend, NULL);
 #endif
