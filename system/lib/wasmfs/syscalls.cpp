@@ -1437,6 +1437,17 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
 }
 
+int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
+}
+
 // Stubs (at least for now)
 
 int __syscall_accept4(int sockfd,
