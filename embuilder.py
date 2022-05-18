@@ -28,6 +28,7 @@ import emscripten
 # Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
+    'libcompiler_rt-mt',
     'libcompiler_rt-wasm-sjlj',
     'libc',
     'libc-debug',
