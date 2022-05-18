@@ -337,8 +337,8 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // system. Specific values were chosen to match existing library_fs.js
   // values.
   // ID of device containing file: Hardcode 1 for now, no meaning at the
-  buffer->st_dev = 1;
   // moment for Emscripten.
+  buffer->st_dev = 1;
   buffer->st_mode = lockedFile.getMode();
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
