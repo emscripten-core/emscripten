@@ -166,6 +166,7 @@ var SyscallsLibrary = {
     FS.chdir(path);
     return 0;
   },
+  __syscall_chmod__sig: 'ipi',
   __syscall_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
@@ -261,6 +262,7 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  __syscall_symlink__sig: 'ipp',
   __syscall_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
@@ -640,12 +642,12 @@ var SyscallsLibrary = {
     FS.ftruncate(fd, length);
     return 0;
   },
-  __syscall_stat64__sig: 'iip',
+  __syscall_stat64__sig: 'ipp',
   __syscall_stat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
-  __syscall_lstat64__sig: 'iip',
+  __syscall_lstat64__sig: 'ipp',
   __syscall_lstat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
@@ -821,6 +823,7 @@ var SyscallsLibrary = {
     FS.mkdir(path, mode, 0);
     return 0;
   },
+  __syscall_mknodat__sig: 'iipii',
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -880,6 +883,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall_renameat__sig: 'iipip',
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
@@ -916,6 +920,7 @@ var SyscallsLibrary = {
     HEAP8[buf+len] = endChar;
     return len;
   },
+  __syscall_fchmodat__sig: 'iipip',
   __syscall_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -925,6 +930,7 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
+  __syscall_faccessat__sig: 'iipii',
   __syscall_faccessat: function(dirfd, path, amode, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');

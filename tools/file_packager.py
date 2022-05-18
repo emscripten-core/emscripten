@@ -661,7 +661,7 @@ def generate_js(data_target, data_files, metadata):
         code += '''\
           var start64 = Module['___emscripten_embedded_file_data'] >> 3;
           do {
-            var name_addr = HEAPU64[start64++];
+            var name_addr = Number(HEAPU64[start64++]);
             var len = HEAPU32[start64 << 1];
             start64++;
             var content = Number(HEAPU64[start64++]);
