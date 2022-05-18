@@ -94,7 +94,6 @@ _deps_info = {
   'emscripten_idb_async_load': ['malloc', 'free'],
   'emscripten_idb_load': ['malloc', 'free'],
   'emscripten_init_websocket_to_posix_socket_bridge': ['malloc', 'free'],
-  'emscripten_log': ['strlen'],
   # This list is the same as setjmp's dependencies. In non-LTO builds, setjmp
   # does not exist in the object files; it is converted into a code sequence
   # that includes several functions, one of which is emscripten_longjmp. This is

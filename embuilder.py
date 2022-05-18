@@ -46,6 +46,7 @@ MINIMAL_TASKS = [
     'libc++-mt-noexcept',
     'libal',
     'libdlmalloc',
+    'libdlmalloc-noerrno',
     'libdlmalloc-debug',
     'libdlmalloc-mt',
     'libemmalloc',

@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-LibraryManager.library = {
+mergeInto(LibraryManager.library, {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   //
@@ -3587,7 +3587,7 @@ LibraryManager.library = {
   __c_longjmp_import: true,
 #endif
 #endif
-};
+});
 
 function autoAddDeps(object, name) {
   for (var item in object) {

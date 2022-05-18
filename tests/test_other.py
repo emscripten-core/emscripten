@@ -605,7 +605,7 @@ f.close()
     #   emcc tests/hello_world.c -Oz --closure 1 -o tests/other/test_emsize.js
     expected = read_file(test_file('other/test_emsize.out'))
     cmd = [emsize, test_file('other/test_emsize.js')]
-    for command in [cmd, cmd + ['-format=sysv']]:
+    for command in [cmd, cmd + ['--format=sysv']]:
       output = self.run_process(cmd, stdout=PIPE).stdout
       self.assertContained(expected, output)
 
@@ -3298,7 +3298,10 @@ mergeInto(LibraryManager.library, {
     '<' : 0,
     'white space' : 1
   },
-  printf__deps: ['__internal_data', 'fprintf']
+  foo__deps: ['__internal_data'],
+  foo: function() {
+    return 0;
+  }
 });
 ''')
 
