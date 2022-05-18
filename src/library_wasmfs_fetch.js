@@ -12,9 +12,12 @@ mergeInto(LibraryManager.library, {
   _wasmfs_create_fetch_backend_js__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
+    '$wasmFS$backendFileNames',
     '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_create_fetch_backend_js: async function(backend) {
+  _wasmfs_create_fetch_backend_js: async function(backend, baseUrl) {
+    var _baseUrl = UTF8ToString(baseUrl);
+    var isAbs = _baseUrl.indexOf('://') !== -1;
     // Get a promise that fetches the data and stores it in JS memory (if it has
     // not already been fetched).
     async function getFile(file) {
@@ -23,10 +26,20 @@ mergeInto(LibraryManager.library, {
         // the actual read below.
         return Promise.resolve();
       }
-
+      var fileUrl = wasmFS$backendFileNames[file] ? wasmFS$backendFileNames[file] : '';
       // This is the first time we want the file's data.
-      // TODO: real URL!
-      var url = 'data.dat';
+      var url = '';
+      if (isAbs) {
+        try {
+          var u = new URL(fileUrl, _baseUrl);
+          url = u.toString();
+        } catch (e) {
+        }
+      } else {
+        url = _baseUrl;
+      }
+      if (url === '')
+        url = 'data.dat';
       var response = await fetch(url);
       var buffer = await response['arrayBuffer']();
       wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);

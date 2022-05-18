@@ -9,6 +9,8 @@ mergeInto(LibraryManager.library, {
   // the JS code that implements them. This is the JS side of the JSImpl* class
   // in C++, together with the js_impl calls defined right after it.
   $wasmFS$backends: {},
+  // Contains a mapping of backend files to their file names.
+  $wasmFS$backendFileNames: {},
 
   _wasmfs_jsimpl_alloc_file: function(backend, file) {
 #if ASSERTIONS
@@ -107,5 +109,12 @@ mergeInto(LibraryManager.library, {
     var size = await wasmFS$backends[backend].getSize(file);
     {{{ makeSetValue('size_p', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
+  },
+
+  _wasmfs_jsimpl_set_backend_name: function(backend, file, name) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    wasmFS$backendFileNames[file] = name ? UTF8ToString(name) : undefined;
   },
 });

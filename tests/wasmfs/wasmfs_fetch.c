@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
 #include <errno.h>
@@ -17,12 +18,92 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static backend_t make_js_file_backend(void* arg) {
-  return wasmfs_create_js_file_backend();
+char url_orig[1024];
+void set_url_origin() {
+  url_orig[0] = 0;
+  EM_ASM(
+    {
+      try {
+        var orig = self.location.origin;
+        var nb = lengthBytesUTF8(orig) + 1;
+        if (nb <= $1)
+          stringToUTF8(orig, $0, $1);
+      } catch (e) {
+        console.warn(e);
+      }
+    },
+    url_orig,
+    sizeof(url_orig));
 }
 
-int main() {
-  backend_t backend = wasmfs_create_fetch_backend("TODO/url");
+void check_file(int fd, const char* content) {
+  assert(fd >= 0);
+  struct stat st;
+  assert(fstat(fd, &st) != -1);
+  printf("file size: %lld\n", st.st_size);
+  assert(st.st_size > 0);
+
+  char buf[st.st_size];
+  int bytes_read = read(fd, buf, st.st_size);
+  printf("read size: %d\n", bytes_read);
+  buf[bytes_read] = 0;
+  printf("'%s'\n", buf);
+  assert(strcmp(buf, content) == 0);
+}
+
+void test_url_relative() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  backend_t backend2 = wasmfs_create_fetch_backend("test.txt");
+  int fd = wasmfs_create_file("/file_rel", 0777, backend2);
+  check_file(fd, "fetch 2");
+  assert(close(fd) == 0);
+}
+
+void test_url_absolute() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  assert(strlen(url_orig) != 0);
+  backend_t backend = wasmfs_create_fetch_backend(url_orig);
+  int fd = wasmfs_create_file("/test.txt", 0777, backend);
+  check_file(fd, "fetch 2");
+  assert(close(fd) == 0);
+}
+
+void test_directory_abs() {
+  backend_t backend = wasmfs_create_fetch_backend(url_orig);
+  const char* dir_path = "/subdir";
+  int res = wasmfs_create_directory(dir_path, 0777, backend);
+  if (errno)
+    perror("wasmfs_create_directory");
+  assert(errno == 0);
+  assert(res == 0);
+
+  int fd = wasmfs_create_file("/subdir/backendfile", 0777, backend);
+  int fd2 = wasmfs_create_file("/subdir/backendfile2", 0777, backend);
+
+  printf("readdir: %s\n", dir_path);
+  struct dirent* entry;
+  DIR* dir = opendir(dir_path);
+  assert(dir);
+  int n = 0;
+  while ((entry = readdir(dir)) != NULL) {
+    printf("  %s\n", entry->d_name);
+    ++n;
+  }
+  assert(n == 4);
+  closedir(dir);
+
+  check_file(fd, "file 1");
+  check_file(fd2, "file 2");
+
+  assert(close(fd) == 0);
+  assert(close(fd2) == 0);
+}
+
+void test_default() {
+  printf("Running %s...\n", __FUNCTION__);
+  backend_t backend = wasmfs_create_fetch_backend("");
 
   // Create a file in that backend.
   int fd = wasmfs_create_file("/testfile", 0777, backend);
@@ -46,6 +127,21 @@ int main() {
   buf[bytes_read] = 0;
   printf("%s\n", buf);
   assert(strcmp(buf, "hello, fetch") == 0);
+
+  assert(close(fd) == 0);
+  assert(close(fd2) == 0);
+}
+
+int main() {
+  set_url_origin();
+  test_default();
+
+  // NOTE: Each fetch backend runs in a separate thread.
+#ifdef PROXYING
+  test_url_relative();
+  test_url_absolute();
+  test_directory_abs();
+#endif
 
   return 0;
 }

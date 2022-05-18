@@ -67,6 +67,9 @@ void _wasmfs_jsimpl_async_get_size(em_proxying_ctx* ctx,
                                    js_index_t backend,
                                    js_index_t index,
                                    size_t* result);
+void _wasmfs_jsimpl_set_backend_name(js_index_t backend,
+                                     js_index_t index,
+                                     const char* name);
 }
 
 namespace wasmfs {
@@ -85,8 +88,20 @@ class ProxiedAsyncJSImplFile : public DataFile {
   }
 
   // TODO: Notify the JS about open and close events?
-  void open(oflags_t) override {}
-  void close() override {}
+  void open(oflags_t) override {
+    const std::string name = getRelativeFileName();
+    proxy([&]() {
+      _wasmfs_jsimpl_set_backend_name(
+        getBackendIndex(), getFileIndex(), name.data());
+    });
+  }
+
+  void close() override {
+    proxy([&]() {
+      _wasmfs_jsimpl_set_backend_name(
+        getBackendIndex(), getFileIndex(), nullptr);
+    });
+  }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     ssize_t result;
@@ -107,6 +122,22 @@ class ProxiedAsyncJSImplFile : public DataFile {
   }
 
   void flush() override {}
+
+  std::string getRelativeFileName() {
+    std::string name;
+    auto parent = locked().getParent();
+    auto child = shared_from_this();
+    while (parent) {
+      if (!name.empty())
+        name.insert(0, "/");
+      name.insert(0, parent->locked().getName(child));
+      if (parent->getBackend() != backend)
+        break;
+      child = parent;
+      parent = parent->locked().getParent();
+    }
+    return name;
+  }
 
   size_t getSize() override {
     size_t result;

@@ -13,15 +13,17 @@
 // See library_wasmfs_fetch.js
 
 extern "C" {
-void _wasmfs_create_fetch_backend_js(wasmfs::backend_t);
+void _wasmfs_create_fetch_backend_js(wasmfs::backend_t, char*);
 }
 
 namespace wasmfs {
 
 extern "C" backend_t wasmfs_create_fetch_backend(char* base_url) {
   // TODO: use base url, cache on JS side
-  return wasmFS.addBackend(std::make_unique<ProxiedAsyncJSBackend>(
-    [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));
+  return wasmFS.addBackend(
+    std::make_unique<ProxiedAsyncJSBackend>([base_url](backend_t backend) {
+      _wasmfs_create_fetch_backend_js(backend, base_url);
+    }));
 }
 
 } // namespace wasmfs

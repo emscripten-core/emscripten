@@ -5304,13 +5304,18 @@ window.close = function() {
     # thread and busy-wait
     'main_thread': (['-sPTHREAD_POOL_SIZE=1'],),
     # using proxy_to_pthread also works, of course
-    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
   })
   @requires_threads
   def test_wasmfs_fetch_backend(self, args):
     if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
       return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
+    create_file('test.txt', 'fetch 2')
+    try_delete('subdir')
+    ensure_dir('subdir')
+    create_file('subdir/backendfile', 'file 1')
+    create_file('subdir/backendfile2', 'file 2')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
                     args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
 
