@@ -1048,6 +1048,15 @@ int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
+int __syscall_fchmod(int fd, int mode) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  openFile->locked().getFile()->locked().setMode(mode);
+  return 0;
+}
+
 int __syscall_fchownat(
   int dirfd, intptr_t path, int owner, int group, int flags) {
   // Only accept valid flags.
