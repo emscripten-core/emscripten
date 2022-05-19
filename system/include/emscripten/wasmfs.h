@@ -35,7 +35,7 @@ int wasmfs_create_directory(const char* path, long mode, backend_t backend);
 // Backend creation
 
 // Creates a JSFile Backend in the new file system.
-backend_t wasmfs_create_js_file_backend();
+backend_t wasmfs_create_js_file_backend(void);
 
 // A function that receives a void* and returns a backend.
 typedef backend_t (*backend_constructor_t)(void*);
@@ -49,6 +49,15 @@ backend_t wasmfs_create_fetch_backend(const char* base_url);
 backend_t wasmfs_create_node_backend(const char* root);
 
 backend_t wasmfs_create_opfs_backend(void);
+
+// Hooks
+
+// A hook users can do to run code during WasmFS startup. This hook happens
+// before file preloading, so user code could create backends and mount them,
+// which would then affect in which backend the preloaded files are loaded (the
+// preloaded files have paths, and so they are added to that path and whichever
+// backend is present there).
+void wasmfs_before_preload(void);
 
 #ifdef __cplusplus
 }

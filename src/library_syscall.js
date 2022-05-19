@@ -166,6 +166,7 @@ var SyscallsLibrary = {
     FS.chdir(path);
     return 0;
   },
+  __syscall_chmod__sig: 'ipi',
   __syscall_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
@@ -261,6 +262,7 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  __syscall_symlink__sig: 'ipp',
   __syscall_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
@@ -583,6 +585,7 @@ var SyscallsLibrary = {
 
     return total;
   },
+  _msync_js__sig: 'ippii',
   _msync_js: function(addr, len, flags, fd) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
@@ -594,7 +597,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall_poll__sig: 'ipi',
+  __syscall_poll__sig: 'ipii',
   __syscall_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -639,12 +642,12 @@ var SyscallsLibrary = {
     FS.ftruncate(fd, length);
     return 0;
   },
-  __syscall_stat64__sig: 'iip',
+  __syscall_stat64__sig: 'ipp',
   __syscall_stat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
-  __syscall_lstat64__sig: 'iip',
+  __syscall_lstat64__sig: 'ipp',
   __syscall_lstat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
@@ -769,6 +772,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  __syscall_statfs64__sig: 'ippp',
   __syscall_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -805,6 +809,7 @@ var SyscallsLibrary = {
     var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
+  __syscall_mkdirat__sig: 'iipi',
   __syscall_mkdirat: function(dirfd, path, mode) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -818,6 +823,7 @@ var SyscallsLibrary = {
     FS.mkdir(path, mode, 0);
     return 0;
   },
+  __syscall_mknodat__sig: 'iipii',
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -837,6 +843,7 @@ var SyscallsLibrary = {
     FS.mknod(path, mode, dev);
     return 0;
   },
+  __syscall_fchownat__sig: 'iipiii',
   __syscall_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -851,6 +858,7 @@ var SyscallsLibrary = {
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
+  __syscall_newfstatat__sig: 'iippi',
   __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
@@ -875,6 +883,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall_renameat__sig: 'iipip',
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
@@ -911,6 +920,7 @@ var SyscallsLibrary = {
     HEAP8[buf+len] = endChar;
     return len;
   },
+  __syscall_fchmodat__sig: 'iipip',
   __syscall_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -920,6 +930,7 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
+  __syscall_faccessat__sig: 'iipii',
   __syscall_faccessat: function(dirfd, path, amode, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');

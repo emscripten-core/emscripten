@@ -1,7 +1,7 @@
 4:10,177,543,def
 4
-wowie
-too
+argv[1]: wowie
+argv[2]: too
 76
 5
 null -> (null)

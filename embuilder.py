@@ -40,6 +40,8 @@ MINIMAL_TASKS = [
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
+    'libdlmalloc-noerrno',
+    'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libemmalloc',
     'libemmalloc-debug',
@@ -56,6 +58,31 @@ MINIMAL_TASKS = [
     'crt1',
     'libunwind-except',
     'libnoexit',
+]
+
+# Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
+# CI (which has slightly more tests than other modes that want to use MINIMAL)
+MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+    'libcompiler_rt-mt',
+    'libcompiler_rt-wasm-sjlj',
+    'libc-mt',
+    'libc-mt-debug',
+    'libc++abi-mt',
+    'libc++abi-mt-noexcept',
+    'libc++-mt',
+    'libc++-mt-noexcept',
+    'libdlmalloc-mt',
+    'libGL-emu',
+    'libGL-mt',
+    'libsockets_proxy',
+    'libsockets-mt',
+    'crtbegin',
+    'libsanitizer_common_rt',
+    'libubsan_rt',
+    'libwasm_workers_stub-debug',
+    'libwebgpu_cpp',
+    'libfetch',
+    'libwasmfs',
 ]
 
 # Variant builds that we want to support for certain ports
@@ -191,6 +218,9 @@ def main():
     auto_tasks = True
   elif 'MINIMAL' in tasks:
     tasks = MINIMAL_TASKS
+    auto_tasks = True
+  elif 'MINIMAL_PIC' in tasks:
+    tasks = MINIMAL_PIC_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = system_tasks + PORTS

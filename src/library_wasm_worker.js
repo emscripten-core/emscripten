@@ -161,12 +161,12 @@ mergeInto(LibraryManager.library, {
     return Module['$ww'];
   },
 
-  emscripten_wasm_worker_post_function_v__sig: 'vii',
+  emscripten_wasm_worker_post_function_v__sig: 'vip',
   emscripten_wasm_worker_post_function_v: function(id, funcPtr) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
-  emscripten_wasm_worker_post_function_1__sig: 'viid',
+  emscripten_wasm_worker_post_function_1__sig: 'vipd',
   emscripten_wasm_worker_post_function_1: function(id, funcPtr, arg0) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
@@ -174,14 +174,14 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_vi: 'emscripten_wasm_worker_post_function_1',
   emscripten_wasm_worker_post_function_vd: 'emscripten_wasm_worker_post_function_1',
 
-  emscripten_wasm_worker_post_function_2__sig: 'viidd',
+  emscripten_wasm_worker_post_function_2__sig: 'vipdd',
   emscripten_wasm_worker_post_function_2: function(id, funcPtr, arg0, arg1) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_vii: 'emscripten_wasm_worker_post_function_2',
   emscripten_wasm_worker_post_function_vdd: 'emscripten_wasm_worker_post_function_2',
 
-  emscripten_wasm_worker_post_function_3__sig: 'viiddd',
+  emscripten_wasm_worker_post_function_3__sig: 'vipddd',
   emscripten_wasm_worker_post_function_3: function(id, funcPtr, arg0, arg1, arg2) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
@@ -189,6 +189,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_vddd: 'emscripten_wasm_worker_post_function_3',
 
   emscripten_wasm_worker_post_function_sig__deps: ['$readAsmConstArgs'],
+  emscripten_wasm_worker_post_function_sig__sig: 'vippp',
   emscripten_wasm_worker_post_function_sig: function(id, funcPtr, sigPtr, varargs) {
 #if ASSERTIONS
     assert(id >= 0);

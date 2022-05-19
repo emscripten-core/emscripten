@@ -39,6 +39,15 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
+// If the user does not implement this hook, do nothing.
+__attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
+
+// Set up global data structures and preload files.
+WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  wasmfs_before_preload();
+  preloadFiles();
+}
+
 WasmFS::~WasmFS() {
   // Flush musl libc streams.
   // TODO: Integrate musl exit() which would call this for us. That might also
@@ -92,9 +101,6 @@ void WasmFS::preloadFiles() {
   assert(timesCalled == 1);
 #endif
 
-  // Obtain the backend of the root directory.
-  auto rootBackend = getRootDirectory()->getBackend();
-
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
@@ -124,8 +130,14 @@ void WasmFS::preloadFiles() {
     char childName[PATH_MAX] = {};
     _wasmfs_get_preloaded_child_path(i, childName);
 
+    auto lockedParentDir = parentDir->locked();
+    if (lockedParentDir.getChild(childName)) {
+      // The child already exists, so we don't need to do anything here.
+      continue;
+    }
+
     auto inserted =
-      parentDir->locked().insertDirectory(childName, S_IRUGO | S_IXUGO);
+      lockedParentDir.insertDirectory(childName, S_IRUGO | S_IXUGO);
     assert(inserted && "TODO: handle preload insertion errors");
   }
 

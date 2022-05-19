@@ -1,0 +1,212 @@
+strtol("-9223372036854775809") = -9223372036854775808
+consumed 20 bytes
+ERR ERANGE
+strtoll("-9223372036854775809") = -9223372036854775808
+consumed 20 bytes
+ERR ERANGE
+strtoul("-9223372036854775809") = 9223372036854775807
+consumed 20 bytes
+strtoull("-9223372036854775809") = 9223372036854775807
+consumed 20 bytes
+
+strtol("-9223372036854775808") = -9223372036854775808
+consumed 20 bytes
+strtoll("-9223372036854775808") = -9223372036854775808
+consumed 20 bytes
+strtoul("-9223372036854775808") = 9223372036854775808
+consumed 20 bytes
+strtoull("-9223372036854775808") = 9223372036854775808
+consumed 20 bytes
+
+strtol("-9223372036854775807") = -9223372036854775807
+consumed 20 bytes
+strtoll("-9223372036854775807") = -9223372036854775807
+consumed 20 bytes
+strtoul("-9223372036854775807") = 9223372036854775809
+consumed 20 bytes
+strtoull("-9223372036854775807") = 9223372036854775809
+consumed 20 bytes
+
+strtol("-2147483649") = -2147483649
+consumed 11 bytes
+strtoll("-2147483649") = -2147483649
+consumed 11 bytes
+strtoul("-2147483649") = 18446744071562067967
+consumed 11 bytes
+strtoull("-2147483649") = 18446744071562067967
+consumed 11 bytes
+
+strtol("-2147483648") = -2147483648
+consumed 11 bytes
+strtoll("-2147483648") = -2147483648
+consumed 11 bytes
+strtoul("-2147483648") = 18446744071562067968
+consumed 11 bytes
+strtoull("-2147483648") = 18446744071562067968
+consumed 11 bytes
+
+strtol("-2147483647") = -2147483647
+consumed 11 bytes
+strtoll("-2147483647") = -2147483647
+consumed 11 bytes
+strtoul("-2147483647") = 18446744071562067969
+consumed 11 bytes
+strtoull("-2147483647") = 18446744071562067969
+consumed 11 bytes
+
+strtol("-5") = -5
+consumed 2 bytes
+strtoll("-5") = -5
+consumed 2 bytes
+strtoul("-5") = 18446744073709551611
+consumed 2 bytes
+strtoull("-5") = 18446744073709551611
+consumed 2 bytes
+
+strtol("-1") = -1
+consumed 2 bytes
+strtoll("-1") = -1
+consumed 2 bytes
+strtoul("-1") = 18446744073709551615
+consumed 2 bytes
+strtoull("-1") = 18446744073709551615
+consumed 2 bytes
+
+strtol("0") = 0
+consumed 1 bytes
+strtoll("0") = 0
+consumed 1 bytes
+strtoul("0") = 0
+consumed 1 bytes
+strtoull("0") = 0
+consumed 1 bytes
+
+strtol("1") = 1
+consumed 1 bytes
+strtoll("1") = 1
+consumed 1 bytes
+strtoul("1") = 1
+consumed 1 bytes
+strtoull("1") = 1
+consumed 1 bytes
+
+strtol("5") = 5
+consumed 1 bytes
+strtoll("5") = 5
+consumed 1 bytes
+strtoul("5") = 5
+consumed 1 bytes
+strtoull("5") = 5
+consumed 1 bytes
+
+strtol("2147483646") = 2147483646
+consumed 10 bytes
+strtoll("2147483646") = 2147483646
+consumed 10 bytes
+strtoul("2147483646") = 2147483646
+consumed 10 bytes
+strtoull("2147483646") = 2147483646
+consumed 10 bytes
+
+strtol("2147483647") = 2147483647
+consumed 10 bytes
+strtoll("2147483647") = 2147483647
+consumed 10 bytes
+strtoul("2147483647") = 2147483647
+consumed 10 bytes
+strtoull("2147483647") = 2147483647
+consumed 10 bytes
+
+strtol("2147483648") = 2147483648
+consumed 10 bytes
+strtoll("2147483648") = 2147483648
+consumed 10 bytes
+strtoul("2147483648") = 2147483648
+consumed 10 bytes
+strtoull("2147483648") = 2147483648
+consumed 10 bytes
+
+strtol("4294967294") = 4294967294
+consumed 10 bytes
+strtoll("4294967294") = 4294967294
+consumed 10 bytes
+strtoul("4294967294") = 4294967294
+consumed 10 bytes
+strtoull("4294967294") = 4294967294
+consumed 10 bytes
+
+strtol("4294967295") = 4294967295
+consumed 10 bytes
+strtoll("4294967295") = 4294967295
+consumed 10 bytes
+strtoul("4294967295") = 4294967295
+consumed 10 bytes
+strtoull("4294967295") = 4294967295
+consumed 10 bytes
+
+strtol("4294967296") = 4294967296
+consumed 10 bytes
+strtoll("4294967296") = 4294967296
+consumed 10 bytes
+strtoul("4294967296") = 4294967296
+consumed 10 bytes
+strtoull("4294967296") = 4294967296
+consumed 10 bytes
+
+strtol("18446744073709551614") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoll("18446744073709551614") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoul("18446744073709551614") = 18446744073709551614
+consumed 20 bytes
+strtoull("18446744073709551614") = 18446744073709551614
+consumed 20 bytes
+
+strtol("18446744073709551615") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoll("18446744073709551615") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoul("18446744073709551615") = 18446744073709551615
+consumed 20 bytes
+strtoull("18446744073709551615") = 18446744073709551615
+consumed 20 bytes
+
+strtol("18446744073709551616") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoll("18446744073709551616") = 9223372036854775807
+consumed 20 bytes
+ERR ERANGE
+strtoul("18446744073709551616") = 18446744073709551615
+consumed 20 bytes
+ERR ERANGE
+strtoull("18446744073709551616") = 18446744073709551615
+consumed 20 bytes
+ERR ERANGE
+
+strtol("0x12", 0, 0) = 18
+consumed 4 bytes
+strtol("0x12", 0, 10) = 0
+consumed 1 bytes
+strtol("012", 0, 0) = 10
+consumed 3 bytes
+strtol("012", 0, 10) = 12
+consumed 3 bytes
+strtol("0y12", 0, 0) = 0
+consumed 1 bytes
+strtol("hello", 0, 30) = 14167554
+consumed 5 bytes
+strtol("hello", 0, 10) = 0
+consumed 0 bytes
+strtol("not-a-number", 0, 0) = 0
+consumed 0 bytes
+strtol(" ", 0, 0) = 0
+consumed 0 bytes
+strtol("-", 0, 0) = 0
+consumed 0 bytes
+strtol("  0x12end", 0, 0) = 302
+consumed 7 bytes

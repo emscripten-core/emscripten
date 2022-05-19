@@ -1126,7 +1126,7 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}_bigint`;
+    return `/** @type {!BigInt} */ ${name}`;
   }
   return `${name}_low, ${name}_high`;
 }
@@ -1138,7 +1138,7 @@ function receiveI64ParamAsI32s(name) {
     //    https://github.com/google/closure-compiler/issues/3167
     //  * acorn needs to be upgraded, and to set ecmascript version >= 11
     //  * terser needs to be upgraded
-    return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
+    return `var ${name}_low = Number(${name} & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name} >> BigInt(32)) | 0;`;
   }
   return '';
 }
@@ -1146,7 +1146,7 @@ function receiveI64ParamAsI32s(name) {
 function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = bigintToI53Checked(${name}_bigint); if (isNaN(${name})) return ${onError};`;
+    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
   // Covert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.

@@ -50,6 +50,10 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
+#if MEMORY64
+#include "runtime_wasm64.js"
+#endif
+
 // Wasm globals
 
 var wasmMemory;
@@ -758,7 +762,6 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -771,58 +774,6 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
-
-#if MEMORY64
-// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
-// BigInts. For now we keep JS as much the same as it always was, that is,
-// stackAlloc() receives and returns a Number from the JS point of view -
-// we translate BigInts automatically for that.
-// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
-// back on for MEMORY64.
-function instrumentWasmExportsForMemory64(exports) {
-  var instExports = {};
-  for (var name in exports) {
-    (function(name) {
-      var original = exports[name];
-      var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc' || name === 'emscripten_builtin_malloc') {
-        // get one i64, return an i64
-        replacement = (x) => {
-          var r = Number(original(BigInt(x)));
-          return r;
-        };
-      } else if (name === 'free') {
-        // get one i64
-        replacement = (x) => {
-          original(BigInt(x));
-        };
-      } else if (name === 'emscripten_stack_get_end' ||
-                 name === 'emscripten_stack_get_base' ||
-                 name === 'emscripten_stack_get_current') {
-        // return an i64
-        replacement = () => {
-          var r = Number(original());
-          return r;
-        };
-      } else if (name === 'emscripten_builtin_memalign') {
-        // get two i64, return an i64
-        replacement = (x, y) => {
-          var r = Number(original(BigInt(x), BigInt(y)));
-          return r;
-        };
-      } else if (name === 'main') {
-        // get a i64 as second arg
-        replacement = (x, y) => {
-          var r = original(x, BigInt(y));
-          return r;
-        };
-      }
-      instExports[name] = replacement;
-    })(name);
-  }
-  return instExports;
-}
-#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE

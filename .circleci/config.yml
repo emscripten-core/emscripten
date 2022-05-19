@@ -119,7 +119,7 @@ commands:
       - run:
           name: embuilder (PIC)
           command: |
-            ./embuilder build SYSTEM --pic
+            ./embuilder build MINIMAL_PIC --pic
             ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
@@ -371,7 +371,7 @@ jobs:
       - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe wasmfs.test_dlfcn_self wasmfs.test_dlfcn_unique_sig wasmfs.test_dylink_basics wasmfs.test_exit_status wasmfs.test_minimal_runtime_memorygrowth wasmfs.test_getcwd_with_non_ascii_name"
+          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe wasmfs.test_dlfcn_self wasmfs.test_dlfcn_unique_sig wasmfs.test_dylink_basics wasmfs.test_exit_status wasmfs.test_minimal_runtime_memorygrowth wasmfs.test_getcwd_with_non_ascii_name other.test_unistd_fstatfs_wasmfs"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -381,7 +381,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l.test_hello_world wasm64l.test_mmap wasm64l.test_unistd_* skip:wasm64l.test_unistd_sysconf wasm64l.test_mmap_file wasm64l.test_ccall wasm64l.test_signals wasm64l.test_emscripten_get_compiler_setting wasm64l.test_float_builtins wasm64l.test_getopt wasm64l.test_em_asm*"
+          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
   test-other:
     executor: bionic
     steps:
