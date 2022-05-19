@@ -5599,6 +5599,7 @@ main( int argv, char ** argc ) {
   def test_fstatat(self):
     self.do_runf(test_file('stat/test_fstatat.c'), 'success')
 
+  @also_with_wasmfs
   def test_stat_chmod(self):
     self.do_runf(test_file('stat/test_chmod.c'), 'success')
 

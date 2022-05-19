@@ -337,8 +337,8 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // system. Specific values were chosen to match existing library_fs.js
   // values.
   // ID of device containing file: Hardcode 1 for now, no meaning at the
-  buffer->st_dev = 1;
   // moment for Emscripten.
+  buffer->st_dev = 1;
   buffer->st_mode = lockedFile.getMode();
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
@@ -1052,6 +1052,17 @@ int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
+int __syscall_fchmod(int fd, int mode) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto lockedFile = openFile->locked().getFile()->locked();
+  lockedFile.setMode(mode);
+  lockedFile.setCTime(time(NULL));
+  return 0;
+}
+
 int __syscall_fchownat(
   int dirfd, intptr_t path, int owner, int group, int flags) {
   // Only accept valid flags.
@@ -1430,6 +1441,17 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
     return -EBADF;
   }
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
+}
+
+int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
 }
 
 // Stubs (at least for now)
