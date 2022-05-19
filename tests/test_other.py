@@ -11721,6 +11721,13 @@ Module['postRun'] = function() {
     self.set_setting('EXIT_RUNTIME')
     self.test_wasmfs_jsfile()
 
+  def test_wasmfs_before_preload(self):
+    self.set_setting('WASMFS')
+    os.mkdir('js_backend_files')
+    create_file('js_backend_files/file.dat', 'data')
+    self.emcc_args += ['--preload-file', 'js_backend_files/file.dat']
+    self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
+
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
