@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, LLVM_OBJDUMP, EMCMAKE, EMCONFIGURE
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -612,11 +612,11 @@ f.close()
 
   def test_emstrip(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-o', 'hello.js'])
-    output = self.run_process([LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
+    output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
     self.assertContained('.debug_info', output)
     self.run_process([emstrip, 'hello.wasm'])
-    output = self.run_process([LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
-    self.assertContained('.debug_info', output)
+    output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
+    self.assertNotContained('.debug_info', output)
 
   @is_slow_test
   @parameterized({
