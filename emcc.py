@@ -1451,6 +1451,11 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  if settings.MEMORY64:
+    default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
+    if settings.SUPPORT_LONGJMP:
+      exit_with_error('MEMORY64 is not compatible with SUPPORT_LONGJMP')
+
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
   if settings.SUPPORT_LONGJMP == 1:
@@ -2252,6 +2257,17 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
 
+  # Any "pointers" passed to JS will now be i64's, in both modes.
+  # Also turn off minifying, which clashes with instrumented functions in preamble.js
+  if settings.MEMORY64:
+    if settings.RELOCATABLE:
+      exit_with_error('MEMORY64 is not compatible with dynamic linking')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
+    settings.WASM_BIGINT = 1
+    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
+    settings.MINIFY_WASM_IMPORTED_MODULES = 0
+
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
@@ -2522,15 +2538,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
-
-  # Any "pointers" passed to JS will now be i64's, in both modes.
-  # Also turn off minifying, which clashes with instrumented functions in preamble.js
-  if settings.MEMORY64:
-    if user_settings.get('WASM_BIGINT') == '0':
-      exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
-    settings.WASM_BIGINT = 1
-    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
-    settings.MINIFY_WASM_IMPORTED_MODULES = 0
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.

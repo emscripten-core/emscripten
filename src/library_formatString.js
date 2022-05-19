@@ -58,7 +58,6 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   $formatString: function(format, varargs) {
-    {{{ from64(['format', 'varargs']) }}};
 #if ASSERTIONS
     assert((varargs & 3) === 0);
 #endif

@@ -22,10 +22,10 @@ function instrumentWasmExportsForMemory64(exports) {
     (function(name) {
       var original = exports[name];
       var replacement = original;
-      if (['stackAlloc', 'emscripten_builtin_malloc', 'malloc', '__getTypeName'].includes(name)) {
+      if (['sbrk', 'stackAlloc', 'emscripten_builtin_malloc', 'malloc', '__getTypeName'].includes(name)) {
         // get one i64, return an i64.
         replacement = (x) => {
-          var r = Number(original(BigInt(x)));
+          var r = Number(original(BigInt(x ? x : 0)));
           return r;
         };
       } else if (['setThrew', 'free', 'stackRestore', '__cxa_is_pointer_type'].includes(name)) {
@@ -58,6 +58,18 @@ function instrumentWasmExportsForMemory64(exports) {
           // `TypeError: Cannot convert undefined to a BigInt`.
           // See https://github.com/WebAssembly/JS-BigInt-integration/issues/12
           return original(x, BigInt(y ? y : 0), BigInt(0));
+        };
+      } else if (['emscripten_stack_set_limits', '__set_stack_limits'].includes(name)) {
+        // get 2 i64 arguments
+        replacement = (x, y) => {
+          var r = original(BigInt(x), BigInt(y));
+          return r;
+        };
+      } else if (name === '__cxa_can_catch') {
+        // get 3 i64 arguments
+        replacement = (x, y, z) => {
+          var r = original(BigInt(x), BigInt(y), BigInt(z));
+          return r;
         };
       }
       instExports[name] = replacement;

@@ -88,8 +88,15 @@ mergeInto(LibraryManager.library, {
 #endif
 
   // Returns a pointer ('p'), which means an i32 on wasm32 and an i64 wasm64
+  // We have a separate JS version `getHeapMax()` which can be called directly
+  // avoiding any wrapper added for wasm64.
   emscripten_get_heap_max__sig: 'p',
+  emscripten_get_heap_max__deps: ['$getHeapMax'],
   emscripten_get_heap_max: function() {
+    return getHeapMax();
+  },
+
+  $getHeapMax: function() {
 #if ALLOW_MEMORY_GROWTH
     // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
     // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
@@ -147,8 +154,9 @@ mergeInto(LibraryManager.library, {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
+  emscripten_resize_heap__sig: 'ip',
   emscripten_resize_heap__deps: [
-    'emscripten_get_heap_max',
+    '$getHeapMax',
 #if ASSERTIONS == 2
     'emscripten_get_now',
 #endif
@@ -203,7 +211,7 @@ mergeInto(LibraryManager.library, {
 
     // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    var maxHeapSize = _emscripten_get_heap_max();
+    var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -342,6 +350,7 @@ mergeInto(LibraryManager.library, {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
+  getloadavg__sig: 'ipi',
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
@@ -389,7 +398,7 @@ mergeInto(LibraryManager.library, {
   // assert.h
   // ==========================================================================
 
-  __assert_fail__sig: 'viiii',
+  __assert_fail__sig: 'vppip',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
@@ -403,7 +412,7 @@ mergeInto(LibraryManager.library, {
     return Date.now();
   },
 
-  _mktime_js__sig: 'ii',
+  _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -503,7 +512,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r__sig: 'iii',
+  __asctime_r__sig: 'ppp',
   __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -953,6 +962,7 @@ mergeInto(LibraryManager.library, {
     , '$intArrayFromString'
 #endif
   ],
+  strptime__sig: 'pppp',
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -1193,6 +1203,7 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   },
+  strptime_l__sig: 'pppp',
   strptime_l__deps: ['strptime'],
   strptime_l: function(buf, format, tm) {
     return _strptime(buf, format, tm); // no locale support yet
@@ -2217,6 +2228,7 @@ mergeInto(LibraryManager.library, {
   },
 
   getentropy__deps: ['$getRandomDevice'],
+  getentropy__sig: 'ipp',
   getentropy: function(buffer, size) {
     if (!_getentropy.randomDevice) {
       _getentropy.randomDevice = getRandomDevice();
@@ -2248,12 +2260,12 @@ mergeInto(LibraryManager.library, {
   // emscripten.h
   // ==========================================================================
 
-  emscripten_run_script__sig: 'vi',
+  emscripten_run_script__sig: 'vp',
   emscripten_run_script: function(ptr) {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
-  emscripten_run_script_int__sig: 'ii',
+  emscripten_run_script_int__sig: 'ip',
   emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
@@ -2262,7 +2274,7 @@ mergeInto(LibraryManager.library, {
   // We use builtin_malloc and builtin_free here because otherwise lsan will
   // report the last returned string as a leak.
   emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
-  emscripten_run_script_string__sig: 'ii',
+  emscripten_run_script_string__sig: 'pp',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2524,6 +2536,10 @@ mergeInto(LibraryManager.library, {
 
   emscripten_get_callstack__deps: ['emscripten_get_callstack_js'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
+    // Use explicit calls to from64 rather then using the __sig
+    // magic here.  This is because the __sig wrapper uses arrow function
+    // notation which causes the inner call to traverseStack to fail.
+    {{{ from64('str') }}};
     var callstack = _emscripten_get_callstack_js(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
@@ -2562,6 +2578,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_log__sig: 'vipp',
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
     var result = formatString(format, varargs);
@@ -2600,6 +2617,7 @@ mergeInto(LibraryManager.library, {
     debugger;
   },
 
+  emscripten_print_double__sig: 'iipi',
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -2642,6 +2660,7 @@ mergeInto(LibraryManager.library, {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
+  emscripten_return_address__sig: 'pi',
   emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: function(level) {
     var callstack = jsStackTrace().split('\n');
@@ -2649,7 +2668,14 @@ mergeInto(LibraryManager.library, {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return convertFrameToPC(callstack[level + 3]);
+#if MEMORY64
+    // MEMORY64 injects and extra wrapper within emscripten_return_address
+    // to handle BigInt convertions.
+    var caller = callstack[level + 4];
+#else
+    var caller = callstack[level + 3];
+#endif
+    return convertFrameToPC(caller);
   },
 
   $UNWIND_CACHE: {},
@@ -2692,6 +2718,7 @@ mergeInto(LibraryManager.library, {
   // must be able to unwind from a PC value that may no longer be on the
   // execution stack, and so we are forced to cache the entire call stack.
   emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
+  emscripten_stack_snapshot__sig: 'p',
   emscripten_stack_snapshot: function () {
     var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
@@ -2722,6 +2749,7 @@ mergeInto(LibraryManager.library, {
   // emscripten_stack_snapshot, or this function will instead use the current
   // call stack.
   emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
+  emscripten_stack_unwind_buffer__sig: 'ippi',
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
@@ -2756,6 +2784,7 @@ mergeInto(LibraryManager.library, {
   ],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
+  emscripten_pc_get_function__sig: 'pp',
 #endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
@@ -2820,6 +2849,7 @@ mergeInto(LibraryManager.library, {
   ],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
+  emscripten_pc_get_file__sig: 'pp',
   emscripten_pc_get_file: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
@@ -2831,6 +2861,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the line number from our stack frame cache with our PC representation.
   emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
+  emscripten_pc_get_line__sig: 'pp',
   emscripten_pc_get_line: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
@@ -2838,6 +2869,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the column number from our stack frame cache with our PC representation.
   emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
+  emscripten_pc_get_column__sig: 'pp',
   emscripten_pc_get_column: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
@@ -2882,7 +2914,6 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   $readAsmConstArgs: function(sigPtr, buf) {
-    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -2960,6 +2991,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
   $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
+  $mainThreadEM_ASM__sig: 'iippi',
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3095,6 +3127,7 @@ mergeInto(LibraryManager.library, {
 
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
+  __handle_stack_overflow__sig: 'vp',
   __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;

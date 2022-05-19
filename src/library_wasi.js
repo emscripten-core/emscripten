@@ -57,12 +57,12 @@ var WasiLibrary = {
   environ_sizes_get__sig: 'ipp',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = getEnvStrings();
-    {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
+    {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
     strings.forEach(function(string) {
       bufSize += string.length + 1;
     });
-    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', 'i32') }}};
+    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
 
@@ -77,7 +77,7 @@ var WasiLibrary = {
     var bufSize = 0;
     getEnvStrings().forEach(function(string, i) {
       var ptr = environ_buf + bufSize;
-      {{{ makeSetValue('__environ', 'i * 4', 'ptr', 'i32') }}};
+      {{{ makeSetValue('__environ', `i*${Runtime.POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       writeAsciiToMemory(string, ptr);
       bufSize += string.length + 1;
     });
@@ -90,7 +90,6 @@ var WasiLibrary = {
   args_sizes_get__nothrow: true,
   args_sizes_get__sig: 'ipp',
   args_sizes_get: function(pargc, pargv_buf_size) {
-    {{{ from64(['pargc', 'pargv_buf_size']) }}};
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
@@ -110,7 +109,6 @@ var WasiLibrary = {
   args_get__deps: ['$writeAsciiToMemory'],
 #endif
   args_get: function(argv, argv_buf) {
-    {{{ from64(['argv', 'argv_buf']) }}};
 #if MAIN_READS_PARAMS
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
@@ -248,7 +246,6 @@ var WasiLibrary = {
 #endif
   fd_write__sig: 'iippp',
   fd_write: function(fd, iov, iovcnt, pnum) {
-    {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doWritev(stream, iov, iovcnt);
