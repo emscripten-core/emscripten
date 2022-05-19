@@ -935,11 +935,9 @@ def in_temp(name):
 
 
 def dedup_list(lst):
-  rtn = []
-  for item in lst:
-    if item not in rtn:
-      rtn.append(item)
-  return rtn
+  # Since we require python 3.6, that ordering of dictionaries is guaranteed
+  # to be insertion order so we can use 'dict' here but not 'set'.
+  return list(dict.fromkeys(lst))
 
 
 def move_file(src, dst):
