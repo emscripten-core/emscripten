@@ -72,7 +72,7 @@ void cleanup() {
   rmdir("dir/rename-dir/subdir");
   rmdir("dir/rename-dir");
   rmdir("dir");
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   chmod("dir-readonly2", 0777);
 #endif
   rmdir("dir-readonly2/somename");
@@ -117,7 +117,7 @@ void test() {
   assert(errno == EACCES);
 
   // Can't rename a file with a new path name that is longer than WASMFS_NAME_MAX.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   errno = 0;
   rename("dir",
          "000000000100000000020000000003000000000400000000050000000006000000000"
@@ -172,7 +172,7 @@ void test() {
   err = rename("dir/file1", "dir/file2");
   assert(!err);
   // TODO: Remove when WASMFS implements the access syscall.
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   err = access("dir/file2", F_OK);
 #endif
   assert(!err);
@@ -180,14 +180,14 @@ void test() {
   assert(!err);
   err = rename("dir/subdir1", "dir/subdir2");
   assert(!err);
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   err = access("dir/subdir2", F_OK);
 #endif
   assert(!err);
 
   err = rename("dir/subdir2", "dir/subdir3/subdir3_1/subdir1 renamed");
   assert(!err);
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   err = access("dir/subdir3/subdir3_1/subdir1 renamed", F_OK);
 #endif
   assert(!err);
@@ -213,7 +213,7 @@ void test() {
   // In the JS file system it reports EINVAL.
   err = rename("/", "dir/file2");
   assert(err == -1);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == EBUSY);
 #else
   assert(errno == EINVAL);
@@ -222,7 +222,7 @@ void test() {
   // Test renaming a directory with root.
   err = rename("dir/file2", "/");
   assert(err == -1);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == EBUSY);
 #else
   assert(errno == ENOTEMPTY);

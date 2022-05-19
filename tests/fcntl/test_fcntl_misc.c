@@ -25,7 +25,7 @@ int main() {
   printf("posix_fallocate: %d\n", posix_fallocate(f, 3, 2));
   printf("errno: %d\n", errno);
   stat("/test", &s);
-#if WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(s.st_size == 5);
 #else
   // The old FS, incorrectly, reports 6 here (unlike linux and wasmfs)

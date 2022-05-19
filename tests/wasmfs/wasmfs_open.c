@@ -35,7 +35,7 @@ int main() {
 
   assert((file.st_mode & S_IFMT) == S_IFCHR);
   // The JS file system assigns S_IWUGO | S_IRUGO | S_IFCHR to devices.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(file.st_mode == (S_IWUGO | S_IFCHR));
 #else
   assert(file.st_mode == (S_IWUGO | S_IRUGO | S_IFCHR));
@@ -59,7 +59,7 @@ int main() {
 
   assert((dir.st_mode & S_IFMT) == S_IFDIR);
   // The JS file system assigns write access to /dev.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(dir.st_mode == (S_IRUGO | S_IXUGO | S_IFDIR));
 #else
   assert(dir.st_mode == (S_IWUGO | S_IRUGO | S_IXUGO | S_IFDIR));
@@ -89,7 +89,7 @@ int main() {
   int fd5 = open("/dev/stdout/foo", O_RDWR);
   printf("Errno: %s\n", strerror(errno));
   // Both errors are valid, but in WasmFS, ENOTDIR is returned first.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == ENOTDIR);
 #else
   assert(errno == ENOENT);
@@ -101,7 +101,7 @@ int main() {
   write(fd6, msg, strlen(msg));
   printf("Errno: %s\n", strerror(errno));
   // In Linux and WasmFS one can obtain a fd to a directory.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == EISDIR);
 #else
   assert(errno == EBADF);

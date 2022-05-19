@@ -41,7 +41,7 @@ void basics() {
   stage("allocate another 100");
   void* second = malloc(100);
   stage("allocate 10");
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   // There is no strict guarantee that the second allocation be equal to the
   // first, but in practice on a fresh heap that tends to be the case. With
   // WasmFS, however, the heap has already seen a bunch of use by the time we
@@ -240,4 +240,3 @@ int main() {
 
   stage("the_end");
 }
-

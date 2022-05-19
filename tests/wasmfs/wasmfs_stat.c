@@ -67,7 +67,7 @@ int main() {
   assert(directory.st_nlink);
   assert(directory.st_uid == 0);
   assert(directory.st_gid == 0);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(directory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(directory.st_blocks == 8);
@@ -114,7 +114,7 @@ int main() {
   assert(statDirectory.st_nlink);
   assert(statDirectory.st_uid == 0);
   assert(statDirectory.st_gid == 0);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(statDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(statDirectory.st_blocks == 8);
@@ -141,7 +141,7 @@ int main() {
 
   assert(lstatFile.st_dev);
   // TODO: When symlinks are added, this WasmFS should return S_IFLNK.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert((lstatFile.st_mode & S_IFMT) == S_IFCHR);
 #else
   assert((lstatFile.st_mode & S_IFMT) == S_IFLNK);
@@ -150,7 +150,7 @@ int main() {
   assert(lstatFile.st_uid == 0);
   assert(lstatFile.st_gid == 0);
   assert(lstatFile.st_blksize == 4096);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(lstatFile.st_size == 0);
   assert(lstatFile.st_blocks == 0);
   assert(lstatFile.st_rdev);
@@ -172,7 +172,7 @@ int main() {
   assert(lstatDirectory.st_nlink);
   assert(lstatDirectory.st_uid == 0);
   assert(lstatDirectory.st_gid == 0);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(lstatDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(lstatDirectory.st_blocks == 8);

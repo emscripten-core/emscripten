@@ -54,7 +54,9 @@ int main()
     // Non-ascii file name.
     doTest("test_dir", u8"абвгд");
 
-#ifndef WASMFS // The JS FS truncates filenames automatically, which is incorrect. Wasmfs and Linux do not.
+    // The JS FS truncates filenames automatically, which is incorrect. WasmFS
+    // and Linux do not.
+#ifndef __EMSCRIPTEN_WASMFS__
     // File name exceeds the limit of 255 chars and is truncated.
     doTest("test_dir2", std::string(300, '1'));
 #endif

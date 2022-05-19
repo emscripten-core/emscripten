@@ -67,6 +67,7 @@ COMPILE_TIME_SETTINGS = {
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
+    'WASMFS',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',

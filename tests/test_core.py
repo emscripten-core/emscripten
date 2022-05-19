@@ -177,7 +177,6 @@ def also_with_wasmfs(func):
     if self.get_setting('MEMORY64'):
       self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
   return decorated
 
@@ -193,7 +192,6 @@ def also_with_wasmfs_js(func):
       self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
     self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
   return decorated
 
@@ -9460,7 +9458,7 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
-wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
+wasmfs = make_run('wasmfs', emcc_args=['-O2'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core0s = make_run('core2s', emcc_args=['-g'], settings={'SAFE_HEAP': 1})

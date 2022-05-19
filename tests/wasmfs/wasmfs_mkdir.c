@@ -66,7 +66,7 @@ int main() {
   // Try to make the root directory.
   errno = 0;
   mkdir("/", 0777);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == EEXIST);
 #else
   assert(errno == EINVAL);
@@ -83,7 +83,7 @@ int main() {
   mkdir("/dev/stdout/fake-directory", 0777);
   // TODO: This may have to change when access modes are implemented, depending
   // on if we check access mode before file type.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == ENOTDIR);
 #else
   assert(errno == EACCES);
@@ -111,7 +111,7 @@ int main() {
         "0000000005000000000600000000070000000008000000000900000000000000000001"
         "0000000002000000000300000000040000000005123456",
         0777);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(errno == ENAMETOOLONG);
 #endif
 

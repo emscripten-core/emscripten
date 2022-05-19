@@ -39,7 +39,7 @@ int main() {
     // seeing the symlink as a string. The old JS FS instead normalizes it and
     // returns something modified.
     // The same happens in the assertions below.
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
     assert(strcmp(buffer, "../test/../there!") == 0);
 #else
     assert(strcmp(buffer, "/there!") == 0);
@@ -62,7 +62,7 @@ int main() {
   printf("readlink(created link)\n");
   int ret = readlink("folder/link", buffer, 256);
   printf("errno: %d\n", errno);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(strcmp(buffer, "new-nonexistent-path") == 0);
 #else
   assert(strcmp(buffer, "/working/folder/new-nonexistent-path") == 0);
@@ -75,14 +75,14 @@ int main() {
   printf("readlink(short buffer)\n");
   printf("ret: %zd\n", readlink("link", buffer, 4));
   printf("errno: %d\n", errno);
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   assert(strcmp(buffer, "../t**nexistent-path") == 0);
 #else
   assert(strcmp(buffer, "/the**ng/folder/new-nonexistent-path") == 0);
 #endif
   errno = 0;
 
-#ifndef WASMFS
+#ifndef __EMSCRIPTEN_WASMFS__
   // FS.lookupPath should notice the symlink loop and return ELOOP, not go into
   // an infinite recurse.
   //

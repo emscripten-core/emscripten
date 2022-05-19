@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
 #include "../wasmfs/get_backend.h"
 #include <emscripten/wasmfs.h>
 #endif
@@ -20,7 +20,7 @@ int main() {
   const char *filename = "test.dat";
   const char *dirname = "test";
 
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   if (wasmfs_create_directory("root", 0777, get_backend()) != 0) {
     return 1;
   }
@@ -108,7 +108,7 @@ int main() {
   if (openat(dirfd(d), ".", O_DIRECTORY | O_RDONLY) != -1) {
     return 1;
   }
-#ifdef WASMFS
+#ifdef __EMSCRIPTEN_WASMFS__
   // Check that we cannot still access ".." on WasmFS.
   if (openat(dirfd(d), "..", O_DIRECTORY | O_RDONLY) != -1) {
     return 1;

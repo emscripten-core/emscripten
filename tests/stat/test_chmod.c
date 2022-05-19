@@ -49,7 +49,7 @@ void test() {
   int err;
   int lastctime;
   struct stat s;
-  
+
   //
   // chmod a file
   //
@@ -113,7 +113,8 @@ void test() {
   assert(s.st_mode == (0300 | S_IFDIR));
   assert(s.st_ctime != lastctime);
 
-#ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
+// TODO https://github.com/emscripten-core/emscripten/issues/15948
+#ifndef __EMSCRIPTEN_WASMFS__
   //
   // chmod a symlink's target
   //
@@ -137,7 +138,7 @@ void test() {
   // make sure the file it references didn't change
   stat("file-link", &s);
   assert(s.st_mode == (0400 | S_IFREG));
-#endif // WASMFS
+#endif // __EMSCRIPTEN_WASMFS__
 
   puts("success");
 }

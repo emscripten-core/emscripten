@@ -62,7 +62,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-#ifndef WASMFS // TODO: wasmfs support for byte offset locking.
+#ifndef __EMSCRIPTEN_WASMFS__ // TODO: wasmfs support for byte offset locking.
   int err = fcntl(f, F_SETLK, &lk);
   assert(err == 0);
   assert(errno == 0);
