@@ -115,7 +115,7 @@ int main()
   // Test emval{From,To}Handle roundtrip.
   {
     val a = val::global("a");
-    val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_INT({
+    val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_PTR({
       return Emval.toHandle(Emval.toValue($0));
     }, a.as_handle())));
     ensure(a == a_roundtrip);

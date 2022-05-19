@@ -9,7 +9,7 @@ PLAT= none
 # XXX EMSCRIPTEN - comment out several lines here, to pick them up from the environment
 #CC= gcc
 CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
-#LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
+LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
 #AR= ar
@@ -18,6 +18,7 @@ RANLIB= ranlib
 endif
 #RM= rm -f
 
+ifndef EMSCRIPTEN
 SYSCFLAGS=
 SYSLDFLAGS=
 SYSLIBS=
@@ -26,6 +27,7 @@ MYCFLAGS=
 MYLDFLAGS=
 MYLIBS=
 MYOBJS=
+endif
 
 # XXX EMSCRIPTEN - add this
 ifndef EMSCRIPTEN
