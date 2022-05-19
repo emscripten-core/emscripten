@@ -306,7 +306,7 @@ jobs:
     # Use the largest resource class we can to make this job as fast as
     # possible, since it blocks almost all other jobs.
     # https://circleci.com/docs/2.0/configuration-reference/#resourceclass
-    resource_class: xlarge
+    resource_class: xlarge # no faster :(
     steps:
       - checkout
       - run:
