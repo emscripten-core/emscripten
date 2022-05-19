@@ -181,7 +181,7 @@ def compile_settings():
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = shared.run_js_tool(path_from_root('src/compiler.js'),
                              [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
-                             cwd=path_from_root('src'), env=env)
+                             cwd=path_from_root('src'), env=env, encoding='utf-8')
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data
@@ -387,7 +387,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     ('// === Body ===\n\n' + asm_const_map +
      '\n'.join(em_js_funcs) + '\n'))
 
-  with open(outfile_js, 'w') as out:
+  with open(outfile_js, 'w', encoding='utf-8') as out:
     out.write(normalize_line_endings(pre))
     pre = None
 
