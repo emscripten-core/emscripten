@@ -20,8 +20,8 @@ int main(int argc, char **argv) {
   printf("%d:%d,%d,%d,%s\n", cc, xx, yy, zz, s);
 
   printf("%d\n", argc);
-  puts(argv[1]);
-  puts(argv[2]);
+  printf("argv[1]: %s\n", argv[1]);
+  printf("argv[2]: %s\n", argv[2]);
   printf("%d\n", atoi(argv[3]) + 2);
   const char *foolingthecompiler = "\rabcd";
   printf("%lu\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm -

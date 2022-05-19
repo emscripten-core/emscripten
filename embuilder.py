@@ -41,6 +41,7 @@ MINIMAL_TASKS = [
     'libal',
     'libdlmalloc',
     'libdlmalloc-noerrno',
+    'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libemmalloc',
     'libemmalloc-debug',

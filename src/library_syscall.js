@@ -583,6 +583,7 @@ var SyscallsLibrary = {
 
     return total;
   },
+  _msync_js__sig: 'ippii',
   _msync_js: function(addr, len, flags, fd) {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
@@ -594,7 +595,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall_poll__sig: 'ipi',
+  __syscall_poll__sig: 'ipii',
   __syscall_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -769,6 +770,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  __syscall_statfs64__sig: 'ippp',
   __syscall_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -805,6 +807,7 @@ var SyscallsLibrary = {
     var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
+  __syscall_mkdirat__sig: 'iipi',
   __syscall_mkdirat: function(dirfd, path, mode) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -837,6 +840,7 @@ var SyscallsLibrary = {
     FS.mknod(path, mode, dev);
     return 0;
   },
+  __syscall_fchownat__sig: 'iipiii',
   __syscall_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -851,6 +855,7 @@ var SyscallsLibrary = {
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
+  __syscall_newfstatat__sig: 'iippi',
   __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};

@@ -23,8 +23,8 @@ mergeInto(LibraryManager.library, {
 
   // printf/puts implementations for when musl is not pulled in - very
   // partial, but enough for bootstrapping structInfo
-
   printf__deps: ['$formatString'],
+  printf__sig: 'ipp',
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
@@ -36,6 +36,7 @@ mergeInto(LibraryManager.library, {
     return result.length;
   },
 
+  puts__sig: 'ip',
   puts: function(s) {
     // extra effort to support puts, even without a filesystem. very partial, very hackish
     var result = UTF8ToString(s);

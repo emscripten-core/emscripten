@@ -266,9 +266,9 @@ int main() {
 
     EM_ASM_({
         const stream = FS.streams.find(stream => stream.path.indexOf('yolo/overallocatedfile.txt') >= 0);
-        assert(stream.node.usedBytes === $0,
+        assert(stream.node.usedBytes === Number($0),
           'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
-          'should be 33'
+          'should be ' + $0
         );
         assert(stream.node.contents.length > stream.node.usedBytes,
           'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
