@@ -145,11 +145,19 @@ void *MmapFixedOrDieOnFatalError(uptr fixed_addr, uptr size, const char *name) {
 }
 
 bool MprotectNoAccess(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return 0 == internal_mprotect((void*)addr, size, PROT_NONE);
+#endif
 }
 
 bool MprotectReadOnly(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return 0 == internal_mprotect((void *)addr, size, PROT_READ);
+#endif
 }
 
 #if !SANITIZER_MAC

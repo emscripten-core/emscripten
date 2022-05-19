@@ -1,4 +1,4 @@
-//===-- sanitizer_persistent_allocator.cpp ----------------------*- C++ -*-===//
+//===-- asan_static_rtl.cpp -----------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,13 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is shared between AddressSanitizer and ThreadSanitizer
-// run-time libraries.
+// This file is a part of AddressSanitizer, an address sanity checker.
+//
+// Main file of the ASan run-time library.
 //===----------------------------------------------------------------------===//
-#include "sanitizer_persistent_allocator.h"
 
-namespace __sanitizer {
-
-PersistentAllocator thePersistentAllocator;
-
-}  // namespace __sanitizer
+// This file is empty for now. Main reason to have it is workaround for Windows
+// build, which complains because no files are part of the asan_static lib.
