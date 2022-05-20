@@ -26,7 +26,8 @@ See docs/process.md for more on how version tagging works.
   wide under `wasm64`. (#16938)
 - The `EM_BUILD_VERBOSE` environment variable only effects test code these days
   and therefore was renamed to `EMTEST_BUILD_VERBOSE`. (#16904)
-- compiler-rt code updated to LLVM 14. (#16991)
+- compiler-rt updated to LLVM 14. (#16991)
+- libc++ updated to LLVM 14. (#17000)
 
 3.1.10 - 05/02/2022
 -------------------
