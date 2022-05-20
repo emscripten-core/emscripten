@@ -5519,7 +5519,7 @@ print(os.environ.get('NM'))
 
     create_file('test.c', 'int main() { return 0; }')
     os.mkdir('test_cache')
-    with env_modify({'EM_CACHE': os.path.join(os.getcwd(), 'test_cache')}):
+    with env_modify({'EM_CACHE': os.path.abspath('test_cache')}):
       check(EMCONFIGURE, [EMCC, 'test.c'], fail=False)
 
   def test_emmake_python(self):
