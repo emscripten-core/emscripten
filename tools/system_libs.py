@@ -1230,12 +1230,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
+    '-std=c++20',
   ]
+
+  includes = ['system/lib/libcxx/src']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
   src_glob_exclude = [
     'xlocale_zos.cpp',
+    'mbsnrtowcs.cpp',
+    'wcsnrtombs.cpp',
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
