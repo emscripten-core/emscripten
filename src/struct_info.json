@@ -1185,9 +1185,10 @@
                 "offset",
                 "length"
             ],
-            "WGPUComputePassDescriptor": [
-                "nextInChain",
-                "label"
+            "WGPUComputePassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1270,6 +1271,10 @@
                 "pipelineStatistics",
                 "pipelineStatisticsCount"
             ],
+            "WGPUQueueDescriptor": [
+                "nextInChain",
+                "label"
+            ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
                 "label"
@@ -1294,6 +1299,11 @@
                 "stencilStoreOp",
                 "stencilClearValue",
                 "stencilReadOnly"
+            ],
+            "WGPURenderPassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1414,6 +1424,12 @@
                 "messageCount",
                 "messages"
             ],
+            "WGPUComputePassDescriptor": [
+                "nextInChain",
+                "label",
+                "timestampWriteCount",
+                "timestampWrites"
+            ],
             "WGPUDepthStencilState": [
                 "nextInChain",
                 "format",
@@ -1469,7 +1485,9 @@
                 "size",
                 "format",
                 "mipLevelCount",
-                "sampleCount"
+                "sampleCount",
+                "viewFormatCount",
+                "viewFormats"
             ],
             "WGPUVertexBufferLayout": [
                 "arrayStride",
@@ -1500,7 +1518,8 @@
                 "label",
                 "requiredFeaturesCount",
                 "requiredFeatures",
-                "requiredLimits"
+                "requiredLimits",
+                "defaultQueue"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
@@ -1508,7 +1527,9 @@
                 "colorAttachmentCount",
                 "colorAttachments",
                 "depthStencilAttachment",
-                "occlusionQuerySet"
+                "occlusionQuerySet",
+                "timestampWriteCount",
+                "timestampWrites"
             ],
             "WGPUVertexState": [
                 "nextInChain",

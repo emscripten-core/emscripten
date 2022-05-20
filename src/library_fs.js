@@ -1224,10 +1224,7 @@ FS.staticInit();` +
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: (stream, address, length, position, prot, flags) => {
-#if CAN_ADDRESS_2GB
-      address >>>= 0;
-#endif
+    mmap: (stream, length, position, prot, flags) => {
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
       // MAP_PRIVATE flag is set. According to POSIX spec it is possible
@@ -1245,7 +1242,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
-      return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
+      return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync: (stream, buffer, offset, length, mmapFlags) => {
 #if CAN_ADDRESS_2GB

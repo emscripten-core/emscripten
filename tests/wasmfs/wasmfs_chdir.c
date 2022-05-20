@@ -96,10 +96,6 @@ int main() {
   errno = 0;
   char smallBuffer[1];
   getcwd(smallBuffer, 1);
-#ifdef WASMFS
-  assert(errno == ENAMETOOLONG);
-#else
   assert(errno == ERANGE);
-#endif
   return 0;
 }

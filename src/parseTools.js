@@ -176,9 +176,18 @@ function needsQuoting(ident) {
 
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = 'i' + POINTER_BITS;
+const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
 
 const SIZE_TYPE = POINTER_TYPE;
+
+
+// Similar to POINTER_TYPE, but this is the actual wasm type that is
+// used in practice, while POINTER_TYPE is the more refined internal
+// type (that is unsigned, where as core wasm does not have unsigned
+// types).
+const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -196,7 +205,7 @@ function isIntImplemented(type) {
 function getBits(type, allowPointers) {
   if (allowPointers && isPointerType(type)) return POINTER_SIZE;
   if (!type) return 0;
-  if (type[0] == 'i') {
+  if (type[0] == 'i' || type[0] == 'u') {
     const left = type.substr(1);
     if (!isNumber(left)) return 0;
     return parseInt(left);
@@ -660,8 +669,7 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
-    // TODO(sbc): Make POINTER_TYPE u32/u64 rather than i32/i64
-    type = 'u' + POINTER_TYPE.slice(1);
+    type = POINTER_TYPE;
   }
   if (WASM_BIGINT) {
     switch (type) {
@@ -683,6 +691,16 @@ function getHeapForType(type) {
     case 'float':  return 'HEAPF32';
   }
   assert(false, 'bad heap type: ' + type);
+}
+
+function makeReturn64(value) {
+  if (WASM_BIGINT) {
+    return `BigInt(${value})`;
+  }
+  const pair = splitI64(value);
+  // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
+  // element `c`
+  return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
 function makeThrow(what) {
@@ -808,6 +826,33 @@ function makeDynCall(sig, funcPtr) {
   }
   args = args.join(', ');
 
+  const needArgConversion = MEMORY64 && sig.includes('p');
+  let callArgs = args;
+  if (needArgConversion) {
+    callArgs = [];
+    for (let i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') {
+        callArgs.push(`BigInt(a${i})`);
+      } else {
+        callArgs.push(`a${i}`);
+      }
+    }
+    callArgs = callArgs.join(', ');
+  }
+
+  // Normalize any 'p' characters to either 'j' (wasm64) or 'i' (wasm32)
+  if (sig.includes('p')) {
+    let normalizedSig = '';
+    for (let sigChr of sig) {
+      if (sigChr == 'p') {
+        sigChr = MEMORY64 ? 'j' : 'i';
+      }
+      normalizedSig += sigChr;
+    }
+    sig = normalizedSig;
+  }
+
+
   if (funcPtr === undefined) {
     printErr(`warning: ${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
@@ -823,9 +868,9 @@ Please update to new syntax.`);
           return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
         }
       }
-      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${callArgs}) })`;
     } else {
-      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${callArgs}) })`;
     }
   }
 
@@ -840,13 +885,15 @@ Please update to new syntax.`);
 
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
-      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
-    } else {
-      return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
+      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]); })`;
     }
-  } else {
-    return `getWasmTableEntry(${funcPtr})`;
+    return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
   }
+
+  if (needArgConversion) {
+    return `(function(${args}) { ${returnExpr} getWasmTableEntry(${funcPtr}).call(null, ${callArgs}) })`;
+  }
+  return `getWasmTableEntry(${funcPtr})`;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
@@ -1079,7 +1126,7 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}_bigint`;
+    return `/** @type {!BigInt} */ ${name}`;
   }
   return `${name}_low, ${name}_high`;
 }
@@ -1091,22 +1138,19 @@ function receiveI64ParamAsI32s(name) {
     //    https://github.com/google/closure-compiler/issues/3167
     //  * acorn needs to be upgraded, and to set ecmascript version >= 11
     //  * terser needs to be upgraded
-    return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
+    return `var ${name}_low = Number(${name} & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name} >> BigInt(32)) | 0;`;
   }
   return '';
 }
 
-// TODO: use this in library_wasi.js and other places. but we need to add an
-//       error-handling hook here.
-function receiveI64ParamAsDouble(name) {
+function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = Number(${name}_bigint);`;
+    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
-
-  // Combine the i32 params. Use an unsigned operator on low and shift high by
-  // 32 bits.
-  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  // Covert the high/low pair to a Number, checking for
+  // overflow of the I53 range and returning onError in that case.
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
 }
 
 function sendI64Argument(low, high) {

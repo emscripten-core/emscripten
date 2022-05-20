@@ -62,7 +62,8 @@ def clean_env():
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS']:
+              'EMCC_ONLY_FORCED_STDLIBS',
+              'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -629,8 +630,6 @@ class SjLjLibrary(Library):
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING=1',
                  '-D__USING_WASM_SJLJ__']
-    else:
-      cflags += ['-sSUPPORT_LONGJMP=emscripten']
     return cflags
 
   def get_base_name(self):
@@ -649,6 +648,10 @@ class SjLjLibrary(Library):
   def get_default_variation(cls, **kwargs):
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+
+  def can_build(self):
+    # wasm-sjlj is not yet supported with MEMORY64
+    return not (settings.MEMORY64 and self.is_wasm)
 
 
 class MuslInternalLibrary(Library):
@@ -708,12 +711,16 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_ops.S',
         'stack_limits.S',
         'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c'
+        'emscripten_exception_builtins.c',
+        '__trap.c',
       ])
 
 
 class libnoexit(Library):
   name = 'libnoexit'
+  # __cxa_atexit calls can be generated during LTO the implemenation cannot
+  # itself be LTO.  See `get_libcall_files` below for more details.
+  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -780,6 +787,10 @@ class libc(MuslInternalLibrary,
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
+    exit_files = files_in_path(
+        path='system/lib/libc/musl/src/exit',
+        filenames=['atexit.c'])
+
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
@@ -802,7 +813,7 @@ class libc(MuslInternalLibrary,
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + other_files + iprintf_files
+    return math_files + exit_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
@@ -1219,12 +1230,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
+    '-std=c++20',
   ]
+
+  includes = ['system/lib/libcxx/src']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
   src_glob_exclude = [
     'xlocale_zos.cpp',
+    'mbsnrtowcs.cpp',
+    'wcsnrtombs.cpp',
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
@@ -1493,6 +1509,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
+                   'opfs_backend.cpp',
                    'proxied_file_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',
@@ -1500,7 +1517,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'file_table.cpp',
                    'js_api.cpp',
                    'paths.cpp',
-                   'streams.cpp',
+                   'special_files.cpp',
                    'support.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp'])

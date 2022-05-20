@@ -199,6 +199,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   asm = output.instance.exports;
 #endif
 
+#if MEMORY64
+  asm = instrumentWasmExportsForMemory64(asm);
+#endif
+
 #if USE_OFFSET_CONVERTER
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)

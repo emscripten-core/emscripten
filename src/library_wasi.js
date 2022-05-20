@@ -57,15 +57,15 @@ var WasiLibrary = {
 
   environ_sizes_get__deps: ['$getEnvStrings'],
   environ_sizes_get__nothrow: true,
-  environ_sizes_get__sig: 'iii',
+  environ_sizes_get__sig: 'ipp',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = getEnvStrings();
-    {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
+    {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
     strings.forEach(function(string) {
       bufSize += string.length + 1;
     });
-    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', 'i32') }}};
+    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
 
@@ -75,12 +75,12 @@ var WasiLibrary = {
 #endif
   ],
   environ_get__nothrow: true,
-  environ_get__sig: 'iii',
+  environ_get__sig: 'ipp',
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
     getEnvStrings().forEach(function(string, i) {
       var ptr = environ_buf + bufSize;
-      {{{ makeSetValue('__environ', 'i * 4', 'ptr', 'i32') }}};
+      {{{ makeSetValue('__environ', `i*${Runtime.POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       writeAsciiToMemory(string, ptr);
       bufSize += string.length + 1;
     });
@@ -91,9 +91,8 @@ var WasiLibrary = {
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,
-  args_sizes_get__sig: 'iii',
+  args_sizes_get__sig: 'ipp',
   args_sizes_get: function(pargc, pargv_buf_size) {
-    {{{ from64(['pargc', 'pargv_buf_size']) }}};
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
@@ -108,12 +107,11 @@ var WasiLibrary = {
   },
 
   args_get__nothrow: true,
-  args_get__sig: 'iii',
+  args_get__sig: 'ipp',
 #if MINIMAL_RUNTIME && MAIN_READS_PARAMS
   args_get__deps: ['$writeAsciiToMemory'],
 #endif
   args_get: function(argv, argv_buf) {
-    {{{ from64(['argv', 'argv_buf']) }}};
 #if MAIN_READS_PARAMS
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
@@ -139,10 +137,9 @@ var WasiLibrary = {
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__nothrow: true,
-  clock_time_get__sig: 'iiiii',
+  clock_time_get__sig: 'iijp',
   clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
-  clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
-    {{{ receiveI64ParamAsI32s('precision') }}}
+  clock_time_get: function(clk_id, {{{ defineI64Param('ignored_precision') }}}, ptime) {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefine('EINVAL') }}};
     }
@@ -163,7 +160,7 @@ var WasiLibrary = {
   },
 
   clock_res_get__nothrow: true,
-  clock_res_get__sig: 'iii',
+  clock_res_get__sig: 'iip',
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     if (!checkWasiClock(clk_id)) {
@@ -250,9 +247,8 @@ var WasiLibrary = {
 #else
   fd_write__deps: ['$printChar'],
 #endif
-  fd_write__sig: 'iiiii',
+  fd_write__sig: 'iippp',
   fd_write: function(fd, iov, iovcnt, pnum) {
-    {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doWritev(stream, iov, iovcnt);
@@ -273,17 +269,16 @@ var WasiLibrary = {
     return 0;
   },
 
+  fd_pwrite__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pwrite__deps: ['$doWritev'],
+    '$doWritev',
 #endif
+  ].concat(i53ConversionDeps),
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
-#if ASSERTIONS
-    assert(!offset_high, 'offsets over 2^32 not yet supported');
-#endif
-    var num = doWritev(stream, iov, iovcnt, offset_low);
+    var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
 #elif ASSERTIONS
@@ -313,7 +308,7 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  fd_read__sig: 'iiiii',
+  fd_read__sig: 'iippp',
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_read__deps: ['$doReadv'],
 #endif
@@ -330,17 +325,17 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  fd_pread__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pread__deps: ['$doReadv'],
+    '$doReadv',
 #endif
+  ].concat(i53ConversionDeps),
+  fd_pread__sig: 'iippjp',
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
-#if ASSERTIONS
-    assert(!offset_high, 'offsets over 2^32 not yet supported');
-#endif
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
-    var num = doReadv(stream, iov, iovcnt, offset_low);
+    var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
 #elif ASSERTIONS
@@ -350,20 +345,12 @@ var WasiLibrary = {
 #endif
   },
 
+  fd_seek__sig: 'iijip',
+  fd_seek__deps: i53ConversionDeps,
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI32s('offset') }}}
+    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return {{{ cDefine('EOVERFLOW') }}};
-    }
-
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
@@ -373,7 +360,7 @@ var WasiLibrary = {
 #endif
   },
 
-  fd_fdstat_get__sig: 'iii',
+  fd_fdstat_get__sig: 'iip',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);

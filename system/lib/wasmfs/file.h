@@ -44,7 +44,12 @@ using oflags_t = uint32_t;
 // to implement the mapping from `File` objects to their underlying files.
 class File : public std::enable_shared_from_this<File> {
 public:
-  enum FileKind { UnknownKind, DataFileKind, DirectoryKind, SymlinkKind };
+  enum FileKind {
+    UnknownKind = 0,
+    DataFileKind = 1,
+    DirectoryKind = 2,
+    SymlinkKind = 3
+  };
 
   const FileKind kind;
 
@@ -117,6 +122,7 @@ protected:
 };
 
 class DataFile : public File {
+protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked.
@@ -124,11 +130,12 @@ class DataFile : public File {
   virtual void open(oflags_t flags) = 0;
   virtual void close() = 0;
 
-  // TODO: Allow backends to override the version of read with multiple iovecs
-  // to make it possible to implement pipes. See #16269.
-  virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
-  virtual __wasi_errno_t
-  write(const uint8_t* buf, size_t len, off_t offset) = 0;
+  // Return the accessed length or a negative error code. It is not an error to
+  // access fewer bytes than requested.
+  // TODO: Allow backends to override the version of read with
+  // multiple iovecs to make it possible to implement pipes. See #16269.
+  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
+  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized (often backends have an efficient way to do this
@@ -171,6 +178,7 @@ private:
   // TODO: Use a cache data structure with smaller code size.
   std::map<std::string, DCacheEntry> dcache;
 
+protected:
   // Return the `File` object corresponding to the file with the given name or
   // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;
@@ -250,7 +258,11 @@ public:
     : file(file), lock(file->mutex, std::defer_lock) {}
   size_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
-  void setMode(mode_t mode) { file->mode = mode; }
+  void setMode(mode_t mode) {
+    // The type bits can never be changed (whether something is a file or a
+    // directory, for example).
+    file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
+  }
   time_t getCTime() { return file->ctime; }
   void setCTime(time_t time) { file->ctime = time; }
   time_t getMTime() { return file->mtime; }
@@ -276,10 +288,10 @@ public:
   void open(oflags_t flags) { getFile()->open(flags); }
   void close() { getFile()->close(); }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
   }
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
 

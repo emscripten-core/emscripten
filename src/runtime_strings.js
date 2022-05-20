@@ -101,7 +101,6 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
-  {{{ from64('ptr') }}};
 #if CAN_ADDRESS_2GB
   ptr >>>= 0;
 #endif

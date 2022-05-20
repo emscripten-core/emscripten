@@ -32,13 +32,21 @@ function convertJsFunctionToWasm(func, sig) {
       'i': 'i32',
       'j': 'i64',
       'f': 'f32',
-      'd': 'f64'
+      'd': 'f64',
+#if MEMORY64
+      'p': 'i64',
+#else
+      'p': 'i32',
+#endif
     };
     var type = {
       parameters: [],
       results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
     };
     for (var i = 1; i < sig.length; ++i) {
+#if ASSERTIONS
+      assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
+#endif
       type.parameters.push(typeNames[sig[i]]);
     }
     return new WebAssembly.Function(type, func);
@@ -54,6 +62,11 @@ function convertJsFunctionToWasm(func, sig) {
   var sigParam = sig.slice(1);
   var typeCodes = {
     'i': 0x7f, // i32
+#if MEMORY64
+    'p': 0x7e, // i64
+#else
+    'p': 0x7f, // i32
+#endif
     'j': 0x7e, // i64
     'f': 0x7d, // f32
     'd': 0x7c, // f64
@@ -62,6 +75,9 @@ function convertJsFunctionToWasm(func, sig) {
   // Parameters, length + signatures
   typeSection = typeSection.concat(uleb128Encode(sigParam.length));
   for (var i = 0; i < sigParam.length; ++i) {
+#if ASSERTIONS
+    assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
+#endif
     typeSection.push(typeCodes[sigParam[i]]);
   }
 

@@ -11,8 +11,38 @@
 assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
 #endif
 
-assert(!LibraryManager.library);
-LibraryManager.library = {
+assert(Object.keys(LibraryManager.library).length === 0);
+mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks: function() {},
-  $handleException: function(e) { if (!e instanceof ExitStatus && !e == 'unwind') throw e; },
-};
+
+  $handleException: function(e) {
+    if (!(e instanceof ExitStatus) && e !== 'unwind') {
+      throw e;
+    }
+  },
+
+  // printf/puts implementations for when musl is not pulled in - very
+  // partial, but enough for bootstrapping structInfo
+  printf__deps: ['$formatString'],
+  printf__sig: 'ipp',
+  printf: function(format, varargs) {
+    // int printf(const char *restrict format, ...);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+    // extra effort to support printf, even without a filesystem. very partial, very hackish
+    var result = formatString(format, varargs);
+    var string = intArrayToString(result);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    out(string);
+    return result.length;
+  },
+
+  puts__sig: 'ip',
+  puts: function(s) {
+    // extra effort to support puts, even without a filesystem. very partial, very hackish
+    var result = UTF8ToString(s);
+    var string = result.substr(0);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    out(string);
+    return result.length;
+  },
+});

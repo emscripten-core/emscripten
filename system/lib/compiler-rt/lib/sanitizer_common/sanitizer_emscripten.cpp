@@ -18,6 +18,7 @@
 #include "sanitizer_stoptheworld.h"
 
 #include <signal.h>
+#include <time.h>
 
 #if SANITIZER_EMSCRIPTEN
 
@@ -124,6 +125,12 @@ void StopTheWorld(StopTheWorldCallback callback, void *argument) {
 }
 
 void InitializePlatformCommonFlags(CommonFlags *cf) {}
+
+u64 MonotonicNanoTime() {
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (u64)ts.tv_sec * (1000ULL * 1000 * 1000) + ts.tv_nsec;
+}
 
 } // namespace __sanitizer
 

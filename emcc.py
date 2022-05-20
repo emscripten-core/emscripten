@@ -935,11 +935,9 @@ def in_temp(name):
 
 
 def dedup_list(lst):
-  rtn = []
-  for item in lst:
-    if item not in rtn:
-      rtn.append(item)
-  return rtn
+  # Since we require python 3.6, that ordering of dictionaries is guaranteed
+  # to be insertion order so we can use 'dict' here but not 'set'.
+  return list(dict.fromkeys(lst))
 
 
 def move_file(src, dst):
@@ -992,6 +990,8 @@ def package_files(options, target):
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     file_args.append('--no-node')
   if options.embed_files:
+    if settings.MEMORY64:
+      file_args += ['--wasm64']
     object_file = in_temp('embedded_files.o')
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
@@ -1449,6 +1449,11 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  if settings.MEMORY64:
+    default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
+    if settings.SUPPORT_LONGJMP:
+      exit_with_error('MEMORY64 is not compatible with SUPPORT_LONGJMP')
+
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
   if settings.SUPPORT_LONGJMP == 1:
@@ -1529,6 +1534,10 @@ def setup_pthreads(target):
   if settings.PROXY_TO_PTHREAD:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
 
+  # All proxying async backends will need this.
+  if settings.WASMFS:
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
@@ -1536,9 +1545,10 @@ def setup_pthreads(target):
 
   include_and_export('establishStackSpace')
   include_and_export('invokeEntryPoint')
+  include_and_export('PThread')
   if not settings.MINIMAL_RUNTIME:
     # keepRuntimeAlive does not apply to MINIMAL_RUNTIME.
-    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive']
+    settings.EXPORTED_RUNTIME_METHODS += ['keepRuntimeAlive', 'ExitStatus', 'wasmMemory']
 
   if settings.MODULARIZE:
     if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
@@ -1816,6 +1826,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
+    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -2243,6 +2255,17 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
 
+  # Any "pointers" passed to JS will now be i64's, in both modes.
+  # Also turn off minifying, which clashes with instrumented functions in preamble.js
+  if settings.MEMORY64:
+    if settings.RELOCATABLE:
+      exit_with_error('MEMORY64 is not compatible with dynamic linking')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
+    settings.WASM_BIGINT = 1
+    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
+    settings.MINIFY_WASM_IMPORTED_MODULES = 0
+
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
@@ -2489,8 +2512,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
-  if settings.WASM2JS and settings.GENERATE_SOURCE_MAP:
-    exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+  if settings.WASM2JS:
+    if settings.GENERATE_SOURCE_MAP:
+      exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
+    if settings.WASM_BIGINT:
+      exit_with_error('wasm2js does not support WASM_BIGINT')
+    if settings.MEMORY64:
+      exit_with_error('wasm2js does not support MEMORY64')
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
@@ -2508,15 +2536,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
-
-  # Any "pointers" passed to JS will now be i64's, in both modes.
-  # Also turn off minifying, which clashes with instrumented functions in preamble.js
-  if settings.MEMORY64:
-    if user_settings.get('WASM_BIGINT') == '0':
-      exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
-    settings.WASM_BIGINT = 1
-    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
-    settings.MINIFY_WASM_IMPORTED_MODULES = 0
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
@@ -2555,6 +2574,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
     if settings.SUPPORT_LONGJMP == 'wasm':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
+
+  if settings.EXCEPTION_HANDLING:
+    settings.REQUIRED_EXPORTS += ['__trap']
 
   return target, wasm_target
 
@@ -3315,8 +3337,10 @@ def phase_binaryen(target, options, wasm_target):
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY:
       intermediate_debug_info -= 1
-    if intermediate_debug_info and should_run_binaryen_optimizer():
-      # See https://github.com/emscripten-core/emscripten/issues/15269
+    # currently binaryen's DWARF support will limit some optimizations; warn on
+    # that. see https://github.com/emscripten-core/emscripten/issues/15269
+    dwarf_info = settings.DEBUG_LEVEL >= 3
+    if dwarf_info:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     building.run_wasm_opt(wasm_target,
                           wasm_target,

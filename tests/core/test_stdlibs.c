@@ -50,6 +50,10 @@ int main() {
   printf("*%lu*\n", strtoul("0", NULL, 0));
   printf("*%lu*\n", strtoul("-10", NULL, 0));
 
+  printf("*%llu*\n", strtoull("10", NULL, 0));
+  printf("*%llu*\n", strtoull("0", NULL, 0));
+  printf("*%llu*\n", strtoull("-10", NULL, 0));
+
   free(malloc(0));
   printf("*malloc(0) does not fail horribly (spec allows 0 or non-zero)*\n");
 

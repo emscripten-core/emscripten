@@ -780,7 +780,7 @@ var LibraryGLFW = {
 
         var filename = allocateUTF8(path);
         filenamesArray.push(filename);
-        {{{ makeSetValue('filenames + i*4', '0', 'filename', 'i8*') }}};
+        {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
       }
 
       for (var i = 0; i < count; ++i) {

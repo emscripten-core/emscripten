@@ -80,15 +80,12 @@ class JSImplFile : public DataFile {
   void open(oflags_t) override {}
   void close() override {}
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return _wasmfs_jsimpl_write(
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }
 
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // The caller should have already checked that the offset + len does
-    // not exceed the file's size.
-    assert(offset + len <= getSize());
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     return _wasmfs_jsimpl_read(
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }

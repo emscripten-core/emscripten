@@ -71,6 +71,10 @@ static int dummy_getpid(void) {
 }
 weak_alias(dummy_getpid, __syscall_getpid);
 
+/* pthread_key_create.c overrides this */
+static volatile size_t dummy = 0;
+weak_alias(dummy, __pthread_tsd_size);
+
 int __pthread_create(pthread_t* restrict res,
                      const pthread_attr_t* restrict attrp,
                      void* (*entry)(void*),
@@ -116,8 +120,10 @@ int __pthread_create(pthread_t* restrict res,
   new->locale = &libc.global_locale;
 
   // Allocate memory for thread-local storage and initialize it to zero.
-  new->tsd = malloc(PTHREAD_KEYS_MAX * sizeof(void*));
-  memset(new->tsd, 0, PTHREAD_KEYS_MAX * sizeof(void*));
+  if (__pthread_tsd_size) {
+    new->tsd = malloc(__pthread_tsd_size);
+    memset(new->tsd, 0, __pthread_tsd_size);
+  }
 
   new->detach_state = DT_JOINABLE;
 
@@ -237,8 +243,10 @@ void _emscripten_thread_exit(void* result) {
 
   // We have the call the buildin free here since lsan handling for this thread
   // gets shut down during __pthread_tsd_run_dtors.
-  emscripten_builtin_free(self->tsd);
-  self->tsd = NULL;
+  if (self->tsd) {
+    emscripten_builtin_free(self->tsd);
+    self->tsd = NULL;
+  }
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
