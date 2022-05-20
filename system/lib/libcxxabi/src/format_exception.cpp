@@ -34,13 +34,13 @@ char* emscripten_format_exception(void* thrown_object) {
   if (can_catch) {
     const char* what =
       static_cast<const std::exception*>(thrown_object)->what();
-    asprintf(&result, "Cpp Exception %s: %s", type_name, what);
-  } else {
     asprintf(&result,
-             "Cpp Exception: The exception is an object of type '%s' at "
-             "address %p which does not inherit from std::exception",
+             "terminating with uncaught exception of type %s: %s",
              type_name,
-             thrown_object);
+             what);
+  } else {
+    asprintf(
+      &result, "terminating with uncaught exception of type %s", type_name);
   }
 
   if (demangled_buf) {
