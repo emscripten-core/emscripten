@@ -12,7 +12,7 @@ executors:
       - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
-      EMCC_CORES: "4"
+      EMCC_CORES: "8"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
