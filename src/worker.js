@@ -211,7 +211,7 @@ self.onmessage = (e) => {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].threadInit();
+      Module['PThread'].threadInitTLS();
 
       if (!initializedJS) {
 #if EMBIND

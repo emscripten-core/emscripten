@@ -72,7 +72,7 @@ var LibraryDylink = {
       '__tls_size',
       '__tls_align',
       '__set_stack_limits',
-      'emscripten_tls_init',
+      '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
     ].includes(symName)
@@ -593,8 +593,8 @@ var LibraryDylink = {
         // initialize the module
 #if USE_PTHREADS
         // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call emscripten_tls_init
-        registerTlsInit(moduleExports['emscripten_tls_init'], instance.exports, metadata)
+        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
         if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
           var init = moduleExports['__wasm_call_ctors'];

@@ -94,7 +94,7 @@ var LibraryPThread = {
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['threadInit'] = PThread.threadInit;
+      PThread['threadInitTLS'] = PThread.threadInitTLS;
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
@@ -212,11 +212,11 @@ var LibraryPThread = {
 #endif
     },
     // Called by worker.js each time a thread is started.
-    threadInit: function() {
+    threadInitTLS: function() {
 #if PTHREADS_DEBUG
-      err('threadInit.');
+      err('threadInitTLS.');
 #endif
-      // Call thread init functions (these are the emscripten_tls_init for each
+      // Call thread init functions (these are the _emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
         if (PThread.tlsInitFunctions.hasOwnProperty(i)) PThread.tlsInitFunctions[i]();
@@ -475,12 +475,12 @@ var LibraryPThread = {
   },
 
 #if MAIN_MODULE
-  $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
+  $registerTLSInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
-    err("registerTlsInit: " + tlsInitFunc);
+    err("registerTLSInit: " + tlsInitFunc);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
-    // (`emscripten_tls_init`) to relocate the TLS exports of the module
+    // (`_emscripten_tls_init`) to relocate the TLS exports of the module
     // according to this new __tls_base.
     function tlsInitWrapper() {
       var __tls_base = tlsInitFunc();
@@ -512,7 +512,7 @@ var LibraryPThread = {
     }
   },
 #else
-  $registerTlsInit: function(tlsInitFunc) {
+  $registerTLSInit: function(tlsInitFunc) {
     PThread.tlsInitFunctions.push(tlsInitFunc);
   },
 #endif
@@ -599,7 +599,7 @@ var LibraryPThread = {
       /*start_profiling=*/true
 #endif
     );
-    PThread.threadInit();
+    PThread.threadInitTLS();
   },
 
   $pthreadCreateProxied__internal: true,

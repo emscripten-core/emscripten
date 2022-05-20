@@ -46,7 +46,7 @@ static int is_non_primary(void) {
   return val;
 }
 
-void emscripten_tls_free() {
+void _emscripten_tls_free() {
   void* tls_block = __builtin_wasm_tls_base();
   if (tls_block && is_non_primary()) {
 #ifdef DEBUG_TLS
@@ -56,7 +56,7 @@ void emscripten_tls_free() {
   }
 }
 
-void* emscripten_tls_init(void) {
+void* _emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   void* tls_block = __builtin_wasm_tls_base();
   if (is_non_primary() || (!tls_block && tls_size)) {
