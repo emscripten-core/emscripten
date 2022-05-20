@@ -62,7 +62,8 @@ def clean_env():
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS']:
+              'EMCC_ONLY_FORCED_STDLIBS',
+              'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env

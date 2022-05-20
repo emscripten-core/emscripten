@@ -5526,6 +5526,11 @@ print(os.environ.get('NM'))
 ''')
     check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
+    create_file('test.c', 'int main() { return 0; }')
+    os.mkdir('test_cache')
+    with env_modify({'EM_CACHE': os.path.abspath('test_cache')}):
+      check(EMCONFIGURE, [EMCC, 'test.c'], fail=False)
+
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
     # not confuse by setting those vars to something containing `python X` as the script checks for
