@@ -5518,8 +5518,8 @@ print(os.environ.get('NM'))
     check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
     create_file('test.c', 'int main() { return 0; }')
-    cache_dir = tempfile.mkdtemp(prefix='emscripten_test_cache_')
-    with env_modify({'EM_CACHE': cache_dir}):
+    os.mkdir('test_cache')
+    with env_modify({'EM_CACHE': os.path.join(os.getcwd(), 'test_cache')}):
       check(EMCONFIGURE, [EMCC, 'test.c'], fail=False)
     shutil.rmtree(cache_dir)
 
