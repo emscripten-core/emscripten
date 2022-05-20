@@ -28,6 +28,7 @@ See docs/process.md for more on how version tagging works.
   and therefore was renamed to `EMTEST_BUILD_VERBOSE`. (#16904)
 - compiler-rt updated to LLVM 14. (#16991)
 - libc++ updated to LLVM 14. (#17000)
+- libc++abi updated to LLVM 14. (#16993)
 
 3.1.10 - 05/02/2022
 -------------------
