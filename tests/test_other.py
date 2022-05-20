@@ -11652,19 +11652,22 @@ void foo() {}
   @require_node
   def test_unistd_close_noderawfs(self):
     self.set_setting('NODERAWFS')
-    create_file('pre.js', '''
-const { execSync } = require('child_process');
+    create_file('pre.js', f'''
+const {{ execSync }} = require('child_process');
 const process = require('process');
 
+const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\\\n" || true';
 let openFilesPre;
 
-Module['preRun'] = function() {
-  openFilesPre = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-}
-Module['postRun'] = function() {
-  const openFilesPost = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-  assert(openFilesPre == openFilesPost, 'File descriptors should not leak');
-}
+Module['preRun'] = function() {{
+  openFilesPre = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
+}}
+Module['postRun'] = function() {{
+  const openFilesPost = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
+  assert(openFilesPre == openFilesPost, 'File descriptors should not leak. \\n' +
+    'Pre: \\n' + openFilesPre +
+    'Post: \\n' + openFilesPost);
+}}
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
