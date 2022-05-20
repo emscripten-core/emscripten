@@ -1,6 +1,3 @@
-// XXX EMSCRIPTEN: macros that would ordinarily be added from __config_site.in
-#define _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS
-
 // -*- C++ -*-
 //===--------------------------- __config ---------------------------------===//
 //
