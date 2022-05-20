@@ -5521,7 +5521,6 @@ print(os.environ.get('NM'))
     os.mkdir('test_cache')
     with env_modify({'EM_CACHE': os.path.join(os.getcwd(), 'test_cache')}):
       check(EMCONFIGURE, [EMCC, 'test.c'], fail=False)
-    shutil.rmtree(cache_dir)
 
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
