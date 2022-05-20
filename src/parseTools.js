@@ -1253,5 +1253,7 @@ function getUnsharedTextDecoderView(heap, start, end) {
 
   // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
   // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // In some cases, `instanceof SharedArrayBuffer` returns false even though buffer is an SAB.
+  // See: https://github.com/emscripten-core/emscripten/issues/15217
+  return `Object.prototype.toString.call(${heap}.buffer) === "[object SharedArrayBuffer]" ? ${shared} : ${unshared}`;
 }
