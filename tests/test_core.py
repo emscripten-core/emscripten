@@ -901,7 +901,10 @@ class TestCoreBase(RunnerCore):
     building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
     building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
 
-    self.run_process([EMCC, '-r', '-o', 'all.o', 'main.o', 'liba.a', 'libb.a'] + self.get_emcc_args())
+    # Add -Wno-deprecated to avoid warning about bitcode linking in the LTO
+    # version of this test.
+    self.run_process([EMCC, '-r', '-o', 'all.o', 'main.o', 'liba.a', 'libb.a',
+                      '-Wno-deprecated'] + self.get_emcc_args())
 
     self.emcc('all.o', output_filename='all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
