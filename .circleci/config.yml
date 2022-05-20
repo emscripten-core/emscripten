@@ -297,13 +297,13 @@ jobs:
       - run: npm run lint
   test-sanity:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           test_targets: "sanity"
   build-linux:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - checkout
       - run:
@@ -344,13 +344,13 @@ jobs:
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     # Temporarily set EMCC_READ_METADATA to compare to ensure that the python
     # can marches precisely the output wasm-emscripten-finalize.
     environment:
@@ -362,7 +362,7 @@ jobs:
           test_targets: "core0 skip:core0.test_em_js_pthreads"
   test-core2:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     environment:
       EMTEST_BROWSER: "node"
     steps:
@@ -371,7 +371,7 @@ jobs:
           test_targets: "core2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
   test-core3:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
@@ -379,19 +379,19 @@ jobs:
           test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe wasmfs.test_dlfcn_self wasmfs.test_dlfcn_unique_sig wasmfs.test_dylink_basics wasmfs.test_exit_status wasmfs.test_minimal_runtime_memorygrowth wasmfs.test_getcwd_with_non_ascii_name other.test_unistd_fstatfs_wasmfs"
   test-wasm2js1:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
   test-other:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
@@ -399,17 +399,17 @@ jobs:
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - test-chrome
   test-browser-firefox:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - test-firefox
   test-sockets-chrome:
     executor: bionic
-    resource_class: xlarge
+    resource_class: large
     steps:
       - test-sockets-chrome
   # windows and mac do not have separate build and test jobs, as they only run
