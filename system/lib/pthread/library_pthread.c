@@ -496,15 +496,8 @@ void emscripten_current_thread_process_queued_calls() {
   emscripten_proxy_execute_queue(emscripten_proxy_get_system_queue());
 }
 
-// At times when we disallow the main thread to process queued calls, this will
-// be set to 0.
-int _emscripten_allow_main_runtime_queued_calls = 1;
-
 void emscripten_main_thread_process_queued_calls() {
   assert(emscripten_is_main_runtime_thread());
-  if (!_emscripten_allow_main_runtime_queued_calls)
-    return;
-
   emscripten_current_thread_process_queued_calls();
 }
 
