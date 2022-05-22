@@ -1146,7 +1146,7 @@ class crt1_reactor(MuslInternalLibrary):
     return super().can_use() and settings.STANDALONE_WASM
 
 
-class crtbegin(Library):
+class crtbegin(MuslInternalLibrary):
   name = 'crtbegin'
   cflags = ['-sUSE_PTHREADS']
   src_dir = 'system/lib/pthread'
