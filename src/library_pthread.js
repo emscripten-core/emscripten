@@ -612,9 +612,6 @@ var LibraryPThread = {
       /*start_profiling=*/true
 #endif
     );
-#if ASSERTIONS
-    PThread.mainRuntimeThread = true;
-#endif
     PThread.threadInit();
   },
 
