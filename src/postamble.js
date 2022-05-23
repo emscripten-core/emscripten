@@ -425,7 +425,11 @@ function exit(status, implicit) {
       throw 'unwind';
     } else {
 #if PTHREADS_DEBUG
+#if EXIT_RUNTIME
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+#else
+      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
+#endif
 #endif
     }
   }
