@@ -9,15 +9,18 @@ mergeInto(LibraryManager.library, {
   // will fetch() the data from the network asynchronously. Otherwise, after
   // that fetch it behaves just like JSFile (and it reuses the code from there).
 
+  // Contains a mapping of backend files to their file names.
+  $wasmFS$backendFileNames: {},
+
   _wasmfs_create_fetch_backend_js__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
     '$wasmFS$backendFileNames',
     '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_create_fetch_backend_js: async function(backend, baseUrl) {
-    var _baseUrl = UTF8ToString(baseUrl);
-    var isAbs = _baseUrl.indexOf('://') !== -1;
+  _wasmfs_create_fetch_backend_js: async function(backend, baseUrl_p) {
+    var baseUrl = UTF8ToString(baseUrl_p);
+    var isAbs = baseUrl.indexOf('://') !== -1;
     // Get a promise that fetches the data and stores it in JS memory (if it has
     // not already been fetched).
     async function getFile(file) {
@@ -31,15 +34,13 @@ mergeInto(LibraryManager.library, {
       var url = '';
       if (isAbs) {
         try {
-          var u = new URL(fileUrl, _baseUrl);
+          var u = new URL(fileUrl, baseUrl);
           url = u.toString();
         } catch (e) {
         }
       } else {
-        url = _baseUrl;
+        url = baseUrl;
       }
-      if (url === '')
-        url = 'data.dat';
       var response = await fetch(url);
       var buffer = await response['arrayBuffer']();
       wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
@@ -78,5 +79,12 @@ mergeInto(LibraryManager.library, {
         return jsFileOps.getSize(file);
       },
     };
+  },
+
+  _wasmfs_jsimpl_set_backend_name: function(backend, file, name) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    wasmFS$backendFileNames[file] = name ? UTF8ToString(name) : undefined;
   },
 });

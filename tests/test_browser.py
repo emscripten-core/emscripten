@@ -5317,7 +5317,7 @@ window.close = function() {
     create_file('subdir/backendfile', 'file 1')
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
-                    args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
+                    args=['-sWASMFS', '-sUSE_PTHREADS', '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @requires_threads
   @no_firefox('no OPFS support yet')

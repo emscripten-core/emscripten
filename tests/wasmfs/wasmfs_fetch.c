@@ -10,31 +10,14 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-char url_orig[1024];
-void set_url_origin() {
-  url_orig[0] = 0;
-  EM_ASM(
-    {
-      try {
-        var orig = self.location.origin;
-        var nb = lengthBytesUTF8(orig) + 1;
-        if (nb <= $1)
-          stringToUTF8(orig, $0, $1);
-      } catch (e) {
-        console.warn(e);
-      }
-    },
-    url_orig,
-    sizeof(url_orig));
-}
+void getUrlOrigin(char* ptr, int len);
+char url_orig[1024] = {};
 
 void check_file(int fd, const char* content) {
   assert(fd >= 0);
@@ -103,7 +86,7 @@ void test_directory_abs() {
 
 void test_default() {
   printf("Running %s...\n", __FUNCTION__);
-  backend_t backend = wasmfs_create_fetch_backend("");
+  backend_t backend = wasmfs_create_fetch_backend("data.dat");
 
   // Create a file in that backend.
   int fd = wasmfs_create_file("/testfile", 0777, backend);
@@ -133,7 +116,7 @@ void test_default() {
 }
 
 int main() {
-  set_url_origin();
+  getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
 
   // NOTE: Each fetch backend runs in a separate thread.
