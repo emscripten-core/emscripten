@@ -6062,7 +6062,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
-    self.do_core_test('test_uname.c')
+    self.do_core_test('test_uname.c', regex=True)
 
   def test_unary_literal(self):
     self.do_core_test('test_unary_literal.cpp')
