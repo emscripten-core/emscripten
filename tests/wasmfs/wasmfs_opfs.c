@@ -84,12 +84,12 @@ int main(int argc, char* argv[]) {
   assert(stat_buf.st_size == 100);
   emscripten_console_log("truncated to 100");
 
-  err = ftruncate(fd, 0);
+  err = ftruncate(fd, 1);
   assert(err == 0);
   err = fstat(fd, &stat_buf);
   assert(err == 0);
-  assert(stat_buf.st_size == 0);
-  emscripten_console_log("truncated to 0");
+  assert(stat_buf.st_size == 1);
+  emscripten_console_log("truncated to 1");
 
   struct dirent** entries;
   int nentries = scandir("/opfs/working", &entries, NULL, alphasort);
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
-  assert(stat_buf.st_size == 0);
+  assert(stat_buf.st_size == 1);
   emscripten_console_log("statted");
 
   err = rename("/opfs/working/foo.txt", "/opfs/foo.txt");
