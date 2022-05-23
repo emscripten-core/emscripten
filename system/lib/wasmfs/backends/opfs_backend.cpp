@@ -69,7 +69,15 @@ int _wasmfs_opfs_write(int access_id,
                        uint32_t len,
                        uint32_t pos);
 
-void _wasmfs_opfs_get_size(em_proxying_ctx* ctx, int access_id, uint32_t* size);
+// Get the size via an AccessHandle.
+void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
+                                  int access_id,
+                                  uint32_t* size);
+
+// Get the size via a File Blob.
+void _wasmfs_opfs_get_size_blob(em_proxying_ctx* ctx,
+                                int access_id,
+                                uint32_t* size);
 
 void _wasmfs_opfs_set_size(em_proxying_ctx* ctx, int access_id, uint32_t size);
 
@@ -106,7 +114,14 @@ public:
 private:
   size_t getSize() override {
     uint32_t size;
-    proxy([&](auto ctx) { _wasmfs_opfs_get_size(ctx.ctx, accessID, &size); });
+    if (accessID == -1) {
+      proxy(
+        [&](auto ctx) { _wasmfs_opfs_get_size_blob(ctx.ctx, fileID, &size); });
+    } else {
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_get_size_access(ctx.ctx, accessID, &size);
+      });
+    }
     return size_t(size);
   }
 

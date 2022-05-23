@@ -236,10 +236,18 @@ mergeInto(LibraryManager.library, {
     return accessHandle.write(data, {at: pos});
   },
 
-  _wasmfs_opfs_get_size__deps: ['$wasmfsOPFSAccesses'],
-  _wasmfs_opfs_get_size: async function(ctx, accessID, sizePtr) {
+  _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccesses'],
+  _wasmfs_opfs_get_size_access: async function(ctx, accessID, sizePtr) {
     let accessHandle = wasmfsOPFSAccesses.get(accessID);
     let size = await accessHandle.getSize();
+    {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
+    _emscripten_proxy_finish(ctx);
+  },
+
+  _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSFiles'],
+  _wasmfs_opfs_get_size_blob: async function(ctx, fileID, sizePtr) {
+    let fileHandle = wasmfsOPFSFiles.get(fileID);
+    let size = (await fileHandle.getFile()).size;
     {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
