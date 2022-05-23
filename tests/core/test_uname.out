@@ -1,6 +1,6 @@
 ret: 0
 sysname: Emscripten
 nodename: emscripten
-release: 1.0
+release: \d+.\d+.\d+
 version: #1
 machine: wasm32
