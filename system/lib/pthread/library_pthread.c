@@ -657,6 +657,10 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   return ret;
 }
 
+int _emscripten_thread_is_valid(pthread_t thread) {
+  return thread->self == thread;
+}
+
 static void *dummy_tsd[1] = { 0 };
 weak_alias(dummy_tsd, __pthread_tsd_main);
 
