@@ -183,7 +183,8 @@ var LibraryPThread = {
       // some operations that leave the worker queue in an invalid state until
       // we are completely done (it would be bad if free() ends up calling a
       // queued pthread_create which looks at the global data structures we are
-      // modifying).
+      // modifying). To achieve that, defer the free() til the very end, when
+      // we are all done.
       var pthread_ptr = worker.pthread.threadInfoStruct;
       delete PThread.pthreads[pthread_ptr];
       // Note: worker is intentionally not terminated so the pool can
