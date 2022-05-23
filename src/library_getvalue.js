@@ -11,7 +11,7 @@ var LibraryMemOps = {
       @param {string} type
       @param {number|boolean=} noSafe */`,
   $setValue: function(ptr, value, type = 'i8', noSafe) {
-    if (type.endsWith('*')) type = '{{{ POINTER_TYPE }}}';
+    if (type.endsWith('*')) type = '{{{ POINTER_WASM_TYPE }}}';
 #if SAFE_HEAP
     if (noSafe) {
       switch (type) {
@@ -44,7 +44,7 @@ var LibraryMemOps = {
       @param {string} type
       @param {number|boolean=} noSafe */`,
   $getValue: function(ptr, type = 'i8', noSafe) {
-    if (type.endsWith('*')) type = '{{{ POINTER_TYPE }}}';
+    if (type.endsWith('*')) type = '{{{ POINTER_WASM_TYPE }}}';
 #if SAFE_HEAP
     if (noSafe) {
       switch (type) {
