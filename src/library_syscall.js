@@ -113,18 +113,14 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  _mmap_js__sig: 'pppiiipp',
+  _mmap_js__sig: 'ppiiipp',
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  _mmap_js: function(addr, len, prot, flags, fd, off, allocated) {
+  _mmap_js: function(len, prot, flags, fd, off, allocated) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (addr !== 0) {
-      // We don't currently support location hints for the address of the mapping
-      return -{{{ cDefine('EINVAL') }}};
-    }
     var stream = FS.getStream(fd);
     if (!stream) return -{{{ cDefine('EBADF') }}};
     var res = FS.mmap(stream, len, off, prot, flags);

@@ -69,8 +69,7 @@ const unsigned char * __map_file(const char *pathname, size_t *size) {
   return NULL;
 }
 
-intptr_t _mmap_js(intptr_t addr,
-                  size_t length,
+intptr_t _mmap_js(size_t length,
                   int prot,
                   int flags,
                   int fd,
