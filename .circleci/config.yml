@@ -309,9 +309,7 @@ jobs:
     # we want it to finish asap
     resource_class: xlarge
     environment:
-      # undefine the number of cores, so that we pick up the default for xlarge
-      # (which is more future proof)
-      EMCC_CORES: null
+      EMCC_CORES: 16
     steps:
       - checkout
       - run:
