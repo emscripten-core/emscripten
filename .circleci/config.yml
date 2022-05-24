@@ -311,7 +311,7 @@ jobs:
     environment:
       # undefine the number of cores, so that we pick up the default for xlarge
       # (which is more future proof)
-      EMCC_CORES: ""
+      EMCC_CORES: null
     steps:
       - checkout
       - run:
