@@ -230,8 +230,8 @@ commands:
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
-  test-chrome-early:
-    description: "Runs emscripten browser tests under chrome"
+  test-chrome-first:
+    description: "Runs emscripten browser tests under chrome (first half)"
     steps:
       - prepare-for-tests
       - download-chrome
@@ -252,17 +252,18 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            # Tests are split between this job and test-chrome-late in order to
-            # avoid a single very long job (which is a problem because unlike
-            # almost all other tests, the browser tests are run sequentially,
-            # and not in parallel). The split is basically that test_a*-o* are
-            # done here, plus z*, which in practice ends up fairly even between
-            # the two.
+            # Tests are split between this job and test-chrome-second to avoid
+            # a single very long job (which is a problem because unlike almost
+            # all other tests, the browser tests are run sequentially, and not
+            # in parallel). The split is basically that test_a*-test_o* are all
+            # done here, plus z*, a posixtest test, and emrun, while
+            # test-chrome-second does all the rest. That ends up with similar
+            # amounts of time in each.
             tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o* browser.test_z*
             tests/runner posixtest_browser.test_pthread_create_1_1
             tests/runner emrun
-  test-chrome-late:
-    description: "Runs emscripten browser tests under chrome"
+  test-chrome-second:
+    description: "Runs emscripten browser tests under chrome (second half)"
     steps:
       - prepare-for-tests
       - download-chrome
@@ -284,7 +285,7 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            # see comment on test-chrome-early for how the tests are split
+            # see comment on test-chrome-first for how the tests are split
             # between here and there (in particular, z* is intentionally not
             # here)
             # note that we should have no test names starting with an uppercase
@@ -424,10 +425,10 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
-  test-browser-chrome-early:
+  test-browser-chrome-first:
     executor: bionic
     steps:
-      - test-chrome-early
+      - test-chrome-first
   test-browser-chrome-late:
     executor: bionic
     steps:
@@ -528,10 +529,10 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome-early:
+      - test-browser-chrome-first:
           requires:
             - build-linux
-      - test-browser-chrome-late:
+      - test-browser-chrome-second:
           requires:
             - build-linux
       - test-browser-firefox:
