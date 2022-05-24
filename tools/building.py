@@ -292,7 +292,6 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.LINKABLE:
     cmd.append('--export-dynamic')
-    cmd.append('--no-gc-sections')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores

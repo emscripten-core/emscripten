@@ -587,7 +587,9 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        if (moduleExports['__set_stack_limits']) {
+          moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        }
 #endif
 
         // initialize the module
@@ -651,7 +653,9 @@ var LibraryDylink = {
       err('setDylinkStackLimits[' + name + ']');
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      lib.module['__set_stack_limits'](stackTop, stackMax);
+      if (lib.module['__set_stack_limits']) {
+        lib.module['__set_stack_limits'](stackTop, stackMax);
+      }
     }
   },
 #endif
