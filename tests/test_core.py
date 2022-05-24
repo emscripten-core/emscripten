@@ -7947,7 +7947,7 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
   @no_memory64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching # FIXME: does not work in -O3/s/z
+  @with_asyncify_and_stack_switching
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
