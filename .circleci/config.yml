@@ -489,45 +489,10 @@ jobs:
 workflows:
   build-test:
     jobs:
-      - flake8
-      - eslint
-      - build-docs
       - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
-      - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
       - test-browser-chrome-early:
           requires:
             - build-linux
       - test-browser-chrome-late:
           requires:
             - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-sockets-chrome:
-          requires:
-            - build-linux
-      - test-windows
-      - test-mac
