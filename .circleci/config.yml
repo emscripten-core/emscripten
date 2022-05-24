@@ -429,10 +429,10 @@ jobs:
     executor: bionic
     steps:
       - test-chrome-first
-  test-browser-chrome-late:
+  test-browser-chrome-second:
     executor: bionic
     steps:
-      - test-chrome-late
+      - test-chrome-second
   test-browser-firefox:
     executor: bionic
     steps:
