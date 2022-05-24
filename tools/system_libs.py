@@ -1203,7 +1203,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'cxa_emscripten.cpp',
+      'cxa_exception_emscripten.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']

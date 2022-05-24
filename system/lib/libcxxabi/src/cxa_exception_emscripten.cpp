@@ -1,4 +1,4 @@
-//===------------------------- cxa_emscripten.cpp -------------------------===//
+//===------------------- cxa_exception_emscripten.cpp ---------------------===//
 //
 // This code contains Emscripten specific code for exception handling.
 // Emscripten has two modes of exception handling: Emscripten EH, which uses JS
