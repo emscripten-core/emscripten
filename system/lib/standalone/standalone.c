@@ -64,13 +64,7 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-const unsigned char * __map_file(const char *pathname, size_t *size) {
-  errno = ENOSYS;
-  return NULL;
-}
-
-intptr_t _mmap_js(intptr_t addr,
-                  size_t length,
+intptr_t _mmap_js(size_t length,
                   int prot,
                   int flags,
                   int fd,
@@ -113,6 +107,10 @@ __attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
 }
 
 __attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
+  return -ENOSYS;
+}
+
+__attribute__((__weak__)) int __syscall_fstat64(int fd, intptr_t buf) {
   return -ENOSYS;
 }
 
