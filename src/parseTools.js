@@ -193,10 +193,6 @@ function isPointerType(type) {
   return type[type.length - 1] == '*';
 }
 
-function pointerT(x) {
-  return MEMORY64 ? `BigInt(${x})` : x;
-}
-
 function isIntImplemented(type) {
   return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
 }
