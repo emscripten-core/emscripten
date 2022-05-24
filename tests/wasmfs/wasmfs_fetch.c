@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 void getUrlOrigin(char* ptr, int len);
-char url_orig[1024] = {};
+char url_orig[256] = {};
 
 void check_file(int fd, const char* content) {
   assert(fd >= 0);
@@ -47,15 +47,24 @@ void test_url_absolute() {
   printf("Running %s...\n", __FUNCTION__);
 
   assert(strlen(url_orig) != 0);
-  backend_t backend = wasmfs_create_fetch_backend(url_orig);
-  int fd = wasmfs_create_file("/test.txt", 0777, backend);
+  const char* file_name = "/test.txt";
+  char url[200];
+  snprintf(url, sizeof(url), "%s%s", url_orig, file_name);
+
+  backend_t backend = wasmfs_create_fetch_backend(url);
+  int fd = wasmfs_create_file(file_name, 0777, backend);
   check_file(fd, "fetch 2");
   assert(close(fd) == 0);
 }
 
 void test_directory_abs() {
-  backend_t backend = wasmfs_create_fetch_backend(url_orig);
+  printf("Running %s...\n", __FUNCTION__);
+
   const char* dir_path = "/subdir";
+  char url[200];
+  snprintf(url, sizeof(url), "%s%s", url_orig, dir_path);
+
+  backend_t backend = wasmfs_create_fetch_backend(url);
   int res = wasmfs_create_directory(dir_path, 0777, backend);
   if (errno)
     perror("wasmfs_create_directory");

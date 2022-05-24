@@ -9,18 +9,12 @@ mergeInto(LibraryManager.library, {
   // will fetch() the data from the network asynchronously. Otherwise, after
   // that fetch it behaves just like JSFile (and it reuses the code from there).
 
-  // Contains a mapping of backend files to their file names.
-  $wasmFS$backendFileNames: {},
-
   _wasmfs_create_fetch_backend_js__deps: [
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
-    '$wasmFS$backendFileNames',
     '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_create_fetch_backend_js: async function(backend, baseUrl_p) {
-    var baseUrl = UTF8ToString(baseUrl_p);
-    var isAbs = baseUrl.indexOf('://') !== -1;
+  _wasmfs_create_fetch_backend_js: async function (backend) {
     // Get a promise that fetches the data and stores it in JS memory (if it has
     // not already been fetched).
     async function getFile(file) {
@@ -29,17 +23,19 @@ mergeInto(LibraryManager.library, {
         // the actual read below.
         return Promise.resolve();
       }
-      var fileUrl = wasmFS$backendFileNames[file] ? wasmFS$backendFileNames[file] : '';
       // This is the first time we want the file's data.
       var url = '';
+      var fileUrl_p = __wasmfs_fetch_get_file_path(file);
+      var fileUrl = UTF8ToString(fileUrl_p);
+      var isAbs = fileUrl.indexOf('://') !== -1;
       if (isAbs) {
+        url = fileUrl;
+      } else {
         try {
-          var u = new URL(fileUrl, baseUrl);
+          var u = new URL(fileUrl, self.location.origin);
           url = u.toString();
         } catch (e) {
         }
-      } else {
-        url = baseUrl;
       }
       var response = await fetch(url);
       var buffer = await response['arrayBuffer']();
@@ -74,17 +70,11 @@ mergeInto(LibraryManager.library, {
         await getFile(file);
         return jsFileOps.read(file, buffer, length, offset);
       },
-      getSize: async(file) => {
+      getSize: async (file) => {
         await getFile(file);
         return jsFileOps.getSize(file);
       },
     };
   },
 
-  _wasmfs_jsimpl_set_backend_name: function(backend, file, name) {
-#if ASSERTIONS
-    assert(wasmFS$backends[backend]);
-#endif
-    wasmFS$backendFileNames[file] = name ? UTF8ToString(name) : undefined;
-  },
 });
