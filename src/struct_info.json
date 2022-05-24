@@ -15,21 +15,6 @@
         }
     },
     {
-        "file": "limits.h",
-        "defines": [
-            "INT_MAX"
-        ]
-    },
-    {
-        "file": "utime.h",
-        "structs": {
-            "utimbuf": [
-                "actime",
-                "modtime"
-            ]
-        }
-    },
-    {
         "file": "sys/stat.h",
         "defines": [
             "S_IFDIR",
@@ -147,20 +132,9 @@
         }
     },
     {
-        "file": "sys/time.h",
-        "structs": {
-            "timeval": [
-                "tv_sec",
-                "tv_usec"
-            ]
-        }
-    },
-    {
         "file": "time.h",
         "defines": [
-            "CLOCK_REALTIME",
-            "CLOCK_MONOTONIC",
-            "CLOCK_MONOTONIC_RAW"
+            "CLOCK_REALTIME"
         ],
         "structs": {
             "tm": [
@@ -179,17 +153,6 @@
             "timespec": [
                 "tv_sec",
                 "tv_nsec"
-            ]
-        }
-    },
-    {
-        "file": "compat/sys/timeb.h",
-        "structs": {
-            "timeb": [
-                "time",
-                "millitm",
-                "timezone",
-                "dstflag"
             ]
         }
     },
