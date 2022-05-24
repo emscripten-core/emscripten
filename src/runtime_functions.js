@@ -33,6 +33,9 @@ function getTypeDescription(sig) {
     results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
   };
   for (var i = 1; i < sig.length; ++i) {
+#if ASSERTIONS
+    assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
+#endif
     type.parameters.push(typeNames[sig[i]]);
   }
   return type;
