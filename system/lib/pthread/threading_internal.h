@@ -98,6 +98,10 @@ typedef struct thread_profiler_block {
 
 void __emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
+void __emscripten_thread_cleanup(pthread_t thread);
+
+hidden void* _emscripten_tls_init(void);
+hidden void _emscripten_tls_free(void);
 
 // Checks certain structural invariants.  This allows us to detect when
 // already-freed threads are used in some APIs.  Technically this is undefined

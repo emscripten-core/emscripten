@@ -7,10 +7,6 @@ static void dummy1(pthread_t t)
 }
 weak_alias(dummy1, __tl_sync);
 
-#ifdef __EMSCRIPTEN__ // XXX Emscripten add extern for __emscripten_thread_cleanup
-extern void __emscripten_thread_cleanup(pthread_t thread);
-#endif
-
 static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec *at)
 {
 #ifdef __EMSCRIPTEN__

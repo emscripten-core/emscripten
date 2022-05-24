@@ -1022,9 +1022,9 @@ function createWasm() {
 
 #if USE_PTHREADS
 #if MAIN_MODULE
-    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
 #else
-    registerTlsInit(Module['asm']['emscripten_tls_init']);
+    registerTLSInit(Module['asm']['_emscripten_tls_init']);
 #endif
 #endif
 

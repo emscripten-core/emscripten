@@ -85,7 +85,7 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
-  PThread.tlsInitFunctions.push(asm['emscripten_tls_init']);
+  PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
 #if hasExportedFunction('___wasm_call_ctors')
