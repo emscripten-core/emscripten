@@ -1637,8 +1637,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
-  # If no output format was sepecific we try to imply the format based on
-  # the output filename extension.
+  # If no output format was specified we try to deduce the format based on
+  # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
     # Until we have a better story for actually producing runtime shared libraries
     # we support a compatibility mode where shared libraries are actually just
@@ -2738,9 +2738,9 @@ def phase_compile_inputs(options, state, newargs, input_files):
 @ToolchainProfiler.profile_block('calculate system libraries')
 def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs):
   extra_files_to_link = []
-  # link in ports and system libraries, if necessary
+  # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
-    # Ports are always linked into the main module, never the size module.
+    # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
   all_linker_inputs = [f for _, f in sorted(linker_inputs)] + extra_files_to_link
   extra_files_to_link += system_libs.calculate(all_linker_inputs, newargs, forced=state.forced_stdlibs)
