@@ -252,7 +252,9 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n*
+            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o*
+            tests/runner posixtest_browser.test_pthread_create_1_1
+            tests/runner emrun
   test-chrome-late:
     description: "Runs emscripten browser tests under chrome"
     steps:
@@ -276,9 +278,7 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser.test_o* browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_z* skip:browser.test_zzz_zzz_4gb_fail
-            tests/runner posixtest_browser.test_pthread_create_1_1
-            tests/runner emrun
+            tests/runner browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_z* skip:browser.test_zzz_zzz_4gb_fail
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
