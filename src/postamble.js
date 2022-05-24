@@ -371,11 +371,11 @@ function checkUnflushedContent() {
     has = true;
   }
   try { // it doesn't matter if it fails
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-    var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
-    if (flush) flush();
-#elif hasExportedFunction('___stdio_exit')
-    ___stdio_exit();
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$stdio_flush_NO_FILESYSTEM' in addedLibraryItems
+    stdio_flush_NO_FILESYSTEM();
+#elif hasExportedFunction('_fflush')
+    // fflush(NULL) flushes all streams.
+    _fflush(0);
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer

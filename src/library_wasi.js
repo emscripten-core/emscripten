@@ -227,23 +227,34 @@ var WasiLibrary = {
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_write__deps: ['$doWritev'],
-#elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
-  $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
-  $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
-#if hasExportedFunction('___stdio_exit')
-    ___stdio_exit();
-#endif
+#elif !STANDALONE_WASM && EXIT_RUNTIME
+  $stdio_exit_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers', '__stdio_exit'],
+  $stdio_exit_NO_FILESYSTEM: function() {
+    // Shut down stdio streams, flushing any content.
+    ___stdio_exit(0);
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
-  fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
+  fd_write__deps: ['$stdio_exit_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: function() {
-    addAtExit('flush_NO_FILESYSTEM()');
+    addAtExit('stdio_exit_NO_FILESYSTEM()');
+  },
+#elif !STANDALONE_WASM && ASSERTIONS
+  $stdio_flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers', 'fflush'],
+  $stdio_flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers
+    _fflush(0);
+    if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
+    if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
+  },
+  fd_write__deps: ['$stdio_flush_NO_FILESYSTEM', '$printChar'],
+  fd_write__postset: function() {
+    addAtExit('stdio_flush_NO_FILESYSTEM()');
   },
 #else
   fd_write__deps: ['$printChar'],
 #endif
+
   fd_write__sig: 'iippp',
   fd_write: function(fd, iov, iovcnt, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
