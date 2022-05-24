@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.12
 ------
+- Fix crash, introduced in 3.1.11, which occurred when using pointer types
+  (types ending in `*`) with getValue/setValue library functions. (#17028)
 
 3.1.11 - 05/21/2022
 -------------------
