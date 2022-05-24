@@ -166,7 +166,9 @@ Defines
 
 .. c:macro:: EM_ASM_INT(code, ...)
 
-  This macro, as well as the :c:macro:`EM_ASM_DOUBLE` one, behave like :c:macro:`EM_ASM`, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
+  This macro, as well as :c:macro:`EM_ASM_DOUBLE` and :c:macro:`EM_ASM_PTR`,
+  behave like :c:macro:`EM_ASM`, but in addition they also return a value back
+  to C code. The output value is passed back with a ``return`` statement:
 
   .. code-block:: none
 
@@ -176,11 +178,18 @@ Defines
 
     int y = EM_ASM_INT(return HEAP8.length);
 
-  Strings can be returned back to C from JavaScript, but one needs to be careful about memory management.
+.. c:macro:: EM_ASM_PTR(code, ...)
+
+  Similar to :c:macro:`EM_ASM_INT` but for a pointer-sized return values.
+  When building with ``-sMEMORY64`` this results in i64 return value, otherwise
+  it results in an i32 return value.
+
+  Strings can be returned back to C from JavaScript, but one needs to be careful
+  about memory management.
 
   .. code-block:: none
 
-    char *str = (char*)EM_ASM_INT({
+    char *str = (char*)EM_ASM_PTR({
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       // 'jsString.length' would return the length of the string as UTF-16
@@ -360,6 +369,8 @@ Functions
   .. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop of the calling thread.
 
   .. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` in the calling thread by applying the timing mode specified by the parameter ``fps``. To specify a different timing mode for the current thread, call the function :c:func:`emscripten_set_main_loop_timing` after setting up the main loop.
+
+  .. note:: Currently, using `the new Wasm exception handling <https://emscripten.org/docs/porting/exceptions.html#webassembly-exception-handling-proposal>`_ and ``simulate_infinite_loop`` == true at the same time does not work yet in C++ projects that have objects with destructors on the stack at the time of the call.
 
   :param em_callback_func func: C function to set as main event loop for the calling thread.
   :param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
@@ -1040,7 +1051,7 @@ Defines
 Functions
 ---------
 
-.. c:function:: int emscripten_get_compiler_setting(const char *name)
+.. c:function:: long emscripten_get_compiler_setting(const char *name)
 
   Returns the value of a compiler setting.
 
@@ -1048,7 +1059,7 @@ Functions
 
     emscripten_get_compiler_setting("INITIAL_MEMORY")
 
-  For values containing anything other than an integer, a string is returned (you will need to cast the ``int`` return value to a ``char*``).
+  For values containing anything other than an integer, a string is returned (you will need to cast the ``long`` return value to a ``char*``).
 
   Some useful things this can do is provide the version of Emscripten (“EMSCRIPTEN_VERSION”), the optimization level (“OPT_LEVEL”), debug level (“DEBUG_LEVEL”), etc.
 

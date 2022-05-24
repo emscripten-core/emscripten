@@ -94,7 +94,7 @@ var LibraryPThread = {
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['threadInit'] = PThread.threadInit;
+      PThread['threadInitTLS'] = PThread.threadInitTLS;
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
@@ -183,41 +183,22 @@ var LibraryPThread = {
       // some operations that leave the worker queue in an invalid state until
       // we are completely done (it would be bad if free() ends up calling a
       // queued pthread_create which looks at the global data structures we are
-      // modifying).
-      PThread.runWithoutMainThreadQueuedCalls(function() {
-        delete PThread.pthreads[worker.pthread.threadInfoStruct];
-        // Note: worker is intentionally not terminated so the pool can
-        // dynamically grow.
-        PThread.unusedWorkers.push(worker);
-        PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
-        // Not a running Worker anymore
-        __emscripten_thread_free_data(worker.pthread.threadInfoStruct);
-        // Detach the worker from the pthread object, and return it to the
-        // worker pool as an unused worker.
-        worker.pthread = undefined;
-      });
-    },
-    // Runs a function with processing of queued calls to the main thread
-    // disabled. This is useful to avoid something like free() ending up waiting
-    // for a lock, then running processing events, and those events can end up
-    // doing things that interfere with what we were doing before (for example,
-    // if we are tearing down a thread, calling free to erase its data could
-    // end up calling a proxied pthread_create, which gets a free worker, and
-    // can interfere).
-    // This is only safe to call if we do not need queued calls to run. That is
-    // the case when doing something like free(), which just needs the malloc
-    // lock to be released.
-    runWithoutMainThreadQueuedCalls: function(func) {
-#if ASSERTIONS
-      assert(PThread.mainRuntimeThread, 'runWithoutMainThreadQueuedCalls must be done on the main runtime thread');
-      assert(__emscripten_allow_main_runtime_queued_calls);
-#endif
-      HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 0;
-      try {
-        func();
-      } finally {
-        HEAP32[__emscripten_allow_main_runtime_queued_calls >> 2] = 1;
-      }
+      // modifying). To achieve that, defer the free() til the very end, when
+      // we are all done.
+      var pthread_ptr = worker.pthread.threadInfoStruct;
+      delete PThread.pthreads[pthread_ptr];
+      // Note: worker is intentionally not terminated so the pool can
+      // dynamically grow.
+      PThread.unusedWorkers.push(worker);
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
+      // Not a running Worker anymore
+      // Detach the worker from the pthread object, and return it to the
+      // worker pool as an unused worker.
+      worker.pthread = undefined;
+
+      // Finally, free the underlying (and now-unused) pthread structure in
+      // linear memory.
+      __emscripten_thread_free_data(pthread_ptr);
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
@@ -231,11 +212,11 @@ var LibraryPThread = {
 #endif
     },
     // Called by worker.js each time a thread is started.
-    threadInit: function() {
+    threadInitTLS: function() {
 #if PTHREADS_DEBUG
-      err('threadInit.');
+      err('threadInitTLS.');
 #endif
-      // Call thread init functions (these are the emscripten_tls_init for each
+      // Call thread init functions (these are the _emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
         if (PThread.tlsInitFunctions.hasOwnProperty(i)) PThread.tlsInitFunctions[i]();
@@ -487,32 +468,19 @@ var LibraryPThread = {
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
 #endif
     var pthread = PThread.pthreads[pthread_ptr];
-    // If pthread has been removed from this map this also means that pthread_ptr points
-    // to already freed data. Such situation may occur in following circumstance:
-    // Joining thread from non-main browser thread (this also includes thread running main()
-    // when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
-    // code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
-    // S2: thread ends, 'exit' message is sent to MB
-    // S1: calls pthread_join(S2), this causes:
-    //     a. S2 is marked as detached,
-    //     b. 'cleanupThread' message is sent to MB.
-    // MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
-    //     is called and all thread related structs are freed/released.
-    // MB: handles 'cleanupThread' message which calls this function.
-    if (pthread) {
-      {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
-      var worker = pthread.worker;
-      PThread.returnWorkerToPool(worker);
-    }
+    assert(pthread);
+    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
+    var worker = pthread.worker;
+    PThread.returnWorkerToPool(worker);
   },
 
 #if MAIN_MODULE
-  $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
+  $registerTLSInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
-    err("registerTlsInit: " + tlsInitFunc);
+    err("registerTLSInit: " + tlsInitFunc);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
-    // (`emscripten_tls_init`) to relocate the TLS exports of the module
+    // (`_emscripten_tls_init`) to relocate the TLS exports of the module
     // according to this new __tls_base.
     function tlsInitWrapper() {
       var __tls_base = tlsInitFunc();
@@ -544,7 +512,7 @@ var LibraryPThread = {
     }
   },
 #else
-  $registerTlsInit: function(tlsInitFunc) {
+  $registerTLSInit: function(tlsInitFunc) {
     PThread.tlsInitFunctions.push(tlsInitFunc);
   },
 #endif
@@ -631,10 +599,7 @@ var LibraryPThread = {
       /*start_profiling=*/true
 #endif
     );
-#if ASSERTIONS
-    PThread.mainRuntimeThread = true;
-#endif
-    PThread.threadInit();
+    PThread.threadInitTLS();
   },
 
   $pthreadCreateProxied__internal: true,
@@ -676,7 +641,7 @@ var LibraryPThread = {
     // Proxied canvases string pointer -1 is used as a special token to fetch
     // whatever canvases were passed to build in -s
     // OFFSCREENCANVASES_TO_PTHREAD= command line.
-    if (transferredCanvasNames == -1) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
+    if (transferredCanvasNames == (-1 >>> 0)) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     else
 #endif
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
@@ -935,11 +900,11 @@ var LibraryPThread = {
 #if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
-          HEAP64[b + 2*i] = BigInt(1);
+          HEAP64[b + 2*i] = 1n;
           HEAP64[b + 2*i + 1] = arg;
         } else {
           // The prefix is zero to indicate a JS Number.
-          HEAP64[b + 2*i] = BigInt(0);
+          HEAP64[b + 2*i] = 0n;
           HEAPF64[b + 2*i + 1] = arg;
         }
 #else
@@ -1045,22 +1010,24 @@ var LibraryPThread = {
   },
 
   $executeNotifiedProxyingQueue: function(queue) {
-    try {
-      // Only execute the queue if we have a live pthread runtime. We
-      // implement pthread_self to return 0 if there is no live runtime.
-      // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
-      //       `runtimeExited` is correctly unset on workers.
-      if (_pthread_self()) {
-        _emscripten_proxy_execute_queue(queue);
-      }
-    } finally {
-      // Always decrement the ref count.
-      Atomics.sub(HEAP32, queue >> 2, 1);
+    // Set the notification state to processing.
+    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
+    // Only execute the queue if we have a live pthread runtime. We
+    // implement pthread_self to return 0 if there is no live runtime.
+    // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+    //       `runtimeExited` is correctly unset on workers.
+    if (_pthread_self()) {
+      __emscripten_proxy_execute_task_queue(queue);
     }
+    // Set the notification state to none as long as a new notification has not
+    // been sent while we were processing.
+    Atomics.compareExchange(HEAP32, queue >> 2,
+                            {{{ cDefine('NOTIFICATION_RECEIVED') }}},
+                            {{{ cDefine('NOTIFICATION_NONE') }}});
   },
 
-  _emscripten_notify_proxying_queue__deps: ['$executeNotifiedProxyingQueue'],
-  _emscripten_notify_proxying_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+  _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
+  _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));
     } else if (ENVIRONMENT_IS_PTHREAD) {

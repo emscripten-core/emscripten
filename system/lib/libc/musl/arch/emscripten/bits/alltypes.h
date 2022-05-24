@@ -41,7 +41,7 @@ typedef __WCHAR_TYPE__ wchar_t;
 
 #else
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
-typedef long wchar_t;
+typedef int wchar_t;
 #define __DEFINED_wchar_t
 #endif
 
@@ -78,12 +78,12 @@ typedef long double double_t;
 #endif
 
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
-typedef long time_t;
+typedef int time_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_time_t
 #endif
 
 #if defined(__NEED_suseconds_t) && !defined(__DEFINED_suseconds_t)
-typedef long suseconds_t;
+typedef int suseconds_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_suseconds_t
 #endif
 
@@ -253,7 +253,7 @@ typedef unsigned int dev_t;
 #endif
 
 #if defined(__NEED_blksize_t) && !defined(__DEFINED_blksize_t)
-typedef long blksize_t;
+typedef int blksize_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_blksize_t
 #endif
 
@@ -278,7 +278,7 @@ typedef unsigned wint_t;
 #endif
 
 #if defined(__NEED_wctype_t) && !defined(__DEFINED_wctype_t)
-typedef unsigned long wctype_t;
+typedef unsigned int wctype_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_wctype_t
 #endif
 

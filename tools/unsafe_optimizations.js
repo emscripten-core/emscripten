@@ -9,7 +9,7 @@ const acorn = require('acorn');
 const fs = require('fs');
 const assert = require('assert');
 const path = require('path');
-const terser = require('../third_party/terser');
+const terser = require('../third_party/terser/terser');
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
 // that are of any of the type contained in array 'types'.
@@ -275,10 +275,9 @@ function runTests() {
   // Interaction between multiple passes:
   test('var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);', 'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);');
 
-  // Terser suboptimality! Should produce:
-  // test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{}');
-  // but instead produces:
-  test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=(()=>{});');
+  // Older versions of terser would produce sub-optimal output for this.
+  // We keep this test around to prevent regression.
+  test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{};');
 
   process.exit(numTestFailures);
 }

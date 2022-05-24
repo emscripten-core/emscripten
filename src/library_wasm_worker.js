@@ -161,12 +161,12 @@ mergeInto(LibraryManager.library, {
     return Module['$ww'];
   },
 
-  emscripten_wasm_worker_post_function_v__sig: 'vii',
+  emscripten_wasm_worker_post_function_v__sig: 'vip',
   emscripten_wasm_worker_post_function_v: function(id, funcPtr) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
-  emscripten_wasm_worker_post_function_1__sig: 'viid',
+  emscripten_wasm_worker_post_function_1__sig: 'vipd',
   emscripten_wasm_worker_post_function_1: function(id, funcPtr, arg0) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
@@ -174,14 +174,14 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_vi: 'emscripten_wasm_worker_post_function_1',
   emscripten_wasm_worker_post_function_vd: 'emscripten_wasm_worker_post_function_1',
 
-  emscripten_wasm_worker_post_function_2__sig: 'viidd',
+  emscripten_wasm_worker_post_function_2__sig: 'vipdd',
   emscripten_wasm_worker_post_function_2: function(id, funcPtr, arg0, arg1) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_vii: 'emscripten_wasm_worker_post_function_2',
   emscripten_wasm_worker_post_function_vdd: 'emscripten_wasm_worker_post_function_2',
 
-  emscripten_wasm_worker_post_function_3__sig: 'viiddd',
+  emscripten_wasm_worker_post_function_3__sig: 'vipddd',
   emscripten_wasm_worker_post_function_3: function(id, funcPtr, arg0, arg1, arg2) {
     _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
@@ -189,6 +189,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_vddd: 'emscripten_wasm_worker_post_function_3',
 
   emscripten_wasm_worker_post_function_sig__deps: ['$readAsmConstArgs'],
+  emscripten_wasm_worker_post_function_sig__sig: 'vippp',
   emscripten_wasm_worker_post_function_sig: function(id, funcPtr, sigPtr, varargs) {
 #if ASSERTIONS
     assert(id >= 0);
@@ -212,7 +213,7 @@ mergeInto(LibraryManager.library, {
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || parseInt((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) { \n"+
+  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) { \n"+
 "let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];\n"+
 "function __Atomics_pollWaitAsyncAddresses() {\n"+
 "  let now = performance.now();\n"+
@@ -259,7 +260,7 @@ mergeInto(LibraryManager.library, {
   _emscripten_atomic_live_wait_asyncs: '{}',
   _emscripten_atomic_live_wait_asyncs_counter: '0',
 
-  emscripten_atomic_wait_async__deps: ['_emscripten_atomic_wait_states', '_emscripten_atomic_live_wait_asyncs', '_emscripten_atomic_live_wait_asyncs_counter'],
+  emscripten_atomic_wait_async__deps: ['_emscripten_atomic_wait_states', '_emscripten_atomic_live_wait_asyncs', '_emscripten_atomic_live_wait_asyncs_counter', '$jstoi_q'],
   emscripten_atomic_wait_async: function(addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) {
     let wait = Atomics['waitAsync'](HEAP32, addr >> 2, val, maxWaitMilliseconds);
     if (!wait.async) return __emscripten_atomic_wait_states.indexOf(wait.value);
@@ -340,9 +341,9 @@ mergeInto(LibraryManager.library, {
     };
     let tryAcquireLock = () => {
       do {
-        let val = Atomics.compareExchange(HEAPU32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
+        var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        var wait = Atomics['waitAsync'](HEAPU32, lock >> 2, val, maxWaitMilliseconds);
+        var wait = Atomics['waitAsync'](HEAP32, lock >> 2, val, maxWaitMilliseconds);
       } while(wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
@@ -362,12 +363,12 @@ mergeInto(LibraryManager.library, {
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
-        let ret = Atomics.compareExchange(HEAPU32, sem >> 2,
+        let ret = Atomics.compareExchange(HEAP32, sem >> 2,
                                           val, /* We expect this many semaphore resoures to be available*/
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
-        let wait = Atomics['waitAsync'](HEAPU32, sem >> 2, ret, maxWaitMilliseconds);
+        let wait = Atomics['waitAsync'](HEAP32, sem >> 2, ret, maxWaitMilliseconds);
       } while(wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');

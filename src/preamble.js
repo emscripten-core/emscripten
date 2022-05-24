@@ -42,7 +42,17 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
+#if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
+
+#if MEMORY64
+#include "runtime_wasm64.js"
+#endif
 
 // Wasm globals
 
@@ -97,6 +107,9 @@ function getCFunc(ident) {
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
+#if MEMORY64
+    'pointer': (p) => {{{ to64('p') }}},
+#endif
     'string': function(str) {
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
@@ -105,17 +118,23 @@ function ccall(ident, returnType, argTypes, args, opts) {
         ret = stackAlloc(len);
         stringToUTF8(str, ret, len);
       }
-      return ret;
+      return {{{ to64('ret') }}};
     },
     'array': function(arr) {
       var ret = stackAlloc(arr.length);
       writeArrayToMemory(arr, ret);
-      return ret;
+      return {{{ to64('ret') }}};
     }
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      {{{ from64('ret') }}}
+      return UTF8ToString(ret);
+    }
+#if MEMORY64
+    if (returnType === 'pointer') return Number(ret);
+#endif
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -599,12 +618,20 @@ function abort(what) {
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
+  // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
+  // a trap or not based on a hidden field within the object. So at the moment
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
+#if EXCEPTION_HANDLING == 1
+  // See above, in the meantime, we resort to wasm code for trapping.
+  ___trap();
+#else
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -615,6 +642,7 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
+#endif
 }
 
 // {{MEM_INITIALIZER}}
@@ -734,7 +762,6 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -747,52 +774,6 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
-
-#if MEMORY64
-// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
-// BigInts. For now we keep JS as much the same as it always was, that is,
-// stackAlloc() receives and returns a Number from the JS point of view -
-// we translate BigInts automatically for that.
-// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
-// back on for MEMORY64.
-function instrumentWasmExportsForMemory64(exports) {
-  var instExports = {};
-  for (var name in exports) {
-    (function(name) {
-      var original = exports[name];
-      var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc') {
-        // get one i64, return an i64
-        replacement = (x) => {
-          var r = Number(original(BigInt(x)));
-          return r;
-        };
-      } else if (name === 'free') {
-        // get one i64
-        replacement = (x) => {
-          original(BigInt(x));
-        };
-      } else if (name === 'emscripten_stack_get_end' ||
-                 name === 'emscripten_stack_get_base' ||
-                 name === 'emscripten_stack_get_current') {
-        // return an i64
-        replacement = () => {
-          var r = Number(original());
-          return r;
-        };
-      } else if (name === 'main') {
-        // get a i64 as second arg
-        replacement = (x, y) => {
-          var r = original(x, BigInt(y));
-          return r;
-        };
-      }
-      instExports[name] = replacement;
-    })(name);
-  }
-  return instExports;
-}
-#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
@@ -1041,9 +1022,9 @@ function createWasm() {
 
 #if USE_PTHREADS
 #if MAIN_MODULE
-    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
 #else
-    registerTlsInit(Module['asm']['emscripten_tls_init']);
+    registerTLSInit(Module['asm']['_emscripten_tls_init']);
 #endif
 #endif
 

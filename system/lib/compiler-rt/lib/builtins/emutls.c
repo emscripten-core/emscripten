@@ -30,7 +30,7 @@
 // MSVC raises a warning about a nonstandard extension being used for the 0
 // sized element in this array. Disable this for warn-as-error builds.
 #pragma warning(push)
-#pragma warning(disable : 4206)
+#pragma warning(disable : 4200)
 #endif
 
 typedef struct emutls_address_array {
@@ -150,7 +150,7 @@ static void win_error(DWORD last_err, const char *hint) {
                      NULL, last_err, 0, (LPSTR)&buffer, 1, NULL)) {
     fprintf(stderr, "Windows error: %s\n", buffer);
   } else {
-    fprintf(stderr, "Unkown Windows error: %s\n", hint);
+    fprintf(stderr, "Unknown Windows error: %s\n", hint);
   }
   LocalFree(buffer);
 }
@@ -374,6 +374,21 @@ emutls_get_address_array(uintptr_t index) {
   return array;
 }
 
+#ifndef _WIN32
+// Our emulated TLS implementation relies on local state (e.g. for the pthread
+// key), and if we duplicate this state across different shared libraries,
+// accesses to the same TLS variable from different shared libraries will yield
+// different results (see https://github.com/android/ndk/issues/1551 for an
+// example). __emutls_get_address is the only external entry point for emulated
+// TLS, and by making it default visibility and weak, we can rely on the dynamic
+// linker to coalesce multiple copies at runtime and ensure a single unique copy
+// of TLS state. This is a best effort; it won't work if the user is linking
+// with -Bsymbolic or -Bsymbolic-functions, and it also won't work on Windows,
+// where the dynamic linker has no notion of coalescing weak symbols at runtime.
+// A more robust solution would be to create a separate shared library for
+// emulated TLS, to ensure a single copy of its state.
+__attribute__((visibility("default"), weak))
+#endif
 void *__emutls_get_address(__emutls_control *control) {
   uintptr_t index = emutls_get_index(control);
   emutls_address_array *array = emutls_get_address_array(index--);

@@ -21,7 +21,7 @@ function genArgSequence(n) {
 global.libraryFunctions = [];
 
 global.LibraryManager = {
-  library: null,
+  library: {},
   structs: {},
   loaded: false,
   libraries: [],
@@ -31,19 +31,21 @@ global.LibraryManager = {
   },
 
   load: function() {
-    if (this.library) return;
+    assert(!this.loaded);
+    this.loaded = true;
 
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
+      'library_int53.js',
       'library_formatString.js',
+      'library_getvalue.js',
       'library_math.js',
       'library_path.js',
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_int53.js',
       'library_dylink.js',
       'library_eventloop.js',
     ];
@@ -91,8 +93,10 @@ global.LibraryManager = {
     } else if (WASMFS) {
       libraries.push('library_wasmfs.js');
       libraries.push('library_wasmfs_js_file.js');
+      libraries.push('library_wasmfs_jsimpl.js');
       libraries.push('library_wasmfs_fetch.js');
       libraries.push('library_wasmfs_node.js');
+      libraries.push('library_wasmfs_opfs.js');
     }
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
@@ -299,8 +303,6 @@ global.LibraryManager = {
         }
       }
     }
-
-    this.loaded = true;
   },
 };
 
@@ -385,27 +387,19 @@ function exportRuntime() {
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
-    'intArrayFromString',
-    'intArrayToString',
     'ccall',
     'cwrap',
-    'setValue',
-    'getValue',
     'allocate',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'stackTrace',
     'addOnPreRun',
     'addOnInit',
     'addOnPreMain',
     'addOnExit',
     'addOnPostRun',
-    'writeStringToMemory',
-    'writeArrayToMemory',
-    'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
     'FS_createFolder',
@@ -423,7 +417,6 @@ function exportRuntime() {
     'addFunction',
     'removeFunction',
     'prettyPrint',
-    'dynCall',
     'getCompilerSetting',
     'print',
     'printErr',
@@ -432,22 +425,27 @@ function exportRuntime() {
     'callMain',
     'abort',
     'keepRuntimeAlive',
+    'wasmMemory',
   ];
 
+  if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
+    runtimeElements = runtimeElements.concat([
+      'GROWABLE_HEAP_I8',
+      'GROWABLE_HEAP_U8',
+      'GROWABLE_HEAP_I16',
+      'GROWABLE_HEAP_U16',
+      'GROWABLE_HEAP_I32',
+      'GROWABLE_HEAP_U32',
+      'GROWABLE_HEAP_F32',
+      'GROWABLE_HEAP_F64',
+    ]);
+  }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
   }
 
   if (LOAD_SOURCE_MAP) {
     runtimeElements.push('WasmSourceMap');
-  }
-
-  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
-  // '$ which indicates they are JS methods.
-  for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
-      runtimeElements.push(ident.substr(1));
-    }
   }
 
   if (!MINIMAL_RUNTIME) {
@@ -467,27 +465,18 @@ function exportRuntime() {
       'lengthBytesUTF32',
       'allocateUTF8',
       'allocateUTF8OnStack',
+      'ExitStatus',
+      'intArrayFromString',
+      'intArrayToString',
+      'writeStringToMemory',
+      'writeArrayToMemory',
+      'writeAsciiToMemory',
     ]);
   }
 
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-  }
-
-  if (USE_PTHREADS) {
-    // In pthreads mode, the following functions always need to be exported to
-    // Module for closure compiler, and also for MODULARIZE (so worker.js can
-    // access them).
-    const threadExports = ['PThread', 'wasmMemory'];
-    if (!MINIMAL_RUNTIME) {
-      threadExports.push('ExitStatus');
-    }
-
-    threadExports.forEach((x) => {
-      EXPORTED_RUNTIME_METHODS_SET.add(x);
-      runtimeElements.push(x);
-    });
   }
 
   if (SUPPORT_BASE64_EMBEDDING) {
@@ -503,14 +492,29 @@ function exportRuntime() {
       runtimeElements.push(name);
     }
   }
+
+
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  const runtimeElementsSet = new Set(runtimeElements);
+  for (const ident in LibraryManager.library) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
+      const jsname = ident.substr(1);
+      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
+      runtimeElements.push(jsname);
+    }
+  }
+
   const runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
+    const runtimeElementsSet = new Set(runtimeElements);
+    const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
+      if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
         printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }

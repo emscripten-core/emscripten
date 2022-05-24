@@ -115,8 +115,8 @@ mergeInto(LibraryManager.library, {
     // void uuid_unparse(const uuid_t uu, char *out);
     var i = 0;
     var uuid = 'xxxx-xx-xx-xx-xxxxxx'.replace(/[x]/g, function(c) {
-      var r = upper ? ({{{ makeGetValue('uu', 'i', 'i8', 0, 1) }}}).toString(16).toUpperCase() :
-                      ({{{ makeGetValue('uu', 'i', 'i8', 0, 1) }}}).toString(16);
+      var r = upper ? ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16).toUpperCase() :
+                      ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16);
       r = (r.length === 1) ? '0' + r : r; // Zero pad single digit hex values
       i++;
       return r;

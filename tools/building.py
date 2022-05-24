@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 105
+EXPECTED_BINARYEN_VERSION = 108
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
@@ -282,9 +282,6 @@ def lld_flags_for_executable(external_symbols):
   if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')
 
-  if settings.MEMORY64:
-    cmd.append('-mwasm64')
-
   # wasm-ld can strip debug info for us. this strips both the Names
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
@@ -379,6 +376,9 @@ def link_lld(args, target, external_symbols=None):
     cmd += ['-mllvm', '-wasm-enable-eh']
   if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
+
+  if settings.MEMORY64:
+    cmd.append('-mwasm64')
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -1294,7 +1294,6 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
-  # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)

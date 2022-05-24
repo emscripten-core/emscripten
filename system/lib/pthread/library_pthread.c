@@ -496,15 +496,8 @@ void emscripten_current_thread_process_queued_calls() {
   emscripten_proxy_execute_queue(emscripten_proxy_get_system_queue());
 }
 
-// At times when we disallow the main thread to process queued calls, this will
-// be set to 0.
-int _emscripten_allow_main_runtime_queued_calls = 1;
-
 void emscripten_main_thread_process_queued_calls() {
   assert(emscripten_is_main_runtime_thread());
-  if (!_emscripten_allow_main_runtime_queued_calls)
-    return;
-
   emscripten_current_thread_process_queued_calls();
 }
 
@@ -662,6 +655,10 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
     target_thread, sig, func_ptr, satellite, args);
   va_end(args);
   return ret;
+}
+
+int _emscripten_thread_is_valid(pthread_t thread) {
+  return thread->self == thread;
 }
 
 static void *dummy_tsd[1] = { 0 };

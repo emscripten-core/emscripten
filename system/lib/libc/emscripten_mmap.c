@@ -34,7 +34,7 @@ static volatile int lock[1];
 static struct map* mappings;
 
 // JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-intptr_t _mmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
+intptr_t _mmap_js(size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
 int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
 int _msync_js(intptr_t addr, size_t length, int flags, int fd);
 
@@ -109,8 +109,8 @@ int __syscall_msync(intptr_t addr, size_t len, int flags) {
 }
 
 intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
-  // addr argument must be page aligned if MAP_FIXED flag is set.
-  if (flags & MAP_FIXED && ((intptr_t)addr % WASM_PAGE_SIZE) != 0) {
+  if (addr != 0) {
+    // We don't currently support location hints for the address of the mapping
     return -EINVAL;
   }
 
@@ -133,7 +133,7 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
     new_map->allocated = true;
   } else {
     new_map = emscripten_builtin_malloc(sizeof(struct map));
-    long rtn = _mmap_js(addr, len, prot, flags, fd, off, &new_map->allocated);
+    long rtn = _mmap_js(len, prot, flags, fd, off, &new_map->allocated);
     if (rtn < 0) {
       emscripten_builtin_free(new_map);
       return rtn;

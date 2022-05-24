@@ -211,7 +211,7 @@ self.onmessage = (e) => {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].threadInit();
+      Module['PThread'].threadInitTLS();
 
       if (!initializedJS) {
 #if EMBIND
@@ -225,7 +225,7 @@ self.onmessage = (e) => {
         // proxying notifications to arrive before thread initialization on
         // fresh workers.
         pendingNotifiedProxyingQueues.forEach(queue => {
-          executeNotifiedProxyingQueue(queue);
+          Module['executeNotifiedProxyingQueue'](queue);
         });
         pendingNotifiedProxyingQueues = [];
         initializedJS = true;
@@ -298,7 +298,7 @@ self.onmessage = (e) => {
       // no-op
     } else if (e.data.cmd === 'processProxyingQueue') {
       if (initializedJS) {
-        executeNotifiedProxyingQueue(e.data.queue);
+        Module['executeNotifiedProxyingQueue'](e.data.queue);
       } else {
         // Defer executing this queue until the runtime is initialized.
         pendingNotifiedProxyingQueues.push(e.data.queue);

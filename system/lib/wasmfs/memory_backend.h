@@ -21,8 +21,8 @@ class MemoryFile : public DataFile {
 
   void open(oflags_t) override {}
   void close() override {}
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override;
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override;
   void flush() override {}
   size_t getSize() override { return buffer.size(); }
   void setSize(size_t size) override { return buffer.resize(size); }

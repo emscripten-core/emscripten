@@ -181,7 +181,7 @@ def compile_settings():
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = shared.run_js_tool(path_from_root('src/compiler.js'),
                              [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
-                             cwd=path_from_root('src'), env=env)
+                             cwd=path_from_root('src'), env=env, encoding='utf-8')
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data
@@ -299,6 +299,25 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   update_settings_glue(metadata)
 
+  if not settings.WASM_BIGINT and metadata['emJsFuncs']:
+    module = webassembly.Module(in_wasm)
+    types = module.get_types()
+    import_map = {}
+    for imp in module.get_imports():
+      import_map[imp.field] = imp
+    for em_js_func, raw in metadata.get('emJsFuncs', {}).items():
+      c_sig = raw.split('<::>')[0].strip('()')
+      if not c_sig or c_sig == 'void':
+        c_sig = []
+      else:
+        c_sig = c_sig.split(',')
+      if em_js_func in import_map:
+        imp = import_map[em_js_func]
+        assert(imp.kind == webassembly.ExternType.FUNC)
+        signature = types[imp.type]
+        if len(signature.params) != len(c_sig):
+          diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+
   if settings.SIDE_MODULE:
     if metadata['asmConsts']:
       exit_with_error('EM_ASM is not supported in side modules')
@@ -368,7 +387,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     ('// === Body ===\n\n' + asm_const_map +
      '\n'.join(em_js_funcs) + '\n'))
 
-  with open(outfile_js, 'w') as out:
+  with open(outfile_js, 'w', encoding='utf-8') as out:
     out.write(normalize_line_endings(pre))
     pre = None
 
@@ -560,7 +579,7 @@ def finalize_wasm(infile, outfile, memfile):
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata['asmConsts'].items():
-    const = trim_asm_const_body(const)
+    body = trim_asm_const_body(const)
     args = []
     max_arity = 16
     arity = 0
@@ -569,8 +588,14 @@ def create_asm_consts(metadata):
         arity = i + 1
     for i in range(arity):
       args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') {' + const + '}'
-    asm_consts[int(addr)] = const
+    args = ', '.join(args)
+    if 'arguments' in body:
+      # arrow functions don't bind `arguments` so we have to use
+      # the old function syntax in this case
+      func = f'function({args}) {{ {body} }}'
+    else:
+      func = f'({args}) => {{ {body} }}'
+    asm_consts[int(addr)] = func
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts
@@ -588,7 +613,8 @@ def create_em_js(metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
+    args = ','.join(arg_names)
+    func = f'function {name}({args}) {body}'
     em_js_funcs.append(func)
 
   return em_js_funcs

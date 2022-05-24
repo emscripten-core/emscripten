@@ -177,10 +177,6 @@ def extract_metadata(filename):
 
   for i in imports:
     if i.kind == webassembly.ExternType.FUNC:
-      if i.field.startswith('invoke_'):
-        invoke_funcs.append(i.field)
-      elif i.field not in em_js_funcs:
-        declares.append(i.field)
       imported_funcs += 1
     elif i.kind == webassembly.ExternType.GLOBAL:
       imported_globals += 1
@@ -193,6 +189,13 @@ def extract_metadata(filename):
       globl = globls[e.index - imported_globals]
       string_address = get_global_value(globl)
       em_js_funcs[name] = get_string_at(module, string_address)
+
+  for i in imports:
+    if i.kind == webassembly.ExternType.FUNC:
+      if i.field.startswith('invoke_'):
+        invoke_funcs.append(i.field)
+      elif i.field not in em_js_funcs:
+        declares.append(i.field)
 
   export_names = [e.name for e in exports if e.kind == webassembly.ExternType.FUNC]
 

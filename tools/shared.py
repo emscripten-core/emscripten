@@ -73,6 +73,7 @@ diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
+diagnostics.add_warning('em-js-i64')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -673,14 +674,6 @@ def get_llvm_target():
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
-
-# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
-# 0: disabled.
-# 1: Log stderr of subprocess spawns.
-# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
-# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
-EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
-TRACK_PROCESS_SPAWNS = EM_BUILD_VERBOSE >= 3
 
 set_version_globals()
 

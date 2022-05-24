@@ -1,39 +1,46 @@
 #include "cxa_exception.h"
-#include "cxxabi.h"
+#include "private_typeinfo.h"
 #include <stdio.h>
-#include <typeinfo>
 
 #ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
 
+using namespace __cxxabiv1;
+
+//  Utility routines copied from cxa_exception.cpp
+static inline __cxa_exception*
+cxa_exception_from_thrown_object(void* thrown_object) {
+  return static_cast<__cxa_exception*>(thrown_object) - 1;
+}
+
 extern "C" {
 
-int __cxa_can_catch(const std::type_info* catchType,
-                    const std::type_info* excpType,
-                    void** thrown);
-
-char* emscripten_format_exception(void* exc_ptr) {
-  __cxxabiv1::__cxa_exception* exc_info =
-    (__cxxabiv1::__cxa_exception*)exc_ptr - 1;
-  std::type_info* exc_type = exc_info->exceptionType;
-  const char* exc_name = exc_type->name();
+char* emscripten_format_exception(void* thrown_object) {
+  __cxa_exception* exception_header =
+    cxa_exception_from_thrown_object(thrown_object);
+  const __shim_type_info* thrown_type =
+    static_cast<const __shim_type_info*>(exception_header->exceptionType);
+  const char* type_name = thrown_type->name();
 
   int status = 0;
-  char* demangled_buf = __cxxabiv1::__cxa_demangle(exc_name, 0, 0, &status);
+  char* demangled_buf = __cxa_demangle(type_name, 0, 0, &status);
   if (status == 0 && demangled_buf) {
-    exc_name = demangled_buf;
+    type_name = demangled_buf;
   }
 
-  int can_catch = __cxa_can_catch(&typeid(std::exception), exc_type, &exc_ptr);
+  const __shim_type_info* catch_type =
+    static_cast<const __shim_type_info*>(&typeid(std::exception));
+  int can_catch = catch_type->can_catch(thrown_type, thrown_object);
   char* result = NULL;
   if (can_catch) {
-    const char* exc_what = ((std::exception*)exc_ptr)->what();
-    asprintf(&result, "Cpp Exception %s: %s", exc_name, exc_what);
-  } else {
+    const char* what =
+      static_cast<const std::exception*>(thrown_object)->what();
     asprintf(&result,
-             "Cpp Exception: The exception is an object of type '%s' at "
-             "address %p which does not inherit from std::exception",
-             exc_name,
-             exc_ptr);
+             "terminating with uncaught exception of type %s: %s",
+             type_name,
+             what);
+  } else {
+    asprintf(
+      &result, "terminating with uncaught exception of type %s", type_name);
   }
 
   if (demangled_buf) {
