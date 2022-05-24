@@ -1133,12 +1133,7 @@ function defineI64Param(name) {
 
 function receiveI64ParamAsI32s(name) {
   if (WASM_BIGINT) {
-    // TODO: use Xn notation when JS parsers support it (as of April 6 2020,
-    //  * closure compiler is missing support
-    //    https://github.com/google/closure-compiler/issues/3167
-    //  * acorn needs to be upgraded, and to set ecmascript version >= 11
-    //  * terser needs to be upgraded
-    return `var ${name}_low = Number(${name} & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name} >> BigInt(32)) | 0;`;
+    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
   }
   return '';
 }
@@ -1155,7 +1150,7 @@ function receiveI64ParamAsI53(name, onError) {
 
 function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << BigInt(32))';
+    return 'BigInt(low) | (BigInt(high) << 32n)';
   }
   return low + ', ' + high;
 }

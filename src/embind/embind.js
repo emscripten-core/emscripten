@@ -609,7 +609,7 @@ var LibraryEmbind = {
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
         // Use string because acorn does recognize bigint literals
-        maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
+        maxRange = (1n << 64n) - 1n;
     }
 
     registerType(primitiveType, {

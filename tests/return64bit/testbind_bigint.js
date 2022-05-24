@@ -11,15 +11,15 @@ Module['runtest'] = function() {
   // Use eval to create BigInt, as no support for Xn notation yet in JS
   // optimizer.
   var bigint = _test_return64(eval('0xaabbccdd11223344n'));
-  var low = Number(bigint & BigInt(0xffffffff));
-  var high = Number(bigint >> BigInt(32));
+  var low = Number(bigint & 0xffffffffn);
+  var high = Number(bigint >> 32n);
   console.log("low = " + low);
   console.log("high = " + high);
 
   var ptr = _get_func_ptr();
   bigint = dynCall('jj', ptr, [eval('0xabcdef1912345678n')]);
-  low = Number(bigint & BigInt(0xffffffff));
-  high = Number(bigint >> BigInt(32));
+  low = Number(bigint & 0xffffffffn);
+  high = Number(bigint >> 32n);
   console.log("low = " + low);
   console.log("high = " + high);
 };
