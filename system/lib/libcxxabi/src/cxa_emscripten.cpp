@@ -1,3 +1,13 @@
+//===------------------------- cxa_emscripten.cpp -------------------------===//
+//
+// This code contains Emscripten specific code for exception handling.
+// Emscripten has two modes of exception handling: Emscripten EH, which uses JS
+// glue code, and Wasm EH, which uses the new Wasm exception handling proposal
+// and meant to be faster. Code for different modes is demarcated with
+// '__USING_EMSCRIPTEN_EXCEPTIONS__' and '__USING_WASM_EXCEPTIONS__'.
+//
+//===----------------------------------------------------------------------===//
+
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
 #include <stdio.h>
