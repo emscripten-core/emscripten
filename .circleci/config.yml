@@ -230,7 +230,30 @@ commands:
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
-  test-chrome:
+  test-chrome-early:
+    description: "Runs emscripten browser tests under chrome"
+    steps:
+      - prepare-for-tests
+      - download-chrome
+      - run:
+          name: run tests
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            # There are a tests in the browser test suite that using library
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
+            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n*
+  test-chrome-late:
     description: "Runs emscripten browser tests under chrome"
     steps:
       - prepare-for-tests
@@ -253,7 +276,8 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            tests/runner browser.test_o* browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_z* skip:browser.test_zzz_zzz_4gb_fail
+            tests/runner posixtest_browser.test_pthread_create_1_1
             tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -389,10 +413,14 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
-  test-browser-chrome:
+  test-browser-chrome-early:
     executor: bionic
     steps:
-      - test-chrome
+      - test-chrome-early
+  test-browser-chrome-late:
+    executor: bionic
+    steps:
+      - test-chrome-late
   test-browser-firefox:
     executor: bionic
     steps:
@@ -489,7 +517,10 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
+      - test-browser-chrome-early:
+          requires:
+            - build-linux
+      - test-browser-chrome-late:
           requires:
             - build-linux
       - test-browser-firefox:
