@@ -252,7 +252,11 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o*
+            # Tests are split between this job and test-chrome-late in order to
+            # avoid a single very long job. The split is basically a*-o* are
+            # done here, plus z*, which in practice ends up fairly even between
+            # the two.
+            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o* browser.test_z*
             tests/runner posixtest_browser.test_pthread_create_1_1
             tests/runner emrun
   test-chrome-late:
@@ -278,7 +282,12 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_z* skip:browser.test_zzz_zzz_4gb_fail
+            # see comment on test-chrome-early for how the tests are split
+            # between here and there (in particular, z* is intentionally not
+            # here)
+            # note that we should have no test names starting with an uppercase
+            # letter or a number, but for safety we write those out here too
+            tests/runner browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_A* browser.test_B* browser.test_C* browser.test_D* browser.test_E* browser.test_F* browser.test_G* browser.test_H* browser.test_I* browser.test_J* browser.test_K* browser.test_L* browser.test_M* browser.test_N* browser.test_O* browser.test_P* browser.test_Q* browser.test_R* browser.test_S* browser.test_T* browser.test_U* browser.test_V* browser.test_W* browser.test_X* browser.test_Y* browser.test_Z* browser.test_0* browser.test_1* browser.test_2* browser.test_3* browser.test_4* browser.test_5* browser.test_6* browser.test_7* browser.test_8* browser.test_9* skip:browser.test_zzz_zzz_4gb_fail
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
