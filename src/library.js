@@ -607,12 +607,6 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  __map_file__deps: ['$setErrNo'],
-  __map_file: function(pathname, size) {
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
-  },
-
   _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
 

@@ -940,6 +940,7 @@ class libc(MuslInternalLibrary,
           'ctime_r.c',
           'timespec_get.c',
           'utime.c',
+          '__map_file.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
