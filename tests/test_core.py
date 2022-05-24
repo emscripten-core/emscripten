@@ -1811,7 +1811,7 @@ int main() {
 
         EM_JS(Classey*, get_null, (), {
         #if __wasm64__
-          return BigInt(0);
+          return 0n;
         #else
           return 0;
         #endif

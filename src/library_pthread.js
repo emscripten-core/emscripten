@@ -900,11 +900,11 @@ var LibraryPThread = {
 #if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
-          HEAP64[b + 2*i] = BigInt(1);
+          HEAP64[b + 2*i] = 1n;
           HEAP64[b + 2*i + 1] = arg;
         } else {
           // The prefix is zero to indicate a JS Number.
-          HEAP64[b + 2*i] = BigInt(0);
+          HEAP64[b + 2*i] = 0n;
           HEAPF64[b + 2*i + 1] = arg;
         }
 #else

@@ -57,7 +57,7 @@ function instrumentWasmExportsForMemory64(exports) {
           // missing third argument will generate:
           // `TypeError: Cannot convert undefined to a BigInt`.
           // See https://github.com/WebAssembly/JS-BigInt-integration/issues/12
-          return original(x, BigInt(y ? y : 0), BigInt(0));
+          return original(x, BigInt(y ? y : 0), 0n);
         };
       } else if (['emscripten_stack_set_limits', '__set_stack_limits'].includes(name)) {
         // get 2 i64 arguments
