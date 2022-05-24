@@ -277,10 +277,6 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function checkSafeHeap() {
-  return SAFE_HEAP === 1;
-}
-
 function getHeapOffset(offset, type) {
   if (!WASM_BIGINT && Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
