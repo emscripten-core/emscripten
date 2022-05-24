@@ -253,7 +253,9 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # Tests are split between this job and test-chrome-late in order to
-            # avoid a single very long job. The split is basically a*-o* are
+            # avoid a single very long job (which is a problem because unlike
+            # almost all other tests, the browser tests are run sequentially,
+            # and not in parallel). The split is basically that test_a*-o* are
             # done here, plus z*, which in practice ends up fairly even between
             # the two.
             tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o* browser.test_z*
