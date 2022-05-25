@@ -441,7 +441,6 @@ var LibraryPThread = {
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
 #endif
-    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
@@ -469,7 +468,6 @@ var LibraryPThread = {
 #endif
     var pthread = PThread.pthreads[pthread_ptr];
     assert(pthread);
-    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var worker = pthread.worker;
     PThread.returnWorkerToPool(worker);
   },
