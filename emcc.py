@@ -1825,7 +1825,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
-    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+    if settings.SAFE_HEAP:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
+    if not settings.MINIMAL_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
