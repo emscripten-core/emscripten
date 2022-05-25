@@ -2136,7 +2136,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # TODO: Move this into the library JS file once it becomes possible.
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
 
   if settings.WASM_WORKERS:
     # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
