@@ -7,7 +7,6 @@
         "structs": {
             "pthread": [
               "profilerBlock",
-              "self",
               "tsd",
               "stack",
               "stack_size",

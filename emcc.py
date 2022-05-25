@@ -1825,7 +1825,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
-    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+    if settings.SAFE_HEAP:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
+    if not settings.MINIMAL_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
@@ -2100,12 +2102,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
       ]
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
-      # We use __stdio_exit to shut down musl's stdio subsystems and flush
-      # streams on exit.
-      # We only include it if the runtime is exitable, or when ASSERTIONS
+      # to flush streams on FS exit, we need to be able to call fflush
+      # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
-      settings.EXPORT_IF_DEFINED += ['__stdio_exit']
+      settings.EXPORT_IF_DEFINED += ['fflush']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
@@ -2137,7 +2138,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # TODO: Move this into the library JS file once it becomes possible.
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
 
   if settings.WASM_WORKERS:
     # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js

@@ -1,3 +1,13 @@
+//===------------------- cxa_exception_emscripten.cpp ---------------------===//
+//
+// This code contains Emscripten specific code for exception handling.
+// Emscripten has two modes of exception handling: Emscripten EH, which uses JS
+// glue code, and Wasm EH, which uses the new Wasm exception handling proposal
+// and meant to be faster. Code for different modes is demarcated with
+// '__USING_EMSCRIPTEN_EXCEPTIONS__' and '__USING_WASM_EXCEPTIONS__'.
+//
+//===----------------------------------------------------------------------===//
+
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
 #include <stdio.h>
@@ -14,7 +24,7 @@ cxa_exception_from_thrown_object(void* thrown_object) {
 
 extern "C" {
 
-char* emscripten_format_exception(void* thrown_object) {
+char* __get_exception_message(void* thrown_object, bool terminate=false) {
   __cxa_exception* exception_header =
     cxa_exception_from_thrown_object(thrown_object);
   const __shim_type_info* thrown_type =
@@ -35,12 +45,15 @@ char* emscripten_format_exception(void* thrown_object) {
     const char* what =
       static_cast<const std::exception*>(thrown_object)->what();
     asprintf(&result,
-             "terminating with uncaught exception of type %s: %s",
+             (terminate ? "terminating with uncaught exception of type %s: %s"
+                        : "exception of type %s: %s"),
              type_name,
              what);
   } else {
-    asprintf(
-      &result, "terminating with uncaught exception of type %s", type_name);
+    asprintf(&result,
+             (terminate ? "terminating with uncaught exception of type %s"
+                        : "exception of type %s"),
+             type_name);
   }
 
   if (demangled_buf) {
@@ -48,6 +61,11 @@ char* emscripten_format_exception(void* thrown_object) {
   }
   return result;
 }
+
+char* __get_exception_terminate_message(void *thrown_object) {
+  return __get_exception_message(thrown_object, true);
+}
+
 }
 
 #endif // __USING_EMSCRIPTEN_EXCEPTIONS__
