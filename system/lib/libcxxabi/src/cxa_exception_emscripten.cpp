@@ -24,7 +24,7 @@ cxa_exception_from_thrown_object(void* thrown_object) {
 
 extern "C" {
 
-char* emscripten_format_exception(void* thrown_object) {
+char* __get_exception_message(void* thrown_object, bool terminate=false) {
   __cxa_exception* exception_header =
     cxa_exception_from_thrown_object(thrown_object);
   const __shim_type_info* thrown_type =
@@ -45,12 +45,15 @@ char* emscripten_format_exception(void* thrown_object) {
     const char* what =
       static_cast<const std::exception*>(thrown_object)->what();
     asprintf(&result,
-             "terminating with uncaught exception of type %s: %s",
+             (terminate ? "terminating with uncaught exception of type %s: %s"
+                        : "uncaught exception of type %s: %s"),
              type_name,
              what);
   } else {
-    asprintf(
-      &result, "terminating with uncaught exception of type %s", type_name);
+    asprintf(&result,
+             (terminate ? "terminating with uncaught exception of type %s"
+                        : "uncaught exception of type %s"),
+             type_name);
   }
 
   if (demangled_buf) {
@@ -58,6 +61,11 @@ char* emscripten_format_exception(void* thrown_object) {
   }
   return result;
 }
+
+char* __get_exception_terminate_message(void *thrown_object) {
+  return __get_exception_message(thrown_object, true);
+}
+
 }
 
 #endif // __USING_EMSCRIPTEN_EXCEPTIONS__

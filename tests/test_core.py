@@ -1608,10 +1608,10 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
-  def test_format_exception(self):
+  def test_exception_message(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'formatException', '_emscripten_format_exception', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1652,7 +1652,7 @@ int main(int argc, char **argv)
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
                   ___cxa_increment_exception_refcount(p);
-                  console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
+                  console.log(Module["getExceptionMessage"](p).replace(/0x[0-9a-f]*/, "xxx"));
                   ___cxa_decrement_exception_refcount(p);
               }
             }
@@ -1660,11 +1660,11 @@ int main(int argc, char **argv)
       }
     '''
     expected = '''\
-terminating with uncaught exception of type int
-terminating with uncaught exception of type char
-terminating with uncaught exception of type std::runtime_error: abc
-terminating with uncaught exception of type myexception: My exception happened
-terminating with uncaught exception of type char const*
+uncaught exception of type int
+uncaught exception of type char
+uncaught exception of type std::runtime_error: abc
+uncaught exception of type myexception: My exception happened
+uncaught exception of type char const*
 '''
 
     self.do_run(src, expected)
