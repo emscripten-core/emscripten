@@ -1645,14 +1645,14 @@ int main(int argc, char **argv)
           EM_ASM({
             for (let i = 1; i < 6; i++){
               try {
-                  Module["_throw_exc"](i);
+                  _throw_exc(i);
               } catch(p) {
                   // Because we are catching and handling the exception in JS, the normal
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
                   ___cxa_increment_exception_refcount(p);
-                  console.log(Module["getExceptionMessage"](p).replace(/0x[0-9a-f]*/, "xxx"));
+                  console.log(getExceptionMessage(p));
                   ___cxa_decrement_exception_refcount(p);
               }
             }
