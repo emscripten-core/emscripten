@@ -1608,10 +1608,10 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
-  def test_format_exception(self):
+  def test_exception_message(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$formatException', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'formatException', '_emscripten_format_exception', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1645,14 +1645,14 @@ int main(int argc, char **argv)
           EM_ASM({
             for (let i = 1; i < 6; i++){
               try {
-                  Module["_throw_exc"](i);
+                  _throw_exc(i);
               } catch(p) {
                   // Because we are catching and handling the exception in JS, the normal
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
                   ___cxa_increment_exception_refcount(p);
-                  console.log(Module["formatException"](p).replace(/0x[0-9a-f]*/, "xxx"));
+                  console.log(getExceptionMessage(p));
                   ___cxa_decrement_exception_refcount(p);
               }
             }
@@ -1660,11 +1660,11 @@ int main(int argc, char **argv)
       }
     '''
     expected = '''\
-terminating with uncaught exception of type int
-terminating with uncaught exception of type char
-terminating with uncaught exception of type std::runtime_error: abc
-terminating with uncaught exception of type myexception: My exception happened
-terminating with uncaught exception of type char const*
+exception of type int
+exception of type char
+exception of type std::runtime_error: abc
+exception of type myexception: My exception happened
+exception of type char const*
 '''
 
     self.do_run(src, expected)
