@@ -107,12 +107,11 @@ mergeInto(LibraryManager.library, {
 #endif
 
     instrumentWasmExports: function(exports) {
-      var ret = {};
       for (var x in exports) {
         (function(x) {
           var original = exports[x];
           if (typeof original == 'function') {
-            ret[x] = function() {
+            exports[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
               err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
@@ -130,12 +129,9 @@ mergeInto(LibraryManager.library, {
                 }
               }
             };
-          } else {
-            ret[x] = original;
           }
         })(x);
       }
-      return ret;
     },
 
     maybeStopUnwind: function() {

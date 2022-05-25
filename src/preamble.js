@@ -744,17 +744,12 @@ function makeAbortWrapper(original) {
 // See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
 function instrumentWasmExportsWithAbort(exports) {
   // Override the exported functions with the wrappers and copy over any other symbols
-  var instExports = {};
   for (var name in exports) {
       var original = exports[name];
       if (typeof original == 'function') {
-        instExports[name] = makeAbortWrapper(original);
-      } else {
-        instExports[name] = original;
+        exports[name] = makeAbortWrapper(original);
       }
   }
-
-  return instExports;
 }
 
 function instrumentWasmTableWithAbort() {
@@ -992,20 +987,27 @@ function createWasm() {
   function receiveInstance(instance, module) {
     var exports = instance.exports;
 
+#if RELOCATABLE || MEMORY64 || ASYNCIFY || ABORT_ON_WASM_EXCEPTIONS
+    // Some options require us to mutate the wasm exports.  In these cases we
+    // first need to create a copy of the exports object since engines don't
+    // allow us to modify it directly.
+    exports = Object.assign({}, exports);
+#endif
+
 #if RELOCATABLE
-    exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
+    relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
 #if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
+    instrumentWasmExportsForMemory64(exports);
 #endif
 
 #if ASYNCIFY
-    exports = Asyncify.instrumentWasmExports(exports);
+    Asyncify.instrumentWasmExports(exports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-    exports = instrumentWasmExportsWithAbort(exports);
+    instrumentWasmExportsWithAbort(exports);
 #endif
 
     Module['asm'] = exports;

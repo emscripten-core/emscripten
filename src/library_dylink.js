@@ -141,14 +141,12 @@ var LibraryDylink = {
   $relocateExports__deps: ['$updateGOT'],
   $relocateExports__docs: '/** @param {boolean=} replace */',
   $relocateExports: function(exports, memoryBase, replace) {
-    var relocated = {};
-
     for (var e in exports) {
       var value = exports[e];
 #if SPLIT_MODULE
       // Do not modify exports synthesized by wasm-split
       if (e.startsWith('%')) {
-        relocated[e] = value
+        exports[e] = value
         continue;
       }
 #endif
@@ -160,10 +158,9 @@ var LibraryDylink = {
       if (typeof value == 'number') {
         value += memoryBase;
       }
-      relocated[e] = value;
+      exports[e] = value;
     }
-    updateGOT(relocated, replace);
-    return relocated;
+    updateGOT(exports, replace);
   },
 
   $reportUndefinedSymbols__internal: true,
@@ -582,7 +579,8 @@ var LibraryDylink = {
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
-        moduleExports = relocateExports(instance.exports, memoryBase);
+        moduleExports = Object.assign({}, instance.exports);
+        relocateExports(moduleExports, memoryBase);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }

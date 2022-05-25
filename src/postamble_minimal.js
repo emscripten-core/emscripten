@@ -200,7 +200,11 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if MEMORY64
-  asm = instrumentWasmExportsForMemory64(asm);
+  // instrumentWasmExportsForMemory64 modified the exports in-place but we
+  // need to first make a copy since engines do not allow direct manipulation
+  // of exports.
+  asm = Object.assign({}, asm);
+  instrumentWasmExportsForMemory64(asm);
 #endif
 
 #if USE_OFFSET_CONVERTER

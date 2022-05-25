@@ -17,7 +17,6 @@
 // TODO: Remove this hacky mechanism and replace with something more like the
 // `__sig` attributes we have in JS library code.
 function instrumentWasmExportsForMemory64(exports) {
-  var instExports = {};
   for (var name in exports) {
     (function(name) {
       var original = exports[name];
@@ -72,8 +71,7 @@ function instrumentWasmExportsForMemory64(exports) {
           return r;
         };
       }
-      instExports[name] = replacement;
+      exports[name] = replacement;
     })(name);
   }
-  return instExports;
 }
