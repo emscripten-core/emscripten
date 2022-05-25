@@ -2803,6 +2803,13 @@ The current type of b is: 9
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc.c')
 
+  @node_pthreads
+  def test_pthread_stdout_after_main(self):
+    # Verify that secondary threads can continue to write to stdout even
+    # after the main thread returns.  We had a regression where stdio
+    # streams were locked when the main thread returned.
+    self.do_runf(test_file('pthread/test_pthread_stdout_after_main.c'))
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 

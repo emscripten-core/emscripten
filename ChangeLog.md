@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 ------
 - Fix crash, introduced in 3.1.11, which occurred when using pointer types
   (types ending in `*`) with getValue/setValue library functions. (#17028)
+- Fix possible deadlock in multi-threaded builds that use EXIT_RUNTIME=0 with
+  ASSERTIONS enabled. This was introduced in 3.1.3 as part of #16130. (#17044)
 
 3.1.11 - 05/21/2022
 -------------------
