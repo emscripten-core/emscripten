@@ -625,13 +625,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
+    inputfile = os.path.abspath(filename)
+    # For some reason es-check requires unix paths, even on windows
+    if WINDOWS:
+      inputfile = inputfile.replace('\\', '/')
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
       #  ES-Check: there were no ES version matching errors!
       # pipe stdout and stderr so that we can choose if/when to print this
       # output and avoid spamming stdout when tests are successful.
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stdout=PIPE, stderr=STDOUT, env=es_check_env)
+      shared.run_process(es_check + ['es5', inputfile], stdout=PIPE, stderr=STDOUT, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stdout)
       self.fail('es-check failed to verify ES5 output compliance')

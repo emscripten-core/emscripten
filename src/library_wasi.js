@@ -231,8 +231,8 @@ var WasiLibrary = {
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-#if hasExportedFunction('___stdio_exit')
-    ___stdio_exit();
+#if hasExportedFunction('_fflush')
+    _fflush(0);
 #endif
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});

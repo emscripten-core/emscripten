@@ -368,7 +368,7 @@ function makeSetTempDouble(i, type, value) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -381,8 +381,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (type == 'double' && (align < 8)) {
-    const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
-    const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
+    const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align));
+    const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align));
     return '(' + setdouble1 + ',' + setdouble2 + ',' + makeGetTempDouble(0, 'double') + ')';
   }
 
@@ -394,12 +394,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       if (isIntImplemented(type)) {
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
-          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore, 2, noSafe) + '|' +
-                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore, 2, noSafe) + '<<16)';
+          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore, 2) + '|' +
+                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore, 2) + '<<16)';
         } else { // XXX we cannot truly handle > 4... (in x86)
           ret = '';
           for (let i = 0; i < bytes; i++) {
-            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore, 1, noSafe) + (i > 0 ? '<<' + (8 * i) : '') + ')';
+            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore, 1) + (i > 0 ? '<<' + (8 * i) : '') + ')';
             if (i < bytes - 1) ret += '|';
           }
           ret = '(' + makeSignOp(ret, type, unsigned ? 'un' : 're', true);
@@ -417,11 +417,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP && !noSafe) {
-    if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
-    }
-  }
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
@@ -439,24 +434,22 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {nunber} pos The position in that slab - the offset. Added to any offset in the pointer itself.
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
- *             'null' means, in the context of SAFE_HEAP, that we should accept all types;
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
  * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
  * @param {bool} ignore: legacy, ignored.
  * @param {number} align: TODO
- * @param {bool} noSafe: TODO
  * @param {string} sep: TODO
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';') {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
   } else if (!WASM_BIGINT && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
   const bits = getBits(type);
@@ -470,17 +463,17 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
           ret += 'tempBigInt=' + value + sep;
-          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2, noSafe) + sep;
-          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2, noSafe);
+          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
+          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2);
         } else {
           ret += 'tempBigInt=' + value + sep;
           for (let i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1, noSafe);
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
             if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8, noSafe, null, true) + sep;
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
         ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
       }
       return ret;
@@ -488,11 +481,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   }
 
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP && !noSafe) {
-    if (!ignore) {
-      return 'SAFE_HEAP_STORE' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
-    }
-  }
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {

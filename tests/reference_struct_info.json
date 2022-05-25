@@ -17,8 +17,6 @@
         "AUDIO_F32": 33056,
         "AUDIO_S16LSB": 32784,
         "AUDIO_U8": 8,
-        "CLOCK_MONOTONIC": 1,
-        "CLOCK_MONOTONIC_RAW": 4,
         "CLOCK_REALTIME": 0,
         "E2BIG": 1,
         "EACCES": 2,
@@ -279,7 +277,6 @@
         "File::SymlinkKind": 3,
         "File::UnknownKind": 0,
         "INADDR_LOOPBACK": 2130706433,
-        "INT_MAX": 2147483647,
         "IPPROTO_TCP": 6,
         "IPPROTO_UDP": 17,
         "MAP_ANONYMOUS": 32,
@@ -1372,7 +1369,6 @@
             "profilerBlock": 104,
             "result": 56,
             "robust_list": 68,
-            "self": 0,
             "stack": 44,
             "stack_owned": 108,
             "stack_size": 48,
@@ -1465,22 +1461,10 @@
             "threadStatus": 0,
             "timeSpentInStatus": 16
         },
-        "timeb": {
-            "__size__": 12,
-            "dstflag": 8,
-            "millitm": 4,
-            "time": 0,
-            "timezone": 6
-        },
         "timespec": {
             "__size__": 8,
             "tv_nsec": 4,
             "tv_sec": 0
-        },
-        "timeval": {
-            "__size__": 8,
-            "tv_sec": 0,
-            "tv_usec": 4
         },
         "tm": {
             "__size__": 44,
@@ -1495,11 +1479,6 @@
             "tm_yday": 28,
             "tm_year": 20,
             "tm_zone": 40
-        },
-        "utimbuf": {
-            "__size__": 8,
-            "actime": 0,
-            "modtime": 4
         }
     }
 }

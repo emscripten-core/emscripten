@@ -861,6 +861,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'proxying.c',
           'pthread_create.c',
+          'pthread_kill.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
@@ -1203,7 +1204,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'format_exception.cpp',
+      'cxa_exception_emscripten.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
