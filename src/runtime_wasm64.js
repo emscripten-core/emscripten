@@ -28,7 +28,7 @@ function instrumentWasmExportsForMemory64(exports) {
           var r = Number(original(BigInt(x ? x : 0)));
           return r;
         };
-      } else if (['setThrew', 'free', 'stackRestore', '__cxa_is_pointer_type'].includes(name)) {
+      } else if (['fflush', 'setThrew', 'free', 'stackRestore', '__cxa_is_pointer_type'].includes(name)) {
         // get one i64
         replacement = (x) => {
           original(BigInt(x));

@@ -32,12 +32,12 @@ function run() {
 
 #endif
 
-#if IN_TEST_HARNESS && hasExportedFunction('___stdio_exit')
+#if IN_TEST_HARNESS && hasExportedFunction('_flush')
   // flush any stdio streams for test harness, since there are existing
   // tests that depend on this behavior.
   // For production use, instead print full lines to avoid this kind of lazy
   // behavior.
-  ___stdio_exit();
+  _fflush();
 #endif
 
 #if EXIT_RUNTIME
