@@ -2212,6 +2212,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
   # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names.
+  # ASYNCIFY=2 does not support this optimization yet as it has a hardcoded
+  # check for 'main' as an export name. TODO
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
@@ -2222,6 +2224,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
       not settings.ASYNCIFY_LAZY_LOAD_CODE and \
+      not settings.ASYNCIFY == 2 and \
           settings.MINIFY_ASMJS_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
