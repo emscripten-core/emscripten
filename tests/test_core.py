@@ -1660,11 +1660,11 @@ int main(int argc, char **argv)
       }
     '''
     expected = '''\
-uncaught exception of type int
-uncaught exception of type char
-uncaught exception of type std::runtime_error: abc
-uncaught exception of type myexception: My exception happened
-uncaught exception of type char const*
+exception of type int
+exception of type char
+exception of type std::runtime_error: abc
+exception of type myexception: My exception happened
+exception of type char const*
 '''
 
     self.do_run(src, expected)

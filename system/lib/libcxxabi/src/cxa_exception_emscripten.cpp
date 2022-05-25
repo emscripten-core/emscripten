@@ -46,13 +46,13 @@ char* __get_exception_message(void* thrown_object, bool terminate=false) {
       static_cast<const std::exception*>(thrown_object)->what();
     asprintf(&result,
              (terminate ? "terminating with uncaught exception of type %s: %s"
-                        : "uncaught exception of type %s: %s"),
+                        : "exception of type %s: %s"),
              type_name,
              what);
   } else {
     asprintf(&result,
              (terminate ? "terminating with uncaught exception of type %s"
-                        : "uncaught exception of type %s"),
+                        : "exception of type %s"),
              type_name);
   }
 
