@@ -12,7 +12,6 @@ executors:
       - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
-      EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
@@ -308,8 +307,6 @@ jobs:
     # cost for the same work), but given this blocks almost all the other jobs
     # we want it to finish asap
     resource_class: xlarge
-    environment:
-      EMCC_CORES: 16
     steps:
       - checkout
       - run:
