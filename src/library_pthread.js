@@ -795,27 +795,12 @@ var LibraryPThread = {
 #endif
   },
 
-  pthread_kill__deps: ['emscripten_main_browser_thread_id'],
-  pthread_kill: function(thread, signal) {
-    if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
-    if (thread === _emscripten_main_browser_thread_id()) {
-      if (signal == 0) return 0; // signal == 0 is a no-op.
-      err('Main thread (id=' + ptrToString(thread) + ') cannot be killed with pthread_kill!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    if (!thread) {
-      err('pthread_kill attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_kill attempted on thread ' + ptrToString(thread) + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
+  __pthread_kill_js__deps: ['emscripten_main_browser_thread_id'],
+  __pthread_kill_js: function(thread, signal) {
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
       else postMessage({ 'cmd': 'cancelThread', 'thread': thread });
-    } else if (signal != 0) {
+    } else {
       if (!ENVIRONMENT_IS_PTHREAD) killThread(thread);
       else postMessage({ 'cmd': 'killThread', 'thread': thread });
     }
