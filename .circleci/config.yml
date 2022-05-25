@@ -303,6 +303,13 @@ jobs:
           test_targets: "sanity"
   build-linux:
     executor: bionic
+    # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
+    # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
+    # cost for the same work), but given this blocks almost all the other jobs
+    # we want it to finish asap
+    resource_class: xlarge
+    environment:
+      EMCC_CORES: 16
     steps:
       - checkout
       - run:
