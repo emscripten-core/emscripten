@@ -50,10 +50,6 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
-#if MEMORY64
-#include "runtime_wasm64.js"
-#endif
-
 // Wasm globals
 
 var wasmMemory;

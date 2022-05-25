@@ -875,6 +875,8 @@ def create_module(sending, receiving, invoke_funcs, metadata):
 
   module.append(receiving)
   module.append(invoke_wrappers)
+  if settings.MEMORY64:
+    module.append(create_wasm64_wrappers(metadata))
   return module
 
 
@@ -927,6 +929,62 @@ def create_invoke_wrappers(invoke_funcs):
     sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
+
+
+def create_wasm64_wrappers(metadata):
+  # TODO(sbc): Move this into somewhere less static.  Maybe it can become
+  # part of library.js file, even though this metadata relates specifically
+  # to native (non-JS) functions.
+  #
+  # The signature format here is similar to the one used for JS libraries
+  # but with the following as the only valid char:
+  #  '_' - non-pointer argument (pass through unchanged)
+  #  'p' - pointer/int53 argument (convert to/from BigInt)
+  #  'P' - same as above but allow `undefined` too (requires extra check)
+  mapping = {
+    'sbrk': 'pP',
+    'stackAlloc': 'pp',
+    'emscripten_builtin_malloc': 'pp',
+    'malloc': 'pp',
+    '__getTypeName': 'pp',
+    'setThrew': '_p',
+    'free': '_p',
+    'stackRestore': '_p',
+    '__cxa_is_pointer_type': '_p',
+    'stackSave': 'p',
+    'fflush': '_p',
+    'emscripten_stack_get_end': 'p',
+    'emscripten_stack_get_base': 'p',
+    'pthread_self': 'p',
+    'emscripten_stack_get_current': 'p',
+    '__errno_location': 'p',
+    'emscripten_builtin_memalign': 'ppp',
+    'main': '__PP',
+    'emscripten_stack_set_limits': '_pp',
+    '__set_stack_limits': '_pp',
+    '__cxa_can_catch': '_ppp',
+  }
+
+  wasm64_wrappers = '''
+function instrumentWasmExportsForMemory64(exports) {
+  // First, make a copy of the incoming exports object
+  exports = Object.assign({}, exports);'''
+
+  sigs_seen = set()
+  wrap_functions = []
+  for exp in metadata['exports']:
+    sig = mapping.get(exp)
+    if sig:
+      if sig not in sigs_seen:
+        sigs_seen.add(sig)
+        wasm64_wrappers += js_manipulation.make_wasm64_wrapper(sig)
+      wrap_functions.append(exp)
+
+  for f in wrap_functions:
+    sig = mapping[f]
+    wasm64_wrappers += f"\n  exports['{f}'] = wasm64Wrapper_{sig}(exports['{f}']);"
+  wasm64_wrappers += '\n  return exports\n}'
+  return wasm64_wrappers
 
 
 def normalize_line_endings(text):
