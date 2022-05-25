@@ -2515,6 +2515,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
+    if settings.ASYNCIFY == 2 and not settings.EXIT_RUNTIME:
+      diagnostics.warning('experimental', 'ASYNCIFY with stack switching is only tested with EXIT_RUNTIME atm')
+
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
