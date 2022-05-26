@@ -315,20 +315,14 @@ function asmEnsureFloat(value, type) {
   return value;
 }
 
-function asmCoercion(value, type, signedness) {
+function asmCoercion(value, type) {
+  assert(arguments.length == 2, 'asmCoercion takes exactly two arguments');
   if (type == 'void') {
     return value;
   } else if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
-      if (signedness) {
-        if (signedness == 'u') {
-          value = '(' + value + ')>>>0';
-        } else {
-          value = '(' + value + ')|0';
-        }
-      }
       if (type === 'float') {
         return 'Math.fround(' + value + ')';
       } else {
@@ -336,9 +330,6 @@ function asmCoercion(value, type, signedness) {
       }
     }
   } else {
-    if (signedness == 'u') {
-      return '((' + value + ')>>>0)';
-    }
     return '((' + value + ')|0)';
   }
 }

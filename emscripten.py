@@ -635,7 +635,7 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       send_items_map['__cpp_exception'] = '___cpp_exception'
     if settings.SUPPORT_LONGJMP == 'wasm':
       send_items_map['__c_longjmp'] = '___c_longjmp'

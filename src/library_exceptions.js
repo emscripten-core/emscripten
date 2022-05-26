@@ -5,7 +5,7 @@
  */
 
 var LibraryExceptions = {
-#if !EXCEPTION_HANDLING
+#if !WASM_EXCEPTIONS
   $uncaughtExceptionCount: '0',
   $exceptionLast: '0',
   $exceptionCaught: ' []',
@@ -393,8 +393,8 @@ var LibraryExceptions = {
   },
 
 #endif
-#if !DISABLE_EXCEPTION_CATCHING || EXCEPTION_HANDLING
-#if EXCEPTION_HANDLING
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+#if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
     return Module['asm']['__cpp_exception'];
   },

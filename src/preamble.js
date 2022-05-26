@@ -628,7 +628,7 @@ function abort(what) {
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-#if EXCEPTION_HANDLING == 1
+#if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   ___trap();
 #else
@@ -1184,6 +1184,15 @@ function createWasm() {
 #if ENVIRONMENT_MAY_BE_WEBVIEW
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
         !isFileURI(wasmBinaryFile) &&
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+        // Avoid instantiateStreaming() on Node.js environment for now, as while
+        // Node.js v18.1.0 implements it, it does not have a full fetch()
+        // implementation yet.
+        //
+        // Reference:
+        //   https://github.com/emscripten-core/emscripten/pull/16917
+        !ENVIRONMENT_IS_NODE &&
 #endif
         typeof fetch == 'function') {
       return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {

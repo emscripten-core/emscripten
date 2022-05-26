@@ -70,7 +70,7 @@ COMPILE_TIME_SETTINGS = {
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
-    'EXCEPTION_HANDLING',
+    'WASM_EXCEPTIONS',
     'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',

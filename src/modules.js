@@ -51,7 +51,7 @@ global.LibraryManager = {
     ];
 
     if (LINK_AS_CXX) {
-      if (DISABLE_EXCEPTION_THROWING && !EXCEPTION_HANDLING) {
+      if (DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS) {
         libraries.push('library_exceptions_stub.js');
       } else {
         libraries.push('library_exceptions.js');
