@@ -13,8 +13,5 @@ To make changes to this code please submit patches to
 https://github.com/emscripten-core/terser/ and then re-create this bundle
 using the following steps:
 
-  $ CI=1 npm run build
-  $ cp dist/bundle.min.js $EMSCRIPTEN_ROOT/third_party/terser/terser.js
-
-Despite its name, `dist/bundle.min.js` should not be minified (due to the `CI=1`
-in the command avove).
+  $ npx rollup -c
+  $ cp dist/bundle.js $EMSCRIPTEN_ROOT/third_party/terser/terser.js
