@@ -844,7 +844,7 @@ def get_cflags(user_args):
 
   # if exception catching is disabled, we can prevent that code from being
   # generated in the frontend
-  if settings.DISABLE_EXCEPTION_CATCHING and not settings.EXCEPTION_HANDLING:
+  if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
     cflags.append('-fignore-exceptions')
 
   if settings.INLINING_LIMIT:
@@ -2570,12 +2570,12 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # Export tag objects which are likely needed by the native code, but which are
   # currently not reported in the metadata of wasm-emscripten-finalize
   if settings.RELOCATABLE:
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
     if settings.SUPPORT_LONGJMP == 'wasm':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
 
-  if settings.EXCEPTION_HANDLING:
+  if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
   return target, wasm_target
@@ -3220,7 +3220,7 @@ def parse_args(newargs):
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-      settings.EXCEPTION_HANDLING = 0
+      settings.WASM_EXCEPTIONS = 0
     elif arg == '-fexceptions':
       eh_enabled = True
     elif arg == '-fwasm-exceptions':
@@ -3283,11 +3283,11 @@ def parse_args(newargs):
   # exception handling by default when -fexceptions is given when wasm
   # exception handling becomes stable.
   if wasm_eh_enabled:
-    settings.EXCEPTION_HANDLING = 1
+    settings.WASM_EXCEPTIONS = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
     settings.DISABLE_EXCEPTION_CATCHING = 1
   elif eh_enabled:
-    settings.EXCEPTION_HANDLING = 0
+    settings.WASM_EXCEPTIONS = 0
     settings.DISABLE_EXCEPTION_THROWING = 0
     settings.DISABLE_EXCEPTION_CATCHING = 0
 

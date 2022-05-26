@@ -371,9 +371,9 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  if settings.EXCEPTION_HANDLING:
+  if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
-  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
 
   if settings.MEMORY64:

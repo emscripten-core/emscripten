@@ -3604,7 +3604,7 @@ mergeInto(LibraryManager.library, {
   // global, basically).
   __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
-#if EXCEPTION_HANDLING
+#if WASM_EXCEPTIONS
   // In dynamic linking we define tags here and feed them to each module
   __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
   __cpp_exception__import: true,
