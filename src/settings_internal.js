@@ -177,8 +177,8 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling (experimental)
-var EXCEPTION_HANDLING = false;
+// New WebAssembly exception handling
+var WASM_EXCEPTIONS = false;
 
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all

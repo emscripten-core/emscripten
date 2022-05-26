@@ -658,8 +658,8 @@ var LZ4 = false;
 // Emscripten exception handling options.
 // The three options below (DISABLE_EXCEPTION_CATCHING,
 // EXCEPTION_CATCHING_ALLOWED, and DISABLE_EXCEPTION_THROWING) only pertain to
-// Emscripten exception handling and do not control the experimental native wasm
-// exception handling option (EXCEPTION_HANDLING).
+// Emscripten exception handling and do not control the native wasm exception
+// handling option (-fwasm-exceptions, internal setting: WASM_EXCEPTIONS).
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed

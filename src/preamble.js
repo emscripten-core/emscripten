@@ -628,7 +628,7 @@ function abort(what) {
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-#if EXCEPTION_HANDLING == 1
+#if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   ___trap();
 #else
