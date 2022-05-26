@@ -138,3 +138,30 @@ function invoke_%s(%s) {
 }''' % (sig, ','.join(args), body, exceptional_ret)
 
   return ret
+
+
+def make_wasm64_wrapper(sig):
+  assert 'p' in sig.lower()
+  n_args = len(sig) - 1
+  args = ['a%d' % i for i in range(n_args)]
+  args_converted = args.copy()
+  for i, arg_type in enumerate(sig[1:]):
+    if arg_type == 'p':
+      args_converted[i] = f'BigInt({args_converted[i]})'
+    elif arg_type == 'P':
+      args_converted[i] = f'BigInt({args_converted[i]} ? {args_converted[i]} : 0)'
+    else:
+      assert arg_type == '_'
+
+  args_in = ', '.join(args)
+  args_out = ', '.join(args_converted)
+  result = f'f({args_out})'
+  if sig[0] == 'p':
+    result = f'Number({result})'
+
+  return f'''
+  function wasm64Wrapper_{sig}(f) {{
+    return function({args_in}) {{
+      return {result};
+    }};
+  }}'''

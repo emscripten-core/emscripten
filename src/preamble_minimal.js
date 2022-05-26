@@ -12,10 +12,6 @@
 #include "runtime_asan.js"
 #endif
 
-#if MEMORY64
-#include "runtime_wasm64.js"
-#endif
-
 #if ASSERTIONS || SAFE_HEAP
 /** @type {function(*, string=)} */
 function assert(condition, text) {
