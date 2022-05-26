@@ -656,7 +656,7 @@ var LibraryDylink = {
   // therefore before we have a stack.  Instead we delay calling
   // `__set_stack_limits` until we start running a thread.  We also need to call
   // this again for each new thread that the runs on a worker (since each thread
-  // has is own sperate stack region).
+  // has its own separate stack region).
   $setDylinkStackLimits: function(stackTop, stackMax) {
     for (var name in LDSO.loadedLibsByName) {
 #if DYLINK_DEBUG
