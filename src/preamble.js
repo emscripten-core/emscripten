@@ -375,9 +375,6 @@ function preRun() {
 }
 
 function initRuntime() {
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
 #if ASSERTIONS
   assert(!runtimeInitialized);
 #endif
@@ -389,6 +386,10 @@ function initRuntime() {
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2

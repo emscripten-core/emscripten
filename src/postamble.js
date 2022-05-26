@@ -214,12 +214,16 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if ASSERTIONS && USE_PTHREADS
+  // See $establishStackSpace for the equivelent code that runs on a thread
+  assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
 #if RELOCATABLE
   _emscripten_stack_set_limits({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #else
   _emscripten_stack_init();
 #endif
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }
 #endif
@@ -240,7 +244,10 @@ function run(args) {
   }
 
 #if STACK_OVERFLOW_CHECK
-  stackCheckInit();
+#if USE_PTHREADS
+  if (!ENVIRONMENT_IS_PTHREAD)
+#endif
+    stackCheckInit();
 #endif
 
 #if RELOCATABLE
