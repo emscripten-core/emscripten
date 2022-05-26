@@ -101,7 +101,7 @@ void __cxa_decrement_exception_refcount(void* thrown_object) _NOEXCEPT;
 
 // These are wrappers for __cxa_increment_exception_refcount and
 // __cxa_decrement_exception_refcount so that these can be called from JS. When
-// you catch a Wasm exception from JS and does not rethrow it, its refcount is
+// you catch a Wasm exception from JS and do not rethrow it, its refcount is
 // still greater than 0 so memory is leaked; users call JS library functions
 // that call these to fix it.
 

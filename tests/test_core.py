@@ -1665,7 +1665,7 @@ int main(int argc, char **argv)
                   // refcounts in different places. Wasm EH sets the refcount to
                   // 1 when throwing, and decrease it in __cxa_end_catch.
                   // Emscripten EH sets the refcount to 0 when throwing, and
-                  // increase it in __cxa_begin_catch, and decrase it in
+                  // increase it in __cxa_begin_catch, and decrease it in
                   // __cxa_end_catch. Fix this inconsistency later.
                   incrementExceptionRefcount(p);
 #endif
