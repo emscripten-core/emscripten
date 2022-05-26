@@ -399,28 +399,28 @@ var LibraryExceptions = {
     return Module['asm']['__cpp_exception'];
   },
 
-  $getCppExceptionThrownObject__deps: ['$getCppExceptionTag'],
-  $getCppExceptionThrownObject: function(ex) {
+  $getCppExceptionThrownValue__deps: ['$getCppExceptionTag'],
+  $getCppExceptionThrownValue: function(ex) {
     return ex.getArg(getCppExceptionTag(), 0);
   },
 
-  $incrementExceptionRefcount__deps: ['__increment_wasm_exception_refcount', '$getCppExceptionThrownObject'],
-  $incrementExceptionRefcount: function(ptr) {
-    var thrown = getCppExceptionThrownObject(ptr);
-    ___increment_wasm_exception_refcount(thrown);
+  $incrementExceptionRefcount__deps: ['__increment_wasm_exception_refcount', '$getCppExceptionThrownValue'],
+  $incrementExceptionRefcount: function(obj) {
+    var ptr = getCppExceptionThrownValue(obj);
+    ___increment_wasm_exception_refcount(ptr);
   },
 
-  $decrementExceptionRefcount__deps: ['__decrement_wasm_exception_refcount', '$getCppExceptionThrownObject'],
-  $decrementExceptionRefcount: function(ptr) {
-    var thrown = getCppExceptionThrownObject(ptr);
-    ___decrement_wasm_exception_refcount(thrown);
+  $decrementExceptionRefcount__deps: ['__decrement_wasm_exception_refcount', '$getCppExceptionThrownValue'],
+  $decrementExceptionRefcount: function(obj) {
+    var ptr = getCppExceptionThrownValue(obj);
+    ___decrement_wasm_exception_refcount(ptr);
   },
 
-  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObject'],
+  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownValue'],
   $getExceptionMessage: function(ptr) {
     // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
     // thrown value from it.
-    var obj = getCppExceptionThrownObject(ptr);
+    var obj = getCppExceptionThrownValue(ptr);
     var utf8_addr = ___get_exception_message(obj);
     var result = UTF8ToString(utf8_addr);
     _free(utf8_addr);
