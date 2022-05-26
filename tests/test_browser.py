@@ -214,8 +214,7 @@ class browser(BrowserCore):
     # multiple mapped lines. in other words, if the program consists of a
     # single 'throw' statement, browsers may just map any thrown exception to
     # that line, because it will be the only mapped line.
-    with open(cpp_file, 'w') as f:
-      f.write(r'''
+    create_file(cpp_file, r'''
       #include <cstdio>
 
       int main() {
@@ -1380,7 +1379,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
     ensure_dir('sub')
-    open(Path('sub/file2.txt'), 'w').write('second')
+    create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
     self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
@@ -1388,10 +1387,10 @@ keydown(100);keyup(100); // trigger the end
     # generate data
     ensure_dir('subdir')
     create_file('file1.txt', '0123456789' * (1024 * 128))
-    open(Path('subdir/file2.txt'), 'w').write('1234567890' * (1024 * 128))
+    create_file('subdir/file2.txt', '1234567890' * (1024 * 128))
     random_data = bytearray(random.randint(0, 255) for x in range(1024 * 128 * 10 + 1))
     random_data[17] = ord('X')
-    open('file3.txt', 'wb').write(random_data)
+    create_file('file3.txt', random_data, binary=True)
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
@@ -1404,7 +1403,7 @@ keydown(100);keyup(100); // trigger the end
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
-    open('files.js', 'wb').write(out)
+    create_file('files.js', out, binary=True)
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
@@ -1436,7 +1435,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file2.txt', Path('files/file2.txt'))
     shutil.copyfile('file3.txt', Path('files/file3.txt'))
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
-    open('files.js', 'wb').write(out)
+    create_file('files.js', out, binary=True)
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'])'''
 
   def test_separate_metadata_later(self):
@@ -1603,8 +1602,7 @@ keydown(100);keyup(100); // trigger the end
   def test_worker(self):
     # Test running in a web worker
     create_file('file.dat', 'data for worker')
-    html_file = open('main.html', 'w')
-    html_file.write('''
+    create_file('main.html', '''
       <html>
       <body>
         Worker Test
@@ -1620,7 +1618,6 @@ keydown(100);keyup(100); // trigger the end
       </body>
       </html>
     ''' % self.port)
-    html_file.close()
 
     for file_data in [1, 0]:
       cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
@@ -1636,8 +1633,7 @@ keydown(100);keyup(100); // trigger the end
     main = 'chunked_sync_xhr.html'
     worker_filename = "download_and_checksum_worker.js"
 
-    html_file = open(main, 'w')
-    html_file.write(r"""
+    create_file(main, r"""
       <!doctype html>
       <html>
       <head><meta charset="utf-8"><title>Chunked XHR</title></head>
@@ -1671,13 +1667,8 @@ keydown(100);keyup(100); // trigger the end
       </body>
       </html>
     """ % self.port)
-    html_file.close()
 
-    c_source_filename = "checksummer.c"
-
-    prejs_filename = "worker_prejs.js"
-    prejs_file = open(prejs_filename, 'w')
-    prejs_file.write(r"""
+    create_file('worker_prejs.js', r"""
       if (typeof(Module) === "undefined") Module = {};
       Module["arguments"] = ["/bigfile"];
       Module["preInit"] = function() {
@@ -1687,11 +1678,10 @@ keydown(100);keyup(100); // trigger the end
       Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
       Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
-    prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
     # vs. test_file('hello_world_gles.c')
-    self.compile_btest([test_file(c_source_filename), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
-                        '--pre-js', prejs_filename])
+    self.compile_btest([test_file('checksummer.c'), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
+                        '--pre-js', 'worker_prejs.js'])
     chunkSize = 1024
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
@@ -5077,7 +5067,7 @@ window.close = function() {
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
       html = read_file('test.html')
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
-      open('test.html', 'w').write(html)
+      create_file('test.html', html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
