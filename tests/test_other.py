@@ -12024,7 +12024,7 @@ Module['postRun'] = function() {{
     self.v8_args.append('--experimental-wasm-stack-switching')
     v8 = config.V8_ENGINE + self.v8_args
 
-    self.assertContained(expected, self.run_js('a.out.js', engine=v8))
+    self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
 
     # also compare to code size without asyncify or stack switching
