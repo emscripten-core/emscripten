@@ -8,6 +8,9 @@
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+  err('writeStackCookie: ' + max.toString(16));
+#endif
 #if ASSERTIONS
   assert((max & 3) == 0);
 #endif
