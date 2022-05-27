@@ -1025,6 +1025,7 @@ var LibraryDylink = {
 #endif
 
 #if ASYNCIFY
+      // Asyncify wraps exports, and we need to look through those wrappers.
       if ('orig' in result) {
         result = result.orig;
       }

@@ -378,7 +378,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   exports = metadata['exports']
 
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY and settings.RELOCATABLE:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
     metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
 
