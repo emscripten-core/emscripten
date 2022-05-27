@@ -50,10 +50,6 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
-#if MEMORY64
-#include "runtime_wasm64.js"
-#endif
-
 // Wasm globals
 
 var wasmMemory;
@@ -375,9 +371,6 @@ function preRun() {
 }
 
 function initRuntime() {
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
 #if ASSERTIONS
   assert(!runtimeInitialized);
 #endif
@@ -389,6 +382,10 @@ function initRuntime() {
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
