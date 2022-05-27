@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// NOTE: Each fetch backend runs in a separate thread.
+
 void getUrlOrigin(char* ptr, int len);
 char url_orig[256] = {};
 
@@ -127,13 +129,9 @@ void test_default() {
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
-
-  // NOTE: Each fetch backend runs in a separate thread.
-#ifdef PROXYING
   test_url_relative();
   test_url_absolute();
   test_directory_abs();
-#endif
 
   return 0;
 }
