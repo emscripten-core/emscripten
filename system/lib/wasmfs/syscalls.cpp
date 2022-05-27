@@ -1490,8 +1490,11 @@ intptr_t _mmap_js(
     return -ENODEV;
   }
 
-  // TODO: handle MAP_PRIVATE in an optimal way from here
-  // TODO: optimize here, do not always allocate + copy into a new region
+  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
+  //       like avoiding an allocation and a copy as we do below (whereas a
+  //       private mmap is always a copy into a new, private region not shared
+  //       with anything else).
+  assert(flags & MAP_PRIVATE);
 
   // Align to a wasm page size, as we expect in the future to get wasm
   // primitives to do this work, and those would presumably be aligned to a page
