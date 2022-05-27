@@ -50,6 +50,22 @@ mergeInto(LibraryManager.library, {
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
+#if ASYNCIFY == 2
+    // TODO: Stack switching support could be implemented without all the
+    //       asyncify infrastructure, perhaps as code on the size instead of
+    //       ifdefs. That might be cleaner, and it would avoid overhead like the
+    //       malloc() asyncify does (we could ifdef it out, but it's even more
+    //       ifdefing).
+
+    // The global suspender object used with the VM's stack switching Promise
+    // API.
+    suspender: null,
+    // The promise that is being suspended on in the VM atm, or null.
+    promise: null,
+    // The function we should call to resolve the promise at the right time.
+    promiseResolve: null,
+#endif
+
     getCallStackId: function(funcName) {
       var id = Asyncify.callStackNameToId[funcName];
       if (id === undefined) {
@@ -60,13 +76,44 @@ mergeInto(LibraryManager.library, {
       return id;
     },
 
-#if ASSERTIONS
     instrumentWasmImports: function(imports) {
+#if ASYNCIFY_DEBUG
+      err('asyncify instrumenting imports');
+#endif
+#if ASYNCIFY == 2
+      // TODO we could perhaps add an init function and put this there, but
+      //      this should work for now.
+      Asyncify.suspender = new WebAssembly.Suspender();
+#endif
       var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
+          var sig = original.sig;
           if (typeof original == 'function') {
+            var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+                                   x.startsWith('__asyncjs__');
+#if ASYNCIFY == 2
+            if (isAsyncifyImport) {
+#if ASSERTIONS
+              if (!sig) {
+                throw new Error('Missing __sig for ' + x);
+              }
+#endif
+              var type = sigToWasmTypes(sig, original);
+              // Regardless of the original result type of the function, as it
+              // is now expected to potentially return a Promise, change it to
+              // an externref.
+              type.results = ['externref'];
+#if ASYNCIFY_DEBUG
+              err('asyncify: suspendOnReturnedPromise for', x, original);
+#endif
+              imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
+                new WebAssembly.Function(type, original)
+              );
+            }
+#endif
+#if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
             imports[x] = function() {
               var originalAsyncifyState = Asyncify.state;
               try {
@@ -74,8 +121,6 @@ mergeInto(LibraryManager.library, {
               } finally {
                 // Only asyncify-declared imports are allowed to change the
                 // state.
-                var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
-                                       x.startsWith('__asyncjs__');
                 // Changing the state from normal to disabled is allowed (in any
                 // function) as that is what shutdown does (and we don't have an
                 // explicit list of shutdown imports).
@@ -93,24 +138,36 @@ mergeInto(LibraryManager.library, {
                   throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
-            }
+            };
 #if MAIN_MODULE
             // The dynamic library loader needs to be able to read .sig
             // properties, so that it knows function signatures when it adds
             // them to the table.
-            imports[x].sig = original.sig;
-#endif
+            imports[x].sig = sig;
+#endif // MAIN_MODULE
+#endif // ASSERTIONS
           }
         })(x);
       }
     },
-#endif
 
     instrumentWasmExports: function(exports) {
+#if ASYNCIFY_DEBUG
+      err('asyncify instrumenting exports');
+#endif
       var ret = {};
       for (var x in exports) {
         (function(x) {
           var original = exports[x];
+#if ASYNCIFY == 2
+          // TODO: need a list of all suspending exports.
+          if (x === 'main') {
+#if ASYNCIFY_DEBUG
+            err('asyncify: returnPromiseOnSuspend for', x, original);
+#endif
+            ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
+          }
+#endif
           if (typeof original == 'function') {
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
@@ -152,7 +209,9 @@ mergeInto(LibraryManager.library, {
         {{{ runtimeKeepalivePush(); }}}
         Asyncify.state = Asyncify.State.Normal;
         // Keep the runtime alive so that a re-wind can be done later.
+#if ASYNCIFY == 1
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
+#endif
         if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
         }
@@ -209,14 +268,25 @@ mergeInto(LibraryManager.library, {
     },
 
     doRewind: function(ptr) {
+#if ASYNCIFY == 2
+      // Resolve the promise. The VM will resume the wasm on the next event loop
+      // turn.
+      Asyncify.promiseResolve(Asyncify.handleSleepReturnValue);
+      setTimeout(() => {
+        // This timeout happens after the wasm has been resumed; we can stop
+        // artificially keeping the runtime alive at that time.
+        {{{ runtimeKeepalivePop(); }}}
+      });
+#else
       var start = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: start:', start);
 #endif
-      // Once we have rewound and the stack we no longer need to artificially keep
-      // the runtime alive.
+      // Once we have rewound and the stack we no longer need to artificially
+      // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
       return start();
+#endif
     },
 
     handleSleep: function(startAsync) {
@@ -257,7 +327,9 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
+#if ASYNCIFY == 1
           runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
+#endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -306,10 +378,19 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
+#if ASYNCIFY == 2
+          // Return a Promise to get the browser's stack switching logic to run.
+          return Asyncify.promise = new Promise((resolve, reject) => {
+            // Stash the resolve hook so we can call it at the proper time.
+            Asyncify.promiseResolve = resolve;
+            // TODO: handle rejection
+          });
+#else
+          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
+#endif
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -317,7 +398,9 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY: stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
+#if ASYNCIFY == 1
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
+#endif
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
@@ -341,9 +424,15 @@ mergeInto(LibraryManager.library, {
     },
   },
 
+  // TODO: Update all other methods in this file to support ASYNCIFY=2 / stack
+  //       switching. That requires (1) adding a sig for them (as we need the
+  //       signature to declare the type for the Suspender API), and (2) adding
+  //       a return to their bodies, even if they do not return a value, as the
+  //       Suspender API expects them to return a Promise.
+  emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
-    Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
+    return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],

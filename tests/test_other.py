@@ -11996,6 +11996,44 @@ Module['postRun'] = function() {{
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
+  def test_stack_switching_size(self):
+    # use iostream code here to purposefully get a fairly large wasm file, so
+    # that our size comparisons later are meaningful
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <iostream>
+      int main() {
+        std::cout << "nap time\n";
+        emscripten_sleep(1);
+        std::cout << "i am awake\n";
+      }
+    ''')
+    expected = 'nap time\ni am awake\n'
+
+    shared_args = ['-Os', '-sEXIT_RUNTIME']
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY'] + shared_args)
+    self.assertContained(expected, self.run_js('a.out.js'))
+    asyncify_size = os.path.getsize('a.out.wasm')
+
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2', '-sENVIRONMENT=shell'] + shared_args)
+    # run in v8 with stack switching and other relevant features (like reference
+    # types for the return value of externref)
+    v8 = config.V8_ENGINE + [
+      '--wasm-staging',
+      '--experimental-wasm-stack-switching'
+    ]
+    self.assertContained(expected, self.run_js('a.out.js', engine=v8))
+    stack_switching_size = os.path.getsize('a.out.wasm')
+
+    # also compare to code size without asyncify or stack switching
+    self.run_process([EMXX, 'main.cpp'] + shared_args)
+    nothing_size = os.path.getsize('a.out.wasm')
+
+    # stack switching does not asyncify the code, which means it is very close
+    # to the normal "nothing" size, and much smaller than the asyncified size
+    self.assertLess(stack_switching_size, 0.60 * asyncify_size)
+    self.assertLess(abs(stack_switching_size - nothing_size), 0.01 * nothing_size)
+
   def test_no_cfi(self):
     err = self.expect_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')])
     self.assertContained('emcc: error: emscripten does not currently support -fsanitize=cfi', err)

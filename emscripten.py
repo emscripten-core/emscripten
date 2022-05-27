@@ -829,7 +829,8 @@ def create_receiving(exports):
   delay_assignment = settings.WASM_ASYNC_COMPILATION and not settings.MINIMAL_RUNTIME
   if not delay_assignment:
     if settings.MINIMAL_RUNTIME:
-      # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+      # In Wasm exports are assigned inside a function to variables
+      # existing in top level JS scope, i.e.
       # var _main;
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
       # var asm = output.instance.exports;
@@ -840,21 +841,7 @@ def create_receiving(exports):
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
-      if settings.MINIMAL_RUNTIME:
-        # In wasm2js exports can be directly processed at top level, i.e.
-        # var asm = Module["asm"](asmLibraryArg, buffer);
-        # var _main = asm["_main"];
-        if settings.USE_PTHREADS and settings.MODULARIZE:
-          # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
-          # symbols like regular runtime does.
-          # Fix this by migrating worker.js code to reside inside the Module so it is in the same
-          # scope as the rest of the JS code, or by defining an export syntax to MINIMAL_RUNTIME
-          # that multithreaded MODULARIZEd builds can export on.
-          receiving += [asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports_that_are_not_initializers]
-        else:
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
-      else:
-        receiving += make_export_wrappers(exports, delay_assignment)
+      receiving += make_export_wrappers(exports, delay_assignment)
   else:
     receiving += make_export_wrappers(exports, delay_assignment)
 
@@ -870,7 +857,10 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   module = []
 
   module.append('var asmLibraryArg = %s;\n' % sending)
-  if settings.ASYNCIFY and settings.ASSERTIONS:
+  if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
+    # instrumenting imports is used in asyncify in two ways: to add assertions
+    # that check for proper import use, and for ASYNCIFY=2 we use them to set up
+    # the Promise API on the import side.
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
   if not settings.MINIMAL_RUNTIME:
