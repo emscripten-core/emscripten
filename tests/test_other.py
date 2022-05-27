@@ -12022,7 +12022,6 @@ Module['postRun'] = function() {{
     # for the return value of externref)
     self.v8_args.append('--wasm-staging')
     self.v8_args.append('--experimental-wasm-stack-switching')
-    v8 = config.V8_ENGINE + self.v8_args
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
