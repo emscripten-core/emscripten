@@ -246,6 +246,9 @@ def with_asyncify_and_stack_switching(f):
       self.v8_args.append('--experimental-wasm-stack-switching')
       if not self.is_wasm():
         self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
+      # emcc warns about stack switching being experimental, and we build with
+      # warnings-as-errors, so disable that warning
+      self.emcc_args += ['-Wno-experimental']
       f(self)
     else:
       self.set_setting('ASYNCIFY')
