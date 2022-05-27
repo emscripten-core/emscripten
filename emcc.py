@@ -2219,13 +2219,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
       options.oformat not in (OFormat.WASM, OFormat.BARE) and \
+      settings.ASYNCIFY != 2 and \
       not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
       not settings.AUTODEBUG and \
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
       not settings.ASYNCIFY_LAZY_LOAD_CODE and \
-      not settings.ASYNCIFY == 2 and \
           settings.MINIFY_ASMJS_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
