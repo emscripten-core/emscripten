@@ -424,10 +424,11 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  // TODO: we need to add sigs to all other suspending methods in this file
-  // TODO: when we do so, we must also add a return in them, even if they do not
-  //       return a value, as the Suspender API expects them to return a
-  //       Promise.
+  // TODO: Update all other methods in this file to support ASYNCIFY=2 / stack
+  //       switching. That requires (1) adding a sig for them (as we need the
+  //       signature to declare the type for the Suspender API), and (2) adding
+  //       a return to their bodies, even if they do not return a value, as the
+  //       Suspender API expects them to return a Promise.
   emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
