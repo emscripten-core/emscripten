@@ -5404,18 +5404,19 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_langinfo.c')
 
   def test_files(self):
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if self.maybe_closure(): # Use closure here, to test we don't break FS stuff
-      self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
-    elif '-O3' in self.emcc_args and not self.is_wasm():
+    # Use closure here, to test we don't break FS stuff
+    if '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
-      return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
+      # Sadly --closure=2 is not yet free of closure warnings
+      # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
+      self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+    elif self.maybe_closure():
+      # closure can generate variables called 'gc', which pick up js shell stuff
+      self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
 
     self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('FORCE_FILESYSTEM')
-
-    print('base', self.emcc_args)
 
     create_file('pre.js', '''
 /** @suppress{checkTypes}*/
@@ -5436,9 +5437,6 @@ Module = {
 
     create_file('test.file', 'some data')
 
-    mem_file = 'files.js.mem'
-    try_delete(mem_file)
-
     def clean(out):
       return '\n'.join([line for line in out.split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
@@ -5446,7 +5444,7 @@ Module = {
                  output_nicerizer=clean)
 
     if self.uses_memory_init_file():
-      self.assertExists(mem_file)
+      self.assertExists('files.js.mem')
 
   def test_files_m(self):
     # Test for Module.stdin etc.
