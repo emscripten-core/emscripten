@@ -1026,14 +1026,14 @@ var LibraryWebGL2 = {
     _glDrawElements(mode, count, type, indices);
   },
 
-  glDrawArraysInstancedBaseInstanceWEBGL_sig: 'viiiii',
+  glDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiii',
   glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
     GLctx.dibvbi['drawArraysInstancedBaseInstanceWEBGL'](mode, first, count, instanceCount, baseInstance);
   },
   glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
   glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
 
-  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL_sig: 'viiiiiii',
+  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiii',
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, count, type, offset, instanceCount, baseVertex, baseinstance) {
     GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
   },
