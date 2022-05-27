@@ -11996,6 +11996,7 @@ Module['postRun'] = function() {{
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
+  @require_v8
   def test_stack_switching_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
