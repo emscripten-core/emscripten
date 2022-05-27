@@ -729,6 +729,8 @@ var NODEJS_CATCH_REJECTION = true;
 //     See https://emscripten.org/docs/porting/asyncify.html
 //  2: Depend on VM support for the wasm stack switching proposal. This allows
 //     async operations to happen without the overhead of modifying the wasm.
+//     This is experimental atm while spec discussion is ongoing, see
+//     https://github.com/WebAssembly/js-promise-integration/
 //     TODO: document which of the following flags are still relevant in this
 //           mode (e.g. IGNORE_INDIRECT etc. are not needed)
 // [link]
