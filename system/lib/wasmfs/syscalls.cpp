@@ -1456,12 +1456,8 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
 }
 
-intptr_t _mmap_js(size_t length,
-                  int prot,
-                  int flags,
-                  int fd,
-                  size_t offset,
-                  int* allocated) {
+intptr_t _mmap_js(
+  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
