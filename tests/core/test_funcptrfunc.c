@@ -8,9 +8,9 @@
 #include <stdio.h>
 
 typedef void (*funcptr)(int, int);
-typedef funcptr (*funcptrfunc)(int);
+typedef funcptr (*funcptrfunc)(intptr_t);
 
-funcptr __attribute__((noinline)) getIt(int x) { return (funcptr)x; }
+funcptr __attribute__((noinline)) getIt(intptr_t x) { return (funcptr)x; }
 
 int main(int argc, char **argv) {
   funcptrfunc fpf = argc < 100 ? getIt : NULL;

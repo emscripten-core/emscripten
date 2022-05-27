@@ -72,7 +72,7 @@ var LibraryDylink = {
       '__tls_size',
       '__tls_align',
       '__set_stack_limits',
-      'emscripten_tls_init',
+      '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
     ].includes(symName)
@@ -587,14 +587,21 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        if (moduleExports['__set_stack_limits']) {
+#if USE_PTHREADS
+          // When we are on an uninitialized pthread we delay calling
+          // __set_stack_limits until $setDylinkStackLimits.
+          if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
+#endif
+          moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        }
 #endif
 
         // initialize the module
 #if USE_PTHREADS
         // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call emscripten_tls_init
-        registerTlsInit(moduleExports['emscripten_tls_init'], instance.exports, metadata)
+        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
         if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
           var init = moduleExports['__wasm_call_ctors'];
@@ -644,14 +651,21 @@ var LibraryDylink = {
     return loadModule();
   },
 
-#if STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2 && USE_PTHREADS
+  // With USE_PTHREADS we load libraries before we are running a pthread and
+  // therefore before we have a stack.  Instead we delay calling
+  // `__set_stack_limits` until we start running a thread.  We also need to call
+  // this again for each new thread that the runs on a worker (since each thread
+  // has its own separate stack region).
   $setDylinkStackLimits: function(stackTop, stackMax) {
     for (var name in LDSO.loadedLibsByName) {
 #if DYLINK_DEBUG
       err('setDylinkStackLimits[' + name + ']');
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      lib.module['__set_stack_limits'](stackTop, stackMax);
+      if (lib.module['__set_stack_limits']) {
+        lib.module['__set_stack_limits'](stackTop, stackMax);
+      }
     }
   },
 #endif

@@ -62,7 +62,8 @@ def clean_env():
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS']:
+              'EMCC_ONLY_FORCED_STDLIBS',
+              'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -606,7 +607,7 @@ class NoExceptLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = Exceptions.NONE
@@ -629,8 +630,6 @@ class SjLjLibrary(Library):
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING=1',
                  '-D__USING_WASM_SJLJ__']
-    else:
-      cflags += ['-sSUPPORT_LONGJMP=emscripten']
     return cflags
 
   def get_base_name(self):
@@ -649,6 +648,10 @@ class SjLjLibrary(Library):
   def get_default_variation(cls, **kwargs):
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+
+  def can_build(self):
+    # wasm-sjlj is not yet supported with MEMORY64
+    return not (settings.MEMORY64 and self.is_wasm)
 
 
 class MuslInternalLibrary(Library):
@@ -858,6 +861,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'proxying.c',
           'pthread_create.c',
+          'pthread_kill.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
@@ -937,6 +941,7 @@ class libc(MuslInternalLibrary,
           'ctime_r.c',
           'timespec_get.c',
           'utime.c',
+          '__map_file.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -1143,7 +1148,7 @@ class crt1_reactor(MuslInternalLibrary):
     return super().can_use() and settings.STANDALONE_WASM
 
 
-class crtbegin(Library):
+class crtbegin(MuslInternalLibrary):
   name = 'crtbegin'
   cflags = ['-sUSE_PTHREADS']
   src_dir = 'system/lib/pthread'
@@ -1165,7 +1170,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
-  includes = ['system/lib/libcxx']
+  includes = ['system/lib/libcxx/src']
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1199,7 +1204,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'format_exception.cpp',
+      'cxa_exception_emscripten.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
@@ -1227,12 +1232,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
+    '-std=c++20',
   ]
+
+  includes = ['system/lib/libcxx/src']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
   src_glob_exclude = [
     'xlocale_zos.cpp',
+    'mbsnrtowcs.cpp',
+    'wcsnrtombs.cpp',
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
@@ -1843,7 +1853,7 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
     add_library('libc++abi')
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       add_library('libunwind')
 
   if settings.USE_ASAN:

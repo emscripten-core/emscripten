@@ -21,6 +21,12 @@ mergeInto(LibraryManager.library, {
                       : Math.pow(2, bits)         + value;
   },
 
+  $strLen: function(ptr) {
+    var end = ptr;
+    while (HEAPU8[end]) ++end;
+    return end - ptr;
+  },
+
   // Converts a value we have as unsigned, into a signed value. For
   // example, 200 in a uint8 would be a negative number.
   $reSign: function(value, bits) {
@@ -46,13 +52,12 @@ mergeInto(LibraryManager.library, {
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
   $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
-                        '$reSign', '$unSign', 'strlen'
+                        '$reSign', '$unSign', '$strLen',
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif
   ],
   $formatString: function(format, varargs) {
-    {{{ from64(['format', 'varargs']) }}};
 #if ASSERTIONS
     assert((varargs & 3) === 0);
 #endif
@@ -409,7 +414,7 @@ mergeInto(LibraryManager.library, {
           case 's': {
             // String.
             var arg = getNextArg('i8*');
-            var argLength = arg ? _strlen(arg) : '(null)'.length;
+            var argLength = arg ? strLen(arg) : '(null)'.length;
             if (precisionSet) argLength = Math.min(argLength, precision);
             if (!flagLeftAlign) {
               while (argLength < width--) {
@@ -466,38 +471,6 @@ mergeInto(LibraryManager.library, {
       }
     }
     return ret;
-  },
-
-  // printf/puts/strlen implementations for when musl is not pulled in - very
-  // partial. useful for tests, and when bootstrapping structInfo
-  strlen: function(ptr) {
-    {{{ from64('ptr') }}};
-    var end = ptr;
-    while (HEAPU8[end]) ++end;
-    return end - ptr;
-  },
-  printf__deps: ['$formatString'
-#if MINIMAL_RUNTIME
-    , '$intArrayToString'
-#endif
-    ],
-  printf: function(format, varargs) {
-    // int printf(const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    // extra effort to support printf, even without a filesystem. very partial, very hackish
-    var result = formatString(format, varargs);
-    var string = intArrayToString(result);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
-  },
-  puts: function(s) {
-    // extra effort to support puts, even without a filesystem. very partial, very hackish
-    var result = UTF8ToString(s);
-    var string = result.substr(0);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
   },
 });
 

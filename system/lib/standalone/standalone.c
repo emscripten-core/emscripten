@@ -64,21 +64,22 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-// Mark these as weak so that wasmfs does not collide with it. That is, if
-// wasmfs is in use, we want to use that and not this.
+#if 0
 __attribute__((__weak__)) const unsigned char* __map_file(const char* pathname,
                                                           size_t* size) {
   errno = ENOSYS;
   return NULL;
 }
+#endif
 
-__attribute__((__weak__)) intptr_t _mmap_js(intptr_t addr,
-                                            size_t length,
-                                            int prot,
-                                            int flags,
-                                            int fd,
-                                            size_t offset,
-                                            int* allocated) {
+// Mark these as weak so that wasmfs does not collide with it. That is, if
+// wasmfs is in use, we want to use that and not this.
+__attribute__((__weak__)) intptr_t _mmap_js(size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  size_t offset,
+                  int* allocated) {
   return -ENOSYS;
 }
 
@@ -110,6 +111,10 @@ __attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
 }
 
 __attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
+  return -ENOSYS;
+}
+
+__attribute__((__weak__)) int __syscall_fstat64(int fd, intptr_t buf) {
   return -ENOSYS;
 }
 

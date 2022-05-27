@@ -371,9 +371,6 @@ function preRun() {
 }
 
 function initRuntime() {
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
 #if ASSERTIONS
   assert(!runtimeInitialized);
 #endif
@@ -385,6 +382,10 @@ function initRuntime() {
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -624,7 +625,7 @@ function abort(what) {
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-#if EXCEPTION_HANDLING == 1
+#if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   ___trap();
 #else
@@ -758,7 +759,6 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -771,58 +771,6 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
-
-#if MEMORY64
-// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
-// BigInts. For now we keep JS as much the same as it always was, that is,
-// stackAlloc() receives and returns a Number from the JS point of view -
-// we translate BigInts automatically for that.
-// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
-// back on for MEMORY64.
-function instrumentWasmExportsForMemory64(exports) {
-  var instExports = {};
-  for (var name in exports) {
-    (function(name) {
-      var original = exports[name];
-      var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc' || name === 'emscripten_builtin_malloc') {
-        // get one i64, return an i64
-        replacement = (x) => {
-          var r = Number(original(BigInt(x)));
-          return r;
-        };
-      } else if (name === 'free') {
-        // get one i64
-        replacement = (x) => {
-          original(BigInt(x));
-        };
-      } else if (name === 'emscripten_stack_get_end' ||
-                 name === 'emscripten_stack_get_base' ||
-                 name === 'emscripten_stack_get_current') {
-        // return an i64
-        replacement = () => {
-          var r = Number(original());
-          return r;
-        };
-      } else if (name === 'emscripten_builtin_memalign') {
-        // get two i64, return an i64
-        replacement = (x, y) => {
-          var r = Number(original(BigInt(x), BigInt(y)));
-          return r;
-        };
-      } else if (name === 'main') {
-        // get a i64 as second arg
-        replacement = (x, y) => {
-          var r = original(x, BigInt(y));
-          return r;
-        };
-      }
-      instExports[name] = replacement;
-    })(name);
-  }
-  return instExports;
-}
-#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
@@ -1071,9 +1019,9 @@ function createWasm() {
 
 #if USE_PTHREADS
 #if MAIN_MODULE
-    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
 #else
-    registerTlsInit(Module['asm']['emscripten_tls_init']);
+    registerTLSInit(Module['asm']['_emscripten_tls_init']);
 #endif
 #endif
 
@@ -1233,6 +1181,15 @@ function createWasm() {
 #if ENVIRONMENT_MAY_BE_WEBVIEW
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
         !isFileURI(wasmBinaryFile) &&
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+        // Avoid instantiateStreaming() on Node.js environment for now, as while
+        // Node.js v18.1.0 implements it, it does not have a full fetch()
+        // implementation yet.
+        //
+        // Reference:
+        //   https://github.com/emscripten-core/emscripten/pull/16917
+        !ENVIRONMENT_IS_NODE &&
 #endif
         typeof fetch == 'function') {
       return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {

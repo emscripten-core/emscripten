@@ -844,7 +844,7 @@ def get_cflags(user_args):
 
   # if exception catching is disabled, we can prevent that code from being
   # generated in the frontend
-  if settings.DISABLE_EXCEPTION_CATCHING and not settings.EXCEPTION_HANDLING:
+  if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
     cflags.append('-fignore-exceptions')
 
   if settings.INLINING_LIMIT:
@@ -935,11 +935,9 @@ def in_temp(name):
 
 
 def dedup_list(lst):
-  rtn = []
-  for item in lst:
-    if item not in rtn:
-      rtn.append(item)
-  return rtn
+  # Since we require python 3.6, that ordering of dictionaries is guaranteed
+  # to be insertion order so we can use 'dict' here but not 'set'.
+  return list(dict.fromkeys(lst))
 
 
 def move_file(src, dst):
@@ -1451,6 +1449,11 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  if settings.MEMORY64:
+    default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
+    if settings.SUPPORT_LONGJMP:
+      exit_with_error('MEMORY64 is not compatible with SUPPORT_LONGJMP')
+
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
   if settings.SUPPORT_LONGJMP == 1:
@@ -1489,7 +1492,6 @@ def setup_pthreads(target):
   settings.REQUIRED_EXPORTS += [
     'emscripten_dispatch_to_thread_',
     '_emscripten_thread_free_data',
-    '_emscripten_allow_main_runtime_queued_calls',
     'emscripten_main_browser_thread_id',
     'emscripten_main_thread_process_queued_calls',
     'emscripten_run_in_main_runtime_thread_js',
@@ -1512,7 +1514,7 @@ def setup_pthreads(target):
     '__emscripten_thread_init',
     '__emscripten_thread_exit',
     '__emscripten_thread_crashed',
-    '_emscripten_tls_init',
+    '__emscripten_tls_init',
     '_pthread_self',
     'executeNotifiedProxyingQueue',
   ]
@@ -1635,8 +1637,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
-  # If no output format was sepecific we try to imply the format based on
-  # the output filename extension.
+  # If no output format was specified we try to deduce the format based on
+  # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
     # Until we have a better story for actually producing runtime shared libraries
     # we support a compatibility mode where shared libraries are actually just
@@ -1823,7 +1825,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the internal library function since they are used by runtime functions.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
-    if settings.SAFE_HEAP or not settings.MINIMAL_RUNTIME:
+    if settings.SAFE_HEAP:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
+    if not settings.MINIMAL_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
@@ -1856,7 +1860,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$registerTlsInit',
+        '$registerTLSInit',
     ]
 
   if settings.RELOCATABLE:
@@ -2098,12 +2102,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
       ]
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
-      # We use __stdio_exit to shut down musl's stdio subsystems and flush
-      # streams on exit.
-      # We only include it if the runtime is exitable, or when ASSERTIONS
+      # to flush streams on FS exit, we need to be able to call fflush
+      # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
-      settings.EXPORT_IF_DEFINED += ['__stdio_exit']
+      settings.EXPORT_IF_DEFINED += ['fflush']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
@@ -2135,7 +2138,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # TODO: Move this into the library JS file once it becomes possible.
   # See https://github.com/emscripten-core/emscripten/pull/15982
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_format_exception', '_free']
+    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
 
   if settings.WASM_WORKERS:
     # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
@@ -2251,6 +2254,17 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
+
+  # Any "pointers" passed to JS will now be i64's, in both modes.
+  # Also turn off minifying, which clashes with instrumented functions in preamble.js
+  if settings.MEMORY64:
+    if settings.RELOCATABLE:
+      exit_with_error('MEMORY64 is not compatible with dynamic linking')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
+    settings.WASM_BIGINT = 1
+    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
+    settings.MINIFY_WASM_IMPORTED_MODULES = 0
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -2523,15 +2537,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
 
-  # Any "pointers" passed to JS will now be i64's, in both modes.
-  # Also turn off minifying, which clashes with instrumented functions in preamble.js
-  if settings.MEMORY64:
-    if user_settings.get('WASM_BIGINT') == '0':
-      exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
-    settings.WASM_BIGINT = 1
-    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
-    settings.MINIFY_WASM_IMPORTED_MODULES = 0
-
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
   if settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
@@ -2565,12 +2570,12 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # Export tag objects which are likely needed by the native code, but which are
   # currently not reported in the metadata of wasm-emscripten-finalize
   if settings.RELOCATABLE:
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
     if settings.SUPPORT_LONGJMP == 'wasm':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
 
-  if settings.EXCEPTION_HANDLING:
+  if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
   return target, wasm_target
@@ -2734,9 +2739,9 @@ def phase_compile_inputs(options, state, newargs, input_files):
 @ToolchainProfiler.profile_block('calculate system libraries')
 def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs):
   extra_files_to_link = []
-  # link in ports and system libraries, if necessary
+  # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
-    # Ports are always linked into the main module, never the size module.
+    # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
   all_linker_inputs = [f for _, f in sorted(linker_inputs)] + extra_files_to_link
   extra_files_to_link += system_libs.calculate(all_linker_inputs, newargs, forced=state.forced_stdlibs)
@@ -3215,7 +3220,7 @@ def parse_args(newargs):
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-      settings.EXCEPTION_HANDLING = 0
+      settings.WASM_EXCEPTIONS = 0
     elif arg == '-fexceptions':
       eh_enabled = True
     elif arg == '-fwasm-exceptions':
@@ -3278,11 +3283,11 @@ def parse_args(newargs):
   # exception handling by default when -fexceptions is given when wasm
   # exception handling becomes stable.
   if wasm_eh_enabled:
-    settings.EXCEPTION_HANDLING = 1
+    settings.WASM_EXCEPTIONS = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
     settings.DISABLE_EXCEPTION_CATCHING = 1
   elif eh_enabled:
-    settings.EXCEPTION_HANDLING = 0
+    settings.WASM_EXCEPTIONS = 0
     settings.DISABLE_EXCEPTION_THROWING = 0
     settings.DISABLE_EXCEPTION_CATCHING = 0
 

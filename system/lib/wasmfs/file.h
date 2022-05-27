@@ -258,7 +258,11 @@ public:
     : file(file), lock(file->mutex, std::defer_lock) {}
   size_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
-  void setMode(mode_t mode) { file->mode = mode; }
+  void setMode(mode_t mode) {
+    // The type bits can never be changed (whether something is a file or a
+    // directory, for example).
+    file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
+  }
   time_t getCTime() { return file->ctime; }
   void setCTime(time_t time) { file->ctime = time; }
   time_t getMTime() { return file->mtime; }

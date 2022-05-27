@@ -73,7 +73,7 @@ def which(program):
 
 def read_file(file_path):
   """Read from a file opened in text mode"""
-  with open(file_path) as fh:
+  with open(file_path, encoding='utf-8') as fh:
     return fh.read()
 
 
@@ -85,7 +85,7 @@ def read_binary(file_path):
 
 def write_file(file_path, text):
   """Write to a file opened in text mode"""
-  with open(file_path, 'w') as fh:
+  with open(file_path, 'w', encoding='utf-8') as fh:
     fh.write(text)
 
 

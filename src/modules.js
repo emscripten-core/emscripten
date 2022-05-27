@@ -21,7 +21,7 @@ function genArgSequence(n) {
 global.libraryFunctions = [];
 
 global.LibraryManager = {
-  library: null,
+  library: {},
   structs: {},
   loaded: false,
   libraries: [],
@@ -31,7 +31,8 @@ global.LibraryManager = {
   },
 
   load: function() {
-    if (this.library) return;
+    assert(!this.loaded);
+    this.loaded = true;
 
     // Core system libraries (always linked against)
     let libraries = [
@@ -49,7 +50,7 @@ global.LibraryManager = {
       'library_eventloop.js',
     ];
 
-    if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
+    if (LINK_AS_CXX && !WASM_EXCEPTIONS) {
       if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
       } else {
@@ -302,8 +303,6 @@ global.LibraryManager = {
         }
       }
     }
-
-    this.loaded = true;
   },
 };
 

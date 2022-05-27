@@ -9,7 +9,7 @@
 
 void __attribute__((noinline)) InteropString(char *staticBuffer)
 {
-  char *string = (char*)EM_ASM_INT({
+  char *string = (char*)EM_ASM_PTR({
     var str = "hello, this is a string! ";
 #if ONE_BIG_STRING
     // double it until it is bigger than the stack

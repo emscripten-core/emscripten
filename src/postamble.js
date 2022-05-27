@@ -214,12 +214,16 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if ASSERTIONS && USE_PTHREADS
+  // See $establishStackSpace for the equivelent code that runs on a thread
+  assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ to64(STACK_BASE) }}}, {{{ to64(STACK_MAX) }}});
+  _emscripten_stack_set_limits({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #else
   _emscripten_stack_init();
 #endif
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }
 #endif
@@ -240,7 +244,10 @@ function run(args) {
   }
 
 #if STACK_OVERFLOW_CHECK
-  stackCheckInit();
+#if USE_PTHREADS
+  if (!ENVIRONMENT_IS_PTHREAD)
+#endif
+    stackCheckInit();
 #endif
 
 #if RELOCATABLE
@@ -371,11 +378,10 @@ function checkUnflushedContent() {
     has = true;
   }
   try { // it doesn't matter if it fails
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-    var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
-    if (flush) flush();
-#elif hasExportedFunction('___stdio_exit')
-    ___stdio_exit();
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
+    flush_NO_FILESYSTEM();
+#elif hasExportedFunction('_fflush')
+    _fflush(0);
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
@@ -425,7 +431,11 @@ function exit(status, implicit) {
       throw 'unwind';
     } else {
 #if PTHREADS_DEBUG
+#if EXIT_RUNTIME
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+#else
+      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
+#endif
 #endif
     }
   }

@@ -69,27 +69,27 @@ int main(int argc, char* argv[]) {
   fdatasync(fd);
   emscripten_console_log("flushed");
 
-  struct stat stat;
-  err = fstat(fd, &stat);
+  struct stat stat_buf;
+  err = fstat(fd, &stat_buf);
   assert(err == 0);
-  assert(stat.st_size == strlen(msg));
+  assert(stat_buf.st_size == strlen(msg));
   emscripten_console_log("statted");
 
 #ifndef WASMFS_SETUP
 
   err = ftruncate(fd, 100);
   assert(err == 0);
-  err = fstat(fd, &stat);
+  err = fstat(fd, &stat_buf);
   assert(err == 0);
-  assert(stat.st_size == 100);
+  assert(stat_buf.st_size == 100);
   emscripten_console_log("truncated to 100");
 
-  err = ftruncate(fd, 0);
+  err = ftruncate(fd, 1);
   assert(err == 0);
-  err = fstat(fd, &stat);
+  err = fstat(fd, &stat_buf);
   assert(err == 0);
-  assert(stat.st_size == 0);
-  emscripten_console_log("truncated to 0");
+  assert(stat_buf.st_size == 1);
+  emscripten_console_log("truncated to 1");
 
   struct dirent** entries;
   int nentries = scandir("/opfs/working", &entries, NULL, alphasort);
@@ -118,6 +118,11 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
   emscripten_console_log("closed file");
 
+  err = stat("/opfs/working/foo.txt", &stat_buf);
+  assert(err == 0);
+  assert(stat_buf.st_size == 1);
+  emscripten_console_log("statted");
+
   err = rename("/opfs/working/foo.txt", "/opfs/foo.txt");
   assert(err == 0);
   err = access("/opfs/working/foo.txt", F_OK);
@@ -144,7 +149,13 @@ int main(int argc, char* argv[]) {
 }
 
 void cleanup(void) {
+  printf("cleaning up\n");
+
   unlink("/opfs/working/foo.txt");
   rmdir("/opfs/working");
   unlink("/opfs/foo.txt");
+
+  assert(access("/opfs/working/foo.txt", F_OK) != 0);
+  assert(access("/opfs/working", F_OK) != 0);
+  assert(access("/opfs/foo.txt", F_OK) != 0);
 }

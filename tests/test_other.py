@@ -48,6 +48,7 @@ emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 emprofile = shared.bat_suffix(path_from_root('emprofile'))
+emstrip = shared.bat_suffix(path_from_root('emstrip'))
 emsymbolizer = shared.bat_suffix(path_from_root('emsymbolizer'))
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
@@ -605,9 +606,17 @@ f.close()
     #   emcc tests/hello_world.c -Oz --closure 1 -o tests/other/test_emsize.js
     expected = read_file(test_file('other/test_emsize.out'))
     cmd = [emsize, test_file('other/test_emsize.js')]
-    for command in [cmd, cmd + ['-format=sysv']]:
+    for command in [cmd, cmd + ['--format=sysv']]:
       output = self.run_process(cmd, stdout=PIPE).stdout
       self.assertContained(expected, output)
+
+  def test_emstrip(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-g', '-o', 'hello.js'])
+    output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
+    self.assertContained('.debug_info', output)
+    self.run_process([emstrip, 'hello.wasm'])
+    output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
+    self.assertNotContained('.debug_info', output)
 
   @is_slow_test
   @parameterized({
@@ -3298,7 +3307,10 @@ mergeInto(LibraryManager.library, {
     '<' : 0,
     'white space' : 1
   },
-  printf__deps: ['__internal_data', 'fprintf']
+  foo__deps: ['__internal_data'],
+  foo: function() {
+    return 0;
+  }
 });
 ''')
 
@@ -5513,6 +5525,11 @@ import os
 print(os.environ.get('NM'))
 ''')
     check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+
+    create_file('test.c', 'int main() { return 0; }')
+    os.mkdir('test_cache')
+    with env_modify({'EM_CACHE': os.path.abspath('test_cache')}):
+      check(EMCONFIGURE, [EMCC, 'test.c'], fail=False)
 
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
@@ -11332,7 +11349,7 @@ kill -9 $$
     self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
     libs = ['-lc', '-lcompiler_rt', '-lmalloc']
-    err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check the the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
@@ -11626,6 +11643,7 @@ void foo() {}
   def test_unistd_sleep(self):
     self.do_run_in_out_file_test('unistd/sleep.c')
 
+  @also_with_wasmfs
   def test_unistd_fstatfs(self):
     self.do_run_in_out_file_test('unistd/fstatfs.c')
 
@@ -11634,19 +11652,22 @@ void foo() {}
   @require_node
   def test_unistd_close_noderawfs(self):
     self.set_setting('NODERAWFS')
-    create_file('pre.js', '''
-const { execSync } = require('child_process');
+    create_file('pre.js', f'''
+const {{ execSync }} = require('child_process');
 const process = require('process');
 
+const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\\\n" || true';
 let openFilesPre;
 
-Module['preRun'] = function() {
-  openFilesPre = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-}
-Module['postRun'] = function() {
-  const openFilesPost = execSync('ls -l /proc/' + process.pid + '/fd | wc -l').toString();
-  assert(openFilesPre == openFilesPost, 'File descriptors should not leak');
-}
+Module['preRun'] = function() {{
+  openFilesPre = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
+}}
+Module['postRun'] = function() {{
+  const openFilesPost = execSync(cmd, {{ stdio: ['ignore', 'pipe', 'ignore'] }}).toString();
+  assert(openFilesPre == openFilesPost, 'File descriptors should not leak. \\n' +
+    'Pre: \\n' + openFilesPre +
+    'Post: \\n' + openFilesPost);
+}}
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
@@ -11716,6 +11737,13 @@ Module['postRun'] = function() {
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.test_wasmfs_jsfile()
+
+  def test_wasmfs_before_preload(self):
+    self.set_setting('WASMFS')
+    os.mkdir('js_backend_files')
+    create_file('js_backend_files/file.dat', 'data')
+    self.emcc_args += ['--preload-file', 'js_backend_files/file.dat']
+    self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):

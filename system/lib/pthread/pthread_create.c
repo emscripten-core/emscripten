@@ -22,11 +22,10 @@
 
 // See musl's pthread_create.c
 
-extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
-extern int _emscripten_default_pthread_stack_size();
-extern void __emscripten_thread_cleanup(pthread_t thread);
-extern void* _emscripten_tls_base();
+int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int _emscripten_default_pthread_stack_size();
+void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
+
 extern int8_t __dso_handle;
 
 static void dummy_0()
@@ -197,16 +196,6 @@ void _emscripten_thread_free_data(pthread_t t) {
   emscripten_builtin_free(t);
 }
 
-static void free_tls_data() {
-  void* tls_block = _emscripten_tls_base();
-  if (tls_block) {
-#ifdef DEBUG_TLS
-    printf("tls free: thread[%p] dso[%p] <- %p\n", pthread_self(), &__dso_handle, tls_block);
-#endif
-    emscripten_builtin_free(tls_block);
-  }
-}
-
 void _emscripten_thread_exit(void* result) {
   struct pthread *self = __pthread_self();
   assert(self);
@@ -221,7 +210,7 @@ void _emscripten_thread_exit(void* result) {
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
 
-  free_tls_data();
+  _emscripten_tls_free();
 
   if (!--libc.threads_minus_1) libc.need_locks = 0;
 

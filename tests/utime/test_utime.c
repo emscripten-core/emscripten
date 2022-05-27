@@ -44,15 +44,15 @@ void test() {
   assert(s.st_mtime == t.modtime);
 
   // NULL sets atime and mtime to current time.
-  long now = time(NULL);
+  time_t now = time(NULL);
   rv = utime("writeable", NULL);
   assert(rv == 0);
   memset(&s, 0, sizeof s);
   stat("writeable", &s);
   assert(s.st_atime == s.st_mtime);
-  long diff = s.st_atime - now;
+  time_t diff = s.st_atime - now;
   if (abs(diff) > 5) {
-    fprintf(stderr, "st_atime: %li, now: %li, diff: %li\n ", s.st_atime, now, diff);
+    fprintf(stderr, "st_atime: %i, now: %i, diff: %i\n ", s.st_atime, now, diff);
     assert(abs(diff) <= 5);
   }
 

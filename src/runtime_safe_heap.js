@@ -47,7 +47,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
     assert(brk >= _emscripten_stack_get_base()); // sbrk-managed memory must be above the stack
     assert(brk <= HEAP8.length);
   }
-  setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
+  setValue_safe(dest, value, getSafeHeapType(bytes, isFloat));
   return value;
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -76,7 +76,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
     assert(brk <= HEAP8.length);
   }
   var type = getSafeHeapType(bytes, isFloat);
-  var ret = getValue(dest, type, 1);
+  var ret = getValue_safe(dest, type);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10));
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
