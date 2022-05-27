@@ -14,7 +14,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFS$JSMemoryFiles',
     '_wasmfs_create_js_file_backend_js',
   ],
-  _wasmfs_create_fetch_backend_js: async function (backend) {
+  _wasmfs_create_fetch_backend_js: async function(backend) {
     // Get a promise that fetches the data and stores it in JS memory (if it has
     // not already been fetched).
     async function getFile(file) {
@@ -70,7 +70,7 @@ mergeInto(LibraryManager.library, {
         await getFile(file);
         return jsFileOps.read(file, buffer, length, offset);
       },
-      getSize: async (file) => {
+      getSize: async(file) => {
         await getFile(file);
         return jsFileOps.getSize(file);
       },
