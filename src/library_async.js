@@ -269,14 +269,16 @@ mergeInto(LibraryManager.library, {
       var func = Module['asm'][name];
 #if RELOCATABLE
       // Exported functions in side modules are not listed in `Module["asm"]`,
-      // but are added as a form of `Module["(asmjs mangled name)"]`.
-      // So we should find a rewind function from `Module["asm"]` and `Module["(asmjs mangled name)"]`.
+      // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
       if (!func) {
-        func = Module[asmjsMangle(name)];
+        func = resolveGlobalSymbol(name);
       }
 #endif
       return func;
     },
+#if RELOCATABLE
+    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
+#endif
 
     doRewind: function(ptr) {
 #if ASYNCIFY == 2
