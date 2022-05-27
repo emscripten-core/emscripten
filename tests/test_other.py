@@ -12011,18 +12011,19 @@ Module['postRun'] = function() {{
     ''')
     expected = 'nap time\ni am awake\n'
 
-    shared_args = ['-Os', '-sEXIT_RUNTIME']
+    shared_args = ['-Os', '-sEXIT_RUNTIME', '-sENVIRONMENT=shell']
     self.run_process([EMXX, 'main.cpp', '-sASYNCIFY'] + shared_args)
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2', '-sENVIRONMENT=shell'] + shared_args)
-    # run in v8 with stack switching and other relevant features (like reference
-    # types for the return value of externref)
-    v8 = config.V8_ENGINE + [
-      '--wasm-staging',
-      '--experimental-wasm-stack-switching'
-    ]
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+
+    # enable stack switching and other relevant features (like reference types
+    # for the return value of externref)
+    self.v8_args.append('--wasm-staging')
+    self.v8_args.append('--experimental-wasm-stack-switching')
+    v8 = config.V8_ENGINE + self.v8_args
+
     self.assertContained(expected, self.run_js('a.out.js', engine=v8))
     stack_switching_size = os.path.getsize('a.out.wasm')
 
