@@ -424,10 +424,13 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_sleep__sig: 'vi', // TODO: others
+  // TODO: we need to add sigs to all other suspending methods in this file
+  // TODO: when we do so, we must also add a return in them, even if they do not
+  //       return a value, as the Suspender API expects them to return a
+  //       Promise.
+  emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
-    // TODO: add return in the others.
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
