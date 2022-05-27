@@ -16,6 +16,32 @@ function uleb128Encode(n) {
   return [(n % 128) | 128, n >> 7];
 }
 
+// Converts a signature like 'vii' into a description of the wasm types, like
+// { parameters: ['i32', 'i32'], results: [] }.
+function sigToWasmTypes(sig) {
+  var typeNames = {
+    'i': 'i32',
+    'j': 'i64',
+    'f': 'f32',
+    'd': 'f64',
+#if MEMORY64
+    'p': 'i64',
+#else
+    'p': 'i32',
+#endif
+  };
+  var type = {
+    parameters: [],
+    results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
+  };
+  for (var i = 1; i < sig.length; ++i) {
+#if ASSERTIONS
+    assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
+#endif
+    type.parameters.push(typeNames[sig[i]]);
+  }
+  return type;
+}
 
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
@@ -28,28 +54,7 @@ function convertJsFunctionToWasm(func, sig) {
   // Otherwise, construct a minimal wasm module importing the JS function and
   // re-exporting it.
   if (typeof WebAssembly.Function == "function") {
-    var typeNames = {
-      'i': 'i32',
-      'j': 'i64',
-      'f': 'f32',
-      'd': 'f64',
-#if MEMORY64
-      'p': 'i64',
-#else
-      'p': 'i32',
-#endif
-    };
-    var type = {
-      parameters: [],
-      results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
-    };
-    for (var i = 1; i < sig.length; ++i) {
-#if ASSERTIONS
-      assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
-#endif
-      type.parameters.push(typeNames[sig[i]]);
-    }
-    return new WebAssembly.Function(type, func);
+    return new WebAssembly.Function(sigToWasmTypes(sig), func);
   }
 
   // The module is static, with the exception of the type section, which is

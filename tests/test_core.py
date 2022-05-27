@@ -233,6 +233,32 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
   return decorated
 
 
+def with_asyncify_and_stack_switching(f):
+  assert callable(f)
+
+  def metafunc(self, stack_switching):
+    if stack_switching:
+      self.set_setting('ASYNCIFY', 2)
+      self.require_v8()
+      # enable stack switching and other relevant features (like reference types
+      # for the return value of externref)
+      self.v8_args.append('--wasm-staging')
+      self.v8_args.append('--experimental-wasm-stack-switching')
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
+      # emcc warns about stack switching being experimental, and we build with
+      # warnings-as-errors, so disable that warning
+      self.emcc_args += ['-Wno-experimental']
+      f(self)
+    else:
+      self.set_setting('ASYNCIFY')
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'stack_switching': (True,)}
+  return metafunc
+
+
 def no_optimize(note=''):
   assert not callable(note)
 
@@ -7933,10 +7959,10 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
   @no_memory64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('ASYNCIFY')
 
     create_file('main.c',  r'''
 #include <stdio.h>
@@ -7994,6 +8020,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @no_memory64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams

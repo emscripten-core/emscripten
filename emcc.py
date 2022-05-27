@@ -551,7 +551,7 @@ def get_binaryen_passes():
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
     # be able to further process them.
     passes += ['--fpcast-emu']
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -2213,10 +2213,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
   # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names.
+  # ASYNCIFY=2 does not support this optimization yet as it has a hardcoded
+  # check for 'main' as an export name. TODO
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
       options.oformat not in (OFormat.WASM, OFormat.BARE) and \
+      settings.ASYNCIFY != 2 and \
       not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
       not settings.AUTODEBUG and \
@@ -2511,6 +2514,15 @@ def phase_linker_setup(options, state, newargs, user_settings):
       return 'env.' + name
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
+
+    if settings.ASYNCIFY == 2:
+      diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
+      if not settings.EXIT_RUNTIME:
+        # FIXME: investigate d8 issues without EXIT_RUNTIME (quit exits too
+        #        early, not leaving async work a chance to run; only
+        #        EXIT_RUNTIME tracks whether such work exists and should stop us
+        #        from exiting).
+        exit_with_error('ASYNCIFY with stack switching requires EXIT_RUNTIME for now')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
@@ -3315,7 +3327,7 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info += 1
   if options.emit_symbol_map:
     intermediate_debug_info += 1
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     intermediate_debug_info += 1
   # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
   # also strips the Names section. so to emit just the Names section we don't
@@ -3335,7 +3347,7 @@ def phase_binaryen(target, options, wasm_target):
       passes += ['--strip-producers']
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY == 1:
       intermediate_debug_info -= 1
     # currently binaryen's DWARF support will limit some optimizations; warn on
     # that. see https://github.com/emscripten-core/emscripten/issues/15269
