@@ -100,7 +100,7 @@ mergeInto(LibraryManager.library, {
                 throw new Error('Missing __sig for ' + x);
               }
 #endif
-              var type = getTypeDescription(sig, original);
+              var type = sigToWasmTypes(sig, original);
               // Regardless of the original result type of the function, as it
               // is now expected to potentially return a Promise, change it to
               // an externref.

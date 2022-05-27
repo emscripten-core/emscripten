@@ -16,7 +16,9 @@ function uleb128Encode(n) {
   return [(n % 128) | 128, n >> 7];
 }
 
-function getTypeDescription(sig) {
+// Converts a signature like 'vii' into a description of the wasm types, like
+// { parameters: ['i32', 'i32'], results: [] }.
+function sigToWasmTypes(sig) {
   var typeNames = {
     'i': 'i32',
     'j': 'i64',
@@ -52,7 +54,7 @@ function convertJsFunctionToWasm(func, sig) {
   // Otherwise, construct a minimal wasm module importing the JS function and
   // re-exporting it.
   if (typeof WebAssembly.Function == "function") {
-    return new WebAssembly.Function(getTypeDescription(sig), func);
+    return new WebAssembly.Function(sigToWasmTypes(sig), func);
   }
 
   // The module is static, with the exception of the type section, which is
