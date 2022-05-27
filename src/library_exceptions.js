@@ -393,7 +393,6 @@ var LibraryExceptions = {
   },
 
 #endif
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
     return Module['asm']['__cpp_exception'];
@@ -427,7 +426,7 @@ var LibraryExceptions = {
     return result;
   },
 
-#else // !DISABLE_EXCEPTION_CATCHING
+#elif !DISABLE_EXCEPTION_CATCHING
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
   $incrementExceptionRefcount: function(ptr) {
     ___cxa_increment_exception_refcount(ptr);
@@ -445,7 +444,6 @@ var LibraryExceptions = {
     _free(utf8_addr);
     return result;
   },
-#endif
 #endif
 };
 
