@@ -271,7 +271,7 @@ mergeInto(LibraryManager.library, {
       // Exported functions in side modules are not listed in `Module["asm"]`,
       // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
       if (!func) {
-        func = resolveGlobalSymbol(name);
+        func = resolveGlobalSymbol(name, false);
       }
 #endif
       return func;
