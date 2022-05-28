@@ -2087,7 +2087,6 @@ int main() {
     self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
-    self.banned_js_engines = [config.V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
@@ -2887,8 +2886,6 @@ The current type of b is: 9
     self.do_core_test('test_copyop.cpp')
 
   def test_memcpy_memcmp(self):
-    self.banned_js_engines = [config.V8_ENGINE] # Currently broken under V8_ENGINE but not node
-
     def check(output):
       output = output.replace('\n \n', '\n') # remove extra node output
       return hashlib.sha1(output.encode('utf-8')).hexdigest()
@@ -3257,10 +3254,6 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
-    # Failing under v8 since: https://chromium-review.googlesource.com/712595
-    if self.is_wasm():
-      self.banned_js_engines = [config.V8_ENGINE]
-
     create_file('liblib.c', r'''
       #include <stdio.h>
 
@@ -5487,13 +5480,9 @@ Module = {
     self.do_runf(test_file('fs/test_getdents64.cpp'), '..')
 
   def test_getdents64_special_cases(self):
-    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    self.banned_js_engines = [config.V8_ENGINE]
     self.do_run_in_out_file_test('fs/test_getdents64_special_cases.cpp')
 
   def test_getcwd_with_non_ascii_name(self):
-    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    self.banned_js_engines = [config.V8_ENGINE]
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
   def test_proc_self_fd(self):
@@ -6085,11 +6074,8 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
-  # i64s in the API, which we'd need to legalize for JS, so in standalone mode
-  # all we can test is wasm VMs
   @also_with_standalone_wasm(wasm2c=True)
   def test_posixtime(self):
-    self.banned_js_engines = [config.V8_ENGINE] # v8 lacks monotonic time
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
@@ -7865,7 +7851,6 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    self.banned_js_engines = [config.V8_ENGINE] # v8 doesn't support console.log
     self.set_setting('DEMANGLE_SUPPORT')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
