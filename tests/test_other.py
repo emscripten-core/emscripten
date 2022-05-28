@@ -11996,6 +11996,7 @@ Module['postRun'] = function() {{
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
+  @require_v8
   def test_stack_switching_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
@@ -12010,19 +12011,19 @@ Module['postRun'] = function() {{
     ''')
     expected = 'nap time\ni am awake\n'
 
-    shared_args = ['-Os', '-sEXIT_RUNTIME']
+    shared_args = ['-Os', '-sEXIT_RUNTIME', '-sENVIRONMENT=shell']
     self.run_process([EMXX, 'main.cpp', '-sASYNCIFY'] + shared_args)
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2', '-sENVIRONMENT=shell'] + shared_args)
-    # run in v8 with stack switching and other relevant features (like reference
-    # types for the return value of externref)
-    v8 = config.V8_ENGINE + [
-      '--wasm-staging',
-      '--experimental-wasm-stack-switching'
-    ]
-    self.assertContained(expected, self.run_js('a.out.js', engine=v8))
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+
+    # enable stack switching and other relevant features (like reference types
+    # for the return value of externref)
+    self.v8_args.append('--wasm-staging')
+    self.v8_args.append('--experimental-wasm-stack-switching')
+
+    self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
 
     # also compare to code size without asyncify or stack switching
