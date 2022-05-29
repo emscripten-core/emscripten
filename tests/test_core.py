@@ -8475,7 +8475,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   def test_wrap_malloc(self):
-    self.do_runf(test_file('wrap_malloc.cpp'), 'OK.')
+    self.do_runf(test_file('core/test_wrap_malloc.c'), 'OK.')
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')

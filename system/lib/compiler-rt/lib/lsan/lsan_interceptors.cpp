@@ -32,6 +32,17 @@
 #include "lsan_common.h"
 #include "lsan_thread.h"
 
+#if SANITIZER_EMSCRIPTEN
+#define __ATTRP_C11_THREAD ((void*)(uptr)-1)
+#include <emscripten/heap.h>
+extern "C" {
+int emscripten_builtin_pthread_create(void *thread, void *attr,
+                                      void *(*callback)(void *), void *arg);
+int emscripten_builtin_pthread_join(void *th, void **ret);
+int emscripten_builtin_pthread_detach(void *th);
+}
+#endif
+
 #include <stddef.h>
 
 using namespace __lsan;
@@ -401,18 +412,6 @@ INTERCEPTOR(int, pthread_atfork, void (*prepare)(), void (*parent)(),
 #define LSAN_MAYBE_INTERCEPT_PTHREAD_ATFORK INTERCEPT_FUNCTION(pthread_atfork)
 #else
 #define LSAN_MAYBE_INTERCEPT_PTHREAD_ATFORK
-#endif
-
-#if SANITIZER_EMSCRIPTEN
-#define __ATTRP_C11_THREAD ((void*)(uptr)-1)
-extern "C" {
-  int emscripten_builtin_pthread_create(void *thread, void *attr,
-                                        void *(*callback)(void *), void *arg);
-  int emscripten_builtin_pthread_join(void *th, void **ret);
-  int emscripten_builtin_pthread_detach(void *th);
-  void *emscripten_builtin_malloc(size_t size);
-  void emscripten_builtin_free(void *);
-}
 #endif
 
 #if SANITIZER_INTERCEPT_STRERROR

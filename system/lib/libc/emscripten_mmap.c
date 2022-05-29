@@ -13,7 +13,6 @@
 #include <sys/mman.h>
 
 #include <emscripten/heap.h>
-#include <emscripten/emmalloc.h>
 
 #include "lock.h"
 #include "syscall.h"
