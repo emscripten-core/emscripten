@@ -29,7 +29,7 @@ def get(ports, settings, shared):
     src_path = os.path.join(dest_path, 'bullet', 'src')
     src_path = os.path.join(dest_path, 'bullet', 'src')
 
-    dest_include_path = os.path.join(ports.get_include_dir(), 'bullet')
+    dest_include_path = ports.get_include_dir('bullet')
     for base, dirs, files in os.walk(src_path):
       for f in files:
         if shared.suffix(f) != '.h':
@@ -55,7 +55,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
+  return ['-I' + ports.get_include_dir('bullet')]
 
 
 def show():

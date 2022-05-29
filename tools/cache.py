@@ -6,6 +6,8 @@
 import contextlib
 import logging
 import os
+from pathlib import Path
+
 from . import tempfiles, filelock, config, utils
 from .settings import settings
 
@@ -26,14 +28,13 @@ class Cache:
 
   def __init__(self, dirname):
     # figure out the root directory for all caching
-    dirname = os.path.normpath(dirname)
-    self.dirname = dirname
+    self.dirname = Path(dirname).resolve()
     self.acquired_count = 0
 
     # since the lock itself lives inside the cache directory we need to ensure it
     # exists.
     self.ensure()
-    self.filelock_name = os.path.join(dirname, 'cache.lock')
+    self.filelock_name = Path(dirname, 'cache.lock')
     self.filelock = filelock.FileLock(self.filelock_name)
 
   def acquire_cache_lock(self):
@@ -82,12 +83,12 @@ class Cache:
 
   def erase(self):
     with self.lock():
-      if os.path.exists(self.dirname):
+      if self.dirname.exists():
         for f in os.listdir(self.dirname):
-          tempfiles.try_delete(os.path.join(self.dirname, f))
+          tempfiles.try_delete(Path(self.dirname, f))
 
   def get_path(self, name):
-    return os.path.join(self.dirname, name)
+    return Path(self.dirname, name)
 
   def get_sysroot(self, absolute):
     if absolute:
@@ -95,17 +96,17 @@ class Cache:
     return 'sysroot'
 
   def get_include_dir(self, *parts):
-    return self.get_sysroot_dir('include', *parts)
+    return str(self.get_sysroot_dir('include', *parts))
 
   def get_sysroot_dir(self, *parts):
-    return os.path.join(self.get_sysroot(absolute=True), *parts)
+    return str(Path(self.get_sysroot(absolute=True), *parts))
 
   def get_lib_dir(self, absolute, varies=True):
-    path = os.path.join(self.get_sysroot(absolute=absolute), 'lib')
+    path = Path(self.get_sysroot(absolute=absolute), 'lib')
     if settings.MEMORY64:
-      path = os.path.join(path, 'wasm64-emscripten')
+      path = Path(path, 'wasm64-emscripten')
     else:
-      path = os.path.join(path, 'wasm32-emscripten')
+      path = Path(path, 'wasm32-emscripten')
     if not varies:
       return path
     # if relevant, use a subdir of the cache
@@ -118,19 +119,19 @@ class Cache:
     if settings.RELOCATABLE:
       subdir.append('pic')
     if subdir:
-      path = os.path.join(path, '-'.join(subdir))
+      path = Path(path, '-'.join(subdir))
     return path
 
   def get_lib_name(self, name, varies=True):
-    return os.path.join(self.get_lib_dir(absolute=False, varies=varies), name)
+    return str(self.get_lib_dir(absolute=False, varies=varies).joinpath(name))
 
   def erase_lib(self, name):
     self.erase_file(self.get_lib_name(name))
 
   def erase_file(self, shortname):
     with self.lock():
-      name = os.path.join(self.dirname, shortname)
-      if os.path.exists(name):
+      name = Path(self.dirname, shortname)
+      if name.exists():
         logger.info(f'deleting cached file: {name}')
         tempfiles.try_delete(name)
 
@@ -141,12 +142,11 @@ class Cache:
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
   def get(self, shortname, creator, what=None, force=False):
-    cachename = os.path.join(self.dirname, shortname)
-    cachename = os.path.abspath(cachename)
+    cachename = Path(self.dirname, shortname).resolve()
     # Check for existence before taking the lock in case we can avoid the
     # lock completely.
-    if os.path.exists(cachename) and not force:
-      return cachename
+    if cachename.exists() and not force:
+      return str(cachename)
 
     if config.FROZEN_CACHE:
       # Raise an exception here rather than exit_with_error since in practice this
@@ -154,8 +154,8 @@ class Cache:
       raise Exception(f'FROZEN_CACHE is set, but cache file is missing: "{shortname}" (in cache root path "{self.dirname}")')
 
     with self.lock():
-      if os.path.exists(cachename) and not force:
-        return cachename
+      if cachename.exists() and not force:
+        return str(cachename)
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')):
           what = 'system library'
@@ -163,9 +163,9 @@ class Cache:
           what = 'system asset'
       message = f'generating {what}: {shortname}... (this will be cached in "{cachename}" for subsequent builds)'
       logger.info(message)
-      utils.safe_ensure_dirs(os.path.dirname(cachename))
-      creator(cachename)
-      assert os.path.exists(cachename)
+      utils.safe_ensure_dirs(cachename.parent)
+      creator(str(cachename))
+      assert cachename.exists()
       logger.info(' - ok')
 
-    return cachename
+    return str(cachename)

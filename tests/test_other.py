@@ -809,8 +809,8 @@ f.close()
     if not utils.which('pkg-config'):
       self.fail('pkg-config is required to run this test')
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
-    libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
-    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+    libdir = shared.Cache.get_sysroot_dir('local/lib/pkgconfig')
+    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
   def test_system_include_paths(self):
@@ -5553,7 +5553,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
