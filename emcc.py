@@ -1741,6 +1741,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
+  if '_main' in settings.EXPORTED_FUNCTIONS:
+    settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
+
   # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
   # implies full stack overflow checks.
   if settings.ASSERTIONS:

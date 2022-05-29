@@ -444,7 +444,7 @@ var LibraryDylink = {
 
       // Export native export on the Module object.
       // TODO(sbc): Do all users want this?  Should we skip this by default?
-      var module_sym = asmjsMangle(sym);
+      var module_sym = asmjsMangle(sym == '__main_argc_argv' ? 'main' : sym);
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }
