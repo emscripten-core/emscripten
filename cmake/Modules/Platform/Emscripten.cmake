@@ -272,7 +272,6 @@ else()
   cmake_path(CONVERT "${_em_pkgconfig_libdir}" TO_NATIVE_PATH_LIST _em_pkgconfig_libdir)
 endif()
 set(ENV{PKG_CONFIG_LIBDIR} "${_em_pkgconfig_libdir}")
-set(ENV{PKG_CONFIG_PATH} "$ENV{EM_PKG_CONFIG_PATH}") # Stops caller's PKG_CONFIG_PATH from propagating.
 unset(_em_pkgconfig_libdir)
 
 option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
