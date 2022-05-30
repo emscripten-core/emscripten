@@ -805,6 +805,17 @@ f.close()
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.0.', output)
 
+  def test_pkg_config_packages(self):
+    packages = [
+      ('egl', '10.2.2'),
+      ('glesv2', '10.2.2'),
+      ('glfw3', '3.2.1'),
+      ('sdl', '1.2.15'),
+    ]
+    for package, version in packages:
+        out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
+        self.assertContained(version, out)
+
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 
