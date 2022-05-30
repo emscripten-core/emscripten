@@ -308,8 +308,8 @@ function updateGlobalBufferAndViews(buf) {
     }
 
     function bigIntToParts(value) {
-      var lower = Number((value) & BigInt(0xffffffff)) | 0;
-      var upper = (Number((value) >> BigInt(32)) | 0);
+      var lower = Number(BigInt(value) & BigInt(0xffffffff)) | 0;
+      var upper = (Number(BigInt(value) >> BigInt(32)) | 0);
       return [lower, upper];
     }
 
