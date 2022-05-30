@@ -429,7 +429,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install cmake.portable ninja
+            choco install cmake.portable ninja pkgconfiglite
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
