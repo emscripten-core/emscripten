@@ -358,12 +358,6 @@ def link_lld(args, target, external_symbols=None):
   # grouping.
   args = [a for a in args if a not in ('--start-group', '--end-group')]
 
-  # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
-  # include all archive contents.
-  if settings.LINKABLE:
-    args.insert(0, '--whole-archive')
-    args.append('--no-whole-archive')
-
   if settings.STRICT:
     args.append('--fatal-warnings')
 
