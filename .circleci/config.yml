@@ -439,7 +439,7 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "other.test_es5_transpile other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup other.test_dot_a_all_contents_invalid"
+          test_targets: "other.test_es5_transpile other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup other.test_dot_a_all_contents_invalid other.test_pkg_config*"
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
           test_targets: "sockets.test_nodejs_sockets_echo*"
