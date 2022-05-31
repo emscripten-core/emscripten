@@ -135,6 +135,18 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
+def requires_pkg_config(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not utils.which('pkg-config'):
+      self.fail('pkg-config is required to run this test')
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -805,14 +817,14 @@ f.close()
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.0.', output)
 
+  @requires_pkg_config
   def test_cmake_find_pkg_config(self):
-    if not utils.which('pkg-config'):
-      self.fail('pkg-config is required to run this test')
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
     libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
     libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
+  @requires_pkg_config
   def test_pkg_config_packages(self):
     packages = [
       ('egl', '10.2.2'),
