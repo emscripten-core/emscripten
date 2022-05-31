@@ -1628,6 +1628,16 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  def test_mmap_lazyfile(self):
+    create_file('lazydata.dat', 'hello world')
+    create_file('pre.js', '''
+      Module["preInit"] = () => {
+        FS.createLazyFile('/', "lazy.txt", "lazydata.dat", true, false);
+      }
+    ''')
+    self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
+    self.btest_exit(test_file('test_mmap_lazyfile.c'))
+
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
