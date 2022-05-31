@@ -7365,7 +7365,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('embind does not yet support MEMORY64')
   def test_embind(self):
-    # Very that both the old `--bind` arg and the new `-lembind` arg work
+    # Verify that both the old `--bind` arg and the new `-lembind` arg work
     for args in [['-lembind'], ['--bind']]:
       create_file('test_embind.cpp', r'''
       #include <stdio.h>
