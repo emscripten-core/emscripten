@@ -2,6 +2,7 @@
 #include <emscripten/console.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/proxying.h>
+#include <emscripten/heap.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -21,7 +22,6 @@ em_proxying_queue* queues[4];
 
 int queues_freed[4] = {};
 
-extern void emscripten_builtin_free(void* mem);
 void __attribute__((noinline)) free(void* ptr) {
   for (int i = 0; i < 4; i++) {
     if (ptr && queues[i] == ptr) {
