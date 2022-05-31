@@ -807,7 +807,7 @@ f.close()
 
   def test_cmake_find_pkg_config(self):
     if not utils.which('pkg-config'):
-      self.skipTest('Skipping cmake with pkg-config test since pkg-config is not found')
+      self.fail('pkg-config is required to run this test')
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
     libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
     libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
