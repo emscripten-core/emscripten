@@ -232,33 +232,7 @@ self.onmessage = (e) => {
       }
 
       try {
-        // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
-        // Native codebases sometimes spawn threads with other thread entry point signatures,
-        // such as void ThreadMain(void *arg), void *ThreadMain(), or void ThreadMain().
-        // That is not acceptable per C/C++ specification, but x86 compiler ABI extensions
-        // enable that to work. If you find the following line to crash, either change the signature
-        // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
-        // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86 ABI extension.
-        var result = Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
-
-#if STACK_OVERFLOW_CHECK
-        Module['checkStackCookie']();
-#endif
-#if MINIMAL_RUNTIME
-        // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
-        // pthreads. To exit a pthread with live runtime, use the function
-        // emscripten_unwind_to_js_event_loop() in the pthread body.
-        // The thread might have finished without calling pthread_exit(). If so,
-        // then perform the exit operation ourselves.
-        // (This is a no-op if explicit pthread_exit() had been called prior.)
-        Module['__emscripten_thread_exit'](result);
-#else
-        if (Module['keepRuntimeAlive']()) {
-          Module['PThread'].setExitStatus(result);
-        } else {
-          Module['__emscripten_thread_exit'](result);
-        }
-#endif
+        Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
       } catch(ex) {
         if (ex != 'unwind') {
           // ExitStatus not present in MINIMAL_RUNTIME
