@@ -14,9 +14,7 @@
 #include <string.h>
 #include <threads.h>
 #include <unistd.h>
-// Included for emscripten_builtin_free / emscripten_builtin_malloc
-// TODO(sbc): Should these be in their own header to avoid emmalloc here?
-#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
 
 #define STACK_ALIGN 16
 
