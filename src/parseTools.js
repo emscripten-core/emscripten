@@ -96,7 +96,7 @@ function preprocess(text, filenameHint) {
               showStack.push(truthy ? SHOW : IGNORE);
             } else if (first === '#include') {
               if (showCurrentLine()) {
-                let filename = line.substr(line.indexOf(' ') + 1);
+                let filename = trimmed.substr(trimmed.indexOf(' ') + 1);
                 if (filename.startsWith('"')) {
                   filename = filename.substr(1, filename.length - 2);
                 }
