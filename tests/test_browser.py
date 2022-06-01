@@ -5393,17 +5393,6 @@ window.close = function() {
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
-  def test_dynamic_link_with_prejs(self):
-    create_file('script.js', r'''
-      console.log('Foo');
-    ''')
-    create_file('main.c', r'''
-      int main( int argc, const char *argv[] ) {
-        return 0;
-      }
-    ''')
-    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '--pre-js=script.js'])
-
 
 EMRUN = path_from_root('emrun')
 
