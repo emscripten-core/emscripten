@@ -1634,10 +1634,19 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
+  @with_both_eh_sjlj
   def test_exception_message(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
+    if '-fwasm-exceptions' in self.emcc_args:
+      exports = self.get_setting('EXPORTED_FUNCTIONS')
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+
+    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
+    # details.
+    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
+      self.emcc_args.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
+
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1677,9 +1686,17 @@ int main(int argc, char **argv)
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
-                  ___cxa_increment_exception_refcount(p);
+#ifdef __USING_EMSCRIPTEN_EXCEPTION__
+                  // FIXME Currently Wasm EH and Emscripten EH increases
+                  // refcounts in different places. Wasm EH sets the refcount to
+                  // 1 when throwing, and decrease it in __cxa_end_catch.
+                  // Emscripten EH sets the refcount to 0 when throwing, and
+                  // increase it in __cxa_begin_catch, and decrease it in
+                  // __cxa_end_catch. Fix this inconsistency later.
+                  incrementExceptionRefcount(p);
+#endif
                   console.log(getExceptionMessage(p));
-                  ___cxa_decrement_exception_refcount(p);
+                  decrementExceptionRefcount(p);
               }
             }
           });
@@ -6436,35 +6453,21 @@ void* operator new(size_t size) {
     self.do_core_test('test_fakestat.c')
 
   @also_with_standalone_wasm()
-  def test_mmap(self):
+  def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    self.do_core_test('test_mmap.c')
+    self.do_core_test('test_mmap_anon.c')
 
   @node_pthreads
-  def test_mmap_pthreads(self):
+  def test_mmap_anon_pthreads(self):
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('INITIAL_MEMORY', '64mb')
-    self.do_core_test('test_mmap.c')
-
-  def test_mmap_file(self):
-    for extra_args in [[]]:
-      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-      x = 'data from the file........'
-      s = ''
-      while len(s) < 9000:
-        if len(s) + len(x) < 9000:
-          s += x
-          continue
-        s += '.'
-      assert len(s) == 9000
-      create_file('data.dat', s)
-      self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+    self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
@@ -7348,7 +7351,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('embind does not yet support MEMORY64')
   def test_embind(self):
-    # Very that both the old `--bind` arg and the new `-lembind` arg work
+    # Verify that both the old `--bind` arg and the new `-lembind` arg work
     for args in [['-lembind'], ['--bind']]:
       create_file('test_embind.cpp', r'''
       #include <stdio.h>
@@ -8475,7 +8478,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   def test_wrap_malloc(self):
-    self.do_runf(test_file('wrap_malloc.cpp'), 'OK.')
+    self.do_runf(test_file('core/test_wrap_malloc.c'), 'OK.')
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')

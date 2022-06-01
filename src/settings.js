@@ -624,7 +624,7 @@ var LEGACY_VM_SUPPORT = false;
 //    'worker'  - a web worker environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
-// This settings can be a comma-separated list of these environments, e.g.,
+// This setting can be a comma-separated list of these environments, e.g.,
 // "web,worker". If this is the empty string, then all environments are
 // supported.
 //
@@ -1998,6 +1998,16 @@ var TRUSTED_TYPES = false;
 // With default browser targets emscripten does not need any polyfills so this
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = true;
+
+// If true, add tracing to core runtime functions.
+// This setting is enabled by default if any of the following debugging settings
+// are enabled:
+// - PTHREADS_DEBUG
+// - DYLINK_DEBUG
+// - LIBRARY_DEBUG
+// - GL_DEBUG
+// [link]
+var RUNTIME_DEBUG = false;
 
 //===========================================
 // Internal, used for testing only, from here

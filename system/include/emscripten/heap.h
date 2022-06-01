@@ -37,6 +37,13 @@ size_t emscripten_get_heap_size(void);
 // Returns the max size of the WebAssembly heap.
 size_t emscripten_get_heap_max(void);
 
+// Direct access to the system allocator.  Use these to access that underlying
+// allocator when intercepting/wrapping the allocator API.  Works with with both
+// dlmalloc and emmalloc.
+void *emscripten_builtin_memalign(size_t alignment, size_t size);
+void *emscripten_builtin_malloc(size_t size);
+void emscripten_builtin_free(void *ptr);
+
 #ifdef __cplusplus
 }
 #endif
