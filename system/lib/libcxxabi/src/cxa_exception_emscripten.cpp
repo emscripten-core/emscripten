@@ -12,19 +12,48 @@
 #include "private_typeinfo.h"
 #include <stdio.h>
 
-#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
+  defined(__USING_WASM_EXCEPTIONS__)
 
 using namespace __cxxabiv1;
 
-//  Utility routines copied from cxa_exception.cpp
+//  Some utility routines are copied from cxa_exception.cpp
 static inline __cxa_exception*
 cxa_exception_from_thrown_object(void* thrown_object) {
   return static_cast<__cxa_exception*>(thrown_object) - 1;
 }
 
+// Note:  This is never called when exception_header is masquerading as a
+//        __cxa_dependent_exception.
+static inline void*
+thrown_object_from_cxa_exception(__cxa_exception* exception_header) {
+  return static_cast<void*>(exception_header + 1);
+}
+
+//  Get the exception object from the unwind pointer.
+//  Relies on the structure layout, where the unwind pointer is right in
+//  front of the user's exception object
+static inline __cxa_exception* cxa_exception_from_exception_unwind_exception(
+  _Unwind_Exception* unwind_exception) {
+  return cxa_exception_from_thrown_object(unwind_exception + 1);
+}
+
+static inline void* thrown_object_from_exception_unwind_exception(
+  _Unwind_Exception* unwind_exception) {
+  __cxa_exception* exception_header =
+    cxa_exception_from_exception_unwind_exception(unwind_exception);
+  return thrown_object_from_cxa_exception(exception_header);
+}
+
 extern "C" {
 
 char* __get_exception_message(void* thrown_object, bool terminate=false) {
+#if __USING_WASM_EXCEPTIONS__
+  // In Wasm EH, the thrown value is 'unwindHeader' field of __cxa_exception. So
+  // we need to get the real pointer thrown by user.
+  thrown_object = thrown_object_from_exception_unwind_exception(
+    static_cast<_Unwind_Exception*>(thrown_object));
+#endif
   __cxa_exception* exception_header =
     cxa_exception_from_thrown_object(thrown_object);
   const __shim_type_info* thrown_type =
@@ -66,6 +95,34 @@ char* __get_exception_terminate_message(void *thrown_object) {
   return __get_exception_message(thrown_object, true);
 }
 
+#if __USING_WASM_EXCEPTIONS__
+void __cxa_increment_exception_refcount(void* thrown_object) _NOEXCEPT;
+void __cxa_decrement_exception_refcount(void* thrown_object) _NOEXCEPT;
+
+// These are wrappers for __cxa_increment_exception_refcount and
+// __cxa_decrement_exception_refcount so that these can be called from JS. When
+// you catch a Wasm exception from JS and do not rethrow it, its refcount is
+// still greater than 0 so memory is leaked; users call JS library functions
+// that call these to fix it.
+
+void __increment_wasm_exception_refcount(
+  void* unwind_exception) _NOEXCEPT {
+  // In Wasm EH, the thrown value is 'unwindHeader' field of __cxa_exception. So
+  // we need to get the real pointer thrown by user.
+  void* thrown_object = thrown_object_from_exception_unwind_exception(
+    static_cast<_Unwind_Exception*>(unwind_exception));
+  __cxa_increment_exception_refcount(thrown_object);
 }
 
-#endif // __USING_EMSCRIPTEN_EXCEPTIONS__
+void __decrement_wasm_exception_refcount(
+  void* unwind_exception) _NOEXCEPT {
+  // In Wasm EH, the thrown value is 'unwindHeader' field of __cxa_exception. So
+  // we need to get the real pointer thrown by user.
+  void* thrown_object = thrown_object_from_exception_unwind_exception(
+    static_cast<_Unwind_Exception*>(unwind_exception));
+  __cxa_decrement_exception_refcount(thrown_object);
+}
+#endif // __USING_WASM_EXCEPTIONS__
+}
+
+#endif // __USING_EMSCRIPTEN_EXCEPTIONS__ || __USING_WASM_EXCEPTIONS__

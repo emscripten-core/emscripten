@@ -805,6 +805,14 @@ f.close()
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.0.', output)
 
+  def test_cmake_find_pkg_config(self):
+    if not utils.which('pkg-config'):
+      self.fail('pkg-config is required to run this test')
+    out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
+    libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
+    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+    self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
+
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 
@@ -7289,6 +7297,8 @@ int main() {
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
+      if self.get_setting('USE_PTHREADS'):
+        js_size += os.path.getsize('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)

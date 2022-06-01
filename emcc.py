@@ -1592,6 +1592,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
+  default_setting(user_settings, 'RUNTIME_DEBUG', settings.LIBRARY_DEBUG or
+                  settings.GL_DEBUG or
+                  settings.DYLINK_DEBUG or
+                  settings.PTHREADS_DEBUG)
+
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 

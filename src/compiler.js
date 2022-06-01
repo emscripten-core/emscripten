@@ -53,8 +53,6 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 
-RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG || DYLINK_DEBUG || PTHREADS_DEBUG;
-
 // Side modules are pure wasm and have no JS
 assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
 

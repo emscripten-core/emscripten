@@ -141,6 +141,7 @@ public:
 };
 
 class ProxiedAsyncJSBackend : public Backend {
+protected:
   emscripten::ProxyWorker proxy;
 
 public:
