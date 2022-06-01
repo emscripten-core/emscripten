@@ -5,17 +5,13 @@
  * found in the LICENSE file.
  */
 
-// This file should no longer be needed once we land the llvm-side change to
-// switch to using __main_argc_argv:
-// TODO(https://reviews.llvm.org/D75277)
-
-// See https://github.com/CraneStation/wasi-libc/pull/152
-
-#include <assert.h>
-
-int main(int argc, char *argv[]);
+// New compilers define `__main_argc_argv`. If that doesn't exist, we
+// may get called here. Old compilers define `main` expecting an
+// argv/argc, so call that.
+// TODO: Remove this layer when we no longer have to support old compilers.
+int __legacy_main(int argc, char *argv[]) __asm("main");
 
 __attribute__((__weak__))
 int __main_argc_argv(int argc, char *argv[]) {
-  return main(argc, argv);
+  return __legacy_main(argc, argv);
 }

@@ -52,6 +52,7 @@ class MemoryDirectory : public Directory {
 
   std::vector<ChildEntry>::iterator findEntry(const std::string& name);
 
+protected:
   void insertChild(const std::string& name, std::shared_ptr<File> child) {
     assert(findEntry(name) == entries.end());
     entries.push_back({name, child});

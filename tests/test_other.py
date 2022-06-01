@@ -347,8 +347,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
       syms = building.llvm_nm(target)
       self.assertIn('main', syms['defs'])
-      # wasm backend will also have '__original_main' or such
-      self.assertEqual(len(syms['defs']), 2)
+      # we also expect to have the '__original_main' wrapper and __main_void alias.
+      # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
+      self.assertIn(len(syms['defs']), (2, 3))
       if target == 'js': # make sure emcc can recognize the target as a bitcode file
         shutil.move(target, target + '.bc')
         target += '.bc'
@@ -518,7 +519,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
-    self.assertEqual(len(syms['defs']), 3)
+    # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
+    self.assertIn(len(syms['defs']), (4, 3))
 
     self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
@@ -12089,3 +12091,7 @@ Module['postRun'] = function() {{
     # With EXIT_RUNTIME we expect to see the dtor running.
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
+
+  def test_xlocale(self):
+    # Test for xlocale.h compatibility header
+    self.do_other_test('test_xlocale.c')
