@@ -451,9 +451,6 @@ jobs:
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
-      # Override the default locale to use UTF-8 encoding for all files and stdio 
-      # streams (see PEP540), since oure test files are encoded with UTF-8.
-      PYTHONUTF8: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
