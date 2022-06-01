@@ -12075,16 +12075,11 @@ Module['postRun'] = function() {{
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
 
-  def test_dynamic_link_with_prejs(self):
+  def test_prejs_unicode(self):
     create_file('script.js', r'''
       console.log('↓');
     ''')
-    create_file('main.c', r'''
-      int main(int argc, const char *argv[]) {
-        return 0;
-      }
-    ''')
-    self.run_process([EMXX, 'main.c', '-sMAIN_MODULE=2', '--pre-js=script.js'])
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=script.js'])
 
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
