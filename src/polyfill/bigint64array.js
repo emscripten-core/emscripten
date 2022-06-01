@@ -18,67 +18,60 @@ function bigIntToParts(value) {
 }
 
 function createBigIntArrayShim(partsToBigInt) {
-    function createBigInt64Array(buf) {
-        var array;
-        if(ArrayBuffer.isView(buf)) {
-            array = buf;
-        } else {
-            array = new Uint32Array(buf);
-        }
-
+    function createBigInt64Array(array) {
         let proxy = new Proxy({
-        slice: function(min, max) {
-            var new_buf = array.slice(min * 2, max *2);
-            return createBigInt64Array(new_buf);
-        },
-        subarray: function(min, max) {
-            var new_buf = array.subarray(min * 2, max *2);
-            return createBigInt64Array(new_buf);
-        },
-        [Symbol.iterator]: function*() {
-            for (var i = 0; i < (array.length)/2; i++) {
-                yield partsToBigInt(array[2*i], array[2*i+1]);
+            slice: function(min, max) {
+                var new_buf = array.slice(min * 2, max *2);
+                return createBigInt64Array(new_buf);
+            },
+            subarray: function(min, max) {
+                var new_buf = array.subarray(min * 2, max *2);
+                return createBigInt64Array(new_buf);
+            },
+            [Symbol.iterator]: function*() {
+                for (var i = 0; i < (array.length)/2; i++) {
+                    yield partsToBigInt(array[2*i], array[2*i+1]);
+                }
+            },
+            buffer : array.buffer,
+            byteLength : array.byteLength,
+            offset : array.byteOffset / 2,
+            copyWithin: function(target, start, end) {
+                array.copyWithin(target*2, start * 2, end*2);
+                return proxy;
+            },
+            set: function(source, targetOffset) {
+                if(2*(source.length + targetOffset) > array.length) {
+                    // This is the Chrome error message
+                    // Firefox: "invalid or out-of-range index"
+                    throw new RangeError("offset is out of bounds");
+                }
+                for (var i = 0; i < array.length; i++) {
+                    var value = source[i];
+                    var pair = bigIntToParts(BigInt(value));
+                    array.set(pair, 2*(targetOffset + i));
+                }
             }
-        },
-        buffer : array.buffer,
-        byteLength : array.byteLength,
-        offset : array.byteOffset / 2,
-        copyWithin: function(target, start, end) {
-            array.copyWithin(target*2, start * 2, end*2);
-            return proxy;
-        },
-        set: function(source, targetOffset) {
-            if(2*(source.length + targetOffset) > array.length) {
-                // This is the Chrome error message
-                // Firefox: "invalid or out-of-range index"
-                throw new RangeError("offset is out of bounds");
+            }, {
+            get: function(target, idx, receiver) {
+                if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
+                    return Reflect.get(target, idx, receiver);
+                }
+                var lower = array[idx * 2];
+                var upper = array[idx * 2 + 1];
+                return partsToBigInt(lower, upper);
+            },
+            set: function(target, idx, value, receiver) {
+                if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
+                    return Reflect.set(target, idx, value, receiver);
+                }
+                if (typeof value !== "bigint") {
+                    // Chrome error message, Firefox has no "a" in front if "BigInt".
+                    throw new TypeError(`Cannot convert ${value} to a BigInt`);
+                }
+                var pair = bigIntToParts(value);
+                array.set(pair, 2*idx);
             }
-            for (var i = 0; i < array.length; i++) {
-                var value = source[i];
-                var pair = bigIntToParts(BigInt(value));
-                array.set(pair, 2*(targetOffset + i));
-            }
-        }
-        }, {
-        get: function(target, idx, receiver) {
-            if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
-                return Reflect.get(target, idx, receiver);
-            }
-            var lower = array[idx * 2];
-            var upper = array[idx * 2 + 1];
-            return partsToBigInt(lower, upper);
-        },
-        set: function(target, idx, value, receiver) {
-            if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
-                return Reflect.set(target, idx, value, receiver);
-            }
-            if (typeof value !== "bigint") {
-                // Chrome error message, Firefox has no "a" in front if "BigInt".
-                throw new TypeError(`Cannot convert ${value} to a BigInt`);
-            }
-            var pair = bigIntToParts(value);
-            array.set(pair, 2*idx);
-        }
         });
         return proxy;
     }
