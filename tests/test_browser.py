@@ -2527,10 +2527,6 @@ void *getBindBuffer() {
       'main.c',
       args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '-O2', '--use-preload-plugins'] + args)
 
-  def test_mmap_file(self):
-    create_file('data.dat', 'data from the file ' + ('.' * 9000))
-    self.btest(test_file('mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
-
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
   @requires_graphics_hardware

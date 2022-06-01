@@ -6453,35 +6453,21 @@ void* operator new(size_t size) {
     self.do_core_test('test_fakestat.c')
 
   @also_with_standalone_wasm()
-  def test_mmap(self):
+  def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    self.do_core_test('test_mmap.c')
+    self.do_core_test('test_mmap_anon.c')
 
   @node_pthreads
-  def test_mmap_pthreads(self):
+  def test_mmap_anon_pthreads(self):
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('INITIAL_MEMORY', '64mb')
-    self.do_core_test('test_mmap.c')
-
-  def test_mmap_file(self):
-    for extra_args in [[]]:
-      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-      x = 'data from the file........'
-      s = ''
-      while len(s) < 9000:
-        if len(s) + len(x) < 9000:
-          s += x
-          continue
-        s += '.'
-      assert len(s) == 9000
-      create_file('data.dat', s)
-      self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+    self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
