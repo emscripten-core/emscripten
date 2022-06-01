@@ -86,6 +86,6 @@ if (typeof BigInt64Array === "undefined") {
         return createBigInt64Array;
     }
 
-    globalThis.BigUint64Array = createBigIntArrayShim(partsToBigIntUnsigned);
-    globalThis.BigInt64Array = createBigIntArrayShim(partsToBigIntSigned);
+    var BigUint64Array = createBigIntArrayShim(partsToBigIntUnsigned);
+    var BigInt64Array = createBigIntArrayShim(partsToBigIntSigned);
 }
