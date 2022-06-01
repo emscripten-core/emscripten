@@ -444,7 +444,13 @@ var LibraryDylink = {
 
       // Export native export on the Module object.
       // TODO(sbc): Do all users want this?  Should we skip this by default?
+#if !hasExportedFunction('_main')
+      // If the main module doesn't define main it could be defined in one of
+      // the side module, and we need to handle the mangled named.
+      var module_sym = asmjsMangle(sym == '__main_argc_argv' ? 'main' : sym);
+#else
       var module_sym = asmjsMangle(sym);
+#endif
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }

@@ -233,7 +233,7 @@ def llvm_backend_args():
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
     if 'main' in settings.EXCEPTION_CATCHING_ALLOWED:
-      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
+      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main', '__main_argc_argv']
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
@@ -999,6 +999,9 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     exports = settings.WASM_EXPORTS
   else:
     exports = settings.WASM_FUNCTION_EXPORTS
+  if settings.MANGLED_MAIN and 'main' in exports:
+    exports.append('__main_argc_argv')
+
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
