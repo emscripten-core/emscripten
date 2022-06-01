@@ -141,7 +141,10 @@ def requires_pkg_config(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     if not utils.which('pkg-config'):
-      self.fail('pkg-config is required to run this test')
+      if 'EMTEST_SKIP_PKG_CONFIG' in os.environ:
+        self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
+      else:
+        self.fail('pkg-config is required to run this test')
     return func(self, *args, **kwargs)
 
   return decorated
