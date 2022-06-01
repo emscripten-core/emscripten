@@ -12084,4 +12084,3 @@ Module['postRun'] = function() {{
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
-
