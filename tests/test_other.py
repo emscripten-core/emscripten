@@ -12063,3 +12063,7 @@ Module['postRun'] = function() {{
     # With EXIT_RUNTIME we expect to see the dtor running.
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
+
+  def test_xlocale(self):
+    # Test for xlocale.h compatibility header
+    self.do_other_test('test_xlocale.c')
