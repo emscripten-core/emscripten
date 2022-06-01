@@ -296,21 +296,15 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 #if WASM_BIGINT
 #if MIN_SAFARI_VERSION < 150000
-  // All browsers other than Safari added BigInt and BigInt64Array at the same
-  // time, but Safari introduced BigInt in v14.0 and introduced BigInt64Array
-  // in v15.0
-  if (typeof BigInt64Array === "undefined") {
+  #if !POLYFILL
+    assert(false, "Cannot support Safari 14 with WASM_BIGINT unless POLYFILL is also set");
+  #else
     #include "polyfill/bigint64array.js"
-    Module['HEAP64'] = HEAP64 = createBigInt64Array(HEAPU32);
-    Module['HEAPU64'] = HEAPU64 = createBigUint64Array(HEAPU32);
-  } else {
-    Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
-    Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
-  }
-#else
+  #endif
+
+#endif // MIN_SAFARI_VERSION < 15000
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
   Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
-#endif // MIN_SAFARI_VERSION < 15000
 #endif // WASM_BIGINT
 }
 
