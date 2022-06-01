@@ -34,7 +34,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
+from common import compiler_for, read_file, read_binary, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE
 from tools import shared, building, utils, deps_info, response_file
 import common
@@ -133,6 +133,18 @@ def also_with_wasmfs_all_backends(f):
                             'wasmfs': ('WASMFS_MEMORY_BACKEND',),
                             'wasmfs_node': ('WASMFS_NODE_BACKEND',)}
   return metafunc
+
+
+def requires_ninja(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not utils.which('ninja'):
+      self.fail('test requires ninja to be installed (available in PATH)')
+    return func(self, *args, **kwargs)
+
+  return decorated
 
 
 class other(RunnerCore):
@@ -710,9 +722,8 @@ f.close()
   # Test that the user's explicitly specified generator is always honored
   # Internally we override the generator on windows, unles the user specifies one
   # Test require Ninja to be installed
+  @requires_ninja
   def test_cmake_explicit_generator(self):
-    if not utils.which('ninja'):
-      self.skipTest('Skipped concat generator argument test since ninja not found')
     # use -Wno-dev to suppress an irrelevant warning about the test files only.
     cmd = [EMCMAKE, 'cmake', '-GNinja', '-Wno-dev', test_file('cmake/cpp_lib')]
     self.run_process(cmd)
@@ -720,15 +731,12 @@ f.close()
 
   # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that
   # needs C++11 (embind)
+  @requires_ninja
   def test_cmake_with_embind_cpp11_mode(self):
-    if WINDOWS and not utils.which('ninja'):
-      self.skipTest('Skipping cmake test on windows since ninja not found')
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       self.clear()
       # Use ninja generator here since we assume its always installed on our build/test machines.
-      configure = [EMCMAKE, 'cmake', test_file('cmake/cmake_with_emval')] + args
-      if WINDOWS:
-        configure += ['-G', 'Ninja']
+      configure = [EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cmake_with_emval')] + args
       print(str(configure))
       self.run_process(configure)
       build = ['cmake', '--build', '.']
@@ -2842,7 +2850,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
       print(output)
     self.assertLess(output.count('Cannot enlarge memory arrays'),  6)
 
-  @require_node
+  @requires_node
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript
     # is minified by compiling with --closure 1
@@ -2893,7 +2901,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # in order to check that the exports are indeed functioning correctly.
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
-  @require_node
+  @requires_node
   def test_node_catch_exit(self):
     # Test that in node.js exceptions are not caught if NODEJS_EXIT_CATCH=0
     create_file('count.c', '''
@@ -2923,7 +2931,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained(reference_error_text,
                          self.run_js('index.js', assert_returncode=NON_ZERO))
 
-  @require_node
+  @requires_node
   def test_exported_runtime_methods(self):
     # Test with node.js that the EXPORTED_RUNTIME_METHODS setting is
     # considered by libraries
@@ -2997,7 +3005,7 @@ int main()
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
 
-  @require_node
+  @requires_node
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
     create_file('src.cpp', r'''
@@ -5412,14 +5420,14 @@ int main(void) {
     self.run_process([EMCC, 'libfoo.a'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  @require_node
+  @requires_node
   def test_require(self):
     inname = test_file('hello_world.c')
     self.emcc(inname, args=['-sASSERTIONS=0'], output_filename='a.out.js')
     output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
-  @require_node
+  @requires_node
   def test_require_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = read_file('a.out.js')
@@ -7703,7 +7711,7 @@ int main() {
 
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
-  @require_v8
+  @requires_v8
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
@@ -7719,7 +7727,7 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
-  @require_node
+  @requires_node
   def test_jsrun(self):
     print(config.NODE_JS)
     jsrun.WORKING_ENGINES = {}
@@ -8660,7 +8668,7 @@ T5:ASSERTIONS
 T6:(else) !ASSERTIONS""", output)
 
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
-  @require_node
+  @requires_node
   def test_node_js_run_from_different_directory(self):
     ensure_dir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/a.js'), '-O3'])
@@ -8668,7 +8676,7 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
-  @require_node
+  @requires_node
   def test_node_js_pthread_module(self):
     # create module loader script
     moduleLoader = 'moduleLoader.js'
@@ -10693,7 +10701,7 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
-  @require_v8
+  @requires_v8
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM_BIGINT')
@@ -11167,7 +11175,7 @@ exec "$@"
         if f'function _{dep}(' in js:
           self.fail(f'dependency {dep} in deps_info.py looks like a JS function (but should be native)')
 
-  @require_v8
+  @requires_v8
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
     # lack TextDecoder
@@ -11447,7 +11455,7 @@ void foo() {}
     err = self.expect_fail(cmd)
     self.assertContained('To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking', err)
 
-  @require_v8
+  @requires_v8
   def test_missing_shell_support(self):
     # By default shell support is not included
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -11662,7 +11670,7 @@ void foo() {}
 
   @no_windows("test is Linux-specific")
   @no_mac("test is Linux-specific")
-  @require_node
+  @requires_node
   def test_unistd_close_noderawfs(self):
     self.set_setting('NODERAWFS')
     create_file('pre.js', f'''
@@ -11972,7 +11980,7 @@ Module['postRun'] = function() {{
   def test_unsafe_optimizations(self):
     self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
 
-  @require_v8
+  @requires_v8
   def test_extended_const(self):
     self.v8_args = ['--experimental-wasm-extended-const']
     self.do_runf(test_file('hello_world.c'), emcc_args=['-mextended-const', '-sMAIN_MODULE=2'])
@@ -11984,7 +11992,7 @@ Module['postRun'] = function() {{
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.
-  @require_v8
+  @requires_v8
   def test_memory64(self):
     self.v8_args += ['--experimental-wasm-memory64']
     for opt in ['-O0', '-O1', '-O2', '-O3']:
@@ -12009,7 +12017,7 @@ Module['postRun'] = function() {{
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
-  @require_v8
+  @requires_v8
   def test_stack_switching_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
