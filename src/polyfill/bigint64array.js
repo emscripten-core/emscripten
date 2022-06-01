@@ -1,7 +1,3 @@
-#if !POLYFILL
-assert(false, "this file should never be included unless POLYFILL is set");
-#endif
-
 if (typeof BigInt64Array === "undefined") {
     // BigInt64Array polyfill for Safari versions between v14.0 and v15.0.
     // All browsers other than Safari added BigInt and BigInt64Array at the same
