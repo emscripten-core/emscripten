@@ -332,8 +332,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
       syms = building.llvm_nm(target)
       self.assertIn('main', syms['defs'])
-      # wasm backend will also have '__original_main' or such
-      self.assertEqual(len(syms['defs']), 2)
+      # we also expect to have the '__original_main' wrapper and __main_void alias.
+      # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
+      self.assertIn(len(syms['defs']), (2, 3))
       if target == 'js': # make sure emcc can recognize the target as a bitcode file
         shutil.move(target, target + '.bc')
         target += '.bc'
@@ -503,7 +504,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
-    self.assertEqual(len(syms['defs']), 3)
+    # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
+    self.assertIn(len(syms['defs']), (4, 3))
 
     self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
@@ -525,7 +527,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
-    self.assertEqual(len(syms['defs']), 3)
+    # TODO(sbc): Should be 3 once https://reviews.llvm.org/D75277 lands
+    self.assertIn(len(syms['defs']), (3, 4))
 
     self.run_process([EMXX, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
@@ -804,6 +807,14 @@ f.close()
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.0.', output)
+
+  def test_cmake_find_pkg_config(self):
+    if not utils.which('pkg-config'):
+      self.fail('pkg-config is required to run this test')
+    out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
+    libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
+    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+    self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -7289,6 +7300,8 @@ int main() {
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
+      if self.get_setting('USE_PTHREADS'):
+        js_size += os.path.getsize('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)
@@ -11996,6 +12009,45 @@ Module['postRun'] = function() {{
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-g', '-g0'])
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
+  @require_v8
+  def test_stack_switching_size(self):
+    # use iostream code here to purposefully get a fairly large wasm file, so
+    # that our size comparisons later are meaningful
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <iostream>
+      int main() {
+        std::cout << "nap time\n";
+        emscripten_sleep(1);
+        std::cout << "i am awake\n";
+      }
+    ''')
+    expected = 'nap time\ni am awake\n'
+
+    shared_args = ['-Os', '-sEXIT_RUNTIME', '-sENVIRONMENT=shell']
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY'] + shared_args)
+    self.assertContained(expected, self.run_js('a.out.js'))
+    asyncify_size = os.path.getsize('a.out.wasm')
+
+    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+
+    # enable stack switching and other relevant features (like reference types
+    # for the return value of externref)
+    self.v8_args.append('--wasm-staging')
+    self.v8_args.append('--experimental-wasm-stack-switching')
+
+    self.assertContained(expected, self.run_js('a.out.js'))
+    stack_switching_size = os.path.getsize('a.out.wasm')
+
+    # also compare to code size without asyncify or stack switching
+    self.run_process([EMXX, 'main.cpp'] + shared_args)
+    nothing_size = os.path.getsize('a.out.wasm')
+
+    # stack switching does not asyncify the code, which means it is very close
+    # to the normal "nothing" size, and much smaller than the asyncified size
+    self.assertLess(stack_switching_size, 0.60 * asyncify_size)
+    self.assertLess(abs(stack_switching_size - nothing_size), 0.01 * nothing_size)
+
   def test_no_cfi(self):
     err = self.expect_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')])
     self.assertContained('emcc: error: emscripten does not currently support -fsanitize=cfi', err)
@@ -12014,3 +12066,7 @@ Module['postRun'] = function() {{
     # With EXIT_RUNTIME we expect to see the dtor running.
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
+
+  def test_xlocale(self):
+    # Test for xlocale.h compatibility header
+    self.do_other_test('test_xlocale.c')

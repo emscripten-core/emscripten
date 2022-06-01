@@ -1628,6 +1628,16 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  def test_mmap_lazyfile(self):
+    create_file('lazydata.dat', 'hello world')
+    create_file('pre.js', '''
+      Module["preInit"] = () => {
+        FS.createLazyFile('/', "lazy.txt", "lazydata.dat", true, false);
+      }
+    ''')
+    self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
+    self.btest_exit(test_file('test_mmap_lazyfile.c'))
+
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -2516,10 +2526,6 @@ void *getBindBuffer() {
     self.btest_exit(
       'main.c',
       args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '-O2', '--use-preload-plugins'] + args)
-
-  def test_mmap_file(self):
-    create_file('data.dat', 'data from the file ' + ('.' * 9000))
-    self.btest(test_file('mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -5292,23 +5298,28 @@ window.close = function() {
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
-    'main_thread': (['-sPTHREAD_POOL_SIZE=1'],),
+    'main_thread': (['-sPTHREAD_POOL_SIZE=4'],),
     # using proxy_to_pthread also works, of course
-    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
   })
   @requires_threads
   def test_wasmfs_fetch_backend(self, args):
     if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
       return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
+    create_file('test.txt', 'fetch 2')
+    try_delete('subdir')
+    ensure_dir('subdir')
+    create_file('subdir/backendfile', 'file 1')
+    create_file('subdir/backendfile2', 'file 2')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
-                    args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
+                    args=['-sWASMFS', '-sUSE_PTHREADS', '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @requires_threads
   @no_firefox('no OPFS support yet')
   def test_wasmfs_opfs(self):
     test = test_file('wasmfs/wasmfs_opfs.c')
-    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-O3']
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 

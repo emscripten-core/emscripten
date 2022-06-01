@@ -624,7 +624,7 @@ var LEGACY_VM_SUPPORT = false;
 //    'worker'  - a web worker environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
-// This settings can be a comma-separated list of these environments, e.g.,
+// This setting can be a comma-separated list of these environments, e.g.,
 // "web,worker". If this is the empty string, then all environments are
 // supported.
 //
@@ -721,11 +721,20 @@ var NODEJS_CATCH_EXIT = true;
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
-// Whether to transform the code using asyncify. This makes it possible to
-// call JS functions from synchronous-looking code in C/C++.
-// See https://emscripten.org/docs/porting/asyncify.html
+// Whether to support async operations in the compiled code. This makes it
+// possible to call JS functions from synchronous-looking code in C/C++.
+//  1: Run binaryen's Asyncify pass to transform the code using asyncify. This
+//     emits a normal wasm file in the end, so it works everywhere, but it has a
+//     significant cost in terms of code size and speed.
+//     See https://emscripten.org/docs/porting/asyncify.html
+//  2: Depend on VM support for the wasm stack switching proposal. This allows
+//     async operations to happen without the overhead of modifying the wasm.
+//     This is experimental atm while spec discussion is ongoing, see
+//     https://github.com/WebAssembly/js-promise-integration/
+//     TODO: document which of the following flags are still relevant in this
+//           mode (e.g. IGNORE_INDIRECT etc. are not needed)
 // [link]
-var ASYNCIFY = false;
+var ASYNCIFY = 0;
 
 // Imports which can do an sync operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
@@ -818,8 +827,10 @@ var ASYNCIFY_ADVISE = false;
 var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
+//  1: Minimal logging.
+//  2: Verbose logging.
 // [link]
-var ASYNCIFY_DEBUG = false;
+var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
@@ -1987,6 +1998,16 @@ var TRUSTED_TYPES = false;
 // With default browser targets emscripten does not need any polyfills so this
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = true;
+
+// If true, add tracing to core runtime functions.
+// This setting is enabled by default if any of the following debugging settings
+// are enabled:
+// - PTHREADS_DEBUG
+// - DYLINK_DEBUG
+// - LIBRARY_DEBUG
+// - GL_DEBUG
+// [link]
+var RUNTIME_DEBUG = false;
 
 //===========================================
 // Internal, used for testing only, from here

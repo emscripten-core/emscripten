@@ -233,6 +233,32 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
   return decorated
 
 
+def with_asyncify_and_stack_switching(f):
+  assert callable(f)
+
+  def metafunc(self, stack_switching):
+    if stack_switching:
+      self.set_setting('ASYNCIFY', 2)
+      self.require_v8()
+      # enable stack switching and other relevant features (like reference types
+      # for the return value of externref)
+      self.v8_args.append('--wasm-staging')
+      self.v8_args.append('--experimental-wasm-stack-switching')
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
+      # emcc warns about stack switching being experimental, and we build with
+      # warnings-as-errors, so disable that warning
+      self.emcc_args += ['-Wno-experimental']
+      f(self)
+    else:
+      self.set_setting('ASYNCIFY')
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'stack_switching': (True,)}
+  return metafunc
+
+
 def no_optimize(note=''):
   assert not callable(note)
 
@@ -1608,10 +1634,19 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
+  @with_both_eh_sjlj
   def test_exception_message(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
+    if '-fwasm-exceptions' in self.emcc_args:
+      exports = self.get_setting('EXPORTED_FUNCTIONS')
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+
+    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
+    # details.
+    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
+      self.emcc_args.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
+
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1651,9 +1686,17 @@ int main(int argc, char **argv)
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
-                  ___cxa_increment_exception_refcount(p);
+#ifdef __USING_EMSCRIPTEN_EXCEPTION__
+                  // FIXME Currently Wasm EH and Emscripten EH increases
+                  // refcounts in different places. Wasm EH sets the refcount to
+                  // 1 when throwing, and decrease it in __cxa_end_catch.
+                  // Emscripten EH sets the refcount to 0 when throwing, and
+                  // increase it in __cxa_begin_catch, and decrease it in
+                  // __cxa_end_catch. Fix this inconsistency later.
+                  incrementExceptionRefcount(p);
+#endif
                   console.log(getExceptionMessage(p));
-                  ___cxa_decrement_exception_refcount(p);
+                  decrementExceptionRefcount(p);
               }
             }
           });
@@ -5378,18 +5421,19 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_langinfo.c')
 
   def test_files(self):
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if self.maybe_closure(): # Use closure here, to test we don't break FS stuff
-      self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
-    elif '-O3' in self.emcc_args and not self.is_wasm():
+    # Use closure here, to test we don't break FS stuff
+    if '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
-      return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
+      # Sadly --closure=2 is not yet free of closure warnings
+      # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
+      self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+    elif self.maybe_closure():
+      # closure can generate variables called 'gc', which pick up js shell stuff
+      self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
 
     self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('FORCE_FILESYSTEM')
-
-    print('base', self.emcc_args)
 
     create_file('pre.js', '''
 /** @suppress{checkTypes}*/
@@ -5410,9 +5454,6 @@ Module = {
 
     create_file('test.file', 'some data')
 
-    mem_file = 'files.js.mem'
-    try_delete(mem_file)
-
     def clean(out):
       return '\n'.join([line for line in out.split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
@@ -5420,7 +5461,7 @@ Module = {
                  output_nicerizer=clean)
 
     if self.uses_memory_init_file():
-      self.assertExists(mem_file)
+      self.assertExists('files.js.mem')
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -6412,34 +6453,21 @@ void* operator new(size_t size) {
     self.do_core_test('test_fakestat.c')
 
   @also_with_standalone_wasm()
-  def test_mmap(self):
+  def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    self.do_core_test('test_mmap.c')
+    self.do_core_test('test_mmap_anon.c')
 
   @node_pthreads
-  def test_mmap_pthreads(self):
+  def test_mmap_anon_pthreads(self):
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('INITIAL_MEMORY', '64mb')
-    self.do_core_test('test_mmap.c')
-
-  def test_mmap_file(self):
-    self.emcc_args += ['--embed-file', 'data.dat']
-    x = 'data from the file........'
-    s = ''
-    while len(s) < 9000:
-      if len(s) + len(x) < 9000:
-        s += x
-        continue
-      s += '.'
-    assert len(s) == 9000
-    create_file('data.dat', s)
-    self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+    self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
@@ -7323,7 +7351,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('embind does not yet support MEMORY64')
   def test_embind(self):
-    # Very that both the old `--bind` arg and the new `-lembind` arg work
+    # Verify that both the old `--bind` arg and the new `-lembind` arg work
     for args in [['-lembind'], ['--bind']]:
       create_file('test_embind.cpp', r'''
       #include <stdio.h>
@@ -7932,10 +7960,10 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
   @no_memory64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('ASYNCIFY')
 
     create_file('main.c',  r'''
 #include <stdio.h>
@@ -7993,6 +8021,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @no_memory64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
@@ -8449,7 +8478,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   def test_wrap_malloc(self):
-    self.do_runf(test_file('wrap_malloc.cpp'), 'OK.')
+    self.do_runf(test_file('core/test_wrap_malloc.c'), 'OK.')
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')

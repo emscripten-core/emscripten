@@ -1807,9 +1807,7 @@ FS.staticInit();` +
           return fn.apply(null, arguments);
         };
       });
-      // use a custom read function
-      stream_ops.read = (stream, buffer, offset, length, position) => {
-        FS.forceLoadFile(node);
+      function writeChunks(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= contents.length)
           return 0;
@@ -1827,6 +1825,21 @@ FS.staticInit();` +
           }
         }
         return size;
+      }
+      // use a custom read function
+      stream_ops.read = (stream, buffer, offset, length, position) => {
+        FS.forceLoadFile(node);
+        return writeChunks(stream, buffer, offset, length, position)
+      };
+      // use a custom mmap function
+      stream_ops.mmap = (stream, length, position, prot, flags) => {
+        FS.forceLoadFile(node);
+        var ptr = mmapAlloc(length);
+        if (!ptr) {
+          throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+        }
+        writeChunks(stream, HEAP8, ptr, length, position);
+        return { ptr: ptr, allocated: true };
       };
       node.stream_ops = stream_ops;
       return node;

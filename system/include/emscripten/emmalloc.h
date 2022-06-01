@@ -16,13 +16,11 @@ void emmalloc_dump_memory_regions(void);
 // Allocates size bytes with the given pow-2 alignment.
 void *memalign(size_t alignment, size_t size);
 void *emmalloc_memalign(size_t alignment, size_t size);
-void *emscripten_builtin_memalign(size_t alignment, size_t size);
 void *aligned_alloc(size_t alignment, size_t size);
 
 // Allocates size bytes with default alignment (8 bytes)
 void *malloc(size_t size);
 void *emmalloc_malloc(size_t size);
-void *emscripten_builtin_malloc(size_t size);
 
 // Returns the number of bytes that are actually allocated to the given pointer ptr.
 // E.g. due to alignment or size requirements, the actual size of the allocation can be
@@ -36,7 +34,6 @@ size_t emmalloc_usable_size(void *ptr);
 // (emmalloc_)realloc, emmalloc_realloc_try, emmalloc_realloc_uninitialized, (emmalloc_)aligned_realloc
 void free(void *ptr);
 void emmalloc_free(void *ptr);
-void emscripten_builtin_free(void *ptr);
 
 // Performs a reallocation of the given memory pointer to a new size. If the memory region
 // pointed by ptr cannot be resized in place, a new memory region will be allocated, old

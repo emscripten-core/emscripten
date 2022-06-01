@@ -64,14 +64,6 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-#if 0
-__attribute__((__weak__)) const unsigned char* __map_file(const char* pathname,
-                                                          size_t* size) {
-  errno = ENOSYS;
-  return NULL;
-}
-#endif
-
 // Mark these as weak so that wasmfs does not collide with it. That is, if
 // wasmfs is in use, we want to use that and not this.
 __attribute__((__weak__)) intptr_t _mmap_js(
