@@ -132,7 +132,11 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_get_entries__deps: [],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
     let dirHandle = wasmfsOPFSDirectories.get(dirID);
-    for await (let [name, child] of dirHandle.entries()) {
+
+    // TODO: Use 'for await' once Acorn supports that.
+    let iter = dirHandle.entries();
+    for (let entry; entry = await iter.next(), !entry.done;) {
+      let [name, child] = entry.value;
       withStackSave(() => {
         let namePtr = allocateUTF8OnStack(name);
         let type = child.kind == "file" ?

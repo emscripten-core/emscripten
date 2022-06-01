@@ -5323,7 +5323,7 @@ window.close = function() {
   @no_firefox('no OPFS support yet')
   def test_wasmfs_opfs(self):
     test = test_file('wasmfs/wasmfs_opfs.c')
-    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD']
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-O3']
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
