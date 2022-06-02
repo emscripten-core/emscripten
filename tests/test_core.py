@@ -6841,7 +6841,7 @@ void* operator new(size_t size) {
       create_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
-          out('Data: ' + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.analyzePath('image.raw').object))));
+          out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
         };
         """ % line_splitter(str(image_bytes)))
 
