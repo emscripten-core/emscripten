@@ -295,13 +295,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 #if WASM_BIGINT
-#if MIN_SAFARI_VERSION < 150000
-#if !POLYFILL
-    assert(false, "Cannot support Safari 14 with WASM_BIGINT unless POLYFILL is also set");
-#else // POLYFILL
-    #include "polyfill/bigint64array.js"
-#endif // POLYFILL
-#endif // MIN_SAFARI_VERSION < 15000
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
   Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
 #endif // WASM_BIGINT
