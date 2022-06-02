@@ -12079,7 +12079,7 @@ Module['postRun'] = function() {{
     create_file('script.js', r'''
       console.log('↓');
     ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=script.js'])
+    self.do_runf(test_file('hello_world.c'), '↓', emcc_args=['--pre-js=script.js'])
 
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
