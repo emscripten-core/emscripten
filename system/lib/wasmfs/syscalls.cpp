@@ -316,7 +316,6 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
 }
 
 static
-
 int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
