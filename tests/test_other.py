@@ -12075,6 +12075,12 @@ Module['postRun'] = function() {{
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
 
+  def test_prejs_unicode(self):
+    create_file('script.js', r'''
+      console.log('↓');
+    ''')
+    self.do_runf(test_file('hello_world.c'), '↓', emcc_args=['--pre-js=script.js'])
+
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')

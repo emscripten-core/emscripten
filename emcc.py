@@ -2853,7 +2853,7 @@ def phase_source_transforms(options):
     logger.debug('applying pre/postjses')
     src = read_file(final_js)
     final_js += '.pp.js'
-    with open(final_js, 'w') as f:
+    with open(final_js, 'w', encoding='utf-8') as f:
       # pre-js code goes right after the Module integration code (so it
       # can use Module), we have a marker for it
       f.write(do_replace(src, '// {{PRE_JSES}}', options.pre_js))
