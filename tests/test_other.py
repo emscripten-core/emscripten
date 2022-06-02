@@ -12078,3 +12078,10 @@ Module['postRun'] = function() {{
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
+
+  def test_print_map(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    out = self.run_process([EMCC, 'hello_world.o', '-Wl,--print-map'], stdout=PIPE).stdout
+    self.assertContained('hello_world.o:(__original_main)', out)
+    out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
+    self.assertEqual(out, out2)
