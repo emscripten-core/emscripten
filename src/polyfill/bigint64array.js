@@ -49,7 +49,7 @@ if (typeof BigInt64Array === "undefined") {
                     return proxy;
                 },
                 set: function(source, targetOffset) {
-                    if(2*(source.length + targetOffset) > array.length) {
+                    if (2*(source.length + targetOffset) > array.length) {
                         // This is the Chrome error message
                         // Firefox: "invalid or out-of-range index"
                         throw new RangeError("offset is out of bounds");
