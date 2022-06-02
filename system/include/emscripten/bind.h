@@ -1338,6 +1338,12 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     }
 };
 
+#ifdef __cpp_noexcept_function_type
+template<typename ClassType, typename ReturnType, typename... Args>
+struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) noexcept>
+     : RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {};
+#endif
+
 template<typename ClassType, typename ReturnType, typename... Args>
 struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
 
@@ -1360,10 +1366,6 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
 };
 
 #ifdef __cpp_noexcept_function_type
-template<typename ClassType, typename ReturnType, typename... Args>
-struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) noexcept>
-     : RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {};
-
 template<typename ClassType, typename ReturnType, typename... Args>
 struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const noexcept>
      : RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {};
@@ -1388,6 +1390,12 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             false);
     }
 };
+
+#ifdef __cpp_noexcept_function_type
+template<typename ReturnType, typename ThisType, typename... Args>
+struct RegisterClassMethod<ReturnType (*)(ThisType, Args...) noexcept>
+     : RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {};
+#endif
 
 template<typename ReturnType, typename ThisType, typename... Args>
 struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
