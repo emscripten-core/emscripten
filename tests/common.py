@@ -178,7 +178,7 @@ def requires_native_clang(func):
   return decorated
 
 
-def require_node(func):
+def requires_node(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
@@ -188,7 +188,7 @@ def require_node(func):
   return decorated
 
 
-def require_v8(func):
+def requires_v8(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):

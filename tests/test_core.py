@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, require_v8, require_node
+from common import read_file, read_binary, requires_v8, requires_node
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
@@ -562,7 +562,7 @@ class TestCoreBase(RunnerCore):
 
   @no_wasm2js('wasm_bigint')
   @no_wasm64('MEMORY64 does not yet support exceptions')
-  @require_node
+  @requires_node
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
@@ -5790,7 +5790,7 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   @is_slow_test
-  @require_node
+  @requires_node
   def test_fs_nodefs_rw(self):
     # TODO(sbc): This test exposes in issue in the way we run closure compiler and
     # causes it to generate non-ES5 output.
@@ -5803,23 +5803,23 @@ main( int argv, char ** argc ) {
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
-  @require_node
+  @requires_node
   def test_fs_nodefs_cloexec(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
@@ -5827,7 +5827,7 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
 
   @no_windows('no symlink support on windows')
-  @require_node
+  @requires_node
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
     create_file('filename', 'foo')
@@ -5929,7 +5929,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test(test_file('test_signals.c'))
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  @require_node
+  @requires_node
   def test_unistd_access(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
@@ -5985,7 +5985,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
-  @require_node
+  @requires_node
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
@@ -6064,7 +6064,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run_in_out_file_test('unistd/links.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
-  @require_node
+  @requires_node
   def test_unistd_symlink_on_nodefs(self):
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
@@ -6351,7 +6351,7 @@ int main(void) {
     self.do_runf(test_file('whets.cpp'), 'Single Precision C Whetstone Benchmark')
 
   # node is slower, and fail on 64-bit
-  @require_v8
+  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
@@ -6363,7 +6363,7 @@ int main(void) {
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
   # node is slower, and fail on 64-bit
-  @require_v8
+  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
@@ -7984,7 +7984,7 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @require_v8
+  @requires_v8
   @no_memory64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
@@ -9382,7 +9382,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
-  @require_v8
+  @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref(self):
     self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(ldflags=False))
