@@ -289,6 +289,9 @@ mergeInto(LibraryManager.library, {
 #endif
     },
 
+    // This receives a function to call to start the async operation, and
+    // handles everything else for the user of this API. See emscripten_sleep()
+    // and other async methods for simple examples of usage.
     handleSleep: function(startAsync) {
 #if ASSERTIONS
       assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
@@ -427,6 +430,10 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
+    // emscripten_sleep() does not return a value, but we still need a |return|
+    // here for stack switching support (ASYNCIFY=2). In that mode this function
+    // returns a Promise instead of nothing, and that Promise is what tells the
+    // wasm VM to pause the stack.
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
