@@ -402,6 +402,7 @@ def wasm_bigint_min_browser_versions(user_settings):
   if not settings.WASM_BIGINT:
     return
 
+  # See https://caniuse.com/?search=bigint
   min_bigint_versions = { "Chrome" : 67, "Edge" : 79, "Firefox" : 68, }
 
   for browser, version in min_bigint_versions.items():
