@@ -301,7 +301,6 @@ function updateGlobalBufferAndViews(buf) {
 #else // POLYFILL
     #include "polyfill/bigint64array.js"
 #endif // POLYFILL
-
 #endif // MIN_SAFARI_VERSION < 15000
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
   Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
