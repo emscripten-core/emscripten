@@ -433,3 +433,11 @@ endif()
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
+
+# TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
+if ("${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+  list(APPEND CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+endif()
+if ("${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+  list(APPEND CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+endif()
