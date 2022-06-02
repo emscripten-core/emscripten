@@ -8595,6 +8595,11 @@ console.error('JSLIB: none of the above');
 #endif
 ''')
 
+
+    create_file('lib_indented_include.js', '''
+    #include "lib.js"
+''')
+
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained('JSLIB: none of the above', err)
     self.assertEqual(err.count('JSLIB'), 1)
@@ -8609,6 +8614,10 @@ console.error('JSLIB: none of the above');
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-sEXIT_RUNTIME'], stderr=PIPE).stderr
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
+    self.assertEqual(err.count('JSLIB'), 1)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib_indented_include.js'], stderr=PIPE).stderr
+    self.assertContained('JSLIB: none of the above', err)
     self.assertEqual(err.count('JSLIB'), 1)
 
   def test_html_preprocess(self):
