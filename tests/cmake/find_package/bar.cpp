@@ -1,7 +1,7 @@
-#include <stdio.h>
+#include <iostream>
 #include <foo.h>
 
 int main() {
-  printf("foo: %d\n", foo());
+  std::cout << "foo: " << foo() << std::endl;
   return 0;
 }
