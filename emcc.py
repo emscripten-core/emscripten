@@ -403,7 +403,7 @@ def wasm_bigint_min_browser_versions(user_settings):
     return
 
   # See https://caniuse.com/?search=bigint
-  min_bigint_versions = { "Chrome" : 67, "Edge" : 79, "Firefox" : 68, }
+  min_bigint_versions = {"Chrome": 67, "Edge": 79, "Firefox": 68, }
 
   for browser, version in min_bigint_versions.items():
     browser_key = f"MIN_{browser.upper()}_VERSION"
@@ -411,13 +411,12 @@ def wasm_bigint_min_browser_versions(user_settings):
         exit_with_error(f"Cannot support {browser} versions less than v{version} when using the WASM_BIGINT setting")
 
   if "MIN_SAFARI_VERSION" in user_settings and user_settings["MIN_SAFARI_VERSION"] < 140000:
-    exit_with_error(f"Cannot support Safari versions less than v14.0 when using the WASM_BIGINT setting")
+    exit_with_error("Cannot support Safari versions less than v14.0 when using the WASM_BIGINT setting")
 
   if settings.MIN_IE_VERSION != 0x7FFFFFFF:
-    exit_with_error(f"Cannot support Internet Explorer when using the WASM_BIGINT setting")
+    exit_with_error("Cannot support Internet Explorer when using the WASM_BIGINT setting")
 
-
-  default_min_bigint_versions = {"SAFARI" : 150000, "Edge" : 79, "Firefox" : 68, }
+  default_min_bigint_versions = {"SAFARI": 150000, "Edge": 79, "Firefox": 68, }
 
   for browser, version in default_min_bigint_versions.items():
     browser_key = f"MIN_{browser.upper()}_VERSION"
