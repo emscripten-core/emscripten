@@ -1064,7 +1064,11 @@ class libc_size(MuslInternalLibrary,
       path='system/lib/libc/musl/src/math',
       filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
 
-    return libcall_files + math_files
+    mem_files = files_in_path(
+      path='system/lib/libc/musl/src/string',
+      filenames=['memcmp.c'])
+
+    return libcall_files + math_files + mem_files
 
   def customize_build_cmd(self, cmd, filename):
     if filename in self.non_lto_files:
