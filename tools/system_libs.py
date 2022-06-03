@@ -781,8 +781,6 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow_small.c', 'log_small.c', 'log2_small.c',
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
@@ -906,7 +904,11 @@ class libc(MuslInternalLibrary,
           'proxying_stub.c',
         ])
 
-    ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
+    # TODO needed?
+    ignore += [
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
+      'pow_small.c', 'log_small.c', 'log2_small.c'
+    ]
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1047,28 +1049,38 @@ class libc_size(MuslInternalLibrary,
   cflags = ['-Os', '-fno-builtin']
 
   def __init__(self, **kwargs):
-    self.non_lto_files = self.get_libcall_files()
     super().__init__(**kwargs)
+    self.non_lto_files = self.get_libcall_files()
 
   def get_libcall_files(self):
     # see comments in libc.customize_build_cmd
-    return files_in_path(
+
+    # some files use a #define to pick between the optz and normal code paths
+    mem_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_memmove.c'])
 
-  def get_files(self):
-    libcall_files = self.get_libcall_files()
+    # some functions have separate files in optz mode
+    if self.is_optz:
+      math_names = ['pow_small.c', 'log_small.c', 'log2_small.c']
+    else:
+      math_names = ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
 
     math_files = files_in_path(
       path='system/lib/libc/musl/src/math',
-      filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
+      filenames=math_names)
+
+    return mem_files + math_files
+
+  def get_files(self):
+    libcall_files = self.get_libcall_files()
 
     mem_files = files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['memcmp.c'])
 
-    return libcall_files + math_files + mem_files
+    return libcall_files + mem_files
 
   def customize_build_cmd(self, cmd, filename):
     if filename in self.non_lto_files:
