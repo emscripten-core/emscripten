@@ -84,7 +84,6 @@ SUPPORTED_LINKER_FLAGS = (
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
     '-bind_at_load': False,
-    '-M': False,
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
     '-soname': True,
@@ -1523,9 +1522,6 @@ def setup_pthreads(target):
 
   # set location of worker.js
   settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
-
-  # memalign is used to ensure allocated thread stacks are aligned.
-  settings.REQUIRED_EXPORTS += ['emscripten_builtin_memalign']
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')

@@ -14,6 +14,7 @@ $__wake.2
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
+$__wasm_init_tls
 $_do_call
 $_emscripten_proxy_execute_task_queue
 $_emscripten_thread_crashed
@@ -33,13 +34,12 @@ $add
 $dispose_chunk
 $dlfree
 $dlmalloc
-$dlmemalign
 $do_dispatch_to_thread
 $em_queued_call_malloc
 $emscripten_async_run_in_main_thread
-$emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
 $emscripten_futex_wake
+$emscripten_proxy_execute_queue
 $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
 $emscripten_stack_set_limits

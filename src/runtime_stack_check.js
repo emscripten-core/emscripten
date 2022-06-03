@@ -30,10 +30,13 @@ function checkStackCookie() {
   if (ABORT) return;
 #endif
   var max = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+  err('checkStackCookie: ' + max.toString(16));
+#endif
   var cookie1 = {{{ makeGetValue('max', 0, 'u32') }}};
   var cookie2 = {{{ makeGetValue('max', 4, 'u32') }}};
   if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
-    abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x2135467, but received 0x' + cookie2.toString(16) + ' 0x' + cookie1.toString(16));
+    abort('Stack overflow! Stack cookie has been overwritten at 0x' + max.toString(16) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received 0x' + cookie2.toString(16) + ' 0x' + cookie1.toString(16));
   }
 #if !USE_ASAN && !SAFE_HEAP // ASan and SAFE_HEAP check address 0 themselves
   // Also test the global address 0 for integrity.

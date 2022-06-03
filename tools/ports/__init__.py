@@ -76,7 +76,7 @@ class Ports:
   def install_header_dir(src_dir, target=None):
     if not target:
       target = os.path.basename(src_dir)
-    dest = os.path.join(Ports.get_include_dir(), target)
+    dest = Ports.get_include_dir(target)
     shared.try_delete(dest)
     logger.debug(f'installing headers: {dest}')
     shutil.copytree(src_dir, dest)
