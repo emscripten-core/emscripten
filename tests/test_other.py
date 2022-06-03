@@ -2488,8 +2488,7 @@ int f() {
               .property("x", &MyClass::getX, &MyClass::setX);
       }
     ''')
-    self.run_process([EMXX, 'main.cpp', '-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
-    self.assertContained('42', self.run_js('a.out.js'))
+    self.do_runf('main.cpp', '42', emcc_args=['-lembind', '--post-js', 'post.js'])
 
   def test_embind_closure_no_dynamic_execution(self):
     create_file('post.js', '''
