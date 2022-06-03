@@ -496,7 +496,8 @@ jobs:
             other.test_libc_progname
             other.test_realpath
             other.test_embed_file_dup
-            other.test_dot_a_all_contents_invalid"
+            other.test_dot_a_all_contents_invalid
+            other.test_pkg_config*"
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
           test_targets: "sockets.test_nodejs_sockets_echo*"
