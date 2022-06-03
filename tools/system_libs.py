@@ -727,7 +727,6 @@ class libnoexit(Library):
 
 class libc(MuslInternalLibrary,
            DebugLibrary,
-           OptimizedAggressivelyForSizeLibrary,
            AsanInstrumentedLibrary,
            MTLibrary):
   name = 'libc'
@@ -793,9 +792,7 @@ class libc(MuslInternalLibrary,
 
     other_files = files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c'])
+      filenames=['emscripten_scan_stack.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
     # probably not performance sensitive.  However we don't currently have
@@ -828,7 +825,8 @@ class libc(MuslInternalLibrary,
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+        'memcpy.c', 'memset.c', 'memmove.c', 'memcmp.c',
+        'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
@@ -908,10 +906,7 @@ class libc(MuslInternalLibrary,
           'proxying_stub.c',
         ])
 
-    if self.is_optz:
-      ignore += ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
-    else:
-      ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
+    ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1010,10 +1005,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c',
-                 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c',
+      filenames=['emscripten_scan_stack.c',
                  'emscripten_mmap.c'
                  ])
 
@@ -1035,6 +1027,48 @@ class libc(MuslInternalLibrary,
       # them as LTO and build them with -O2 rather then -Os (which
       # use used for the rest of libc) because this set of files
       # also contains performance sensitive math functions.
+      cmd = [a for a in cmd if not a.startswith('-flto')]
+      cmd = [a for a in cmd if not a.startswith('-O')]
+      cmd += ['-O2']
+    return cmd
+
+
+# Contains the files from libc that are optimized differently in -Oz mode, where
+# we want to aggressively optimize them for size. Splitting this from libc
+# avoids that entire library being rebuilt differently (which is what
+# OptimizedAggressivelyForSizeLibrary causes).
+class libc_size(MuslInternalLibrary,
+           DebugLibrary,
+           OptimizedAggressivelyForSizeLibrary,
+           AsanInstrumentedLibrary,
+           MTLibrary):
+  name = 'libc_size'
+
+  cflags = ['-Os', '-fno-builtin']
+
+  def __init__(self, **kwargs):
+    self.non_lto_files = self.get_libcall_files()
+    super().__init__(**kwargs)
+
+  def get_libcall_files(self):
+    # see comments in libc.customize_build_cmd
+    return files_in_path(
+      path='system/lib/libc',
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_memmove.c'])
+
+  def get_files(self):
+    libcall_files = self.get_libcall_files()
+
+    math_files = files_in_path(
+      path='system/lib/libc/musl/src/math',
+      filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
+
+    return libcall_files + mem_files
+
+  def customize_build_cmd(self, cmd, filename):
+    if filename in self.non_lto_files:
+      # see comments in libc.customize_build_cmd
       cmd = [a for a in cmd if not a.startswith('-flto')]
       cmd = [a for a in cmd if not a.startswith('-O')]
       cmd += ['-O2']
@@ -1846,6 +1880,7 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
+    add_library('libc_size')
     if settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
