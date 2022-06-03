@@ -1728,8 +1728,9 @@ class libstubs(DebugLibrary):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explictly exported
-  if settings.STANDALONE_WASM:
+  # In STANDALONE_WASM we don't expect main to be explictly exported.
+  # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
+  if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
     return
   if '_main' not in settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:

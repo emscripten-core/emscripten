@@ -1726,7 +1726,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      settings.EXPORTED_FUNCTIONS = ['_main']
+      # With PROXY_TO_PTHREAD we don't export `main` at all but instead
+      # we export `emscripten_proxy_main` (elsewhwere).
+      if not settings.PROXY_TO_PTHREAD:
+        settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -2504,12 +2507,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # they are indirect calls, since that is what they do - we can't see their
       # targets statically.
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
-    # with pthreads we may call main through the __call_main mechanism, which can
-    # therefore reach anything in the program, so mark it as possibly causing a
-    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-    # see what it itself calls)
-    if settings.USE_PTHREADS:
-      settings.ASYNCIFY_IMPORTS += ['__call_main']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
 
