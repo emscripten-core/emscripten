@@ -3,8 +3,8 @@
 #include <stdio.h>
 
 // Import the syscall under a separate name
-__attribute__((import_module("env"), import_name("emscripten_get_now")))
-double __orig_emscripten_get_now(void);
+__attribute__((import_module("env"), import_name("emscripten_get_now"))) double
+__orig_emscripten_get_now(void);
 
 double emscripten_get_now(void) {
   printf("emscripten_get_now intercepted\n");
