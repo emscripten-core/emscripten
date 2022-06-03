@@ -1,2 +1,1 @@
-__syscall_getcwd intercepted
-cwd = /
+emscripten_get_now intercepted

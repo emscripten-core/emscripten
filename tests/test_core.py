@@ -9390,7 +9390,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
 
-  @no_wasmfs('syscalls are not JS imports, and cannot be intercepted as such')
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
