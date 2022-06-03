@@ -435,12 +435,7 @@ if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
 
 # TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
-set(_em_sysroot_include "${EMSCRIPTEN_SYSROOT}/include")
-if("${CMAKE_VERSION}" VERSION_LESS "3.20")
-  file(TO_CMAKE_PATH "${_em_sysroot_include}" _em_sysroot_include)
-else()
-  cmake_path(CONVERT "${_em_sysroot_include}" TO_CMAKE_PATH_LIST _em_sysroot_include)
-endif()
+file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}/include" _em_sysroot_include)
 if ("${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
   set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${_em_sysroot_include}")
 endif()
