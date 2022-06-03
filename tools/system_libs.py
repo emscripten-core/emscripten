@@ -1040,10 +1040,10 @@ class libc(MuslInternalLibrary,
 # avoids that entire library being rebuilt differently (which is what
 # OptimizedAggressivelyForSizeLibrary causes).
 class libc_size(MuslInternalLibrary,
-           DebugLibrary,
-           OptimizedAggressivelyForSizeLibrary,
-           AsanInstrumentedLibrary,
-           MTLibrary):
+                DebugLibrary,
+                OptimizedAggressivelyForSizeLibrary,
+                AsanInstrumentedLibrary,
+                MTLibrary):
   name = 'libc_size'
 
   cflags = ['-Os', '-fno-builtin']
