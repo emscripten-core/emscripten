@@ -951,12 +951,12 @@ var LibraryPThread = {
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackMax = stackTop - stackSize;
 #if PTHREADS_DEBUG
-    err('establishStackSpace: ' + stackTop + ' -> ' + stackMax);
+    err('establishStackSpace: ' + ptrToString(stackTop) + ' -> ' + ptrToString(stackMax));
 #endif
 #if ASSERTIONS
     assert(stackTop != 0);
     assert(stackMax != 0);
-    assert(stackTop > stackMax);
+    assert(stackTop > stackMax, 'stackTop must be higher then stackMax');
 #endif
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.

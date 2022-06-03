@@ -76,7 +76,9 @@ struct pthread {
 	// If --threadprofiler is enabled, this pointer is allocated to contain
 	// internal information about the thread state for profiling purposes.
 	thread_profiler_block * _Atomic profilerBlock;
-	int stack_owned;
+	// The TLS base to use the main module TLS data.  Secondary modules
+	// still require dynamic allocation.
+	void* tls_base;
 #endif
 };
 

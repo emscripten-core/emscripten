@@ -2749,6 +2749,8 @@ The current type of b is: 9
                                  interleaved_output=False, emcc_args=args)
 
   @node_pthreads
+  @no_lsan('https://github.com/emscripten-core/emscripten/issues/17091')
+  @no_asan('https://github.com/emscripten-core/emscripten/issues/17091')
   @no_wasm2js('occasionally hangs in wasm2js (#16569)')
   def test_pthread_proxying_cpp(self):
     self.set_setting('EXIT_RUNTIME')
