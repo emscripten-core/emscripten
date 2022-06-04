@@ -263,6 +263,9 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
+#if RELOCATABLE
+    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
+#endif
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
@@ -276,9 +279,6 @@ mergeInto(LibraryManager.library, {
 #endif
       return func;
     },
-#if RELOCATABLE
-    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
-#endif
 
     doRewind: function(ptr) {
 #if ASYNCIFY == 2
