@@ -5,10 +5,10 @@
  * found in the LICENSE file.
  */
 
-// Included for emscripten_builtin_free / emscripten_builtin_malloc
-// TODO(sbc): Should these be in their own header to avoid emmalloc here?
-#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
 #include <emscripten/threading.h>
+#include <stdlib.h>
+#include <malloc.h>
 
 #include "pthread_impl.h"
 
@@ -31,26 +31,26 @@ extern int __dso_handle;
 // from a previous pthreads need to be ignored.
 // If this global is true then TLS needs to be dyanically allocated, if its
 // flase we are free to use the existing/global __tls_base.
-__asm__(".globaltype is_not_primary_tls, i32\n"
-        "is_not_primary_tls:\n");
+__asm__(".globaltype g_needs_dynamic_alloc, i32\n"
+        "g_needs_dynamic_alloc:\n");
 
-static void set_non_primary(void) {
+static void set_needs_dynamic_alloc(void) {
   __asm__("i32.const 1\n"
-          "global.set is_not_primary_tls\n");
+          "global.set g_needs_dynamic_alloc\n");
 }
 
-static int is_non_primary(void) {
+static int needs_dynamic_alloc(void) {
   int val;
-  __asm__("global.get is_not_primary_tls\n"
+  __asm__("global.get g_needs_dynamic_alloc\n"
           "local.set %0" : "=r" (val));
   return val;
 }
 
 void _emscripten_tls_free() {
   void* tls_block = __builtin_wasm_tls_base();
-  if (tls_block && is_non_primary()) {
+  if (tls_block && needs_dynamic_alloc()) {
 #ifdef DEBUG_TLS
-    printf("tls free: thread=%p dso=%p <- %p\n", pthread_self(), &__dso_handle, tls_block);
+    _emscripten_errf("tls free: thread=%p dso=%p <- %p", pthread_self(), &__dso_handle, tls_block);
 #endif
     emscripten_builtin_free(tls_block);
   }
@@ -59,13 +59,18 @@ void _emscripten_tls_free() {
 void* _emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   void* tls_block = __builtin_wasm_tls_base();
-  if (is_non_primary() || (!tls_block && tls_size)) {
-    set_non_primary();
-    size_t tls_align = __builtin_wasm_tls_align();
-    tls_block = emscripten_builtin_memalign(tls_align, tls_size);
+  if (pthread_self()->tls_base) {
+    // The TLS block for the main module is allocated alongside the pthread
+    // itself and its stack.
+    tls_block = pthread_self()->tls_base;
+    pthread_self()->tls_base = NULL;
+  } else if (needs_dynamic_alloc() || (!tls_block && tls_size)) {
+    // For non-main modules we do a dynamic allocation.
+    set_needs_dynamic_alloc();
+    tls_block = emscripten_builtin_memalign(__builtin_wasm_tls_align(), tls_size);
   }
 #ifdef DEBUG_TLS
-  printf("tls init: size=%zu thread=%p dso=%p -> %p\n", tls_size, pthread_self(), &__dso_handle, tls_block);
+  _emscripten_errf("tls init: size=%zu thread=%p dso=%p -> %p:%p", tls_size, pthread_self(), &__dso_handle, tls_block, ((char*)tls_block)+tls_size);
 #endif
   __wasm_init_tls(tls_block);
   return tls_block;

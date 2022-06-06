@@ -156,6 +156,7 @@ commands:
       - emsdk-env
       - npm-install
       - pip-install
+      - run: apt-get install ninja-build
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -371,14 +372,50 @@ jobs:
     steps:
       - run-tests-linux:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
-          test_targets: "core2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
+          test_targets: "
+            core2
+            asan.test_stat
+            asan.test_float_builtins
+            asan.test_embind*
+            asan.test_abort_on_exceptions
+            asan.test_ubsan_full_left_shift_fsanitize_integer
+            asan.test_pthread*
+            asan.test_dyncall_specific_minimal_runtime
+            asan.test_async_hello
+            lsan.test_stdio_locking
+            lsan.test_pthread_create
+            browser.test_pthread_join"
   test-core3:
     executor: bionic
     steps:
       - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe wasmfs.test_dlfcn_self wasmfs.test_dlfcn_unique_sig wasmfs.test_dylink_basics wasmfs.test_exit_status wasmfs.test_minimal_runtime_memorygrowth wasmfs.test_getcwd_with_non_ascii_name other.test_unistd_fstatfs_wasmfs"
+          test_targets: "
+            core3
+            core2ss.test_pthread_dylink
+            wasm2js3.test_memorygrowth_2
+            other.test_unistd_fstatfs_wasmfs
+            wasmfs.test_hello_world
+            wasmfs.test_hello_world_standalone
+            wasmfs.test_unistd_links*
+            wasmfs.test_atexit_standalone
+            wasmfs.test_emscripten_get_now
+            wasmfs.test_dyncall_specific_minimal_runtime
+            wasmfs.test_utime
+            wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_access
+            wasmfs.test_unistd_close
+            wasmfs.test_unistd_truncate
+            wasmfs.test_readdir
+            wasmfs.test_unistd_pipe
+            wasmfs.test_dlfcn_self
+            wasmfs.test_dlfcn_unique_sig
+            wasmfs.test_dylink_basics
+            wasmfs.test_exit_status
+            wasmfs.test_minimal_runtime_memorygrowth
+            wasmfs.test_mmap_anon*
+            wasmfs.test_getcwd_with_non_ascii_name"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -416,9 +453,6 @@ jobs:
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
-      # Override the default locale to use UTF-8 encoding for all files and stdio 
-      # streams (see PEP540), since oure test files are encoded with UTF-8.
-      PYTHONUTF8: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
@@ -429,7 +463,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install cmake.portable ninja
+            choco install cmake.portable ninja pkgconfiglite
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
@@ -439,7 +473,31 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "other.test_es5_transpile other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup other.test_dot_a_all_contents_invalid"
+          test_targets: "
+            core2.test_sse1
+            core2.test_ccall
+            core2.test_utf16
+            other.test_es5_transpile
+            other.test_emcc_cflags
+            other.test_stdin
+            other.test_bad_triple
+            other.test_closure_externs
+            other.test_binaryen_debug
+            other.test_js_optimizer_parse_error
+            other.test_output_to_nowhere
+            other.test_emcc_dev_null
+            other.test_cmake*
+            other.test_system_include_paths
+            other.test_emar_response_file
+            other.test_special_chars_in_arguments
+            other.test_toolchain_profiler
+            other.test_realpath_nodefs
+            other.test_response_file_encoding
+            other.test_libc_progname
+            other.test_realpath
+            other.test_embed_file_dup
+            other.test_dot_a_all_contents_invalid
+            other.test_pkg_config*"
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
           test_targets: "sockets.test_nodejs_sockets_echo*"
@@ -454,7 +512,9 @@ jobs:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
             brew list cmake || brew install cmake
+            brew list ninja || brew install ninja
             brew list python3 || brew install python3
+            brew list pkg-config || brew install pkg-config
       - checkout
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
@@ -464,7 +524,14 @@ jobs:
       - run-tests:
           # skip other.test_stack_switching_size as we do not currently install
           # d8 on mac
-          test_targets: "other sockets.test_nodejs_sockets_echo* core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message skip:other.test_stack_switching_size"
+          test_targets: "
+            other
+            sockets.test_nodejs_sockets_echo*
+            core0.test_lua
+            core0.test_longjmp_standalone
+            core2.test_sse1
+            skip:other.test_native_link_error_message
+            skip:other.test_stack_switching_size"
 
 workflows:
   build-test:

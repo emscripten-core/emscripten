@@ -297,6 +297,11 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
+  if '__main_argc_argv' in metadata['exports']:
+    settings.MANGLED_MAIN = 1
+    metadata['exports'].remove('__main_argc_argv')
+    metadata['exports'].append('main')
+
   update_settings_glue(metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
@@ -777,7 +782,12 @@ def create_sending(invoke_funcs, metadata):
 def make_export_wrappers(exports, delay_assignment):
   wrappers = []
   for name in exports:
+    # Tags cannot be wrapped in createExportWrapper
+    if name == '__cpp_exception':
+      continue
     mangled = asmjs_mangle(name)
+    if settings.MANGLED_MAIN and name == 'main':
+      name = '__main_argc_argv'
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
@@ -817,8 +827,6 @@ def create_receiving(exports):
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
-  exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
-
   receiving = []
 
   # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
@@ -833,8 +841,12 @@ def create_receiving(exports):
       # var asm = output.instance.exports;
       # _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+      exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
+
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
+        if settings.MANGLED_MAIN and s == 'main':
+          s = '__main_argc_argv'
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:

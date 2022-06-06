@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.13
+3.1.14
 ------
+
+3.1.13 - 06/02/2022
+-------------------
+- xlocale.h compatibility header was restored after being removed in 3.1.12.
 
 3.1.12 - 05/25/2022
 -------------------

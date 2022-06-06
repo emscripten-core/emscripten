@@ -31,9 +31,12 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
-                   '$ptrToString', '$spawnThread',
+                   '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
+#if PTHREADS_DEBUG || ASSERTIONS
+                   '$ptrToString',
+#endif
 #if !MINIMAL_RUNTIME
                    '$handleException',
 #endif
@@ -948,12 +951,12 @@ var LibraryPThread = {
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackMax = stackTop - stackSize;
 #if PTHREADS_DEBUG
-    err('establishStackSpace: ' + stackTop + ' -> ' + stackMax);
+    err('establishStackSpace: ' + ptrToString(stackTop) + ' -> ' + ptrToString(stackMax));
 #endif
 #if ASSERTIONS
     assert(stackTop != 0);
     assert(stackMax != 0);
-    assert(stackTop > stackMax);
+    assert(stackTop > stackMax, 'stackTop must be higher then stackMax');
 #endif
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.
@@ -979,6 +982,7 @@ var LibraryPThread = {
 #endif
   },
 
+  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
     err('invokeEntryPoint: ' + ptrToString(ptr));
@@ -989,7 +993,31 @@ var LibraryPThread = {
     // in sync and might not contain the function pointer `ptr` at all.
     __emscripten_thread_sync_code();
 #endif
-    return {{{ makeDynCall('ii', 'ptr') }}}(arg);
+    // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+    // Native codebases sometimes spawn threads with other thread entry point
+    // signatures, such as void ThreadMain(void *arg), void *ThreadMain(), or
+    // void ThreadMain().  That is not acceptable per C/C++ specification, but
+    // x86 compiler ABI extensions enable that to work. If you find the
+    // following line to crash, either change the signature to "proper" void
+    // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
+    // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
+    // ABI extension.
+    var result = {{{ makeDynCall('ii', 'ptr') }}}(arg);
+#if STACK_OVERFLOW_CHECK
+    checkStackCookie();
+#endif
+#if MINIMAL_RUNTIME
+    // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+    // pthreads. To exit a pthread with live runtime, use the function
+    // emscripten_unwind_to_js_event_loop() in the pthread body.
+    __emscripten_thread_exit(result);
+#else
+    if (keepRuntimeAlive()) {
+      PThread.setExitStatus(result);
+    } else {
+      __emscripten_thread_exit(result);
+    }
+#endif
   },
 
   $executeNotifiedProxyingQueue: function(queue) {

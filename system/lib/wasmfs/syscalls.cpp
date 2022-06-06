@@ -8,6 +8,7 @@
 
 #include <dirent.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
@@ -15,6 +16,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <syscall_arch.h>
@@ -312,8 +314,6 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   }
   return parsed.getFile()->getBackend();
 }
-
-static
 
 int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
@@ -1452,6 +1452,75 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
     return err;
   }
   return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
+}
+
+intptr_t _mmap_js(
+  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  std::shared_ptr<DataFile> file;
+
+  // Keep the open file info locked only for as long as we need that.
+  {
+    auto lockedOpenFile = openFile->locked();
+
+    // Check permissions. We always need read permissions, since we need to read
+    // the data in the file to map it.
+    if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+      return -EACCES;
+    }
+
+    // According to the POSIX spec it is possible to write to a file opened in
+    // read-only mode with MAP_PRIVATE flag, as all modifications will be
+    // visible only in the memory of the current process.
+    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+        (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
+      return -EACCES;
+    }
+
+    file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  }
+
+  if (!file) {
+    return -ENODEV;
+  }
+
+  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
+  //       like avoiding an allocation and a copy as we do below (whereas a
+  //       private mmap is always a copy into a new, private region not shared
+  //       with anything else).
+  assert(flags & MAP_PRIVATE);
+
+  // Align to a wasm page size, as we expect in the future to get wasm
+  // primitives to do this work, and those would presumably be aligned to a page
+  // size. Aligning now avoids confusion later.
+  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  if (!ptr) {
+    return -ENOMEM;
+  }
+  *allocated = true;
+
+  auto written = file->locked().read(ptr, length, offset);
+  if (written < 0) {
+    // The read failed. Report the error, but first free the allocation.
+    free(ptr);
+    return written;
+  }
+
+  // From here on, we have succeeded, and can mark the allocation as having
+  // occurred (which means that the caller has the responsibility to free it).
+  *allocated = true;
+
+  // The read must be of a valid amount, or we have had an internal logic error.
+  assert(written <= length);
+
+  // mmap clears any extra bytes after the data itself.
+  memset(ptr + written, 0, length - written);
+
+  return (intptr_t)ptr;
 }
 
 // Stubs (at least for now)

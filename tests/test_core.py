@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, require_v8, require_node
+from common import read_file, read_binary, requires_v8, requires_node
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
@@ -562,7 +562,7 @@ class TestCoreBase(RunnerCore):
 
   @no_wasm2js('wasm_bigint')
   @no_wasm64('MEMORY64 does not yet support exceptions')
-  @require_node
+  @requires_node
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
@@ -1634,10 +1634,19 @@ int main(int argc, char **argv)
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
+  @with_both_eh_sjlj
   def test_exception_message(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '__cxa_decrement_exception_refcount', '__cxa_increment_exception_refcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message', '_free'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
+    if '-fwasm-exceptions' in self.emcc_args:
+      exports = self.get_setting('EXPORTED_FUNCTIONS')
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+
+    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
+    # details.
+    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
+      self.emcc_args.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
+
     self.maybe_closure()
     src = '''
       #include <emscripten.h>
@@ -1677,9 +1686,17 @@ int main(int argc, char **argv)
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
                   // the exception, if necessary. By incrementing and decrementing the refcount
                   // we trigger the free'ing of the exception if its refcount was zero.
-                  ___cxa_increment_exception_refcount(p);
+#ifdef __USING_EMSCRIPTEN_EXCEPTION__
+                  // FIXME Currently Wasm EH and Emscripten EH increases
+                  // refcounts in different places. Wasm EH sets the refcount to
+                  // 1 when throwing, and decrease it in __cxa_end_catch.
+                  // Emscripten EH sets the refcount to 0 when throwing, and
+                  // increase it in __cxa_begin_catch, and decrease it in
+                  // __cxa_end_catch. Fix this inconsistency later.
+                  incrementExceptionRefcount(p);
+#endif
                   console.log(getExceptionMessage(p));
-                  ___cxa_decrement_exception_refcount(p);
+                  decrementExceptionRefcount(p);
               }
             }
           });
@@ -2732,6 +2749,8 @@ The current type of b is: 9
                                  interleaved_output=False, emcc_args=args)
 
   @node_pthreads
+  @no_lsan('https://github.com/emscripten-core/emscripten/issues/17091')
+  @no_asan('https://github.com/emscripten-core/emscripten/issues/17091')
   @no_wasm2js('occasionally hangs in wasm2js (#16569)')
   def test_pthread_proxying_cpp(self):
     self.set_setting('EXIT_RUNTIME')
@@ -5773,7 +5792,7 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   @is_slow_test
-  @require_node
+  @requires_node
   def test_fs_nodefs_rw(self):
     # TODO(sbc): This test exposes in issue in the way we run closure compiler and
     # causes it to generate non-ES5 output.
@@ -5786,23 +5805,23 @@ main( int argv, char ** argc ) {
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
-  @require_node
+  @requires_node
   def test_fs_nodefs_cloexec(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
-  @require_node
+  @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
@@ -5810,7 +5829,7 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
 
   @no_windows('no symlink support on windows')
-  @require_node
+  @requires_node
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
     create_file('filename', 'foo')
@@ -5912,7 +5931,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test(test_file('test_signals.c'))
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  @require_node
+  @requires_node
   def test_unistd_access(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
@@ -5968,7 +5987,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
-  @require_node
+  @requires_node
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
@@ -6047,7 +6066,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run_in_out_file_test('unistd/links.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
-  @require_node
+  @requires_node
   def test_unistd_symlink_on_nodefs(self):
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
@@ -6334,7 +6353,7 @@ int main(void) {
     self.do_runf(test_file('whets.cpp'), 'Single Precision C Whetstone Benchmark')
 
   # node is slower, and fail on 64-bit
-  @require_v8
+  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
@@ -6346,7 +6365,7 @@ int main(void) {
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
   # node is slower, and fail on 64-bit
-  @require_v8
+  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
@@ -6436,35 +6455,21 @@ void* operator new(size_t size) {
     self.do_core_test('test_fakestat.c')
 
   @also_with_standalone_wasm()
-  def test_mmap(self):
+  def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
     if '-fsanitize=address' not in self.emcc_args:
       self.set_setting('INITIAL_MEMORY', '128mb')
 
-    self.do_core_test('test_mmap.c')
+    self.do_core_test('test_mmap_anon.c')
 
   @node_pthreads
-  def test_mmap_pthreads(self):
+  def test_mmap_anon_pthreads(self):
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('INITIAL_MEMORY', '64mb')
-    self.do_core_test('test_mmap.c')
-
-  def test_mmap_file(self):
-    for extra_args in [[]]:
-      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-      x = 'data from the file........'
-      s = ''
-      while len(s) < 9000:
-        if len(s) + len(x) < 9000:
-          s += x
-          continue
-        s += '.'
-      assert len(s) == 9000
-      create_file('data.dat', s)
-      self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
+    self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
@@ -6838,7 +6843,7 @@ void* operator new(size_t size) {
       create_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
-          out('Data: ' + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.analyzePath('image.raw').object))));
+          out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
         };
         """ % line_splitter(str(image_bytes)))
 
@@ -7348,7 +7353,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('embind does not yet support MEMORY64')
   def test_embind(self):
-    # Very that both the old `--bind` arg and the new `-lembind` arg work
+    # Verify that both the old `--bind` arg and the new `-lembind` arg work
     for args in [['-lembind'], ['--bind']]:
       create_file('test_embind.cpp', r'''
       #include <stdio.h>
@@ -7981,7 +7986,7 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @require_v8
+  @requires_v8
   @no_memory64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
@@ -8475,7 +8480,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   def test_wrap_malloc(self):
-    self.do_runf(test_file('wrap_malloc.cpp'), 'OK.')
+    self.do_runf(test_file('core/test_wrap_malloc.c'), 'OK.')
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')
@@ -9379,7 +9384,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
-  @require_v8
+  @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref(self):
     self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(ldflags=False))

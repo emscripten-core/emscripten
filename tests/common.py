@@ -178,7 +178,7 @@ def requires_native_clang(func):
   return decorated
 
 
-def require_node(func):
+def requires_node(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
@@ -188,7 +188,7 @@ def require_node(func):
   return decorated
 
 
-def require_v8(func):
+def requires_v8(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
@@ -789,7 +789,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def assertExists(self, filename, msg=None):
     if not msg:
-      msg = 'Expected file not found: ' + filename
+      msg = f'Expected file not found: {filename}'
     self.assertTrue(os.path.exists(filename), msg)
 
   def assertNotExists(self, filename, msg=None):

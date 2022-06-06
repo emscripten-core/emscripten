@@ -2291,6 +2291,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_get_now__import: true,
+  emscripten_get_now__sig: 'd',
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +

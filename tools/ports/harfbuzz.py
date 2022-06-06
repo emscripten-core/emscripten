@@ -90,7 +90,7 @@ def get(ports, settings, shared):
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
     build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
-    freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
+    freetype_include = ports.get_include_dir('freetype2/freetype')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
     # TODO(sbc): Look into HB_TINY, HB_LEAN, HB_MINI options.  Remove
@@ -153,7 +153,7 @@ def process_dependencies(settings):
 
 
 def process_args(ports):
-  return ['-I' + os.path.join(ports.get_include_dir(), 'harfbuzz')]
+  return ['-I' + ports.get_include_dir('harfbuzz')]
 
 
 def show():

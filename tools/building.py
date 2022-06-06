@@ -149,7 +149,7 @@ def get_building_env():
   env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
   env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
@@ -233,7 +233,7 @@ def llvm_backend_args():
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
     if 'main' in settings.EXCEPTION_CATCHING_ALLOWED:
-      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
+      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main', '__main_argc_argv']
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
@@ -999,6 +999,9 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     exports = settings.WASM_EXPORTS
   else:
     exports = settings.WASM_FUNCTION_EXPORTS
+  if settings.MANGLED_MAIN and 'main' in exports:
+    exports.append('__main_argc_argv')
+
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
