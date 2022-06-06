@@ -1338,11 +1338,11 @@ var WASM_ASYNC_COMPILATION = true;
 // [link]
 var DYNCALLS = false;
 
-// WebAssembly integration with JavaScript BigInt. When enabled we don't need
-// to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
-// an i64 is used.
-// If WASM_BIGINT is present, the default minimum browser versions increase to
-// Safari v15.0, Firefox v68, and Edge v79.
+// WebAssembly integration with JavaScript BigInt. When enabled we don't need to
+// legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
+// i64 is used. If WASM_BIGINT is present, the default minimum browser versions
+// increase to Safari v15.0, Firefox v68, and Edge v79. (The Chrome minimum version
+// is unchanged from v75.)
 // [link]
 var WASM_BIGINT = false;
 
