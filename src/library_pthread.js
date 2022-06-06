@@ -610,14 +610,6 @@ var LibraryPThread = {
     return ___pthread_create_js(pthread_ptr, attr, start_routine, arg);
   },
 
-  // ASan wraps the emscripten_builtin_pthread_create call in
-  // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
-  // the thread that made the call.  __pthread_create_js gets proxied to the
-  // main thread, where LSan is not disabled. This makes it necessary for us to
-  // disable LSan here (using __noleakcheck), so that it does not detect
-  // pthread's internal allocations as leaks.  If/when we remove all the
-  // allocations from __pthread_create_js we could also remove this.
-  __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {

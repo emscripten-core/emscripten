@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include "pthread_impl.h"
 #include <emscripten/threading.h>
-#include <emscripten/heap.h>
 
 static bool enabled = false;
 
@@ -21,7 +20,7 @@ void _emscripten_thread_profiler_init(pthread_t thread) {
   if (!enabled) {
     return;
   }
-  thread->profilerBlock = emscripten_builtin_malloc(sizeof(thread_profiler_block));
+  thread->profilerBlock = malloc(sizeof(thread_profiler_block));
   memset(thread->profilerBlock, 0, sizeof(thread_profiler_block));
   thread->profilerBlock->currentStatusStartTime = emscripten_get_now();
 }

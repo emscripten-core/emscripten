@@ -450,7 +450,7 @@ extern "C" void *__lsan_thread_start_func(void *arg) {
     internal_sched_yield();
   ThreadStart(tid, GetTid());
 #if SANITIZER_EMSCRIPTEN
-  emscripten_builtin_free(p);
+  free(p);
 #else
   atomic_store(&p->tid, 0, memory_order_release);
 #endif
@@ -470,7 +470,7 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   int detached = 0;
   pthread_attr_getdetachstate(attr, &detached);
 #if SANITIZER_EMSCRIPTEN
-  ThreadParam *p = (ThreadParam *) emscripten_builtin_malloc(sizeof(ThreadParam));
+  ThreadParam *p = (ThreadParam *) malloc(sizeof(ThreadParam));
   p->callback = callback;
   p->param = param;
   atomic_store(&p->tid, 0, memory_order_relaxed);

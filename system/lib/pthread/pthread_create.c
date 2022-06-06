@@ -14,7 +14,6 @@
 #include <string.h>
 #include <threads.h>
 #include <unistd.h>
-#include <emscripten/heap.h>
 
 #define STACK_ALIGN 16
 
@@ -123,7 +122,7 @@ int __pthread_create(pthread_t* restrict res,
   size += __pthread_tsd_size;
 
   // Allocate all the data for the new thread and zero-initialize.
-  unsigned char* block = emscripten_builtin_malloc(size);
+  unsigned char* block = malloc(size);
   memset(block, 0, size);
 
   struct pthread *new = (struct pthread*)block;
@@ -217,7 +216,7 @@ void _emscripten_thread_free_data(pthread_t t) {
   assert(t != pthread_self());
 #ifndef NDEBUG
   if (t->profilerBlock) {
-    emscripten_builtin_free(t->profilerBlock);
+    free(t->profilerBlock);
   }
 #endif
 
@@ -230,7 +229,7 @@ void _emscripten_thread_free_data(pthread_t t) {
 #endif
   // To aid in debugging, set the entire region to zero.
   memset(block, 0, sizeof(struct pthread));
-  emscripten_builtin_free(block);
+  free(block);
 }
 
 void _emscripten_thread_exit(void* result) {
