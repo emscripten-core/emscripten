@@ -1,6 +1,7 @@
 #include <cassert>
 #include <condition_variable>
 #include <emscripten/proxying.h>
+#include <emscripten/eventloop.h>
 #include <iostream>
 #include <sched.h>
 
@@ -26,7 +27,7 @@ void looper_main() {
 }
 
 void returner_main() {
-  emscripten_exit_with_live_runtime();
+  emscripten_runtime_keepalive_push();
 }
 
 void test_proxy_async() {
