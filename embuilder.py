@@ -71,6 +71,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc-mt-debug',
     'libc_size-mt',
     'libc_size-mt-debug',
+    'libc_size-mt-optz',
+    'libc_size-mt-optz-debug',
     'libc++abi-mt',
     'libc++abi-mt-noexcept',
     'libc++-mt',
