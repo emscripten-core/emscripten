@@ -25,7 +25,7 @@ def get(ports, settings, shared):
 
     # includes
     source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'boost')
-    dest_path_include = os.path.join(ports.get_include_dir(), 'boost')
+    dest_path_include = ports.get_include_dir('boost')
     shared.try_delete(dest_path_include)
     shutil.copytree(source_path_include, dest_path_include)
 

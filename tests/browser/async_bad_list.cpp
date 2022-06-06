@@ -8,6 +8,7 @@
 
 int main() {
   int x = EM_ASM_INT({
+    window.disableErrorReporting = true;
     window.onerror = function(e) {
       var message = e.toString();
       var success = message.indexOf("unreachable") >= 0 || // firefox

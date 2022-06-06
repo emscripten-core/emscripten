@@ -23,10 +23,20 @@ mergeInto(LibraryManager.library, {
         // the actual read below.
         return Promise.resolve();
       }
-
       // This is the first time we want the file's data.
-      // TODO: real URL!
-      var url = 'data.dat';
+      var url = '';
+      var fileUrl_p = __wasmfs_fetch_get_file_path(file);
+      var fileUrl = UTF8ToString(fileUrl_p);
+      var isAbs = fileUrl.indexOf('://') !== -1;
+      if (isAbs) {
+        url = fileUrl;
+      } else {
+        try {
+          var u = new URL(fileUrl, self.location.origin);
+          url = u.toString();
+        } catch (e) {
+        }
+      }
       var response = await fetch(url);
       var buffer = await response['arrayBuffer']();
       wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
@@ -66,4 +76,5 @@ mergeInto(LibraryManager.library, {
       },
     };
   },
+
 });

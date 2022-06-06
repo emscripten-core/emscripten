@@ -13,22 +13,22 @@
 
 namespace wasmfs {
 
-__wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
+ssize_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
     buffer.resize(offset + len);
   }
   std::memcpy(&buffer[offset], buf, len);
-
-  return __WASI_ERRNO_SUCCESS;
+  return len;
 }
 
-__wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
-  // The caller should have already checked that the offset + len does
-  // not exceed the file's size.
-  assert(offset + len <= buffer.size());
+ssize_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
+  if (offset >= buffer.size()) {
+    len = 0;
+  } else if (offset + len >= buffer.size()) {
+    len = buffer.size() - offset;
+  }
   std::memcpy(buf, &buffer[offset], len);
-
-  return __WASI_ERRNO_SUCCESS;
+  return len;
 }
 
 std::vector<MemoryDirectory::ChildEntry>::iterator

@@ -176,16 +176,21 @@ function needsQuoting(ident) {
 
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = 'i' + POINTER_BITS;
+const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
 
 const SIZE_TYPE = POINTER_TYPE;
 
+
+// Similar to POINTER_TYPE, but this is the actual wasm type that is
+// used in practice, while POINTER_TYPE is the more refined internal
+// type (that is unsigned, where as core wasm does not have unsigned
+// types).
+const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
+
 function isPointerType(type) {
   return type[type.length - 1] == '*';
-}
-
-function pointerT(x) {
-  return MEMORY64 ? `BigInt(${x})` : x;
 }
 
 function isIntImplemented(type) {
@@ -196,7 +201,7 @@ function isIntImplemented(type) {
 function getBits(type, allowPointers) {
   if (allowPointers && isPointerType(type)) return POINTER_SIZE;
   if (!type) return 0;
-  if (type[0] == 'i') {
+  if (type[0] == 'i' || type[0] == 'u') {
     const left = type.substr(1);
     if (!isNumber(left)) return 0;
     return parseInt(left);
@@ -272,10 +277,6 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function checkSafeHeap() {
-  return SAFE_HEAP === 1;
-}
-
 function getHeapOffset(offset, type) {
   if (!WASM_BIGINT && Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
@@ -314,20 +315,14 @@ function asmEnsureFloat(value, type) {
   return value;
 }
 
-function asmCoercion(value, type, signedness) {
+function asmCoercion(value, type) {
+  assert(arguments.length == 2, 'asmCoercion takes exactly two arguments');
   if (type == 'void') {
     return value;
   } else if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
-      if (signedness) {
-        if (signedness == 'u') {
-          value = '(' + value + ')>>>0';
-        } else {
-          value = '(' + value + ')|0';
-        }
-      }
       if (type === 'float') {
         return 'Math.fround(' + value + ')';
       } else {
@@ -335,9 +330,6 @@ function asmCoercion(value, type, signedness) {
       }
     }
   } else {
-    if (signedness == 'u') {
-      return '((' + value + ')>>>0)';
-    }
     return '((' + value + ')|0)';
   }
 }
@@ -367,7 +359,7 @@ function makeSetTempDouble(i, type, value) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -380,8 +372,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (type == 'double' && (align < 8)) {
-    const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
-    const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
+    const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align));
+    const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align));
     return '(' + setdouble1 + ',' + setdouble2 + ',' + makeGetTempDouble(0, 'double') + ')';
   }
 
@@ -393,12 +385,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       if (isIntImplemented(type)) {
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
-          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore, 2, noSafe) + '|' +
-                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore, 2, noSafe) + '<<16)';
+          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore, 2) + '|' +
+                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore, 2) + '<<16)';
         } else { // XXX we cannot truly handle > 4... (in x86)
           ret = '';
           for (let i = 0; i < bytes; i++) {
-            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore, 1, noSafe) + (i > 0 ? '<<' + (8 * i) : '') + ')';
+            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore, 1) + (i > 0 ? '<<' + (8 * i) : '') + ')';
             if (i < bytes - 1) ret += '|';
           }
           ret = '(' + makeSignOp(ret, type, unsigned ? 'un' : 're', true);
@@ -416,11 +408,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP && !noSafe) {
-    if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
-    }
-  }
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
@@ -438,24 +425,22 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
  * @param {nunber} pos The position in that slab - the offset. Added to any offset in the pointer itself.
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
- *             'null' means, in the context of SAFE_HEAP, that we should accept all types;
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
  * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
  * @param {bool} ignore: legacy, ignored.
  * @param {number} align: TODO
- * @param {bool} noSafe: TODO
  * @param {string} sep: TODO
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep = ';') {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
   } else if (!WASM_BIGINT && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
   const bits = getBits(type);
@@ -469,17 +454,17 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
           ret += 'tempBigInt=' + value + sep;
-          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2, noSafe) + sep;
-          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2, noSafe);
+          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
+          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2);
         } else {
           ret += 'tempBigInt=' + value + sep;
           for (let i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1, noSafe);
+            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
             if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8, noSafe, null, true) + sep;
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
         ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
       }
       return ret;
@@ -487,11 +472,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   }
 
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (SAFE_HEAP && !noSafe) {
-    if (!ignore) {
-      return 'SAFE_HEAP_STORE' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
-    }
-  }
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
@@ -660,8 +640,7 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
-    // TODO(sbc): Make POINTER_TYPE u32/u64 rather than i32/i64
-    type = 'u' + POINTER_TYPE.slice(1);
+    type = POINTER_TYPE;
   }
   if (WASM_BIGINT) {
     switch (type) {
@@ -683,6 +662,16 @@ function getHeapForType(type) {
     case 'float':  return 'HEAPF32';
   }
   assert(false, 'bad heap type: ' + type);
+}
+
+function makeReturn64(value) {
+  if (WASM_BIGINT) {
+    return `BigInt(${value})`;
+  }
+  const pair = splitI64(value);
+  // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
+  // element `c`
+  return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
 function makeThrow(what) {
@@ -808,6 +797,33 @@ function makeDynCall(sig, funcPtr) {
   }
   args = args.join(', ');
 
+  const needArgConversion = MEMORY64 && sig.includes('p');
+  let callArgs = args;
+  if (needArgConversion) {
+    callArgs = [];
+    for (let i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') {
+        callArgs.push(`BigInt(a${i})`);
+      } else {
+        callArgs.push(`a${i}`);
+      }
+    }
+    callArgs = callArgs.join(', ');
+  }
+
+  // Normalize any 'p' characters to either 'j' (wasm64) or 'i' (wasm32)
+  if (sig.includes('p')) {
+    let normalizedSig = '';
+    for (let sigChr of sig) {
+      if (sigChr == 'p') {
+        sigChr = MEMORY64 ? 'j' : 'i';
+      }
+      normalizedSig += sigChr;
+    }
+    sig = normalizedSig;
+  }
+
+
   if (funcPtr === undefined) {
     printErr(`warning: ${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
@@ -823,9 +839,9 @@ Please update to new syntax.`);
           return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
         }
       }
-      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${callArgs}) })`;
     } else {
-      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${callArgs}) })`;
     }
   }
 
@@ -840,13 +856,15 @@ Please update to new syntax.`);
 
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
-      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
-    } else {
-      return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
+      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]); })`;
     }
-  } else {
-    return `getWasmTableEntry(${funcPtr})`;
+    return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
   }
+
+  if (needArgConversion) {
+    return `(function(${args}) { ${returnExpr} getWasmTableEntry(${funcPtr}).call(null, ${callArgs}) })`;
+  }
+  return `getWasmTableEntry(${funcPtr})`;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
@@ -1079,39 +1097,31 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}_bigint`;
+    return `/** @type {!BigInt} */ ${name}`;
   }
   return `${name}_low, ${name}_high`;
 }
 
 function receiveI64ParamAsI32s(name) {
   if (WASM_BIGINT) {
-    // TODO: use Xn notation when JS parsers support it (as of April 6 2020,
-    //  * closure compiler is missing support
-    //    https://github.com/google/closure-compiler/issues/3167
-    //  * acorn needs to be upgraded, and to set ecmascript version >= 11
-    //  * terser needs to be upgraded
-    return `var ${name}_low = Number(${name}_bigint & BigInt(0xffffffff)) | 0, ${name}_high = Number(${name}_bigint >> BigInt(32)) | 0;`;
+    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
   }
   return '';
 }
 
-// TODO: use this in library_wasi.js and other places. but we need to add an
-//       error-handling hook here.
-function receiveI64ParamAsDouble(name) {
+function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `var ${name} = Number(${name}_bigint);`;
+    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
-
-  // Combine the i32 params. Use an unsigned operator on low and shift high by
-  // 32 bits.
-  return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
+  // Covert the high/low pair to a Number, checking for
+  // overflow of the I53 range and returning onError in that case.
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
 }
 
 function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << BigInt(32))';
+    return 'BigInt(low) | (BigInt(high) << 32n)';
   }
   return low + ', ' + high;
 }

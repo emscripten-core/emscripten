@@ -1,21 +1,18 @@
 #include <assert.h>
-#include <string.h>
+#include <emscripten.h>
 #include <stdio.h>
 
 // Import the syscall under a separate name
-__attribute__((import_module("env"), import_name("__syscall_getcwd")))
-long __orig_getcwd(long buf, long size);
+__attribute__((import_module("env"), import_name("emscripten_get_now"))) double
+__orig_emscripten_get_now(void);
 
-
-long __syscall_getcwd(long buf, long size) {
-  printf("__syscall_getcwd intercepted\n");
-  return __orig_getcwd(buf, size);
+double emscripten_get_now(void) {
+  printf("emscripten_get_now intercepted\n");
+  return __orig_emscripten_get_now();
 }
 
 int main() {
-  char cwd[1024];
-  int rtn = __syscall_getcwd((long)cwd, sizeof(cwd));
-  assert(rtn > 0);
-  printf("cwd = %s\n", cwd);
+  double now = emscripten_get_now();
+  assert(now > 0); // any non-negative time is valid
   return 0;
 }

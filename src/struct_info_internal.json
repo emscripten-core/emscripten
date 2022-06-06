@@ -7,11 +7,9 @@
         "structs": {
             "pthread": [
               "profilerBlock",
-              "self",
               "tsd",
               "stack",
               "stack_size",
-              "stack_owned",
               "result",
               "robust_list",
               "tid",
@@ -45,15 +43,6 @@
               "table_addr",
               "table_size",
               "name"
-            ]
-        }
-    },
-    {
-        "file": "async_callback.h",
-        "structs": {
-            "CallbackState": [
-                "result",
-                "offset"
             ]
         }
     },

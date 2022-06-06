@@ -40,11 +40,11 @@ function SAFE_HEAP_FOO(ptr) {
  return HEAP8[ptr];
 }
 
-function setValue(ptr) {
+function setValue_safe(ptr) {
  return HEAP8[ptr];
 }
 
-function getValue(ptr) {
+function getValue_safe(ptr) {
  return HEAP8[ptr];
 }
 

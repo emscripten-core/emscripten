@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 105
+EXPECTED_BINARYEN_VERSION = 108
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
@@ -149,7 +149,7 @@ def get_building_env():
   env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
   env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
@@ -233,7 +233,7 @@ def llvm_backend_args():
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
     if 'main' in settings.EXCEPTION_CATCHING_ALLOWED:
-      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
+      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main', '__main_argc_argv']
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
@@ -282,9 +282,6 @@ def lld_flags_for_executable(external_symbols):
   if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')
 
-  if settings.MEMORY64:
-    cmd.append('-mwasm64')
-
   # wasm-ld can strip debug info for us. this strips both the Names
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
@@ -295,7 +292,6 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.LINKABLE:
     cmd.append('--export-dynamic')
-    cmd.append('--no-gc-sections')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
@@ -375,10 +371,13 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  if settings.EXCEPTION_HANDLING:
+  if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
-  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
+
+  if settings.MEMORY64:
+    cmd.append('-mwasm64')
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -1000,6 +999,9 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     exports = settings.WASM_EXPORTS
   else:
     exports = settings.WASM_FUNCTION_EXPORTS
+  if settings.MANGLED_MAIN and 'main' in exports:
+    exports.append('__main_argc_argv')
+
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
@@ -1294,7 +1296,6 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
-  # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)

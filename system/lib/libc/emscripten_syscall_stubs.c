@@ -22,6 +22,7 @@
 #include <time.h>
 #include <sys/utsname.h>
 #include <emscripten/console.h>
+#include <emscripten/version.h>
 
 static int g_pid = 42;
 static int g_pgid = 42;
@@ -42,15 +43,22 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
     return -ENOSYS; \
   }
 
+#define STRINGIFY(s) #s
+#define STR(s) STRINGIFY(s)
+
 int __syscall_uname(intptr_t buf) {
   if (!buf) {
     return -EFAULT;
   }
+  const char* full_version = STR(__EMSCRIPTEN_major__) "." \
+                             STR(__EMSCRIPTEN_minor__) "." \
+                             STR(__EMSCRIPTEN_tiny__);
+
   struct utsname *utsname = (struct utsname *)buf;
 
   strcpy(utsname->sysname, "Emscripten");
   strcpy(utsname->nodename, "emscripten");
-  strcpy(utsname->release, "1.0");
+  strcpy(utsname->release, full_version);
   strcpy(utsname->version, "#1");
 #ifdef __wams64__
   strcpy(utsname->machine, "wasm64");

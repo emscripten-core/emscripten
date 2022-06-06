@@ -10,7 +10,7 @@
 
 #include "memory_backend.h"
 #include "paths.h"
-#include "streams.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -39,6 +39,15 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
+// If the user does not implement this hook, do nothing.
+__attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
+
+// Set up global data structures and preload files.
+WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  wasmfs_before_preload();
+  preloadFiles();
+}
+
 WasmFS::~WasmFS() {
   // Flush musl libc streams.
   // TODO: Integrate musl exit() which would call this for us. That might also
@@ -49,8 +58,8 @@ WasmFS::~WasmFS() {
   // Note that we lock here, although strictly speaking it is unnecessary given
   // that we are in the destructor of WasmFS: nothing can possibly be running
   // on files at this time.
-  StdoutFile::getSingleton()->locked().flush();
-  StderrFile::getSingleton()->locked().flush();
+  SpecialFiles::getStdout()->locked().flush();
+  SpecialFiles::getStderr()->locked().flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.
@@ -71,9 +80,11 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   lockedRoot.mountChild("dev", devDirectory);
   auto lockedDev = devDirectory->locked();
 
-  lockedDev.mountChild("stdin", StdinFile::getSingleton());
-  lockedDev.mountChild("stdout", StdoutFile::getSingleton());
-  lockedDev.mountChild("stderr", StderrFile::getSingleton());
+  lockedDev.mountChild("stdin", SpecialFiles::getStdin());
+  lockedDev.mountChild("stdout", SpecialFiles::getStdout());
+  lockedDev.mountChild("stderr", SpecialFiles::getStderr());
+  lockedDev.mountChild("random", SpecialFiles::getRandom());
+  lockedDev.mountChild("urandom", SpecialFiles::getURandom());
 
   return rootDirectory;
 }
@@ -89,9 +100,6 @@ void WasmFS::preloadFiles() {
   timesCalled++;
   assert(timesCalled == 1);
 #endif
-
-  // Obtain the backend of the root directory.
-  auto rootBackend = getRootDirectory()->getBackend();
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
@@ -122,8 +130,14 @@ void WasmFS::preloadFiles() {
     char childName[PATH_MAX] = {};
     _wasmfs_get_preloaded_child_path(i, childName);
 
+    auto lockedParentDir = parentDir->locked();
+    if (lockedParentDir.getChild(childName)) {
+      // The child already exists, so we don't need to do anything here.
+      continue;
+    }
+
     auto inserted =
-      parentDir->locked().insertDirectory(childName, S_IRUGO | S_IXUGO);
+      lockedParentDir.insertDirectory(childName, S_IRUGO | S_IXUGO);
     assert(inserted && "TODO: handle preload insertion errors");
   }
 

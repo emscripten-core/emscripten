@@ -43,6 +43,9 @@ void doTest(const std::string& uniqueDirName, const std::string& fileName)
         }
 
         printf("d.d_name = %s\n", d.d_name);
+
+        // If it needed to be, the name was truncated.
+        assert(strlen(d.d_name) <= 255);
     }
 }
 
@@ -51,6 +54,8 @@ int main()
     // Non-ascii file name.
     doTest("test_dir", u8"абвгд");
 
+#ifndef WASMFS // The JS FS truncates filenames automatically, which is incorrect. Wasmfs and Linux do not.
     // File name exceeds the limit of 255 chars and is truncated.
     doTest("test_dir2", std::string(300, '1'));
+#endif
 }

@@ -28,10 +28,10 @@ int main() {
   printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\n", x, y, z, w, k, i, j, h, p);
 
   long hash = -1;
-  size_t perturb;
+  uint32_t perturb;
   int ii = 0;
   for (perturb = hash;; perturb >>= 5) {
-    printf("%d:%zd", ii, perturb);
+    printf("%d:%d", ii, perturb);
     ii++;
     if (ii == 9) break;
     printf(",");
@@ -50,7 +50,7 @@ int main() {
     printf("fixed:%d\n", Fixed::Mult(150000, 140000));
   }
 
-  printf("*%ld*%p\n", (long)21,
+  printf("*%ld*\n%p\n", (long)21,
          &hash);  // The %p should not enter an infinite loop!
   return 0;
 }

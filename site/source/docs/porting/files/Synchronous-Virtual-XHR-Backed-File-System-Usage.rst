@@ -33,7 +33,7 @@ Instructions
 
   .. include:: ../../../../../tests/test_browser.py
     :literal:
-    :start-after: prejs_file.write(r"""
+    :start-after: create_file('worker_prejs.js'
     :end-before: var doTrace = true;
     :code: javascript
 
@@ -63,7 +63,7 @@ Instructions
 
   .. include:: ../../../../../tests/test_browser.py
     :literal:
-    :start-after: html_file.write(r"""
+    :start-after: create_file('main.html',
     :end-before: """ % self.port)
     :code: html
 

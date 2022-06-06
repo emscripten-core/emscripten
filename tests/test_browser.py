@@ -22,7 +22,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, require_v8, also_with_minimal_runtime
+from common import read_file, requires_v8, also_with_minimal_runtime
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
@@ -214,8 +214,7 @@ class browser(BrowserCore):
     # multiple mapped lines. in other words, if the program consists of a
     # single 'throw' statement, browsers may just map any thrown exception to
     # that line, because it will be the only mapped line.
-    with open(cpp_file, 'w') as f:
-      f.write(r'''
+    create_file(cpp_file, r'''
       #include <cstdio>
 
       int main() {
@@ -659,6 +658,7 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             window.onerror = function(error) {
+              window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
               var xhr = new XMLHttpRequest();
@@ -702,6 +702,7 @@ If manually bisecting:
     # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  @also_with_wasmfs
   def test_dev_random(self):
     self.btest_exit(Path('filesystem/dev_random.cpp'))
 
@@ -1378,7 +1379,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
     ensure_dir('sub')
-    open(Path('sub/file2.txt'), 'w').write('second')
+    create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
     self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
@@ -1386,10 +1387,10 @@ keydown(100);keyup(100); // trigger the end
     # generate data
     ensure_dir('subdir')
     create_file('file1.txt', '0123456789' * (1024 * 128))
-    open(Path('subdir/file2.txt'), 'w').write('1234567890' * (1024 * 128))
+    create_file('subdir/file2.txt', '1234567890' * (1024 * 128))
     random_data = bytearray(random.randint(0, 255) for x in range(1024 * 128 * 10 + 1))
     random_data[17] = ord('X')
-    open('file3.txt', 'wb').write(random_data)
+    create_file('file3.txt', random_data, binary=True)
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
@@ -1402,7 +1403,7 @@ keydown(100);keyup(100); // trigger the end
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
-    open('files.js', 'wb').write(out)
+    create_file('files.js', out, binary=True)
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
@@ -1434,7 +1435,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file2.txt', Path('files/file2.txt'))
     shutil.copyfile('file3.txt', Path('files/file3.txt'))
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
-    open('files.js', 'wb').write(out)
+    create_file('files.js', out, binary=True)
     self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'])'''
 
   def test_separate_metadata_later(self):
@@ -1601,8 +1602,7 @@ keydown(100);keyup(100); // trigger the end
   def test_worker(self):
     # Test running in a web worker
     create_file('file.dat', 'data for worker')
-    html_file = open('main.html', 'w')
-    html_file.write('''
+    create_file('main.html', '''
       <html>
       <body>
         Worker Test
@@ -1618,7 +1618,6 @@ keydown(100);keyup(100); // trigger the end
       </body>
       </html>
     ''' % self.port)
-    html_file.close()
 
     for file_data in [1, 0]:
       cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
@@ -1629,13 +1628,22 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  def test_mmap_lazyfile(self):
+    create_file('lazydata.dat', 'hello world')
+    create_file('pre.js', '''
+      Module["preInit"] = () => {
+        FS.createLazyFile('/', "lazy.txt", "lazydata.dat", true, false);
+      }
+    ''')
+    self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
+    self.btest_exit(test_file('test_mmap_lazyfile.c'))
+
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
     worker_filename = "download_and_checksum_worker.js"
 
-    html_file = open(main, 'w')
-    html_file.write(r"""
+    create_file(main, r"""
       <!doctype html>
       <html>
       <head><meta charset="utf-8"><title>Chunked XHR</title></head>
@@ -1669,13 +1677,8 @@ keydown(100);keyup(100); // trigger the end
       </body>
       </html>
     """ % self.port)
-    html_file.close()
 
-    c_source_filename = "checksummer.c"
-
-    prejs_filename = "worker_prejs.js"
-    prejs_file = open(prejs_filename, 'w')
-    prejs_file.write(r"""
+    create_file('worker_prejs.js', r"""
       if (typeof(Module) === "undefined") Module = {};
       Module["arguments"] = ["/bigfile"];
       Module["preInit"] = function() {
@@ -1685,11 +1688,10 @@ keydown(100);keyup(100); // trigger the end
       Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
       Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
-    prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
     # vs. test_file('hello_world_gles.c')
-    self.compile_btest([test_file(c_source_filename), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
-                        '--pre-js', prejs_filename])
+    self.compile_btest([test_file('checksummer.c'), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
+                        '--pre-js', 'worker_prejs.js'])
     chunkSize = 1024
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
@@ -1871,19 +1873,22 @@ keydown(100);keyup(100); // trigger the end
     for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']]:
       self.btest_exit('emscripten_main_loop.cpp', args=args)
 
+  @parameterized({
+    '': ([],),
+    # test pthreads + AUTO_JS_LIBRARIES mode as well
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sAUTO_JS_LIBRARIES=0'],),
+  })
   @requires_threads
-  def test_emscripten_main_loop_settimeout(self):
-    for args in [
-      [],
-      # test pthreads + AUTO_JS_LIBRARIES mode as well
-      ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sAUTO_JS_LIBRARIES=0'],
-    ]:
-      self.btest_exit('emscripten_main_loop_settimeout.cpp', args=args)
+  def test_emscripten_main_loop_settimeout(self, args):
+    self.btest_exit('emscripten_main_loop_settimeout.cpp', args=args)
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'],),
+  })
   @requires_threads
-  def test_emscripten_main_loop_and_blocker(self):
-    for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
-      self.btest_exit('emscripten_main_loop_and_blocker.cpp', args=args)
+  def test_emscripten_main_loop_and_blocker(self, args):
+    self.btest_exit('emscripten_main_loop_and_blocker.cpp', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_and_blocker_exit(self):
@@ -1891,10 +1896,14 @@ keydown(100);keyup(100); // trigger the end
     # app should still stay alive until the loop ends
     self.btest_exit('emscripten_main_loop_and_blocker.cpp')
 
+  @parameterized({
+    '': ([],),
+    'worker': (['--proxy-to-worker'],),
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'],)
+  })
   @requires_threads
-  def test_emscripten_main_loop_setimmediate(self):
-    for args in [[], ['--proxy-to-worker'], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
-      self.btest_exit('emscripten_main_loop_setimmediate.cpp', args=args)
+  def test_emscripten_main_loop_setimmediate(self, args):
+    self.btest_exit('emscripten_main_loop_setimmediate.cpp', args=args)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -1932,11 +1941,14 @@ keydown(100);keyup(100); // trigger the end
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1', args=['-lGL', '-lSDL'])
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
+  })
   @requires_graphics_hardware
   @requires_threads
-  def test_gl_textures(self):
-    for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER']]:
-      self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
+  def test_gl_textures(self, args):
+    self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -2525,10 +2537,6 @@ void *getBindBuffer() {
       'main.c',
       args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '-O2', '--use-preload-plugins'] + args)
 
-  def test_mmap_file(self):
-    create_file('data.dat', 'data from the file ' + ('.' * 9000))
-    self.btest(test_file('mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'])
-
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
   @requires_graphics_hardware
@@ -2586,6 +2594,18 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_html5_core(self, opts):
+    if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
+      # In this mode an exception can be thrown by the browser, and we don't
+      # want the test to fail in that case so we override the error handling.
+      create_file('pre.js', '''
+      window.disableErrorReporting = true;
+      window.addEventListener('error', (event) => {
+        if (!event.message.includes('exception:fullscreen error')) {
+          report_error(event);
+        }
+      });
+      ''')
+      self.emcc_args.append('--pre-js=pre.js')
     self.btest(test_file('test_html5_core.c'), args=opts, expected='0')
 
   @requires_threads
@@ -4563,6 +4583,7 @@ window.close = function() {
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4584,6 +4605,7 @@ window.close = function() {
                     args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
@@ -4610,6 +4632,7 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4617,18 +4640,21 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
@@ -5057,7 +5083,7 @@ window.close = function() {
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
       html = read_file('test.html')
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
-      open('test.html', 'w').write(html)
+      create_file('test.html', html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
@@ -5217,7 +5243,7 @@ window.close = function() {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.btest(test_file('wasm_worker/lock_async_acquire.c'), expected='0', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
@@ -5246,7 +5272,7 @@ window.close = function() {
     self.btest(test_file('wasm_worker/semaphore_try_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
   @no_firefox('no 4GB support yet')
-  @require_v8
+  @requires_v8
   def test_zzz_zzz_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5282,24 +5308,37 @@ window.close = function() {
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
-    'main_thread': (['-sPTHREAD_POOL_SIZE=1'],),
+    'main_thread': (['-sPTHREAD_POOL_SIZE=4'],),
     # using proxy_to_pthread also works, of course
-    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
   })
   @requires_threads
   def test_wasmfs_fetch_backend(self, args):
     if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
       return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
+    create_file('test.txt', 'fetch 2')
+    try_delete('subdir')
+    ensure_dir('subdir')
+    create_file('subdir/backendfile', 'file 1')
+    create_file('subdir/backendfile2', 'file 2')
     self.btest_exit(test_file('wasmfs/wasmfs_fetch.c'),
-                    args=['-sWASMFS', '-sUSE_PTHREADS'] + args)
+                    args=['-sWASMFS', '-sUSE_PTHREADS', '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
+
+  @requires_threads
+  @no_firefox('no OPFS support yet')
+  def test_wasmfs_opfs(self):
+    test = test_file('wasmfs/wasmfs_opfs.c')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-O3']
+    self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
+    self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
-  @require_v8
+  @requires_v8
   def test_zzz_zzz_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5313,7 +5352,7 @@ window.close = function() {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
-  @require_v8
+  @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which

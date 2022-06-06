@@ -640,7 +640,7 @@ module({
 
         test("passing Symbol or BigInt as floats always throws", function() {
             assert.throws(TypeError, function() { cm.const_ref_adder(Symbol('0'), 1); });
-            assert.throws(TypeError, function() { cm.const_ref_adder(BigInt(0), 1); });
+            assert.throws(TypeError, function() { cm.const_ref_adder(0n, 1); });
         });
 
         if (cm['ASSERTIONS']) {

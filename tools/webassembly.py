@@ -114,13 +114,14 @@ class InvalidWasmError(BaseException):
 
 Section = namedtuple('Section', ['type', 'size', 'offset', 'name'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
-Import = namedtuple('Import', ['kind', 'module', 'field'])
+Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
+FuncType = namedtuple('FuncType', ['params', 'returns'])
 
 
 class Module:
@@ -209,6 +210,27 @@ class Module:
 
       yield Section(section_type, section_size, section_offset, name)
       offset = section_offset + section_size
+
+  def get_types(self):
+    type_section = self.get_section(SecType.TYPE)
+    if not type_section:
+      return []
+    self.seek(type_section.offset)
+    num_types = self.readULEB()
+    types = []
+    for i in range(num_types):
+      params = []
+      returns = []
+      type_form = self.readByte()
+      assert type_form == 0x60
+      num_params = self.readULEB()
+      for j in range(num_params):
+        params.append(self.read_type())
+      num_returns = self.readULEB()
+      for j in range(num_returns):
+        returns.append(self.read_type())
+      types.append(FuncType(params, returns))
+    return types
 
   def parse_features_section(self):
     features = []
@@ -315,22 +337,23 @@ class Module:
       mod = self.readString()
       field = self.readString()
       kind = ExternType(self.readByte())
-      imports.append(Import(kind, mod, field))
+      type_ = None
       if kind == ExternType.FUNC:
-        self.readULEB()  # sig
+        type_ = self.readULEB()
       elif kind == ExternType.GLOBAL:
-        self.readSLEB()  # global type
+        type_ = self.readSLEB()
         self.readByte()  # mutable
       elif kind == ExternType.MEMORY:
         self.read_limits()  # limits
       elif kind == ExternType.TABLE:
-        self.readSLEB()  # table type
+        type_ = self.readSLEB()
         self.read_limits()  # limits
       elif kind == ExternType.TAG:
         self.readByte()  # attribute
-        self.readULEB()  # sig
+        type_ = self.readULEB()
       else:
         assert False
+      imports.append(Import(kind, mod, field, type_))
 
     return imports
 

@@ -177,8 +177,8 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling (experimental)
-var EXCEPTION_HANDLING = false;
+// New WebAssembly exception handling
+var WASM_EXCEPTIONS = false;
 
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
@@ -227,3 +227,9 @@ var TRANSPILE_TO_ES5 = false;
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = []
+
+// Get set to true if llvm mangled the name of the main function to
+// `__main_argc_argv`.  In this case we export `__main_argc_argv` as `main`.
+// This means that from a user's POV that name is always `main` even though
+// internally it could have a different mangling.
+var MANGLED_MAIN = false;
