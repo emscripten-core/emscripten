@@ -3446,6 +3446,14 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
+  emscripten_runtime_keepalive_push: '$runtimeKeepalivePush',
+  emscripten_runtime_keepalive_pop: '$runtimeKeepalivePop',
+  emscripten_runtime_keepalive_check: function() {
+    // keepRuntimeAlive is a runtime function rather than a library function,
+    // so we can't use an alias like we do for the two functions above.
+    return keepRuntimeAlive();
+  },
+
   // Used to call user callbacks from the embedder / event loop.  For example
   // setTimeout or any other kind of event handler that calls into user case
   // needs to use this wrapper.
