@@ -289,6 +289,9 @@ mergeInto(LibraryManager.library, {
 #endif
     },
 
+    // This receives a function to call to start the async operation, and
+    // handles everything else for the user of this API. See emscripten_sleep()
+    // and other async methods for simple examples of usage.
     handleSleep: function(startAsync) {
 #if ASSERTIONS
       assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
@@ -424,20 +427,20 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  // TODO: Update all other methods in this file to support ASYNCIFY=2 / stack
-  //       switching. That requires (1) adding a sig for them (as we need the
-  //       signature to declare the type for the Suspender API), and (2) adding
-  //       a return to their bodies, even if they do not return a value, as the
-  //       Suspender API expects them to return a Promise.
   emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
+    // emscripten_sleep() does not return a value, but we still need a |return|
+    // here for stack switching support (ASYNCIFY=2). In that mode this function
+    // returns a Promise instead of nothing, and that Promise is what tells the
+    // wasm VM to pause the stack.
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
+  emscripten_wget__sig: 'vpp',
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
-    Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleSleep((wakeUp) => {
       var _url = UTF8ToString(url);
       var _file = UTF8ToString(file);
       _file = PATH_FS.resolve(FS.cwd(), _file);
@@ -456,9 +459,10 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_wget_data__sig: 'vpppp',
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
-    Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleSleep((wakeUp) => {
       asyncLoad(UTF8ToString(url), (byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
@@ -474,9 +478,10 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers__sig: 'vp',
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
-    Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleSleep((wakeUp) => {
       // We must first unwind, so things are spilled to the stack. Then while
       // we are pausing we do the actual scan. After that we can resume. Note
       // how using a timeout here avoids unbounded call stack growth, which
@@ -490,8 +495,9 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_lazy_load_code__sig: 'v',
   emscripten_lazy_load_code: function() {
-    Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleSleep((wakeUp) => {
       // Update the expected wasm binary file to be the lazy one.
       wasmBinaryFile += '.lazy.wasm';
       // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.

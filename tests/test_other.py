@@ -147,6 +147,21 @@ def requires_ninja(func):
   return decorated
 
 
+def requires_pkg_config(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not utils.which('pkg-config'):
+      if 'EMTEST_SKIP_PKG_CONFIG' in os.environ:
+        self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
+      else:
+        self.fail('pkg-config is required to run this test')
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -816,13 +831,24 @@ f.close()
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.0.', output)
 
+  @requires_pkg_config
   def test_cmake_find_pkg_config(self):
-    if not utils.which('pkg-config'):
-      self.fail('pkg-config is required to run this test')
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
-    libdir = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig')
-    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+    libdir = shared.Cache.get_sysroot_dir('local/lib/pkgconfig')
+    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
+
+  @requires_pkg_config
+  def test_pkg_config_packages(self):
+    packages = [
+      ('egl', '10.2.2'),
+      ('glesv2', '10.2.2'),
+      ('glfw3', '3.2.1'),
+      ('sdl', '1.2.15'),
+    ]
+    for package, version in packages:
+        out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
+        self.assertContained(version, out)
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -5564,7 +5590,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
@@ -12083,6 +12109,19 @@ Module['postRun'] = function() {{
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
 
+  def test_prejs_unicode(self):
+    create_file('script.js', r'''
+      console.log('↓');
+    ''')
+    self.do_runf(test_file('hello_world.c'), '↓', emcc_args=['--pre-js=script.js'])
+
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
+
+  def test_print_map(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    out = self.run_process([EMCC, 'hello_world.o', '-Wl,--print-map'], stdout=PIPE).stdout
+    self.assertContained('hello_world.o:(__original_main)', out)
+    out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
+    self.assertEqual(out, out2)

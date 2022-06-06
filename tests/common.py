@@ -789,7 +789,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def assertExists(self, filename, msg=None):
     if not msg:
-      msg = 'Expected file not found: ' + filename
+      msg = f'Expected file not found: {filename}'
     self.assertTrue(os.path.exists(filename), msg)
 
   def assertNotExists(self, filename, msg=None):

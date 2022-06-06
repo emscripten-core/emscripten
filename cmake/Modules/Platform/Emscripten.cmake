@@ -227,6 +227,7 @@ execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE
 if (NOT _emcache_result EQUAL 0)
   message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
 endif()
+file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
 set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
@@ -433,3 +434,12 @@ endif()
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
+
+# TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
+if ("${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+  set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+endif()
+if ("${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+  set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+endif()
+unset(_em_sysroot_include)

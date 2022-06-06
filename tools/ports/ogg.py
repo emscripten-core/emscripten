@@ -31,7 +31,7 @@ def get(ports, settings, shared):
 
     Path(dest_path, 'include', 'ogg', 'config_types.h').write_text(config_types_h)
 
-    header_dir = os.path.join(ports.get_include_dir(), 'ogg')
+    header_dir = ports.get_include_dir('ogg')
     shutil.rmtree(header_dir, ignore_errors=True)
     shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
 

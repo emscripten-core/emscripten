@@ -92,7 +92,7 @@ def linker_setup(ports, settings):
 
 def process_args(ports):
   # TODO(sbc): remove this
-  return ['-Xclang', '-isystem' + os.path.join(ports.get_include_dir(), 'SDL2')]
+  return ['-Xclang', '-isystem' + ports.get_include_dir('SDL2')]
 
 
 def show():
