@@ -69,6 +69,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libcompiler_rt-wasm-sjlj',
     'libc-mt',
     'libc-mt-debug',
+    'libc_size-mt',
+    'libc_size-mt-debug',
     'libc++abi-mt',
     'libc++abi-mt-noexcept',
     'libc++-mt',
