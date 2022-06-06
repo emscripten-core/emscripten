@@ -397,6 +397,7 @@ def apply_settings(user_settings):
 
   wasm_bigint_min_browser_versions(user_settings)
 
+
 def wasm_bigint_min_browser_versions(user_settings):
   if not settings.WASM_BIGINT:
     return
