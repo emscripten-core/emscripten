@@ -8595,7 +8595,6 @@ console.error('JSLIB: none of the above');
 #endif
 ''')
 
-
     create_file('lib_indented_include.js', '''
     #include "lib.js"
 ''')
