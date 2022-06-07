@@ -112,7 +112,15 @@ def to_nice_ident(ident): # limited version of the JS function toNiceIdent
   return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
 
-def update_settings_glue(metadata):
+def get_weak_imports(main_wasm):
+  dylink_sec = webassembly.parse_dylink_section(main_wasm)
+  for symbols in dylink_sec.import_info.values():
+    for symbol, flags in symbols.items():
+      if flags & webassembly.SYMBOL_BINDING_MASK == webassembly.SYMBOL_BINDING_WEAK:
+        settings.WEAK_IMPORTS.append(symbol)
+
+
+def update_settings_glue(wasm_file, metadata):
   optimize_syscalls(metadata['declares'])
 
   # Integrate info from backend
@@ -124,6 +132,8 @@ def update_settings_glue(metadata):
     syms = set(syms).difference(metadata['exports'])
     syms.update(metadata['globalImports'])
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
+    if settings.MAIN_MODULE:
+      get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
   # Store function exports so that Closure and metadce can track these even in
@@ -296,7 +306,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
-  update_settings_glue(metadata)
+  update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
     module = webassembly.Module(in_wasm)
