@@ -962,6 +962,7 @@ def create_wasm64_wrappers(metadata):
     '__errno_location': 'p',
     'emscripten_builtin_memalign': 'ppp',
     'main': '__PP',
+    '__main_argc_argv': '__PP',
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
@@ -975,6 +976,8 @@ function instrumentWasmExportsForMemory64(exports) {
   sigs_seen = set()
   wrap_functions = []
   for exp in metadata['exports']:
+    if settings.MANGLED_MAIN and exp == 'main':
+      exp = '__main_argc_argv'
     sig = mapping.get(exp)
     if sig:
       if sig not in sigs_seen:
