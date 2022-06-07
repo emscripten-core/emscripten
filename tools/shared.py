@@ -567,10 +567,13 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
+  # We also use this function to convert the clang-mangled `__main_argc_argv`
+  # to simply `main` which is expected by the emscripten JS glue code.
+  if name == '__main_argc_argv':
+    name = 'main'
   if treat_as_user_function(name):
     return '_' + name
-  else:
-    return name
+  return name
 
 
 def reconfigure_cache():

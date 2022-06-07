@@ -137,7 +137,7 @@ def update_settings_glue(metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
@@ -213,8 +213,7 @@ def report_missing_symbols(js_library_funcs):
   # PROXY_TO_PTHREAD only makes sense with a main(), so error if one is
   # missing. note that when main() might arrive from another module we cannot
   # error here.
-  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols and \
-     not settings.RELOCATABLE:
+  if settings.PROXY_TO_PTHREAD and not settings.HAS_MAIN:
     exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
 
   if settings.IGNORE_MISSING_MAIN:
@@ -296,11 +295,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
-
-  if '__main_argc_argv' in metadata['exports']:
-    settings.MANGLED_MAIN = 1
-    metadata['exports'].remove('__main_argc_argv')
-    metadata['exports'].append('main')
 
   update_settings_glue(metadata)
 
@@ -786,8 +780,6 @@ def make_export_wrappers(exports, delay_assignment):
     if name == '__cpp_exception':
       continue
     mangled = asmjs_mangle(name)
-    if settings.MANGLED_MAIN and name == 'main':
-      name = '__main_argc_argv'
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
@@ -845,8 +837,6 @@ def create_receiving(exports):
 
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
-        if settings.MANGLED_MAIN and s == 'main':
-          s = '__main_argc_argv'
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
         receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
@@ -976,8 +966,6 @@ function instrumentWasmExportsForMemory64(exports) {
   sigs_seen = set()
   wrap_functions = []
   for exp in metadata['exports']:
-    if settings.MANGLED_MAIN and exp == 'main':
-      exp = '__main_argc_argv'
     sig = mapping.get(exp)
     if sig:
       if sig not in sigs_seen:
