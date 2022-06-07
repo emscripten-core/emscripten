@@ -643,7 +643,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[], output_basename=None):
+  def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
@@ -661,11 +661,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       basename = os.path.basename(filename)
       output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + emcc_args + libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
+    if emcc_args:
+      cmd += emcc_args
+    if libraries:
+      cmd += libraries
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
       cmd += ['-I.']
-      cmd += ['-I' + str(include) for include in includes]
+      if includes:
+        cmd += ['-I' + str(include) for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -729,7 +734,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     non_data_lines = [line for line in wat_lines if '(data ' not in line]
     return len(non_data_lines)
 
-  def run_js(self, filename, engine=None, args=[],
+  def run_js(self, filename, engine=None, args=None,
              output_nicerizer=None,
              assert_returncode=0,
              interleaved_output=True):
@@ -897,9 +902,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ensure_dir(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'],
-                  configure_args=[], make=['make'], make_args=None,
+  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
+                  configure_args=None, make=None, make_args=None,
                   env_init=None, cache_name_extra='', native=False):
+    if make is None:
+      make = ['make']
     if env_init is None:
       env_init = {}
     if make_args is None:
@@ -929,9 +936,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return generated_libs
 
     print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
-    if configure is not None:
-      # Avoid += so we don't mutate the default arg
-      configure = configure + configure_args
+    if configure and configure_args:
+      # Make to copy to avoid mutating default param
+      configure = list(configure)
+      configure += configure_args
 
     cflags = ' '.join(emcc_args)
     env_init.setdefault('CFLAGS', cflags)
@@ -958,7 +966,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         print(e.stderr)
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
-  def emcc(self, filename, args=[], output_filename=None, **kwargs):
+  def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     cmd = [compiler_for(filename), filename] + self.get_emcc_args(ldflags='-c' not in args) + args
     if output_filename:
       cmd += ['-o', output_filename]
@@ -1047,9 +1055,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     so = '.wasm' if self.is_wasm() else '.js'
 
-    def ccshared(src, linkto=[]):
+    def ccshared(src, linkto=None):
       cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_emcc_args()
-      cmdv += linkto
+      if linkto:
+        cmdv += linkto
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
@@ -1076,8 +1085,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ''',
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
+    extra_args = []
     for libname in ['liba', 'libb', 'libc']:
-      self.emcc_args += ['--embed-file', libname + so]
+      extra_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
@@ -1103,7 +1113,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         return 0;
       }
     ''' % locals(),
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
   def filtered_js_engines(self):
     for engine in self.js_engines:
@@ -1140,12 +1150,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
+  def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
                      no_build=False,
-                     libraries=[],
-                     includes=[],
+                     libraries=None,
+                     includes=None,
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False, emcc_args=[],
+                     check_for_error=True, force_c=False, emcc_args=None,
                      interleaved_output=True,
                      regex=False,
                      output_basename=None):
@@ -1745,11 +1755,11 @@ def build_library(name,
                   generated_libs,
                   configure,
                   make,
-                  make_args=[],
-                  cache=None,
-                  cache_name=None,
-                  env_init={},
-                  native=False):
+                  make_args,
+                  cache,
+                  cache_name,
+                  env_init,
+                  native):
   """Build a library and cache the result.  We build the library file
   once and cache it for all our tests. (We cache in memory since the test
   directory is destroyed and recreated for each test. Note that we cache

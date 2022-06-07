@@ -115,7 +115,7 @@ def ConvertFilesToRst():
         length = len(title)
         # print length
         headerbar = ''
-        for number in range(length):
+        for _ in range(length):
             headerbar += '='
         page_reference = filenamestripped
         page_reference_link_text = '.. _%s:\n\n' % page_reference

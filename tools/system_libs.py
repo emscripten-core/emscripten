@@ -428,8 +428,8 @@ class Library:
     """Returns all the classes in the inheritance tree of the current class."""
     yield cls
     for subclass in cls.__subclasses__():
-      for subclass in subclass.get_inheritance_tree():
-        yield subclass
+      for cls in subclass.get_inheritance_tree():
+        yield cls
 
   @classmethod
   def get_all_variations(cls):

@@ -223,16 +223,16 @@ class Module:
     self.seek(type_section.offset)
     num_types = self.read_uleb()
     types = []
-    for i in range(num_types):
+    for _ in range(num_types):
       params = []
       returns = []
       type_form = self.read_byte()
       assert type_form == 0x60
       num_params = self.read_uleb()
-      for j in range(num_params):
+      for _ in range(num_params):
         params.append(self.read_type())
       num_returns = self.read_uleb()
-      for j in range(num_returns):
+      for _ in range(num_returns):
         returns.append(self.read_type())
       types.append(FuncType(params, returns))
     return types
@@ -322,7 +322,7 @@ class Module:
     self.seek(export_section.offset)
     num_exports = self.read_uleb()
     exports = []
-    for i in range(num_exports):
+    for _ in range(num_exports):
       name = self.read_string()
       kind = ExternType(self.read_byte())
       index = self.read_uleb()
@@ -338,7 +338,7 @@ class Module:
     self.seek(import_section.offset)
     num_imports = self.read_uleb()
     imports = []
-    for i in range(num_imports):
+    for _ in range(num_imports):
       mod = self.read_string()
       field = self.read_string()
       kind = ExternType(self.read_byte())
@@ -357,7 +357,7 @@ class Module:
         self.read_byte()  # attribute
         type_ = self.read_uleb()
       else:
-        assert False
+        raise AssertionError()
       imports.append(Import(kind, mod, field, type_))
 
     return imports
@@ -369,7 +369,7 @@ class Module:
     globls = []
     self.seek(global_section.offset)
     num_globals = self.read_uleb()
-    for i in range(num_globals):
+    for _ in range(num_globals):
       global_type = self.read_type()
       mutable = self.read_byte()
       init = self.read_init()
@@ -383,7 +383,7 @@ class Module:
     functions = []
     self.seek(code_section.offset)
     num_functions = self.read_uleb()
-    for i in range(num_functions):
+    for _ in range(num_functions):
       body_size = self.read_uleb()
       start = self.tell()
       functions.append(FunctionBody(start, body_size))
@@ -404,7 +404,7 @@ class Module:
     data_section = self.get_section(SecType.DATA)
     self.seek(data_section.offset)
     num_segments = self.read_uleb()
-    for i in range(num_segments):
+    for _ in range(num_segments):
       flags = self.read_uleb()
       if (flags & SEG_PASSIVE):
         init = None
@@ -424,7 +424,7 @@ class Module:
     self.seek(table_section.offset)
     num_tables = self.read_uleb()
     tables = []
-    for i in range(num_tables):
+    for _ in range(num_tables):
       elem_type = self.read_type()
       limits = self.read_limits()
       tables.append(Table(elem_type, limits))
