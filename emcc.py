@@ -399,7 +399,7 @@ def apply_settings(user_settings):
 
 
 def default_min_browser_version(user_settings, browser, version):
-  default_setting(user_settings, f"MIN_{browser.upper()}_VERSION", version)
+  default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
 
 
 # apply minimum browser version defaults based on user settings. if
@@ -407,9 +407,10 @@ def default_min_browser_version(user_settings, browser, version):
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions(user_settings):
   if settings.WASM_BIGINT:
-    default_min_browser_version(user_settings, "Safari", 150000)
-    default_min_browser_version(user_settings, "Edge", 79)
-    default_min_browser_version(user_settings, "Firefox", 68)
+    default_min_browser_version(user_settings, 'Safari', 150000)
+    default_min_browser_version(user_settings, 'Edge', 79)
+    default_min_browser_version(user_settings, 'Firefox', 68)
+    # Chrome has BigInt since v67 which is less than default min version.
 
 
 def is_ar_file_with_missing_index(archive_file):
