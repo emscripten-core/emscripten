@@ -21,8 +21,7 @@ See docs/process.md for more on how version tagging works.
 3.1.14
 ------
 - Emscripten now knows what minimum browser versions the `WASM_BIGINT` feature
-  requires and will automatically set the defaults accordingly.
-  (#17163)
+  requires and will automatically set the defaults accordingly. (#17163)
 
 3.1.13 - 06/02/2022
 -------------------
