@@ -999,8 +999,6 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     exports = settings.WASM_EXPORTS
   else:
     exports = settings.WASM_FUNCTION_EXPORTS
-  if settings.MANGLED_MAIN and 'main' in exports:
-    exports.append('__main_argc_argv')
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
