@@ -397,6 +397,7 @@ def apply_settings(user_settings):
 
   apply_min_browser_versions(user_settings)
 
+
 # apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
@@ -404,7 +405,6 @@ def apply_min_browser_versions(user_settings):
 
   def default_min_browser_version(browser, version):
     default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
-
 
   if settings.WASM_BIGINT:
     default_min_browser_version('Safari', 150000)
