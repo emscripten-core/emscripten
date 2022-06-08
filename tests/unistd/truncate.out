@@ -29,5 +29,5 @@ errno: Invalid argument
 st_size: 6
 
 open(readonly, O_TRUNC)
-errno: No error information
+errno: Permission denied
 st_size: 6

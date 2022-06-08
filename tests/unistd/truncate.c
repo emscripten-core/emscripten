@@ -111,7 +111,6 @@ int main() {
   errno = 0;
   printf("\n");
 
-  // O_TRUNC ignored because file is read-only.
   printf("open(readonly, O_TRUNC)\n");
   open("toread", O_RDONLY | O_TRUNC);
   printf("errno: %s\n", strerror(errno));

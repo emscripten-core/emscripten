@@ -466,9 +466,12 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // If O_TRUNC, truncate the file if possible.
-  if ((flags & O_TRUNC) && child->is<DataFile>() &&
-      (fileMode & WASMFS_PERM_WRITE)) {
-    child->cast<DataFile>()->locked().setSize(0);
+  if ((flags & O_TRUNC) && child->is<DataFile>()) {
+    if (fileMode & WASMFS_PERM_WRITE) {
+      child->cast<DataFile>()->locked().setSize(0);
+    } else {
+      return -EACCES;
+    }
   }
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, child);
