@@ -466,8 +466,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // If O_TRUNC, truncate the file if possible.
-  if (flags & O_TRUNC && child->is<DataFile>() &&
-      fileMode & WASMFS_PERM_WRITE) {
+  if ((flags & O_TRUNC) && child->is<DataFile>() &&
+      (fileMode & WASMFS_PERM_WRITE)) {
     child->cast<DataFile>()->locked().setSize(0);
   }
 
