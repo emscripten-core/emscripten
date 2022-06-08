@@ -398,29 +398,32 @@ var LibraryExceptions = {
     return Module['asm']['__cpp_exception'];
   },
 
-  $getCppExceptionThrownValue__deps: ['$getCppExceptionTag'],
+  $getCppExceptionThrownValue__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
   $getCppExceptionThrownValue: function(ex) {
-    return ex.getArg(getCppExceptionTag(), 0);
+    // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer
+    // to the unwind header. Convert it to the actual thrown value.
+    var unwind_ex = ex.getArg(getCppExceptionTag(), 0);
+    return ___thrown_object_from_unwind_exception(unwind_ex);
   },
 
-  $incrementExceptionRefcount__deps: ['__increment_wasm_exception_refcount', '$getCppExceptionThrownValue'],
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownValue'],
   $incrementExceptionRefcount: function(obj) {
     var ptr = getCppExceptionThrownValue(obj);
-    ___increment_wasm_exception_refcount(ptr);
+    ___cxa_increment_exception_refcount(ptr);
   },
 
-  $decrementExceptionRefcount__deps: ['__decrement_wasm_exception_refcount', '$getCppExceptionThrownValue'],
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount', '$getCppExceptionThrownValue'],
   $decrementExceptionRefcount: function(obj) {
     var ptr = getCppExceptionThrownValue(obj);
-    ___decrement_wasm_exception_refcount(ptr);
+    ___cxa_decrement_exception_refcount(ptr);
   },
 
   $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownValue'],
-  $getExceptionMessage: function(ptr) {
+  $getExceptionMessage: function(obj) {
     // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
     // thrown value from it.
-    var obj = getCppExceptionThrownValue(ptr);
-    var utf8_addr = ___get_exception_message(obj);
+    var ptr = getCppExceptionThrownValue(obj);
+    var utf8_addr = ___get_exception_message(ptr);
     var result = UTF8ToString(utf8_addr);
     _free(utf8_addr);
     return result;
