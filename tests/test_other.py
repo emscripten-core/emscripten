@@ -10459,17 +10459,9 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # unless we explictly disable polyfills
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
-  @parameterized({
-    '': ([],),
-    'asserts': (['-sASSERTIONS'],),
-    'asserts_closure': (['-sASSERTIONS', '--closure=1'],),
-    # test MAIN_MODULE=1 and -Oz at once, for additional coverage of the
-    # possible interactions there (-Oz links slightly different system
-    # libraries, and MAIN_MODULE=1 affects which system libraries are linked)
-    'mm_oz': (['-sMAIN_MODULE=1', '-Oz'],),
-  })
-  def test_webgpu_compiletest(self, args):
-    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
+  def test_webgpu_compiletest(self):
+    for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
+      self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
@@ -12033,9 +12025,10 @@ Module['postRun'] = function() {{
       self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
-  # works with -sPROXY_POSIX_SOCKETS.
-  def test_dylink_proxy_posix_sockets(self):
-    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS'])
+  # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
+  # system libraries in different ways.
+  def test_dylink_proxy_posix_sockets_oz(self):
+    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
 
   def test_in_tree_header_usage(self):
     # Using headers directly from where they live in the source tree does not work.

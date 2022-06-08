@@ -1859,7 +1859,12 @@ def get_libs_to_link(args, forced, only_forced):
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
-  if settings.SHRINK_LEVEL >= 2:
+  # libc_size is a size optimization, and therefore not really important when
+  # MAIN_MODULE=1 (which links in all system libraries, leading to a large
+  # size far bigger than any savings from libc_size). Also, libc_size overrides
+  # parts of libc, which will not link due to --whole-archive in MAIN_MODULE=1
+  # currently.
+  if settings.SHRINK_LEVEL >= 2 and settings.MAIN_MODULE != 1:
     add_library('libc_size')
 
   if settings.STANDALONE_WASM:
