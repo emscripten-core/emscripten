@@ -5,16 +5,12 @@
  * found in the LICENSE file.
  */
 
-// Much of this code comes from:
-// https://github.com/CraneStation/wasi-libc/blob/master/libc-bottom-half/crt/crt1.c
-// Converted malloc() calls to alloca() to avoid including malloc in all programs.
-
 #include <stdlib.h>
 #include <wasi/api.h>
 
 __attribute__((__weak__)) void __wasm_call_ctors(void);
 
-int __original_main(void);
+int __main_void(void);
 
 void _start(void) {
   if (__wasm_call_ctors) {
@@ -26,7 +22,7 @@ void _start(void) {
    * or our __original_main fallback in __original_main.c which handles
    * populating argv.
    */
-  int r = __original_main();
+  int r = __main_void();
 
   exit(r);
 }

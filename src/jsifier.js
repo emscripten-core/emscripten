@@ -204,7 +204,11 @@ function ${name}(${args}) {
           return;
         }
         if (!isDefined(ident)) {
-          let msg = 'undefined symbol: ' + ident;
+          let undefinedSym = ident;
+          if (ident === '__main_argc_argv') {
+            undefinedSym = 'main';
+          }
+          let msg = 'undefined symbol: ' + undefinedSym;
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
@@ -216,7 +220,7 @@ function ${name}(${args}) {
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
-          if (ident === 'main' && STANDALONE_WASM) {
+          if (undefinedSym === 'main' && STANDALONE_WASM) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
