@@ -880,7 +880,7 @@ class libc(MuslInternalLibrary,
           'proxying_stub.c',
         ])
 
-    # TODO needed?
+    # These files are in libc directories, but only built in libc_size.
     ignore += [
       'pow_small.c', 'log_small.c', 'log2_small.c'
     ]
