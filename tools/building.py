@@ -335,10 +335,11 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      if settings.EXPECT_MAIN and not settings.IGNORE_MISSING_MAIN:
-        cmd += ['--entry=main']
-      else:
-        cmd += ['--no-entry']
+      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+      # For now we need to do this sice the entry point can be either `main` or
+      # `__main_argv_argc`, but we should address that by using a single `_start`
+      # function like we do in STANDALONE_WASM mode.
+      cmd += ['--no-entry']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
@@ -673,10 +674,13 @@ def eval_ctors(js_file, wasm_file, debug_info):
     if has_wasm_call_ctors:
       ctors += [WASM_CALL_CTORS]
     if settings.HAS_MAIN:
-      ctors += ['main']
+      main = 'main'
+      if '__main_argc_argv' in settings.WASM_EXPORTS:
+        main = '__main_argc_argv'
+      ctors += [main]
       # TODO perhaps remove the call to main from the JS? or is this an abi
       #      we want to preserve?
-      kept_ctors += ['main']
+      kept_ctors += [main]
     if not ctors:
       logger.info('ctor_evaller: no ctors')
       return

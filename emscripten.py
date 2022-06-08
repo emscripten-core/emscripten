@@ -221,7 +221,7 @@ def report_missing_symbols(js_library_funcs):
     # maximum compatibility.
     return
 
-  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS:
+  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS and '__main_argc_argv' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
