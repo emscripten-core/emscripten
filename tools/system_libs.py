@@ -1876,7 +1876,6 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
-    add_library('libc_size')
     if settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
