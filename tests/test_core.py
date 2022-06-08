@@ -6776,9 +6776,9 @@ void* operator new(size_t size) {
                  libraries=self.get_bullet_library(use_cmake),
                  includes=[test_file('third_party/bullet/src')])
 
-  @unittest.skip('LLVM changes have caused this C++ to no longer compile, https://github.com/emscripten-core/emscripten/issues/14614')
   @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
+  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
