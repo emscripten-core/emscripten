@@ -529,32 +529,6 @@ class DebugLibrary(Library):
     return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
 
 
-class OptimizedAggressivelyForSizeLibrary(Library):
-  def __init__(self, **kwargs):
-    self.is_optz = kwargs.pop('is_optz')
-    super().__init__(**kwargs)
-
-  def get_base_name(self):
-    name = super().get_base_name()
-    if self.is_optz:
-      name += '-optz'
-    return name
-
-  def get_cflags(self):
-    cflags = super().get_cflags()
-    if self.is_optz:
-      cflags += ['-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
-    return cflags
-
-  @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['is_optz']
-
-  @classmethod
-  def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
-
-
 class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
@@ -781,6 +755,7 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
@@ -790,7 +765,9 @@ class libc(MuslInternalLibrary,
 
     other_files = files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_scan_stack.c'])
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_scan_stack.c',
+                 'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
     # probably not performance sensitive.  However we don't currently have
@@ -823,7 +800,7 @@ class libc(MuslInternalLibrary,
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'memcmp.c',
+        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
@@ -906,7 +883,6 @@ class libc(MuslInternalLibrary,
 
     # TODO needed?
     ignore += [
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
       'pow_small.c', 'log_small.c', 'log2_small.c'
     ]
 
@@ -1007,7 +983,10 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_scan_stack.c',
+      filenames=['emscripten_memcpy.c',
+                 'emscripten_memset.c',
+                 'emscripten_scan_stack.c',
+                 'emscripten_memmove.c',
                  'emscripten_mmap.c'
                  ])
 
@@ -1044,14 +1023,10 @@ class libc(MuslInternalLibrary,
 #     as the user must also pass -lc_size. we've split up libc, but that is
 #     not normally done in toolchains. instead, perhaps this library could be
 #     built once and linked before libc when -Oz, and override libc.
-class libc_size(MuslInternalLibrary,
-                DebugLibrary,
-                OptimizedAggressivelyForSizeLibrary,
-                AsanInstrumentedLibrary,
-                MTLibrary):
+class libc_size(libc):
   name = 'libc_size'
 
-  cflags = ['-Os', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin', '-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
@@ -1060,27 +1035,23 @@ class libc_size(MuslInternalLibrary,
   def get_libcall_files(self):
     # see comments in libc.customize_build_cmd
 
-    # some files use a #define to pick between the optz and normal code paths
+    # some files also appear in libc, and a #define affects them
     mem_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_memmove.c'])
 
-    # some functions have separate files in optz mode
-    if self.is_optz:
-      math_names = ['pow_small.c', 'log_small.c', 'log2_small.c']
-    else:
-      math_names = ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
-
+    # some functions have separate files
     math_files = files_in_path(
       path='system/lib/libc/musl/src/math',
-      filenames=math_names)
+      filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
 
     return mem_files + math_files
 
   def get_files(self):
     libcall_files = self.get_libcall_files()
 
+    # some files also appear in libc, and a #define affects them
     mem_files = files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['memcmp.c'])
@@ -1094,6 +1065,9 @@ class libc_size(MuslInternalLibrary,
       cmd = [a for a in cmd if not a.startswith('-O')]
       cmd += ['-O2']
     return cmd
+
+  def can_use(self):
+    return super(libc_size, self).can_use() and settings.SHRINK_LEVEL >= 2
 
 
 class libprintf_long_double(libc):
@@ -1889,9 +1863,11 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.JS_MATH:
     add_library('libjsmath')
 
-  # to override the normal libc printf, we must come before it
+  # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
+  if settings.SHRINK_LEVEL >= 2:
+    add_library('libc_size')
 
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
