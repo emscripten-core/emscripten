@@ -395,8 +395,6 @@ def apply_settings(user_settings):
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
 
-  apply_min_browser_versions(user_settings)
-
 
 # apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
@@ -2610,6 +2608,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
+
+  apply_min_browser_versions(user_settings)
 
   return target, wasm_target
 
