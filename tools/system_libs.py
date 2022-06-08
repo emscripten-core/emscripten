@@ -1014,14 +1014,8 @@ class libc(MuslInternalLibrary,
 
 
 # Contains the files from libc that are optimized differently in -Oz mode, where
-# we want to aggressively optimize them for size. Splitting this from libc
-# avoids that entire library being rebuilt differently (which is what
-# OptimizedAggressivelyForSizeLibrary causes).
-#
-# XXX this has the problem that now -lc is not enough to link in all of libc,
-#     as the user must also pass -lc_size. we've split up libc, but that is
-#     not normally done in toolchains. instead, perhaps this library could be
-#     built once and linked before libc when -Oz, and override libc.
+# we want to aggressively optimize them for size. This is linked in before libc
+# so we can override those specific files, when in -Oz.
 class libc_size(libc):
   name = 'libc_size'
 
