@@ -1039,6 +1039,11 @@ class libc(MuslInternalLibrary,
 # we want to aggressively optimize them for size. Splitting this from libc
 # avoids that entire library being rebuilt differently (which is what
 # OptimizedAggressivelyForSizeLibrary causes).
+#
+# XXX this has the problem that now -lc is not enough to link in all of libc,
+#     as the user must also pass -lc_size. we've split up libc, but that is
+#     not normally done in toolchains. instead, perhaps this library could be
+#     built once and linked before libc when -Oz, and override libc.
 class libc_size(MuslInternalLibrary,
                 DebugLibrary,
                 OptimizedAggressivelyForSizeLibrary,
