@@ -1,0 +1,62 @@
+start
+test:
+add() overloads
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+add(array)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+concat(array&)
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+set(k,v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+set(k, array)
+pass
+pass
+pass
+pass
+test:
+set(k, VH)
+pass
+pass
+pass
+pass
+test:
+use local scope values
+pass
+pass
+pass
+test:
+use local emscripten::val
+pass
+pass
+pass
+end

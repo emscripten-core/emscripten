@@ -1473,7 +1473,9 @@ class libembind(Library):
     return name
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/embind/bind.cpp')]
+    return files_in_path(
+        path='system/lib/embind',
+        filenames=['bind.cpp', 'val_helper.cpp'])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
