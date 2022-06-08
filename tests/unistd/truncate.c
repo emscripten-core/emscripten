@@ -85,6 +85,7 @@ int main() {
   errno = 0;
   printf("\n");
 
+  // Only permissions of the file, not opening mode, matter for truncation.
   printf("open(O_TRUNC)\n");
   open("towrite", O_RDONLY | O_TRUNC);
   printf("errno: %s\n", strerror(errno));
@@ -110,6 +111,7 @@ int main() {
   errno = 0;
   printf("\n");
 
+  // O_TRUNC ignored because file is read-only.
   printf("open(readonly, O_TRUNC)\n");
   open("toread", O_RDONLY | O_TRUNC);
   printf("errno: %s\n", strerror(errno));
