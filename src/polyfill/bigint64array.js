@@ -81,6 +81,7 @@ if (typeof globalThis.BigInt64Array !== "undefined") {
                     }
                     var pair = bigIntToParts(value);
                     array.set(pair, 2*idx);
+                    return true;
                 }
             });
             return proxy;
