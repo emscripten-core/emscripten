@@ -6777,6 +6777,8 @@ void* operator new(size_t size) {
                  includes=[test_file('third_party/bullet/src')])
 
   @no_asan('issues with freetype itself')
+  @no_ubsan('local count too large')
+  @no_lsan('output differs')
   @needs_make('depends on freetype')
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
