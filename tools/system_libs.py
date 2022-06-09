@@ -880,7 +880,7 @@ class libc(MuslInternalLibrary,
           'proxying_stub.c',
         ])
 
-    # These files are in libc directories, but only built in libc_size.
+    # These files are in libc directories, but only built in libc_optz.
     ignore += [
       'pow_small.c', 'log_small.c', 'log2_small.c'
     ]
@@ -1016,8 +1016,8 @@ class libc(MuslInternalLibrary,
 # Contains the files from libc that are optimized differently in -Oz mode, where
 # we want to aggressively optimize them for size. This is linked in before libc
 # so we can override those specific files, when in -Oz.
-class libc_size(libc):
-  name = 'libc_size'
+class libc_optz(libc):
+  name = 'libc_optz'
 
   cflags = ['-Os', '-fno-builtin', '-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
 
@@ -1060,7 +1060,7 @@ class libc_size(libc):
     return cmd
 
   def can_use(self):
-    return super(libc_size, self).can_use() and settings.SHRINK_LEVEL >= 2
+    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2
 
 
 class libprintf_long_double(libc):
@@ -1860,13 +1860,13 @@ def get_libs_to_link(args, forced, only_forced):
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
-  # libc_size is a size optimization, and therefore not really important when
+  # libc_optz is a size optimization, and therefore not really important when
   # MAIN_MODULE=1 (which links in all system libraries, leading to a large
-  # size far bigger than any savings from libc_size). Also, libc_size overrides
+  # size far bigger than any savings from libc_optz). Also, libc_optz overrides
   # parts of libc, which will not link due to --whole-archive in MAIN_MODULE=1
   # currently.
   if settings.SHRINK_LEVEL >= 2 and settings.MAIN_MODULE != 1:
-    add_library('libc_size')
+    add_library('libc_optz')
 
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
