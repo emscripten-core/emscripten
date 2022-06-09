@@ -400,40 +400,50 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = function FSStream() {
+        FS.FSStream = /** @constructor */ function FSStream() {
           this.shared = {flags : 0, position : 0};
         };
-        FS.FSStream.prototype = Object.create(Object.prototype);
+        FS.FSStream.prototype = {};
         FS.FSStream.prototype.constructor = FS.FSStream;
+        /** @nocollapse */
         Object.defineProperties(FS.FSStream.prototype, {
           object: {
+            /** @this {FS.FSStream} */
             get: function () {
               return this.node;
             },
+            /** @this {FS.FSStream} */
             set: function (val) {
               this.node = val;
             },
             enumerable : true,
           },
           isRead: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; },
             enumerable : true,
           },
           isWrite: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; },
             enumerable : true,
           },
           isAppend: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); },
             enumerable : true,
           },
           flags: {
+            /** @this {FS.FSStream} */
             get: function () { return this.shared.flags; },
+            /** @this {FS.FSStream} */
             set: function (val) { this.shared.flags = val; },
             enumerable : true,
           },
           position: {
+            /** @this {FS.FSStream} */
             get: function() { return this.shared.position; },
+            /** @this {FS.FSStream} */
             set: function (val) { this.shared.position = val; },
             enumerable : true,
           },
