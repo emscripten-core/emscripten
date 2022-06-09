@@ -36,8 +36,8 @@ unsigned int getTotalMemory()
 unsigned int getFreeMemory()
 {
 	s_mallinfo i = mallinfo();
-	unsigned int totalMemory = getTotalMemory();
-	unsigned int dynamicTop = (unsigned int)sbrk(0);
+	uintptr_t totalMemory = getTotalMemory();
+	uintptr_t dynamicTop = (uintptr_t)sbrk(0);
 	return totalMemory - dynamicTop + i.fordblks;
 }
 

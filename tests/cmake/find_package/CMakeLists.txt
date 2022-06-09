@@ -4,7 +4,7 @@ project(find_package VERSION 0.42)
 
 find_package(Foo REQUIRED)
 
-add_executable(Bar bar.c)
+add_executable(Bar bar.cpp)
 
 target_link_libraries(Bar Foo)
 

@@ -8,6 +8,7 @@
 
 #include <dirent.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
@@ -15,7 +16,9 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
@@ -27,7 +30,7 @@
 #include "file_table.h"
 #include "paths.h"
 #include "pipe_backend.h"
-#include "streams.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 // File permission macros for wasmfs.
@@ -93,19 +96,23 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
                                     size_t iovs_len,
                                     __wasi_size_t* nwritten,
                                     __wasi_filesize_t offset = 0) {
-  if (iovs_len < 0 || offset < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
-
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
-
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
+  auto lockedOpenFile = openFile->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    offset = lockedOpenFile.getPosition();
+  }
+
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   // TODO: Check open file access mode for write permissions.
 
-  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
@@ -116,25 +123,10 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
 
   auto lockedFile = file->locked();
 
-  off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.getPosition()
-                       : offset;
-  off_t oldOffset = currOffset;
-  auto finish = [&] {
-    *nwritten = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState &&
-        lockedOpenFile.getFile()->isSeekable()) {
-      lockedOpenFile.setPosition(currOffset);
-    }
-  };
+  size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     off_t len = iovs[i].buf_len;
-
-    // Check if the sum of the buf_len values overflows an off_t (63 bits).
-    if (addWillOverFlow(currOffset, len)) {
-      return __WASI_ERRNO_FBIG;
-    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
@@ -142,88 +134,102 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       return __WASI_ERRNO_INVAL;
     }
 
-    auto result = lockedFile.write(buf, len, currOffset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      finish();
-      return result;
+    // Check if the sum of the buf_len values overflows an off_t (63 bits).
+    if (addWillOverFlow(offset, (__wasi_filesize_t)bytesWritten)) {
+      return __WASI_ERRNO_FBIG;
     }
-    currOffset += len;
+
+    auto result = lockedFile.write(buf, len, offset + bytesWritten);
+    if (result < 0) {
+      // This individual write failed. Report the error unless we've already
+      // written some bytes, in which case report a successful short write.
+      if (bytesWritten > 0) {
+        break;
+      }
+      return -result;
+    }
+    // The write was successful.
+    bytesWritten += result;
+    if (result < len) {
+      // The read was short, so stop here.
+      break;
+    }
   }
-  finish();
+  *nwritten = bytesWritten;
+  if (setOffset == OffsetHandling::OpenFileState &&
+      lockedOpenFile.getFile()->isSeekable()) {
+    lockedOpenFile.setPosition(offset + bytesWritten);
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
 // Internal read function called by __wasi_fd_read and __wasi_fd_pread
 // Receives an open file state offset.
 // Optionally sets open file state offset.
+// TODO: combine this with writeAtOffset because the code is nearly identical.
 static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
                                    __wasi_fd_t fd,
                                    const __wasi_iovec_t* iovs,
                                    size_t iovs_len,
                                    __wasi_size_t* nread,
                                    __wasi_filesize_t offset = 0) {
-  if (iovs_len < 0 || offset < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
-
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
-
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
+  auto lockedOpenFile = openFile->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    offset = lockedOpenFile.getPosition();
+  }
+
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   // TODO: Check open file access mode for read permissions.
 
-  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
 
   auto lockedFile = file->locked();
 
-  off_t currOffset = setOffset == OffsetHandling::OpenFileState
-                       ? lockedOpenFile.getPosition()
-                       : offset;
-  off_t oldOffset = currOffset;
-  auto finish = [&] {
-    *nread = currOffset - oldOffset;
-    if (setOffset == OffsetHandling::OpenFileState &&
-        lockedOpenFile.getFile()->isSeekable()) {
-      lockedOpenFile.setPosition(currOffset);
-    }
-  };
-  size_t size = lockedFile.getSize();
+  size_t bytesRead = 0;
   for (size_t i = 0; i < iovs_len; i++) {
-    // Check if currOffset has exceeded size of file data.
-    ssize_t dataLeft = size - currOffset;
-    if (dataLeft <= 0) {
-      break;
-    }
-
     uint8_t* buf = iovs[i].buf;
+    size_t len = iovs[i].buf_len;
 
-    // Check if buf_len specifies a positive length buffer
-    // but buf is a null pointer.
-    if (!buf && iovs[i].buf_len > 0) {
+    if (!buf && len > 0) {
       return __WASI_ERRNO_INVAL;
     }
 
-    size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
-
-    auto result = lockedFile.read(buf, bytesToRead, currOffset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      finish();
-      return result;
+    // TODO: Check for overflow when adding offset + bytesRead.
+    auto result = lockedFile.read(buf, len, offset + bytesRead);
+    if (result < 0) {
+      // This individual read failed. Report the error unless we've already read
+      // some bytes, in which case report a successful short read.
+      if (bytesRead > 0) {
+        break;
+      }
+      return -result;
     }
-    currOffset += bytesToRead;
+    // The read was successful.
+    bytesRead += result;
+    if (result < len) {
+      // The read was short, so stop here.
+      break;
+    }
   }
-  finish();
+  *nread = bytesRead;
+  if (setOffset == OffsetHandling::OpenFileState &&
+      lockedOpenFile.getFile()->isSeekable()) {
+    lockedOpenFile.setPosition(offset + bytesRead);
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -309,8 +315,6 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
-static
-
 int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -333,8 +337,8 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // system. Specific values were chosen to match existing library_fs.js
   // values.
   // ID of device containing file: Hardcode 1 for now, no meaning at the
-  buffer->st_dev = 1;
   // moment for Emscripten.
+  buffer->st_dev = 1;
   buffer->st_mode = lockedFile.getMode();
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
@@ -421,10 +425,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       }
 
       // TODO: Check write permissions on the parent directory.
-      // TODO: Forbid mounting new backends except under the root backend.
+      std::shared_ptr<File> created;
+      if (backend == parent->getBackend()) {
+        created = lockedParent.insertDataFile(std::string(childName), mode);
+      } else {
+        created = backend->createFile(mode);
+        bool mounted = lockedParent.mountChild(std::string(childName), created);
+        assert(mounted);
+      }
       // TODO: Check that the insert actually succeeds.
-      auto created = backend->createFile(mode);
-      lockedParent.insertChild(std::string(childName), created);
       if (returnMode == OpenReturnMode::Nothing) {
         return 0;
       }
@@ -432,6 +441,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
+
+  // TODO: Return EISDIR if child is a directory and write access is requested.
 
   // Check user permissions.
   auto fileMode = child->locked().getMode();
@@ -452,6 +463,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   // Return an error if the file exists and O_CREAT and O_EXCL are specified.
   if (flags & O_EXCL && flags & O_CREAT) {
     return -EEXIST;
+  }
+
+  // If O_TRUNC, truncate the file if possible.
+  if ((flags & O_TRUNC) && child->is<DataFile>()) {
+    if (fileMode & WASMFS_PERM_WRITE) {
+      child->cast<DataFile>()->locked().setSize(0);
+    } else {
+      return -EACCES;
+    }
   }
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, child);
@@ -516,6 +536,10 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   mode &= S_IRWXUGO | S_ISVTX;
 
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
   // By default, the backend that the directory is created in is the same as
   // the parent directory. However, if a backend is passed as a parameter,
   // then that backend is used.
@@ -523,13 +547,16 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
-    return -EACCES;
+  std::shared_ptr<File> created;
+  if (backend == parent->getBackend()) {
+    created = lockedParent.insertDirectory(childName, mode);
+  } else {
+    created = backend->createDirectory(mode);
+    bool mounted = lockedParent.mountChild(childName, created);
+    assert(mounted);
   }
-  // TODO: Forbid mounting new backends except under the root backend.
+
   // TODO: Check that the insertion is successful.
-  auto created = backend->createDirectory(mode);
-  lockedParent.insertChild(childName, created);
 
   // Update the times.
   auto lockedFile = created->locked();
@@ -552,10 +579,6 @@ int wasmfs_create_directory(char* path, int mode, backend_t backend) {
 // TODO: Test this.
 int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
-}
-
-int __syscall_mkdir(intptr_t path, int mode) {
-  return doMkdir(path::parseParent((char*)path), mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
@@ -598,7 +621,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
-int doChdir(std::shared_ptr<File>& file) {
+static int doChdir(std::shared_ptr<File>& file) {
   auto dir = file->dynCast<Directory>();
   if (!dir) {
     return -ENOTDIR;
@@ -664,7 +687,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
   if (len >= size) {
-    return -ENAMETOOLONG;
+    return -ERANGE;
   }
 
   // Return value is a null-terminated c string.
@@ -904,7 +927,7 @@ int __syscall_renameat(int olddirfd,
     }
   }
 
-  // The new file must be removed if it already exists.
+  // The new file will be removed if it already exists.
   if (newFile) {
     if (auto newDir = newFile->dynCast<Directory>()) {
       // Cannot overwrite a directory with a non-directory.
@@ -922,23 +945,12 @@ int __syscall_renameat(int olddirfd,
         return -ENOTDIR;
       }
     }
-
-    // Remove the overwritten file.
-    if (!lockedNewParent.removeChild(newFileName)) {
-      return -EPERM;
-    }
   }
 
-  // Unlink the oldpath and add the oldpath to the new parent dir.
-  if (!lockedOldParent.removeChild(oldFileName)) {
-    // TODO: Put the file that was going to be overwritten back!
+  // Perform the move.
+  if (!lockedNewParent.insertMove(newFileName, oldFile)) {
     return -EPERM;
   }
-  if (!lockedNewParent.insertChild(newFileName, oldFile)) {
-    // TODO: Put all the removed files back!
-    return -EPERM;
-  }
-
   return 0;
 }
 
@@ -961,13 +973,9 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
-
-  auto backend = parent->getBackend();
-  auto created = backend->createSymlink((char*)target);
-  if (!lockedParent.insertChild(childName, created)) {
+  if (!lockedParent.insertSymlink(childName, (char*)target)) {
     return -EPERM;
   }
-
   return 0;
 }
 
@@ -1042,12 +1050,26 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  parsed.getFile()->locked().setMode(mode);
+  auto lockedFile = parsed.getFile()->locked();
+  lockedFile.setMode(mode);
+  // On POSIX, ctime is updated on metadata changes, like chmod.
+  lockedFile.setCTime(time(NULL));
   return 0;
 }
 
 int __syscall_chmod(intptr_t path, int mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+}
+
+int __syscall_fchmod(int fd, int mode) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  auto lockedFile = openFile->locked().getFile()->locked();
+  lockedFile.setMode(mode);
+  lockedFile.setCTime(time(NULL));
+  return 0;
 }
 
 int __syscall_fchownat(
@@ -1154,9 +1176,8 @@ int __syscall_ftruncate64(int fd, uint64_t size) {
 static bool isTTY(std::shared_ptr<File>& file) {
   // TODO: Full TTY support. For now, just see stdin/out/err as terminals and
   //       nothing else.
-  return file == StdinFile::getSingleton() ||
-         file == StdoutFile::getSingleton() ||
-         file == StderrFile::getSingleton();
+  return file == SpecialFiles::getStdin() ||
+         file == SpecialFiles::getStdout() || file == SpecialFiles::getStderr();
 }
 
 int __syscall_ioctl(int fd, int request, ...) {
@@ -1390,6 +1411,125 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       return -EINVAL;
     }
   }
+}
+
+static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+  if (size != sizeof(struct statfs)) {
+    // We only know how to write to a standard statfs, not even a truncated one.
+    return -EINVAL;
+  }
+
+  // NOTE: None of the constants here are true. We're just returning safe and
+  //       sane values, that match the long-existing JS FS behavior (except for
+  //       the inode number, where we can do better).
+  buf->f_type = 0;
+  buf->f_bsize = 4096;
+  buf->f_frsize = 4096;
+  buf->f_blocks = 1000000;
+  buf->f_bfree = 500000;
+  buf->f_bavail = 500000;
+  buf->f_files = file->getIno();
+  buf->f_ffree = 1000000;
+  buf->f_fsid = {0, 0};
+  buf->f_flags = ST_NOSUID;
+  buf->f_namelen = 255;
+  return 0;
+}
+
+int __syscall_statfs64(intptr_t path, size_t size, intptr_t buf) {
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doStatFS(parsed.getFile(), size, (struct statfs*)buf);
+}
+
+int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
+}
+
+int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
+    return -EINVAL;
+  }
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
+}
+
+intptr_t _mmap_js(
+  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  std::shared_ptr<DataFile> file;
+
+  // Keep the open file info locked only for as long as we need that.
+  {
+    auto lockedOpenFile = openFile->locked();
+
+    // Check permissions. We always need read permissions, since we need to read
+    // the data in the file to map it.
+    if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+      return -EACCES;
+    }
+
+    // According to the POSIX spec it is possible to write to a file opened in
+    // read-only mode with MAP_PRIVATE flag, as all modifications will be
+    // visible only in the memory of the current process.
+    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+        (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
+      return -EACCES;
+    }
+
+    file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  }
+
+  if (!file) {
+    return -ENODEV;
+  }
+
+  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
+  //       like avoiding an allocation and a copy as we do below (whereas a
+  //       private mmap is always a copy into a new, private region not shared
+  //       with anything else).
+  assert(flags & MAP_PRIVATE);
+
+  // Align to a wasm page size, as we expect in the future to get wasm
+  // primitives to do this work, and those would presumably be aligned to a page
+  // size. Aligning now avoids confusion later.
+  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  if (!ptr) {
+    return -ENOMEM;
+  }
+  *allocated = true;
+
+  auto written = file->locked().read(ptr, length, offset);
+  if (written < 0) {
+    // The read failed. Report the error, but first free the allocation.
+    free(ptr);
+    return written;
+  }
+
+  // From here on, we have succeeded, and can mark the allocation as having
+  // occurred (which means that the caller has the responsibility to free it).
+  *allocated = true;
+
+  // The read must be of a valid amount, or we have had an internal logic error.
+  assert(written <= length);
+
+  // mmap clears any extra bytes after the data itself.
+  memset(ptr + written, 0, length - written);
+
+  return (intptr_t)ptr;
 }
 
 // Stubs (at least for now)

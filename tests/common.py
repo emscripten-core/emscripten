@@ -31,9 +31,8 @@ import clang_native
 import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config
 
 logger = logging.getLogger('common')
@@ -60,6 +59,15 @@ EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
 EMTEST_FORCE64 = None
 
+# Verbosity level control for subprocess calls to configure + make.
+# 0: disabled.
+# 1: Log stderr of configure/make.
+# 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
+EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+if 'EM_BUILD_VERBOSE' in os.environ:
+  exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
+
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
@@ -71,6 +79,7 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
+LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 
 
 def delete_contents(pathname):
@@ -160,6 +169,7 @@ def no_windows(note=''):
 def requires_native_clang(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_LACKS_NATIVE_CLANG:
       return self.skipTest('native clang tests are disabled')
@@ -168,7 +178,7 @@ def requires_native_clang(func):
   return decorated
 
 
-def require_node(func):
+def requires_node(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
@@ -178,7 +188,7 @@ def require_node(func):
   return decorated
 
 
-def require_v8(func):
+def requires_v8(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
@@ -189,6 +199,7 @@ def require_v8(func):
 
 
 def node_pthreads(f):
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
     f(self, *args, **kwargs)
@@ -240,6 +251,27 @@ def also_with_minimal_runtime(f):
 
   metafunc._parameterize = {'': (False,),
                             'minimal_runtime': (True,)}
+  return metafunc
+
+
+def also_with_wasm_bigint(f):
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
+      if self.get_setting('WASM_BIGINT') is not None:
+        self.skipTest('redundant in bigint test config')
+      self.set_setting('WASM_BIGINT')
+      self.require_node()
+      self.node_args.append('--experimental-wasm-bigint')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
   return metafunc
 
 
@@ -366,6 +398,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('WASM') != 0
 
   def check_dylink(self):
+    if self.get_setting('MEMORY64'):
+      self.skipTest('MEMORY64 does not yet support dynamic linking')
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
@@ -374,6 +408,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in ASan yet')
     if '-fsanitize=leak' in self.emcc_args:
       self.skipTest('no dynamic linking support in LSan yet')
+    if '-fsanitize=undefined' in self.emcc_args:
+      self.skipTest('no dynamic linking support in UBSan yet')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
@@ -398,6 +434,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_node()
     self.set_setting('USE_PTHREADS')
     self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MEMORY64'):
+      self.skipTest('node pthreads not yet supported with MEMORY64')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
@@ -565,9 +603,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, ldflags=True):
+    def is_ldflag(f):
+      return any(f.startswith(s) for s in ['-sENVIRONMENT=', '--pre-js=', '--post-js='])
+
     args = self.serialize_settings() + self.emcc_args
     if ldflags:
       args += self.ldflags
+    else:
+      args = [a for a in args if not is_ldflag(a)]
     if not main_file:
       for i, arg in enumerate(args):
         if arg in ('--pre-js', '--post-js'):
@@ -582,13 +625,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
+    inputfile = os.path.abspath(filename)
+    # For some reason es-check requires unix paths, even on windows
+    if WINDOWS:
+      inputfile = inputfile.replace('\\', '/')
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
       #  ES-Check: there were no ES version matching errors!
       # pipe stdout and stderr so that we can choose if/when to print this
       # output and avoid spamming stdout when tests are successful.
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stdout=PIPE, stderr=STDOUT, env=es_check_env)
+      shared.run_process(es_check + ['es5', inputfile], stdout=PIPE, stderr=STDOUT, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stdout)
       self.fail('es-check failed to verify ES5 output compliance')
@@ -742,7 +789,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def assertExists(self, filename, msg=None):
     if not msg:
-      msg = 'Expected file not found: ' + filename
+      msg = f'Expected file not found: {filename}'
     self.assertTrue(os.path.exists(filename), msg)
 
   def assertNotExists(self, filename, msg=None):
@@ -910,7 +957,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
-    cmd = [compiler_for(filename), filename] + args
+    cmd = [compiler_for(filename), filename] + self.get_emcc_args(ldflags='-c' not in args) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
@@ -1056,18 +1103,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
-  def filtered_js_engines(self, js_engines=None):
-    if js_engines is None:
-      js_engines = self.js_engines
-    for engine in js_engines:
+  def filtered_js_engines(self):
+    for engine in self.js_engines:
       assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) in (list, type(None))
     banned = [b[0] for b in self.banned_js_engines if b]
-    return [engine for engine in js_engines if engine and engine[0] not in banned]
+    return [engine for engine in self.js_engines if engine and engine[0] not in banned]
 
-  def do_run(self, src, expected_output, force_c=False, **kwargs):
+  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1076,26 +1121,26 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         filename = 'src.cpp'
       write_file(filename, src)
-    self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
     return self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
+    return self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     expected = read_file(outfile)
-    self._build_and_run(srcfile, expected, **kwargs)
+    return self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
                      no_build=False,
-                     js_engines=None, libraries=[],
+                     libraries=[],
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
@@ -1112,7 +1157,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                            output_basename=output_basename)
     self.assertExists(js_file)
 
-    engines = self.filtered_js_engines(js_engines)
+    engines = self.filtered_js_engines()
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1202,15 +1247,26 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self):
-    # TODO: remove -Wno-unknown-warning-option when clang rev 11da1b53 rolls into emscripten
-    self.emcc_args += ['-Wno-deprecated-non-prototype', '-Wno-unknown-warning-option']
-    if WINDOWS:
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=['cmake', '.'],
-                              make=['cmake', '--build', '.'],
-                              make_args=[])
-    return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+  def get_zlib_library(self, cmake):
+    assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
+
+    old_args = self.emcc_args.copy()
+    # inflate.c does -1L << 16
+    self.emcc_args.append('-Wno-shift-negative-value')
+    # adler32.c uses K&R sytyle function declarations
+    self.emcc_args.append('-Wno-deprecated-non-prototype')
+    # Work around configure-script error. TODO: remove when
+    # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
+    self.emcc_args.append('-Wno-pointer-sign')
+    if cmake:
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
+                             configure=['cmake', '.'],
+                             make=['cmake', '--build', '.', '--'],
+                             make_args=[])
+    else:
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+    self.emcc_args = old_args
+    return rtn
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
@@ -1286,7 +1342,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
@@ -1732,8 +1788,8 @@ def build_library(name,
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EM_BUILD_VERBOSE < 2 else None
-          stderr = err if EM_BUILD_VERBOSE < 1 else None
+          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
+          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
           shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
@@ -1754,14 +1810,14 @@ def build_library(name,
   def open_make_err(mode='r'):
     return open(os.path.join(project_dir, 'make.err'), mode)
 
-  if EM_BUILD_VERBOSE >= 3:
+  if EMTEST_BUILD_VERBOSE >= 3:
     make_args += ['VERBOSE=1']
 
   try:
     with open_make_out('w') as make_out:
       with open_make_err('w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
         shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
                            cwd=project_dir)
   except subprocess.CalledProcessError:

@@ -41,7 +41,14 @@ void basics() {
   stage("allocate another 100");
   void* second = malloc(100);
   stage("allocate 10");
+#ifndef WASMFS
+  // There is no strict guarantee that the second allocation be equal to the
+  // first, but in practice on a fresh heap that tends to be the case. With
+  // WasmFS, however, the heap has already seen a bunch of use by the time we
+  // get here, and due to fragmentation etc. we cannot predict getting the exact
+  // same result the second time.
   assert(second == first);
+#endif
   void* third = malloc(10);
   assert(!emmalloc_validate_memory_regions());
   stage("allocate 10 more");

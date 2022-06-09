@@ -64,27 +64,15 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-const unsigned char * __map_file(const char *pathname, size_t *size) {
-  errno = ENOSYS;
-  return NULL;
-}
-
-intptr_t _mmap_js(intptr_t addr,
-                  size_t length,
-                  int prot,
-                  int flags,
-                  int fd,
-                  size_t offset,
-                  int* allocated) {
+// Mark these as weak so that wasmfs does not collide with it. That is, if
+// wasmfs is in use, we want to use that and not this.
+__attribute__((__weak__)) intptr_t _mmap_js(
+  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
   return -ENOSYS;
 }
 
-int _munmap_js(intptr_t addr,
-               size_t length,
-               int prot,
-               int flags,
-               int fd,
-               size_t offset) {
+__attribute__((__weak__)) int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
   return -ENOSYS;
 }
 
@@ -92,8 +80,6 @@ int _munmap_js(intptr_t addr,
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-// Mark this as weak so that wasmfs does not collide with it. That is, if wasmfs
-// is in use, we want to use that and not this.
 __attribute__((__weak__))
 int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   if (!strcmp((const char*)path, "/dev/stdin")) {
@@ -114,6 +100,17 @@ __attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
 
 __attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
+}
+
+__attribute__((__weak__)) int __syscall_fstat64(int fd, intptr_t buf) {
+  return -ENOSYS;
+}
+
+// There is no good source of entropy without an import. Make this weak so that
+// it can be replaced with a pRNG or a proper import.
+__attribute__((__weak__))
+int getentropy(void* buffer, size_t length) {
+  abort();
 }
 
 // Emscripten additions

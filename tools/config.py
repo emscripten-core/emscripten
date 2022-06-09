@@ -137,6 +137,8 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
+      if env_value == '':
+        env_value = None
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]
@@ -182,6 +184,9 @@ def generate_config(path):
   llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
+  binaryen_root = os.path.dirname(os.path.dirname(which('wasm-opt') or '/usr/local/bin/wasm-opt'))
+  config_data = config_data.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
+
   node = which('node') or which('nodejs') or 'node'
   config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
 
@@ -196,11 +201,12 @@ An Emscripten settings file has been generated at:
 It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
+  BINARYEN_ROOT   = %s
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, llvm_root, binaryen_root, node, __rootpath__), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option

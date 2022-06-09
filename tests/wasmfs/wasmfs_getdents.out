@@ -24,6 +24,10 @@ d.d_name = ..
 d.d_reclen = 280
 d.d_type = directory
 
+d.d_name = random
+d.d_reclen = 280
+d.d_type = regular
+
 d.d_name = stderr
 d.d_reclen = 280
 d.d_type = regular
@@ -33,6 +37,10 @@ d.d_reclen = 280
 d.d_type = regular
 
 d.d_name = stdout
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = urandom
 d.d_reclen = 280
 d.d_type = regular
 

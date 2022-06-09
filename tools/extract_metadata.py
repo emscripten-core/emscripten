@@ -114,7 +114,7 @@ def get_main_reads_params(module, export_map, imported_funcs):
   if settings.STANDALONE_WASM:
     return 1
 
-  main = export_map.get('main')
+  main = export_map.get('main') or export_map.get('__main_argc_argv')
   if not main or main.kind != webassembly.ExternType.FUNC:
     return 0
 
@@ -149,7 +149,7 @@ def update_metadata(filename, metadata):
       elif i.field not in em_js_funcs:
         declares.append(i.field)
 
-  exports = [e.name for e in module.get_exports() if e.kind == webassembly.ExternType.FUNC]
+  exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
   metadata['declares'] = declares
   metadata['exports'] = exports
   metadata['invokeFuncs'] = invoke_funcs
@@ -177,10 +177,6 @@ def extract_metadata(filename):
 
   for i in imports:
     if i.kind == webassembly.ExternType.FUNC:
-      if i.field.startswith('invoke_'):
-        invoke_funcs.append(i.field)
-      elif i.field not in em_js_funcs:
-        declares.append(i.field)
       imported_funcs += 1
     elif i.kind == webassembly.ExternType.GLOBAL:
       imported_globals += 1
@@ -194,7 +190,14 @@ def extract_metadata(filename):
       string_address = get_global_value(globl)
       em_js_funcs[name] = get_string_at(module, string_address)
 
-  export_names = [e.name for e in exports if e.kind == webassembly.ExternType.FUNC]
+  for i in imports:
+    if i.kind == webassembly.ExternType.FUNC:
+      if i.field.startswith('invoke_'):
+        invoke_funcs.append(i.field)
+      elif i.field not in em_js_funcs:
+        declares.append(i.field)
+
+  export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
 
   features = module.parse_features_section()
   features = ['--enable-' + f[1] for f in features if f[0] == '+']

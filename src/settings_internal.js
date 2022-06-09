@@ -77,10 +77,6 @@ var USE_LSAN = false;
 // by -fsanitize=leak instead of used directly.
 var USE_ASAN = false;
 
-// Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
-var LOAD_SOURCE_MAP = false;
-
 // Whether embind has been enabled.
 var EMBIND = false;
 
@@ -181,8 +177,8 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling (experimental)
-var EXCEPTION_HANDLING = false;
+// New WebAssembly exception handling
+var WASM_EXCEPTIONS = false;
 
 // Used internally when running the JS compiler simply to generate list of all
 // JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
@@ -230,4 +226,10 @@ var TRANSPILE_TO_ES5 = false;
 
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
-var ALL_INCOMING_MODULE_JS_API = []
+var ALL_INCOMING_MODULE_JS_API = [];
+
+// List of all imports that are weak, and therefore allowed to be undefined at
+// runtime.  This is used by the JS compiler to avoid build-time warnings/errors
+// when weak symbols are undefined.  Only applies in the case of dyanmic linking
+// (MAIN_MODULE).
+var WEAK_IMPORTS = [];

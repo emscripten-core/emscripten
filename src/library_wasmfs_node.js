@@ -60,7 +60,7 @@ mergeInto(LibraryManager.library, {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }
-    for (let entry of entries) {
+    entries.forEach((entry) => {
       withStackSave(() => {
         let name = allocateUTF8OnStack(entry.name);
         let type;
@@ -76,7 +76,7 @@ mergeInto(LibraryManager.library, {
         }
         __wasmfs_node_record_dirent(vec, name, type);
       });
-    }
+    });
     // implicitly return 0
   },
 

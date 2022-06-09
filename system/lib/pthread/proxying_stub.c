@@ -9,8 +9,7 @@
 // single-threaded builds.
 
 #include <stdlib.h>
-
-#include "proxying.h"
+#include <emscripten/proxying.h>
 
 em_proxying_queue* em_proxying_queue_create() {
   return NULL;

@@ -17,7 +17,7 @@
 EMSCRIPTEN_ROOT = '{{{ EMSCRIPTEN_ROOT }}}' # directory
 
 LLVM_ROOT = '{{{ LLVM_ROOT }}}' # directory
-BINARYEN_ROOT = '' # directory
+BINARYEN_ROOT = '{{{ BINARYEN_ROOT }}}' # directory
 
 # Location of the node binary to use for running the JS parts of the compiler.
 # This engine must exist, or nothing can be compiled.

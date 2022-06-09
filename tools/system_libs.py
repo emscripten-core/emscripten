@@ -62,7 +62,8 @@ def clean_env():
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS']:
+              'EMCC_ONLY_FORCED_STDLIBS',
+              'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -606,7 +607,7 @@ class NoExceptLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = Exceptions.NONE
@@ -629,8 +630,6 @@ class SjLjLibrary(Library):
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING=1',
                  '-D__USING_WASM_SJLJ__']
-    else:
-      cflags += ['-sSUPPORT_LONGJMP=emscripten']
     return cflags
 
   def get_base_name(self):
@@ -649,6 +648,10 @@ class SjLjLibrary(Library):
   def get_default_variation(cls, **kwargs):
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+
+  def can_build(self):
+    # wasm-sjlj is not yet supported with MEMORY64
+    return not (settings.MEMORY64 and self.is_wasm)
 
 
 class MuslInternalLibrary(Library):
@@ -708,12 +711,16 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_ops.S',
         'stack_limits.S',
         'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c'
+        'emscripten_exception_builtins.c',
+        '__trap.c',
       ])
 
 
 class libnoexit(Library):
   name = 'libnoexit'
+  # __cxa_atexit calls can be generated during LTO the implemenation cannot
+  # itself be LTO.  See `get_libcall_files` below for more details.
+  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -740,10 +747,10 @@ class libc(MuslInternalLibrary,
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
-    self.non_lto_files = self.get_non_lto_files()
+    self.non_lto_files = self.get_libcall_files()
     super().__init__(**kwargs)
 
-  def get_non_lto_files(self):
+  def get_libcall_files(self):
     # Combining static linking with LTO is tricky under LLVM.  The codegen that
     # happens during LTO can generate references to new symbols that didn't exist
     # in the linker inputs themselves.
@@ -753,9 +760,7 @@ class libc(MuslInternalLibrary,
     # cannot be added to link.  Another way of putting it: by the time LTO happens
     # the decision about which bitcode symbols to compile has already been made.
     # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
-    # To solve this we put all such libcalls in a separate library that, like
-    # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
-    # CompilerRTLibrary).
+    # To solve this we force certain parts of libc to never be compiled as LTO/bitcode.
     # Note that this also includes things that may be depended on by those
     # functions - fmin uses signbit, for example, so signbit must be here (so if
     # fmin is added by codegen, it will have all it needs).
@@ -782,6 +787,10 @@ class libc(MuslInternalLibrary,
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
+    exit_files = files_in_path(
+        path='system/lib/libc/musl/src/exit',
+        filenames=['atexit.c'])
+
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
@@ -795,11 +804,16 @@ class libc(MuslInternalLibrary,
     iprintf_files = files_in_path(
       path='system/lib/libc/musl/src/stdio',
       filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+                 'getc.c',
+                 'fputc.c',
+                 'fgets.c',
+                 'putc.c', 'putc_unlocked.c',
+                 'putchar.c', 'putchar_unlocked.c',
                  'printf.c', 'puts.c', '__lockfile.c'])
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + other_files + iprintf_files
+    return math_files + exit_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
@@ -847,6 +861,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'proxying.c',
           'pthread_create.c',
+          'pthread_kill.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
@@ -926,6 +941,7 @@ class libc(MuslInternalLibrary,
           'ctime_r.c',
           'timespec_get.c',
           'utime.c',
+          '__map_file.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -1002,6 +1018,12 @@ class libc(MuslInternalLibrary,
                  ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
+
+    # Check for missing file in non_lto_files list.  Do this here
+    # rather than in the constructor so it only happens when the
+    # library is actually built (not when its instantiated).
+    for f in self.non_lto_files:
+      assert os.path.exists(f), f
 
     return libc_files
 
@@ -1126,7 +1148,7 @@ class crt1_reactor(MuslInternalLibrary):
     return super().can_use() and settings.STANDALONE_WASM
 
 
-class crtbegin(Library):
+class crtbegin(MuslInternalLibrary):
   name = 'crtbegin'
   cflags = ['-sUSE_PTHREADS']
   src_dir = 'system/lib/pthread'
@@ -1148,7 +1170,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
-  includes = ['system/lib/libcxx']
+  includes = ['system/lib/libcxx/src']
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1182,7 +1204,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'format_exception.cpp',
+      'cxa_exception_emscripten.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
@@ -1210,12 +1232,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
+    '-std=c++20',
   ]
+
+  includes = ['system/lib/libcxx/src']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
   src_glob_exclude = [
     'xlocale_zos.cpp',
+    'mbsnrtowcs.cpp',
+    'wcsnrtombs.cpp',
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
@@ -1484,6 +1511,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
+                   'opfs_backend.cpp',
                    'proxied_file_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',
@@ -1491,7 +1519,7 @@ class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
                    'file_table.cpp',
                    'js_api.cpp',
                    'paths.cpp',
-                   'streams.cpp',
+                   'special_files.cpp',
                    'support.cpp',
                    'syscalls.cpp',
                    'wasmfs.cpp'])
@@ -1625,8 +1653,9 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_files(self):
     files = files_in_path(
         path='system/lib/standalone',
-        filenames=['standalone.c', 'standalone_wasm_stdio.c', '__original_main.c',
-                   '__main_void.c', '__main_argc_argv.c'])
+        filenames=['standalone.c',
+                   'standalone_wasm_stdio.c',
+                   '__main_void.c'])
     files += files_in_path(
         path='system/lib/libc',
         filenames=['emscripten_memcpy.c'])
@@ -1825,7 +1854,7 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
     add_library('libc++abi')
-    if settings.EXCEPTION_HANDLING:
+    if settings.WASM_EXCEPTIONS:
       add_library('libunwind')
 
   if settings.USE_ASAN:
@@ -1936,7 +1965,7 @@ def install_system_headers(stamp):
     copytree_exist_ok(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
-  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib/pkgconfig')
   copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
@@ -1944,11 +1973,11 @@ def install_system_headers(stamp):
   copytree_exist_ok(bin_src, bin_dest)
 
   cmake_src = utils.path_from_root('system/lib/cmake')
-  cmake_dest = shared.Cache.get_sysroot_dir('lib', 'cmake')
+  cmake_dest = shared.Cache.get_sysroot_dir('lib/cmake')
   copytree_exist_ok(cmake_src, cmake_dest)
 
   # Create a version header based on the emscripten-version.txt
-  version_file = os.path.join(shared.Cache.get_include_dir(), 'emscripten/version.h')
+  version_file = shared.Cache.get_include_dir('emscripten/version.h')
   utils.write_file(version_file, textwrap.dedent(f'''\
   /* Automatically generated by tools/system_libs.py */
   #define __EMSCRIPTEN_major__ {shared.EMSCRIPTEN_VERSION_MAJOR}

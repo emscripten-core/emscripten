@@ -4,8 +4,6 @@
 #define PTR i32
 #endif
 
-.globaltype __tls_base, PTR
-
 .globaltype thread_ptr, PTR
 thread_ptr:
 
@@ -35,14 +33,6 @@ __set_thread_state:
   global.set is_runtime_thread
   local.get 3
   global.set supports_wait
-  end_function
-
-# Accessor for `__tls_base` symbol which is a wasm global an not directly
-# accessible from C/C++.
-.globl _emscripten_tls_base
-_emscripten_tls_base:
-  .functype _emscripten_tls_base () -> (PTR)
-  global.get __tls_base
   end_function
 
 # Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" in JS

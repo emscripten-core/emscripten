@@ -20,6 +20,11 @@ def s_to_c(s):
     return 'u32'
   elif s == 'j':
     return 'u64'
+  elif s == 'p':
+    if settings.MEMORY64:
+      return 'u64'
+    else:
+      return 'u32'
   elif s == 'f':
     return 'f32'
   elif s == 'd':

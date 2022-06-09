@@ -126,6 +126,7 @@ var LibraryEmVal = {
     return Emval.toHandle([]);
   },
 
+  _emval_new_object__sig: 'i',
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: function() {
     return Emval.toHandle({});
@@ -209,6 +210,7 @@ var LibraryEmVal = {
 #endif
   },
 
+  _emval_new__sig: 'iiiii',
   _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$Emval'],
   _emval_new: function(handle, argCount, argTypes, args) {
     handle = Emval.toValue(handle);
@@ -270,6 +272,7 @@ var LibraryEmVal = {
     }
   },
 
+  _emval_get_module_property__sig: 'ii',
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_get_module_property: function(name) {
     name = getStringOrSymbol(name);
@@ -488,6 +491,7 @@ var LibraryEmVal = {
     caller(handle, methodName, null, args);
   },
 
+  _emval_typeof__sig: 'ii',
   _emval_typeof__deps: ['$Emval'],
   _emval_typeof: function(handle) {
     handle = Emval.toValue(handle);

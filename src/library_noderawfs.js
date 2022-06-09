@@ -45,9 +45,9 @@ mergeInto(LibraryManager.library, {
       return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
     },
     createStandardStreams: function() {
-      FS.streams[0] = FS.createStream({ fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false });
+      FS.streams[0] = FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0, 0);
       for (var i = 1; i < 3; i++) {
-        FS.streams[i] = FS.createStream({ fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false });
+        FS.streams[i] = FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i, i);
       }
     },
     // generic function for all node creation
@@ -103,19 +103,19 @@ mergeInto(LibraryManager.library, {
     createStream: function(stream, fd_start, fd_end){
       // Call the original FS.createStream
       var rtn = VFS.createStream(stream, fd_start, fd_end);
-      if (typeof rtn.shared.refcnt == "undefined") {
-        rtn.shared.refcnf = 0;
+      if (typeof rtn.shared.refcnt == 'undefined') {
+        rtn.shared.refcnt = 1;
       } else {
-        rtn.shared.refcnf++;
+        rtn.shared.refcnt++;
       }
       return rtn;
-   },
-   closeStream: function(fd) {
-    if (FS.streams[fd]) {
-      FS.streams[fd].shared.refcnt--;
-    }
-     VFS.closeStream(fd);
-   },
+    },
+    closeStream: function(fd) {
+      if (FS.streams[fd]) {
+        FS.streams[fd].shared.refcnt--;
+      }
+      VFS.closeStream(fd);
+    },
     close: function(stream) {
       FS.closeStream(stream.fd);
       if (!stream.stream_ops && stream.shared.refcnt === 0) {
@@ -174,14 +174,10 @@ mergeInto(LibraryManager.library, {
     allocate: function() {
       throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
     },
-    mmap: function(stream, address, length, position, prot, flags) {
+    mmap: function(stream, length, position, prot, flags) {
       if (stream.stream_ops) {
         // this stream is created by in-memory filesystem
-        return VFS.mmap(stream, address, length, position, prot, flags);
-      }
-      if (address !== 0) {
-        // We don't currently support location hints for the address of the mapping
-        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        return VFS.mmap(stream, length, position, prot, flags);
       }
 
       var ptr = mmapAlloc(length);

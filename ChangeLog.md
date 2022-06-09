@@ -18,13 +18,57 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.9
+3.2.0
 -----
+- Weak undefined symbols fixed in dynamic linking. (#17164)
+- Internally, the name of `main` function now gets mangled (by clang) in the
+  same way as with other wasm targets.  This means that within the wasm module
+  the name of the main function can now be `__main_argc_argv`, but, since we
+  still export this to JS as `_main`, this should not be a user-visible change.
+- Use of pkg-config from cmake not longer causes the C++ include path to be
+  broken. (#17137)
+- `emscripten_runtime_keeplive_push()` and `emscripten_runtime_keeplive_push()`
+  are now exposed to native code and can be used to keep the runtime alive
+  without immediately unwinding the event loop (as
+  `emscripten_exit_with_live_runtime()` does). (#17160)
+
+3.1.13 - 06/02/2022
+-------------------
+- xlocale.h compatibility header was restored after being removed in 3.1.12.
+
+3.1.12 - 05/25/2022
+-------------------
+- Fix crash, introduced in 3.1.11, which occurred when using pointer types
+  (types ending in `*`) with getValue/setValue library functions. (#17028)
+- Fix possible deadlock in multi-threaded builds that use EXIT_RUNTIME=0 with
+  ASSERTIONS enabled. This was introduced in 3.1.3 as part of #16130. (#17044)
+
+3.1.11 - 05/21/2022
+-------------------
+- The return value of `emscripten_get_compiler_setting` was changed from `int`
+  to `long` so that it is compatible with `MEMORY64`.  The return value of this
+  function sometimes contains a pointer value so `int` is not sufficiently
+  wide under `wasm64`. (#16938)
+- The `EM_BUILD_VERBOSE` environment variable only effects test code these days
+  and therefore was renamed to `EMTEST_BUILD_VERBOSE`. (#16904)
+- compiler-rt updated to LLVM 14. (#16991)
+- libc++ updated to LLVM 14. (#17000)
+- libc++abi updated to LLVM 14. (#16993)
+
+3.1.10 - 05/02/2022
+-------------------
+- Bug fixes
+
+3.1.9 - 04/21/2022
+------------------
 - The `-sSHELL_FILE` setting, which (unlike the --shell-file command line
   options) we believe was never tested or externally used, has been removed.
   (#16589)
 - A warning is now issued when passing C++-only settings such
   `-sEXCEPTION_CATCHING_ALLOWED` when not linking as C++. (#16609)
+- Introduce a new [proxying
+  API](https://emscripten.org/docs/api_reference/proxying.h.html) for proxying
+  work between threads.
 
 3.1.8 - 03/24/2022
 ------------------
@@ -305,7 +349,6 @@ See docs/process.md for more on how version tagging works.
 
 2.0.25 - 06/30/2021
 -------------------
-
 - Support for the 'shell' environment is now disabled by default.  Running under
   `d8`, `js`, or `jsc` is not something that most emscripten users ever want to
   do, so including the support code is, more often than not, unnecessary.  Users
@@ -1846,7 +1889,7 @@ v1.37.11: 5/1/2017
 ------------------
  - Added missing SIGSTKSZ define after musl 1.1.15 update (#5149)
  - Fix emscripten_get_mouse_status (#5152)
- - Fix _mm_set_epi64x() function (#5103)
+ - Fix `_mm_set_epi64x()` function (#5103)
  - Fix issue with number of gamepads connected at initial page load (#5169, #5170)
  - Full list of changes:
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.10...1.37.11
@@ -2237,7 +2280,7 @@ v1.36.1: 3/8/2016
    at each explicit JS side stack allocation call to allocate().
  - Fixed an issue with -s SPLIT_MEMORY mode where an unsigned 32-bit memory
    access would come out as signed. (#4150)
- - Fixed asm.js validation in call handlers to llvm_powi_f*.
+ - Fixed asm.js validation in call handlers to `llvm_powi_f*`.
  - Full list of changes:
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.0...1.36.1
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.0...1.36.1
@@ -2252,7 +2295,7 @@ v1.36.0: 2/23/2016
    correct value. (#4092)
  - Implemented new JS optimizer "Duplicate Function Elimination" pass which
    collapses identical functions to save code size.
- - Implemented the _Exit() function.
+ - Implemented the `_Exit()` function.
  - Added support for SSE3 and SSSE3 intrinsics (#4099) and partially for SSE 4.1
    intrinsics (#4030, #4101)
  - Added support for -include-pch flag (#4086)
@@ -2413,7 +2456,7 @@ v1.35.14: 12/15/2015
 
 v1.35.13: 12/15/2015
 --------------------
- - Updated -s USE_PTHREADS code generation to reflect that the SharedInt*Array
+ - Updated -s USE_PTHREADS code generation to reflect that the `SharedInt*Array`
    hierarchy no longer exists in the SharedArrayBuffer spec.
  - Removed references to Atomic.fence() which no longer is part of the
    SharedArrayBuffer specification.
@@ -2512,7 +2555,7 @@ v1.35.5: 11/4/2015
 ------------------
  - Removed Content-Length and Connection: close headers in POST requests.
  - Migrate to using the native C++11-implemented optimizer by default.
- - Fixed call to glDrawBuffers(0, *); (#3890)
+ - Fixed call to `glDrawBuffers(0, *);` (#3890)
  - Fixed lazy file system to work with closure (#3842)
  - Fixed gzip compression with lazy file system (#3837)
  - Added no-op gracefully failing stubs for process spawn functions (#3819)
@@ -2651,7 +2694,7 @@ v1.34.8: 9/9/2015
 
 v1.34.7: 9/5/2015
 -----------------
- - Fixed uses of i64* in side modules.
+ - Fixed uses of `i64*` in side modules.
  - Improved GL support when proxying, and fake WebAudio calls when proxying.
  - Added new main loop timing mode EM_TIMING_SETIMMEDIATE for rendering with
    vsync disabled (#3717)
@@ -2817,7 +2860,7 @@ v1.32.3: 5/15/2015
  - Improved dynamic linking support.
  - Added new option to file_packager.py to store metadata externally.
  - Improved CMake support with CMAKE_CROSSCOMPILING_EMULATOR (#3447).
- - Added support for sysconf(_SC_PHYS_PAGES) (#3405, 3442).
+ - Added support for `sysconf(_SC_PHYS_PAGES)` (#3405, 3442).
  - Full list of changes:
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.2...1.32.3
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.2...1.32.3
@@ -3053,7 +3096,7 @@ v1.29.10: 2/19/2015
  - Improved the error message in abort().
  - Fix main loop handling during emterpreter sync save/load.
  - Handle emscripten_async_call and friends during sleep, by pausing all
-   safeSet*() operations.
+   `safeSet*()` operations.
  - Add support for Google WTF when building with --tracing.
  - Improve emterpreter stability with fuzzing.
  - Add an option to load the memory initializer file from a typed array (#3187)
@@ -3077,7 +3120,7 @@ v1.29.9: 2/9/2015
    otherwise minified, except that function names are kept intact, for use in
    profilers and getting descriptive call stacks.
  - The Module object is no longer written in global scope. (#3167)
- - Added new emscripten_idb_* API. (#3169)
+ - Added new `emscripten_idb_*` API. (#3169)
  - Added new function emscripten_wget_data().
  - Add support for GL_RED with GLES3/WebGL2. (#3176)
  - Added basic WebVR support. (#3177)
@@ -3114,7 +3157,7 @@ v1.29.7: 1/28/2015
 
 v1.29.6: 1/23/2015
 -------------------
- - Fixed an issue where calling glGen*() when the GL context was lost might
+ - Fixed an issue where calling `glGen*()` when the GL context was lost might
    throw a JS exception, instead a GL_INVALID_OPERATION is now recorded.
  - Improve label handling in native optimizer.
  - Full list of changes:

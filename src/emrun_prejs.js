@@ -2,6 +2,9 @@
  * @license
  * Copyright 2013 The Emscripten Authors
  * SPDX-License-Identifier: MIT
+ *
+ * This file gets implicatly injected as a `--pre-js` file when
+ * emcc is run with `--emrun`
  */
 
 // Route URL GET parameters to argc+argv

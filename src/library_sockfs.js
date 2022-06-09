@@ -204,8 +204,7 @@ mergeInto(LibraryManager.library, {
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
               subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
 
-              // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
-              opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
+              opts = subProtocols;
             }
 
             // some webservers (azure) does not support subprotocol header
@@ -340,11 +339,11 @@ mergeInto(LibraryManager.library, {
 
         if (ENVIRONMENT_IS_NODE) {
           peer.socket.on('open', handleOpen);
-          peer.socket.on('message', function(data, flags) {
-            if (!flags.binary) {
+          peer.socket.on('message', function(data, isBinary) {
+            if (!isBinary) {
               return;
             }
-            handleMessage((new Uint8Array(data)).buffer);  // copy from node Buffer -> ArrayBuffer
+            handleMessage((new Uint8Array(data)).buffer); // copy from node Buffer -> ArrayBuffer
           });
           peer.socket.on('close', function() {
             Module['websocket'].emit('close', sock.stream.fd);
@@ -541,7 +540,7 @@ mergeInto(LibraryManager.library, {
             Module['websocket'].emit('connection', sock.stream.fd);
           }
         });
-        sock.server.on('closed', function() {
+        sock.server.on('close', function() {
           Module['websocket'].emit('close', sock.stream.fd);
           sock.server = null;
         });

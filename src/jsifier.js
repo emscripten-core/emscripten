@@ -90,6 +90,46 @@ function runJSify(functionsOnly) {
     });
   }
 
+  function convertPointerParams(snippet, sig) {
+    // Automatically convert any incoming pointer arguments from BigInt
+    // to double (this limits the range to int53).
+    // And convert the return value if the function returns a pointer.
+    return modifyFunction(snippet, (name, args, body) => {
+      const argNames = args.split(',');
+      let newArgs = [];
+      let argConvertions = '';
+      for (let i = 1; i < sig.length; i++) {
+        const name = argNames[i - 1];
+        if (sig[i] == 'p') {
+          argConvertions += `${name} = Number(${name})\n`;
+          newArgs.push(`Number(${name})`);
+        } else {
+          newArgs.push(name);
+        }
+      }
+
+      if (sig[0] == 'p') {
+        // For functions that return a pointer we need to convert
+        // the return value too, which means we need to wrap the
+        // body in an inner function.
+        newArgs = newArgs.join(',');
+        return `\
+function ${name}(${args}) {
+  var ret = ((${args}) => { ${body} })(${newArgs});
+  return BigInt(ret);
+}`;
+      }
+
+      // Otherwise no inner function is needed and we covert the arguments
+      // before executing the function body.
+      return `\
+function ${name}(${args}) {
+  ${argConvertions};
+  ${body};
+}`;
+    });
+  }
+
   function processLibraryFunction(snippet, ident, finalName) {
     // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
@@ -109,6 +149,12 @@ function ${name}(${args}) {
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
+    }
+    if (MEMORY64) {
+      const sig = LibraryManager.library[ident + '__sig'];
+      if (sig && sig.includes('p')) {
+        snippet = convertPointerParams(snippet, sig);
+      }
     }
     return snippet;
   }
@@ -151,14 +197,22 @@ function ${name}(${args}) {
         return '';
       }
 
-      let noExport = false;
+      // This gets set to true in the case of dynamic linking for symbols that
+      // are undefined in the main module.  In this case we create a stub that
+      // will resolve the correct symbol at runtime, or assert if its missing.
+      let isStub = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
         if (ONLY_CALC_JS_SYMBOLS) {
           return;
         }
-        if (!isDefined(ident)) {
-          let msg = 'undefined symbol: ' + ident;
+        const isWeakImport = WEAK_IMPORTS.has(ident);
+        if (!isDefined(ident) && !isWeakImport) {
+          let undefinedSym = ident;
+          if (ident === '__main_argc_argv') {
+            undefinedSym = 'main';
+          }
+          let msg = 'undefined symbol: ' + undefinedSym;
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
@@ -170,7 +224,7 @@ function ${name}(${args}) {
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
-          if (ident === 'main' && STANDALONE_WASM) {
+          if (undefinedSym === 'main' && STANDALONE_WASM) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
@@ -189,7 +243,7 @@ function ${name}(${args}) {
           }
           const functionBody = assertion + `return ${target}.apply(null, arguments);`;
           LibraryManager.library[ident] = new Function(functionBody);
-          noExport = true;
+          isStub = true;
         }
       }
 
@@ -333,11 +387,19 @@ function ${name}(${args}) {
       const sig = LibraryManager.library[ident + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(finalName)) && !noExport) {
+      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(finalName)) && !isStub) {
         contentText += `\nModule["${finalName}"] = ${finalName};`;
       }
-      if (MAIN_MODULE && sig) {
+      // Relocatable code needs signatures to create proper wrappers. Stack
+      // switching needs signatures so we can create a proper
+      // WebAssembly.Function with the signature for the Promise API.
+      // TODO: For asyncify we could only add the signatures we actually need,
+      //       of async imports/exports.
+      if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
         contentText += `\n${finalName}.sig = '${sig}';`;
+      }
+      if (isStub) {
+        contentText += `\n${finalName}.stub = true;`;
       }
 
       let commentText = '';
@@ -399,15 +461,10 @@ function ${name}(${args}) {
     print(pre);
 
     // Print out global variables and postsets TODO: batching
-    const legalizedI64sDefault = legalizedI64s;
-    legalizedI64s = false;
-
     runJSify(true);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
-
-    legalizedI64s = legalizedI64sDefault;
 
     if (USE_PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');

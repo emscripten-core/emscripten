@@ -51,10 +51,12 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
-// Thread-local:
-#if EMBIND
-var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
-#endif
+// Thread-local guard variable for one-time init of the JS state
+var initializedJS = false;
+
+// Proxying queues that were notified before the thread started and need to be
+// executed as part of startup.
+var pendingNotifiedProxyingQueues = [];
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -209,45 +211,28 @@ self.onmessage = (e) => {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].threadInit();
+      Module['PThread'].threadInitTLS();
 
-#if EMBIND
-      // Embind must initialize itself on all threads, as it generates support JS.
-      // We only do this once per worker since they get reused
       if (!initializedJS) {
+#if EMBIND
+        // Embind must initialize itself on all threads, as it generates support JS.
+        // We only do this once per worker since they get reused
         Module['___embind_register_native_and_builtin_types']();
-        initializedJS = true;
-      }
 #endif // EMBIND
 
-      try {
-        // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
-        // Native codebases sometimes spawn threads with other thread entry point signatures,
-        // such as void ThreadMain(void *arg), void *ThreadMain(), or void ThreadMain().
-        // That is not acceptable per C/C++ specification, but x86 compiler ABI extensions
-        // enable that to work. If you find the following line to crash, either change the signature
-        // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
-        // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86 ABI extension.
-        var result = Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
+        // Execute any proxied work that came in before the thread was
+        // initialized. Only do this once because it is only possible for
+        // proxying notifications to arrive before thread initialization on
+        // fresh workers.
+        pendingNotifiedProxyingQueues.forEach(queue => {
+          Module['executeNotifiedProxyingQueue'](queue);
+        });
+        pendingNotifiedProxyingQueues = [];
+        initializedJS = true;
+      }
 
-#if STACK_OVERFLOW_CHECK
-        Module['checkStackCookie']();
-#endif
-#if MINIMAL_RUNTIME
-        // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
-        // pthreads. To exit a pthread with live runtime, use the function
-        // emscripten_unwind_to_js_event_loop() in the pthread body.
-        // The thread might have finished without calling pthread_exit(). If so,
-        // then perform the exit operation ourselves.
-        // (This is a no-op if explicit pthread_exit() had been called prior.)
-        Module['__emscripten_thread_exit'](result);
-#else
-        if (Module['keepRuntimeAlive']()) {
-          Module['PThread'].setExitStatus(result);
-        } else {
-          Module['__emscripten_thread_exit'](result);
-        }
-#endif
+      try {
+        Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
       } catch(ex) {
         if (ex != 'unwind') {
           // ExitStatus not present in MINIMAL_RUNTIME
@@ -286,7 +271,12 @@ self.onmessage = (e) => {
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processProxyingQueue') {
-      executeNotifiedProxyingQueue(e.data.queue);
+      if (initializedJS) {
+        Module['executeNotifiedProxyingQueue'](e.data.queue);
+      } else {
+        // Defer executing this queue until the runtime is initialized.
+        pendingNotifiedProxyingQueues.push(e.data.queue);
+      }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);

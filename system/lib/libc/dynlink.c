@@ -22,7 +22,7 @@
 
 //#define DYLINK_DEBUG
 
-void _dlinit();
+void _dlinit(struct dso* main_dso_handle);
 void* _dlopen_js(struct dso* handle);
 void* _dlsym_js(struct dso* handle, const char* symbol);
 void _emscripten_dlopen_js(struct dso* handle,

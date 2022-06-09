@@ -17,7 +17,7 @@
 extern char __global_base;
 
 #define kLowMemBeg     ((uptr) &__global_base)
-#define kLowMemEnd     ((kLowShadowBeg << SHADOW_SCALE) - 1)
+#define kLowMemEnd     ((kLowShadowBeg << ASAN_SHADOW_SCALE) - 1)
 
 #define kLowShadowBeg  0
 #define kLowShadowEnd  ((uptr) &__global_base - 1)
@@ -43,7 +43,7 @@ extern char __global_base;
 // This allows attempted accesses into the shadow memory, as well as null
 // pointer dereferences, to be detected properly.
 // The shadow memory of the shadow memory is poisoned.
-#define MEM_TO_SHADOW(mem) ((mem) >> SHADOW_SCALE)
+#define MEM_TO_SHADOW(mem) ((mem) >> ASAN_SHADOW_SCALE)
 
 namespace __asan {
 
