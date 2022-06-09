@@ -1640,7 +1640,7 @@ int main(int argc, char **argv)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
     if '-fwasm-exceptions' in self.emcc_args:
       exports = self.get_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception'])
 
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
@@ -6777,6 +6777,8 @@ void* operator new(size_t size) {
                  includes=[test_file('third_party/bullet/src')])
 
   @no_asan('issues with freetype itself')
+  @no_ubsan('local count too large')
+  @no_lsan('output differs')
   @needs_make('depends on freetype')
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test

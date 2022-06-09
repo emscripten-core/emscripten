@@ -829,7 +829,7 @@ f.close()
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
-    self.assertContained('SDL version: 2.0.', output)
+    self.assertContained('SDL version: 2.', output)
 
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
@@ -8274,9 +8274,12 @@ end
   def test_extern_weak(self):
     self.do_other_test('test_extern_weak.c')
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/12819')
   def test_extern_weak_dynamic(self):
+    # If the symbols are left undefined we should get the same expected output as with static
+    # linking (i.e. null symbol addresses);
     self.do_other_test('test_extern_weak.c', emcc_args=['-sMAIN_MODULE=2'])
+    self.run_process([EMCC, '-o', 'libside.wasm', test_file('other/test_extern_weak_side.c'), '-sSIDE_MODULE'])
+    self.do_run_in_out_file_test(test_file('other/test_extern_weak.c'), out_suffix='.resolved', emcc_args=['-sMAIN_MODULE=2', 'libside.wasm'])
 
   def test_main_module_without_main(self):
     create_file('pre.js', r'''
