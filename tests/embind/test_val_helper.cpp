@@ -3,7 +3,7 @@
 #include <emscripten.h>
 #include <emscripten/val.h>
 #include <emscripten/val_helper.h>
-#include <malloc.h>
+#include <malloc.h>  // for ::mallinfo
 #include <iostream>
 #include <stdio.h>
 #include <string>
@@ -30,8 +30,7 @@ unsigned int get_used_memory() {
 namespace std {
 
 template <class T, std::size_t N>
-constexpr std::size_t size(const T (&array)[N]) noexcept
-{
+constexpr std::size_t size(const T (&array)[N]) noexcept {
     return N;
 }
 
@@ -268,10 +267,12 @@ void test_cases() {
   va.add("hello");
   va.add(std::string("world"));
   va.add(val::array());
+  va.add(val(10));
   va.finalize();
   ensure_js("a[7] == 'hello'");
   ensure_js("a[8] == 'world'");
   ensure_js("Array.isArray(a[9]) && a[9].length == 0");
+  ensure_js("a[10] == 10");
 
   test("add(array)");
   EM_ASM(
@@ -288,6 +289,8 @@ void test_cases() {
   va.add(ar);
   std::array<std::string, 5> ar1{"4", "5", "6", "99"};
   va.add(ar1);
+  char ar2[]{6, 7, 8};
+  va.add(ar2);
   va.finalize();
   ensure_js("a[0].length == 16 && a[0][0] == 1 && a[0][2] == 3 && a[0][15] == 16");
   ensure_js("a[1].length == 5 && a[1][0] == 5 && a[1][1] == 6 && a[1][5] == undefined");
@@ -295,6 +298,7 @@ void test_cases() {
   ensure_js("a[3].length == 3 && a[3][0] == '1' && a[3][1] == '2' && a[3][2] == '3' ");
   ensure_js("a[4].length == 5 && a[4][0] == 1 && a[4][1] == 2 && a[4][4] == 5");
   ensure_js("a[5].length == 5 && a[5][0] == '4' && a[5][1] == '5' && a[5][2] == '6' && a[5][3] == '99' && a[5][4] == ''");
+  ensure_js("a[6].length == 3 && a[6][0] == 6 && a[6][1] == 7 && a[6][2] == 8");
 
   test("concat(array&)");
   EM_ASM(
@@ -332,6 +336,7 @@ void test_cases() {
   vo.set("k5", (uint16_t)5);
   val a("ka");
   vo.set(a, "value_a");
+  vo.set("k6", val(6));
   vo.finalize();
   ensure_js("a.k1 == 1");
   ensure_js("a.k2 == 1.1");
@@ -339,15 +344,19 @@ void test_cases() {
   ensure_js("a.k4 == 'world'");
   ensure_js("a.k5 == 5");
   ensure_js("a.ka == 'value_a'");
+  ensure_js("a.k6 == 6");
 
   test("set(k, array)");
   vo.set("k6", vec);
   vo.set("k7", std::vector<float>{1, 2, 3, 4, 5, 6});
+  vo.set("k8", ar2);
   vo.finalize();
   ensure_js("a.k6 instanceof Array && a.k6.length == 16");
   ensure_js("a.k6[0] == 1 && a.k6[1] == 2 && a.k6[9] == 10 && a.k6[15] == 16");
   ensure_js("a.k7 instanceof Array && a.k7.length == 6");
   ensure_js("a.k7[0] == 1 && a.k7[1] == 2 && a.k7[2] == 3 && a.k7[5] == 6");
+  ensure_js("a.k8 instanceof Array && a.k8.length == 3");
+  ensure_js("a.k8[0] == 6 && a.k8[1] == 7 && a.k8[2] == 8");
 
   test("set(k, VH)");
   Val::VH vha(Val::ARRAY);

@@ -11,8 +11,10 @@ pass
 pass
 pass
 pass
+pass
 test:
 add(array)
+pass
 pass
 pass
 pass
@@ -37,8 +39,11 @@ pass
 pass
 pass
 pass
+pass
 test:
 set(k, array)
+pass
+pass
 pass
 pass
 pass
