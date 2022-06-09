@@ -1547,9 +1547,6 @@ def setup_pthreads(target):
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
-  if settings.PROXY_TO_PTHREAD:
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
-
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
@@ -1744,8 +1741,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead
-      # we export `emscripten_proxy_main` (elsewhwere).
+      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
       if not settings.PROXY_TO_PTHREAD:
         settings.EXPORTED_FUNCTIONS = ['_main']
 

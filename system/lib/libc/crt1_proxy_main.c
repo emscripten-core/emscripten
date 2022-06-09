@@ -33,7 +33,7 @@ static void* _main_thread(void* param) {
   return NULL;
 }
 
-int emscripten_proxy_main(int argc, char** argv) {
+EMSCRIPTEN_KEEPALIVE int _emscripten_proxy_main(int argc, char** argv) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);

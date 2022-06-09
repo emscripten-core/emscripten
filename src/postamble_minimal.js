@@ -19,7 +19,7 @@ function run() {
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = _emscripten_proxy_main();
+  var ret = __emscripten_proxy_main();
 #else
   var ret = _main();
 
