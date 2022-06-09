@@ -12,6 +12,8 @@
 # then run `tools/create_entry_points.py`
 
 unset _PYTHON_SYSCONFIGDATA_NAME
+unset PYTHONHOME
+unset PYTHONPATH
 
 if [ -z "$PYTHON" ]; then
   PYTHON=$EMSDK_PYTHON
