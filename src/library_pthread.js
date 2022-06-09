@@ -491,14 +491,13 @@ var LibraryPThread = {
       if (!__tls_base) {
 #if ASSERTIONS
         // __tls_base should never be zero if there are tls exports
-        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+        assert(__tls_base || metadata.tlsExports.size == 0);
 #endif
         return;
       }
-      for (var sym in metadata.tlsExports) {
-        metadata.tlsExports[sym] = moduleExports[sym];
-      }
-      relocateExports(metadata.tlsExports, __tls_base, /*replace=*/true);
+      var tlsExports = {};
+      metadata.tlsExports.forEach((s) => tlsExports[s] = moduleExports[s]);
+      relocateExports(tlsExports, __tls_base, /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on

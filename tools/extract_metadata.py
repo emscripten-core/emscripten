@@ -114,7 +114,7 @@ def get_main_reads_params(module, export_map, imported_funcs):
   if settings.STANDALONE_WASM:
     return 1
 
-  main = export_map.get('main')
+  main = export_map.get('main') or export_map.get('__main_argc_argv')
   if not main or main.kind != webassembly.ExternType.FUNC:
     return 0
 

@@ -52,6 +52,7 @@ EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
+WEAK_IMPORTS = new Set(WEAK_IMPORTS);
 
 // Side modules are pure wasm and have no JS
 assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
