@@ -273,6 +273,10 @@ class ValHelper {
   void add(std::array<T, SIZE>&& a) {
     internal::AddArraySpan(a.data(), a.size(), this, true);
   }
+  template <typename T, size_t SIZE>
+  void add(const T(&a)[SIZE]) {
+    internal::AddArraySpan(a, SIZE, this, false);
+  }
 
   void concat_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
     cursor_->type = TYPE::ARRAY;
@@ -299,6 +303,10 @@ class ValHelper {
   template <typename T, size_t SIZE>
   void concat(std::array<T, SIZE>&& a) {
     internal::ConcatArraySpan(a.data(), a.size(), this, true);
+  }
+  template <typename T, size_t SIZE>
+  void concat(const T(&a)[SIZE]) {
+    internal::ConcatArraySpan(a, SIZE, this, false);
   }
 
   void finalize() {

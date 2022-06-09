@@ -206,7 +206,7 @@ void test_valhelper() {
 // test_val loop 100000 cost: 5737.500000
 // test_valhelper loop 100000 cost: 1155.300000
 
-void test_time_perf() {
+void test_perf() {
   const size_t LoopTimes = 100000;
   double start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
@@ -219,6 +219,26 @@ void test_time_perf() {
     test_valhelper();
   }
   printf("test_valhelper loop %zu cost: %f\n", LoopTimes, emscripten_get_now() - start);
+}
+
+// loop 100000 val biga cost: 4519.156967
+// loop 100000 VH biga cost: 214.419598
+void test_perf_biga() {
+  const size_t LoopTimes = 100000;
+  double start = emscripten_get_now();
+  for (size_t i = 0; i < LoopTimes; i++) {
+    val vo = val::object();
+    vo.set("k", val::array(BIG_A, BIG_A+std::size(BIG_A)));
+  }
+  printf("loop %zu val biga cost: %f\n", LoopTimes, emscripten_get_now() - start);
+
+  start = emscripten_get_now();
+  for (size_t i = 0; i < LoopTimes; i++) {
+    Val::VH vo;
+    vo.set("k", BIG_A);
+    vo.finalize();
+  }
+  printf("loop %zu VH biga cost: %f\n", LoopTimes, emscripten_get_now() - start);
 }
 
 void test_cases() {
@@ -386,6 +406,7 @@ int main() {
   auto m2 = get_used_memory();
   assert(m1 == m2);
 
-  // tests::test_time_perf();
+  // tests::test_perf();
+  // tests::test_perf_biga();
   return 0;
 }
