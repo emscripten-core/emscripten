@@ -364,9 +364,11 @@ mergeInto(LibraryManager.library, {
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // (However, in MAIN_MODULE=1 mode we link in all system libraries, which does
+  // end up adding code that refers to this.)
+  // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
-#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
+#if (SHRINK_LEVEL < 2 || MAIN_MODULE == 1) && !STANDALONE_WASM
 
   emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
