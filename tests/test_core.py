@@ -1640,7 +1640,7 @@ int main(int argc, char **argv)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
     if '-fwasm-exceptions' in self.emcc_args:
       exports = self.get_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception'])
 
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
@@ -2104,7 +2104,6 @@ int main() {
     self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
-    self.banned_js_engines = [config.V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
@@ -2749,8 +2748,6 @@ The current type of b is: 9
                                  interleaved_output=False, emcc_args=args)
 
   @node_pthreads
-  @no_lsan('https://github.com/emscripten-core/emscripten/issues/17091')
-  @no_asan('https://github.com/emscripten-core/emscripten/issues/17091')
   @no_wasm2js('occasionally hangs in wasm2js (#16569)')
   def test_pthread_proxying_cpp(self):
     self.set_setting('EXIT_RUNTIME')
@@ -2906,8 +2903,6 @@ The current type of b is: 9
     self.do_core_test('test_copyop.cpp')
 
   def test_memcpy_memcmp(self):
-    self.banned_js_engines = [config.V8_ENGINE] # Currently broken under V8_ENGINE but not node
-
     def check(output):
       output = output.replace('\n \n', '\n') # remove extra node output
       return hashlib.sha1(output.encode('utf-8')).hexdigest()
@@ -3276,10 +3271,6 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
-    # Failing under v8 since: https://chromium-review.googlesource.com/712595
-    if self.is_wasm():
-      self.banned_js_engines = [config.V8_ENGINE]
-
     create_file('liblib.c', r'''
       #include <stdio.h>
 
@@ -5506,13 +5497,9 @@ Module = {
     self.do_runf(test_file('fs/test_getdents64.cpp'), '..')
 
   def test_getdents64_special_cases(self):
-    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    self.banned_js_engines = [config.V8_ENGINE]
     self.do_run_in_out_file_test('fs/test_getdents64_special_cases.cpp')
 
   def test_getcwd_with_non_ascii_name(self):
-    # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    self.banned_js_engines = [config.V8_ENGINE]
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
   def test_proc_self_fd(self):
@@ -6104,11 +6091,8 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
-  # i64s in the API, which we'd need to legalize for JS, so in standalone mode
-  # all we can test is wasm VMs
   @also_with_standalone_wasm(wasm2c=True)
   def test_posixtime(self):
-    self.banned_js_engines = [config.V8_ENGINE] # v8 lacks monotonic time
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
@@ -6792,9 +6776,11 @@ void* operator new(size_t size) {
                  libraries=self.get_bullet_library(use_cmake),
                  includes=[test_file('third_party/bullet/src')])
 
-  @unittest.skip('LLVM changes have caused this C++ to no longer compile, https://github.com/emscripten-core/emscripten/issues/14614')
   @no_asan('issues with freetype itself')
+  @no_ubsan('local count too large')
+  @no_lsan('output differs')
   @needs_make('depends on freetype')
+  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
@@ -7870,7 +7856,6 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    self.banned_js_engines = [config.V8_ENGINE] # v8 doesn't support console.log
     self.set_setting('DEMANGLE_SUPPORT')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')

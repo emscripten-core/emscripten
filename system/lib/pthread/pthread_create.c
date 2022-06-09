@@ -17,6 +17,7 @@
 #include <emscripten/heap.h>
 
 #define STACK_ALIGN 16
+#define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:
 // #define PTHREAD_DEBUG
@@ -109,24 +110,29 @@ int __pthread_create(pthread_t* restrict res,
   // Allocate memory for new thread.  The layout of the thread block is
   // as follows.  From low to high address:
   //
-  // - pthread struct (sizeof struct pthread)
-  // - tls data       (__builtin_wasm_tls_size())
-  // - stack          (_emscripten_default_pthread_stack_size())
-  // - tsd pointers   (__pthread_tsd_size)
+  // 1. pthread struct (sizeof struct pthread)
+  // 2. tls data       (__builtin_wasm_tls_size())
+  // 3. stack          (_emscripten_default_pthread_stack_size())
+  // 4. tsd pointers   (__pthread_tsd_size)
   size_t size = sizeof(struct pthread);
   if (__builtin_wasm_tls_size()) {
-    size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() -1;
+    size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() - 1;
   }
   if (!attr._a_stackaddr) {
     size += attr._a_stacksize + STACK_ALIGN - 1;
   }
-  size += __pthread_tsd_size;
+  size += __pthread_tsd_size + TSD_ALIGN - 1;
 
   // Allocate all the data for the new thread and zero-initialize.
   unsigned char* block = emscripten_builtin_malloc(size);
   memset(block, 0, size);
 
-  struct pthread *new = (struct pthread*)block;
+  uintptr_t offset = (uintptr_t)block;
+
+  // 1. pthread struct
+  struct pthread *new = (struct pthread*)offset;
+  offset += sizeof(struct pthread);
+
   new->map_base = block;
   new->map_size = size;
 
@@ -139,34 +145,39 @@ int __pthread_create(pthread_t* restrict res,
   new->robust_list.head = &new->robust_list.head;
 
   new->locale = &libc.global_locale;
-
-  // tsd slots are at the very end of the block
-  unsigned char* tsd = block + size - __pthread_tsd_size;
-  if (__pthread_tsd_size) {
-    new->tsd = (void*)tsd;
-  }
-
   if (attr._a_detach) {
     new->detach_state = DT_DETACHED;
   } else {
     new->detach_state = DT_JOINABLE;
   }
   new->stack_size = attr._a_stacksize;
+
+  // 2. tls data
+  if (__builtin_wasm_tls_size()) {
+    offset = ROUND_UP(offset, __builtin_wasm_tls_align());
+    new->tls_base = (void*)offset;
+    offset += __builtin_wasm_tls_size();
+  }
+
+  // 3. stack data
   // musl stores top of the stack in pthread_t->stack (i.e. the high
   // end from which it grows down).
   if (attr._a_stackaddr) {
     new->stack = (void*)attr._a_stackaddr;
   } else {
-    new->stack = (void*)((intptr_t)tsd & ~(STACK_ALIGN-1));
+    offset = ROUND_UP(offset + new->stack_size, STACK_ALIGN);
+    new->stack = (void*)offset;
   }
 
-  if (__builtin_wasm_tls_size()) {
-    struct pthread * struct_end = new + 1;
-    new->tls_base = (void*)ROUND_UP((intptr_t)struct_end, __builtin_wasm_tls_align());
-    if (!attr._a_stackaddr) {
-      assert(new->tls_base + __builtin_wasm_tls_size() < new->stack);
-    }
+  // 4. tsd slots
+  if (__pthread_tsd_size) {
+    offset = ROUND_UP(offset, TSD_ALIGN);
+    new->tsd = (void*)offset;
+    offset += __pthread_tsd_size;
   }
+
+  // Check that we didn't use more data than we allocated.
+  assert(offset < (uintptr_t)block + size);
 
 #ifndef NDEBUG
   _emscripten_thread_profiler_init(new);

@@ -9,17 +9,19 @@
 #include <wasi/api.h>
 #include <sysexits.h>
 
+// Much of this code comes from:
+// https://github.com/CraneStation/wasi-libc/blob/master/libc-bottom-half/crt/crt1.c
+// Converted malloc() calls to alloca() to avoid including malloc in all programs.
+
 int __main_argc_argv(int argc, char *argv[]);
 
-// If main() uses argc/argv, then no __original_main is emitted, and then
-// this definition is used, which loads those values and sends them to main.
-// If main() does not use argc/argv, then the compiler emits __original_main
-// and this definition is not necessary, which avoids the wasi calls for
-// getting the args.
-// If there is no main() at all, we don't need this definition, but it will get
-// linked in. However, _start checks for main()'s existence and only calls
-// __original_main() if it does, so this will not be called, which allows
-// LLVM LTO or the Binaryen optimizer to remove it.
+// If the application's `main` does not uses argc/argv, then it will be defined
+// (by llvm) with an __main_void alias, and therefore this function will not
+// be included, and `_start` will call the application's `__main_void` directly.
+//
+// If the application's `main` does use argc/argv, then _start will call this
+// function which which loads argv valud values and sends them to to the
+// application's `main` which gets mangled to `__main_argc_argv` by llvm.
 __attribute__((weak))
 int __main_void(void) {
   /* Fill in the arguments from WASI syscalls. */

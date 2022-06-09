@@ -296,7 +296,8 @@ global.LibraryManager = {
           }
           const ret = sig == 'v' ? '' : 'return ';
           const args = genArgSequence(argCount).join(',');
-          lib[x] = new Function(args, `${ret}_${target}(${args});`);
+          const mangledName = mangleCSymbolName(target);
+          lib[x] = new Function(args, `${ret}${mangledName}(${args});`);
 
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);

@@ -1653,8 +1653,9 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_files(self):
     files = files_in_path(
         path='system/lib/standalone',
-        filenames=['standalone.c', 'standalone_wasm_stdio.c', '__original_main.c',
-                   '__main_void.c', '__main_argc_argv.c'])
+        filenames=['standalone.c',
+                   'standalone_wasm_stdio.c',
+                   '__main_void.c'])
     files += files_in_path(
         path='system/lib/libc',
         filenames=['emscripten_memcpy.c'])
