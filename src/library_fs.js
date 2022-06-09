@@ -400,32 +400,44 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function() {
-          this.shared = { };
+        FS.FSStream = function FSStream() {
+          this.shared = {flags : 0, position : 0};
         };
-        FS.FSStream.prototype = {
+        FS.FSStream.prototype = Object.create(Object.prototype);
+        FS.FSStream.prototype.constructor = FS.FSStream;
+        Object.defineProperties(FS.FSStream.prototype, {
           object: {
-            get: function() { return this.node; },
-            set: function(val) { this.node = val; }
+            get: function () {
+              return this.node;
+            },
+            set: function (val) {
+              this.node = val;
+            },
+            enumerable : true,
           },
           isRead: {
-            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; },
+            enumerable : true,
           },
           isWrite: {
-            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; },
+            enumerable : true,
           },
           isAppend: {
-            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
+            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); },
+            enumerable : true,
           },
           flags: {
-            get: function() { return this.shared.flags; },
-            set: function(val) { this.shared.flags = val; },
+            get: function () { return this.shared.flags; },
+            set: function (val) { this.shared.flags = val; },
+            enumerable : true,
           },
-          position : {
-            get function() { return this.shared.position; },
-            set: function(val) { this.shared.position = val; },
+          position: {
+            get: function() { return this.shared.position; },
+            set: function (val) { this.shared.position = val; },
+            enumerable : true,
           },
-        };
+        });
       }
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
