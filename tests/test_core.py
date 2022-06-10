@@ -1640,7 +1640,7 @@ int main(int argc, char **argv)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
     if '-fwasm-exceptions' in self.emcc_args:
       exports = self.get_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___increment_wasm_exception_refcount', '___decrement_wasm_exception_refcount'])
+      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception'])
 
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
@@ -6776,9 +6776,11 @@ void* operator new(size_t size) {
                  libraries=self.get_bullet_library(use_cmake),
                  includes=[test_file('third_party/bullet/src')])
 
-  @unittest.skip('LLVM changes have caused this C++ to no longer compile, https://github.com/emscripten-core/emscripten/issues/14614')
   @no_asan('issues with freetype itself')
+  @no_ubsan('local count too large')
+  @no_lsan('output differs')
   @needs_make('depends on freetype')
+  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
@@ -7486,6 +7488,11 @@ void* operator new(size_t size) {
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
+
+  @no_wasm64('embind does not yet support MEMORY64')
+  def test_embind_dynamic_initialization(self):
+    self.emcc_args += ['-lembind']
+    self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
 
   @no_wasm2js('wasm_bigint')
   @no_wasm64('embind does not yet support MEMORY64')

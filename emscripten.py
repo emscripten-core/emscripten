@@ -112,7 +112,15 @@ def to_nice_ident(ident): # limited version of the JS function toNiceIdent
   return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
 
-def update_settings_glue(metadata):
+def get_weak_imports(main_wasm):
+  dylink_sec = webassembly.parse_dylink_section(main_wasm)
+  for symbols in dylink_sec.import_info.values():
+    for symbol, flags in symbols.items():
+      if flags & webassembly.SYMBOL_BINDING_MASK == webassembly.SYMBOL_BINDING_WEAK:
+        settings.WEAK_IMPORTS.append(symbol)
+
+
+def update_settings_glue(wasm_file, metadata):
   optimize_syscalls(metadata['declares'])
 
   # Integrate info from backend
@@ -124,6 +132,8 @@ def update_settings_glue(metadata):
     syms = set(syms).difference(metadata['exports'])
     syms.update(metadata['globalImports'])
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
+    if settings.MAIN_MODULE:
+      get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
   # Store function exports so that Closure and metadce can track these even in
@@ -296,7 +306,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
-  update_settings_glue(metadata)
+  update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
     module = webassembly.Module(in_wasm)
@@ -743,29 +753,24 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending(invoke_funcs, metadata):
-  em_js_funcs = set(metadata['emJsFuncs'].keys())
-  declares = [asmjs_mangle(d) for d in metadata['declares']]
-  externs = [asmjs_mangle(e) for e in metadata['globalImports']]
-  send_items = set(invoke_funcs + declares + externs)
-  send_items.update(em_js_funcs)
-
-  def fix_import_name(g):
-    # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
-    # symbols.  Emscripten currently expects symbols to start with '_' so we
-    # artificially add them to the output of emscripten-wasm-finalize and them
-    # strip them again here.
-    # note that we don't do this for EM_JS functions (which, rarely, may have
-    # a '_' prefix)
-    if g.startswith('_') and g not in em_js_funcs:
-      return g[1:]
-    return g
-
+  # Map of wasm imports to mangled/external/JS names
   send_items_map = OrderedDict()
-  for name in send_items:
-    internal_name = fix_import_name(name)
-    if internal_name in send_items_map:
-      exit_with_error('duplicate symbol in exports to wasm: %s', name)
-    send_items_map[internal_name] = name
+
+  def add_send_items(name, mangled_name, ignore_dups=False):
+    # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
+    if not ignore_dups and name in send_items_map:
+      assert name not in send_items_map, 'duplicate symbol in exports: %s' % name
+    send_items_map[name] = mangled_name
+
+  for name in metadata['emJsFuncs']:
+    add_send_items(name, name)
+  for name in invoke_funcs:
+    add_send_items(name, name)
+  for name in metadata['declares']:
+    add_send_items(name, asmjs_mangle(name))
+  for name in metadata['globalImports']:
+    # globalImports can currently overlap with declares, in the case of dynamic linking
+    add_send_items(name, asmjs_mangle(name), ignore_dups=settings.RELOCATABLE)
 
   add_standard_wasm_imports(send_items_map)
 

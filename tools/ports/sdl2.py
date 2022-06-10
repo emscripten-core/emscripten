@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '4b8d69a41687e5f6f4b05f7fd9804dd9fcac0347'
-HASH = '2d4d577c7584da22306b05a44bc08200460a33cd414fed2dc948e2a86e7b2d1a5cbc13bacadb63618823ba63c210f21c570adbab39f7645bf902196fa91c6b4e'
+TAG = '0fcfaf9e9482953ee425cc15b91160b92de3df7f'
+HASH = '2891b65bbe34ada80de6c83751b01cd259f877123f0eeb31cbacf8f7bac06b2157e17a2183f58911a9849ab57ca8aba165d5b3058ecd2d7191bfb61c0595807e'
 SUBDIR = 'SDL-' + TAG
 
 
@@ -28,13 +28,13 @@ def get(ports, settings, shared):
     ports.install_headers(source_include_path, target='SDL2')
 
     # build
-    srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c
-    atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
+    srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_guid.c SDL_hints.c SDL_list.c SDL_log.c
+    atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
     audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
-    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
+    joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
     render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c
     render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c

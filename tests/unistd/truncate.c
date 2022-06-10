@@ -25,7 +25,7 @@ void setup() {
     FS.chdir('working');
     FS.writeFile('towrite', 'abcdef');
     FS.writeFile('toread', 'abcdef');
-    FS.chmod('toread', 0o444);
+    FS.chmod('toread', 0444);
   );
 #else
   FILE* f = fopen("towrite", "w");
@@ -79,7 +79,17 @@ int main() {
 
   printf("truncate(2): %d\n", truncate("towrite", 2));
   printf("errno: %s\n", strerror(errno));
-  stat("towrite", &s);
+  fstat(f, &s);
+  printf("st_size: %lld\n", s.st_size);
+  memset(&s, 0, sizeof s);
+  errno = 0;
+  printf("\n");
+
+  // Only permissions of the file, not opening mode, matter for truncation.
+  printf("open(O_TRUNC)\n");
+  open("towrite", O_RDONLY | O_TRUNC);
+  printf("errno: %s\n", strerror(errno));
+  fstat(f, &s);
   printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
@@ -87,13 +97,22 @@ int main() {
 
   printf("truncate(readonly, 2): %d\n", truncate("toread", 2));
   printf("errno: %s\n", strerror(errno));
-  stat("toread", &s);
+  fstat(f2, &s);
   printf("st_size: %lld\n", s.st_size);
   memset(&s, 0, sizeof s);
   errno = 0;
   printf("\n");
 
   printf("ftruncate(readonly, 4): %d\n", ftruncate(f2, 4));
+  printf("errno: %s\n", strerror(errno));
+  fstat(f2, &s);
+  printf("st_size: %lld\n", s.st_size);
+  memset(&s, 0, sizeof s);
+  errno = 0;
+  printf("\n");
+
+  printf("open(readonly, O_TRUNC)\n");
+  open("toread", O_RDONLY | O_TRUNC);
   printf("errno: %s\n", strerror(errno));
   fstat(f2, &s);
   printf("st_size: %lld\n", s.st_size);

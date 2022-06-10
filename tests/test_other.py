@@ -829,7 +829,7 @@ f.close()
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
-    self.assertContained('SDL version: 2.0.', output)
+    self.assertContained('SDL version: 2.', output)
 
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
@@ -8274,9 +8274,12 @@ end
   def test_extern_weak(self):
     self.do_other_test('test_extern_weak.c')
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/12819')
   def test_extern_weak_dynamic(self):
+    # If the symbols are left undefined we should get the same expected output as with static
+    # linking (i.e. null symbol addresses);
     self.do_other_test('test_extern_weak.c', emcc_args=['-sMAIN_MODULE=2'])
+    self.run_process([EMCC, '-o', 'libside.wasm', test_file('other/test_extern_weak_side.c'), '-sSIDE_MODULE'])
+    self.do_run_in_out_file_test(test_file('other/test_extern_weak.c'), out_suffix='.resolved', emcc_args=['-sMAIN_MODULE=2', 'libside.wasm'])
 
   def test_main_module_without_main(self):
     create_file('pre.js', r'''
@@ -12025,9 +12028,10 @@ Module['postRun'] = function() {{
       self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
-  # works with -sPROXY_POSIX_SOCKETS.
-  def test_dylink_proxy_posix_sockets(self):
-    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS'])
+  # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
+  # system libraries in different ways.
+  def test_dylink_proxy_posix_sockets_oz(self):
+    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
 
   def test_in_tree_header_usage(self):
     # Using headers directly from where they live in the source tree does not work.
