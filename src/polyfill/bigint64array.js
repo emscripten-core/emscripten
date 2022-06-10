@@ -5,16 +5,16 @@ if (typeof globalThis.BigInt64Array === "undefined") {
   // v15.0
 
   function partsToBigIntSigned(lower, upper) {
-    return BigInt(lower) | (BigInt(upper + 2 * (upper & 0x80000000)) << BigInt(32));
+    return BigInt(lower) | (BigInt(upper + 2 * (upper & 0x80000000)) << 32n);
   }
 
   function partsToBigIntUnsigned(lower, upper) {
-    return BigInt(lower) | (BigInt(upper) << BigInt(32));
+    return BigInt(lower) | (BigInt(upper) << 32n);
   }
 
   function bigIntToParts(value) {
     var lower = Number(BigInt(value) & BigInt(0xffffffff)) | 0;
-    var upper = (Number(BigInt(value) >> BigInt(32)) | 0);
+    var upper = (Number(BigInt(value) >> 32n) | 0);
     return [lower, upper];
   }
 
