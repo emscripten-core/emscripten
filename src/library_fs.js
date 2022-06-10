@@ -400,52 +400,40 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function FSStream() {
-          this.shared = {flags : 0, position : 0};
+        FS.FSStream = /** @constructor */ function() {
+          this.shared = { };
         };
         FS.FSStream.prototype = {};
-        FS.FSStream.prototype.constructor = FS.FSStream;
-        /** @nocollapse */
         Object.defineProperties(FS.FSStream.prototype, {
           object: {
             /** @this {FS.FSStream} */
-            get: function () {
-              return this.node;
-            },
+            get: function() { return this.node; },
             /** @this {FS.FSStream} */
-            set: function (val) {
-              this.node = val;
-            },
-            enumerable : true,
+            set: function(val) { this.node = val; }
           },
           isRead: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; },
-            enumerable : true,
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
           },
           isWrite: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; },
-            enumerable : true,
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
           },
           isAppend: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); },
-            enumerable : true,
+            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           },
           flags: {
             /** @this {FS.FSStream} */
-            get: function () { return this.shared.flags; },
+            get: function() { return this.shared.flags; },
             /** @this {FS.FSStream} */
-            set: function (val) { this.shared.flags = val; },
-            enumerable : true,
+            set: function(val) { this.shared.flags = val; },
           },
-          position: {
+          position : {
             /** @this {FS.FSStream} */
             get: function() { return this.shared.position; },
             /** @this {FS.FSStream} */
-            set: function (val) { this.shared.position = val; },
-            enumerable : true,
+            set: function(val) { this.shared.position = val; },
           },
         });
       }
