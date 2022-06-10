@@ -13,7 +13,7 @@ WebAssembly.instantiate(d.wasm, {
     }
 }).then((function(a) {
     a = a.instance.exports;
-    h = a.d;
+    h = a.f;
     g = a.b;
     f = new Uint8Array(g.buffer);
     a.c();

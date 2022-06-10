@@ -3,6 +3,7 @@ __cxa_is_pointer_type
 __errno_location
 __indirect_function_table
 __wasm_call_ctors
+_emscripten_start
 dynCall_iiiiiijj
 dynCall_iiiiij
 dynCall_iiiiijj

@@ -2,10 +2,12 @@ $__emscripten_stdout_close
 $__emscripten_stdout_seek
 $__errno_location
 $__fwritex
+$__original_main
 $__stdio_write
 $__towrite
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_start
 $legalstub$dynCall_jiji
 $main
 $stackAlloc

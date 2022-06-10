@@ -586,6 +586,9 @@ def get_binaryen_passes():
           logger.warning('text file, one line per function.')
           break
 
+      if 'main' in items and '_emscripten_start' in settings.WASM_EXPORTS:
+        items.append('_emscripten_start')
+
     if settings.ASYNCIFY_REMOVE:
       check_human_readable_list(settings.ASYNCIFY_REMOVE)
       passes += ['--pass-arg=asyncify-removelist@%s' % ','.join(settings.ASYNCIFY_REMOVE)]
@@ -1730,6 +1733,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # BigInt support
     settings.WASM_BIGINT = 1
 
+  if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
+    settings.LINKABLE = 1
+    settings.EXPORT_ALL = 1
+
   if options.no_entry:
     settings.EXPECT_MAIN = 0
   elif settings.STANDALONE_WASM:
@@ -1743,12 +1750,16 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+        settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
+      elif not settings.LINKABLE and not settings.MAIN_MODULE and '__emscripten_start' not in settings.USER_EXPORTED_FUNCTIONS:
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
-      if not settings.PROXY_TO_PTHREAD:
+      settings.EXPORTED_FUNCTIONS = ['__emscripten_start']
+      if not settings.STRICT:
+        # To support legacy users to expect `_main` to be explictly exported by default
+        # we still export `_main` here, even though its not strictly necessary.
         settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
@@ -1762,9 +1773,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
-
-  if '_main' in settings.EXPORTED_FUNCTIONS:
-    settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
 
   # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
   # implies full stack overflow checks.
@@ -1874,10 +1882,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # require all the reverse dependencies.
   if settings.INCLUDE_FULL_LIBRARY:
     default_setting(user_settings, 'REVERSE_DEPS', 'all')
-
-  if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
-    settings.LINKABLE = 1
-    settings.EXPORT_ALL = 1
 
   if settings.LINKABLE and settings.USER_EXPORTED_FUNCTIONS:
     diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')

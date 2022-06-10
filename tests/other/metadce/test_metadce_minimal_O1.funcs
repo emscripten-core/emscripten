@@ -1,6 +1,9 @@
 $__errno_location
+$__main_void
 $__wasm_call_ctors
+$_emscripten_start
 $add
 $stackAlloc
 $stackRestore
 $stackSave
+$undefined_weak:main

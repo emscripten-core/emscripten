@@ -15,14 +15,12 @@ function run() {
 
   <<< ATMAINS >>>
 
-#if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = __emscripten_proxy_main();
-#else
-  var ret = _main();
+  var ret = __emscripten_start();
 
+#if !PROXY_TO_PTHREAD
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>

@@ -94,8 +94,45 @@ var LibraryDylink = {
     ;
   },
 
+  $setGOTEntry: function(symName, value, replace) {
+#if !WASM_BIGINT
+    if (symName.startsWith('orig$')) {
+      symName = symName.split('$')[1];
+      replace = true;
+    }
+#endif
+    if (!GOT[symName]) {
+      GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
+    }
+    if (replace || GOT[symName].value == 0) {
+#if DYLINK_DEBUG
+      err("setGOTEntry: before: " + symName + ' : ' + GOT[symName].value);
+#endif
+      if (typeof value == 'function') {
+        GOT[symName].value = addFunction(value);
+#if DYLINK_DEBUG
+        err("setGOTEntry: FUNC: " + symName + ' : ' + GOT[symName].value);
+#endif
+      } else if (typeof value == 'number') {
+        GOT[symName].value = value;
+      } else if (typeof value == 'bigint') {
+        GOT[symName].value = Number(value);
+      } else {
+        err("unhandled export type for `" + symName + "`: " + (typeof value));
+      }
+#if DYLINK_DEBUG
+      err("setGOTEntry:  after: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
+#endif
+    }
+#if DYLINK_DEBUG
+    else if (GOT[symName].value != value) {
+      err("setGOTEntry: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
+    }
+#endif
+  },
+
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym'],
+  $updateGOT__deps: ['$GOT', '$setGOTEntry', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
     err("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -106,41 +143,10 @@ var LibraryDylink = {
       }
 
       var value = exports[symName];
-#if !WASM_BIGINT
-      if (symName.startsWith('orig$')) {
-        symName = symName.split('$')[1];
-        replace = true;
+      setGOTEntry(symName, value, replace);
+      if (symName == 'main') {
+        setGOTEntry('__main_argc_argv', value, replace);
       }
-#endif
-
-      if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
-      }
-      if (replace || GOT[symName].value == 0) {
-#if DYLINK_DEBUG
-        err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
-#endif
-        if (typeof value == 'function') {
-          GOT[symName].value = addFunction(value);
-#if DYLINK_DEBUG
-          err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
-#endif
-        } else if (typeof value == 'number') {
-          GOT[symName].value = value;
-        } else if (typeof value == 'bigint') {
-          GOT[symName].value = Number(value);
-        } else {
-          err("unhandled export type for `" + symName + "`: " + (typeof value));
-        }
-#if DYLINK_DEBUG
-        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
-#endif
-      }
-#if DYLINK_DEBUG
-      else if (GOT[symName].value != value) {
-        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + ' (' + value + ')');
-      }
-#endif
     }
 #if DYLINK_DEBUG
     err("done updateGOT");

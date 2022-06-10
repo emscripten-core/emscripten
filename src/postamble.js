@@ -128,13 +128,7 @@ function callMain(args) {
   var entryFunction = Module['__initialize'];
 #endif
 #else
-#if PROXY_TO_PTHREAD
-  // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
-  // that will call the user's real main() for the application.
-  var entryFunction = Module['__emscripten_proxy_main'];
-#else
-  var entryFunction = Module['_main'];
-#endif
+  var entryFunction = Module['__emscripten_start'];
 #endif
 
 #if MAIN_MODULE
@@ -328,11 +322,11 @@ function run(args) {
 
 #if HAS_MAIN
     if (shouldRunNow) callMain(args);
-#else
-#if ASSERTIONS
+#endif // HAS_MAIN
+
+#if ASSERTIONS && !MAIN_MODULE && !hasExportedFunction('_main') && !hasExportedFunction('___main_argc_argv')
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 #endif // ASSERTIONS
-#endif // HAS_MAIN
 
     postRun();
   }

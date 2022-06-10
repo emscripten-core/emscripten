@@ -1,11 +1,13 @@
 $__errno_location
 $__lock
 $__lockfile
+$__main_void
 $__ofl_lock
 $__ofl_unlock
 $__unlock
 $__unlockfile
 $__wasm_call_ctors
+$_emscripten_start
 $add
 $emscripten_stack_get_base
 $emscripten_stack_get_end
@@ -15,3 +17,4 @@ $fflush
 $stackAlloc
 $stackRestore
 $stackSave
+$undefined_weak:main

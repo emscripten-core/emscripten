@@ -1,1 +1,3 @@
+$_emscripten_start
 $add
+$stackAlloc

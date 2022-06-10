@@ -147,7 +147,7 @@ def update_settings_glue(wasm_file, metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or '_emscripten_start' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
@@ -225,10 +225,10 @@ def report_missing_symbols(js_library_funcs):
     # maximum compatibility.
     return
 
-  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS and '__main_argc_argv' not in settings.WASM_EXPORTS:
+  if settings.EXPECT_MAIN and '_emscripten_start' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
-    exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
+    exit_with_error('entry symbol not defined (pass --no-entry to suppress): _emscripten_start')
 
 
 def proxy_debug_print(sync):
@@ -951,7 +951,8 @@ def create_wasm64_wrappers(metadata):
     '__errno_location': 'p',
     'emscripten_builtin_memalign': 'ppp',
     'main': '__PP',
-    '__main_argc_argv': '__PP',
+    '_emscripten_start': '__P',
+    '__main_argc_argv': '__P',
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',

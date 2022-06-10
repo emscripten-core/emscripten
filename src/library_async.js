@@ -161,7 +161,7 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
 #if ASYNCIFY == 2
           // TODO: need a list of all suspending exports.
-          if (x === 'main') {
+          if (x === 'main' || x === '_emscripten_start') {
 #if ASYNCIFY_DEBUG
             err('asyncify: returnPromiseOnSuspend for', x, original);
 #endif

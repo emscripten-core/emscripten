@@ -1,4 +1,5 @@
 $__wasm_call_ctors
+$_emscripten_start
 $main
 $sbrk
 $stackAlloc

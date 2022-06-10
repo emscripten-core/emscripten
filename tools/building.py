@@ -234,7 +234,7 @@ def llvm_backend_args():
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
     if 'main' in settings.EXCEPTION_CATCHING_ALLOWED:
-      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main', '__main_argc_argv']
+      settings.EXCEPTION_CATCHING_ALLOWED += ['_emscripten_start', '__original_main', '__main_argc_argv']
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
@@ -336,14 +336,12 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      if settings.PROXY_TO_PTHREAD:
-        cmd += ['--entry=_emscripten_proxy_main']
+      if settings.EXPECT_MAIN:
+        cmd += ['--entry=_emscripten_start']
       else:
-        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this sice the entry point can be either `main` or
-        # `__main_argv_argc`, but we should address that by using a single `_start`
-        # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
+      if not settings.EXPECT_MAIN or settings.IGNORE_MISSING_MAIN:
+        cmd += ['-u__main_argc_argv']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
@@ -678,9 +676,9 @@ def eval_ctors(js_file, wasm_file, debug_info):
     if has_wasm_call_ctors:
       ctors += [WASM_CALL_CTORS]
     if settings.HAS_MAIN:
-      main = 'main'
-      if '__main_argc_argv' in settings.WASM_EXPORTS:
-        main = '__main_argc_argv'
+      main = '_emscripten_start'
+      if '_start' in settings.WASM_EXPORTS:
+        main = '_start'
       ctors += [main]
       # TODO perhaps remove the call to main from the JS? or is this an abi
       #      we want to preserve?
