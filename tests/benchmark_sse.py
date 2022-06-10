@@ -15,14 +15,16 @@ from subprocess import Popen
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
-from tools.shared import path_from_root, run_process, test_file
+from tools.shared import WINDOWS, CLANG_CXX, EMCC, PIPE
+from tools.shared import run_process
+from tools.config import V8_ENGINE
+from tests.common import EMRUN, test_file
 import clang_native
 
 temp_dir = tempfile.mkdtemp()
 
 # System info
-system_info = Popen([PYTHON, path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
+system_info = Popen([EMRUN, '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Native info
 native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
