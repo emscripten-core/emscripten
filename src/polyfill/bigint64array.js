@@ -1,11 +1,4 @@
-// It's okay to shadow these: we can access the orignal values via globalThis if
-// we don't need the polyfill.
-var BigInt64Array;
-var BigUint64Array;
-if (typeof globalThis.BigInt64Array !== "undefined") {
-  BigInt64Array = globalThis.BigInt64Array;
-  BigUint64Array = globalThis.BigUint64Array;
-} else {
+if (typeof globalThis.BigInt64Array === "undefined") {
   // BigInt64Array polyfill for Safari versions between v14.0 and v15.0.
   // All browsers other than Safari added BigInt and BigInt64Array at the same
   // time, but Safari introduced BigInt in v14.0 and introduced BigInt64Array in
@@ -90,6 +83,6 @@ if (typeof globalThis.BigInt64Array !== "undefined") {
     return createBigInt64Array;
   }
 
-  BigUint64Array = createBigIntArrayShim(partsToBigIntUnsigned);
-  BigInt64Array = createBigIntArrayShim(partsToBigIntSigned);
+  globalThis.BigUint64Array = createBigIntArrayShim(partsToBigIntUnsigned);
+  globalThis.BigInt64Array = createBigIntArrayShim(partsToBigIntSigned);
 }
