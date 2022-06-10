@@ -2499,6 +2499,8 @@ int f() {
   def test_embind(self, extra_args):
     test_cases = [
       (['-lembind']),
+      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+      (['-lembind', '-std=c++17']),
       (['-lembind', '-O1']),
       (['-lembind', '-O2']),
       (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
@@ -12028,9 +12030,10 @@ Module['postRun'] = function() {{
       self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', opt])
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
-  # works with -sPROXY_POSIX_SOCKETS.
-  def test_dylink_proxy_posix_sockets(self):
-    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS'])
+  # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
+  # system libraries in different ways.
+  def test_dylink_proxy_posix_sockets_oz(self):
+    self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
 
   def test_in_tree_header_usage(self):
     # Using headers directly from where they live in the source tree does not work.

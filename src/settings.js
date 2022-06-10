@@ -1338,13 +1338,10 @@ var WASM_ASYNC_COMPILATION = true;
 // [link]
 var DYNCALLS = false;
 
-// WebAssembly integration with JavaScript BigInt. When enabled we don't need
-// to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
-// an i64 is used.
-// If WASM_BIGINT is present, the default minimum browser versions increase to
-// Safari v15.0, Firefox v68, and Edge v79. It is possible to use WASM_BIGINT
-// with Safari >= v14.0, in that case Emscripten will polyfill BigInt64Array.
-// Use `-sMIN_SAFARI_VERSION=140000` to request this.
+// WebAssembly integration with JavaScript BigInt. When enabled we don't need to
+// legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
+// i64 is used. If WASM_BIGINT is present, the default minimum supported browser
+// versions will be increased to the min version that supports BigInt.
 // [link]
 var WASM_BIGINT = false;
 

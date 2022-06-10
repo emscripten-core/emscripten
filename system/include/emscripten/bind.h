@@ -635,6 +635,12 @@ struct GetterPolicy<GetterReturnType (GetterThisType::*)() const> {
     }
 };
 
+#ifdef __cpp_noexcept_function_type
+template<typename GetterReturnType, typename GetterThisType>
+struct GetterPolicy<GetterReturnType (GetterThisType::*)() const noexcept>
+     : GetterPolicy<GetterReturnType (GetterThisType::*)() const> {};
+#endif
+
 template<typename GetterReturnType, typename GetterThisType>
 struct GetterPolicy<GetterReturnType (*)(const GetterThisType&)> {
     typedef GetterReturnType ReturnType;
@@ -709,6 +715,12 @@ struct SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType)> {
         return internal::getContext(context);
     }
 };
+
+#ifdef __cpp_noexcept_function_type
+template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
+struct SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType) noexcept>
+     : SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType)> {};
+#endif
 
 template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
 struct SetterPolicy<SetterReturnType (*)(SetterThisType&, SetterArgumentType)> {
@@ -1326,6 +1338,12 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     }
 };
 
+#ifdef __cpp_noexcept_function_type
+template<typename ClassType, typename ReturnType, typename... Args>
+struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) noexcept>
+     : RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {};
+#endif
+
 template<typename ClassType, typename ReturnType, typename... Args>
 struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
 
@@ -1347,6 +1365,12 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     }
 };
 
+#ifdef __cpp_noexcept_function_type
+template<typename ClassType, typename ReturnType, typename... Args>
+struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const noexcept>
+     : RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {};
+#endif
+
 template<typename ReturnType, typename ThisType, typename... Args>
 struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
 
@@ -1366,6 +1390,12 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             false);
     }
 };
+
+#ifdef __cpp_noexcept_function_type
+template<typename ReturnType, typename ThisType, typename... Args>
+struct RegisterClassMethod<ReturnType (*)(ThisType, Args...) noexcept>
+     : RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {};
+#endif
 
 template<typename ReturnType, typename ThisType, typename... Args>
 struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
@@ -1885,9 +1915,19 @@ void constant(const char* name, const ConstantType& v) {
         static_cast<double>(asGenericValue(BT::toWireType(v))));
 }
 
-// EMSCRIPTEN_BINDINGS simple creates a static constructor function which
+
+
+
+// EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which
 // will get included in the program if the translation unit in which it is
-// define gets linked into the program.
-#define EMSCRIPTEN_BINDINGS(name) __attribute__((constructor)) static void __embind_init_##name(void)
+// defined gets linked into the program. Using a C++ constructor here ensures it
+// occurs after any other C++ constructors in this file, which is not true for
+// __attribute__((constructor)) (they run before C++ constructors in the same
+// file).
+#define EMSCRIPTEN_BINDINGS(name)                                              \
+  static struct EmBindInit_##name {                                            \
+    EmBindInit_##name();                                                       \
+  } EmBindInit_##name##_instance;                                              \
+  EmBindInit_##name::EmBindInit_##name()
 
 } // end namespace emscripten
