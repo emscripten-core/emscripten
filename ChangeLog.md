@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.2.0
 -----
+- Emscripten now knows what minimum browser versions the `WASM_BIGINT` feature
+  requires and will automatically set the defaults accordingly. (#17163)
 - Weak undefined symbols fixed in dynamic linking. (#17164)
 - Internally, the name of `main` function now gets mangled (by clang) in the
   same way as with other wasm targets.  This means that within the wasm module
