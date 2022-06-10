@@ -11,9 +11,9 @@
 # To make modifications to this file, edit `tools/run_python.sh` and then run
 # `tools/create_entry_points.py`
 
+# $PYTHON -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
+# of cpython used in cross compilation via setup.py.
 unset _PYTHON_SYSCONFIGDATA_NAME
-unset PYTHONHOME
-unset PYTHONPATH
 
 if [ -z "$PYTHON" ]; then
   PYTHON=$EMSDK_PYTHON
