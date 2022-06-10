@@ -1861,12 +1861,13 @@ def get_libs_to_link(args, forced, only_forced):
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
-  # libc_optz is a size optimization, and therefore not really important when
-  # MAIN_MODULE=1 (which links in all system libraries, leading to a large
-  # size far bigger than any savings from libc_optz). Also, libc_optz overrides
-  # parts of libc, which will not link due to --whole-archive in MAIN_MODULE=1
-  # currently.
-  if settings.SHRINK_LEVEL >= 2 and settings.MAIN_MODULE != 1:
+  # Becuase libc_optz overrides parts of libc, it is not compatible with `LINKABLE`
+  # (used in `MAIN_MODULE=1`) because with that setting we use `--whole-archive` to
+  # include all system libraries.
+  # However, because libc_optz is a size optimization it is not really important
+  # when used with `MAIN_MODULE=1` (which links in all system libraries, leading
+  # to overheads far bigger than any savings from libc_optz)
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE:
     add_library('libc_optz')
 
   if settings.STANDALONE_WASM:

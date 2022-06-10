@@ -1249,7 +1249,9 @@ int f() {
       };
     ''')
 
-    self.emcc('lib.c', ['-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
+    # Explicitly test with -Oz to ensure libc_optz is included alongside
+    # libc when `--whole-archive` is used.
+    self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
   def test_export_all_and_exported_functions(self):
