@@ -1,4 +1,5 @@
-// BigInt ==> globalThis so we can use globalThis.
+// It's okay to shadow these: we can access the orignal values via globalThis if
+// we don't need the polyfill.
 var BigInt64Array;
 var BigUint64Array;
 if (typeof globalThis.BigInt64Array !== "undefined") {
