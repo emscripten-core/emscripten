@@ -386,6 +386,22 @@ public:
     }
 };
 
+class NoExceptClass {
+public:
+    int getValue() noexcept {
+        return 42;
+    }
+    int getValueConst() const noexcept {
+        return 43;
+    }
+    int getX() const noexcept { return x; }
+    void setX(int x_) noexcept { x = x_; }
+private:
+    int x;
+};
+
+void embind_test_no_except_function(NoExceptClass&) noexcept {}
+
 class ParentClass {
 public:
     ParentClass(): bigClass() {};
@@ -1969,6 +1985,12 @@ EMSCRIPTEN_BINDINGS(tests) {
         .constructor<int, int, int>()
         .function("getMember", &TemplateClass<int>::getMember)
         ;
+
+    class_<NoExceptClass>("NoExceptClass")
+        .function("embind_test_no_except_function", &embind_test_no_except_function)
+        .function("getValue", &NoExceptClass::getValue)
+        .function("getValueConst", &NoExceptClass::getValueConst)
+        .property("x", &NoExceptClass::getX, &NoExceptClass::setX);
 
     class_<ContainsTemplatedMemberClass>("ContainsTemplatedMemberClass")
         .constructor<>()
