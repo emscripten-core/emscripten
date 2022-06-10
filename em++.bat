@@ -16,7 +16,7 @@
 :: If _EMCC_CCACHE is not set, do a regular invocation of the python compiler driver.
 :: Otherwise remove the ccache env. var, and then reinvoke this script with ccache enabled.
 @if "%_EMCC_CCACHE%"=="" (
-  set CMD="%EM_PY%" "%~dp0\%~n0.py"
+  set CMD="%EM_PY%" -E "%~dp0\%~n0.py"
 ) else (
   set _EMCC_CCACHE=
   set CMD=ccache "%~dp0\%~n0.bat"
