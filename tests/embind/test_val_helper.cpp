@@ -1,7 +1,6 @@
 
 #include <array>
 #include <emscripten.h>
-#include <emscripten/val.h>
 #include <emscripten/val_helper.h>
 #include <iostream>
 #include <stdio.h>
