@@ -20,10 +20,10 @@ if (typeof globalThis.BigInt64Array === "undefined") {
 
   function createBigIntArrayShim(partsToBigInt) {
     function createBigInt64Array(array) {
-      if(!ArrayBuffer.isView(array)){
+      if (!ArrayBuffer.isView(array)){
         array = new Uint32Array(array);
       }
-      let proxy = new Proxy({
+      var proxy = new Proxy({
         slice: function(min, max) {
           var new_buf = array.slice(min * 2, max *2);
           return createBigInt64Array(new_buf);
