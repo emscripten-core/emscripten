@@ -56,7 +56,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 #include "polyfill/bigint64array.js"
-#endif // MIN_SAFARI_VERSION < 15000// POLYFILL
+#endif
 
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
