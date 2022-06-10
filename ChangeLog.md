@@ -33,6 +33,8 @@ See docs/process.md for more on how version tagging works.
   are now exposed to native code and can be used to keep the runtime alive
   without immediately unwinding the event loop (as
   `emscripten_exit_with_live_runtime()` does). (#17160)
+- Added a shim for `BigInt64Array` so `-sWASM_BIGINT` can be used in Safari
+  v14. (#17103)
 
 3.1.13 - 06/02/2022
 -------------------
