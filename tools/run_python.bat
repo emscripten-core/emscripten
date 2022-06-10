@@ -7,7 +7,7 @@
 
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
-
+@set _PYTHON_SYSCONFIGDATA_NAME=
 @set EM_PY=%EMSDK_PYTHON%
 @if "%EM_PY%"=="" (
   set EM_PY=python
