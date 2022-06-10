@@ -297,7 +297,7 @@ function updateGlobalBufferAndViews(buf) {
 #if WASM_BIGINT
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
   Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
-#endif // WASM_BIGINT
+#endif
 }
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
