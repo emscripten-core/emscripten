@@ -123,6 +123,16 @@ int main(int argc, char* argv[]) {
   assert(stat_buf.st_size == 1);
   emscripten_console_log("statted");
 
+  fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
+  assert(fd > 0);
+  emscripten_console_log("truncated while opening");
+  close(fd);
+
+  err = stat("/opfs/working/foo.txt", &stat_buf);
+  assert(err == 0);
+  assert(stat_buf.st_size == 0);
+  emscripten_console_log("statted");
+
   err = rename("/opfs/working/foo.txt", "/opfs/foo.txt");
   assert(err == 0);
   err = access("/opfs/working/foo.txt", F_OK);
