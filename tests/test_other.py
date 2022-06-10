@@ -2499,6 +2499,8 @@ int f() {
   def test_embind(self, extra_args):
     test_cases = [
       (['-lembind']),
+      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+      (['-lembind', '-std=c++17']),
       (['-lembind', '-O1']),
       (['-lembind', '-O2']),
       (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
