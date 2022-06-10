@@ -147,7 +147,7 @@ def update_settings_glue(wasm_file, metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
@@ -219,12 +219,6 @@ def report_missing_symbols(js_library_funcs):
     # standalone mode doesn't use main, and it always reports missing entry point at link time.
     # In this mode we never expect _main in the export list.
     return
-
-  # PROXY_TO_PTHREAD only makes sense with a main(), so error if one is
-  # missing. note that when main() might arrive from another module we cannot
-  # error here.
-  if settings.PROXY_TO_PTHREAD and not settings.HAS_MAIN:
-    exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
 
   if settings.IGNORE_MISSING_MAIN:
     # The default mode for emscripten is to ignore the missing main function allowing
