@@ -33,6 +33,15 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  $wasmfsOPFSBlobs: {
+    allocated: [],
+    free: [],
+    get: function(i) {
+      assert(this.allocated[i] !== undefined);
+      return this.allocated[i];
+    }
+  },
+
   $wasmfsOPFSAllocate: function(ids, handle) {
     let id;
     if (ids.free.length > 0) {
@@ -46,6 +55,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsOPFSFree: function(ids, id) {
+    assert(ids.allocated[id] !== undefined);
     delete ids.allocated[id];
     ids.free.push(id);
   },
@@ -214,10 +224,31 @@ mergeInto(LibraryManager.library, {
     } catch (e) {
       if (e.name === "InvalidStateError") {
         accessID = -1;
+      } else {
+        throw e;
       }
-      throw e;
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
+    _emscripten_proxy_finish(ctx);
+  },
+
+  _wasmfs_opfs_open_blob__deps: ['$wasmfsOPFSAllocate',
+                                 '$wasmfsOPFSFileHandles',
+                                 '$wasmfsOPFSBlobs'],
+  _wasmfs_opfs_open_blob: async function(ctx, fileID, blobIDPtr) {
+    let fileHandle = wasmfsOPFSFileHandles.get(fileID);
+    let blobID;
+    try {
+      let blob = await fileHandle.getFile();
+      blobID = wasmfsOPFSAllocate(wasmfsOPFSBlobs, blob);
+    } catch (e) {
+      if (e.name === "NotAllowedError") {
+        blobID = -1;
+      } else {
+        throw e;
+      }
+    }
+    {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
 
@@ -230,11 +261,57 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
+  _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSFree',
+                                  '$wasmfsOPFSBlobs'],
+  _wasmfs_opfs_close_blob: function(blobID) {
+    wasmfsOPFSFree(wasmfsOPFSBlobs, blobID);
+  },
+
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_read_access: function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     return accessHandle.read(data, {at: pos});
+  },
+
+  _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs'],
+  _wasmfs_opfs_read_blob: async function(ctx, blobID, bufPtr, len, pos, nreadPtr) {
+    let blob = wasmfsOPFSBlobs.get(blobID);
+    let slice = blob.slice(pos, pos + len);
+    let nread = 0;
+
+    try {
+      // TODO: BYOB reader doesn't work because we don't have a byte stream?
+      // // Use ReadableStreamBYOBReader if supported.
+      // if (typeof ReadableStreamBYOBReader === 'function') {
+      //   let stream = slice.stream();
+      //   let reader = stream.getReader({mode: "byob"});
+      //   while (true) {
+      //     let read = await reader.read(HEAPU8.subarray(bufPtr + nread));
+      //     if (read.done) {
+      //       break;
+      //     }
+      //     nread += read.value.length;
+      //   }
+      //   reader.releaseLock();
+      // } else {
+        // ReadableStreamBYOBReader not supported. We could use
+        // ReadableStreamDefaultReader, but this is simpler.
+        let buf = await slice.arrayBuffer();
+        let data = new Uint8Array(buf);
+        HEAPU8.set(data, bufPtr);
+        nread += data.length;
+      // }
+    } catch (e) {
+      if (e instanceof RangeError) {
+        nread = -1;
+      } else {
+        throw e;
+      }
+    }
+
+    {{{ makeSetValue('nreadPtr', 0, 'nread', 'i32') }}};
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
@@ -250,6 +327,11 @@ mergeInto(LibraryManager.library, {
     let size = await accessHandle.getSize();
     {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
     _emscripten_proxy_finish(ctx);
+  },
+
+  _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
+  _wasmfs_opfs_get_size_blob: function(blobID) {
+    return wasmfsOPFSBlobs.get(blobID).size;
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles'],
@@ -271,7 +353,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
-      let writable = await fileHandle.createWritable();
+      let writable = await fileHandle.createWritable({keepExistingData: true});
       await writable.truncate(size);
       await writable.close();
       {{{ makeSetValue('errPtr', 0, '0', 'i32') }}};

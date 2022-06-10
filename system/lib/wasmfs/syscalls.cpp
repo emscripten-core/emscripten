@@ -492,7 +492,14 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   if (flags & O_TRUNC) {
     if (child->is<DataFile>()) {
       if (fileMode & WASMFS_PERM_WRITE) {
-        child->cast<DataFile>()->locked().setSize(0);
+        // TODO: Linux still truncates the file in when it's opened only for
+        // reading, so we should too. But until we get proper error reporting
+        // from setSize (which we can then ignore here), the OPFS backend will
+        // crash in this case because it does not support truncating files open
+        // only for reading.
+        if (accessMode != O_RDONLY) {
+          child->cast<DataFile>()->locked().setSize(0);
+        }
       } else {
         return -EACCES;
       }
