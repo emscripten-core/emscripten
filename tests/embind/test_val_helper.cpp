@@ -3,7 +3,6 @@
 #include <emscripten.h>
 #include <emscripten/val.h>
 #include <emscripten/val_helper.h>
-#include <malloc.h>  // for ::mallinfo
 #include <iostream>
 #include <stdio.h>
 #include <string>
@@ -16,16 +15,6 @@ using namespace emscripten;
 namespace Val {
 using VH = ValHelper<32>;
 }
-
-namespace {
-
-unsigned int get_used_memory() {
-  struct mallinfo i = ::mallinfo();
-  unsigned int dynamicTop = (unsigned int)sbrk(0);
-  return dynamicTop - i.fordblks;
-}
-
-}  // namespace
 
 namespace std {
 
@@ -283,11 +272,11 @@ void test_cases() {
   va.add(vec);
   va.add(std::vector<int>{5, 6, 7, 8, 9});
   va.add(std::vector<std::string>{"1", "2", "3"});
-  std::vector<std::string> vs{"1", "2", "3"};
+  std::vector<std::string> vs{"4", "5", "6"};
   va.add(vs);
   std::array<int, 5> ar{1, 2, 3, 4, 5};
   va.add(ar);
-  std::array<std::string, 5> ar1{"4", "5", "6", "99"};
+  std::array<std::string, 3> ar1{"4", "99"};
   va.add(ar1);
   char ar2[]{6, 7, 8};
   va.add(ar2);
@@ -295,9 +284,9 @@ void test_cases() {
   ensure_js("a[0].length == 16 && a[0][0] == 1 && a[0][2] == 3 && a[0][15] == 16");
   ensure_js("a[1].length == 5 && a[1][0] == 5 && a[1][1] == 6 && a[1][5] == undefined");
   ensure_js("a[2].length == 3 && a[2][0] == '1' && a[2][1] == '2' && a[2][2] == '3' ");
-  ensure_js("a[3].length == 3 && a[3][0] == '1' && a[3][1] == '2' && a[3][2] == '3' ");
+  ensure_js("a[3].length == 3 && a[3][0] == '4' && a[3][1] == '5' && a[3][2] == '6' ");
   ensure_js("a[4].length == 5 && a[4][0] == 1 && a[4][1] == 2 && a[4][4] == 5");
-  ensure_js("a[5].length == 5 && a[5][0] == '4' && a[5][1] == '5' && a[5][2] == '6' && a[5][3] == '99' && a[5][4] == ''");
+  ensure_js("a[5].length == 3 && a[5][0] == '4' && a[5][1] == '99' && a[5][2] == ''");
   ensure_js("a[6].length == 3 && a[6][0] == 6 && a[6][1] == 7 && a[6][2] == 8");
 
   test("concat(array&)");
@@ -312,11 +301,13 @@ void test_cases() {
   ensure_js("a[0] == 0");
   ensure_js("a[1] == 1 && a[2] == 2 && a[3] == 3 && a[16] == 16");
   ensure_js("a[17] === undefined");
+  ensure_js("a.length == 17");
 
   va.concat(std::vector<std::string>{"1", "2", "3", "4", "5", "6"});                                                                                                                                                                                                                                                                         
-  va.concat(std::vector<float>{1.1,1.2,1.3});
-  va.concat(std::vector<short>{1,2,3});                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  va.concat(std::vector<float>{1.1, 1.2, 1.3});
+  va.concat(std::vector<short>{1, 2, 3});
   va.finalize();
+  ensure_js("a.length == 29");
   ensure_js("a[17] == '1' && a[18] == '2' && a[19] == '3' && a[20] == '4'");
   // Floating number is not accurate
   ensure_js("parseFloat(a[23]).toFixed(1) == '1.1' ");
@@ -410,10 +401,7 @@ void test_cases() {
 }  // namespace tests
 
 int main() {
-  auto m1 = get_used_memory();
   tests::test_cases();
-  auto m2 = get_used_memory();
-  assert(m1 == m2);
 
   // tests::test_perf();
   // tests::test_perf_biga();
