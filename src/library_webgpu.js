@@ -1168,6 +1168,7 @@ var LibraryWebGPU = {
       function makeColorFormats(count, formatsPtr) {
         var formats = [];
         for (var i = 0; i < count; ++i, formatsPtr += 4) {
+          // format could be undefined
           formats.push(WebGPU.TextureFormat[{{{ gpu.makeGetU32('formatsPtr', 0) }}}]);
         }
         return formats;
@@ -1254,6 +1255,7 @@ var LibraryWebGPU = {
     }
 
     function makeColorState(csPtr) {
+      if (!csPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('csPtr') }}}
       return {
         "format": WebGPU.TextureFormat[
@@ -1576,6 +1578,7 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheck('descriptor') }}}
 
     function makeColorAttachment(caPtr) {
+      if (!caPtr) return undefined;
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
           assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
@@ -1589,6 +1592,7 @@ var LibraryWebGPU = {
       var clearValue = WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}});
 
       return {
+        // view could be null
         "view": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}}),
         "resolveTarget": WebGPU.mgrTextureView.get(
