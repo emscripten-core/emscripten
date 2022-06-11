@@ -466,7 +466,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // Note that we open the file before truncating it because some backends may
-  // depend on that (e.g. OPFS).
+  // truncate opened files more efficiently (e.g. OPFS).
   auto openFile = std::make_shared<OpenFileState>(0, flags, child);
 
   // If O_TRUNC, truncate the file if possible.

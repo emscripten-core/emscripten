@@ -79,14 +79,19 @@ void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   uint32_t* size);
 
-// Get the size via a File Blob.
-void _wasmfs_opfs_get_size_blob(em_proxying_ctx* ctx,
-                                int access_id,
+// Get the size of a file handle via a File Blob.
+void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
+                                int file_id,
                                 uint32_t* size);
 
 void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   uint32_t size);
+
+void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
+                                int file_id,
+                                uint32_t size,
+                                int* err);
 
 void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id);
 
@@ -123,7 +128,7 @@ private:
     uint32_t size;
     if (accessID == -1) {
       proxy(
-        [&](auto ctx) { _wasmfs_opfs_get_size_blob(ctx.ctx, fileID, &size); });
+        [&](auto ctx) { _wasmfs_opfs_get_size_file(ctx.ctx, fileID, &size); });
     } else {
       proxy([&](auto ctx) {
         _wasmfs_opfs_get_size_access(ctx.ctx, accessID, &size);
@@ -133,8 +138,17 @@ private:
   }
 
   void setSize(size_t size) override {
-    proxy(
-      [&](auto ctx) { _wasmfs_opfs_set_size_access(ctx.ctx, accessID, size); });
+    if (accessID == -1) {
+      int err;
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
+      });
+      assert(err == 0 && "TODO: better error handling");
+    } else {
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_set_size_access(ctx.ctx, accessID, size);
+      });
+    }
   }
 
   void open(oflags_t flags) override {
