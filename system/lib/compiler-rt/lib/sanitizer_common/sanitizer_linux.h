@@ -1,9 +1,8 @@
 //===-- sanitizer_linux.h ---------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -15,17 +14,17 @@
 
 #include "sanitizer_platform.h"
 #if SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_NETBSD ||                \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS
+    SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
 #include "sanitizer_common.h"
 #include "sanitizer_internal_defs.h"
 #include "sanitizer_platform_limits_freebsd.h"
 #include "sanitizer_platform_limits_netbsd.h"
-#include "sanitizer_platform_limits_openbsd.h"
 #include "sanitizer_platform_limits_posix.h"
 #include "sanitizer_platform_limits_solaris.h"
 #include "sanitizer_posix.h"
 
 struct link_map;  // Opaque type returned by dlopen().
+struct utsname;
 
 namespace __sanitizer {
 // Dirent structure for getdents(). Note that this structure is different from
@@ -50,7 +49,22 @@ uptr internal_getdents(fd_t fd, struct linux_dirent *dirp, unsigned int count);
 uptr internal_sigaltstack(const void* ss, void* oss);
 uptr internal_sigprocmask(int how, __sanitizer_sigset_t *set,
     __sanitizer_sigset_t *oldset);
+
+void SetSigProcMask(__sanitizer_sigset_t *set, __sanitizer_sigset_t *oldset);
+struct ScopedBlockSignals {
+  explicit ScopedBlockSignals(__sanitizer_sigset_t *copy);
+  ~ScopedBlockSignals();
+
+  ScopedBlockSignals &operator=(const ScopedBlockSignals &) = delete;
+  ScopedBlockSignals(const ScopedBlockSignals &) = delete;
+
+ private:
+  __sanitizer_sigset_t saved_;
+};
+
+#  if SANITIZER_GLIBC
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
+#endif
 
 // Linux-only syscalls.
 #if SANITIZER_LINUX
@@ -59,19 +73,19 @@ uptr internal_prctl(int option, uptr arg2, uptr arg3, uptr arg4, uptr arg5);
 // (like the process-wide error reporting SEGV handler) must use
 // internal_sigaction instead.
 int internal_sigaction_norestorer(int signum, const void *act, void *oldact);
-#if (defined(__x86_64__) || SANITIZER_MIPS64) && !SANITIZER_GO
-// Uses a raw system call to avoid interceptors.
-int internal_sigaction_syscall(int signum, const void *act, void *oldact);
-#endif
 void internal_sigdelset(__sanitizer_sigset_t *set, int signum);
-#if defined(__x86_64__) || defined(__mips__) || defined(__aarch64__) \
-  || defined(__powerpc64__) || defined(__s390__) || defined(__i386__) \
-  || defined(__arm__)
+#if defined(__x86_64__) || defined(__mips__) || defined(__aarch64__) || \
+    defined(__powerpc64__) || defined(__s390__) || defined(__i386__) || \
+    defined(__arm__) || SANITIZER_RISCV64
 uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
                     int *parent_tidptr, void *newtls, int *child_tidptr);
 #endif
+int internal_uname(struct utsname *buf);
 #elif SANITIZER_FREEBSD
 void internal_sigdelset(__sanitizer_sigset_t *set, int signum);
+#elif SANITIZER_NETBSD
+void internal_sigdelset(__sanitizer_sigset_t *set, int signum);
+uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg);
 #endif  // SANITIZER_LINUX
 
 // This class reads thread IDs from /proc/<pid>/task using only syscalls.
@@ -97,7 +111,6 @@ class ThreadLister {
 // Exposed for testing.
 uptr ThreadDescriptorSize();
 uptr ThreadSelf();
-uptr ThreadSelfOffset();
 
 // Matches a library's file name against a base name (stripping path and version
 // information).
@@ -105,6 +118,17 @@ bool LibraryNameIs(const char *full_name, const char *base_name);
 
 // Call cb for each region mapped by map.
 void ForEachMappedRegion(link_map *map, void (*cb)(const void *, uptr));
+
+// Releases memory pages entirely within the [beg, end] address range.
+// The pages no longer count toward RSS; reads are guaranteed to return 0.
+// Requires (but does not verify!) that pages are MAP_PRIVATE.
+inline void ReleaseMemoryPagesToOSAndZeroFill(uptr beg, uptr end) {
+  // man madvise on Linux promises zero-fill for anonymous private pages.
+  // Testing shows the same behaviour for private (but not anonymous) mappings
+  // of shm_open() files, as long as the underlying file is untouched.
+  CHECK(SANITIZER_LINUX);
+  ReleaseMemoryPagesToOS(beg, end);
+}
 
 #if SANITIZER_ANDROID
 

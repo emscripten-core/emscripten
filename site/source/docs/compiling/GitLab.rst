@@ -23,7 +23,7 @@ A sample .gitlab-ci.yml
         paths:
         - public
       only:
-        - master
+        - main
 
 Let's break it down:
 

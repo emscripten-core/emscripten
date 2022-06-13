@@ -1,15 +1,17 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // Implementation of libuuid creating RFC4122 version 4 random UUIDs.
 
 mergeInto(LibraryManager.library, {
   // Clear a 'compact' UUID.
+  uuid_clear__deps: ['$zeroMemory'],
   uuid_clear: function(uu) {
     // void uuid_clear(uuid_t uu);
-    _memset(uu, 0, 16);
+    zeroMemory(uu, 16);
   },
 
   // Compare whether or not two 'compact' UUIDs are the same.
@@ -43,8 +45,8 @@ mergeInto(LibraryManager.library, {
       } catch(e) {}
 #endif // ENVIRONMENT_MAY_BE_NODE
     } else if (ENVIRONMENT_IS_WEB &&
-               typeof(window.crypto) !== 'undefined' &&
-               typeof(window.crypto.getRandomValues) !== 'undefined') {
+               typeof window.crypto != 'undefined' &&
+               typeof window.crypto.getRandomValues != 'undefined') {
       // If crypto.getRandomValues is available try to use it.
       uuid = new Uint8Array(16);
       window.crypto.getRandomValues(uuid);
@@ -61,8 +63,9 @@ mergeInto(LibraryManager.library, {
       }
     }
 
-    uuid[6] = (uuid[6] & 0x0F) | 0x40;
-    uuid[8] = (uuid[8] & 0x7F) | 0x80;
+    // Makes uuid compliant to RFC-4122
+    uuid[6] = (uuid[6] & 0x0F) | 0x40; // uuid version
+    uuid[8] = (uuid[8] & 0x3F) | 0x80; // uuid variant
     writeArrayToMemory(uuid, out);
   },
 
@@ -85,7 +88,7 @@ mergeInto(LibraryManager.library, {
   // pointed to by uu, otherwise -1 is returned.
   uuid_parse: function(inp, uu) {
     // int uuid_parse(const char *in, uuid_t uu);
-    var inp = UTF8ToString(inp);
+    inp = UTF8ToString(inp);
     if (inp.length === 36) {
       var i = 0;
       var uuid = new Array(16);
@@ -107,12 +110,13 @@ mergeInto(LibraryManager.library, {
   },
 
   // Convert a 'compact' form UUID to a string, if the upper parameter is supplied make the string upper case.
+  uuid_unparse__docs: '/** @param {number|boolean=} upper */',
   uuid_unparse: function(uu, out, upper) {
     // void uuid_unparse(const uuid_t uu, char *out);
     var i = 0;
     var uuid = 'xxxx-xx-xx-xx-xxxxxx'.replace(/[x]/g, function(c) {
-      var r = upper ? ({{{ makeGetValue('uu', 'i', 'i8', 0, 1) }}}).toString(16).toUpperCase() :
-                      ({{{ makeGetValue('uu', 'i', 'i8', 0, 1) }}}).toString(16);
+      var r = upper ? ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16).toUpperCase() :
+                      ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16);
       r = (r.length === 1) ? '0' + r : r; // Zero pad single digit hex values
       i++;
       return r;

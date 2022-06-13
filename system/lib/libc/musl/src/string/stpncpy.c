@@ -10,9 +10,11 @@
 
 char *__stpncpy(char *restrict d, const char *restrict s, size_t n)
 {
-	size_t *wd;
-	const size_t *ws;
-
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
+	typedef size_t __attribute__((__may_alias__)) word;
+	word *wd;
+	const word *ws;
 	if (((uintptr_t)s & ALIGN) == ((uintptr_t)d & ALIGN)) {
 		for (; ((uintptr_t)s & ALIGN) && n && (*d=*s); n--, s++, d++);
 		if (!n || !*s) goto tail;
@@ -21,6 +23,7 @@ char *__stpncpy(char *restrict d, const char *restrict s, size_t n)
 		       n-=sizeof(size_t), ws++, wd++) *wd = *ws;
 		d=(void *)wd; s=(const void *)ws;
 	}
+#endif
 	for (; n && (*d=*s); n--, s++, d++);
 tail:
 	memset(d, 0, n);
@@ -28,4 +31,3 @@ tail:
 }
 
 weak_alias(__stpncpy, stpncpy);
-

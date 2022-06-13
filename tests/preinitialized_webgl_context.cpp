@@ -19,8 +19,7 @@ int main()
   int activeTexture = 0;
   glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
   printf("GL_ACTIVE_TEXTURE: %d\n", activeTexture - GL_TEXTURE0);
-#ifdef REPORT_RESULT
   int result = activeTexture - GL_TEXTURE0;
-  REPORT_RESULT(result);
-#endif
+  assert(result == 5);
+  return 0;
 }

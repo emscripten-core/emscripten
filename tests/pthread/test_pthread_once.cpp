@@ -9,11 +9,11 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
-volatile int numInitialized = 0;
+_Atomic int numInitialized = 0;
 
 void once_init()
 {
-	emscripten_atomic_add_u32((void*)&numInitialized, 1);
+	numInitialized++;
 }
 
 #define NUM_THREADS 8
@@ -38,7 +38,5 @@ int main()
 		assert(numInitialized == 1);
 	}
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

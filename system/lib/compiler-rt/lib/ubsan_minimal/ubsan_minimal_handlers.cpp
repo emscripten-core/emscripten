@@ -1,12 +1,3 @@
-/**
- * Copied from compiler-rt.
- * Last changed revision: 351178
- * Last changed date: 2019-01-15.
- *
- * Changes:
- *   * switched to using emscripten_return_address instead of
-       __builtin_return_address. clang currently rejects the latter on wasm.
- */
 #include "sanitizer_common/sanitizer_atomic.h"
 
 #include <stdlib.h>
@@ -19,7 +10,7 @@ extern "C" void ubsan_message(const char *msg);
 static void message(const char *msg) { ubsan_message(msg); }
 #else
 static void message(const char *msg) {
-  write(2, msg, strlen(msg));
+  (void)write(2, msg, strlen(msg));
 }
 #endif
 
@@ -118,6 +109,7 @@ HANDLER(vla_bound_not_positive, "vla-bound-not-positive")
 HANDLER(float_cast_overflow, "float-cast-overflow")
 HANDLER(load_invalid_value, "load-invalid-value")
 HANDLER(invalid_builtin, "invalid-builtin")
+HANDLER(invalid_objc_cast, "invalid-objc-cast")
 HANDLER(function_type_mismatch, "function-type-mismatch")
 HANDLER(implicit_conversion, "implicit-conversion")
 HANDLER(nonnull_arg, "nonnull-arg")

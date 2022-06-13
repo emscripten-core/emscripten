@@ -1,9 +1,8 @@
 //===-- sanitizer_allocator_size_class_map.h --------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -25,7 +24,7 @@
 //             E.g. with kNumBits==3 all size classes after 2^kMidSizeLog
 //             look like 0b1xx0..0, where x is either 0 or 1.
 //
-// Example: kNumBits=3, kMidSizeLog=4, kMidSizeLog=8, kMaxSizeLog=17:
+// Example: kNumBits=3, kMinSizeLog=4, kMidSizeLog=8, kMaxSizeLog=17:
 //
 // Classes 1 - 16 correspond to sizes 16 to 256 (size = class_id * 16).
 // Next 4 classes: 256 + i * 64  (i = 1 to 4).
@@ -194,13 +193,13 @@ class SizeClassMap {
       uptr cached = MaxCachedHint(s) * s;
       if (i == kBatchClassID)
         d = p = l = 0;
-      Printf("c%02zd => s: %zd diff: +%zd %02zd%% l %zd "
-             "cached: %zd %zd; id %zd\n",
-             i, Size(i), d, p, l, MaxCachedHint(s), cached, ClassID(s));
+      Printf(
+          "c%02zu => s: %zu diff: +%zu %02zu%% l %zu cached: %zu %zu; id %zu\n",
+          i, Size(i), d, p, l, MaxCachedHint(s), cached, ClassID(s));
       total_cached += cached;
       prev_s = s;
     }
-    Printf("Total cached: %zd\n", total_cached);
+    Printf("Total cached: %zu\n", total_cached);
   }
 
   static void Validate() {

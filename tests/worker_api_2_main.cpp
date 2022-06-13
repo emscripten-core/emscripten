@@ -17,7 +17,7 @@ struct Info {
 int w1;
 
 Info x[3] = { {    22,      3.159,  97, 2.1828 },
-              { 55123, 987612.563, 190, 0.0009 },
+              { 55123, 987612.563, static_cast<char>(190), 0.0009 },
               {  -102,    -12.532, -21, -51252 } };
 
 int stage = -1;
@@ -26,18 +26,18 @@ int c3_7 = 0, c3_8 = 0;
 
 void c3(char *data, int size, void *arg) { // tests calls different in different workers.
   int calls = *((int*)data);
-  printf("%d: %d\n", (int)arg, calls);
-  if ((int)arg == 7) {
+  printf("%ld: %d\n", (long)arg, calls);
+  if ((long)arg == 7) {
     assert(c3_7 == 0);
     c3_7++;
     assert(calls == 5);
   } else {
-    assert((int)arg == 8);
+    assert((long)arg == 8);
     assert(c3_8 == 0);
     c3_8++;
     assert(calls == 1);
   }
-  if (c3_7 && c3_7) { // note: racey, responses from 2 workers here
+  if (c3_7 && c3_8) { // note: racey, responses from 2 workers here
     emscripten_destroy_worker(w1);
     REPORT_RESULT(11);
     emscripten_force_exit(0);
@@ -45,7 +45,7 @@ void c3(char *data, int size, void *arg) { // tests calls different in different
 }
 
 void c2(char *data, int size, void *arg) { // tests queuing up several messages, each with different data
-  assert((int)arg == stage);
+  assert((long)arg == stage);
   Info *x2 = (Info*)data;
 
   int i = stage - 3;
@@ -68,7 +68,7 @@ void c2(char *data, int size, void *arg) { // tests queuing up several messages,
 }
 
 void c1(char *data, int size, void *arg) { // tests copying + buffer enlargement
-  assert((int)arg == stage);
+  assert((long)arg == stage);
   if (stage == 1) {
     printf("wait 0? %d\n", emscripten_get_worker_queue_size(w1));
     assert(emscripten_get_worker_queue_size(w1) == 0);

@@ -6,6 +6,7 @@
  */
 
 #include <errno.h>
+#include <string.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,8 +17,7 @@
 
 int line = 0;
 
-void main_loop()
-{
+void main_loop() {
   char str[10] = {0};
   int ret;
 
@@ -28,13 +28,13 @@ void main_loop()
       if (ret != EOF) putc(ret, stdout);
       if (ret == '\n') line++;
     } else if (line > 0) {
-      ret = scanf("%10s", str);
+      ret = scanf("%9s", str);
       if (ret > 0) puts(str);
     }
 
     int err = ferror(stdin);
-    if (ferror(stdin) && errno != EAGAIN) {
-      printf("error %d\n", err);
+    if (err && errno != EAGAIN) {
+      printf("error %s\n", strerror(errno));
       exit(EXIT_FAILURE);
     }
 
@@ -47,8 +47,7 @@ void main_loop()
   }
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
   fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 
   // SM shell doesn't implement an event loop and therefor doesn't support

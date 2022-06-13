@@ -16,9 +16,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#define CHECK(cond) if (!(cond)) { printf("errno: %s\n", strerror(errno)); assert(cond); }
+
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
-  assert(fd >= 0);
+  CHECK(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
   assert(err ==  (sizeof(char) * strlen(buffer)));
@@ -28,10 +30,13 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
+  err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
+  CHECK(!err);
+  chdir("testtmp");
   err = mkdir("nocanread", 0111);
-  assert(!err);
+  CHECK(!err);
   err = mkdir("foobar", 0777);
-  assert(!err);
+  CHECK(!err);
   create_file("foobar/file.txt", "ride into the danger zone", 0666);
 }
 
@@ -39,6 +44,8 @@ void cleanup() {
   rmdir("nocanread");
   unlink("foobar/file.txt");
   rmdir("foobar");
+  chdir("..");
+  rmdir("testtmp");
 }
 
 void test() {
@@ -54,9 +61,12 @@ void test() {
   dir = opendir("noexist");
   assert(!dir);
   assert(errno == ENOENT);
+// NODERAWFS tests run as root, and the root user can opendir any directory
+#ifndef NODERAWFS
   dir = opendir("nocanread");
   assert(!dir);
   assert(errno == EACCES);
+#endif
   dir = opendir("foobar/file.txt");
   assert(!dir);
   assert(errno == ENOTDIR);
@@ -73,7 +83,7 @@ void test() {
   //closedir(dir);
   //err = readdir_r(dir, NULL, &result);
   // XXX musl doesn't have enough error handling for this: assert(err == EBADF);
-  
+
   //
   // do a normal read with readdir
   //
@@ -83,9 +93,12 @@ void test() {
   for (i = 0; i < 3; i++) {
     errno = 0;
     ent = readdir(dir);
-    //printf("ent, errno: %p, %d\n", ent, errno);
-    assert(ent);
-    //printf("%d file: %s (%d : %d)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
+    if (ent) {
+      fprintf(stderr, "%d file: %s (%d : %lu)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
+    } else {
+      fprintf(stderr, "ent: %p, errno: %d\n", ent, errno);
+      assert(ent);
+    }
     assert(ent->d_reclen == sizeof(*ent));
     if (!seen[0] && !strcmp(ent->d_name, ".")) {
       assert(ent->d_type & DT_DIR);
@@ -111,32 +124,36 @@ void test() {
   // test rewinddir
   rewinddir(dir);
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
 
   // test seek / tell
   rewinddir(dir);
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   loc = telldir(dir);
   assert(loc >= 0);
   //printf("loc=%d\n", loc);
   loc2 = ent->d_off;
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   char name_at_loc[1024];
   strcpy(name_at_loc, ent->d_name);
   //printf("name_at_loc: %s\n", name_at_loc);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);
-  assert(ent);
+  assert(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
   assert(!strcmp(ent->d_name, name_at_loc));
 
   seekdir(dir, loc2);
   ent = readdir(dir);
-  assert(ent);
+  assert(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
   assert(!strcmp(ent->d_name, name_at_loc));
 
@@ -190,8 +207,5 @@ int main() {
   test();
   test_scandir();
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return EXIT_SUCCESS;
 }

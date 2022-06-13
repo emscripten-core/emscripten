@@ -1,25 +1,26 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-if (typeof console === 'undefined') {
+if (typeof console == 'undefined') {
   // we can't call Module.printErr because that might be circular
   var console = {
     log: function(x) {
-      if (typeof dump === 'function') dump('log: ' + x + '\n');
+      if (typeof dump == 'function') dump('log: ' + x + '\n');
     },
     debug: function(x) {
-      if (typeof dump === 'function') dump('debug: ' + x + '\n');
+      if (typeof dump == 'function') dump('debug: ' + x + '\n');
     },
     info: function(x) {
-      if (typeof dump === 'function') dump('info: ' + x + '\n');
+      if (typeof dump == 'function') dump('info: ' + x + '\n');
     },
     warn: function(x) {
-      if (typeof dump === 'function') dump('warn: ' + x + '\n');
+      if (typeof dump == 'function') dump('warn: ' + x + '\n');
     },
     error: function(x) {
-      if (typeof dump === 'function') dump('error: ' + x + '\n');
+      if (typeof dump == 'function') dump('error: ' + x + '\n');
     },
   };
 }
@@ -134,7 +135,7 @@ window.close = function window_close() {
 
 window.alert = function(text) {
   err('alert forever: ' + text);
-  while (1){};
+  while (1) {};
 };
 
 window.scrollX = window.scrollY = 0; // TODO: proxy these
@@ -164,7 +165,7 @@ var webGLWorker = new WebGLWorker();
 var document = new EventListener();
 
 document.createElement = function document_createElement(what) {
-  switch(what) {
+  switch (what) {
     case 'canvas': {
       var canvas = new EventListener();
       canvas.ensureData = function canvas_ensureData() {
@@ -510,8 +511,8 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 
 // proxyWorker.js has defined 'document' and 'window' objects above, so need to
 // initialize them for library_html5.js explicitly here.
-if (typeof __specialEventTargets !== 'undefined') {
-  __specialEventTargets = [0, document, window];
+if (typeof specialHTMLTargets != 'undefined') {
+  specialHTMLTargets = [0, document, window];
 }
 
 function postCustomMessage(data) {

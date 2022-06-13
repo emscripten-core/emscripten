@@ -1,9 +1,10 @@
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 /*
- * Copyright 2014 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
  * EMSCRIPTEN GLEW 1.10.0 emulation
  *
  * What it does:
@@ -72,7 +73,7 @@ var LibraryGLEW = {
           string = "Unknown error";
           error = 8; // prevent array from growing more than this
         }
-        GLEW.error[error] = allocate(intArrayFromString(string), 'i8', ALLOC_NORMAL);
+        GLEW.error[error] = allocateUTF8(string);
       }
       return GLEW.error[error];
     },
@@ -92,7 +93,7 @@ var LibraryGLEW = {
         var string = GLEW.versionStringConstantFromCode(name);
         if (!string)
           return 0;
-        GLEW.version[name] = allocate(intArrayFromString(string), 'i8', ALLOC_NORMAL);
+        GLEW.version[name] = allocateUTF8(string);
       }
       return GLEW.version[name];
     },
@@ -102,12 +103,12 @@ var LibraryGLEW = {
         GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
       }
 
-      if (GLEW.extensions.indexOf(name) != -1)
+      if (GLEW.extensions.includes(name))
         return 1;
 
       // extensions from GLEmulations do not come unprefixed
       // so, try with prefix
-      return (GLEW.extensions.indexOf("GL_" + name) != -1);
+      return (GLEW.extensions.includes("GL_" + name));
     },
   },
 
@@ -115,7 +116,7 @@ var LibraryGLEW = {
 
   glewIsSupported: function(name) {
     var exts = UTF8ToString(name).split(' ');
-    for (var i in exts) {
+    for (var i = 0; i < exts.length; ++i) {
       if (!GLEW.extensionIsSupported(exts[i]))
         return 0;
     }
@@ -126,6 +127,7 @@ var LibraryGLEW = {
     return GLEW.extensionIsSupported(UTF8ToString(name));
   },
 
+  glewGetErrorString__sig: 'ii',
   glewGetErrorString: function(error) {
     return GLEW.errorString(error);
   },

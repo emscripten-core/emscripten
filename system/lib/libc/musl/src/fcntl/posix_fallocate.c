@@ -1,6 +1,5 @@
 #include <fcntl.h>
 #include "syscall.h"
-#include "libc.h"
 
 int posix_fallocate(int fd, off_t base, off_t len)
 {
@@ -8,4 +7,4 @@ int posix_fallocate(int fd, off_t base, off_t len)
 		__SYSCALL_LL_E(len));
 }
 
-LFS64(posix_fallocate);
+weak_alias(posix_fallocate, posix_fallocate64);

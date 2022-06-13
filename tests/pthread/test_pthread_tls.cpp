@@ -1,5 +1,6 @@
 #include <thread>
 #include <cstdio>
+#include <cassert>
 
 thread_local int tls;
 thread_local struct {
@@ -26,7 +27,5 @@ int main(void) {
   assert(data.a == 1);
   assert(data.b == 2);
   assert(array[9] == 1337);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1337);
-#endif
+  return 0;
 }

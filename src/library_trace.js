@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 var LibraryTracing = {
   $EmscriptenTrace__deps: [
@@ -78,8 +79,8 @@ var LibraryTracing = {
       EmscriptenTrace.loadWorkerViaXHR(collector_url + 'worker.js', function (worker) {
         EmscriptenTrace.worker = worker;
         EmscriptenTrace.worker.addEventListener('error', function (e) {
-          console.log('TRACE WORKER ERROR:');
-          console.log(e);
+          out('TRACE WORKER ERROR:');
+          out(e);
         }, false);
         EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                              'data_version': EmscriptenTrace.DATA_VERSION,
@@ -100,10 +101,10 @@ var LibraryTracing = {
     },
 
     configureForGoogleWTF: function() {
-      if (window && window.wtf) {
+      if (window && window['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
-        console.log('GOOGLE WTF NOT AVAILABLE TO ENABLE');
+        out('GOOGLE WTF NOT AVAILABLE TO ENABLE');
       }
     },
 
@@ -119,7 +120,7 @@ var LibraryTracing = {
     googleWTFEnterScope: function(name) {
       var scopeEvent = EmscriptenTrace.googleWTFData['cachedScopes'][name];
       if (!scopeEvent) {
-        scopeEvent = window.wtf.trace.events.createScope(name);
+        scopeEvent = window['wtf'].trace.events.createScope(name);
         EmscriptenTrace.googleWTFData['cachedScopes'][name] = scopeEvent;
       }
       var scope = scopeEvent();
@@ -128,7 +129,7 @@ var LibraryTracing = {
 
     googleWTFExitScope: function() {
       var scope = EmscriptenTrace.googleWTFData['scopeStack'].pop();
-      window.wtf.trace.leaveScope(scope);
+      window['wtf'].trace.leaveScope(scope);
     }
   },
 
@@ -179,6 +180,7 @@ var LibraryTracing = {
     }
   },
 
+  emscripten_trace_log_message__sig: 'vpp',
   emscripten_trace_log_message: function(channel, message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -195,10 +197,11 @@ var LibraryTracing = {
                             "MARK", message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
-      window.wtf.trace.mark(message);
+      window['wtf'].trace.mark(message);
     }
   },
 
+  emscripten_trace_mark__sig: 'vp',
   emscripten_trace_mark: function(message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -206,7 +209,7 @@ var LibraryTracing = {
                             "MARK", UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
-      window.wtf.trace.mark(UTF8ToString(message));
+      window['wtf'].trace.mark(UTF8ToString(message));
     }
   },
 
@@ -218,7 +221,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: function(address, size) {
-    if (typeof Module['onMalloc'] === 'function') Module['onMalloc'](address, size);
+    if (typeof Module['onMalloc'] == 'function') Module['onMalloc'](address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -227,7 +230,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: function(old_address, new_address, size) {
-    if (typeof Module['onRealloc'] === 'function') Module['onRealloc'](old_address, new_address, size);
+    if (typeof Module['onRealloc'] == 'function') Module['onRealloc'](old_address, new_address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -236,7 +239,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: function(address) {
-    if (typeof Module['onFree'] === 'function') Module['onFree'](address);
+    if (typeof Module['onFree'] == 'function') Module['onFree'](address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,
@@ -261,12 +264,11 @@ var LibraryTracing = {
   emscripten_trace_report_memory_layout: function() {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
-        'static_base':  STATIC_BASE,
-        'stack_base':   STACK_BASE,
-        'stack_top':    STACKTOP,
-        'stack_max':    STACK_MAX,
-        'dynamic_base': DYNAMIC_BASE,
-        'dynamic_top':  HEAP32[DYNAMICTOP_PTR>>2],
+        'static_base':  {{{ GLOBAL_BASE }}},
+        'stack_base':   _emscripten_stack_get_base(),
+        'stack_top':    _emscripten_stack_get_current(),
+        'stack_max':    _emscripten_stack_get_end(),
+        'dynamic_top':  _sbrk(),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();
@@ -309,6 +311,7 @@ var LibraryTracing = {
     }
   },
 
+  emscripten_trace_enter_context__sig: 'vp',
   emscripten_trace_enter_context: function(name) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -330,6 +333,7 @@ var LibraryTracing = {
     }
   },
 
+  emscripten_trace_task_start__sig: 'vip',
   emscripten_trace_task_start: function(task_id, name) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();

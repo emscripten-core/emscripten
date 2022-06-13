@@ -55,40 +55,63 @@ Implementing an asynchronous main loop in C/C++
 
 The standard solution for this problem is to define a C function that performs one iteration of your main loop (not including the "delay"). For a native build this function can be called in an infinite loop, leaving the behaviour effectively unchanged.
 
-Within Emscripten compiled code we use :c:func:`emscripten_set_main_loop` to get the environment to call this same function at a specified frequency. The iteration is still run "infinitely" but now other code can run between iterations and the browser does not hang.
-
-.. todo:: Check this statement out: (just call it from JavaScript, all you need is an underscore at the beginning of the name),
+Within Emscripten compiled code we use
+:c:func:`emscripten_request_animation_frame_loop` to get the environment to call
+this same function at the proper frequency for rendering a frame (that is, if
+the browser renders at 60fps, it will call this 60 times per second). The
+iteration is still run "infinitely" but now other code can run between
+iterations and the browser does not hang.
 
 Typically you will have a small section with ``#ifdef __EMSCRIPTEN__`` for the two cases. For example:
 
 .. code-block:: cpp
 
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
+  #include <stdio.h>
+
+  // Our "main loop" function. This callback receives the current time as
+  // reported by the browser, and the user data we provide in the call to
+  // emscripten_request_animation_frame_loop().
+  EM_BOOL one_iter(double time, void* userData) {
+    // Can render to the screen here, etc.
+    puts("one iteration");
+    // Return true to keep the loop running.
+    return EM_TRUE;
+  }
+
   int main() {
-  ...
   #ifdef __EMSCRIPTEN__
-    // void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
-    emscripten_set_main_loop(one_iter, 60, 1);
+    // Receives a function to call and some user data to provide it.
+    emscripten_request_animation_frame_loop(one_iter, 0);
   #else
     while (1) {
       one_iter();
-      // Delay to keep frame rate constant (using SDL)
+      // Delay to keep frame rate constant (using SDL).
       SDL_Delay(time_to_next_frame());
     }
   #endif
   }
 
-  // The "main loop" function.
-  void one_iter() {
-    // process input
-    // render to screen
-  }
+.. note:: A more full-featured API is provided in
+          :c:func:`emscripten_set_main_loop`, which lets you specify the
+          frequency at which to call the function, and other things.
 
-
-.. note:: When using SDL you will probably need to set the main loop. You should also note:
+.. note:: When using SDL you will often need to set the main loop, unless you
+          are just rendering a single frame and halting. You should also note:
 
   - The current Emscripten implementation of ``SDL_QUIT`` will work if you use :c:func:`emscripten_set_main_loop`. As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. If you do not use a main loop, your app will close before you have had an opportunity to notice this event.
   - There are limitations to what you can do as the page shuts (in ``onunload``). Some actions like showing alerts are banned by browsers at this point.
 
+
+Using Asyncify to yield to the browser
+--------------------------------------
+
+Another option is to use :ref:`Asyncify <yielding_to_main_loop>` which will
+rewrite the program so that it can return to the browser's main event loop
+by just calling ``emscripten_sleep()``. Note that this rewriting causes size and speed overhead
+while ``emscripten_request_animation_frame_loop / emscripten_set_main_loop``
+as described earlier do not.
 
 Execution lifecycle
 ===================

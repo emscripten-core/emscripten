@@ -1,9 +1,8 @@
 //===-- sanitizer_deadlock_detector_interface.h -----------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -67,6 +66,9 @@ struct DDCallback {
 
   virtual u32 Unwind() { return 0; }
   virtual int UniqueTid() { return 0; }
+
+ protected:
+  ~DDCallback() {}
 };
 
 struct DDetector {
@@ -86,6 +88,9 @@ struct DDetector {
   virtual void MutexDestroy(DDCallback *cb, DDMutex *m) {}
 
   virtual DDReport *GetReport(DDCallback *cb) { return nullptr; }
+
+ protected:
+  ~DDetector() {}
 };
 
 } // namespace __sanitizer

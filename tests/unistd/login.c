@@ -12,7 +12,7 @@
 int main() {
   char host[256] = "--------------------------";
 
-  printf("gethostid: %d\n", gethostid());
+  printf("gethostid: %ld\n", gethostid());
   printf("errno: %d\n\n", errno);
   errno = 0;
 

@@ -4,10 +4,18 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <ctype.h>
 #include "locale_impl.h"
-#include "libc.h"
 #include "atomic.h"
+#include "pleval.h"
+#include "lock.h"
+#include "fork_impl.h"
+
+#define malloc __libc_malloc
+#define calloc __libc_calloc
+#define realloc undef
+#define free undef
 
 struct binding {
 	struct binding *next;
@@ -32,16 +40,18 @@ static char *gettextdir(const char *domainname, size_t *dirlen)
 	return 0;
 }
 
+static volatile int lock[1];
+volatile int *const __gettext_lockptr = lock;
+
 char *bindtextdomain(const char *domainname, const char *dirname)
 {
-	static volatile int lock[2];
 	struct binding *p, *q;
 
 	if (!domainname) return 0;
 	if (!dirname) return gettextdir(domainname, &(size_t){0});
 
-	size_t domlen = strlen(domainname);
-	size_t dirlen = strlen(dirname);
+	size_t domlen = strnlen(domainname, NAME_MAX+1);
+	size_t dirlen = strnlen(dirname, PATH_MAX);
 	if (domlen > NAME_MAX || dirlen >= PATH_MAX) {
 		errno = EINVAL;
 		return 0;
@@ -57,7 +67,7 @@ char *bindtextdomain(const char *domainname, const char *dirname)
 	}
 
 	if (!p) {
-		p = malloc(sizeof *p + domlen + dirlen + 2);
+		p = calloc(sizeof *p + domlen + dirlen + 2, 1);
 		if (!p) {
 			UNLOCK(lock);
 			return 0;
@@ -74,7 +84,7 @@ char *bindtextdomain(const char *domainname, const char *dirname)
 	a_store(&p->active, 1);
 
 	for (q=bindings; q; q=q->next) {
-		if (!strcmp(p->domainname, domainname) && q != p)
+		if (!strcmp(q->domainname, domainname) && q != p)
 			a_store(&q->active, 0);
 	}
 
@@ -98,9 +108,11 @@ struct msgcat {
 	struct msgcat *next;
 	const void *map;
 	size_t map_size;
-	void *volatile plural_rule;
-	volatile int nplurals;
-	char name[];
+	const char *plural_rule;
+	int nplurals;
+	struct binding *binding;
+	const struct __locale_map *lm;
+	int cat;
 };
 
 static char *dummy_gettextdomain()
@@ -110,89 +122,95 @@ static char *dummy_gettextdomain()
 
 weak_alias(dummy_gettextdomain, __gettextdomain);
 
-const unsigned char *__map_file(const char *, size_t *);
-int __munmap(void *, size_t);
-unsigned long __pleval(const char *, unsigned long);
-
 char *dcngettext(const char *domainname, const char *msgid1, const char *msgid2, unsigned long int n, int category)
 {
 	static struct msgcat *volatile cats;
 	struct msgcat *p;
 	struct __locale_struct *loc = CURRENT_LOCALE;
 	const struct __locale_map *lm;
-	const char *dirname, *locname, *catname;
-	size_t dirlen, loclen, catlen, domlen;
+	size_t domlen;
+	struct binding *q;
+	int old_errno = errno;
 
 	if ((unsigned)category >= LC_ALL) goto notrans;
 
 	if (!domainname) domainname = __gettextdomain();
 
-	domlen = strlen(domainname);
+	domlen = strnlen(domainname, NAME_MAX+1);
 	if (domlen > NAME_MAX) goto notrans;
 
-	dirname = gettextdir(domainname, &dirlen);
-	if (!dirname) goto notrans;
+	for (q=bindings; q; q=q->next)
+		if (!strcmp(q->domainname, domainname) && q->active)
+			break;
+	if (!q) goto notrans;
 
 	lm = loc->cat[category];
 	if (!lm) {
 notrans:
+		errno = old_errno;
 		return (char *) ((n == 1) ? msgid1 : msgid2);
 	}
-	locname = lm->name;
-
-	catname = catnames[category];
-	catlen = catlens[category];
-	loclen = strlen(locname);
-
-	size_t namelen = dirlen+1 + loclen+1 + catlen+1 + domlen+3;
-	char name[namelen+1], *s = name;
-
-	memcpy(s, dirname, dirlen);
-	s[dirlen] = '/';
-	s += dirlen + 1;
-	memcpy(s, locname, loclen);
-	s[loclen] = '/';
-	s += loclen + 1;
-	memcpy(s, catname, catlen);
-	s[catlen] = '/';
-	s += catlen + 1;
-	memcpy(s, domainname, domlen);
-	s[domlen] = '.';
-	s[domlen+1] = 'm';
-	s[domlen+2] = 'o';
-	s[domlen+3] = 0;
 
 	for (p=cats; p; p=p->next)
-		if (!strcmp(p->name, name))
+		if (p->binding == q && p->lm == lm && p->cat == category)
 			break;
 
 	if (!p) {
+		const char *dirname, *locname, *catname, *modname, *locp;
+		size_t dirlen, loclen, catlen, modlen, alt_modlen;
 		void *old_cats;
 		size_t map_size;
-		const void *map = __map_file(name, &map_size);
+
+		dirname = q->dirname;
+		locname = lm->name;
+		catname = catnames[category];
+
+		dirlen = q->dirlen;
+		loclen = strlen(locname);
+		catlen = catlens[category];
+
+		/* Logically split @mod suffix from locale name. */
+		modname = memchr(locname, '@', loclen);
+		if (!modname) modname = locname + loclen;
+		alt_modlen = modlen = loclen - (modname-locname);
+		loclen = modname-locname;
+
+		/* Drop .charset identifier; it is not used. */
+		const char *csp = memchr(locname, '.', loclen);
+		if (csp) loclen = csp-locname;
+
+		char name[dirlen+1 + loclen+modlen+1 + catlen+1 + domlen+3 + 1];
+		const void *map;
+
+		for (;;) {
+			snprintf(name, sizeof name, "%s/%.*s%.*s/%s/%s.mo\0",
+				dirname, (int)loclen, locname,
+				(int)alt_modlen, modname, catname, domainname);
+			if ((map = __map_file(name, &map_size))) break;
+
+			/* Try dropping @mod, _YY, then both. */
+			if (alt_modlen) {
+				alt_modlen = 0;
+			} else if ((locp = memchr(locname, '_', loclen))) {
+				loclen = locp-locname;
+				alt_modlen = modlen;
+			} else {
+				break;
+			}
+		}
 		if (!map) goto notrans;
-		p = malloc(sizeof *p + namelen + 1);
+
+		p = calloc(sizeof *p, 1);
 		if (!p) {
 			__munmap((void *)map, map_size);
 			goto notrans;
 		}
+		p->cat = category;
+		p->binding = q;
+		p->lm = lm;
 		p->map = map;
 		p->map_size = map_size;
-		memcpy(p->name, name, namelen+1);
-		do {
-			old_cats = cats;
-			p->next = old_cats;
-		} while (a_cas_p(&cats, old_cats, p) != old_cats);
-	}
 
-	const char *trans = __mo_lookup(p->map, p->map_size, msgid1);
-	if (!trans) goto notrans;
-
-	/* Non-plural-processing gettext forms pass a null pointer as
-	 * msgid2 to request that dcngettext suppress plural processing. */
-	if (!msgid2) return (char *)trans;
-
-	if (!p->plural_rule) {
 		const char *rule = "n!=1;";
 		unsigned long np = 2;
 		const char *r = __mo_lookup(p->map, p->map_size, "");
@@ -216,10 +234,22 @@ notrans:
 					rule = r+7;
 			}
 		}
-		a_store(&p->nplurals, np);
-		a_cas_p(&p->plural_rule, 0, (void *)rule);
+		p->nplurals = np;
+		p->plural_rule = rule;
+
+		do {
+			old_cats = cats;
+			p->next = old_cats;
+		} while (a_cas_p(&cats, old_cats, p) != old_cats);
 	}
-	if (p->nplurals) {
+
+	const char *trans = __mo_lookup(p->map, p->map_size, msgid1);
+	if (!trans) goto notrans;
+
+	/* Non-plural-processing gettext forms pass a null pointer as
+	 * msgid2 to request that dcngettext suppress plural processing. */
+
+	if (msgid2 && p->nplurals) {
 		unsigned long plural = __pleval(p->plural_rule, n);
 		if (plural > p->nplurals) goto notrans;
 		while (plural--) {
@@ -230,6 +260,7 @@ notrans:
 			trans += l+1;
 		}
 	}
+	errno = old_errno;
 	return (char *)trans;
 }
 

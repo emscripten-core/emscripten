@@ -159,8 +159,35 @@ std::wstring get_non_ascii_wstring() {
     return ws;
 }
 
+std::u16string get_non_ascii_u16string() {
+    std::u16string u16s(4, 0);
+    u16s[0] = 10;
+    u16s[1] = 1234;
+    u16s[2] = 2345;
+    u16s[3] = 65535;
+    return u16s;
+}
+
+std::u32string get_non_ascii_u32string() {
+    std::u32string u32s(5, 0);
+    u32s[0] = 10;
+    u32s[1] = 1234;
+    u32s[2] = 2345;
+    u32s[3] = 128513;
+    u32s[4] = 128640;
+    return u32s;
+}
+
 std::wstring get_literal_wstring() {
     return L"get_literal_wstring";
+}
+
+std::u16string get_literal_u16string() {
+    return u"get_literal_u16string";
+}
+
+std::u32string get_literal_u32string() {
+    return U"get_literal_u32string";
 }
 
 void force_memory_growth() {
@@ -186,6 +213,14 @@ std::basic_string<unsigned char> emval_test_take_and_return_std_basic_string_uns
 }
 
 std::wstring take_and_return_std_wstring(std::wstring str) {
+    return str;
+}
+
+std::u16string take_and_return_std_u16string(std::u16string str) {
+    return str;
+}
+
+std::u32string take_and_return_std_u32string(std::u32string str) {
     return str;
 }
 
@@ -351,6 +386,22 @@ public:
     }
 };
 
+class NoExceptClass {
+public:
+    int getValue() noexcept {
+        return 42;
+    }
+    int getValueConst() const noexcept {
+        return 43;
+    }
+    int getX() const noexcept { return x; }
+    void setX(int x_) noexcept { x = x_; }
+private:
+    int x;
+};
+
+void embind_test_no_except_function(NoExceptClass&) noexcept {}
+
 class ParentClass {
 public:
     ParentClass(): bigClass() {};
@@ -388,6 +439,17 @@ public:
     const TemplateClass<int>& getTestTemplate() {
         return testTemplate;
     };
+};
+
+class SymbolNameClass {
+public:
+    std::string iterator() {
+        return "Iterator";
+    }
+
+    static std::string species() {
+        return "Species";
+    }
 };
 
 // Begin Inheritance Hierarchy Class Definitions
@@ -1763,6 +1825,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
     function("emval_test_take_and_return_std_basic_string_unsigned_char", &emval_test_take_and_return_std_basic_string_unsigned_char);
     function("take_and_return_std_wstring", &take_and_return_std_wstring);
+    function("take_and_return_std_u16string", &take_and_return_std_u16string);
+    function("take_and_return_std_u32string", &take_and_return_std_u32string);
+    function("get_non_ascii_u16string", &get_non_ascii_u16string);
+    function("get_non_ascii_u32string", &get_non_ascii_u32string);
+    function("get_literal_u16string", &get_literal_u16string);
+    function("get_literal_u32string", &get_literal_u32string);
 
     //function("emval_test_take_and_return_CustomStruct", &emval_test_take_and_return_CustomStruct);
 
@@ -1918,9 +1986,21 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getMember", &TemplateClass<int>::getMember)
         ;
 
+    class_<NoExceptClass>("NoExceptClass")
+        .function("embind_test_no_except_function", &embind_test_no_except_function)
+        .function("getValue", &NoExceptClass::getValue)
+        .function("getValueConst", &NoExceptClass::getValueConst)
+        .property("x", &NoExceptClass::getX, &NoExceptClass::setX);
+
     class_<ContainsTemplatedMemberClass>("ContainsTemplatedMemberClass")
         .constructor<>()
         .function("getTestTemplate", &ContainsTemplatedMemberClass::getTestTemplate)
+        ;
+
+    class_<SymbolNameClass>("SymbolNameClass")
+        .constructor<>()
+        .function("@@iterator", &SymbolNameClass::iterator)
+        .class_function("@@species", &SymbolNameClass::species)
         ;
 
     // register Derived before Base as a test that it's possible to
@@ -2895,7 +2975,7 @@ private:
     }
 
     void release(T* px) {
-        if (--px->referenceCount == 0) {
+        if (px && --px->referenceCount == 0) {
             delete px;
         }
     }

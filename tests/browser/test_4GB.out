@@ -1,0 +1,127 @@
+allocating
+alloc 0
+alloc 1
+alloc 2
+alloc 3
+alloc 4
+alloc 5
+alloc 6
+alloc 7
+alloc 8
+alloc 9
+alloc 10
+alloc 11
+alloc 12
+alloc 13
+alloc 14
+alloc 15
+alloc 16
+alloc 17
+alloc 18
+alloc 19
+alloc 20
+alloc 21
+alloc 22
+alloc 23
+alloc 24
+alloc 25
+alloc 26
+alloc 27
+alloc 28
+alloc 29
+alloc 30
+testing
+test 0
+wrote 0 in C, read 0 from JS
+wrote 0 in JS, read 0 from C
+test 1
+wrote 1 in C, read 1 from JS
+wrote 2 in JS, read 2 from C
+test 2
+wrote 2 in C, read 2 from JS
+wrote 4 in JS, read 4 from C
+test 3
+wrote 3 in C, read 3 from JS
+wrote 6 in JS, read 6 from C
+test 4
+wrote 4 in C, read 4 from JS
+wrote 8 in JS, read 8 from C
+test 5
+wrote 5 in C, read 5 from JS
+wrote 10 in JS, read 10 from C
+test 6
+wrote 6 in C, read 6 from JS
+wrote 12 in JS, read 12 from C
+test 7
+wrote 7 in C, read 7 from JS
+wrote 14 in JS, read 14 from C
+test 8
+wrote 8 in C, read 8 from JS
+wrote 16 in JS, read 16 from C
+test 9
+wrote 9 in C, read 9 from JS
+wrote 18 in JS, read 18 from C
+test 10
+wrote 10 in C, read 10 from JS
+wrote 20 in JS, read 20 from C
+test 11
+wrote 11 in C, read 11 from JS
+wrote 22 in JS, read 22 from C
+test 12
+wrote 12 in C, read 12 from JS
+wrote 24 in JS, read 24 from C
+test 13
+wrote 13 in C, read 13 from JS
+wrote 26 in JS, read 26 from C
+test 14
+wrote 14 in C, read 14 from JS
+wrote 28 in JS, read 28 from C
+test 15
+wrote 15 in C, read 15 from JS
+wrote 30 in JS, read 30 from C
+test 16
+wrote 16 in C, read 16 from JS
+wrote 32 in JS, read 32 from C
+test 17
+wrote 17 in C, read 17 from JS
+wrote 34 in JS, read 34 from C
+test 18
+wrote 18 in C, read 18 from JS
+wrote 36 in JS, read 36 from C
+test 19
+wrote 19 in C, read 19 from JS
+wrote 38 in JS, read 38 from C
+test 20
+wrote 20 in C, read 20 from JS
+wrote 40 in JS, read 40 from C
+test 21
+wrote 21 in C, read 21 from JS
+wrote 42 in JS, read 42 from C
+test 22
+wrote 22 in C, read 22 from JS
+wrote 44 in JS, read 44 from C
+test 23
+wrote 23 in C, read 23 from JS
+wrote 46 in JS, read 46 from C
+test 24
+wrote 24 in C, read 24 from JS
+wrote 48 in JS, read 48 from C
+test 25
+wrote 25 in C, read 25 from JS
+wrote 50 in JS, read 50 from C
+test 26
+wrote 26 in C, read 26 from JS
+wrote 52 in JS, read 52 from C
+test 27
+wrote 27 in C, read 27 from JS
+wrote 54 in JS, read 54 from C
+test 28
+wrote 28 in C, read 28 from JS
+wrote 56 in JS, read 56 from C
+test 29
+wrote 29 in C, read 29 from JS
+wrote 58 in JS, read 58 from C
+test 30
+wrote 30 in C, read 30 from JS
+wrote 60 in JS, read 60 from C
+success

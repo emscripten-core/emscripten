@@ -1,2 +1,0 @@
-main foo
-func foo

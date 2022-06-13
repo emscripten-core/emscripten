@@ -37,11 +37,14 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int rand_32()
 {
-	return (int)(emscripten_random() * 0x3FFFFFFF);
+	return (int)(emscripten_random() * float(0x3FFFFFFF));
 }
 
 void *ThreadMain(void *arg)
 {
+	// Do some stdio to test proxying to the main thread.
+	printf("pthread %p starting\n", arg);
+
 	assert(pthread_self() != 0);
 	assert(globalUchar == 5);
 	assert(globalUshort == 5);
@@ -100,7 +103,6 @@ void RunTest(int test)
 {	
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
 	printf("Main thread has thread ID %d\n", (int)pthread_self());
@@ -157,15 +159,6 @@ int main()
 	emscripten_atomic_fence();
 	__sync_synchronize();
 
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
 
@@ -182,10 +175,7 @@ int main()
 		printf("totalRead: %llu, totalWritten: %llu\n", totalRead, totalWritten);
 	else
 		printf("32-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
-#ifdef REPORT_RESULT
-	int result = (totalRead != totalWritten) ? 1 : 0;
-	REPORT_RESULT(result);
-#else
-	EM_ASM(out('Main: Test successfully finished.'));
-#endif
+	printf("Main: Test successfully finished.\n");
+	assert(totalRead == totalWritten);
+	return 0;
 }

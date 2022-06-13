@@ -5,13 +5,13 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <GLFW/glfw3.h>
 
-int result = 0;
 int main() {
     if (!glfwInit()) {
-        return -1;
+        return 1;
     }
 
     float t = glfwGetTime();
@@ -23,16 +23,9 @@ int main() {
     // Expect time to be slightly greater than what we set
     t = glfwGetTime();
     printf("glfwGetTime() = %f\n", t);
-
-    if (t < 50 + 1e-3) {
-        result = 1;
-    }
+    assert(t < 50 + 1e-3);
 
     glfwTerminate();
-
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
 
     return 0;
 }

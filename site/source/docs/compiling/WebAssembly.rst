@@ -6,10 +6,7 @@ Building to WebAssembly
 
 WebAssembly is a binary format for executing code on the web, allowing fast start times (smaller download and much faster parsing in browsers when compared to JS or asm.js). Emscripten compiles to WebAssembly by default, but you can also compile to JS for older browsers.
 
-For some historical background, see
-
-- `these slides <https://kripken.github.io/talks/wasm.html>`_ and
-- `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
+For some historical background, see `these slides <https://kripken.github.io/talks/wasm.html>`_ and `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
 
 Setup
 =====
@@ -20,7 +17,7 @@ WebAssembly is emitted by default, without the need for any special flags.
 
 ::
 
-  emcc [..args..] -s WASM=0
+  emcc [..args..] -sWASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
 .. note:: Deciding to compile to wasm or JS can be done at the linking stage: it doesn't affect the object files.
@@ -28,43 +25,75 @@ WebAssembly is emitted by default, without the need for any special flags.
 Backends
 --------
 
-Emscripten can currently (July 2019) use 2 backends to generate WebAssembly: **fastcomp** (the asm.js backend, together with asm2wasm) and the **upstream LLVM wasm backend**.
+Emscripten emits WebAssembly using the **upstream LLVM wasm backend**, since
+version ``1.39.0`` (October 2019). Previously emscripten also supported the
+old **fastcomp** backend which was removed in ``2.0.0`` (August 2020).
 
-Fastcomp is currently the default, but we hope to `switch the default soon to the upstream backend <https://v8.dev/blog/emscripten-llvm-wasm>`_.
+There are some differences you may notice between the two backends, if you
+upgrade from fastcomp to upstream:
 
-To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream backend, use ``latest-upstream`` (or, if you are not using the emsdk, you can set LLVM in the ``.emscripten`` file to point to a build you make of very recent LLVM - preferably from git/svn master).
+* The wasm backend is strict about linking files with different features sets -
+  for example, if one file was built with atomics but another was not, it will
+  error at link time. This prevents possible bugs, but may mean you need to make
+  some build system fixes.
 
-There are some differences you may notice between the two backends, if you upgrade from fastcomp to upstream:
+* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit
+  asm.js, while in upstream we emit JS (since not all wasm constructs can be
+  expressed in asm.js). Also, the JS support implements the same external
+  ``WebAssembly.*`` API, so in particular startup will be async just like wasm
+  by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even
+  though ``WASM=0``).
 
-* The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but may mean you need to make some build system fixes.
-* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit asm.js, while in upstream we emit JS (since not all wasm constructs can be expressed in asm.js). Also, the JS support implements the same external ``WebAssembly.*`` API, so in particular startup will be async just like wasm by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even though ``WASM=0``).
+* The wasm backend uses wasm object files by default. That means that it does
+  codegen at the compile step, which makes the link step much faster - like a
+  normal native compiler. For comparison, in fastcomp the compile step emits
+  LLVM IR in object files.
+
+  * You normally wouldn't notice this, but some compiler flags affect codegen,
+    like ``DISABLE_EXCEPTION_CATCHING``. Such flags must be passed during
+    codegen. The simple and safe thing is to pass all ``-s`` flags at both
+    compile and link time.
+
+  * You can enable Link Time Optimization (LTO) with the usual llvm flags
+    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times;
+    note, however, that thin LTO is not heavily tested atm and so regular LTO
+    is recommended).
+
+  * With fastcomp, LTO optimization passes were not be run by default; for that
+    it was necessary to pass ``--llvm-lto 1``.  With the llvm backend LTO passes
+    will be run on any object files that are in bitcode format.
+
+  * Another thing you might notice is that fastcomp's link stage is able to
+    perform some minor types of link time optimization even without LTO being
+    set. The LLVM backend requires actually setting LTO for those things.
+
+* `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
+  archives) to contain symbol indexes.  This matches the behaviour the native
+  GNU linker.  While `emar` will create such indexes by default, native tools
+  such as GNU `ar` and GNU `strip` are not aware of the WebAssembly object
+  format and cannot create archive indexes.  In particular, if you run GNU
+  `strip` on an archive file that contains WebAssembly object files it will
+  remove the index which makes the archive unusable at link time.
+
+* Fastcomp emits asm.js and so has some limitations on function pointers. For
+  example, the ``RESERVED_FUNCTION_POINTERS`` setting exists there to work
+  around the fact that we can't grow the table. In the upstream backend table
+  growth is easy, and you can just enable ``ALLOW_TABLE_GROWTH``.
+
+* Fastcomp and upstream use very different LLVM and clang versions (fastcomp
+  has been stuck on LLVM 6, upstream is many releases after). This affects
+  optimizations, usually by making the upstream version faster and smaller.
+  However, in rare cases you may see a regression (for example, in some cases
+  *UN*-optimized code may be
+  `less optimal in upstream <https://github.com/emscripten-core/emscripten/issues/10753#issuecomment-603486677>`_,
+  so make sure to optimize both when compiling and when linking).
+
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
-Binaryen codegen options
-========================
-
 Trapping
---------
+========
 
 WebAssembly can trap - throw an exception - on things like division by zero, rounding a very large float to an int, and so forth. In asm.js such things were silently ignored, as in JavaScript they do not throw, so this is a difference between JavaScript and WebAssembly that you may notice, with the browser reporting an error like ``float unrepresentable in integer range``, ``integer result unrepresentable``, ``integer overflow``, or ``Out of bounds Trunc operation``.
-
-
-Fastcomp/asm2wasm
-~~~~~~~~~~~~~~~~~
-
-In fastcomp/asm2wasm, emscripten will emit code that is optimized for size and speed, which means it emits code that may trap on the things mentioned before. That mode is called ``allow``. The other modes are ``clamp``, which will avoid traps by clamping values to a reasonable range, and ``js``, which ensures the exact same behavior as JavaScript does (which also does clamping, but makes sure to clamp exactly like JavaScript does, and also do other things JavaScript would).
-
-In general, using ``clamp`` is safest, as whether such a trap occurs depends on how the LLVM optimizer optimizes code. In other words, there is no guarantee that this will not be an issue, and updating LLVM can make a problem appear or vanish (the wasm spec process has recognized this problem and intends to standardize `new operations that avoid it <https://github.com/WebAssembly/design/issues/1143>`_). Also, there is not a big downside to using ``clamp``: it is only slightly larger and slower than the default ``allow``, in most cases. To do so, build with
-
- ::
-
-  -s "BINARYEN_TRAP_MODE='clamp'"
-
-
-However, if the default (to allow traps) works in your codebase, then it may be worth keeping it that way, for the (small) benefits. Note that ``js``, which preserves the exact same behavior as JavaScript does, adds a large amount of overhead, so unless you really need that, use ``clamp`` (``js`` is often useful for debugging, though).
-
-LLVM wasm backend
-~~~~~~~~~~~~~~~~~
 
 The LLVM wasm backend avoids traps by adding more code around each possible trap (basically clamping the value if it would trap). This can increase code size and decrease speed, if you don't need that extra code. The proper solution for this is to use newer wasm instructions that do not trap, by calling emcc or clang with ``-mnontrapping-fptoint``. That code may not run in older VMs, though.
 
@@ -82,43 +111,6 @@ Testing native WebAssembly in browsers
 
 WebAssembly support is enabled by default as of Firefox 52, Chrome 57 and Opera 44. On Edge 15 you can enable it via "Experimental JavaScript Features" flag.
 
-Debugging
-=========
-
-asm.js support is considered very stable now, and you can change between it and wasm with ``-s WASM=0``, so if you see something odd in a wasm build, comparing to a parallel asm.js build can help. In general, any difference between the two could be a compiler bug or browser bug, but there are a few legitimate causes of different behavior between the two, that you may want to rule out:
-
-- wasm allows unaligned accesses, i.e. it will load 4 bytes from an unaligned address the same way x86 does (it doesn't care it's unaligned). asm.js works more like ARM CPUs which mostly don't accept such things (but they often trap, while asm.js just returns a wrong result). To rule this out, you can build with ``-s SAFE_HEAP=1``, that will catch all such invalid accesses.
-- Timing issues - wasm might run faster or slower. To some extent you can mitigate that by building with ``-s DETERMINISTIC=1``.
-- Trap mode. As mentioned above, we can generate wasm that traps or that avoids traps. Make sure the trap mode is ``"js"`` when comparing builds. The ``"js"`` trap mode is also useful in a single build, as otherwise operations like division or float-to-int may trap, and the optimizer may happen to change whether a trap occurs or not, which can be confusing (for example, enabling ``SAFE_HEAP`` may prevent some optimizations, and a trap may start to occur). Instead, in the ``"js"`` trap mode there are no traps and all operations are deterministically defined as identical to JavaScript.
-- Minor libc and runtime differences exist between wasm and asm.js. We used to have a way to emit more compatable builds (``-s "BINARYEN_METHOD='asmjs,native-wasm'"`` etc.) but due to its complexity and low value it was removed.
-- Floating-point behavior: WebAssembly uses 32-bit floats in a standard way, while asm.js by default implements floats using doubles. That can lead to differences in the precision of results. You can force 32-bit float behavior in asm.js with ``-s PRECISE_F32=1``, in which case it should be identical to wasm.
-- Browser instability: It's worth testing multiple browsers, as one might have a wasm bug that another doesn't. You can also test the Binaryen interpreter (e.g. using the ``interpret-binary`` method, as discussed above).
-
-If you find that an asm.js build has the same behavior as a wasm one, then it is currently easier to debug the asm.js build: you can edit the source easily (add debug printouts, etc.), there is debug info and source maps support, etc.
-
-Debugging WebAssembly
----------------------
-
-When you do need to debug a WebAssembly build, the following tips might help you.
-
-WebAssembly doesn't have source maps support yet, but building with ``-g`` will emit both a text and a binary wasm, and it will include function names in both, and also include source file and line number information in the text, for example, building hello world might have this in the ``.wast``:
-
-.. code-block:: none
-
-    ;; tests/hello_world.c:4
-    (drop
-      (call $_printf
-        (i32.const 1144)
-        (get_local $$vararg_buffer)
-      )
-    )
-    ;; tests/hello_world.c:5
-    (return
-      (i32.const 0)
-    )
-
-This indicates that the ``printf`` call comes from line 4, and the return from line 5, of ``hello_world.c``.
-
 ``.wasm`` files and compilation
 ===============================
 
@@ -131,7 +123,7 @@ Another noticeable effect is that WebAssembly is compiled asynchronously by defa
 Web server setup
 ================
 
-To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME time for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
+To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
 
 In Apache, you can do this with
 

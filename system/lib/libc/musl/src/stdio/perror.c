@@ -9,6 +9,11 @@ void perror(const char *msg)
 	char *errstr = strerror(errno);
 
 	FLOCK(f);
+
+	/* Save stderr's orientation and encoding rule, since perror is not
+	 * permitted to change them. */
+	void *old_locale = f->locale;
+	int old_mode = f->mode;
 	
 	if (msg && *msg) {
 		fwrite(msg, strlen(msg), 1, f);
@@ -17,6 +22,9 @@ void perror(const char *msg)
 	}
 	fwrite(errstr, strlen(errstr), 1, f);
 	fputc('\n', f);
+
+	f->mode = old_mode;
+	f->locale = old_locale;
 
 	FUNLOCK(f);
 }

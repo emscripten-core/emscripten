@@ -226,7 +226,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
             __m128 diverged = _mm_cmpgt_ps(len, four);
             __m128 divergedNow = _mm_and_ps(diverged, oldIterating);
             oldIterating = _mm_andnot_ps(divergedNow, oldIterating);
-            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0)); 
+            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0));
             //__m128 old = _mm_loadu_ps((float*)d+X);
 
             if (any_ps(divergedNow))
@@ -288,27 +288,27 @@ pthread_t thread[MAX_NUM_THREADS];
 double timeSpentInMandelbrot[MAX_NUM_THREADS] = {};
 unsigned long long numIters[MAX_NUM_THREADS] = {};
 
-uint32_t numThreadsRunning = 0;
+_Atomic uint32_t numThreadsRunning = 0;
 uint32_t maxThreadsRunning = 1;
 
 bool use_sse = true;
 
-int tasksDone = 0;
-int tasksPending[MAX_NUM_THREADS] = {};
+_Atomic uint32_t tasksDone = 0;
+_Atomic uint32_t tasksPending[MAX_NUM_THREADS] = {};
 #ifndef SINGLETHREADED
 void *mandelbrot_thread(void *arg)
 {
-  int idx = (int)arg;
-  emscripten_atomic_add_u32(&numThreadsRunning, 1);
+  long idx = (long)arg;
+  numThreadsRunning++;
 
   char threadName[32];
-  sprintf(threadName, "Worker %d", idx);
+  sprintf(threadName, "Worker %ld", idx);
   emscripten_set_thread_name(pthread_self(), threadName);
 
   for(;;)
   {
     emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
-    emscripten_atomic_store_u32(&tasksPending[idx], 0);
+    tasksPending[idx] = 0;
     double t0 = emscripten_get_now();
     int ni;
 #ifdef TEST_THREAD_PROFILING
@@ -321,15 +321,14 @@ void *mandelbrot_thread(void *arg)
 #endif
 #ifdef __SSE__
     if (use_sse)
-      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
+      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, (int)idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
 #endif
-      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
-    //emscripten_atomic_add_u32(&numIters, ni);
+      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, (int)idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     numIters[idx] += ni;
     timeSpentInMandelbrot[idx] += t1-t0;
-    emscripten_atomic_add_u32(&tasksDone, 1);
+    tasksDone++;
     emscripten_futex_wake(&tasksDone, 9999);
   }
 }
@@ -369,11 +368,11 @@ void register_tasks()
   if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
   // Register tasks.
-  emscripten_atomic_store_u32(&tasksDone, 0);
+  tasksDone = 0;
   emscripten_atomic_fence();
   for(int i = 0; i < numTasks; ++i)
   {
-      emscripten_atomic_store_u32(&tasksPending[i], 1);
+      tasksPending[i] = 1;
       emscripten_futex_wake(&tasksPending[i], 999);
   }
 #endif
@@ -385,7 +384,7 @@ void wait_tasks()
   // Wait for each task to finish.
   for(;;)
   {
-    int td = emscripten_atomic_load_u32(&tasksDone);
+    int td = tasksDone;
     if (td >= numTasks)
       break;
     emscripten_futex_wait(&tasksDone, td, 1);
@@ -397,17 +396,19 @@ void wait_tasks()
 void main_tick()
 {
 #ifndef SINGLETHREADED
-  const int threadsRunning = emscripten_atomic_load_u32(&numThreadsRunning);
+  const int threadsRunning = numThreadsRunning;
   if (threadsRunning < maxThreadsRunning) return;
 #endif
 
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
 
-#if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
-  if (numItersDoneOnCanvas > 50000)
+#if defined(TEST_THREAD_PROFILING)
+  static bool reported = false;
+  if (!reported && numItersDoneOnCanvas > 50000)
   {
-    REPORT_RESULT(0);
+    reported = true;
+    emscripten_force_exit(0);
   }
 #endif
 
@@ -431,9 +432,9 @@ void main_tick()
           break;
         case SDL_KEYUP:
           switch (event.key.keysym.sym) {
-            case SDLK_RIGHT: 
+            case SDLK_RIGHT:
             case SDLK_LEFT: hScroll = 0.f; break;
-            case SDLK_DOWN: 
+            case SDLK_DOWN:
             case SDLK_UP: vScroll = 0.f; break;
             case SDLK_a:
             case SDLK_z: zoom = 0.f; break;
@@ -501,7 +502,7 @@ void main_tick()
       var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
       if (updatesPerFrame) return updatesPerFrame[1];
     }
-    if (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 1) return parseInt(Module.arguments[0]);
+    if (arguments_ && arguments_.length >= 1) return parseInt(arguments_[0]);
     if (typeof document !== 'undefined' && document.getElementById('updates_per_frame')) return parseInt(document.getElementById('updates_per_frame').value);
     return 50;
   });
@@ -585,12 +586,8 @@ int main(int argc, char** argv)
   maxThreadsRunning = emscripten_num_logical_cores() < MAX_NUM_THREADS ? emscripten_num_logical_cores() : MAX_NUM_THREADS;
   for(int i = 0; i < maxThreadsRunning; ++i)
   {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    int rc = pthread_create(&thread[i], &attr, mandelbrot_thread, (void*)i);
+    int rc = pthread_create(&thread[i], NULL, mandelbrot_thread, (void*)i);
     assert(rc == 0);
-    pthread_attr_destroy(&attr);
   }
 #endif
 
@@ -606,7 +603,7 @@ int main(int argc, char** argv)
   if (ENVIRONMENT_IS_WEB) {
     emscripten_set_main_loop(main_tick, 0, 0);
   } else {
-    int numTotalFrames = EM_ASM_INT(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
+    int numTotalFrames = EM_ASM_INT(return (arguments_ && arguments_.length >= 2) ? parseInt(arguments_[1]) : 1000);
     printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
     double t0 = emscripten_get_now();
     for(int i = 0; i < numTotalFrames; ++i) {

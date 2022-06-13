@@ -64,7 +64,7 @@ querystring.escape = function(str) {};
 querystring.unescape = function(str) {};
 
 /**
- * @param {buffer.Buffer} s
+ * @param {nodeBuffer.Buffer} s
  * @param {boolean} decodeSpaces
  */
 querystring.unescapeBuffer = function(s, decodeSpaces) {};

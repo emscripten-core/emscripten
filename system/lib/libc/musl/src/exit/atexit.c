@@ -1,6 +1,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "libc.h"
+#include "lock.h"
+#include "fork_impl.h"
+
+#define malloc __libc_malloc
+#define calloc __libc_calloc
+#define realloc undef
+#define free undef
 
 /* Ensure that at least 32 atexit handlers can be registered without malloc */
 #define COUNT 32
@@ -13,7 +20,8 @@ static struct fl
 } builtin, *head;
 
 static int slot;
-static volatile int lock[2];
+static volatile int lock[1];
+volatile int *const __atexit_lockptr = lock;
 
 void __funcs_on_exit()
 {
@@ -28,11 +36,11 @@ void __funcs_on_exit()
 	}
 }
 
-void __cxa_finalize(void *dso)
+void ___cxa_finalize(void *dso)
 {
 }
 
-int __cxa_atexit(void (*func)(void *), void *arg, void *dso)
+int ___cxa_atexit(void (*func)(void *), void *arg, void *dso)
 {
 	LOCK(lock);
 
@@ -65,7 +73,13 @@ static void call(void *p)
 	((void (*)(void))(uintptr_t)p)();
 }
 
-int atexit(void (*func)(void))
+int __atexit(void (*func)(void))
 {
-	return __cxa_atexit(call, (void *)(uintptr_t)func, 0);
+	return ___cxa_atexit(call, (void *)(uintptr_t)func, 0);
 }
+
+// XXX: EMSCRIPTEN: Use weak aliases here so that we can override these symbols
+// in when EXIT_RUNTIME is set to 0.
+weak_alias(__atexit, atexit);
+weak_alias(___cxa_atexit, __cxa_atexit);
+weak_alias(___cxa_finalize, __cxa_finalize);

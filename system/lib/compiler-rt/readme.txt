@@ -1,21 +1,26 @@
-These files are from compiler-rt,
+llvm's compiler-rt
+------------------
 
-Last Changed Rev: 266813
-Last Changed Date: Tue Apr 19 13:29:59 2016
+These files are from the llvm-project based on release 14.0.0.
 
-===========================================================================
+We maintain a local fork of llvm-project that contains any emscripten
+specific patches:
 
- No changes from upstream (but not all files are included).
+  https://github.com/emscripten-core/llvm-project
 
-===========================================================================
+The current patch is based on:
 
-Compile with something like
+tag: llvmorg-14.0.0
+git: 329fda39c507e8740978d10458451dcdb21563be
 
-./emcc system/lib/compiler-rt/lib/builtins/*.c -Isystem/lib/compiler-rt/lib/builtins -o rt.bc
-./emcc -O2 -s ASM_JS=1 -g rt.bc -s LINKABLE=1
-manually replace Math_imul with Math.imul
+Update Instructions
+-------------------
 
-Later additions:
+Run `system/lib/update_compiler_rt.py path/to/llvm-root`
 
- * clzti2.c and floattitf.c are from LLVM a7d186c796455fd5fc400c4b06e4b70554b77353
-   Sep 23 2019
+Modifications
+-------------
+
+For a list of changes from upstream see the compiler-rt files that are part of:
+
+https://github.com/llvm/llvm-project/compare/llvmorg-14.0.0...emscripten-core:emscripten-libs-14.0.0

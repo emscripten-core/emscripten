@@ -1,0 +1,6 @@
+$__errno_location
+$__wasm_call_ctors
+$add
+$stackAlloc
+$stackRestore
+$stackSave

@@ -1,9 +1,8 @@
 //===-- sanitizer_allocator_secondary.h -------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -19,8 +18,8 @@
 // (currently, 32 bits and internal allocator).
 class LargeMmapAllocatorPtrArrayStatic {
  public:
-  INLINE void *Init() { return &p_[0]; }
-  INLINE void EnsureSpace(uptr n) { CHECK_LT(n, kMaxNumChunks); }
+  inline void *Init() { return &p_[0]; }
+  inline void EnsureSpace(uptr n) { CHECK_LT(n, kMaxNumChunks); }
  private:
   static const int kMaxNumChunks = 1 << 15;
   uptr p_[kMaxNumChunks];
@@ -32,14 +31,14 @@ class LargeMmapAllocatorPtrArrayStatic {
 // same functionality in Fuchsia case, which does not support MAP_NORESERVE.
 class LargeMmapAllocatorPtrArrayDynamic {
  public:
-  INLINE void *Init() {
+  inline void *Init() {
     uptr p = address_range_.Init(kMaxNumChunks * sizeof(uptr),
                                  SecondaryAllocatorName);
     CHECK(p);
     return reinterpret_cast<void*>(p);
   }
 
-  INLINE void EnsureSpace(uptr n) {
+  inline void EnsureSpace(uptr n) {
     CHECK_LT(n, kMaxNumChunks);
     DCHECK(n <= n_reserved_);
     if (UNLIKELY(n == n_reserved_)) {
@@ -162,7 +161,7 @@ class LargeMmapAllocator {
     return res;
   }
 
-  bool PointerIsMine(const void *p) {
+  bool PointerIsMine(const void *p) const {
     return GetBlockBegin(p) != nullptr;
   }
 
@@ -180,26 +179,29 @@ class LargeMmapAllocator {
     return GetHeader(p) + 1;
   }
 
-  void *GetBlockBegin(const void *ptr) {
+  void *GetBlockBegin(const void *ptr) const {
     uptr p = reinterpret_cast<uptr>(ptr);
     SpinMutexLock l(&mutex_);
     uptr nearest_chunk = 0;
+    Header *const *chunks = AddressSpaceView::Load(chunks_, n_chunks_);
     // Cache-friendly linear search.
     for (uptr i = 0; i < n_chunks_; i++) {
-      uptr ch = reinterpret_cast<uptr>(chunks_[i]);
+      uptr ch = reinterpret_cast<uptr>(chunks[i]);
       if (p < ch) continue;  // p is at left to this chunk, skip it.
       if (p - ch < p - nearest_chunk)
         nearest_chunk = ch;
     }
     if (!nearest_chunk)
       return nullptr;
-    Header *h = reinterpret_cast<Header *>(nearest_chunk);
+    const Header *h =
+        AddressSpaceView::Load(reinterpret_cast<Header *>(nearest_chunk));
+    Header *h_ptr = reinterpret_cast<Header *>(nearest_chunk);
     CHECK_GE(nearest_chunk, h->map_beg);
     CHECK_LT(nearest_chunk, h->map_beg + h->map_size);
     CHECK_LE(nearest_chunk, p);
     if (h->map_beg + h->map_size <= p)
       return nullptr;
-    return GetUser(h);
+    return GetUser(h_ptr);
   }
 
   void EnsureSortedChunks() {
@@ -219,9 +221,10 @@ class LargeMmapAllocator {
     uptr n = n_chunks_;
     if (!n) return nullptr;
     EnsureSortedChunks();
-    auto min_mmap_ = reinterpret_cast<uptr>(chunks_[0]);
-    auto max_mmap_ =
-        reinterpret_cast<uptr>(chunks_[n - 1]) + chunks_[n - 1]->map_size;
+    Header *const *chunks = AddressSpaceView::Load(chunks_, n_chunks_);
+    auto min_mmap_ = reinterpret_cast<uptr>(chunks[0]);
+    auto max_mmap_ = reinterpret_cast<uptr>(chunks[n - 1]) +
+                     AddressSpaceView::Load(chunks[n - 1])->map_size;
     if (p < min_mmap_ || p >= max_mmap_)
       return nullptr;
     uptr beg = 0, end = n - 1;
@@ -229,23 +232,24 @@ class LargeMmapAllocator {
     // to avoid expensive cache-thrashing loads.
     while (end - beg >= 2) {
       uptr mid = (beg + end) / 2;  // Invariant: mid >= beg + 1
-      if (p < reinterpret_cast<uptr>(chunks_[mid]))
-        end = mid - 1;  // We are not interested in chunks_[mid].
+      if (p < reinterpret_cast<uptr>(chunks[mid]))
+        end = mid - 1;  // We are not interested in chunks[mid].
       else
-        beg = mid;  // chunks_[mid] may still be what we want.
+        beg = mid;  // chunks[mid] may still be what we want.
     }
 
     if (beg < end) {
       CHECK_EQ(beg + 1, end);
       // There are 2 chunks left, choose one.
-      if (p >= reinterpret_cast<uptr>(chunks_[end]))
+      if (p >= reinterpret_cast<uptr>(chunks[end]))
         beg = end;
     }
 
-    Header *h = chunks_[beg];
+    const Header *h = AddressSpaceView::Load(chunks[beg]);
+    Header *h_ptr = chunks[beg];
     if (h->map_beg + h->map_size <= p || p < h->map_beg)
       return nullptr;
-    return GetUser(h);
+    return GetUser(h_ptr);
   }
 
   void PrintStats() {
@@ -263,13 +267,9 @@ class LargeMmapAllocator {
 
   // ForceLock() and ForceUnlock() are needed to implement Darwin malloc zone
   // introspection API.
-  void ForceLock() {
-    mutex_.Lock();
-  }
+  void ForceLock() SANITIZER_ACQUIRE(mutex_) { mutex_.Lock(); }
 
-  void ForceUnlock() {
-    mutex_.Unlock();
-  }
+  void ForceUnlock() SANITIZER_RELEASE(mutex_) { mutex_.Unlock(); }
 
   // Iterate over all existing chunks.
   // The allocator must be locked when calling this function.
@@ -301,7 +301,7 @@ class LargeMmapAllocator {
     return GetHeader(reinterpret_cast<uptr>(p));
   }
 
-  void *GetUser(const Header *h) {
+  void *GetUser(const Header *h) const {
     CHECK(IsAligned((uptr)h, page_size_));
     return reinterpret_cast<void*>(reinterpret_cast<uptr>(h) + page_size_);
   }
@@ -318,5 +318,5 @@ class LargeMmapAllocator {
   struct Stats {
     uptr n_allocs, n_frees, currently_allocated, max_allocated, by_size_log[64];
   } stats;
-  StaticSpinMutex mutex_;
+  mutable StaticSpinMutex mutex_;
 };

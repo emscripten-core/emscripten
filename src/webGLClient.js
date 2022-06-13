@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // WebGLWorker client code
 
@@ -303,7 +304,7 @@ function WebGLClient() {
 
   this.onmessage = function(msg) {
     //dump('client GL got ' + JSON.stringify(msg) + '\n');
-    switch(msg.op) {
+    switch (msg.op) {
       case 'render': {
         if (commandBuffers.length === 0) {
           // requestion a new frame, we will clear the buffers after rendering them

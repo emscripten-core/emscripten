@@ -1,20 +1,26 @@
-These files are from libc++, release 8.0.0.
+llvm's libcxx
+-------------
 
-tag: llvmorg-8.0.0
-git: d2298e74235598f15594fe2c99bbac870a507c59
+These files are from the llvm-project based on release 14.0.0.
+
+We maintain a local fork of llvm-project that contains any emscripten
+specific patches:
+
+  https://github.com/emscripten-core/llvm-project
+
+The current patch is based on:
+
+tag: llvmorg-14.0.0
+git: 329fda39c507e8740978d10458451dcdb21563be
 
 Update Instructions
 -------------------
 
-Run system/lib/update_libcxx.py.
+Run `system/lib/update_libcxx.py path/to/llvm-project`
 
-Local Modification
-------------------
+Modifications
+-------------
 
-Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
+For a list of changes from upstream see the libcxx files that are part of:
 
-1. Define _LIBCPP_OBJECT_FORMAT_ELF under __asmjs__ in libcxx/__config.
-
-2. Define _LIBCPP_HAS_THREAD_API_PTHREAD in libcxx/__config./
-
-3. Define _LIBCPP_ELAST in libcxx/include/config_elast.h
+https://github.com/llvm/llvm-project/compare/llvmorg-14.0.0...emscripten-core:emscripten-libs-14.0.0

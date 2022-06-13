@@ -47,26 +47,14 @@ void *ThreadMain(void *arg)
 int main()
 {
 	int result = 0;
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(800);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
 
 	pthread_t thread[NUM_THREADS];
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
-		pthread_attr_t attr;
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-		int rc = pthread_create(&thread[i], &attr, ThreadMain, 0);
+		int rc = pthread_create(&thread[i], NULL, ThreadMain, 0);
 		if (rc != 0 || thread[i] == 0)
 			printf("Failed to create thread!\n");
-		pthread_attr_destroy(&attr);
 	}
 
 	for(int i = 0; i < NUM_THREADS; ++i)
@@ -76,7 +64,6 @@ int main()
 	}
 
 	printf("counter: %d\n", counter);
-#ifdef REPORT_RESULT
-	REPORT_RESULT(counter);
-#endif
+	assert(counter == 800);
+	return 0;
 }

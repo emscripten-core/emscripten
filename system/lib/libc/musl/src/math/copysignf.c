@@ -3,7 +3,7 @@
 
 float copysignf(float x, float y)
 {
-// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
 // See https://github.com/emscripten-core/emscripten/issues/9236
 #ifdef __wasm__
 	return __builtin_copysignf(x, y);

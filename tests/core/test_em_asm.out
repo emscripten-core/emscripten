@@ -1,5 +1,19 @@
 BEGIN
 no args works
+int types:
+         char : 1
+  signed char : 2
+unsigned char : 3
+         short: 4
+  signed short: 5
+unsigned short: 6
+         int  : 7
+  signed int  : 8
+unsigned int  : 9
+         long : 10
+  signed long : 11
+unsigned long : 12
+    terminator: 42
 no args returning int
   EM_ASM_INT_V returned: 12
 no args returning double
@@ -76,4 +90,29 @@ EM_ASM_DOUBLE :
     returned: 6.000000
   5.5 + 14.375
     returned: 19.875000
+idii
+a 1
+b 3.14159
+c 3
+d 4
+diii
+a 3.14159
+b 2
+c 3
+d 4
+iidi
+a 1
+b 2
+c 3.14159
+d 4
+ddii
+a 3.14159
+b 2.1828
+c 3
+d 4
+iddi
+a 1
+b 3.14159
+c 2.1828
+d 4
 END

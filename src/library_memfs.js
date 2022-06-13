@@ -1,10 +1,11 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
-  $MEMFS__deps: ['$FS'],
+  $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,
     mount: function(mount) {
@@ -88,23 +89,14 @@ mergeInto(LibraryManager.library, {
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;
+        parent.timestamp = node.timestamp;
       }
       return node;
     },
 
-    // Given a file node, returns its file data converted to a regular JS array. You should treat this as read-only.
-    getFileDataAsRegularArray: function(node) {
-      if (node.contents && node.contents.subarray) {
-        var arr = [];
-        for (var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
-        return arr; // Returns a copy of the original data.
-      }
-      return node.contents; // No-op, the file contents are already in a JS array. Return as-is.
-    },
-
     // Given a file node, returns its file data converted to a typed array.
     getFileDataAsTypedArray: function(node) {
-      if (!node.contents) return new Uint8Array;
+      if (!node.contents) return new Uint8Array(0);
       if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       return new Uint8Array(node.contents);
     },
@@ -113,42 +105,39 @@ mergeInto(LibraryManager.library, {
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
+#if CAN_ADDRESS_2GB
+      newCapacity >>>= 0;
+#endif
       var prevCapacity = node.contents ? node.contents.length : 0;
       if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
       // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
       // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
       // avoid overshooting the allocation cap by a very large margin.
       var CAPACITY_DOUBLING_MAX = 1024 * 1024;
-      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
+      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = node.contents;
       node.contents = new Uint8Array(newCapacity); // Allocate new storage.
       if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
-      return;
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
     resizeFileStorage: function(node, newSize) {
+#if CAN_ADDRESS_2GB
+      newSize >>>= 0;
+#endif
       if (node.usedBytes == newSize) return;
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
         node.usedBytes = 0;
-        return;
-      }
-      if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
+      } else {
         var oldContents = node.contents;
-        node.contents = new Uint8Array(new ArrayBuffer(newSize)); // Allocate new storage.
+        node.contents = new Uint8Array(newSize); // Allocate new storage.
         if (oldContents) {
           node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
         }
         node.usedBytes = newSize;
-        return;
       }
-      // Backing with a JS array.
-      if (!node.contents) node.contents = [];
-      if (node.contents.length > newSize) node.contents.length = newSize;
-      else while (node.contents.length < newSize) node.contents.push(0);
-      node.usedBytes = newSize;
     },
 
     node_ops: {
@@ -213,12 +202,15 @@ mergeInto(LibraryManager.library, {
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
+        old_node.parent.timestamp = Date.now()
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
+        new_dir.timestamp = old_node.parent.timestamp;
         old_node.parent = new_dir;
       },
       unlink: function(parent, name) {
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
@@ -226,6 +218,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
         }
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       readdir: function(node) {
         var entries = ['.', '..'];
@@ -272,20 +265,18 @@ mergeInto(LibraryManager.library, {
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
-#if ALLOW_MEMORY_GROWTH
-        // If memory can grow, we don't want to hold on to references of
-        // the memory Buffer, as they may get invalidated. That means
-        // we need to do a copy here.
 #if ASSERTIONS
-        // FIXME: this is inefficient as the file packager may have
-        //        copied the data into memory already - we may want to
-        //        integrate more there and let the file packager loading
-        //        code be able to query if memory growth is on or off.
-        if (canOwn) {
-          warnOnce('file packager has copied file data into memory, but in memory growth we are forced to copy it again (see --no-heap-copy)');
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
+#if ALLOW_MEMORY_GROWTH
+        // If the buffer is located in main memory (HEAP), and if
+        // memory can grow, we can't hold on to references of the
+        // memory buffer, as they may get invalidated. That means we
+        // need to do copy its contents.
+        if (buffer.buffer === HEAP8.buffer) {
+          canOwn = false;
         }
-#endif // ASSERTIONS
-        canOwn = false;
 #endif // ALLOW_MEMORY_GROWTH
 
         if (!length) return 0;
@@ -301,7 +292,7 @@ mergeInto(LibraryManager.library, {
             node.usedBytes = length;
             return length;
           } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
-            node.contents = new Uint8Array(buffer.subarray(offset, offset + length));
+            node.contents = buffer.slice(offset, offset + length);
             node.usedBytes = length;
             return length;
           } else if (position + length <= node.usedBytes) { // Writing to an already allocated and used subrange of the file?
@@ -312,13 +303,15 @@ mergeInto(LibraryManager.library, {
 
         // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
         MEMFS.expandFileStorage(node, position+length);
-        if (node.contents.subarray && buffer.subarray) node.contents.set(buffer.subarray(offset, offset + length), position); // Use typed array write if available.
-        else {
+        if (node.contents.subarray && buffer.subarray) {
+          // Use typed array write which is available.
+          node.contents.set(buffer.subarray(offset, offset + length), position);
+        } else {
           for (var i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
         }
-        node.usedBytes = Math.max(node.usedBytes, position+length);
+        node.usedBytes = Math.max(node.usedBytes, position + length);
         return length;
       },
 
@@ -340,7 +333,7 @@ mergeInto(LibraryManager.library, {
         MEMFS.expandFileStorage(stream.node, offset + length);
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
-      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+      mmap: function(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
@@ -348,15 +341,14 @@ mergeInto(LibraryManager.library, {
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
-              (contents.buffer === buffer || contents.buffer === buffer.buffer) ) {
+        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {
           // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < stream.node.usedBytes) {
+          if (position > 0 || position + length < contents.length) {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
@@ -364,14 +356,14 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          // malloc() can lead to growing the heap. If targeting the heap, we need to
-          // re-acquire the heap buffer object in case growth had occurred.
-          var fromHeap = (buffer.buffer == HEAP8.buffer);
-          ptr = _malloc(length);
+          ptr = mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
-          (fromHeap ? HEAP8 : buffer).set(contents, ptr);
+#if CAN_ADDRESS_2GB
+          ptr >>>= 0;
+#endif
+          HEAP8.set(contents, ptr);
         }
         return { ptr: ptr, allocated: allocated };
       },

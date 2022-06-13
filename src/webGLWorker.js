@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // WebGLWorker worker code
 
@@ -483,7 +484,7 @@ function WebGLWorker() {
     enabledState: {} // Stores whether various GL state via glEnable/glDisable/glIsEnabled/getParameter are enabled.
   };
   var stateDisabledByDefault = [this.BLEND, this.CULL_FACE, this.DEPTH_TEST, this.DITHER, this.POLYGON_OFFSET_FILL, this.SAMPLE_ALPHA_TO_COVERAGE, this.SAMPLE_COVERAGE, this.SCISSOR_TEST, this.STENCIL_TEST];
-  for(var i in stateDisabledByDefault) {
+  for (var i in stateDisabledByDefault) {
     bindings.enabledState[stateDisabledByDefault[i]] = false; // It will be important to distinguish between false and undefined (undefined meaning the state cap enum is unknown/unsupported).
   }
 
@@ -497,7 +498,7 @@ function WebGLWorker() {
 
   this.onmessage = function(msg) {
     //dump('worker GL got ' + JSON.stringify(msg) + '\n');
-    switch(msg.op) {
+    switch (msg.op) {
       case 'setPrefetched': {
         WebGLWorker.prototype.prefetchedParameters = msg.parameters;
         WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
@@ -866,7 +867,7 @@ function WebGLWorker() {
   };
   function duplicate(something) {
     // clone data properly: handles numbers, null, typed arrays, js arrays and array buffers
-    if (!something || typeof something === 'number') return something;
+    if (!something || typeof something == 'number') return something;
     if (something.slice) return something.slice(0); // ArrayBuffer or js array
     return new something.constructor(something); // typed array
   }

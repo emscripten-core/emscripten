@@ -33,9 +33,6 @@
 
 #define MASK (KMAX-1)
 
-#define CONCAT2(x,y) x ## y
-#define CONCAT(x,y) CONCAT2(x,y)
-
 static long long scanexp(FILE *f, int pok)
 {
 	int c;
@@ -110,7 +107,10 @@ static long double decfloat(FILE *f, int c, int bits, int emin, int sign, int po
 			gotdig=1;
 		} else {
 			dc++;
-			if (c!='0') x[KMAX-4] |= 1;
+			if (c!='0') {
+				lnz = (KMAX-4)*9;
+				x[KMAX-4] |= 1;
+			}
 		}
 	}
 	if (!gotrad) lrp=dc;
@@ -171,6 +171,9 @@ static long double decfloat(FILE *f, int c, int bits, int emin, int sign, int po
 		if (bitlim>30 || x[0]>>bitlim==0)
 			return sign * (long double)x[0] * p10s[rp-10];
 	}
+
+	/* Drop trailing zeros */
+	for (; !x[z-1]; z--);
 
 	/* Align radix point to B1B digit boundary */
 	if (rp % 9) {
@@ -295,7 +298,7 @@ static long double decfloat(FILE *f, int c, int bits, int emin, int sign, int po
 	y -= bias;
 
 	if ((e2+LDBL_MANT_DIG & INT_MAX) > emax-5) {
-		if (fabs(y) >= CONCAT(0x1p, LDBL_MANT_DIG)) {
+		if (fabsl(y) >= 2/LDBL_EPSILON) {
 			if (denormal && bits==LDBL_MANT_DIG+e2-emin)
 				denormal = 0;
 			y *= 0.5;

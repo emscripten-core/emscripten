@@ -6,10 +6,7 @@
 #include <time.h>
 #include <limits.h>
 #include "locale_impl.h"
-#include "libc.h"
 #include "time_impl.h"
-
-const char *__nl_langinfo_l(nl_item, locale_t);
 
 static int is_leap(int y)
 {
@@ -45,15 +42,12 @@ static int week_num(const struct tm *tm)
 	return val;
 }
 
-const char *__tm_to_tzname(const struct tm *);
-size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
-
-const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *tm, locale_t loc)
+const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *tm, locale_t loc, int pad)
 {
 	nl_item item;
 	long long val;
 	const char *fmt = "-";
-	int width = 2;
+	int width = 2, def_pad = '0';
 
 	switch (f) {
 	case 'a':
@@ -79,15 +73,14 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 	case 'C':
 		val = (1900LL+tm->tm_year) / 100;
 		goto number;
+	case 'e':
+		def_pad = '_';
 	case 'd':
 		val = tm->tm_mday;
 		goto number;
 	case 'D':
 		fmt = "%m/%d/%y";
 		goto recu_strftime;
-	case 'e':
-		*l = snprintf(*s, sizeof *s, "%2d", tm->tm_mday);
-		return *s;
 	case 'F':
 		fmt = "%Y-%m-%d";
 		goto recu_strftime;
@@ -166,7 +159,8 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 		item = T_FMT;
 		goto nl_strftime;
 	case 'y':
-		val = tm->tm_year % 100;
+		val = (tm->tm_year + 1900LL) % 100;
+		if (val < 0) val = -val;
 		goto number;
 	case 'Y':
 		val = tm->tm_year + 1900LL;
@@ -181,9 +175,8 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 			*l = 0;
 			return "";
 		}
-		*l = snprintf(*s, sizeof *s, "%+.2ld%.2d", // XXX EMSCRIPTEN: %d => %ld
-			(tm->__tm_gmtoff)/3600,
-			abs(tm->__tm_gmtoff%3600)/60);
+		*l = snprintf(*s, sizeof *s, "%+.4ld",
+			tm->__tm_gmtoff/3600*100 + tm->__tm_gmtoff%3600/60);
 		return *s;
 	case 'Z':
 		if (tm->tm_isdst < 0) {
@@ -199,7 +192,12 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 		return 0;
 	}
 number:
-	*l = snprintf(*s, sizeof *s, "%0*lld", width, val);
+	switch (pad ? pad : def_pad) {
+	case '-': *l = snprintf(*s, sizeof *s, "%lld", val); break;
+	case '_': *l = snprintf(*s, sizeof *s, "%*lld", width, val); break;
+	case '0':
+	default:  *l = snprintf(*s, sizeof *s, "%0*lld", width, val); break;
+	}
 	return *s;
 nl_strcat:
 	fmt = __nl_langinfo_l(item, loc);
@@ -220,7 +218,7 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
 	char buf[100];
 	char *p;
 	const char *t;
-	int plus;
+	int pad, plus;
 	unsigned long width;
 	for (l=0; l<n; f++) {
 		if (!*f) {
@@ -232,6 +230,8 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
 			continue;
 		}
 		f++;
+		pad = 0;
+		if (*f == '-' || *f == '_' || *f == '0') pad = *f++;
 		if ((plus = (*f == '+'))) f++;
 		width = strtoul(f, &p, 10);
 		if (*p == 'C' || *p == 'F' || *p == 'G' || *p == 'Y') {
@@ -241,17 +241,24 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
 		}
 		f = p;
 		if (*f == 'E' || *f == 'O') f++;
-		t = __strftime_fmt_1(&buf, &k, *f, tm, loc);
+		t = __strftime_fmt_1(&buf, &k, *f, tm, loc, pad);
 		if (!t) break;
 		if (width) {
-			for (; *t=='+' || *t=='-' || (*t=='0'&&t[1]); t++, k--);
-			width--;
-			if (plus && tm->tm_year >= 10000-1900)
-				s[l++] = '+';
-			else if (tm->tm_year < -1900)
+			/* Trim off any sign and leading zeros, then
+			 * count remaining digits to determine behavior
+			 * for the + flag. */
+			if (*t=='+' || *t=='-') t++, k--;
+			for (; *t=='0' && t[1]-'0'<10U; t++, k--);
+			if (width < k) width = k;
+			size_t d;
+			for (d=0; t[d]-'0'<10U; d++);
+			if (tm->tm_year < -1900) {
 				s[l++] = '-';
-			else
-				width++;
+				width--;
+			} else if (plus && d+(width-k) >= (*p=='C'?3:5)) {
+				s[l++] = '+';
+				width--;
+			}
 			for (; width > k && l < n; width--)
 				s[l++] = '0';
 		}

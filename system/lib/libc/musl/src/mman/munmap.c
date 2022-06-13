@@ -1,6 +1,5 @@
 #include <sys/mman.h>
 #include "syscall.h"
-#include "libc.h"
 
 static void dummy(void) { }
 weak_alias(dummy, __vm_wait);
@@ -12,3 +11,4 @@ int __munmap(void *start, size_t len)
 }
 
 weak_alias(__munmap, munmap);
+weak_alias(__munmap, emscripten_builtin_munmap);

@@ -1,9 +1,8 @@
-//===------------------------ private_typeinfo.h --------------------------===//
+//===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -13,7 +12,7 @@
 #include "__cxxabi_config.h"
 
 #include <typeinfo>
-#include <cstddef>
+#include <stddef.h>
 
 namespace __cxxabiv1 {
 
@@ -73,7 +72,7 @@ struct _LIBCXXABI_HIDDEN __dynamic_cast_info
     const __class_type_info* dst_type;
     const void* static_ptr;
     const __class_type_info* static_type;
-    std::ptrdiff_t src2dst_offset;
+    ptrdiff_t src2dst_offset;
 
 // Data that represents the answer:
 
@@ -249,4 +248,4 @@ public:
 
 }  // __cxxabiv1
 
-#endif  // __PRIVATE_TYPEINFO_H_
+#endif // __PRIVATE_TYPEINFO_H_

@@ -2,6 +2,7 @@
 #include <errno.h>
 #endif
 #include <unistd.h>
+#include <errno.h>
 #include <sys/ioctl.h>
 #include "syscall.h"
 
@@ -18,13 +19,16 @@ int isatty(int fd)
 	// All character devices are terminals (other things a Linux system would
 	// assume is a character device, like the mouse, we have special APIs for).
 	if (statbuf.fs_filetype != __WASI_FILETYPE_CHARACTER_DEVICE) {
-		errno = __WASI_ENOTTY;
+		errno = __WASI_ERRNO_NOTTY;
 		return 0;
 	}
 
 	return 1;
 #else
 	struct winsize wsz;
-	return !syscall(SYS_ioctl, fd, TIOCGWINSZ, &wsz);
+	unsigned long r = syscall(SYS_ioctl, fd, TIOCGWINSZ, &wsz);
+	if (r == 0) return 1;
+	if (errno != EBADF) errno = ENOTTY;
+	return 0;
 #endif
 }

@@ -1,7 +1,8 @@
-// Copyright 2016 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2016 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
   $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
@@ -198,7 +199,7 @@ mergeInto(LibraryManager.library, {
         } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
-              var stat = stream.node.mount.opts.fs.fstat(stream.nfd);
+              var stat = stream.node.node_ops.getattr(stream.node);
               position += stat.size;
             } catch (e) {
               throw new FS.ErrnoError(ERRNO_CODES[e.code]);

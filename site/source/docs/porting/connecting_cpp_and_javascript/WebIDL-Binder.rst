@@ -71,13 +71,13 @@ The mapping between the IDL definition and the C++ is fairly obvious. The main t
 Generating the bindings glue code
 ---------------------------------
 
-The *bindings generator* (`tools/webidl_binder.py <https://github.com/emscripten-core/emscripten/blob/master/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
+The *bindings generator* (`tools/webidl_binder.py <https://github.com/emscripten-core/emscripten/blob/main/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
 
 For example, to create the glue code files **glue.cpp** and **glue.js** for the IDL file **my_classes.idl**, you would use the following command:
 
 .. code-block:: bash
 
-    python tools/webidl_binder.py my_classes.idl glue
+    tools/webidl_binder my_classes.idl glue
 
 
 
@@ -113,28 +113,23 @@ Modular output
 
 When using the WebIDL binder, often what you are doing is creating a library. In that
 case, the `MODULARIZE` option makes sense to use. It wraps the entire JavaScript output
-in a function, which you call to create instances,
+in a function, and returns a Promise which resolves to the initialized Module instance.
 
 .. code-block:: javascript
 
-  var instance = Module();
-
-(You can use the `EXPORT_NAME` option to change `Module` to something else.) This is
-good practice for libraries, as then they don't include unnecessary things in the
-global scope (and in some cases you want to create more than one).
-
-Modularize also provides a promise-like API, which is the recommended way to use it,
-
-.. code-block:: javascript
-
-  var instance = Module().then(function(instance) {
-    // code that uses the instance here
+  var instance;
+  Module().then(module => {
+    instance = module;
   });
 
-The callback is called when it is safe to run compiled code, similar
-to the `onRuntimeInitialized` callback (i.e., it waits for all
-necessary async events). It receives the instance as a parameter,
-for convenience.
+The promise is resolved when it is safe to run compiled code, i.e. after it
+has been has been downloaded and instantiated. The promise is resolved at the
+same time the `onRuntimeInitialized` callback is invoked, so there's no need to
+use `onRuntimeInitialized` when using `MODULARIZE`.
+
+You can use the `EXPORT_NAME` option to change `Module` to something else. This is
+good practice for libraries, as then they don't include unnecessary things in the
+global scope, and in some cases you want to create more than one.
 
 
 Using C++ classes in JavaScript
@@ -204,7 +199,7 @@ Pointers, References, Value types (Ref and Value)
 
 C++ arguments and return types can be pointers, references, or value types (allocated on the stack). The IDL file uses different decoration to represent each of these cases.
 
-Undecorated argument and return values in the IDL are assumed to be *pointers* in the C++:
+Undecorated argument and return values of a custom type in the IDL are assumed to be *pointers* in the C++:
 
 .. code-block:: cpp
 
@@ -215,6 +210,8 @@ Undecorated argument and return values in the IDL are assumed to be *pointers* i
 
   // WebIDL
   MyClass process(MyClass input);
+  
+This assumption isn't true for base types like void,int,bool,DOMString,etc.
 
 References should be decorated using ``[Ref]``:
 
@@ -227,6 +224,7 @@ References should be decorated using ``[Ref]``:
 
   // WebIDL
   [Ref] MyClass process([Ref] MyClass input);
+
 
 .. note:: If ``[Ref]`` is omitted on a reference, the generated glue C++ will not compile (it fails when it tries to convert the reference — which it thinks is a pointer — to an object).
 
@@ -275,7 +273,7 @@ Attributes that correspond to const data members must be specified with the ``re
 
 This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter. The attribute will also be defined as read-only in JavaScript, meaning that trying to set it will have no effect on the value, and will throw an error in strict mode.
 
-.. tip:: It is possible for a return type to have multiple specifiers. For example, an method that returns a contant reference would be marked up in the IDL using ``[Ref, Const]``.
+.. tip:: It is possible for a return type to have multiple specifiers. For example, a method that returns a constant reference would be marked up in the IDL using ``[Ref, Const]``.
 
 
 Un-deletable classes (NoDelete)
@@ -488,6 +486,6 @@ The type names in WebIDL are not identical to those in C++. This section shows t
 Test and example code
 =====================
 
-For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
+For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/main/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
 
 Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the `Bullet Physics engine <http://bulletphysics.org/wordpress/>`_ to the Web.

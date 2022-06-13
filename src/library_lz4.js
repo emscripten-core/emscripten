@@ -1,11 +1,12 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS', '$ERRNO_CODES'],
+  $LZ4__deps: ['$FS'],
   $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
@@ -14,12 +15,12 @@ mergeInto(LibraryManager.library, {
     init: function() {
       if (LZ4.codec) return;
       LZ4.codec = (function() {
-        {{{ read('mini-lz4.js') }}};
+        {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage: function (pack) {
+    loadPackage: function (pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
@@ -41,6 +42,31 @@ mergeInto(LibraryManager.library, {
           end: file.end,
         });
       });
+      // Preload files if necessary. This code is largely similar to
+      // createPreloadedFile in library_fs.js. However, a main difference here
+      // is that we only decompress the file if it can be preloaded.
+      // Abstracting out the common parts seems to be more effort than it is
+      // worth.
+      if (preloadPlugin) {
+        Browser.init();
+        pack['metadata'].files.forEach(function(file) {
+          var handled = false;
+          var fullname = file.filename;
+          Module['preloadPlugins'].forEach(function(plugin) {
+            if (handled) return;
+            if (plugin['canHandle'](fullname)) {
+              var dep = getUniqueRunDependency('fp ' + fullname);
+              addRunDependency(dep);
+              var finish = function() {
+                removeRunDependency(dep);
+              }
+              var byteArray = FS.readFile(fullname);
+              plugin['handle'](byteArray, fullname, finish, finish);
+              handled = true;
+            }
+          });
+        });
+      }
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
@@ -65,7 +91,7 @@ mergeInto(LibraryManager.library, {
       getattr: function(node) {
         return {
           dev: 1,
-          ino: undefined,
+          ino: node.id,
           mode: node.mode,
           nlink: 1,
           uid: 0,
@@ -88,33 +114,33 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       },
       mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       unlink: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rmdir: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readdir: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readlink: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
-        //console.log('LZ4 read ' + [offset, length, position]);
+        //out('LZ4 read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
@@ -123,7 +149,7 @@ mergeInto(LibraryManager.library, {
         while (written < length) {
           var start = contents.start + position + written; // start index in uncompressed data
           var desired = length - written;
-          //console.log('current read: ' + ['start', start, 'desired', desired]);
+          //out('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4.CHUNK_SIZE);
           var compressedStart = compressedData['offsets'][chunkIndex];
           var compressedSize = compressedData['sizes'][chunkIndex];
@@ -139,13 +165,13 @@ mergeInto(LibraryManager.library, {
               currChunk = compressedData['cachedChunks'].pop();
               compressedData['cachedChunks'].unshift(currChunk);
               if (compressedData['debug']) {
-                console.log('decompressing chunk ' + chunkIndex);
+                out('decompressing chunk ' + chunkIndex);
                 Module['decompressedChunks'] = (Module['decompressedChunks'] || 0) + 1;
               }
               var compressed = compressedData['data'].subarray(compressedStart, compressedStart + compressedSize);
               //var t = Date.now();
               var originalSize = LZ4.codec.uncompress(compressed, currChunk);
-              //console.log('decompress time: ' + (Date.now() - t));
+              //out('decompress time: ' + (Date.now() - t));
               if (chunkIndex < compressedData['successes'].length-1) assert(originalSize === LZ4.CHUNK_SIZE); // all but the last chunk must be full-size
             }
           } else {
@@ -161,7 +187,7 @@ mergeInto(LibraryManager.library, {
         return written;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
@@ -173,7 +199,7 @@ mergeInto(LibraryManager.library, {
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },

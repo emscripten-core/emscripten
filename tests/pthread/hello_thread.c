@@ -7,19 +7,19 @@
 
 #include <pthread.h>
 #include <emscripten.h>
+#include <emscripten/html5.h>
 
 void *thread_main(void *arg)
 {
 	EM_ASM(out('hello from thread!'));
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
-	return 0;
+	emscripten_force_exit(0);
+	__builtin_trap();
 }
 
 int main()
 {
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	EM_ASM(noExitRuntime=true);
+	emscripten_exit_with_live_runtime();
+	__builtin_trap();
 }

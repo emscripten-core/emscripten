@@ -6,31 +6,34 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 
 VERSION = '9c'
-HASH = '2b581c60ae401a79bbbe748ff2deeda5acd50bfd2ea22e5926e36d34b9ebcffb6580b0ff48e972c1441583e30e21e1ea821ca0423f9c67ce08a31dffabdbe6b7'
+HASH = 'b2affe9a1688bd49fc033f4682c4a242d4ee612f1affaef532f5adcb4602efc4433c4a52a4b3d69e7440ff1f6413b1b041b419bc90efd6d697999961a9a6afb7'
+
+
+def needed(settings):
+  return settings.USE_LIBJPEG
 
 
 def get(ports, settings, shared):
-  if settings.USE_LIBJPEG != 1:
-    return []
+  # Archive mirrored from http://www.ijg.org/files/jpegsrc.v9c.tar.gz.
+  # We have issues where python urllib was not able to load from the www.ijg.org webserver
+  # and was resulting in 403: Forbidden.
+  ports.fetch_project('libjpeg', 'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
 
-  ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
-
-  libname = ports.get_lib_name('libjpeg')
-
-  def create():
+  def create(final):
     logging.info('building port: libjpeg')
 
     source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'libjpeg')
+    dest_path = os.path.join(ports.get_build_dir(), 'libjpeg')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    open(os.path.join(dest_path, 'jconfig.h'), 'w').write(jconfig_h)
+    Path(dest_path, 'jconfig.h').write_text(jconfig_h)
+    ports.install_headers(dest_path)
 
-    final = os.path.join(ports.get_build_dir(), 'libjpeg', libname)
     ports.build_port(
       dest_path, final,
       exclude_files=[
@@ -39,20 +42,16 @@ def get(ports, settings, shared):
         'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
       ]
     )
-    return final
 
-  return [shared.Cache.get(libname, create, what='port')]
-
-
-def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libjpeg'))
+  return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_LIBJPEG == 1:
-    get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'libjpeg')]
-  return args
+def clear(ports, settings, shared):
+  shared.Cache.erase_lib('libjpeg.a')
+
+
+def process_args(ports):
+  return []
 
 
 def show():

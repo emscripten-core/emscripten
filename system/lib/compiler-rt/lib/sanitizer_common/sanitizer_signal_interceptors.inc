@@ -1,9 +1,8 @@
 //===-- sanitizer_signal_interceptors.inc -----------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -30,8 +29,16 @@ using namespace __sanitizer;
 #endif
 
 #ifndef SIGNAL_INTERCEPTOR_SIGACTION_IMPL
-#define SIGNAL_INTERCEPTOR_SIGACTION_IMPL(signum, act, oldact) \
-  { return REAL(sigaction_symname)(signum, act, oldact); }
+#  define SIGNAL_INTERCEPTOR_SIGACTION_IMPL(signum, act, oldact)              \
+    {                                                                         \
+      if (!REAL(sigaction_symname)) {                                         \
+        Printf(                                                               \
+            "Warning: REAL(sigaction_symname) == nullptr. This may happen "   \
+            "if you link with ubsan statically. Sigaction will not work.\n"); \
+        return -1;                                                            \
+      }                                                                       \
+      return REAL(sigaction_symname)(signum, act, oldact);                    \
+    }
 #endif
 
 #if SANITIZER_INTERCEPT_BSD_SIGNAL
@@ -54,7 +61,10 @@ INTERCEPTOR(uptr, signal, int signum, uptr handler) {
 
 INTERCEPTOR(int, sigaction_symname, int signum,
             const __sanitizer_sigaction *act, __sanitizer_sigaction *oldact) {
-  if (GetHandleSignalMode(signum) == kHandleSignalExclusive) return 0;
+  if (GetHandleSignalMode(signum) == kHandleSignalExclusive) {
+    if (!oldact) return 0;
+    act = nullptr;
+  }
   SIGNAL_INTERCEPTOR_SIGACTION_IMPL(signum, act, oldact);
 }
 #define INIT_SIGACTION COMMON_INTERCEPT_FUNCTION(sigaction_symname)

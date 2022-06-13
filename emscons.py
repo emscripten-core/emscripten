@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """Wrapping the scons invocation, EMSCRIPTEN_TOOL_PATH is set in the process
 environment, and can be used to locate the emscripten SCons Tool.
 
@@ -11,9 +11,9 @@ my_env = Environment(tools=['emscripten'], toolpath=[os.environ['EMSCRIPTEN_TOOL
 import os
 import subprocess
 import sys
-from tools import shared
+from tools import utils
 
-tool_path = os.path.join(shared.path_from_root('tools'), 'scons', 'site_scons', 'site_tools', 'emscripten')
+tool_path = utils.path_from_root('tools/scons/site_scons/site_tools/emscripten')
 
 env = os.environ.copy()
 env['EMSCRIPTEN_TOOL_PATH'] = tool_path

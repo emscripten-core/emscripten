@@ -23,5 +23,5 @@ int main() {
     }
   }
   printf("ok.\n");
-  return 1;
+  return 0;
 }

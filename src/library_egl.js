@@ -1,9 +1,10 @@
+/**
+ * @license
+ * Copyright 2012 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 /*
- * Copyright 2012 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
  * The EGL implementation supports only one EGLNativeDisplayType, the
  * EGL_DEFAULT_DISPLAY.  This native display type returns the only supported
  * EGLDisplay handle with the magic value 62000. There is only a single
@@ -45,7 +46,7 @@ var LibraryEGL = {
 
       if (attribList) {
         // read attribList if it is non-null
-        for(;;) {
+        for (;;) {
           var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
           if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
             var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
@@ -175,7 +176,7 @@ var LibraryEGL = {
       return 0;
     }
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
     case 0x3020: // EGL_BUFFER_SIZE
       {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 32 : 24' /* 8 bits for each R,G,B. 8 bits for alpha if enabled*/, 'i32') }}};
       return 1;
@@ -232,7 +233,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_WINDOW_BIT */, 'i32') }}};
       return 1;
     case 0x3034: // EGL_TRANSPARENT_TYPE
       // If this returns EGL_TRANSPARENT_RGB (0x3052), transparency is used through color-keying. No such thing applies to Emscripten canvas.
@@ -264,7 +265,7 @@ var LibraryEGL = {
       return 1;
     case 0x3040: // EGL_RENDERABLE_TYPE
       // A bit combination of EGL_OPENGL_ES_BIT,EGL_OPENVG_BIT,EGL_OPENGL_ES2_BIT and EGL_OPENGL_BIT.
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
       return 1;
     case 0x3042: // EGL_CONFORMANT
       // "EGL_CONFORMANT is a mask indicating if a client API context created with respect to the corresponding EGLConfig will pass the required conformance tests for that API."
@@ -332,7 +333,7 @@ var LibraryEGL = {
     // EGL 1.4 spec says default EGL_CONTEXT_CLIENT_VERSION is GLES1, but this is not supported by Emscripten.
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
-    for(;;) {
+    for (;;) {
       var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
       if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
         glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
@@ -345,14 +346,14 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-#if USE_WEBGL2
+#if MAX_WEBGL_VERSION >= 2
     if (glesContextVersion < 2 || glesContextVersion > 3) {
 #else
     if (glesContextVersion != 2) {
 #endif
 #if GL_ASSERTIONS
       if (glesContextVersion == 3) {
-        err('When initializing GLES3/WebGL2 via EGL, one must build with -s USE_WEBGL2=1 !');
+        err('When initializing GLES3/WebGL2 via EGL, one must build with -sMAX_WEBGL_VERSION=2!');
       } else {
         err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
       }
@@ -423,7 +424,7 @@ var LibraryEGL = {
       return 0;
     }
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
     case 0x3028: // EGL_CONFIG_ID
       {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
         return 1;
@@ -432,10 +433,10 @@ var LibraryEGL = {
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      {{{ makeSetValue('value', '0', 'Module.canvas.width', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Module["canvas"].width', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      {{{ makeSetValue('value', '0', 'Module.canvas.height', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Module["canvas"].height', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};
@@ -492,7 +493,7 @@ var LibraryEGL = {
     }
 
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
       case 0x3028: // EGL_CONFIG_ID
         {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
         return 1;
@@ -521,6 +522,9 @@ var LibraryEGL = {
   },
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
+#if MINIMAL_RUNTIME
+  eglQueryString__deps: ['$allocateUTF8'],
+#endif
   eglQueryString__proxy: 'sync',
   eglQueryString__sig: 'iii',
   eglQueryString: function(display, name) {
@@ -532,11 +536,11 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     if (EGL.stringCache[name]) return EGL.stringCache[name];
     var ret;
-    switch(name) {
-      case 0x3053 /* EGL_VENDOR */: ret = allocate(intArrayFromString("Emscripten"), 'i8', ALLOC_NORMAL); break;
-      case 0x3054 /* EGL_VERSION */: ret = allocate(intArrayFromString("1.4 Emscripten EGL"), 'i8', ALLOC_NORMAL); break;
-      case 0x3055 /* EGL_EXTENSIONS */:  ret = allocate(intArrayFromString(""), 'i8', ALLOC_NORMAL); break; // Currently not supporting any EGL extensions.
-      case 0x308D /* EGL_CLIENT_APIS */: ret = allocate(intArrayFromString("OpenGL_ES"), 'i8', ALLOC_NORMAL); break;
+    switch (name) {
+      case 0x3053 /* EGL_VENDOR */: ret = allocateUTF8("Emscripten"); break;
+      case 0x3054 /* EGL_VERSION */: ret = allocateUTF8("1.4 Emscripten EGL"); break;
+      case 0x3055 /* EGL_EXTENSIONS */:  ret = allocateUTF8(""); break; // Currently not supporting any EGL extensions.
+      case 0x308D /* EGL_CLIENT_APIS */: ret = allocateUTF8("OpenGL_ES"); break;
       default:
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
@@ -681,13 +685,6 @@ var LibraryEGL = {
       return 1 /* EGL_TRUE */;
     }
     return 0 /* EGL_FALSE */;
-  },
-
-  eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
-  eglGetProcAddress__proxy: 'sync',
-  eglGetProcAddress__sig: 'ii',
-  eglGetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
   },
 
   eglReleaseThread__proxy: 'sync',

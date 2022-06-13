@@ -21,7 +21,10 @@ localtime matches daylight: yes
 localtime gmtoff matches DST: yes
 localtime tm_zone matches tzname (winter): yes
 localtime tm_zone matches tzname (summer): yes
+localtime equals std: true
 localtime <-> mktime: 1
+mktime updates parameter to be in range: 1
+mktime parameter is equivalent to localtime return: 1
 mktime guesses DST (winter): 1
 mktime guesses DST (summer): 1
 old year still: 102

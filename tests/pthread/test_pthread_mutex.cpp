@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <cassert>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -47,7 +48,6 @@ void CreateThread(int i, int n)
 {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setstacksize(&attr, 4*1024);
 	int rc = pthread_create(&thread[i], &attr, ThreadMain, 0);
 	if (rc != 0 || thread[i] == 0)
@@ -56,7 +56,7 @@ void CreateThread(int i, int n)
 }
 
 int threadNum = 0;
-void WaitToJoin()
+EM_BOOL WaitToJoin(double time, void *userData)
 {
 	int threadsRunning = 0;
 	// Join all threads.
@@ -85,11 +85,11 @@ void WaitToJoin()
 			EM_ASM(console.log('All threads finished. Counter = ' + $0 + ' as expected.'), counter);
 		else
 			EM_ASM(console.error('All threads finished, but counter = ' + $0 + ' != ' + $1 + '!'), counter, numThreadsToCreateTotal);
-#ifdef REPORT_RESULT
-		REPORT_RESULT(counter);
-#endif
-		emscripten_cancel_main_loop();
+		assert(counter == 50);
+		emscripten_force_exit(0);
+		return EM_FALSE;
 	}
+	return EM_TRUE;
 }
 
 int main()
@@ -102,15 +102,10 @@ int main()
 	pthread_mutex_lock(&lock);
 	pthread_mutex_unlock(&lock);
 
-	if (emscripten_has_threading_support()) {
-		// Create new threads in parallel.
-		for(int i = 0; i < NUM_THREADS; ++i)
-			CreateThread(i, threadNum++);
+	// Create new threads in parallel.
+	for(int i = 0; i < NUM_THREADS; ++i)
+		CreateThread(i, threadNum++);
 
-		emscripten_set_main_loop(WaitToJoin, 0, 0);
-	} else {
-#ifdef REPORT_RESULT
-		REPORT_RESULT(50);
-#endif
-	}
+	emscripten_set_timeout_loop(WaitToJoin, 100, 0);
+	return 99;
 }

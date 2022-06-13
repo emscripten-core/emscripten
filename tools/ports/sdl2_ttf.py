@@ -4,25 +4,23 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 
-TAG = 'version_1'
-HASH = '6ce426de0411ba51dd307027c4ef00ff3de4ee396018e524265970039132ab20adb29c2d2e61576c393056374f03fd148dd96f0c4abf8dcee51853dd32f0778f'
+TAG = '38fcb695276ed794f879d5d9c5ef4e5286a5200d' # Latest as of 24 November 2020
+HASH = '4c1ac5d27439d28c6d84593dd15dd80c825d68c6bf1020ab4317f2bce1efe16401b5b3280a181047c8317c38a19bbeeae8d52862e6b2c9776d5809758ee7aaa6'
+
+deps = ['freetype', 'sdl2', 'harfbuzz']
+
+
+def needed(settings):
+  return settings.USE_SDL_TTF == 2
 
 
 def get(ports, settings, shared):
-  if settings.USE_SDL_TTF != 2:
-    return []
+  ports.fetch_project('sdl2_ttf', 'https://github.com/libsdl-org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
 
-  ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libSDL2_ttf')
-
-  def create():
-    sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
-
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'include'))
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include'))
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2'))
+  def create(final):
+    src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
+    ports.install_headers(src_root, target='SDL2')
 
     srcs = ['SDL_ttf.c']
     commands = []
@@ -30,35 +28,31 @@ def get(ports, settings, shared):
 
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
-      command = [shared.PYTHON, shared.EMCC]
-      command += [os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, src)]
-      command += ['-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
+      command = [shared.EMCC,
+                 '-c', os.path.join(src_root, src),
+                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)
 
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2_ttf', libname)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
 
 
-def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2_ttf'))
+def clear(ports, settings, shared):
+  shared.Cache.erase_lib('libSDL2_ttf.a')
 
 
 def process_dependencies(settings):
-  if settings.USE_SDL_TTF == 2:
-    settings.USE_SDL = 2
-    settings.USE_FREETYPE = 1
+  settings.USE_SDL = 2
+  settings.USE_FREETYPE = 1
+  settings.USE_HARFBUZZ = 1
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_SDL_TTF == 2:
-    get(ports, settings, shared)
-  return args
+def process_args(ports):
+  return ['-DTTF_USE_HARFBUZZ=1']
 
 
 def show():

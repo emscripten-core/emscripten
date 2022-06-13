@@ -12,22 +12,29 @@ struct WithBitField {
 enum SomeEnum { SIXTY = 60 };
 
 int main(int argc, char **argv) {
-  // Ensure that a subset of default argument converions is held.
+  // Ensure that a subset of default argument conversions is held.
   // Promotions of arrays, function/member pointers and objects implicitly
-  // convertable to numbers are excluded because they will not be translated
+  // convertible to numbers are excluded because they will not be translated
   // to corresponding JS objects.
-#define TEST_TYPE(type, value) EM_ASM({console.log(#type, $0);}, (type)(value));
+#define TEST_TYPE(type, value) EM_ASM({console.log(#type, Number($0));}, (type)(value));
   TEST_TYPE(int*, 0);
   TEST_TYPE(float, 1.5f);
   TEST_TYPE(double, 2.5);
+
   TEST_TYPE(char, 10);
   TEST_TYPE(signed char, -10);
   TEST_TYPE(unsigned char, 10);
+
   TEST_TYPE(short, -20);
+  TEST_TYPE(signed short, -20);
   TEST_TYPE(unsigned short, 20);
+
   TEST_TYPE(int, -30);
+  TEST_TYPE(signed int, -30);
   TEST_TYPE(unsigned int, 30);
+
   TEST_TYPE(long, -40);
+  TEST_TYPE(signed long, -40);
   TEST_TYPE(unsigned long, 40);
 
   struct WithBitField w;

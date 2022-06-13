@@ -1,9 +1,8 @@
 //===-- sanitizer_syscalls_netbsd.inc ---------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -43,8 +42,8 @@
 // DO NOT EDIT! THIS FILE HAS BEEN GENERATED!
 //
 // Generated with: generate_netbsd_syscalls.awk
-// Generated date: 2018-10-30
-// Generated from: syscalls.master,v 1.293 2018/07/31 13:00:13 rjs Exp
+// Generated date: 2020-09-10
+// Generated from: syscalls.master,v 1.306 2020/08/14 00:53:16 riastradh Exp
 //
 //===----------------------------------------------------------------------===//
 
@@ -324,6 +323,16 @@ PRE_SYSCALL(ptrace)
     PRE_READ(addr_, struct_ptrace_ptrace_siginfo_struct_sz);
   } else if (req_ == ptrace_pt_get_siginfo) {
     PRE_WRITE(addr_, struct_ptrace_ptrace_siginfo_struct_sz);
+  } else if (req_ == ptrace_pt_lwpstatus) {
+    struct __sanitizer_ptrace_lwpstatus *addr =
+        (struct __sanitizer_ptrace_lwpstatus *)addr_;
+    PRE_READ(&addr->pl_lwpid, sizeof(__sanitizer_lwpid_t));
+    PRE_WRITE(addr, struct_ptrace_ptrace_lwpstatus_struct_sz);
+  } else if (req_ == ptrace_pt_lwpnext) {
+    struct __sanitizer_ptrace_lwpstatus *addr =
+        (struct __sanitizer_ptrace_lwpstatus *)addr_;
+    PRE_READ(&addr->pl_lwpid, sizeof(__sanitizer_lwpid_t));
+    PRE_WRITE(addr, struct_ptrace_ptrace_lwpstatus_struct_sz);
   } else if (req_ == ptrace_pt_setregs) {
     PRE_READ(addr_, struct_ptrace_reg_struct_sz);
   } else if (req_ == ptrace_pt_getregs) {
@@ -367,6 +376,16 @@ POST_SYSCALL(ptrace)
       POST_READ(addr_, struct_ptrace_ptrace_siginfo_struct_sz);
     } else if (req_ == ptrace_pt_get_siginfo) {
       POST_WRITE(addr_, struct_ptrace_ptrace_siginfo_struct_sz);
+    } else if (req_ == ptrace_pt_lwpstatus) {
+      struct __sanitizer_ptrace_lwpstatus *addr =
+          (struct __sanitizer_ptrace_lwpstatus *)addr_;
+      POST_READ(&addr->pl_lwpid, sizeof(__sanitizer_lwpid_t));
+      POST_WRITE(addr, struct_ptrace_ptrace_lwpstatus_struct_sz);
+    } else if (req_ == ptrace_pt_lwpnext) {
+      struct __sanitizer_ptrace_lwpstatus *addr =
+          (struct __sanitizer_ptrace_lwpstatus *)addr_;
+      POST_READ(&addr->pl_lwpid, sizeof(__sanitizer_lwpid_t));
+      POST_WRITE(addr, struct_ptrace_ptrace_lwpstatus_struct_sz);
     } else if (req_ == ptrace_pt_setregs) {
       POST_READ(addr_, struct_ptrace_reg_struct_sz);
     } else if (req_ == ptrace_pt_getregs) {
@@ -853,7 +872,13 @@ PRE_SYSCALL(dup2)(long long from_, long long to_) { /* Nothing to do */ }
 POST_SYSCALL(dup2)(long long res, long long from_, long long to_) {
   /* Nothing to do */
 }
-/* syscall 91 has been skipped */
+PRE_SYSCALL(getrandom)(void *buf_, long long buflen_, long long flags_) {
+  /* TODO */
+}
+POST_SYSCALL(getrandom)
+(long long res, void *buf_, long long buflen_, long long flags_) {
+  /* TODO */
+}
 PRE_SYSCALL(fcntl)(long long fd_, long long cmd_, void *arg_) {
   /* Nothing to do */
 }
@@ -1313,9 +1338,29 @@ PRE_SYSCALL(compat_09_ouname)(void *name_) { /* TODO */ }
 POST_SYSCALL(compat_09_ouname)(long long res, void *name_) { /* TODO */ }
 PRE_SYSCALL(sysarch)(long long op_, void *parms_) { /* TODO */ }
 POST_SYSCALL(sysarch)(long long res, long long op_, void *parms_) { /* TODO */ }
-/* syscall 166 has been skipped */
-/* syscall 167 has been skipped */
-/* syscall 168 has been skipped */
+PRE_SYSCALL(__futex)
+(void *uaddr_, long long op_, long long val_, void *timeout_, void *uaddr2_,
+  long long val2_, long long val3_) {
+  /* TODO */
+}
+POST_SYSCALL(__futex)
+(long long res, void *uaddr_, long long op_, long long val_, void *timeout_,
+  void *uaddr2_, long long val2_, long long val3_) {
+  /* TODO */
+}
+PRE_SYSCALL(__futex_set_robust_list)(void *head_, long long len_) { /* TODO */ }
+POST_SYSCALL(__futex_set_robust_list)
+(long long res, void *head_, long long len_) {
+  /* TODO */
+}
+PRE_SYSCALL(__futex_get_robust_list)
+(long long lwpid_, void **headp_, void *lenp_) {
+  /* TODO */
+}
+POST_SYSCALL(__futex_get_robust_list)
+(long long res, long long lwpid_, void **headp_, void *lenp_) {
+  /* TODO */
+}
 #if !defined(_LP64)
 PRE_SYSCALL(compat_10_osemsys)
 (long long which_, long long a2_, long long a3_, long long a4_, long long a5_) {
@@ -2210,13 +2255,13 @@ PRE_SYSCALL(getcontext)(void *ucp_) { /* Nothing to do */ }
 POST_SYSCALL(getcontext)(long long res, void *ucp_) { /* Nothing to do */ }
 PRE_SYSCALL(setcontext)(void *ucp_) {
   if (ucp_) {
-    PRE_READ(ucp_, ucontext_t_sz);
+    PRE_READ(ucp_, ucontext_t_sz(ucp_));
   }
 }
 POST_SYSCALL(setcontext)(long long res, void *ucp_) {}
 PRE_SYSCALL(_lwp_create)(void *ucp_, long long flags_, void *new_lwp_) {
   if (ucp_) {
-    PRE_READ(ucp_, ucontext_t_sz);
+    PRE_READ(ucp_, ucontext_t_sz(ucp_));
   }
 }
 POST_SYSCALL(_lwp_create)
@@ -2434,30 +2479,31 @@ PRE_SYSCALL(uuidgen)(void *store_, long long count_) { /* Nothing to do */ }
 POST_SYSCALL(uuidgen)(long long res, void *store_, long long count_) {
   /* Nothing to do */
 }
-PRE_SYSCALL(getvfsstat)(void *buf_, long long bufsize_, long long flags_) {
+PRE_SYSCALL(compat_90_getvfsstat)
+(void *buf_, long long bufsize_, long long flags_) {
   /* Nothing to do */
 }
-POST_SYSCALL(getvfsstat)
+POST_SYSCALL(compat_90_getvfsstat)
 (long long res, void *buf_, long long bufsize_, long long flags_) {
   /* Nothing to do */
 }
-PRE_SYSCALL(statvfs1)(void *path_, void *buf_, long long flags_) {
+PRE_SYSCALL(compat_90_statvfs1)(void *path_, void *buf_, long long flags_) {
   const char *path = (const char *)path_;
   if (path) {
     PRE_READ(path, __sanitizer::internal_strlen(path) + 1);
   }
 }
-POST_SYSCALL(statvfs1)
+POST_SYSCALL(compat_90_statvfs1)
 (long long res, void *path_, void *buf_, long long flags_) {
   const char *path = (const char *)path_;
   if (path) {
     POST_READ(path, __sanitizer::internal_strlen(path) + 1);
   }
 }
-PRE_SYSCALL(fstatvfs1)(long long fd_, void *buf_, long long flags_) {
+PRE_SYSCALL(compat_90_fstatvfs1)(long long fd_, void *buf_, long long flags_) {
   /* Nothing to do */
 }
-POST_SYSCALL(fstatvfs1)
+POST_SYSCALL(compat_90_fstatvfs1)
 (long long res, long long fd_, void *buf_, long long flags_) {
   /* Nothing to do */
 }
@@ -2854,13 +2900,13 @@ PRE_SYSCALL(__fhopen40)(void *fhp_, long long fh_size_, long long flags_) {
 }
 POST_SYSCALL(__fhopen40)
 (long long res, void *fhp_, long long fh_size_, long long flags_) {}
-PRE_SYSCALL(__fhstatvfs140)
+PRE_SYSCALL(compat_90_fhstatvfs1)
 (void *fhp_, long long fh_size_, void *buf_, long long flags_) {
   if (fhp_) {
     PRE_READ(fhp_, fh_size_);
   }
 }
-POST_SYSCALL(__fhstatvfs140)
+POST_SYSCALL(compat_90_fhstatvfs1)
 (long long res, void *fhp_, long long fh_size_, void *buf_, long long flags_) {}
 PRE_SYSCALL(compat_50___fhstat40)(void *fhp_, long long fh_size_, void *sb_) {
   if (fhp_) {
@@ -3768,6 +3814,122 @@ PRE_SYSCALL(clock_getcpuclockid2)
 POST_SYSCALL(clock_getcpuclockid2)
 (long long res, long long idtype_, long long id_, void *clock_id_) {
   /* Nothing to do */
+}
+PRE_SYSCALL(__getvfsstat90)(void *buf_, long long bufsize_, long long flags_) {
+  /* Nothing to do */
+}
+POST_SYSCALL(__getvfsstat90)
+(long long res, void *buf_, long long bufsize_, long long flags_) {
+  /* Nothing to do */
+}
+PRE_SYSCALL(__statvfs190)(void *path_, void *buf_, long long flags_) {
+  const char *path = (const char *)path_;
+  if (path) {
+    PRE_READ(path, __sanitizer::internal_strlen(path) + 1);
+  }
+}
+POST_SYSCALL(__statvfs190)
+(long long res, void *path_, void *buf_, long long flags_) {
+  const char *path = (const char *)path_;
+  if (path) {
+    POST_READ(path, __sanitizer::internal_strlen(path) + 1);
+  }
+}
+PRE_SYSCALL(__fstatvfs190)(long long fd_, void *buf_, long long flags_) {
+  /* Nothing to do */
+}
+POST_SYSCALL(__fstatvfs190)
+(long long res, long long fd_, void *buf_, long long flags_) {
+  /* Nothing to do */
+}
+PRE_SYSCALL(__fhstatvfs190)
+(void *fhp_, long long fh_size_, void *buf_, long long flags_) {
+  if (fhp_) {
+    PRE_READ(fhp_, fh_size_);
+  }
+}
+POST_SYSCALL(__fhstatvfs190)
+(long long res, void *fhp_, long long fh_size_, void *buf_, long long flags_) {}
+PRE_SYSCALL(__acl_get_link)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_get_link)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_set_link)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_set_link)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_delete_link)(void *path_, long long type_) { /* TODO */ }
+POST_SYSCALL(__acl_delete_link)(long long res, void *path_, long long type_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_aclcheck_link)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_aclcheck_link)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_get_file)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_get_file)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_set_file)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_set_file)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_get_fd)(long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_get_fd)
+(long long res, long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_set_fd)(long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_set_fd)
+(long long res, long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_delete_file)(void *path_, long long type_) { /* TODO */ }
+POST_SYSCALL(__acl_delete_file)(long long res, void *path_, long long type_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_delete_fd)(long long filedes_, long long type_) { /* TODO */ }
+POST_SYSCALL(__acl_delete_fd)
+(long long res, long long filedes_, long long type_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_aclcheck_file)(void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_aclcheck_file)
+(long long res, void *path_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(__acl_aclcheck_fd)
+(long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+POST_SYSCALL(__acl_aclcheck_fd)
+(long long res, long long filedes_, long long type_, void *aclp_) {
+  /* TODO */
+}
+PRE_SYSCALL(lpathconf)(void *path_, long long name_) { /* TODO */ }
+POST_SYSCALL(lpathconf)(long long res, void *path_, long long name_) {
+  /* TODO */
 }
 #undef SYS_MAXSYSARGS
 } // extern "C"

@@ -44,38 +44,27 @@ When:
 
 Requirements:
 
- * [emscripten-releases build CI](https://ci.chromium.org/p/emscripten-releases/g/main/console)
-   is green on all OSes for the desired hash (where the hash is the git hash in
-   the
-   [emscripten-releases](https://chromium.googlesource.com/emscripten-releases)
-   repo, which then specifies through
-   [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
-   exactly which revisions to use in all other repos).
+ * [emscripten-releases build CI][waterfall] is green on all OSes for the
+   desired hash (where the hash is the git hash in the
+   [emscripten-releases][releases_repo] repo, which then specifies through
+   [DEPS][DEPS] exactly which revisions to use in all other repos).
  * [GitHub CI](https://github.com/emscripten-core/emscripten/branches) is green
-   on the incoming branch.
+   on the `main` branch.
 
 How:
 
-1. Open a PR for the emsdk to update
-   [emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt),
-   adding the version and the hash. Updating the "latest" tag there to the new
-   release is possible, but can also be deferred if you want to do more testing
-   before users fetching "latest" get this release.
-2. Tag the emscripten repo on the emscripten commit used by that release (which
-   you can tell from the DEPS file), using something like
-   `git checkout [COMMIT]` ; `git tag [VERSION]` ; `git push --tags`.
-3. Update
-   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/incoming/emscripten-version.txt)
-   in the emscripten repo. This is a delayed update, in that the tag will refer
-   to the actual release, but the update to emscripten-version.txt is a new
-   commit to emscripten that happens later.
-   * To minimize the difference, we should pick hashes for releases that are
-     very recent, and try to avoid anything else landing in between - can ask
-     on irc/chat for people to not land anything, or do this at a time of day
-     when that's unlikely, etc.
-   * There is no need to open a PR for this change, you can optionally just
-     commit it directly.
-
+1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
+   This script will update [emscripten-releases-tags.json][emscripten_releases_tags],
+   adding a new version.  You can either specify the desired hash, or let the
+   script pick the current tot build.  The script will create a new git branch
+   that can be uploaded as a PR.
+3. Tag the `emsdk` repo with the new version number, on the commit that does the
+   update, after it lands on main.
+4. Tag the `emscripten` repo with the new version number, on the commit referred
+   to in the [DEPS][DEPS] file above.
+5. Update [`emscripten-version.txt`][emscripten_version] and
+   [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
+   upcoming, version.
 
 Major version update (1.X.Y to 1.(X+1).0)
 -----------------------------------------
@@ -99,99 +88,46 @@ Requirements:
 
 How:
 
-1. Follow all the steps for a minor version update.
-2. Merge the `incoming` branch to `master`. This should not be done immediately,
-   rather first we should at minimum see that CI and new builds are all green.
-   If a problem occurs, we may only merge to master the minor version update
-   that fixes things.
+1. Follow the same steps for a minor version update.
 
 
 Updating the `emscripten.org` Website
 --------------------------------------
 
 The site is currently hosted in `gh-pages` branch of the separate [site
-repository](site_repo). To update the docs, rebuild them and copy them there,
-that is:
+repository][site_repo]. To update the docs, rebuild them and copy them into
+this repository.  There is a script that will perform these steps automatically:
+`tools/maint/update_docs.py`.  Just run this script with no arguments if the
+emscripten-site repository is checked out alongside emscripten itself, or pass
+the location of the checkout if not.
+
+You will need the specific sphinx version installed, which you can do using
+`pip3 install -r requirements-dev.txt` (depending on your system, you may then
+need to add `~/.local/bin` to your path, if pip installs to there).
+
+
+Updating the `emcc.py` help text
+--------------------------------
+
+`emcc --help` output is generated from the main documentation under `site/`,
+so it is the same as shown on the website, but it is rendered to text. After
+updating `emcc.rst` in a PR, the following should be done:
 
 1. In your emscripten repo checkout, enter `site`.
-2. Run `make html`.
-3. Run `cp -R build/html/* \[path-to-a-checkout-of-the-site-repo\]`
-3. Go to the site repo, commit the changes, and push.
+2. Run `make clean` (without this, it may not emit the right output).
+2. Run `make text`.
+3. Copy the output `build/text/docs/tools_reference/emcc.txt` to
+   `../docs/emcc.txt` (both paths relative to the `site/` directory in
+   emscripten that you entered in step 1), and add that change to your PR.
+
+See notes above on installing sphinx.
+
 
 [site_repo]: https://github.com/kripken/emscripten-site
-
-
-Packaging Emscripten
---------------------
-
-If you package Emscripten for users in some manner, the details in the rest of
-this document should be helpful with understanding versioning and so forth.
-This section goes into that in more detail.
-
-The core
-[DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
-file in the chromium `emscripten-releases` contains all the information about versions
-in all the repos. This is the repo used by our CI to build and test emscripten. How
-this works is that you look at the DEPS file at a particular git revision. It has
-lines like these:
-```
-  'binaryen_revision': '06698d7a32cb4eeb24fea942e83d1b15e86a73e6',
-  'emscripten_revision': '7224b7930ec2a6abca332300e247619e1aea1719',
-  'llvm_project_revision': '33ef687d94604aeb73bedbcf3050524465a3439f',
-```
-Those are the git hashes in those repos. For building that git commit in
-emscripten-releases, our CI fetched and built those revisions.
-
-In principle you can build any git hash in that repo. You can look at the
-[CI UI](https://ci.chromium.org/p/emscripten-releases/g/main/console) to see
-if our CI shows green for any hash, and if so, it should be safe to build.
-
-Alternatively, you may want to build our official emscripten release tags, which
-are the versions the emsdk lets users install. To find the mapping between the
-emscripten versions and the git hash for the DEPS file, the emsdk has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
-All versions listed there should be safe to build, as we check that the CI
-was green on them.
-
-To see how our CI builds things, the relevant script is
-[build.py](https://github.com/WebAssembly/waterfall/blob/master/src/build.py).
-In general, the repos you need to build are LLVM and Binaryen (as emscripten
-itself doesn't have any binaries to build). (Note: If you are packaging the older
-fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
-repos, and build them together to get LLVM and clang.)
-
-When packaging build results, you need the following executables (when using
-the wasm backend):
-
-  * From LLVM:
-    * clang
-    * clang++ (note: this is a symlink to clang)
-    * wasm-ld
-    * llc
-    * llvm-nm
-    * llvm-ar
-    * llvm-as
-    * llvm-dis
-    * llvm-dwarfdump
-  * From Binaryen:
-    * wasm-emscripten-finalize
-    * wasm-opt
-    * wasm-dis
-    * wasm-as
-    * wasm2js
-    * wasm-metadce
-
-(If you are packaging the older fastcomp backend instead of the wasm backend,
-you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
-
-You also need to set up the `~/.emscripten` file for your users. Emscripten
-will try to do so on first run if such a file does not exist; the simplest
-thing is to look at those contents, edit the paths as needed if anything is
-wrong, and then use that file. (You can also look at how the emsdk generates
-the `.emscripten` file, which it does at the `activate step.) Some of the
-key values in that file include:
-
- * `LLVM_ROOT`: The path to the LLVM binaries.
- * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` under there; note that
-    despite the name this differs from `LLVM_ROOT` which points directly to the binaries).
- * `NODE_JS`: The path to Node.js, which is needed internally.
+[releases_repo]: https://chromium.googlesource.com/emscripten-releases
+[waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console
+[emscripten_version]: https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt
+[changelog]: https://github.com/emscripten-core/emscripten/blob/main/ChangeLog.md
+[create_release]: https://github.com/emscripten-core/emsdk/blob/main/scripts/create_release.py
+[emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json
+[DEPS]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS

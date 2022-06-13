@@ -1241,10 +1241,6 @@
             }
           };
         })(),
-        printErr: function(text) {
-          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-          console.error(text);
-        },
         canvas: (function() {
           var canvas = document.getElementById('canvas');
 
@@ -1289,7 +1285,7 @@
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
         Module.setStatus = function(text) {
-          if (text) Module.printErr('[post-exception status] ' + text);
+          if (text) console.error('[post-exception status] ' + text);
         };
       };
     </script>

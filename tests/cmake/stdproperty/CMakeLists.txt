@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.0)
 project(helloworld)
 
 add_executable(helloworld main.cpp)
@@ -6,8 +6,10 @@ add_executable(helloworld main.cpp)
 set_property(TARGET helloworld PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET helloworld PROPERTY CXX_STANDARD 11)
 
-# Items marked with '***' are tested to be identical across CMake configures with Emscripten Clang when targeting native vs Emscripten.
+# Items marked with '***' are tested to be identical across CMake configures
+# with Emscripten Clang when targeting native vs Emscripten.
 
+message(STATUS "*** CMAKE_VERSION is ${CMAKE_VERSION}")
 message(STATUS "*** CMAKE_C_COMPILER_VERSION is ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "*** CMAKE_CXX_COMPILER_VERSION is ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "CMAKE_C_COMPILER_TARGET is ${CMAKE_C_COMPILER_TARGET}")
@@ -25,3 +27,4 @@ message(STATUS "*** CMAKE_CXX98_COMPILE_FEATURES is ${CMAKE_CXX98_COMPILE_FEATUR
 message(STATUS "*** CMAKE_CXX11_COMPILE_FEATURES is ${CMAKE_CXX11_COMPILE_FEATURES}")
 message(STATUS "*** CMAKE_CXX14_COMPILE_FEATURES is ${CMAKE_CXX14_COMPILE_FEATURES}")
 message(STATUS "*** CMAKE_CXX17_COMPILE_FEATURES is ${CMAKE_CXX17_COMPILE_FEATURES}")
+message(STATUS "*** CMAKE_CXX20_COMPILE_FEATURES is ${CMAKE_CXX20_COMPILE_FEATURES}")

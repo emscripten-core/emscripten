@@ -1,16 +1,21 @@
-//===----------------------- cxa_thread_atexit.cpp ------------------------===//
+//===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
 #include "abort_message.h"
 #include "cxxabi.h"
 #include <__threading_support>
-#include <cstdlib>
+#ifndef _LIBCXXABI_HAS_NO_THREADS
+#if defined(__ELF__) && defined(_LIBCXXABI_LINK_PTHREAD_LIB)
+#pragma comment(lib, "pthread")
+#endif
+#endif
+
+#include <stdlib.h>
 
 namespace __cxxabiv1 {
 
@@ -72,7 +77,7 @@ namespace {
     while (auto head = dtors) {
       dtors = head->next;
       head->dtor(head->obj);
-      std::free(head);
+      ::free(head);
     }
 
     dtors_alive = false;
@@ -107,9 +112,14 @@ extern "C" {
 #ifdef HAVE___CXA_THREAD_ATEXIT_IMPL
     return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
 #else
+#ifndef __EMSCRIPTEN__
+    // Emscripten doesn't fully support weak undefined symbols yet
+    // https://github.com/emscripten-core/emscripten/issues/12819
     if (__cxa_thread_atexit_impl) {
       return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
-    } else {
+    } else
+#endif
+    {
       // Initialize the dtors std::__libcpp_tls_key (uses __cxa_guard_*() for
       // one-time initialization and __cxa_atexit() for destruction)
       static DtorsManager manager;
@@ -121,7 +131,7 @@ extern "C" {
         dtors_alive = true;
       }
 
-      auto head = static_cast<DtorList*>(std::malloc(sizeof(DtorList)));
+      auto head = static_cast<DtorList*>(::malloc(sizeof(DtorList)));
       if (!head) {
         return -1;
       }

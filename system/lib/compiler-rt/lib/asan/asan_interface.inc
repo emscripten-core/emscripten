@@ -1,13 +1,13 @@
 //===-- asan_interface.inc ------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 // Asan interface list.
 //===----------------------------------------------------------------------===//
+
 INTERFACE_FUNCTION(__asan_addr_is_in_fake_stack)
 INTERFACE_FUNCTION(__asan_address_is_poisoned)
 INTERFACE_FUNCTION(__asan_after_dynamic_init)
@@ -39,6 +39,7 @@ INTERFACE_FUNCTION(__asan_get_report_pc)
 INTERFACE_FUNCTION(__asan_get_report_sp)
 INTERFACE_FUNCTION(__asan_get_shadow_mapping)
 INTERFACE_FUNCTION(__asan_handle_no_return)
+INTERFACE_FUNCTION(__asan_handle_vfork)
 INTERFACE_FUNCTION(__asan_init)
 INTERFACE_FUNCTION(__asan_load_cxx_array_cookie)
 INTERFACE_FUNCTION(__asan_load1)
@@ -134,6 +135,17 @@ INTERFACE_FUNCTION(__asan_stack_malloc_7)
 INTERFACE_FUNCTION(__asan_stack_malloc_8)
 INTERFACE_FUNCTION(__asan_stack_malloc_9)
 INTERFACE_FUNCTION(__asan_stack_malloc_10)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_0)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_1)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_2)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_3)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_4)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_5)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_6)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_7)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_8)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_9)
+INTERFACE_FUNCTION(__asan_stack_malloc_always_10)
 INTERFACE_FUNCTION(__asan_store1)
 INTERFACE_FUNCTION(__asan_store2)
 INTERFACE_FUNCTION(__asan_store4)
@@ -164,6 +176,7 @@ INTERFACE_FUNCTION(__sanitizer_unaligned_load64)
 INTERFACE_FUNCTION(__sanitizer_unaligned_store16)
 INTERFACE_FUNCTION(__sanitizer_unaligned_store32)
 INTERFACE_FUNCTION(__sanitizer_unaligned_store64)
+INTERFACE_FUNCTION(__asan_update_allocation_context)
 INTERFACE_WEAK_FUNCTION(__asan_default_options)
 INTERFACE_WEAK_FUNCTION(__asan_default_suppressions)
 INTERFACE_WEAK_FUNCTION(__asan_on_error)

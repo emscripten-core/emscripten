@@ -12,6 +12,7 @@
 int main() {
   EM_ASM(
     var ex;
+    var contents;
 
     // write a file that should be unaffected by this process
     FS.writeFile('/safe.txt', 'abc');
@@ -20,6 +21,10 @@ int main() {
     FS.mkdir('/working');
     FS.mount(MEMFS, {}, '/working');
     FS.writeFile('/working/waka.txt', 'az');
+
+    // check the waka file
+    contents = FS.readFile('/working/waka.txt', { encoding: 'utf8' });
+    assert(contents === 'az');
 
     // mount to a missing directory
     try {
@@ -48,6 +53,10 @@ int main() {
     }
     assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
 
+    // mount and unmount again
+    FS.mount(MEMFS, {}, '/working');
+    FS.unmount('/working');
+
     // try to read the file from the old mount
     try {
       FS.readFile('/working/waka.txt', { encoding: 'utf8' });
@@ -57,7 +66,7 @@ int main() {
     assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
 
     // check the safe file
-    var contents = FS.readFile('/safe.txt', { encoding: 'utf8' });
+    contents = FS.readFile('/safe.txt', { encoding: 'utf8' });
     assert(contents === 'abc');
   );
 

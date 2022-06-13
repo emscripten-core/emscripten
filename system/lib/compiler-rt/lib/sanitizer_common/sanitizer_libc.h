@@ -1,9 +1,8 @@
 //===-- sanitizer_libc.h ----------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -50,7 +49,10 @@ char *internal_strrchr(const char *s, int c);
 char *internal_strstr(const char *haystack, const char *needle);
 // Works only for base=10 and doesn't set errno.
 s64 internal_simple_strtoll(const char *nptr, const char **endptr, int base);
-int internal_snprintf(char *buffer, uptr length, const char *format, ...);
+int internal_snprintf(char *buffer, uptr length, const char *format, ...)
+    FORMAT(3, 4);
+uptr internal_wcslen(const wchar_t *s);
+uptr internal_wcsnlen(const wchar_t *s, uptr maxlen);
 
 // Return true if all bytes in [mem, mem+size) are zero.
 // Optimized for the case when the result is true.
@@ -68,10 +70,13 @@ uptr internal_ftruncate(fd_t fd, uptr size);
 
 // OS
 void NORETURN internal__exit(int exitcode);
-unsigned int internal_sleep(unsigned int seconds);
+void internal_sleep(unsigned seconds);
+void internal_usleep(u64 useconds);
 
 uptr internal_getpid();
 uptr internal_getppid();
+
+int internal_dlinfo(void *handle, int request, void *p);
 
 // Threading
 uptr internal_sched_yield();

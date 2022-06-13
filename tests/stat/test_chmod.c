@@ -30,6 +30,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   create_file("file", "abcdef", 0777);
+  create_file("otherfile", "abcdef", 0777);
   symlink("file", "file-link");
   // some platforms use 777, some use 755 by default for symlinks
   // make sure we're using 777 for the test
@@ -40,6 +41,7 @@ void setup() {
 void cleanup() {
   unlink("file-link");
   unlink("file");
+  unlink("otherfile");
   rmdir("folder");
 }
 
@@ -80,6 +82,20 @@ void test() {
   assert(s.st_mode == (0100 | S_IFREG));
   assert(s.st_ctime != lastctime);
 
+
+  //
+  // fchmodat a file
+  //
+  lastctime = s.st_ctime;
+  sleep(1);
+  err = fchmodat(AT_FDCWD, "otherfile", 0100, 0);
+  assert(!err);
+
+  memset(&s, 0, sizeof s);
+  stat("otherfile", &s);
+  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_ctime != lastctime);
+
   //
   // chmod a folder
   //
@@ -97,6 +113,7 @@ void test() {
   assert(s.st_mode == (0300 | S_IFDIR));
   assert(s.st_ctime != lastctime);
 
+#ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
   //
   // chmod a symlink's target
   //
@@ -120,6 +137,7 @@ void test() {
   // make sure the file it references didn't change
   stat("file-link", &s);
   assert(s.st_mode == (0400 | S_IFREG));
+#endif // WASMFS
 
   puts("success");
 }

@@ -1,9 +1,8 @@
 //===-- sanitizer_atomic_clang_x86.h ----------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -17,7 +16,7 @@
 
 namespace __sanitizer {
 
-INLINE void proc_yield(int cnt) {
+inline void proc_yield(int cnt) {
   __asm__ __volatile__("" ::: "memory");
   for (int i = 0; i < cnt; i++)
     __asm__ __volatile__("pause");
@@ -25,7 +24,7 @@ INLINE void proc_yield(int cnt) {
 }
 
 template<typename T>
-INLINE typename T::Type atomic_load(
+inline typename T::Type atomic_load(
     const volatile T *a, memory_order mo) {
   DCHECK(mo & (memory_order_relaxed | memory_order_consume
       | memory_order_acquire | memory_order_seq_cst));
@@ -71,7 +70,7 @@ INLINE typename T::Type atomic_load(
 }
 
 template<typename T>
-INLINE void atomic_store(volatile T *a, typename T::Type v, memory_order mo) {
+inline void atomic_store(volatile T *a, typename T::Type v, memory_order mo) {
   DCHECK(mo & (memory_order_relaxed | memory_order_release
       | memory_order_seq_cst));
   DCHECK(!((uptr)a % sizeof(*a)));

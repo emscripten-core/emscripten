@@ -1,0 +1,19 @@
+# TODO(sbc): switch to using Pipenv since it seems like that way to go
+# these day managing python deps.
+# These requirements are only needed for developers who want to run flake8 on
+# the codebase and generate docs using Sphinx, not for users of emscripten.
+# Install with `pip3 install -r requirements-dev.txt`
+
+flake8==3.9.0
+flake8-unused-arguments==0.0.6
+coverage==5.5
+
+# This version is mentioned in `site/source/docs/site/about.rst`.
+# Please keep them in sync.
+sphinx==2.4.4
+
+# Pin docutils because newer versions are not compatible with sphinx 2.4.4
+docutils==0.17.1
+
+# Needed by tests/test_sockets.py
+websockify==0.10.0

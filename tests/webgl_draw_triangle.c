@@ -23,8 +23,8 @@ GLuint compile_shader(GLenum shaderType, const char *src)
   {
     GLint maxLength = 0;
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
-    char *buf = (char*)malloc(maxLength+1);
-    glGetShaderInfoLog(shader, maxLength, &maxLength, buf);
+    char *buf = (char*)malloc(maxLength);
+    glGetShaderInfoLog(shader, maxLength, NULL, buf);
     printf("%s\n", buf);
     free(buf);
     return 0;
@@ -109,7 +109,5 @@ int main()
   emscripten_webgl_commit_frame();
 #endif
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

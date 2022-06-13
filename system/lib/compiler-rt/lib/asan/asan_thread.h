@@ -1,15 +1,14 @@
 //===-- asan_thread.h -------------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
 // This file is a part of AddressSanitizer, an address sanity checker.
 //
-// ASan-private header for asan_thread.cc.
+// ASan-private header for asan_thread.cpp.
 //===----------------------------------------------------------------------===//
 
 #ifndef ASAN_THREAD_H
@@ -29,20 +28,11 @@ struct DTLS;
 
 namespace __asan {
 
-const u32 kInvalidTid = 0xffffff;  // Must fit into 24 bits.
-#if SANITIZER_EMSCRIPTEN && !defined(USE_THREADS)
-const u32 kMaxNumberOfThreads = 1;
-#elif SANITIZER_EMSCRIPTEN
-const u32 kMaxNumberOfThreads = 128;
-#else
-const u32 kMaxNumberOfThreads = (1 << 22);  // 4M
-#endif
-
 class AsanThread;
 
 // These objects are created for every thread and are never deleted,
 // so we can find them by tid even if the thread is long dead.
-class AsanThreadContext : public ThreadContextBase {
+class AsanThreadContext final : public ThreadContextBase {
  public:
   explicit AsanThreadContext(int tid)
       : ThreadContextBase(tid), announced(false),
@@ -76,8 +66,7 @@ class AsanThread {
   struct InitOptions;
   void Init(const InitOptions *options = nullptr);
 
-  thread_return_t ThreadStart(tid_t os_id,
-                              atomic_uintptr_t *signal_thread_is_registered);
+  thread_return_t ThreadStart(tid_t os_id);
 
   uptr stack_top();
   uptr stack_bottom();
@@ -113,17 +102,18 @@ class AsanThread {
   void FinishSwitchFiber(FakeStack *fake_stack_save, uptr *bottom_old,
                          uptr *size_old);
 
-  bool has_fake_stack() {
-    return !atomic_load(&stack_switching_, memory_order_relaxed) &&
-           (reinterpret_cast<uptr>(fake_stack_) > 1);
-  }
-
-  FakeStack *fake_stack() {
-    if (!__asan_option_detect_stack_use_after_return)
-      return nullptr;
+  FakeStack *get_fake_stack() {
     if (atomic_load(&stack_switching_, memory_order_relaxed))
       return nullptr;
-    if (!has_fake_stack())
+    if (reinterpret_cast<uptr>(fake_stack_) <= 1)
+      return nullptr;
+    return fake_stack_;
+  }
+
+  FakeStack *get_or_create_fake_stack() {
+    if (atomic_load(&stack_switching_, memory_order_relaxed))
+      return nullptr;
+    if (reinterpret_cast<uptr>(fake_stack_) <= 1)
       return AsyncSignalSafeLazyInitFakeStack();
     return fake_stack_;
   }
@@ -136,6 +126,10 @@ class AsanThread {
 
   AsanThreadLocalMallocStorage &malloc_storage() { return malloc_storage_; }
   AsanStats &stats() { return stats_; }
+
+  void *extra_spill_area() { return &extra_spill_area_; }
+
+  void *get_arg() { return arg_; }
 
  private:
   // NOTE: There is no AsanThread constructor. It is allocated
@@ -172,18 +166,7 @@ class AsanThread {
   AsanThreadLocalMallocStorage malloc_storage_;
   AsanStats stats_;
   bool unwinding_;
-};
-
-// ScopedUnwinding is a scope for stacktracing member of a context
-class ScopedUnwinding {
- public:
-  explicit ScopedUnwinding(AsanThread *t) : thread(t) {
-    t->setUnwinding(true);
-  }
-  ~ScopedUnwinding() { thread->setUnwinding(false); }
-
- private:
-  AsanThread *thread;
+  uptr extra_spill_area_;
 };
 
 // Returns a single instance of registry.

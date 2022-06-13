@@ -39,7 +39,7 @@ Check out the rest of this article for instructions on how to :ref:`build the si
 Building the site
 =================
 
-The site sources are stored on `GitHub <https://github.com/emscripten-core/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
+The site sources are stored on `GitHub <https://github.com/emscripten-core/emscripten/tree/main/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
 The site is published to the **emscripten-core/emscripten-site** *gh-pages* branch (GitHub pages).
 
@@ -58,7 +58,7 @@ The version of Sphinx on Ubuntu package repository (apt-get) fails when building
 
 The workaround is to use the *Python package installer* (pip) to get version 1.7.8, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
 
-  pip install sphinx==1.7.9
+  pip install sphinx==2.4.4
 
 
 .. _about-site-builds:
@@ -93,7 +93,7 @@ SDK builds are enabled by enabling the ``sdkbuild`` tag. This is done through th
 Build version
 -------------
 
-The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/emscripten-core/emscripten/blob/incoming/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
+The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
 
 The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
 

@@ -11,21 +11,23 @@
 
 int main() {
   EM_ASM({
-    Module.prints = [];
+    Module['prints'] = [];
 
     var real = out;
 
     out = function(x) {
       real(x);
-      Module.prints.push(x);
+      Module['prints'].push(x);
     }
   });
   printf("hello, world!\n");
   EM_ASM({
-    if (Module.prints.length !== 1) throw 'bad length ' + Module.prints.length;
-    if (Module.prints[0] !== 'hello, world!') throw 'bad contents: ' + Module.prints[0];
+    if (Module['prints'].length !== 1) throw 'bad length ' + Module['prints'].length;
+    if (Module['prints'][0] !== 'hello, world!') throw 'bad contents: ' + Module['prints'][0];
   });
+#ifdef REPORT_RESULT
   REPORT_RESULT(0);
+#endif
   return 0;
 }
 

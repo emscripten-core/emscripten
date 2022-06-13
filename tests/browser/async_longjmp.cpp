@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <emscripten.h>
 #include <stdio.h>
 #include <setjmp.h>
@@ -22,11 +23,6 @@ void first(void) {
   emscripten_sleep(1);
   longjmp(buf, 1);  // jumps back to where setjmp was called - making setjmp now
                     // return 1
-}
-
-__attribute__((noinline)) // https://github.com/emscripten-core/emscripten/issues/8894
-void finish(int x) {
-  REPORT_RESULT(x);
 }
 
 int main() {
@@ -47,5 +43,6 @@ int main() {
     printf("result: %d %d\n", x, jmpval);  // prints
   }
   emscripten_sleep(1);
-  finish(x);
+  assert(x == 2);
+  return 0;
 }

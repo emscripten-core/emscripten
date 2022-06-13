@@ -8,7 +8,12 @@ Module object
 
 Developers can provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
 
-.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
+When an Emscripten application starts up it looks at the values on the ``Module``
+object and applies them. Note that changing the values *after* startup will not
+work in general; in a build with ``ASSERTIONS`` enabled you will get an error
+in that case.
+
+.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
 
 .. contents:: Table of Contents
   :local:
@@ -31,7 +36,7 @@ When generating only JavaScript (as opposed to HTML), no ``Module`` object is cr
       'printErr': function(text) { alert('stderr: ' + text) }
     };
 
-.. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``-pre-js`` file.
+.. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``--pre-js`` file.
 
 When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
 
@@ -39,7 +44,19 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
     Module['print'] = function(text) { alert('stdout: ' + text) };
 
-Note that once the Module object is received by the main JavaScript file, it will look for `Module['print']` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
+Note that once the Module object is received by the main JavaScript file, it will look for ``Module['print']`` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
+
+Compilation settings
+====================
+
+The ``INCOMING_MODULE_JS_API`` compiler setting controls which ``Module``
+attributes are supported in the emitted JS. This list contains commonly-used
+things by default.
+
+Setting this to the smallest possible list for your application will save JS
+code size. For example, if you use no ``Module`` attributes, you can build
+with ``-sINCOMING_MODULE_JS_API=[]``. Or, if you use just a few, you can list
+them out, like this: ``-sINCOMING_MODULE_JS_API=print,printErr``.
 
 Affecting execution
 ===================
@@ -55,13 +72,13 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Allows you to provide your own ``ArrayBuffer`` or ``SharedArrayBuffer`` to use as the memory.
 
-  .. note:: This is only supported if ``-s WASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
+  .. note:: This is only supported if ``-sWASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
 
 .. js:attribute:: Module.wasmMemory
 
   Allows you to provide your own ``WebAssembly.Memory`` to use as the memory. The properites used to initialize the memory should match the compiler options.
 
-  For example, if you set ``TOTAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
+  For example, if you set ``INITIAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
 
 .. js:attribute:: Module.locateFile
 
@@ -114,7 +131,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.preinitializedWebGLContext
 
-  If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+  If building with ``-sGL_PREINITIALIZED_CONTEXT`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
 
 .. js:attribute:: Module.preRun
 
@@ -152,7 +169,14 @@ Other methods
 
   Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``tests/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
 
+  .. note:: Sanitizers or source map is currently not supported if overriding WebAssembly instantiation with Module.instantiateWasm. Providing Module.instantiateWasm when source map or sanitizer is enabled can prevent WebAssembly instantiation from finishing.
+
 .. js:function:: Module.onCustomMessage
 
-  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyWorker.js>`_).
+  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyWorker.js>`_).
 
+.. js:function:: Module.fetchSettings
+
+  Override the default settings object used when fetching the Wasm module from
+  the network.  This attribute is expected to be a string and it defaults to ``{
+  credentials: 'same-origin' }``.

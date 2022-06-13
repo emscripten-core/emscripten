@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,7 +22,6 @@ int main() {
     putchar(c);
     ++nChars;
   }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(nChars);
-#endif
+  assert(nChars == 15);
+  return 0;
 }

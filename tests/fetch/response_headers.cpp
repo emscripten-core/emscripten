@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
-int result = 0;
+int result = 1;
 
 int main()
 {
@@ -47,11 +47,7 @@ int main()
         assert( checksum == 0x08 );
         emscripten_fetch_close( fetch );
 
-        if ( result == 0 ) result = 1;
-#ifdef REPORT_RESULT
-        // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-        MAYBE_REPORT_RESULT(result);
-#endif
+        if ( result == 1 ) result = 0;
     };
 
     attr.onprogress = [] ( emscripten_fetch_t *fetch )
@@ -74,13 +70,10 @@ int main()
     };
 
     emscripten_fetch_t *fetch = emscripten_fetch( &attr, "gears.png" );
-    if ( result == 0 )
+    if ( result != 0 )
     {
         result = 2;
         printf( "emscripten_fetch() failed to run synchronously!\n" );
     }
-#ifdef REPORT_RESULT
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(result);
-#endif
+    return result;
 }

@@ -19,6 +19,7 @@
 #endif
 
 static void create_file(const char *path, const char *buffer, int mode) {
+  printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
@@ -31,20 +32,17 @@ static void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   mkdir("working", 0777);
 #ifdef __EMSCRIPTEN__
-
-#ifdef __EMSCRIPTEN_ASMFS__
-  mkdir("working", 0777);
-#else
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
 #endif
-#endif
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+  // create the file as readable and then use chmod
+  create_file("file-readonly", "test", 0777);
 #ifndef NO_SYMLINK
   symlink("file1", "file1-link");
 #endif
@@ -56,6 +54,7 @@ void setup() {
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
   chmod("dir-readonly", 0555);
+  chmod("file-readonly", 0555);
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
 }
@@ -71,6 +70,8 @@ void cleanup() {
   unlink("dir-empty-link");
 #endif
   chmod("dir-readonly", 0777);
+  chmod("file-readonly", 0777);
+  unlink("file-readonly");
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
   rmdir("dir-readonly");
@@ -89,6 +90,17 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
+  // Test non-existent parent
+  err = unlink("noexist/foo");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  // Test empty pathname
+  err = unlink("");
+  assert(err == -1);
+  printf("%s\n", strerror(errno));
+  assert(errno == ENOENT);
+
   err = unlink("dir-readonly");
   assert(err == -1);
 
@@ -103,6 +115,7 @@ void test() {
 
 #ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
+  printf("err: %d %d\n", err, errno);
   assert(err == -1);
   assert(errno == EACCES);
 #endif
@@ -115,7 +128,7 @@ void test() {
 #endif
   err = access("file1", F_OK);
   assert(!err);
-#ifndef NO_SYMLINK
+#if !defined(NO_SYMLINK)
   err = access("file1-link", F_OK);
   assert(err == -1);
 #endif
@@ -124,6 +137,10 @@ void test() {
   assert(!err);
   err = access("file", F_OK);
   assert(err == -1);
+
+  // Should be able to delete a read-only file.
+  err = unlink("file-readonly");
+  assert(!err);
 
   //
   // test rmdir
@@ -148,11 +165,13 @@ void test() {
 
   // test removing the cwd / root. The result isn't specified by
   // POSIX, but Linux seems to set EBUSY in both cases.
+  // Update: Removing cwd on Linux does not return EBUSY.
+  // WASMFS behaviour will match the native FS.
 #ifndef __APPLE__
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
-#ifdef NODERAWFS
+#if defined(NODERAWFS) || defined(WASMFS)
   assert(errno == ENOTEMPTY);
 #else
   assert(errno == EBUSY);
@@ -187,8 +206,5 @@ int main() {
   setup();
   test();
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return EXIT_SUCCESS;
 }

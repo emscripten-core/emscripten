@@ -1,7 +1,7 @@
 # Number of days of inactivity before an issue becomes stale
 daysUntilStale: 365
 # Number of days of inactivity before a stale issue is closed
-daysUntilClose: 7
+daysUntilClose: 30
 # Issues with these labels will never be considered stale
 exemptLabels:
   - pinned
@@ -12,7 +12,7 @@ staleLabel: wontfix
 markComment: >
   This issue has been automatically marked as stale because there has been no
   activity in the past year.  It will be closed automatically if no further
-  activity occurs in the next 7 days.  Feel free to re-open at any time if this
+  activity occurs in the next 30 days.  Feel free to re-open at any time if this
   issue is still relevant.
 # Comment to post when closing a stale issue. Set to `false` to disable
 closeComment: false

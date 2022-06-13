@@ -1,7 +1,8 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
   $WORKERFS__deps: ['$FS'],
@@ -76,7 +77,7 @@ mergeInto(LibraryManager.library, {
       getattr: function(node) {
         return {
           dev: 1,
-          ino: undefined,
+          ino: node.id,
           mode: node.mode,
           nlink: 1,
           uid: 0,

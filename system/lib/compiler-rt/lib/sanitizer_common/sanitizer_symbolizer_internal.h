@@ -1,9 +1,8 @@
 //===-- sanitizer_symbolizer_internal.h -------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -16,12 +15,13 @@
 
 #include "sanitizer_symbolizer.h"
 #include "sanitizer_file.h"
+#include "sanitizer_vector.h"
 
 namespace __sanitizer {
 
 // Parsing helpers, 'str' is searched for delimiter(s) and a string or uptr
 // is extracted. When extracting a string, a newly allocated (using
-// InternalAlloc) and null-terminataed buffer is returned. They return a pointer
+// InternalAlloc) and null-terminated buffer is returned. They return a pointer
 // to the next characted after the found delimiter.
 const char *ExtractToken(const char *str, const char *delims, char **result);
 const char *ExtractInt(const char *str, const char *delims, int *result);
@@ -59,12 +59,19 @@ class SymbolizerTool {
     UNIMPLEMENTED();
   }
 
+  virtual bool SymbolizeFrame(uptr addr, FrameInfo *info) {
+    return false;
+  }
+
   virtual void Flush() {}
 
   // Return nullptr to fallback to the default platform-specific demangler.
   virtual const char *Demangle(const char *name) {
     return nullptr;
   }
+
+ protected:
+  ~SymbolizerTool() {}
 };
 
 // SymbolizerProcess encapsulates communication between the tool and
@@ -72,16 +79,25 @@ class SymbolizerTool {
 // SymbolizerProcess may not be used from two threads simultaneously.
 class SymbolizerProcess {
  public:
-  explicit SymbolizerProcess(const char *path, bool use_forkpty = false);
+  explicit SymbolizerProcess(const char *path, bool use_posix_spawn = false);
   const char *SendCommand(const char *command);
 
  protected:
+  ~SymbolizerProcess() {}
+
+  /// The maximum number of arguments required to invoke a tool process.
+  static const unsigned kArgVMax = 16;
+
+  // Customizable by subclasses.
+  virtual bool StartSymbolizerSubprocess();
+  virtual bool ReadFromSymbolizer(char *buffer, uptr max_length);
+  // Return the environment to run the symbolizer in.
+  virtual char **GetEnvP() { return GetEnviron(); }
+
+ private:
   virtual bool ReachedEndOfOutput(const char *buffer, uptr length) const {
     UNIMPLEMENTED();
   }
-
-  /// The maximum number of arguments required to invoke a tool process.
-  enum { kArgVMax = 6 };
 
   /// Fill in an argv array to invoke the child process.
   virtual void GetArgV(const char *path_to_binary,
@@ -89,13 +105,9 @@ class SymbolizerProcess {
     UNIMPLEMENTED();
   }
 
-  virtual bool ReadFromSymbolizer(char *buffer, uptr max_length);
-
- private:
   bool Restart();
   const char *SendCommandImpl(const char *command);
   bool WriteToSymbolizer(const char *buffer, uptr length);
-  bool StartSymbolizerSubprocess();
 
   const char *path_;
   fd_t input_fd_;
@@ -109,24 +121,25 @@ class SymbolizerProcess {
   uptr times_restarted_;
   bool failed_to_start_;
   bool reported_invalid_path_;
-  bool use_forkpty_;
+  bool use_posix_spawn_;
 };
 
 class LLVMSymbolizerProcess;
 
 // This tool invokes llvm-symbolizer in a subprocess. It should be as portable
 // as the llvm-symbolizer tool is.
-class LLVMSymbolizer : public SymbolizerTool {
+class LLVMSymbolizer final : public SymbolizerTool {
  public:
   explicit LLVMSymbolizer(const char *path, LowLevelAllocator *allocator);
 
   bool SymbolizePC(uptr addr, SymbolizedStack *stack) override;
-
   bool SymbolizeData(uptr addr, DataInfo *info) override;
+  bool SymbolizeFrame(uptr addr, FrameInfo *info) override;
 
  private:
-  const char *FormatAndSendCommand(bool is_data, const char *module_name,
-                                   uptr module_offset, ModuleArch arch);
+  const char *FormatAndSendCommand(const char *command_prefix,
+                                   const char *module_name, uptr module_offset,
+                                   ModuleArch arch);
 
   LLVMSymbolizerProcess *symbolizer_process_;
   static const uptr kBufferSize = 16 * 1024;

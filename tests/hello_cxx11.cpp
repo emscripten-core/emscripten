@@ -9,6 +9,14 @@
 #error This file should be compiled with -std=c++11!
 #endif
 
+#ifdef _REENTRANT
+#error Expected to be compiled single-threaded.
+#endif
+
+#ifdef __cpp_threadsafe_static_init
+#error single-threaded builds should not define __cpp_threadsafe_static_init
+#endif
+
 int main( int argc, const char *argv[] ) {
   printf("Hello world!\\n");
   return 0;

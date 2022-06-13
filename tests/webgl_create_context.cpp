@@ -27,6 +27,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     }
     return elems;
 }
+
 std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
@@ -41,9 +42,7 @@ GLint GetInt(GLenum param)
 }
 
 void final(void*) {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_force_exit(0);
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
@@ -56,9 +55,9 @@ void loop()
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     EM_ASM(
-      var canvas2 = Module.canvas.cloneNode();
-      Module.canvas.parentElement.appendChild(canvas2);
-      Module.canvas = canvas2;
+      var canvas2 = Module['canvas'].cloneNode(true);
+      Module['canvas'].parentElement.appendChild(canvas2);
+      Module['canvas'] = canvas2;
     );
     assert(emscripten_webgl_get_current_context() == 0);
     context = emscripten_webgl_create_context("#canvas", &attrs);
@@ -102,12 +101,12 @@ int main()
 
     EM_ASM(
       var canvas2 = document.createElement('canvas');
-      Module.canvas.parentElement.appendChild(canvas2);
+      Module['canvas'].parentElement.appendChild(canvas2);
       canvas2.id = 'customCanvas';
     );
-    
+
     assert(emscripten_webgl_get_current_context() == 0);
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("customCanvas", &attrs);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
     EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
@@ -119,6 +118,7 @@ int main()
     for(size_t i = 0; i < exts.size(); ++i)
     {
       EM_BOOL supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
+      printf("%s\n", exts[i].c_str());
       assert(supported);
     }
 
@@ -193,11 +193,8 @@ int main()
       canvas2.parentElement.removeChild(canvas2);
     );
   }
-  
+
   // result will be reported when mainLoop completes
   emscripten_set_main_loop(loop, 0, 0);
-
-#ifndef REPORT_RESULT
-  return 0;
-#endif
+  return 99;
 }

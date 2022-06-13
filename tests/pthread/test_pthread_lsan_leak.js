@@ -5,18 +5,18 @@
       var result = output.join('\n');
       var passed = [
         'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:17:17',
+        'test_pthread_lsan_leak.cpp:18:17',
         'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:39:10',
+        'test_pthread_lsan_leak.cpp:36:10',
         'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:33:16',
+        'test_pthread_lsan_leak.cpp:30:16',
         'Direct leak of 1234 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:19:13',
+        'test_pthread_lsan_leak.cpp:20:13',
         'Direct leak of 420 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:34:13',
+        'test_pthread_lsan_leak.cpp:31:13',
         'Direct leak of 42 byte(s) in 1 object(s) allocated from',
-        'test_pthread_lsan_leak.cpp:12:21',
-        'test_pthread_lsan_leak.cpp:38:3',
+        'test_pthread_lsan_leak.cpp:13:21',
+        'test_pthread_lsan_leak.cpp:35:3',
         '8513 byte(s) leaked in 6 allocation(s).',
         ''
       ].every(function (snippet) {

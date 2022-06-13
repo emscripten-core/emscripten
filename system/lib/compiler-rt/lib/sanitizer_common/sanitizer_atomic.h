@@ -1,9 +1,8 @@
 //===-- sanitizer_atomic.h --------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -73,12 +72,12 @@ namespace __sanitizer {
 // Clutter-reducing helpers.
 
 template<typename T>
-INLINE typename T::Type atomic_load_relaxed(const volatile T *a) {
+inline typename T::Type atomic_load_relaxed(const volatile T *a) {
   return atomic_load(a, memory_order_relaxed);
 }
 
 template<typename T>
-INLINE void atomic_store_relaxed(volatile T *a, typename T::Type v) {
+inline void atomic_store_relaxed(volatile T *a, typename T::Type v) {
   atomic_store(a, v, memory_order_relaxed);
 }
 

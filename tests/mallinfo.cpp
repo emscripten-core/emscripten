@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <assert.h>
 #include <emscripten/emscripten.h>
 
@@ -35,8 +36,8 @@ unsigned int getTotalMemory()
 unsigned int getFreeMemory()
 {
 	s_mallinfo i = mallinfo();
-	unsigned int totalMemory = getTotalMemory();
-	unsigned int dynamicTop = EM_ASM_INT(return HEAPU32[DYNAMICTOP_PTR>>2]);
+	uintptr_t totalMemory = getTotalMemory();
+	uintptr_t dynamicTop = (uintptr_t)sbrk(0);
 	return totalMemory - dynamicTop + i.fordblks;
 }
 

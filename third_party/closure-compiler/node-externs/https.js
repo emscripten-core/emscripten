@@ -52,7 +52,7 @@ https.Server.prototype.close = function(callback) {};
 https.createServer = function(options, requestListener) {};
 
 /**
- * @typedef {{host: ?string, hostname: ?string, port: ?number, method: ?string, path: ?string, headers: ?Object.<string,string>, auth: ?string, agent: ?(https.Agent|boolean), pfx: ?(string|buffer.Buffer), key: ?(string|buffer.Buffer), passphrase: ?string, cert: ?(string|buffer.Buffer), ca: ?Array.<string>, ciphers: ?string, rejectUnauthorized: ?boolean}}
+ * @typedef {{host: ?string, hostname: ?string, port: ?number, method: ?string, path: ?string, headers: ?Object.<string,string>, auth: ?string, agent: ?(https.Agent|boolean), pfx: ?(string|nodeBuffer.Buffer), key: ?(string|nodeBuffer.Buffer), passphrase: ?string, cert: ?(string|nodeBuffer.Buffer), ca: ?Array.<string>, ciphers: ?string, rejectUnauthorized: ?boolean}}
  */
 https.ConnectOptions;
 

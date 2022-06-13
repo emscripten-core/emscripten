@@ -6,46 +6,46 @@
 import logging
 import os
 import shutil
+from pathlib import Path
 
 TAG = 'version_1'
 HASH = '929e8d6003c06ae09593021b83323c8f1f54532b67b8ba189f4aedce52c25dc182bac474de5392c46ad5b0dea5a24928e4ede1492d52f4dd5cd58eea9be4dba7'
 
 
+def needed(settings):
+  return settings.USE_OGG
+
+
 def get(ports, settings, shared):
-  if settings.USE_OGG != 1:
-    return []
-
   ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libogg')
 
-  def create():
+  def create(final):
     logging.info('building port: ogg')
     ports.clear_project_build('vorbis')
 
     source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'ogg')
+    dest_path = os.path.join(ports.get_build_dir(), 'ogg')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    open(os.path.join(dest_path, 'include', 'ogg', 'config_types.h'), 'w').write(config_types_h)
+    Path(dest_path, 'include', 'ogg', 'config_types.h').write_text(config_types_h)
 
-    final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'src'), final, [os.path.join(dest_path, 'include')])
-    return final
+    header_dir = ports.get_include_dir('ogg')
+    shutil.rmtree(header_dir, ignore_errors=True)
+    shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
 
-  return [shared.Cache.get(libname, create)]
+    ports.build_port(os.path.join(dest_path, 'src'), final)
 
-
-def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libogg'))
+  return [shared.Cache.get_lib('libogg.a', create)]
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_OGG == 1:
-    get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'ogg', 'include')]
-  return args
+def clear(ports, settings, shared):
+  shared.Cache.erase_lib('libogg.a')
+
+
+def process_args(ports):
+  return []
 
 
 def show():

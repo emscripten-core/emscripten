@@ -19,7 +19,7 @@ int main() {
 
     FS.mkdir('/folder');
     FS.symlink('/folder', '/link');
-    FS.writeFile('/file', '', { mode: 0777 });
+    FS.writeFile('/file', "", { mode: 0o777 });
   );
 
   char buffer[256];

@@ -1,8 +1,7 @@
 #include <time.h>
 #include "syscall.h"
-#include "libc.h"
 
 int nanosleep(const struct timespec *req, struct timespec *rem)
 {
-	return syscall_cp(SYS_nanosleep, req, rem);
+	return __syscall_ret(-__clock_nanosleep(CLOCK_REALTIME, 0, req, rem));
 }

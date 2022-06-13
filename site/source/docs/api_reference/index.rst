@@ -4,7 +4,8 @@
 API Reference
 =============
 
-This section lists Emscripten's public API, organised by header file. At a very high level it consists of:
+This section lists Emscripten's public API, organised by header file. At a very
+high level it consists of:
 
 - :ref:`emscripten-h`:
   APIs for integrating with the browser environment.
@@ -21,20 +22,28 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`Fetch-API`:
   API for managing accesses to network XHR and IndexedDB.
 
+- :ref:`wasm_workers`:
+  Enables writing multithreaded programs using a web-like API.
+
 - :ref:`Module`:
-  Global JavaScript object that can be used to control code execution and access exported methods.
+  Global JavaScript object that can be used to control code execution and access
+  exported methods.
 
 - :ref:`val-h`:
   Embind API to support transliteration of JavaScript code to C++.
 
 - :ref:`bind-h`:
-  Embind API for binding C++ functions and classes so that they can be called from JavaScript in a natural way.
+  Embind API for binding C++ functions and classes so that they can be called
+  from JavaScript in a natural way.
 
 - :ref:`trace-h`:
   A tracing API for doing memory usage analysis.
 
-- :ref:`vr-h`:
-  API for using WebVR from native code.
+- :ref:`fiber-h`:
+  API for working with Fibers (co-operative threads)
+
+- :ref:`proxying-h`:
+  API for synchronously or asynchronously proxying work to a target pthread.
 
 - :ref:`api-reference-advanced-apis`:
   APIs for advanced users/core developers.
@@ -52,7 +61,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    val.h
    bind.h
    trace.h
-   vr.h
+   fiber.h
+   proxying.h
+   wasm_workers
    advanced-apis
-
-

@@ -1,0 +1,4 @@
+env.emscripten_notify_memory_growth
+wasi_snapshot_preview1.args_get
+wasi_snapshot_preview1.args_sizes_get
+wasi_snapshot_preview1.proc_exit

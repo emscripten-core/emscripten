@@ -1,14 +1,13 @@
 //===-- sanitizer_local_address_space_view.h --------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
 // `LocalAddressSpaceView` provides the local (i.e. target and current address
-// space are the same) implementation of the `AddressSpaveView` interface which
+// space are the same) implementation of the `AddressSpaceView` interface which
 // provides a simple interface to load memory from another process (i.e.
 // out-of-process)
 //
@@ -18,7 +17,7 @@
 // instantiated with the `LocalAddressSpaceView` type. This type is used to
 // load any pointers in instance methods. This implementation is effectively
 // a no-op. When an object is to be used in an out-of-process manner it is
-// instansiated with the `RemoteAddressSpaceView` type.
+// instantiated with the `RemoteAddressSpaceView` type.
 //
 // By making `AddressSpaceView` a template parameter of an object, it can
 // change its implementation at compile time which has no run time overhead.

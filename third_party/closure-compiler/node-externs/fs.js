@@ -57,6 +57,12 @@ fs.truncate = function(fd, len, callback) {};
 fs.truncateSync = function(fd, len) {};
 
 /**
+ * @param {*} fd
+ * @param {number} len
+ */
+fs.ftruncateSync = function(fd, len) {};
+
+/**
  * @param {string} path
  * @param {number} uid
  * @param {number} gid
@@ -367,9 +373,9 @@ fs.write = function(fd, buffer, offset, length, position, callback) {};
 /**
  * @param {*} fd
  * @param {*} buffer
- * @param {number} offset
- * @param {number} length
- * @param {number} position
+ * @param {number=} offset
+ * @param {number=} length
+ * @param {number=} position
  * @return {number}
  */
 fs.writeSync = function(fd, buffer, offset, length, position) {};
@@ -397,15 +403,15 @@ fs.readSync = function(fd, buffer, offset, length, position) {};
 
 /**
  * @param {string} filename
- * @param {string|{encoding:(string|undefined),flag:(string|undefined)}|function(string, (string|buffer.Buffer))=} encodingOrOptions
- * @param {function(string, (string|buffer.Buffer))=} callback
+ * @param {string|{encoding:(string|undefined),flag:(string|undefined)}|function(string, (string|nodeBuffer.Buffer))=} encodingOrOptions
+ * @param {function(string, (string|nodeBuffer.Buffer))=} callback
  */
 fs.readFile = function(filename, encodingOrOptions, callback) {};
 
 /**
  * @param {string} filename
  * @param {string|{encoding:(string|undefined),flag:(string|undefined)}=} encodingOrOptions
- * @return {string|buffer.Buffer}
+ * @return {string|nodeBuffer.Buffer}
  * @nosideeffects
  */
 fs.readFileSync = function(filename, encodingOrOptions) {};

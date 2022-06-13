@@ -16,9 +16,9 @@ void fill(int color)
 {
   switch(color)
   {
-    case 1: glClearColor(1, 0, 0, 1); printf("On thread %d: you should see a red canvas.\n", (int)pthread_self()); break;
-    case 2: glClearColor(0, 1, 0, 1); printf("On thread %d: you should see a green canvas.\n", (int)pthread_self()); break;
-    case 3: glClearColor(0, 0, 1, 1); printf("On thread %d: you should see a blue canvas.\n", (int)pthread_self()); break;
+    case 1: glClearColor(1, 0, 0, 1); printf("On thread %ld: you should see a red canvas.\n", (long)pthread_self()); break;
+    case 2: glClearColor(0, 1, 0, 1); printf("On thread %ld: you should see a green canvas.\n", (long)pthread_self()); break;
+    case 3: glClearColor(0, 0, 1, 1); printf("On thread %ld: you should see a blue canvas.\n", (long)pthread_self()); break;
   }
   glClear(GL_COLOR_BUFFER_BIT);
   EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
@@ -38,7 +38,7 @@ void *thread_main(void *param)
   EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(ctx);
   assert(r == EMSCRIPTEN_RESULT_SUCCESS);
 
-  fill((int)param);
+  fill((int)(intptr_t)param);
 
   r = emscripten_webgl_make_context_current(0);
   assert(r == EMSCRIPTEN_RESULT_SUCCESS);
@@ -51,7 +51,6 @@ void run_thread(int param)
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   pthread_t thread;
   int rc = pthread_create(&thread, &attr, thread_main, (void*)param);
   assert(rc == 0);

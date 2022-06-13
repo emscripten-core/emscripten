@@ -2,10 +2,8 @@
 #include <string.h>
 #include "pthread_impl.h"
 #include "syscall.h"
-#include "libc.h"
 
-__attribute__((__visibility__("hidden")))
-long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
+hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 
 long __cancel()
 {
@@ -16,6 +14,7 @@ long __cancel()
 	return -ECANCELED;
 }
 
+#ifndef __EMSCRIPTEN__
 long __syscall_cp_asm(volatile void *, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t);
@@ -45,8 +44,7 @@ static void _sigaddset(sigset_t *set, int sig)
 	set->__bits[s/8/sizeof *set->__bits] |= 1UL<<(s&8*sizeof *set->__bits-1);
 }
 
-__attribute__((__visibility__("hidden")))
-extern const char __cp_begin[1], __cp_end[1], __cp_cancel[1];
+extern hidden const char __cp_begin[1], __cp_end[1], __cp_cancel[1];
 
 static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 {
@@ -61,11 +59,15 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 
 	if (self->cancelasync || pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
 		uc->uc_mcontext.MC_PC = (uintptr_t)__cp_cancel;
+#ifdef CANCEL_GOT
+		uc->uc_mcontext.MC_GOT = CANCEL_GOT;
+#endif
 		return;
 	}
 
 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
 }
+#endif
 
 void __testcancel()
 {
@@ -74,6 +76,7 @@ void __testcancel()
 		__cancel();
 }
 
+#ifndef __EMSCRIPTEN__
 static void init_cancellation()
 {
 	struct sigaction sa = {
@@ -83,15 +86,22 @@ static void init_cancellation()
 	memset(&sa.sa_mask, -1, _NSIG/8);
 	__libc_sigaction(SIGCANCEL, &sa, 0);
 }
+#endif
 
 int pthread_cancel(pthread_t t)
 {
+#ifndef __EMSCRIPTEN__
 	static int init;
 	if (!init) {
 		init_cancellation();
 		init = 1;
 	}
+#endif
 	a_store(&t->cancel, 1);
-	if (t == pthread_self() && !t->cancelasync) return 0;
+	if (t == pthread_self()) {
+		if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)
+			pthread_exit(PTHREAD_CANCELED);
+		return 0;
+	}
 	return pthread_kill(t, SIGCANCEL);
 }

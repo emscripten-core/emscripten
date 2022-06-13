@@ -56,7 +56,7 @@ the simple C++ ``lerp()`` :cpp:func:`function` to JavaScript.
 To compile the above example using *embind*, we invoke *emcc* with the
 :ref:`bind <emcc-bind>` option::
 
-   emcc --bind -o quick_example.js quick_example.cpp
+   emcc -lembind -o quick_example.js quick_example.cpp
 
 The resulting **quick_example.js** file can be loaded as a node module
 or via a ``<script>`` tag:
@@ -96,7 +96,18 @@ object.
    use whatever name you like for the module by assigning it to a new
    variable: ``var MyModuleName = Module;``.
 
+Binding libraries
+=================
 
+Binding code is run as a static constructor and static constructors only get
+run if the object file is included in the link, therefore when generating
+bindings for library files the compiler must be explicitly instructed to include
+the object file.
+
+For example, to generate bindings for a hypothetical **library.a** compiled
+with Emscripten run *emcc* with ``--whole-archive`` compiler flag::
+
+   emcc -lembind -o library.js -Wl,--whole-archive library.a -Wl,--no-whole-archive
 
 Classes
 =======
@@ -162,16 +173,46 @@ shown below:
    Module.MyClass.getStringFromInstance(instance); // "hello"
    instance.delete();
 
+.. note:: The :term:`closure compiler` is unaware of the names of symbols that
+   are exposed to JavaScript via *Embind*. In order to prevent such symbols
+   from being renamed by the closure compiler in your own code (provided for
+   example by using the ``--pre-js`` or ``--post-js`` compiler flags) it is
+   necessary to annotate the code accordingly. Without such annotations, the
+   resulting JavaScript code will no longer match the symbol names used in the
+   *Embind* code and runtime errors will occur as a result.
+
+In order to prevent the closure compiler from renaming the symbols in the
+above example code it needs to be rewritten as follows:
+
+.. code:: javascript
+
+   var instance = new Module["MyClass"](10, "hello");
+   instance["incrementX"]();
+   instance["x"]; // 11
+   instance["x"] = 20; // 20
+   Module["MyClass"]["getStringFromInstance"](instance); // "hello"
+   instance.delete();
+
+Note that this is only needed for code seen by the optimizer, for example as in
+``--pre-js`` or ``--post-js`` as mentioned above, or on ``EM_ASM`` or ``EM_JS``.
+For other code, that is not optimized by closure compiler, you do not need to
+make such changes. You also do not need it if you build without ``--closure 1``
+to enable the closure compiler.
 
 Memory management
 =================
 
-JavaScript, specifically ECMA-262 Edition 5.1, does not support `finalizers`_
-or weak references with callbacks. Therefore there is no way for Emscripten
-to automatically call the destructors on C++ objects.
+JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
+Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
+offer any guarantees that the provided finalization callback will be called.
+Embind uses this for cleanup if available, but only for smart pointers,
+and only as a last resort.
 
-.. warning:: JavaScript code must explicitly delete any C++ object handles
-   it has received, or the Emscripten heap will grow indefinitely.
+.. warning:: It is strongly recommended that JavaScript code explicitly deletes
+    any C++ object handles it has received.
+
+The :js:func:`delete()` JavaScript method is provided to manually signal that
+a C++ object is no longer needed and can be deleted:
 
 .. code:: javascript
 
@@ -182,6 +223,61 @@ to automatically call the destructors on C++ objects.
     var y = Module.myFunctionThatReturnsClassInstance();
     y.method();
     y.delete();
+
+.. note:: Both C++ objects constructed from the JavaScript side as well as
+    those returned from C++ methods must be explicitly deleted.
+
+
+.. tip:: The ``try`` … ``finally`` JavaScript construct can be used to guarantee
+    C++ object handles are deleted for all code paths, regardless of early
+    returns or errors thrown.
+
+.. code:: javascript
+
+    function myFunction() {
+        const x = new Module.MyClass;
+        try {
+            if (someCondition) {
+                return; // !
+            }
+            someFunctionThatMightThrow(); // oops
+            x.method();
+        } finally {
+            x.delete(); // will be called no matter what
+        }
+    }
+
+Cloning and Reference Counting
+------------------------------
+
+There are situations in which multiple long-lived portions of the
+JavaScript codebase need to hold on to the same C++ object for different
+amounts of time.
+
+To accomodate that use case, Emscripten provides a `reference counting`_
+mechanism in which multiple handles can be produced for the same underlying
+C++ object. Only when all handles have been deleted does the object get
+destroyed.
+
+The :js:func:`clone()` JavaScript method returns a new handle. It must
+eventually also be disposed with :js:func:`delete()`:
+
+.. code:: javascript
+
+    async function myLongRunningProcess(x, milliseconds) {
+        // sleep for the specified number of milliseconds
+        await new Promise(resolve => setTimeout(resolve, milliseconds));
+        x.method();
+        x.delete();
+    }
+
+    const y = new Module.MyClass;          // refCount = 1
+    myLongRunningProcess(y.clone(), 5000); // refCount = 2
+    myLongRunningProcess(y.clone(), 3000); // refCount = 3
+    y.delete();                            // refCount = 2
+
+    // (after 3000ms) refCount = 1
+    // (after 5000ms) refCount = 0 -> object is deleted
 
 Value types
 ===========
@@ -205,6 +301,11 @@ Consider the example below:
         int age;
     };
 
+    // Array fields are treated as if they were std::array<type,size>
+    struct ArrayInStruct {
+        int field[2];
+    };
+
     PersonRecord findPersonAtLocation(Point2f);
 
     EMSCRIPTEN_BINDINGS(my_value_example) {
@@ -216,6 +317,16 @@ Consider the example below:
         value_object<PersonRecord>("PersonRecord")
             .field("name", &PersonRecord::name)
             .field("age", &PersonRecord::age)
+            ;
+
+	value_object<ArrayInStruct>("ArrayInStruct")
+            .field("field", &ArrayInStruct::field) // Need to register the array type
+            ;
+
+	// Register std::array<int, 2> because ArrayInStruct::field is interpreted as such
+	value_array<std::array<int, 2>>("array_int_2")
+            .element(index<0>())
+            .element(index<1>())
             ;
 
         function("findPersonAtLocation", &findPersonAtLocation);
@@ -253,7 +364,7 @@ For example:
 
 .. note::
 
-   Currently the markup serves only to whitelist raw pointer use, and
+   Currently the markup serves only to allow raw pointer use, and
    show that you've thought about the use of the raw pointers. Eventually
    we hope to implement `Boost.Python-like raw pointer policies`_ for
    managing object ownership.
@@ -768,7 +879,7 @@ and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 
-   emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
+   emcc -O2 -Wall -Werror -lembind -o oscillator.html oscillator.cpp
 
 
 Built-in type conversions
@@ -909,10 +1020,12 @@ The call overhead for simple functions has been measured at about 200 ns.
 While there is room for further optimisation, so far its performance in
 real-world applications has proved to be more than acceptable.
 
-.. _Test Suite: https://github.com/emscripten-core/emscripten/tree/master/tests/embind
+.. _Test Suite: https://github.com/emscripten-core/emscripten/tree/main/tests/embind
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
+.. _FinalizationRegistry: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry
+.. _Reference Counting: https://en.wikipedia.org/wiki/Reference_counting
 .. _Boost.Python-like raw pointer policies: https://wiki.python.org/moin/boost.python/CallPolicy
 .. _Backbone.js: http://backbonejs.org/#Model-extend
 .. _Web Audio API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API

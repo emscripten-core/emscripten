@@ -12,11 +12,10 @@ import logging
 
 
 def add_coloring_to_emit_windows(fn):
-  def _out_handle(self):
-    return ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
-  out_handle = property(_out_handle) # noqa
+  # Constants from the Windows API
+  STD_OUTPUT_HANDLE = -11
 
-  def _get_color(self):
+  def _get_color():
     SHORT = ctypes.c_short
     WORD = ctypes.c_ushort
 
@@ -40,29 +39,16 @@ def add_coloring_to_emit_windows(fn):
         ("srWindow", SMALL_RECT),
         ("dwMaximumWindowSize", COORD)]
 
-    # Constants from the Windows API
-    self.STD_OUTPUT_HANDLE = -11
-    hdl = ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
+    hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
     csbi = CONSOLE_SCREEN_BUFFER_INFO()
     ctypes.windll.kernel32.GetConsoleScreenBufferInfo(hdl, ctypes.byref(csbi))
     return csbi.wAttributes
 
-  def _set_color(self, code):
-    # Constants from the Windows API
-    self.STD_OUTPUT_HANDLE = -11
-    hdl = ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
+  def _set_color(code):
+    hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
     ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, code)
 
-  setattr(logging.StreamHandler, '_get_color', _get_color)
-  setattr(logging.StreamHandler, '_set_color', _set_color)
-
   def new(*args):
-    FOREGROUND_BLUE      = 0x0001 # noqa; text color contains blue.
-    FOREGROUND_GREEN     = 0x0002 # noqa; text color contains green.
-    FOREGROUND_RED       = 0x0004 # noqa; text color contains red.
-    FOREGROUND_INTENSITY = 0x0008 # noqa; text color is intensified.
-    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED # noqa
-
     # wincon.h
     FOREGROUND_BLACK     = 0x0000 # noqa
     FOREGROUND_BLUE      = 0x0001 # noqa
@@ -73,6 +59,8 @@ def add_coloring_to_emit_windows(fn):
     FOREGROUND_YELLOW    = 0x0006 # noqa
     FOREGROUND_GREY      = 0x0007 # noqa
     FOREGROUND_INTENSITY = 0x0008 # foreground color is intensified.
+
+    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED # noqa
 
     BACKGROUND_BLACK     = 0x0000 # noqa
     BACKGROUND_BLUE      = 0x0010 # noqa
@@ -96,10 +84,11 @@ def add_coloring_to_emit_windows(fn):
         color = FOREGROUND_MAGENTA
     else:
         color = FOREGROUND_WHITE
-    old_color = args[0]._get_color()
-    args[0]._set_color(color)
+
+    old_color = _get_color()
+    _set_color(color)
     ret = fn(*args)
-    args[0]._set_color(old_color)
+    _set_color(old_color)
     return ret
 
   new.orig_func = fn

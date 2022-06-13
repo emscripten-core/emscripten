@@ -1,0 +1,57 @@
+[
+    // ===========================================
+    // libc - internal
+    // ===========================================
+    {
+        "file": "pthread_impl.h",
+        "structs": {
+            "pthread": [
+              "profilerBlock",
+              "tsd",
+              "stack",
+              "stack_size",
+              "result",
+              "robust_list",
+              "tid",
+              "cancel",
+              "canceldisable",
+              "cancelasync",
+              "locale"
+            ],
+            "pthread_attr_t#": [
+              "_a_transferredcanvases"
+            ],
+            "thread_profiler_block": [
+                "threadStatus",
+                "currentStatusStartTime",
+                "timeSpentInStatus",
+                "name"
+            ]
+        },
+        "defines": [
+          "SIGCANCEL"
+        ]
+    },
+    {
+        "file": "dynlink.h",
+        "structs": {
+            "dso": [
+              "flags",
+              "mem_allocated",
+              "mem_addr",
+              "mem_size",
+              "table_addr",
+              "table_size",
+              "name"
+            ]
+        }
+    },
+    {
+        "file": "proxying_notification_state.h",
+        "defines": [
+            "NOTIFICATION_NONE",
+            "NOTIFICATION_RECEIVED",
+            "NOTIFICATION_PENDING"
+        ]
+    }
+]

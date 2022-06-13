@@ -38,7 +38,9 @@
  */
 float fmaf(float x, float y, float z)
 {
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
+#endif
 	double xy, result;
 	union {double f; uint64_t i;} u;
 	int e;
@@ -50,7 +52,7 @@ float fmaf(float x, float y, float z)
 	/* Common case: The double precision result is fine. */
 	if ((u.i & 0x1fffffff) != 0x10000000 || /* not a halfway case */
 		e == 0x7ff ||                   /* NaN */
-		result - xy == z ||                 /* exact */
+		(result - xy == z && result - z == xy) || /* exact */
 		fegetround() != FE_TONEAREST)       /* not round-to-nearest */
 	{
 		/*

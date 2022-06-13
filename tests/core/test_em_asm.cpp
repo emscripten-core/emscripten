@@ -10,6 +10,27 @@ int main() {
   printf("BEGIN\n");
   EM_ASM({ out("no args works"); });
 
+  unsigned long p = 8;
+  EM_ASM({
+    console.log("int types:");
+    out("         char : " + $0);
+    out("  signed char : " + $1);
+    out("unsigned char : " + $2);
+    out("         short: " + $3);
+    out("  signed short: " + $4);
+    out("unsigned short: " + $5);
+    out("         int  : " + $6);
+    out("  signed int  : " + $7);
+    out("unsigned int  : " + $8);
+    out("         long : " + $9);
+    out("  signed long : " + $10);
+    out("unsigned long : " + $11);
+    out("    terminator: " + $12);
+  }, (char)1, (signed char)2, (unsigned char)3,
+     (short)4, (signed short)5, (unsigned short)6,
+     (int)7, (signed int)8, (unsigned int)9,
+     (long)10, (signed long)11, (unsigned long)12, 42);
+
   // The following two lines are deprecated, test them still.
   printf("  EM_ASM_INT_V returned: %d\n", EM_ASM_INT_V({ out("no args returning int"); return 12; }));
   printf("  EM_ASM_DOUBLE_V returned: %f\n", EM_ASM_DOUBLE_V({ out("no args returning double"); return 12.25; }));
@@ -47,6 +68,43 @@ int main() {
   printf("EM_ASM_DOUBLE :\n");
   TEST()
 #undef FUNC
+
+  // Test mixing ints and doubles
+  EM_ASM({
+    console.log("idii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 3.14159, 3, 4);
+  EM_ASM({
+    console.log("diii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 3.14159, 2, 3, 4);
+  EM_ASM({
+    console.log("iidi");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 2, 3.14159, 4);
+  EM_ASM({
+    console.log("ddii");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 3.14159, 2.1828, 3, 4);
+  EM_ASM({
+    console.log("iddi");
+    out("a " + $0);
+    out("b " + $1);
+    out("c " + $2);
+    out("d " + $3);
+  }, 1, 3.14159, 2.1828, 4);
 
   printf("END\n");
   return 0;

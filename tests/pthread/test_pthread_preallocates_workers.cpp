@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <vector>
 
 pthread_t threads[5];
@@ -19,12 +18,12 @@ pthread_t threads[5];
 static void *thread_start(void *arg)
 {
   // This should be long enough for threads to pile up.
-  int idx = (int)arg;
-  printf("Starting thread %d\n", idx);
+  long idx = (long)arg;
+  printf("Starting thread %ld\n", idx);
   while (true) {
     sleep(1);
   }
-  printf("Finishing thread %d\n", idx);
+  printf("Finishing thread %ld\n", idx);
   pthread_exit((void*)0);
 }
 
@@ -36,26 +35,15 @@ void CreateThread(int idx) {
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   // This test should be run with a prewarmed pool of size 4. None
   // of the threads are allocated yet.
-  assert(EM_ASM_INT(return PThread.preallocatedWorkers.length) == 4);
-  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 4);
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
 
   CreateThread(0);
 
   // We have one running thread, allocated on demand.
-  assert(EM_ASM_INT(return PThread.preallocatedWorkers.length) == 3);
-  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 3);
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 1);
 
   for (int i = 1; i < 5; ++i) {
@@ -71,7 +59,5 @@ int main()
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 5);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

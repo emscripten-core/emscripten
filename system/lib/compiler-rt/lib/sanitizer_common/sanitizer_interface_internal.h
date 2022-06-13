@@ -1,9 +1,8 @@
 //===-- sanitizer_interface_internal.h --------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -29,6 +28,10 @@ extern "C" {
   // (casted to void *).
   SANITIZER_INTERFACE_ATTRIBUTE
   void __sanitizer_set_report_fd(void *fd);
+  // Get the current full report file path, if a path was specified by
+  // an earlier call to __sanitizer_set_report_path. Returns null otherwise.
+  SANITIZER_INTERFACE_ATTRIBUTE
+  const char *__sanitizer_get_report_path();
 
   typedef struct {
       int coverage_sandboxed;
@@ -108,10 +111,13 @@ extern "C" {
   SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
   void __sanitizer_cov_trace_pc_guard_init(__sanitizer::u32*,
                                            __sanitizer::u32*);
-  SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
-  void __sanitizer_cov_8bit_counters_init();
-  SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
-  void __sanitizer_cov_pcs_init();
+  SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE void
+  __sanitizer_cov_8bit_counters_init(char *, char *);
+  SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE void
+  __sanitizer_cov_bool_flag_init();
+  SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE void
+  __sanitizer_cov_pcs_init(const __sanitizer::uptr *,
+                           const __sanitizer::uptr *);
 } // extern "C"
 
 #endif  // SANITIZER_INTERFACE_INTERNAL_H

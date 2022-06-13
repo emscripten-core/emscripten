@@ -1,9 +1,8 @@
 //===-- sanitizer_allocator_primary32.h -------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -47,6 +46,11 @@ struct SizeClassAllocator32FlagMasks {  //  Bit masks.
 
 template <class Params>
 class SizeClassAllocator32 {
+ private:
+  static const u64 kTwoLevelByteMapSize1 =
+      (Params::kSpaceSize >> Params::kRegionSizeLog) >> 12;
+  static const u64 kMinFirstMapSizeTwoLevelByteMap = 4;
+
  public:
   using AddressSpaceView = typename Params::AddressSpaceView;
   static const uptr kSpaceBeg = Params::kSpaceBeg;
@@ -54,12 +58,15 @@ class SizeClassAllocator32 {
   static const uptr kMetadataSize = Params::kMetadataSize;
   typedef typename Params::SizeClassMap SizeClassMap;
   static const uptr kRegionSizeLog = Params::kRegionSizeLog;
-  typedef typename Params::ByteMap ByteMap;
   typedef typename Params::MapUnmapCallback MapUnmapCallback;
+  using ByteMap = typename conditional<
+      (kTwoLevelByteMapSize1 < kMinFirstMapSizeTwoLevelByteMap),
+      FlatByteMap<(Params::kSpaceSize >> Params::kRegionSizeLog),
+                  AddressSpaceView>,
+      TwoLevelByteMap<kTwoLevelByteMapSize1, 1 << 12, AddressSpaceView>>::type;
 
-  static_assert(
-      is_same<typename ByteMap::AddressSpaceView, AddressSpaceView>::value,
-      "AddressSpaceView type mismatch");
+  COMPILER_CHECK(!SANITIZER_SIGN_EXTENDED_ADDRESSES ||
+                 (kSpaceSize & (kSpaceSize - 1)) == 0);
 
   static const bool kRandomShuffleChunks = Params::kFlags &
       SizeClassAllocator32FlagMasks::kRandomShuffleChunks;
@@ -112,7 +119,8 @@ class SizeClassAllocator32 {
   typedef SizeClassAllocator32<Params> ThisT;
   typedef SizeClassAllocator32LocalCache<ThisT> AllocatorCache;
 
-  void Init(s32 release_to_os_interval_ms) {
+  void Init(s32 release_to_os_interval_ms, uptr heap_start = 0) {
+    CHECK(!heap_start);
     possible_regions.Init();
     internal_memset(size_class_info_array, 0, sizeof(size_class_info_array));
   }
@@ -146,6 +154,7 @@ class SizeClassAllocator32 {
   }
 
   void *GetMetaData(const void *p) {
+    CHECK(kMetadataSize);
     CHECK(PointerIsMine(p));
     uptr mem = reinterpret_cast<uptr>(p);
     uptr beg = ComputeRegionBeg(mem);
@@ -180,15 +189,18 @@ class SizeClassAllocator32 {
     sci->free_list.push_front(b);
   }
 
-  bool PointerIsMine(const void *p) {
+  bool PointerIsMine(const void *p) const {
     uptr mem = reinterpret_cast<uptr>(p);
+    if (SANITIZER_SIGN_EXTENDED_ADDRESSES)
+      mem &= (kSpaceSize - 1);
     if (mem < kSpaceBeg || mem >= kSpaceBeg + kSpaceSize)
       return false;
     return GetSizeClass(p) != 0;
   }
 
-  uptr GetSizeClass(const void *p) {
-    return possible_regions[ComputeRegionId(reinterpret_cast<uptr>(p))];
+  uptr GetSizeClass(const void *p) const {
+    uptr id = ComputeRegionId(reinterpret_cast<uptr>(p));
+    return possible_regions.contains(id) ? possible_regions[id] : 0;
   }
 
   void *GetBlockBegin(const void *p) {
@@ -207,7 +219,7 @@ class SizeClassAllocator32 {
     return ClassIdToSize(GetSizeClass(p));
   }
 
-  uptr ClassID(uptr size) { return SizeClassMap::ClassID(size); }
+  static uptr ClassID(uptr size) { return SizeClassMap::ClassID(size); }
 
   uptr TotalMemoryUsed() {
     // No need to lock here.
@@ -226,13 +238,13 @@ class SizeClassAllocator32 {
 
   // ForceLock() and ForceUnlock() are needed to implement Darwin malloc zone
   // introspection API.
-  void ForceLock() {
+  void ForceLock() SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
     for (uptr i = 0; i < kNumClasses; i++) {
       GetSizeClassInfo(i)->mutex.Lock();
     }
   }
 
-  void ForceUnlock() {
+  void ForceUnlock() SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
     for (int i = kNumClasses - 1; i >= 0; i--) {
       GetSizeClassInfo(i)->mutex.Unlock();
     }
@@ -240,9 +252,9 @@ class SizeClassAllocator32 {
 
   // Iterate over all existing chunks.
   // The allocator must be locked when calling this function.
-  void ForEachChunk(ForEachChunkCallback callback, void *arg) {
+  void ForEachChunk(ForEachChunkCallback callback, void *arg) const {
     for (uptr region = 0; region < kNumPossibleRegions; region++)
-      if (possible_regions[region]) {
+      if (possible_regions.contains(region) && possible_regions[region]) {
         uptr chunk_size = ClassIdToSize(possible_regions[region]);
         uptr max_chunks_in_region = kRegionSize / (chunk_size + kMetadataSize);
         uptr region_beg = region * kRegionSize;
@@ -273,15 +285,15 @@ class SizeClassAllocator32 {
   };
   COMPILER_CHECK(sizeof(SizeClassInfo) % kCacheLineSize == 0);
 
-  uptr ComputeRegionId(uptr mem) {
+  uptr ComputeRegionId(uptr mem) const {
+    if (SANITIZER_SIGN_EXTENDED_ADDRESSES)
+      mem &= (kSpaceSize - 1);
     const uptr res = mem >> kRegionSizeLog;
     CHECK_LT(res, kNumPossibleRegions);
     return res;
   }
 
-  uptr ComputeRegionBeg(uptr mem) {
-    return mem & ~(kRegionSize - 1);
-  }
+  uptr ComputeRegionBeg(uptr mem) const { return mem & ~(kRegionSize - 1); }
 
   uptr AllocateRegion(AllocatorStats *stat, uptr class_id) {
     DCHECK_LT(class_id, kNumClasses);
@@ -292,7 +304,7 @@ class SizeClassAllocator32 {
     MapUnmapCallback().OnMap(res, kRegionSize);
     stat->Add(AllocatorStatMapped, kRegionSize);
     CHECK(IsAligned(res, kRegionSize));
-    possible_regions.set(ComputeRegionId(res), static_cast<u8>(class_id));
+    possible_regions[ComputeRegionId(res)] = class_id;
     return res;
   }
 

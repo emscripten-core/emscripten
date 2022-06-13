@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -129,6 +130,12 @@ int main() {
   printf("vfork: %d", vfork());
   printf(", errno: %d\n", errno);
   errno = 0;
+  printf("popen: %p", popen("/bin/ls", "r"));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("pclose: %d", pclose(NULL));
+  printf(", errno: %d\n", errno);
+  errno = 0;
 
   printf("crypt: %s", crypt("foo", "bar"));
   printf(", errno: %d\n", errno);
@@ -159,10 +166,16 @@ int main() {
   printf("getpid: %d", mypid);
   printf(", errno: %d\n", errno);
   errno = 0;
+  pid_t mytid = gettid();
+  printf("gettid: %d", mytid);
+  printf(", errno: %d\n", errno);
+  assert(mytid == mypid);
+  errno = 0;
   printf("getppid: %d", getppid());
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("getpgid: %d", getpgid(mypid));
+  pid_t mypgid = getpgid(mypid);
+  printf("getpgid: %d", mypgid);
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("getsid: %d", getsid(mypid));
@@ -186,7 +199,7 @@ int main() {
   printf("setsid: %d", setsid());
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("setpgid: %d", setpgid(mypid, mypid));
+  printf("setpgid: %d", setpgid(mypid, mypgid));
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("setpgid: %d", setpgid(123, 456));

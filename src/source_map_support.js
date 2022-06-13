@@ -1,3 +1,12 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * @constructor
+ */
 function WasmSourceMap(sourceMap) {
   this.version = sourceMap.version;
   this.sources = sourceMap.sources;
@@ -7,9 +16,7 @@ function WasmSourceMap(sourceMap) {
   this.offsets = [];
 
   var vlqMap = {};
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach(function (c, i) {
-    vlqMap[c] = i;
-  });
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach((c, i) => vlqMap[c] = i);
 
   // based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
   function decodeVLQ(string) {
@@ -51,7 +58,7 @@ function WasmSourceMap(sourceMap) {
     this.mapping[offset] = info;
     this.offsets.push(offset);
   }, this);
-  this.offsets.sort(function (a, b) { return a - b; });
+  this.offsets.sort((a, b) => a - b);
 }
 
 WasmSourceMap.prototype.lookup = function (offset) {
@@ -66,7 +73,7 @@ WasmSourceMap.prototype.lookup = function (offset) {
     return null;
   }
   return {
-    source: this.sources[info.source],
+    file: this.sources[info.source],
     line: info.line,
     column: info.column,
     name: this.names[info.name],
@@ -103,12 +110,10 @@ function getSourceMap() {
 }
 
 function getSourceMapPromise() {
-  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
-    return fetch(wasmSourceMapFile, { credentials: 'same-origin' }).then(function(response) {
-      return response['json']();
-    }).catch(function () {
-      return getSourceMap();
-    });
+  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
+    return fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
+      .then((response) => response['json']())
+      .catch(() => getSourceMap());
   }
   return new Promise(function(resolve, reject) {
     resolve(getSourceMap());

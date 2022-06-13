@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2018 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -11,18 +11,19 @@ sections from a wasm file.
 """
 
 import argparse
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 import json
 import logging
 from math import floor, log
 import os
 import re
 from subprocess import Popen, PIPE
+from pathlib import Path
 import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from tools.shared import asstr
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 logger = logging.getLogger('wasm-sourcemap')
 
@@ -39,6 +40,7 @@ def parse_args():
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
+  parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
   return parser.parse_args()
 
 
@@ -58,7 +60,6 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
-    result = name
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
@@ -73,7 +74,13 @@ class Prefixes:
 # SourceMapPrefixes contains resolver for file names that are:
 #  - "sources" is for names that output to source maps JSON
 #  - "load" is for paths that used to load source text
-SourceMapPrefixes = namedtuple('SourceMapPrefixes', 'sources, load')
+class SourceMapPrefixes:
+  def __init__(self, sources, load):
+    self.sources = sources
+    self.load = load
+
+  def provided(self):
+    return bool(self.sources.prefixes or self.load.prefixes)
 
 
 def encode_vlq(n):
@@ -172,7 +179,7 @@ def remove_dead_entries(entries):
 
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
-    output = open(options.dwarfdump_output, 'r').read()
+    output = Path(options.dwarfdump_output).read_bytes()
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
@@ -189,7 +196,7 @@ def read_dwarf_entries(wasm, options):
     sys.exit(1)
 
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", asstr(output))
+  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
   maybe_debug_info_content = debug_line_chunks[0]
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
@@ -243,11 +250,14 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
-def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
+def normalize_path(path):
+  return path.replace('\\', '/').replace('//', '/')
+
+
+def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
   sources = []
   sources_content = [] if collect_sources else None
   mappings = []
-
   sources_map = {}
   last_address = 0
   last_source_id = 0
@@ -264,7 +274,18 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    source_name = prefixes.sources.resolve(file_name)
+    file_name = normalize_path(file_name)
+    # if prefixes were provided, we use that; otherwise, we emit a relative
+    # path
+    if prefixes.provided():
+      source_name = prefixes.sources.resolve(file_name)
+    else:
+      try:
+        file_name = os.path.relpath(file_name, base_path)
+      except ValueError:
+        file_name = os.path.abspath(file_name)
+      file_name = normalize_path(file_name)
+      source_name = file_name
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
@@ -311,7 +332,7 @@ def main():
   prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
 
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
+  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources, options.basepath)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
 

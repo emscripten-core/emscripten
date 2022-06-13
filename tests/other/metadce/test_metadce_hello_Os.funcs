@@ -1,0 +1,8 @@
+$__emscripten_stdout_close
+$__emscripten_stdout_seek
+$__fwritex
+$__stdio_write
+$__towrite
+$__wasi_syscall_ret
+$__wasm_call_ctors
+$main

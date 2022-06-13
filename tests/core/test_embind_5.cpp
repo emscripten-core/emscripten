@@ -17,6 +17,9 @@ public:
   virtual void doit() {
     EM_ASM({out("doing it");});
   }
+  virtual ~MyFoo() {
+    EM_ASM({out("destructing my foo");});
+  }
 };
 
 class MyBar : public MyFoo {
@@ -26,6 +29,9 @@ public:
   }
   void doit() override {
     EM_ASM({out("doing something else");});
+  }
+  virtual ~MyBar() override {
+    EM_ASM({out("destructing my bar");});
   }
 };
 
@@ -50,6 +56,9 @@ int main(int argc, char **argv) {
       bar.doit();
     } catch(e) {
       out(e);
+    } finally {
+      foo.delete();
+      bar.delete();
     }
   );
   return 0;

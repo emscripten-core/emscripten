@@ -1,9 +1,8 @@
 //===-- sanitizer_stacktrace_printer.h --------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -48,9 +47,11 @@ namespace __sanitizer {
 //        module+offset if it is known, or (<unknown module>) string.
 //   %M - prints module basename and offset, if it is known, or PC.
 void RenderFrame(InternalScopedString *buffer, const char *format, int frame_no,
-                 const AddressInfo &info, bool vs_style,
+                 uptr address, const AddressInfo *info, bool vs_style,
                  const char *strip_path_prefix = "",
                  const char *strip_func_prefix = "");
+
+bool RenderNeedsSymbolization(const char *format);
 
 void RenderSourceLocation(InternalScopedString *buffer, const char *file,
                           int line, int column, bool vs_style,

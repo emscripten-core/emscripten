@@ -1,233 +1,303 @@
-/*
- * Copyright 2010 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
- * C++ exception handling support.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
  */
 
 var LibraryExceptions = {
-  __exception_last: '0',
-  __exception_caught: ' []',
-  __exception_infos: '{}',
+#if !WASM_EXCEPTIONS
+  $uncaughtExceptionCount: '0',
+  $exceptionLast: '0',
+  $exceptionCaught: ' []',
 
-  __exception_deAdjust__deps: ['__exception_infos'],
-  __exception_deAdjust: function(adjusted) {
-    if (!adjusted || ___exception_infos[adjusted]) return adjusted;
-    for (var key in ___exception_infos) {
-      var ptr = +key; // the iteration key is a string, and if we throw this, it must be an integer as that is what we look for
-      var adj = ___exception_infos[ptr].adjusted;
-      var len = adj.length;
-      for (var i = 0; i < len; i++) {
-        if (adj[i] === adjusted) {
+  // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
+  // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
+  // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
+  // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
+  // fields in the native structure.
+  // TODO: Unfortunately this approach still cannot be considered thread-safe because single
+  // exception object can be simultaneously thrown in several threads and its state (except
+  // reference counter) is not protected from that. Also protection is not enough, separate state
+  // should be allocated. libcxxabi has concept of dependent exception which is used for that
+  // purpose, it references the primary exception.
+  //
+  // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
+  $ExceptionInfo__docs: '/** @constructor */',
+  $ExceptionInfo__deps: ['__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-          err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+    '$ptrToString',
 #endif
-          return ptr;
-        }
-      }
+  ],
+  $ExceptionInfo: function(excPtr) {
+    this.excPtr = excPtr;
+    this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
+
+    this.set_type = function(type) {
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, 'type', '*') }}};
+    };
+
+    this.get_type = function() {
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, '*') }}};
+    };
+
+    this.set_destructor = function(destructor) {
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, 'destructor', '*') }}};
+    };
+
+    this.get_destructor = function() {
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, '*') }}};
+    };
+
+    this.set_refcount = function(refcount) {
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'refcount', 'i32') }}};
+    };
+
+    this.set_caught = function (caught) {
+      caught = caught ? 1 : 0;
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'caught', 'i8') }}};
+    };
+
+    this.get_caught = function () {
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'i8') }}} != 0;
+    };
+
+    this.set_rethrown = function (rethrown) {
+      rethrown = rethrown ? 1 : 0;
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'rethrown', 'i8') }}};
+    };
+
+    this.get_rethrown = function () {
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'i8') }}} != 0;
+    };
+
+    // Initialize native structure fields. Should be called once after allocated.
+    this.init = function(type, destructor) {
+#if EXCEPTION_DEBUG
+      err('ExceptionInfo init: ' + [type, destructor]);
+#endif
+      this.set_adjusted_ptr(0);
+      this.set_type(type);
+      this.set_destructor(destructor);
+      this.set_refcount(0);
+      this.set_caught(false);
+      this.set_rethrown(false);
     }
-#if EXCEPTION_DEBUG
-    err('no de-adjustment for unknown exception ptr ' + adjusted);
-#endif
-    return adjusted;
-  },
 
-  __exception_addRef__deps: ['__exception_infos'],
-  __exception_addRef: function(ptr) {
-#if EXCEPTION_DEBUG
-    err('addref ' + ptr);
+    this.add_ref = function() {
+#if SHARED_MEMORY
+      Atomics.add(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
+#else
+      var value = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'value + 1', 'i32') }}};
 #endif
-    if (!ptr) return;
-    var info = ___exception_infos[ptr];
-    info.refcount++;
-  },
+    };
 
-  __exception_decRef__deps: ['__exception_infos', '__cxa_free_exception'
-#if EXCEPTION_DEBUG
-      , '__exception_last', '__exception_caught'
+    // Returns true if last reference released.
+    this.release_ref = function() {
+#if SHARED_MEMORY
+      var prev = Atomics.sub(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
+#else
+      var prev = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'prev - 1', 'i32') }}};
 #endif
-    ],
-  __exception_decRef: function(ptr) {
-#if EXCEPTION_DEBUG
-    err('decref ' + ptr);
-#endif
-    if (!ptr) return;
-    var info = ___exception_infos[ptr];
 #if ASSERTIONS
-    assert(info.refcount > 0);
+      assert(prev > 0);
 #endif
-    info.refcount--;
+      return prev === 1;
+    };
+
+    this.set_adjusted_ptr = function(adjustedPtr) {
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, 'adjustedPtr', '*') }}};
+    };
+
+    this.get_adjusted_ptr = function() {
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, '*') }}};
+    };
+
+    // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
+    // when the pointer is casted to some of the exception object base classes (e.g. when virtual
+    // inheritance is used). When a pointer is thrown this method should return the thrown pointer
+    // itself.
+    this.get_exception_ptr = function() {
+      // Work around a fastcomp bug, this code is still included for some reason in a build without
+      // exceptions support.
+      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(this.get_type());
+      if (isPointer) {
+        return {{{ makeGetValue('this.excPtr', '0', '*') }}};
+      }
+      var adjusted = this.get_adjusted_ptr();
+      if (adjusted !== 0) return adjusted;
+      return this.excPtr;
+    };
+  },
+
+  $exception_addRef: function (info) {
+#if EXCEPTION_DEBUG
+    err('exception_addRef ' + ptrToString(info.excPtr));
+#endif
+    info.add_ref();
+  },
+
+  $exception_decRef__deps: ['__cxa_free_exception'
+#if EXCEPTION_DEBUG
+    , '$exceptionLast', '$exceptionCaught'
+#endif
+  ],
+  $exception_decRef: function(info) {
+#if EXCEPTION_DEBUG
+    err('exception_decRef ' + ptrToString(info.excPtr));
+#endif
     // A rethrown exception can reach refcount 0; it must not be discarded
     // Its next handler will clear the rethrown flag and addRef it, prior to
     // final decRef and destruction here
-    if (info.refcount === 0 && !info.rethrown) {
-      if (info.destructor) {
-#if WASM_BACKEND == 0
-        Module['dynCall_vi'](info.destructor, ptr);
-#else
+    if (info.release_ref() && !info.get_rethrown()) {
+      var destructor = info.get_destructor();
+      if (destructor) {
         // In Wasm, destructors return 'this' as in ARM
-        Module['dynCall_ii'](info.destructor, ptr);
-#endif
+        {{{ makeDynCall('pp', 'destructor') }}}(info.excPtr);
       }
-      delete ___exception_infos[ptr];
-      ___cxa_free_exception(ptr);
+      ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
-      err('decref freeing exception ' + [ptr, ___exception_last, 'stack', ___exception_caught]);
+      err('decref freeing exception ' + [ptrToString(info.excPtr), exceptionLast, 'stack', exceptionCaught]);
 #endif
     }
   },
 
-  __exception_clearRef__deps: ['__exception_infos'],
-  __exception_clearRef: function(ptr) {
-    if (!ptr) return;
-    var info = ___exception_infos[ptr];
-    info.refcount = 0;
-  },
-
   // Exceptions
+  __cxa_allocate_exception__sig: 'pp',
   __cxa_allocate_exception: function(size) {
-    return _malloc(size);
+    // Thrown object is prepended by exception metadata block
+    return _malloc(size + {{{ C_STRUCTS.__cxa_exception.__size__ }}}) + {{{ C_STRUCTS.__cxa_exception.__size__ }}};
   },
 
+  __cxa_free_exception__deps: ['$ExceptionInfo'],
+  __cxa_free_exception__sig: 'vp',
   __cxa_free_exception: function(ptr) {
 #if ABORTING_MALLOC || ASSERTIONS
     try {
 #endif
-      return _free(ptr);
+      return _free(new ExceptionInfo(ptr).ptr);
 #if ABORTING_MALLOC || ASSERTIONS
     } catch(e) {
 #if ASSERTIONS
-      err('exception during cxa_free_exception: ' + e);
+      err('exception during __cxa_free_exception: ' + e);
 #endif
     }
 #endif
   },
 
-  __cxa_increment_exception_refcount__deps: ['__exception_addRef', '__exception_deAdjust'],
+  __cxa_increment_exception_refcount__deps: ['$exception_addRef', '$ExceptionInfo'],
+  __cxa_increment_exception_refcount__sig: 'vp',
   __cxa_increment_exception_refcount: function(ptr) {
-    ___exception_addRef(___exception_deAdjust(ptr));
+    if (!ptr) return;
+    exception_addRef(new ExceptionInfo(ptr));
   },
 
-  __cxa_decrement_exception_refcount__deps: ['__exception_decRef', '__exception_deAdjust'],
+  __cxa_decrement_exception_refcount__deps: ['$exception_decRef', '$ExceptionInfo'],
+  __cxa_decrement_exception_refcount__sig: 'vp',
   __cxa_decrement_exception_refcount: function(ptr) {
-    ___exception_decRef(___exception_deAdjust(ptr));
+    if (!ptr) return;
+    exception_decRef(new ExceptionInfo(ptr));
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['__exception_infos', '__exception_last', '_ZSt18uncaught_exceptionv'],
+  __cxa_throw__sig: 'vppp',
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
+    err('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
 #endif
-    ___exception_infos[ptr] = {
-      ptr: ptr,
-      adjusted: [ptr],
-      type: type,
-      destructor: destructor,
-      refcount: 0,
-      caught: false,
-      rethrown: false
-    };
-    ___exception_last = ptr;
-    if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
-      __ZSt18uncaught_exceptionv.uncaught_exceptions = 1;
-    } else {
-      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
-    }
+    var info = new ExceptionInfo(ptr);
+    // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
+    info.init(type, destructor);
+    exceptionLast = ptr;
+    uncaughtExceptionCount++;
     {{{ makeThrow('ptr') }}}
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__exception_caught', '__exception_deAdjust', '__exception_infos', '__exception_last'],
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
-    var ptr = ___exception_caught.pop();
-    ptr = ___exception_deAdjust(ptr);
-    if (!___exception_infos[ptr].rethrown) {
+    var info = exceptionCaught.pop();
+    if (!info) {
+      abort('no exception to throw');
+    }
+    var ptr = info.excPtr;
+    if (!info.get_rethrown()) {
       // Only pop if the corresponding push was through rethrow_primary_exception
-      ___exception_caught.push(ptr);
-      ___exception_infos[ptr].rethrown = true;
+      exceptionCaught.push(info);
+      info.set_rethrown(true);
+      info.set_caught(false);
+      uncaughtExceptionCount++;
     }
 #if EXCEPTION_DEBUG
-    err('Compiled code RE-throwing an exception, popped ' + [ptr, ___exception_last, 'stack', ___exception_caught]);
+    err('__cxa_rethrow, popped ' +
+      [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    ___exception_last = ptr;
+    exceptionLast = ptr;
     {{{ makeThrow('ptr') }}}
   },
 
-  llvm_eh_exception__deps: ['__exception_last'],
-  llvm_eh_exception: function() {
-    return ___exception_last;
-  },
-
-  llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['__exception_last'],
-  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = ___exception_last;
-    for (var i = 2; i < arguments.length; i++) {
-      if (arguments[i] ==  type) return type;
-    }
-    return 0;
-  },
-
+  llvm_eh_typeid_for__sig: 'ip',
   llvm_eh_typeid_for: function(type) {
     return type;
   },
 
-  __cxa_begin_catch__deps: ['__exception_infos', '__exception_caught', '__exception_addRef', '__exception_deAdjust', '_ZSt18uncaught_exceptionv'],
+  __cxa_begin_catch__deps: ['$exceptionCaught', '$exception_addRef', '$uncaughtExceptionCount'],
+  __cxa_begin_catch__sig: 'pp',
   __cxa_begin_catch: function(ptr) {
-    var info = ___exception_infos[ptr];
-    if (info && !info.caught) {
-      info.caught = true;
-      __ZSt18uncaught_exceptionv.uncaught_exceptions--;
+    var info = new ExceptionInfo(ptr);
+    if (!info.get_caught()) {
+      info.set_caught(true);
+      uncaughtExceptionCount--;
     }
-    if (info) info.rethrown = false;
-    ___exception_caught.push(ptr);
+    info.set_rethrown(false);
+    exceptionCaught.push(info);
 #if EXCEPTION_DEBUG
-    err('cxa_begin_catch ' + [ptr, 'stack', ___exception_caught]);
+    err('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___exception_addRef(___exception_deAdjust(ptr));
-    return ptr;
+    exception_addRef(info);
+    return info.get_exception_ptr();
   },
 
   // We're done with a catch. Now, we can run the destructor if there is one
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__exception_caught', '__exception_last', '__exception_decRef', '__exception_deAdjust', 'setThrew'],
+  __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '$exception_decRef'],
+  __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0);
-    // Call destructor if one is registered then clear it.
-    var ptr = ___exception_caught.pop();
-#if EXCEPTION_DEBUG
-    err('cxa_end_catch popped ' + [ptr, ___exception_last, 'stack', ___exception_caught]);
+#if ASSERTIONS
+    assert(exceptionCaught.length > 0);
 #endif
-    if (ptr) {
-      ___exception_decRef(___exception_deAdjust(ptr));
-      ___exception_last = 0; // XXX in decRef?
-    }
+    // Call destructor if one is registered then clear it.
+    var info = exceptionCaught.pop();
+
+#if EXCEPTION_DEBUG
+    err('__cxa_end_catch popped ' + [info, exceptionLast, 'stack', exceptionCaught]);
+#endif
+    exception_decRef(info);
+    exceptionLast = 0; // XXX in decRef?
   },
+
+  __cxa_get_exception_ptr__deps: ['$ExceptionInfo'],
+  __cxa_get_exception_ptr__sig: 'pp',
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
-    err('cxa_get_exception_ptr ' + ptr);
+    err('__cxa_get_exception_ptr ' + ptrToString(ptr));
 #endif
-    // TODO: use info.adjusted?
-    return ptr;
+    return new ExceptionInfo(ptr).get_exception_ptr();
   },
 
-  _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
-    return __ZSt18uncaught_exceptionv.uncaught_exceptions > 0;
-  },
-
-  __cxa_uncaught_exceptions__deps: ['_ZSt18uncaught_exceptionv'],
+  __cxa_uncaught_exceptions__deps: ['$uncaughtExceptionCount'],
   __cxa_uncaught_exceptions: function() {
-    return __ZSt18uncaught_exceptionv.uncaught_exceptions;
+    return uncaughtExceptionCount;
   },
 
   __cxa_call_unexpected: function(exception) {
@@ -238,19 +308,22 @@ var LibraryExceptions = {
     throw exception;
   },
 
-  __cxa_current_primary_exception__deps: ['__exception_caught', '__exception_addRef', '__exception_deAdjust'],
+  __cxa_current_primary_exception__deps: ['$exceptionCaught', '$exception_addRef'],
   __cxa_current_primary_exception: function() {
-    var ret = ___exception_caught[___exception_caught.length-1] || 0;
-    if (ret) ___exception_addRef(___exception_deAdjust(ret));
-    return ret;
+    if (!exceptionCaught.length) {
+      return 0;
+    }
+    var info = exceptionCaught[exceptionCaught.length - 1];
+    exception_addRef(info);
+    return info.excPtr;
   },
 
-  __cxa_rethrow_primary_exception__deps: ['__exception_deAdjust', '__exception_caught', '__exception_infos', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
-    ptr = ___exception_deAdjust(ptr);
-    ___exception_caught.push(ptr);
-    ___exception_infos[ptr].rethrown = true;
+    var info = new ExceptionInfo(ptr);
+    exceptionCaught.push(info);
+    info.set_rethrown(true);
     ___cxa_rethrow();
   },
 
@@ -263,72 +336,132 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-
-  __cxa_find_matching_catch__deps: ['__exception_last', '__exception_infos', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch'],
+  //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
-    var thrown = ___exception_last;
+    var thrown = exceptionLast;
     if (!thrown) {
       // just pass through the null ptr
-      {{{ makeStructuralReturn([0, 0]) }}};
+      setTempRet0(0);
+      return 0;
     }
-    var info = ___exception_infos[thrown];
-    var throwntype = info.type;
-    if (!throwntype) {
+    var info = new ExceptionInfo(thrown);
+    info.set_adjusted_ptr(thrown);
+    var thrownType = info.get_type();
+    if (!thrownType) {
       // just pass through the thrown ptr
-      {{{ makeStructuralReturn(['thrown', 0]) }}};
+      setTempRet0(0);
+      return thrown;
     }
     var typeArray = Array.prototype.slice.call(arguments);
 
-    var pointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(throwntype);
     // can_catch receives a **, add indirection
 #if EXCEPTION_DEBUG
-    out("can_catch on " + [thrown]);
+    err("__cxa_find_matching_catch on " + ptrToString(thrown));
 #endif
-#if DISABLE_EXCEPTION_CATCHING == 1
-    var buffer = 0;
-#else
-    var buffer = {{{ makeStaticAlloc(4) }}};
-#endif
-    {{{ makeSetValue('buffer', '0', 'thrown', '*') }}};
-    thrown = buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
-      if (typeArray[i] && {{{ exportedAsmFunc('___cxa_can_catch') }}}(typeArray[i], throwntype, thrown)) {
-        thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
-        info.adjusted.push(thrown);
+      var caughtType = typeArray[i];
+      if (caughtType === 0 || caughtType === thrownType) {
+        // Catch all clause matched or exactly the same type is caught
+        break;
+      }
+      var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
+      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
-        out("  can_catch found " + [thrown, typeArray[i]]);
+        err("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
-        {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
+        setTempRet0(caughtType);
+        return thrown;
       }
     }
-    // Shouldn't happen unless we have bogus data in typeArray
-    // or encounter a type for which emscripten doesn't have suitable
-    // typeinfo defined. Best-efforts match just in case.
-    thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
-    {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
+    setTempRet0(thrownType);
+    return thrown;
   },
 
-  __resumeException__deps: [function() { '__exception_last', Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException__deps: ['$exceptionLast'],
+  __resumeException__sig: 'vp',
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    out("Resuming exception " + [ptr, ___exception_last]);
+    err("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!___exception_last) { ___exception_last = ptr; }
+    if (!exceptionLast) { exceptionLast = ptr; }
     {{{ makeThrow('ptr') }}}
   },
+
+#endif
+#if WASM_EXCEPTIONS
+  $getCppExceptionTag: function() {
+    return Module['asm']['__cpp_exception'];
+  },
+
+  // Given an WebAssembly.Exception object, returns the actual user-thrown
+  // C++ object address in the Wasm memory.
+  // WebAssembly.Exception is a JS object representing a Wasm exception,
+  // provided by Wasm JS API:
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
+  $getCppExceptionThrownObjectFromWebAssemblyException__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
+  $getCppExceptionThrownObjectFromWebAssemblyException: function(ex) {
+    // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer
+    // to the unwind header. Convert it to the actual thrown value.
+    var unwind_header = ex.getArg(getCppExceptionTag(), 0);
+    return ___thrown_object_from_unwind_exception(unwind_header);
+  },
+
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $incrementExceptionRefcount: function(ex) {
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
+    ___cxa_increment_exception_refcount(ptr);
+  },
+
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $decrementExceptionRefcount: function(ex) {
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
+    ___cxa_decrement_exception_refcount(ptr);
+  },
+
+  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $getExceptionMessage: function(ex) {
+    // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
+    // thrown value from it.
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
+    var utf8_addr = ___get_exception_message(ptr);
+    var result = UTF8ToString(utf8_addr);
+    _free(utf8_addr);
+    return result;
+  },
+
+#elif !DISABLE_EXCEPTION_CATCHING
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: function(ptr) {
+    ___cxa_increment_exception_refcount(ptr);
+  },
+
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: function(ptr) {
+    ___cxa_decrement_exception_refcount(ptr);
+  },
+
+  $getExceptionMessage__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessage: function(ptr) {
+    var utf8_addr = ___get_exception_message(ptr);
+    var result = UTF8ToString(utf8_addr);
+    _free(utf8_addr);
+    return result;
+  },
+#endif
 };
 
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
 // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
 // that variadically processes all of these functions using JS 'arguments' object.
-var maxExceptionArgs = 10; // arbitrary upper limit
-for (var n = 0; n < maxExceptionArgs; ++n) {
-  LibraryExceptions['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
-  LibraryExceptions['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
-}
+addCxaCatch = function(n) {
+  LibraryManager.library['__cxa_find_matching_catch_' + n] = LibraryExceptions['__cxa_find_matching_catch'];
+  LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('p');
+  LibraryManager.library['__cxa_find_matching_catch_' + n + '__deps'] = LibraryExceptions['__cxa_find_matching_catch__deps'];
+};
 
 mergeInto(LibraryManager.library, LibraryExceptions);

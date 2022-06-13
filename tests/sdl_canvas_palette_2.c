@@ -10,7 +10,7 @@
 #include <emscripten.h>
 #include <string.h>
 
-static const int COLOR_COUNT = 32;
+#define COLOR_COUNT 32
 
 static SDL_Surface *screen;
 static SDL_Color   pal[COLOR_COUNT +1];

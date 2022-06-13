@@ -4,9 +4,12 @@
 // found in the LICENSE file.
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 int main()
 {
@@ -20,7 +23,7 @@ int main()
   rewind (file);
   printf("size: %d\n", size);
 
-  char *buffer = (char*) malloc (sizeof(char)*size);
+  char *buffer = (char*)malloc(sizeof(char)*size);
   assert(buffer);
 
   size_t read = fread(buffer, 1, size, file);
@@ -31,8 +34,8 @@ int main()
     printf(",%d", buffer[i]);
   printf("\n");
 
-  fclose (file);
-  free (buffer);
+  fclose(file);
+  free(buffer);
 
   // Do it again, with a loop on feof
 
@@ -48,7 +51,8 @@ int main()
 
   // Standard streams
 
-  printf("input:%s\n", gets((char*)malloc(1024)));
+  char gets_buffer[1024];
+  printf("input:%s\n", gets(gets_buffer));
   fwrite("texto\n", 1, 6, stdout);
   fwrite("texte\n", 1, 6, stderr);
   putchar('$');
@@ -141,6 +145,14 @@ int main()
   FILE *n = fopen("/dev/null", "w");
   printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
   fclose(n);
+  
+  // Test file creation with O_TRUNC (regression test for #16784)
+  const char *file_name = "test.out";
+  int fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
+  assert(fd >= 0);
+  int status = write(fd, "blablabla\n", 10);
+  assert(status == 10);
+  close(fd);
 
   printf("ok.\n");
 

@@ -17,13 +17,22 @@ EM_JS(int, sync_tunnel, (int value), {
     }, 1);
   });
 })
+EM_JS(int, sync_tunnel_bool, (bool value), {
+  return Asyncify.handleSleep(function(wakeUp) {
+    setTimeout(function() {
+      wakeUp(!value);
+    }, 1);
+  });
+})
 #else
 extern "C" int sync_tunnel(int);
+extern "C" int sync_tunnel_bool(bool);
 #endif
 
 int main() {
 #ifdef BAD
   EM_ASM({
+    window.disableErrorReporting = true;
     window.onerror = function(e) {
       var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success && !Module.reported) {
@@ -54,6 +63,14 @@ int main() {
   x = sync_tunnel(-2);
   assert(x == -1);
 
+  bool y;
+  y = sync_tunnel_bool(false);
+  assert(y == true);
+  y = sync_tunnel_bool(true);
+  assert(y == false);
+
+
+
 #ifdef BAD
   // We should not get here.
   printf("We should not get here\n");
@@ -64,4 +81,3 @@ int main() {
 
   return 0;
 }
-

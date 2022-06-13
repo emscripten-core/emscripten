@@ -54,7 +54,7 @@ The ``@`` symbol can be used to map packaged files from any location in the loca
 Packaging using the file packager tool
 ======================================
 
-You can also run the *file packager* manually using the instructions at the top of `file_packager.py <https://github.com/emscripten-core/emscripten/blob/master/tools/file_packager.py>`_.
+You can also run the *file packager* manually using the instructions at the top of `file_packager <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_.
 
 The file packager generates a **.data** file and **.js** file. The **.js** file contains the code to use the data file, and must be loaded *before* loading your main compiled code.
 (For instance, add ``<script>`` tags at the end of your ``--shell-file`` right before ``{{{ SCRIPT }}}```.)
@@ -146,4 +146,4 @@ The following formats are supported:
 Test code
 =========
 
-The `test suite <https://github.com/emscripten-core/emscripten/blob/master/tests/>`_ contains many file packaging examples, and is a good place to search for working code.
+The `test suite <https://github.com/emscripten-core/emscripten/blob/main/tests/>`_ contains many file packaging examples, and is a good place to search for working code.

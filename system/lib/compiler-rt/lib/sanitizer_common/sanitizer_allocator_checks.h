@@ -1,9 +1,8 @@
 //===-- sanitizer_allocator_checks.h ----------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -28,7 +27,7 @@ namespace __sanitizer {
 void SetErrnoToENOMEM();
 
 // A common errno setting logic shared by almost all sanitizer allocator APIs.
-INLINE void *SetErrnoOnNull(void *ptr) {
+inline void *SetErrnoOnNull(void *ptr) {
   if (UNLIKELY(!ptr))
     SetErrnoToENOMEM();
   return ptr;
@@ -42,7 +41,7 @@ INLINE void *SetErrnoOnNull(void *ptr) {
 // two and that the size is a multiple of alignment for POSIX implementation,
 // and a bit relaxed requirement for non-POSIX ones, that the size is a multiple
 // of alignment.
-INLINE bool CheckAlignedAllocAlignmentAndSize(uptr alignment, uptr size) {
+inline bool CheckAlignedAllocAlignmentAndSize(uptr alignment, uptr size) {
 #if SANITIZER_POSIX
   return alignment != 0 && IsPowerOfTwo(alignment) &&
          (size & (alignment - 1)) == 0;
@@ -53,13 +52,13 @@ INLINE bool CheckAlignedAllocAlignmentAndSize(uptr alignment, uptr size) {
 
 // Checks posix_memalign() parameters, verifies that alignment is a power of two
 // and a multiple of sizeof(void *).
-INLINE bool CheckPosixMemalignAlignment(uptr alignment) {
+inline bool CheckPosixMemalignAlignment(uptr alignment) {
   return alignment != 0 && IsPowerOfTwo(alignment) &&
-         (alignment % sizeof(void *)) == 0; // NOLINT
+         (alignment % sizeof(void *)) == 0;
 }
 
 // Returns true if calloc(size, n) call overflows on size*n calculation.
-INLINE bool CheckForCallocOverflow(uptr size, uptr n) {
+inline bool CheckForCallocOverflow(uptr size, uptr n) {
   if (!size)
     return false;
   uptr max = (uptr)-1L;
@@ -68,7 +67,7 @@ INLINE bool CheckForCallocOverflow(uptr size, uptr n) {
 
 // Returns true if the size passed to pvalloc overflows when rounded to the next
 // multiple of page_size.
-INLINE bool CheckForPvallocOverflow(uptr size, uptr page_size) {
+inline bool CheckForPvallocOverflow(uptr size, uptr page_size) {
   return RoundUpTo(size, page_size) < size;
 }
 

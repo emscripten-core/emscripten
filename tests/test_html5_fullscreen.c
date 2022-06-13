@@ -25,9 +25,9 @@ void report_result(int result)
 }
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
-  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
-    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange", 
-    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload", 
+  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize",
+    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange",
+    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload",
     "batterychargingchange", "batterylevelchange", "webglcontextlost", "webglcontextrestored", "(invalid)" };
   ++eventType;
   if (eventType < 0) eventType = 0;
@@ -158,7 +158,7 @@ void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode, int filte
 
 int on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
 {
-  switch((int)userData)
+  switch((long)userData)
   {
     case 0: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
     case 1: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;

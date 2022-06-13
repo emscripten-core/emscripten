@@ -5,6 +5,7 @@
 
 #include <emscripten.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 EM_JS(void, noarg, (void), { out("no args works"); });
 EM_JS(int, noarg_int, (void), {
@@ -17,7 +18,11 @@ EM_JS(double, noarg_double, (void), {
 });
 EM_JS(void, intarg, (int x), { out("  takes ints: " + x);});
 EM_JS(void, doublearg, (double d), { out("  takes doubles: " + d);});
-EM_JS(double, stringarg, (char* str), {
+EM_JS(double, stringarg, (const char* str), {
+  // Convert pointers (which can be BigInt under wasm64), to Number, which
+  // internal function expect.
+  // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
+  str = Number(str);
   out("  takes strings: " + UTF8ToString(str));
   return 7.75;
 });
@@ -26,6 +31,10 @@ EM_JS(int, multi_intarg, (int x, int y), {
   return 6;
 });
 EM_JS(double, multi_mixedarg, (int x, const char* str, double d), {
+  // Convert pointers (which can be BigInt under wasm64), to Number, which
+  // internal function expect.
+  // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
+  str = Number(str);
   out("  mixed arg types: " + x + ", " + UTF8ToString(str) + ", " + d);
   return 8.125;
 });
@@ -54,20 +63,30 @@ EM_JS(int, user_comma, (void), {
   return x[y][1];
 });
 
-EM_JS(const char*, return_utf8_str, (void), {
+EM_JS(char*, return_utf8_str, (void), {
     var jsString = 'こんにちは';
     var lengthBytes = lengthBytesUTF8(jsString)+1;
     var stringOnWasmHeap = _malloc(lengthBytes);
     stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+    // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
+#if __wasm64__
+    return BigInt(stringOnWasmHeap);
+#else
     return stringOnWasmHeap;
+#endif
 });
 
-EM_JS(const char*, return_str, (void), {
+EM_JS(char*, return_str, (void), {
   var jsString = 'hello from js';
   var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
   stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+    // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
+#if __wasm64__
+  return BigInt(stringOnWasmHeap);
+#else
   return stringOnWasmHeap;
+#endif
 });
 
 EM_JS(int, _prefixed, (void), {
@@ -91,8 +110,12 @@ int main() {
   printf("    user_separator returned: %d\n", user_separator());
   printf("    user_comma returned: %d\n", user_comma());
 
-  printf("    return_str returned: %s\n", return_str());
-  printf("    return_utf8_str returned: %s\n", return_utf8_str());
+  char* s1 = return_str();
+  printf("    return_str returned: %s\n", s1);
+  free(s1);
+  char* s2 = return_utf8_str();
+  printf("    return_utf8_str returned: %s\n", s2);
+  free(s2);
 
   printf("    _prefixed: %d\n", _prefixed());
 

@@ -1,32 +1,37 @@
 //===--- Utility.h ----------------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+//===----------------------------------------------------------------------===//
 //
+// Provide some utility classes for use in the demangler.
+// There are two copies of this file in the source tree.  The one in libcxxabi
+// is the original and the one in llvm is the copy.  Use cp-to-llvm.sh to update
+// the copy.  See README.txt for more details.
 //
-// This file is copied from llvm/lib/Demangle/Utility.h.
 //===----------------------------------------------------------------------===//
 
-#ifndef LIBCXX_DEMANGLE_UTILITY_H
-#define LIBCXX_DEMANGLE_UTILITY_H
+#ifndef DEMANGLE_UTILITY_H
+#define DEMANGLE_UTILITY_H
 
 #include "StringView.h"
-
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <iterator>
+#include <exception>
 #include <limits>
 
-namespace {
+DEMANGLE_NAMESPACE_BEGIN
+
 // Stream that AST nodes write their string representation into after the AST
 // has been parsed.
-class OutputStream {
-  char *Buffer;
-  size_t CurrentPosition;
-  size_t BufferCapacity;
+class OutputBuffer {
+  char *Buffer = nullptr;
+  size_t CurrentPosition = 0;
+  size_t BufferCapacity = 0;
 
   // Ensure there is at least n more positions in buffer.
   void grow(size_t N) {
@@ -47,24 +52,24 @@ class OutputStream {
       return;
     }
 
-    char Temp[21];
-    char *TempPtr = std::end(Temp);
+    std::array<char, 21> Temp;
+    char *TempPtr = Temp.data() + Temp.size();
 
     while (N) {
-      *--TempPtr = '0' + char(N % 10);
+      *--TempPtr = char('0' + N % 10);
       N /= 10;
     }
 
     // Add negative sign...
     if (isNeg)
       *--TempPtr = '-';
-    this->operator<<(StringView(TempPtr, std::end(Temp)));
+    this->operator<<(StringView(TempPtr, Temp.data() + Temp.size()));
   }
 
 public:
-  OutputStream(char *StartBuf, size_t Size)
+  OutputBuffer(char *StartBuf, size_t Size)
       : Buffer(StartBuf), CurrentPosition(0), BufferCapacity(Size) {}
-  OutputStream() = default;
+  OutputBuffer() = default;
   void reset(char *Buffer_, size_t BufferCapacity_) {
     CurrentPosition = 0;
     Buffer = Buffer_;
@@ -76,7 +81,7 @@ public:
   unsigned CurrentPackIndex = std::numeric_limits<unsigned>::max();
   unsigned CurrentPackMax = std::numeric_limits<unsigned>::max();
 
-  OutputStream &operator+=(StringView R) {
+  OutputBuffer &operator+=(StringView R) {
     size_t Size = R.size();
     if (Size == 0)
       return *this;
@@ -86,17 +91,28 @@ public:
     return *this;
   }
 
-  OutputStream &operator+=(char C) {
+  OutputBuffer &operator+=(char C) {
     grow(1);
     Buffer[CurrentPosition++] = C;
     return *this;
   }
 
-  OutputStream &operator<<(StringView R) { return (*this += R); }
+  OutputBuffer &operator<<(StringView R) { return (*this += R); }
 
-  OutputStream &operator<<(char C) { return (*this += C); }
+  OutputBuffer prepend(StringView R) {
+    size_t Size = R.size();
 
-  OutputStream &operator<<(long long N) {
+    grow(Size);
+    std::memmove(Buffer + Size, Buffer, CurrentPosition);
+    std::memcpy(Buffer, R.begin(), Size);
+    CurrentPosition += Size;
+
+    return *this;
+  }
+
+  OutputBuffer &operator<<(char C) { return (*this += C); }
+
+  OutputBuffer &operator<<(long long N) {
     if (N < 0)
       writeUnsigned(static_cast<unsigned long long>(-N), true);
     else
@@ -104,25 +120,35 @@ public:
     return *this;
   }
 
-  OutputStream &operator<<(unsigned long long N) {
+  OutputBuffer &operator<<(unsigned long long N) {
     writeUnsigned(N, false);
     return *this;
   }
 
-  OutputStream &operator<<(long N) {
+  OutputBuffer &operator<<(long N) {
     return this->operator<<(static_cast<long long>(N));
   }
 
-  OutputStream &operator<<(unsigned long N) {
+  OutputBuffer &operator<<(unsigned long N) {
     return this->operator<<(static_cast<unsigned long long>(N));
   }
 
-  OutputStream &operator<<(int N) {
+  OutputBuffer &operator<<(int N) {
     return this->operator<<(static_cast<long long>(N));
   }
 
-  OutputStream &operator<<(unsigned int N) {
+  OutputBuffer &operator<<(unsigned int N) {
     return this->operator<<(static_cast<unsigned long long>(N));
+  }
+
+  void insert(size_t Pos, const char *S, size_t N) {
+    assert(Pos <= CurrentPosition);
+    if (N == 0)
+      return;
+    grow(N);
+    std::memmove(Buffer + Pos + N, Buffer + Pos, CurrentPosition - Pos);
+    std::memcpy(Buffer + Pos, S, N);
+    CurrentPosition += N;
   }
 
   size_t getCurrentPosition() const { return CurrentPosition; }
@@ -136,7 +162,7 @@ public:
 
   char *getBuffer() { return Buffer; }
   char *getBufferEnd() { return Buffer + CurrentPosition - 1; }
-  size_t getBufferCapacity() { return BufferCapacity; }
+  size_t getBufferCapacity() const { return BufferCapacity; }
 };
 
 template <class T> class SwapAndRestore {
@@ -170,7 +196,7 @@ public:
   SwapAndRestore &operator=(const SwapAndRestore &) = delete;
 };
 
-inline bool initializeOutputStream(char *Buf, size_t *N, OutputStream &S,
+inline bool initializeOutputBuffer(char *Buf, size_t *N, OutputBuffer &OB,
                                    size_t InitSize) {
   size_t BufferSize;
   if (Buf == nullptr) {
@@ -181,10 +207,10 @@ inline bool initializeOutputStream(char *Buf, size_t *N, OutputStream &S,
   } else
     BufferSize = *N;
 
-  S.reset(Buf, BufferSize);
+  OB.reset(Buf, BufferSize);
   return true;
 }
 
-} // namespace
+DEMANGLE_NAMESPACE_END
 
 #endif

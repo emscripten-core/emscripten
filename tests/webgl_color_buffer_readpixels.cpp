@@ -73,7 +73,5 @@ int main()
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_FLOAT, &data);
   assert(glGetError() == 0 && "glReadPixels of FBO with floating point color renderbuffer in GL_RGBA+GL_FLOAT format failed");
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

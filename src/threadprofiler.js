@@ -1,7 +1,8 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 var emscriptenThreadProfiler = {
   // UI update interval in milliseconds.
@@ -22,25 +23,63 @@ var emscriptenThreadProfiler = {
     setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
   },
 
-  updateUi: function updateUi() {
-    if (typeof PThread === 'undefined') return; // Likely running threadprofiler on a singlethreaded build, or not initialized yet, ignore updating.
-    var str = '';
-    var mainThread = PThread.mainThreadBlock;
+  initializeNode: function initializeNode() {
+    addOnInit(() => {
+      emscriptenThreadProfiler.dumpState();
+      setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
+    });
+  },
 
-    var threads = [PThread.mainThreadBlock];
-    for(var t in PThread.pthreads) threads.push(PThread.pthreads[t].threadInfoStruct);
+  dumpState: function dumpState() {
+    var mainThread = _emscripten_main_browser_thread_id();
 
-    for(var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];//(t == PThread.mainThreadBlock ? PThread.mainThreadBlock : maiPThread.pthreads[t].threadInfoStruct;
-      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 20 /*C_STRUCTS.pthread.profilerBlock*/ ) >> 2);
+    var threads = [mainThread];
+    for (var i in PThread.pthreads) {
+      threads.push(PThread.pthreads[i].threadInfoStruct);
+    }
+    for (var i = 0; i < threads.length; ++i) {
+      var threadPtr = threads[i];
+      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
-      if (threadName) threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
-      else threadName = '(0x' + threadPtr.toString(16) + ')';
+      if (threadName) {
+        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+      } else {
+        threadName = '(0x' + threadPtr.toString(16) + ')';
+      }
+
+      console.log('Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ');
+    }
+  },
+
+  updateUi: function updateUi() {
+    if (typeof PThread == 'undefined') {
+      // Likely running threadprofiler on a singlethreaded build, or not
+      // initialized yet, ignore updating.
+      return;
+    }
+    var str = '';
+    var mainThread = _emscripten_main_browser_thread_id();
+
+    var threads = [mainThread];
+    for (var i in PThread.pthreads) {
+      threads.push(PThread.pthreads[i].threadInfoStruct);
+    }
+
+    for (var i = 0; i < threads.length; ++i) {
+      var threadPtr = threads[i];
+      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
+      var threadName = PThread.getThreadName(threadPtr);
+      if (threadName) {
+        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+      } else {
+        threadName = '(0x' + threadPtr.toString(16) + ')';
+      }
 
       str += 'Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ';
+
       var threadTimesInStatus = [];
       var totalTime = 0;
-      for(var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
+      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
         threadTimesInStatus.push(HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j]);
         totalTime += threadTimesInStatus[j];
         HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j] = 0;
@@ -58,4 +97,10 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined') emscriptenThreadProfiler.initialize();
+if (typeof Module != 'undefined') {
+  if (typeof document != 'undefined') {
+    emscriptenThreadProfiler.initialize();
+  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
+    emscriptenThreadProfiler.initializeNode();
+  }
+}

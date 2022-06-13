@@ -40,8 +40,9 @@ static void runTest() {
 
   printf("%s\n",
          (b == magic1 ? "magic1" : (b == magic2 ? "magic2" : "neither")));
+  delete a;
 };
 
-extern "C" {
-int main(int argc, char **argv) { runTest(); }
+int main(int argc, char **argv) {
+  runTest();
 }

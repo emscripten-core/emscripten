@@ -1,9 +1,8 @@
 //===-- interception_linux.h ------------------------------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -13,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #if SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
+    SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
 
 #if !defined(INCLUDED_FROM_INTERCEPTION_LIB)
 # error "interception_linux.h should be included from interception library only"
@@ -23,29 +22,32 @@
 #define INTERCEPTION_LINUX_H
 
 namespace __interception {
-// returns true if a function with the given name was found.
-bool GetRealFunctionAddress(const char *func_name, uptr *func_addr,
-    uptr real, uptr wrapper);
-void *GetFuncAddrVer(const char *func_name, const char *ver);
+bool InterceptFunction(const char *name, uptr *ptr_to_real, uptr func,
+                       uptr wrapper);
+bool InterceptFunction(const char *name, const char *ver, uptr *ptr_to_real,
+                       uptr func, uptr wrapper);
 }  // namespace __interception
 
-#define INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func)                          \
-  ::__interception::GetRealFunctionAddress(                                \
-      #func, (::__interception::uptr *)&__interception::PTR_TO_REAL(func), \
-      (::__interception::uptr) & (func),                                   \
+#define INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func) \
+  ::__interception::InterceptFunction(            \
+      #func,                                      \
+      (::__interception::uptr *) & REAL(func),    \
+      (::__interception::uptr) & (func),          \
       (::__interception::uptr) & WRAP(func))
 
-// Android,  Solaris, OpenBSD and emscripten do not have dlvsym
-#if !SANITIZER_ANDROID && !SANITIZER_SOLARIS && !SANITIZER_OPENBSD && \
-    !SANITIZER_EMSCRIPTEN
+// dlvsym is a GNU extension supported by some other platforms.
+#if SANITIZER_GLIBC || SANITIZER_FREEBSD || SANITIZER_NETBSD
 #define INTERCEPT_FUNCTION_VER_LINUX_OR_FREEBSD(func, symver) \
-  (::__interception::real_##func = (func##_type)(                \
-       unsigned long)::__interception::GetFuncAddrVer(#func, symver))
+  ::__interception::InterceptFunction(                        \
+      #func, symver,                                          \
+      (::__interception::uptr *) & REAL(func),                \
+      (::__interception::uptr) & (func),                      \
+      (::__interception::uptr) & WRAP(func))
 #else
 #define INTERCEPT_FUNCTION_VER_LINUX_OR_FREEBSD(func, symver) \
   INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func)
-#endif  // !SANITIZER_ANDROID && !SANITIZER_SOLARIS
+#endif  // SANITIZER_GLIBC || SANITIZER_FREEBSD || SANITIZER_NETBSD
 
 #endif  // INTERCEPTION_LINUX_H
 #endif  // SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD ||
-        // SANITIZER_OPENBSD || SANITIZER_SOLARIS
+        // SANITIZER_SOLARIS

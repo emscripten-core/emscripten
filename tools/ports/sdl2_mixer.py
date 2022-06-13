@@ -1,58 +1,118 @@
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os
 import shutil
-import stat
+import logging
 
-TAG = 'release-2.0.1'
-HASH = '81fac757bd058adcb3eb5b2cc46addeaa44cee2cd4db653dad5d9666bdc0385cdc21bf5b72872e6dd6dd8eb65812a46d7752298827d6c61ad5ce2b6c963f7ed0'
+TAG = 'release-2.0.4'
+HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
+
+deps = ['sdl2']
+
+
+def needed(settings):
+  return settings.USE_SDL_MIXER == 2
+
+
+def get_lib_name(settings):
+  settings.SDL2_MIXER_FORMATS.sort()
+  formats = '-'.join(settings.SDL2_MIXER_FORMATS)
+
+  libname = 'libSDL2_mixer'
+  if formats != '':
+    libname += '_' + formats
+  libname += '.a'
+
+  return libname
 
 
 def get(ports, settings, shared):
-  if settings.USE_SDL_MIXER != 2:
-    return []
-
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-  ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_mixer', 'https://github.com/libsdl-org/SDL_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
+  libname = get_lib_name(settings)
 
-  def create():
-    cwd = os.getcwd()
-    commonflags = ['--disable-shared', '--disable-music-cmd', '--enable-sdltest', '--disable-smpegtest']
-    formatflags = ['--enable-music-wave', '--disable-music-mod', '--disable-music-midi', '--enable-music-ogg', '--disable-music-ogg-shared', '--disable-music-flac', '--disable-music-mp3']
-    configure = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG, 'configure')
-    build_dir = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
-    dist_dir = os.path.join(ports.get_build_dir(), 'sdl2_mixer', 'dist')
-    out = os.path.join(dist_dir, 'lib', 'libSDL2_mixer.a')
-    final = os.path.join(ports.get_build_dir(), 'sdl2_mixer', 'libSDL2_mixer.a')
-    shared.safe_ensure_dirs(build_dir)
+  def create(final):
+    logging.info('building port: sdl2_mixer')
 
-    try:
-      os.chdir(build_dir)
-      os.chmod(configure, os.stat(configure).st_mode | stat.S_IEXEC)
-      shared.run_process([shared.PYTHON, shared.EMCONFIGURE, configure, '--prefix=' + dist_dir] + formatflags + commonflags + ['CFLAGS=-s USE_VORBIS=1'])
-      shared.run_process([shared.PYTHON, shared.EMMAKE, 'make', 'install'])
-      shutil.copyfile(out, final)
-    finally:
-      os.chdir(cwd)
-    return final
+    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
+    dest_path = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
 
-  return [shared.Cache.get('libSDL2_mixer.a', create, what='port')]
+    shutil.rmtree(dest_path, ignore_errors=True)
+    shutil.copytree(source_path, dest_path)
+
+    flags = [
+      '-sUSE_SDL=2',
+      '-O2',
+      '-DMUSIC_WAV',
+    ]
+
+    if "ogg" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-sUSE_VORBIS=1',
+        '-DMUSIC_OGG',
+      ]
+
+    if "mp3" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-sUSE_MPG123=1',
+        '-DMUSIC_MP3_MPG123',
+      ]
+
+    if "mod" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-sUSE_MODPLUG=1',
+        '-DMUSIC_MOD_MODPLUG',
+      ]
+
+    if "mid" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-DMUSIC_MID_TIMIDITY',
+      ]
+
+    ports.build_port(
+      dest_path,
+      final,
+      includes=[],
+      flags=flags,
+      exclude_files=[
+        'playmus.c',
+        'playwave.c',
+      ],
+      exclude_dirs=[
+        'native_midi',
+        'external',
+      ]
+    )
+
+    # copy header to a location so it can be used as 'SDL2/'
+    ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
+
+  return [shared.Cache.get_lib(libname, create, what='port')]
 
 
-def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
+def clear(ports, settings, shared):
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):
-  if settings.USE_SDL_MIXER == 2:
-    settings.USE_SDL = 2
+  settings.USE_SDL = 2
+  if "ogg" in settings.SDL2_MIXER_FORMATS:
+    deps.append('vorbis')
     settings.USE_VORBIS = 1
+  if "mp3" in settings.SDL2_MIXER_FORMATS:
+    deps.append('mpg123')
+    settings.USE_MPG123 = 1
+  if "mod" in settings.SDL2_MIXER_FORMATS:
+    deps.append('libmodplug')
+    settings.USE_MODPLUG = 1
 
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_SDL_MIXER == 2:
-    get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'dist', 'include')]
-  return args
+def process_args(ports):
+  return []
 
 
 def show():
