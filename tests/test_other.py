@@ -2756,7 +2756,7 @@ int f() {
     err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
     self.assertContained('--obj-output is recommended when using --embed', err)
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o', '--js-output=data.js'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o'])
 
     create_file('test.c', '''
     #include <stdio.h>
@@ -2771,7 +2771,7 @@ int f() {
       return 0;
     }
     ''')
-    self.run_process([EMCC, '--pre-js=data.js', 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
+    self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
@@ -5956,9 +5956,9 @@ double hello4(double x) {
 }
 ''')
     create_file('pre.js', r'''
-Module['preRun'].push(function (){
+Module['preRun'] = function () {
   ENV['LD_LIBRARY_PATH']='/lib:/usr/lib';
-});
+};
 ''')
     create_file('main.c', r'''
 #include <stdio.h>
@@ -9909,19 +9909,19 @@ int main(void) {
     # a pre-js can set Module to a new object or otherwise undo file preloading/
     # embedding changes to Module.preRun. we show an error to avoid confusion
     create_file('pre.js', 'Module = {};')
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
       #include <stdio.h>
       int main() {
-        printf("file exists: %d\n", !!fopen("src.cpp", "rb"));
+        printf("file exists: %p\n", fopen("src.cpp", "rb"));
       }
     ''')
-    self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+    self.run_process([EMCC, 'src.c', '--pre-js=pre.js', '--preload-file=src.c'])
     result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('Module.preRun should exist because file support used it; did a pre-js delete it?', result)
 
     def test_error(pre):
       create_file('pre.js', pre)
-      self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+      self.run_process([EMXX, 'src.c', '--pre-js=pre.js', '--preload-file=src.c'])
       result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?', result)
 

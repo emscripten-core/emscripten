@@ -537,6 +537,8 @@ def main():
       err('--obj-output is only applicable when embedding files')
       return 1
     generate_object_file(data_files)
+    if not options.has_preloaded:
+      return 0
 
   ret = generate_js(data_target, data_files, metadata)
 
@@ -680,13 +682,12 @@ def generate_js(data_target, data_files, metadata):
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
     if file_.mode == 'embed':
-      if not options.obj_output:
-        # Embed
-        data = base64_encode(utils.read_binary(file_.srcpath))
-        code += "      var fileData%d = '%s';\n" % (counter, data)
-        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
-                 % (dirname, basename, counter))
+      # Embed
+      data = base64_encode(utils.read_binary(file_.srcpath))
+      code += "      var fileData%d = '%s';\n" % (counter, data)
+      # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
+      code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+               % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
       metadata_el = {
