@@ -2465,6 +2465,33 @@ int f() {
     self.run_process([EMXX, 'main.cpp', '-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  def test_embind_no_function(self):
+    create_file('post.js', '''
+      Module['onRuntimeInitialized'] = function() {
+        out((new Module['MyClass'](42)).x);
+      };
+    ''')
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      class MyClass {
+      public:
+          MyClass(int x) : x(x) {}
+
+          int getX() const {return x;}
+          void setX(int newX) {x = newX;}
+      private:
+          int x;
+      };
+      EMSCRIPTEN_BINDINGS(my_module) {
+          class_<MyClass>("MyClass")
+              .constructor<int>()
+              .property("x", &MyClass::getX, &MyClass::setX);
+      }
+    ''')
+    self.do_runf('main.cpp', '42', emcc_args=['-lembind', '--post-js', 'post.js'])
+
   def test_embind_closure_no_dynamic_execution(self):
     create_file('post.js', '''
       Module['onRuntimeInitialized'] = function() {
