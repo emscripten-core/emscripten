@@ -3625,6 +3625,33 @@ mergeInto(LibraryManager.library, {
   __c_longjmp_import: true,
 #endif
 #endif
+
+  _emscripten_fs_load_embedded_files__deps: ['$FS'],
+  _emscripten_fs_load_embedded_files__sig: 'vp',
+  _emscripten_fs_load_embedded_files: function(ptr) {
+#if MEMORY64
+    var start64 = ptr >> 3;
+    do {
+      var name_addr = Number(HEAPU64[start64++]);
+      var len = HEAPU32[start64 << 1];
+      start64++;
+      var content = Number(HEAPU64[start64++]);
+      var name = UTF8ToString(name_addr)
+      // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+    } while (HEAPU64[start64]);
+#else
+    var start32 = ptr >> 2;
+    do {
+      var name_addr = HEAPU32[start32++];
+      var len = HEAPU32[start32++];
+      var content = HEAPU32[start32++];
+      var name = UTF8ToString(name_addr)
+      // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+    } while (HEAPU32[start32]);
+#endif
+  },
 });
 
 function autoAddDeps(object, name) {
