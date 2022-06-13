@@ -252,8 +252,8 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSFileHandles'],
-  _wasmfs_opfs_get_size_blob: async function(ctx, fileID, sizePtr) {
+  _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles'],
+  _wasmfs_opfs_get_size_file: async function(ctx, fileID, sizePtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let size = (await fileHandle.getFile()).size;
     {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
@@ -264,6 +264,20 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_set_size_access: async function(ctx, accessID, size) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     await accessHandle.truncate(size);
+    _emscripten_proxy_finish(ctx);
+  },
+
+  _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles'],
+  _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
+    let fileHandle = wasmfsOPFSFileHandles.get(fileID);
+    try {
+      let writable = await fileHandle.createWritable();
+      await writable.truncate(size);
+      await writable.close();
+      {{{ makeSetValue('errPtr', 0, '0', 'i32') }}};
+    } catch {
+      {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   },
 

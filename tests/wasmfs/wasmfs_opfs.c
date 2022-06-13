@@ -123,6 +123,15 @@ int main(int argc, char* argv[]) {
   assert(stat_buf.st_size == 1);
   emscripten_console_log("statted while closed");
 
+  err = truncate("/opfs/working/foo.txt", 42);
+  assert(err == 0);
+  emscripten_console_log("resized while closed");
+
+  err = stat("/opfs/working/foo.txt", &stat_buf);
+  assert(err == 0);
+  assert(stat_buf.st_size == 42);
+  emscripten_console_log("statted while closed again");
+
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
   assert(fd > 0);
   emscripten_console_log("truncated while opening");
