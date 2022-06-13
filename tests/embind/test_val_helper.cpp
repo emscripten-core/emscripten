@@ -11,9 +11,7 @@
 
 using namespace emscripten;
 
-namespace Val {
-using VH = ValHelper<32>;
-}
+using VH = emscripten::ValHelper<32>;
 
 namespace std {
 
@@ -143,7 +141,7 @@ void test_val() {
 }
 
 void test_valhelper() {
-  Val::VH v;
+  VH v;
   v.set("key1", 1);
   v.set("key2", 2);
   v.set("key3", "333333333333333333333333");
@@ -165,14 +163,14 @@ void test_valhelper() {
   v.set("big_array", biga);
 
   // embed an array
-  Val::VH ar(Val::ARRAY);
+  VH ar(ARRAY);
   std::vector<std::string> vs{"string1", "string2", "string3", "string4", ls};
   ar.concat(vs);
   ar.concat(veci);
   v.set("key_array", ar.toval());
 
   // embed an object
-  Val::VH ob;
+  VH ob;
   ob.set("subkey1", 1);
   ob.set("subkey2", 1.0f);
   ob.set("subkey3", 9.9);
@@ -221,7 +219,7 @@ void test_perf_biga() {
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
-    Val::VH vo;
+    VH vo;
     vo.set("k", BIG_A);
     vo.finalize();
   }
@@ -235,7 +233,7 @@ void test_cases() {
   EM_ASM(
     a = [];
   );
-  Val::VH va(val::global("a"));
+  VH va(val::global("a"));
   va.add(1);
   va.add(1.1);
   va.add((char)3);
@@ -318,7 +316,7 @@ void test_cases() {
   EM_ASM(
     a = {};
   );
-  Val::VH vo(val::global("a"));
+  VH vo(val::global("a"));
   vo.set("k1", 1);
   vo.set("k2", 1.1);
   vo.set("k3", "hi");
@@ -349,13 +347,13 @@ void test_cases() {
   ensure_js("a.k8[0] == 6 && a.k8[1] == 7 && a.k8[2] == 8");
 
   test("set(k, VH)");
-  Val::VH vha(Val::ARRAY);
+  VH vha(ARRAY);
   vha.add(1);
   vo.set("k8", vha);
   vo.finalize();
   ensure_js("a['k8'] instanceof Array && a['k8'][0] == 1");
 
-  Val::VH vho(Val::OBJECT);
+  VH vho(OBJECT);
   vho.set("k1", 2);
   vho.set("k2", "v2");
   vo.set("k9", vho);

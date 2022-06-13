@@ -48,7 +48,7 @@ void ValHelperPerf_AuditBufFull(int c, int n, emscripten::EM_VAL h);
 //  2) When you passed ValHelper as argument, always do finalize() before
 //     leaving the scope as cached pointers may be stale immediately.
 //
-namespace Val {
+namespace emscripten {
 
 enum class TYPE : uint8_t {
     NONE = 0,
@@ -403,4 +403,4 @@ class ValHelper {
   std::vector<std::unique_ptr<std::string>> cached_strings_;
 };
 
-}  // namespace Val
+}  // namespace emscripten
