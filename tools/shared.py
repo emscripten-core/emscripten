@@ -104,6 +104,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   sys.stdout.flush()
   sys.stderr.flush()
   kw.setdefault('universal_newlines', True)
+  kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
   logger.debug(debug_text)
