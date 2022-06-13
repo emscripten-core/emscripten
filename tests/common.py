@@ -78,8 +78,10 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
+PYTHON = sys.executable
 
 
 def delete_contents(pathname):

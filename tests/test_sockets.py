@@ -17,9 +17,9 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang
+from common import parameterized, requires_native_clang, PYTHON
 from tools import shared, config, utils
-from tools.shared import PYTHON, EMCC, path_from_root, run_process, CLANG_CC
+from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
 

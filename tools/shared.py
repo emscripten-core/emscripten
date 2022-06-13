@@ -47,7 +47,6 @@ from .settings import settings
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "15.0"
-PYTHON = sys.executable
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
@@ -705,6 +704,7 @@ EMCMAKE = bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
 setup_temp_dirs()
 
