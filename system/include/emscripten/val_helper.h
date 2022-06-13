@@ -15,13 +15,6 @@
 #include <type_traits>
 #include <vector>
 
-extern "C" {
-void ValHelper_JS(emscripten::EM_VAL h, const void* ptr, int size);
-#ifdef __PERF_VAL_HELPER
-void ValHelperPerf_AuditBufFull(int c, int n, emscripten::EM_VAL h);
-#endif
-}
-
 // ValHelper caches changes and commit them bulkly to the binding val.
 //
 // Why is fast?
@@ -116,6 +109,16 @@ static constexpr bool check_arg_pointer_wont_dangle() {
 
 namespace internal {
 
+extern "C" {
+
+void _emvalhelper_finalize(emscripten::EM_VAL h, const void* ptr, int size);
+
+#ifdef __PERF_VAL_HELPER
+void _emvalhelper_audit(int c, int n, emscripten::EM_VAL h);
+#endif
+
+} // extern "C"
+
 template<typename T, typename VH>
 void AddArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
   if constexpr (is_supported_array_type(map<T>::type)) {
@@ -143,7 +146,9 @@ void ConcatArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
 
 }  // namespace internal
 
+
 using emscripten::val;
+
 template <size_t N = 20 /*BUFF_SIZE*/ >
 class ValHelper {
  public:
@@ -310,7 +315,7 @@ class ValHelper {
   }
 
   void finalize() {
-    ValHelper_JS(val_.as_handle(), buffer(), size());
+    internal::_emvalhelper_finalize(val_.as_handle(), buffer(), size());
     reset();
   }
 
@@ -350,7 +355,7 @@ class ValHelper {
 
 #ifdef __PERF_VAL_HELPER
       static uint32_t count = 0;
-      ValHelperPerf_AuditBufFull(++count, N, val_.as_handle());
+      internal::_emvalhelper_audit(++count, N, val_.as_handle());
 #endif
     }
   }

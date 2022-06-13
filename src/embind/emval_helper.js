@@ -1,8 +1,20 @@
-#include <emscripten.h>
-#include <emscripten/val.h>
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
-// We use EM_JS to push all the data to val in oneshot.
-EM_JS(void, ValHelper_JS, (emscripten::EM_VAL o, const void* ptr, int size), {
+/*global Module:true, Runtime*/
+/*global HEAP32*/
+/*global readLatin1String, UTF8ToString*/
+
+// -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
+/*global _emvalhelper_finalize, _emvalhelper_audit*/
+
+mergeInto(LibraryManager.library, {
+
+  _emvalhelper_finalize__sig: 'viii',
+  _emvalhelper_finalize__deps: ['$Emval', '$readLatin1String'],
+  _emvalhelper_finalize: function(o, ptr, size) {
     o = Emval.toValue(o);
     var is_array = (o instanceof Array);
     for (var i = 0; i < size; i++) {
@@ -68,8 +80,12 @@ EM_JS(void, ValHelper_JS, (emscripten::EM_VAL o, const void* ptr, int size), {
             o[k] = v;
         }
     }
-});
+  },
+  
+  _emvalhelper_audit__sig: 'viii',
+  _emvalhelper_audit__deps: ['$Emval'],
+  _emvalhelper_audit: function(c, n, o) {
+      console.log("valhelper buffer full times: " + c, n);
+  },
 
-EM_JS(void, ValHelperPerf_AuditBufFull, (int c, int n, emscripten::EM_VAL o), {
-    console.log("valhelper buffer full times: " + c, n);
 });
