@@ -1,4 +1,4 @@
-// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Copyright 2022 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
@@ -12,7 +12,6 @@
 
 mergeInto(LibraryManager.library, {
 
-  _emvalhelper_finalize__sig: 'viii',
   _emvalhelper_finalize__deps: ['$Emval', '$readLatin1String'],
   _emvalhelper_finalize: function(o, ptr, size) {
     o = Emval.toValue(o);
@@ -81,9 +80,7 @@ mergeInto(LibraryManager.library, {
         }
     }
   },
-  
-  _emvalhelper_audit__sig: 'viii',
-  _emvalhelper_audit__deps: ['$Emval'],
+
   _emvalhelper_audit: function(c, n, o) {
       console.log("valhelper buffer full times: " + c, n);
   },
