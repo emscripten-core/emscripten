@@ -101,27 +101,28 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_BADF;
   }
 
-  auto lockedOpenFile = openFile->locked();
-
-  if (setOffset == OffsetHandling::OpenFileState) {
-    offset = lockedOpenFile.getPosition();
-  }
-
   if (iovs_len < 0 || offset < 0) {
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for write permissions.
-
+  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
 
   auto lockedFile = file->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    if (lockedOpenFile.getFlags() & O_APPEND) {
+      offset = lockedFile.getSize();
+      lockedOpenFile.setPosition(offset);
+    } else {
+      offset = lockedOpenFile.getPosition();
+    }
+  }
+
+  // TODO: Check open file access mode for write permissions.
 
   size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {

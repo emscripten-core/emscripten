@@ -11741,6 +11741,10 @@ Module['postRun'] = function() {{
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
   @also_with_wasmfs
+  def test_unistd_open_append(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_open_append.c')
+
+  @also_with_wasmfs
   def test_unistd_stat(self):
     self.do_runf(test_file('wasmfs/wasmfs_stat.c'))
 
