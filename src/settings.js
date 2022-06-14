@@ -712,7 +712,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // (https://github.com/emscripten-core/emscripten/issues/17115).
 //
 // See test_exception_message in tests/test_core.py for an example usage.
-var EXCEPTION_PRINTING_SUPPORT = false;
+var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
