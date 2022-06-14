@@ -350,6 +350,22 @@ def lld_flags_for_executable(external_symbols):
   return cmd
 
 
+def no_whole_archive_for_rust_libs(args):
+  ret = []
+  in_group = False
+  for arg in args:
+    if arg.endswith(".rlib") and not in_group:
+      ret.append('--no-whole-archive')
+      in_group = True
+    if in_group and not arg.endswith(".rlib"):
+      ret.append('--whole-archive')
+      in_group = False
+    ret.append(arg)
+  if in_group:
+      ret.append('--whole-archive')
+  return ret
+
+
 def link_lld(args, target, external_symbols=None):
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
@@ -362,6 +378,8 @@ def link_lld(args, target, external_symbols=None):
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
   if settings.LINKABLE:
+    # Rust lib.rmeta files have an extra archive object so can't be linked with --whole-archive.
+    args = no_whole_archive_for_rust_libs(args)
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
