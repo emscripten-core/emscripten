@@ -64,13 +64,13 @@ Notes:
 import base64
 import ctypes
 import fnmatch
+import hashlib
 import json
 import os
 import posixpath
 import random
 import shutil
 import sys
-import uuid
 from subprocess import PIPE
 from textwrap import dedent
 
@@ -600,7 +600,6 @@ def generate_js(data_target, data_files, metadata):
         start += len(curr)
         data.write(curr)
 
-    # TODO: sha256sum on data_target
     if start > 256 * 1024 * 1024:
       err('warning: file packager is creating an asset bundle of %d MB. '
           'this is very large, and browsers might have trouble loading it. '
@@ -735,7 +734,6 @@ def generate_js(data_target, data_files, metadata):
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
-    package_uuid = uuid.uuid4()
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
     remote_package_name = os.path.basename(package_name)
@@ -755,13 +753,17 @@ def generate_js(data_target, data_files, metadata):
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    metadata['package_uuid'] = str(package_uuid)
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
-      var PACKAGE_UUID = metadata['package_uuid'];\n'''
+    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
 
     if options.use_preload_cache:
+      # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
+      # if the data has not changed.
+      data = utils.read_binary(data_target)
+      package_uuid = 'sha256-' + hashlib.sha256(data).hexdigest()
+      metadata['package_uuid'] = str(package_uuid)
+
       code += r'''
+        var PACKAGE_UUID = metadata['package_uuid'];
         var indexedDB;
         if (typeof window === 'object') {
           indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
