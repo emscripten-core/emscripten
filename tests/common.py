@@ -301,7 +301,7 @@ def create_file(name, contents, binary=False):
   if binary:
     name.write_bytes(contents)
   else:
-    name.write_text(contents)
+    name.write_text(contents, encoding='utf-8')
 
 
 def make_executable(name):
