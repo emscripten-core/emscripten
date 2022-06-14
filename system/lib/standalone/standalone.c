@@ -118,7 +118,7 @@ int getentropy(void* buffer, size_t length) {
 extern void emscripten_notify_memory_growth(size_t memory_index);
 
 // Should never be called in standalone mode
-void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
   __builtin_unreachable();
 }
 
