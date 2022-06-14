@@ -9401,6 +9401,33 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')
 
+  def test_linking_rust_library(self):
+    """Rust libraries have an extra lib.rmeta file which can't be linked with --whole-archive."""
+    create_file('a.c', 'int f() { return 1; }')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int f();
+      int main() {
+        printf("result: %d\n", f());
+        return 0;
+      }
+    ''')
+    create_file('lib.rmeta', '')
+
+    self.emcc('a.c', ['-c'])
+    self.emcc('main.c', ['-c'])
+
+    # rlib files have an extra 'lib.rmeta'
+    building.emar('cr', 'a.rlib', ['a.o', 'lib.rmeta'])
+
+    # Add -Wno-deprecated to avoid warning about bitcode linking in the LTO
+    # version of this test.
+    self.run_process([EMCC, '-o', 'all.js', 'main.o', 'a.rlib', '-sLINKABLE',
+                      '-Wno-deprecated'] + self.get_emcc_args())
+
+    # self.emcc('all.o', output_filename='all.js')
+    self.do_run('all.js', 'result: 1', no_build=True)
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
