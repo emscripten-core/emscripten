@@ -1636,12 +1636,7 @@ int main(int argc, char **argv)
   @no_wasm64('MEMORY64 does not yet support exceptions')
   @with_both_eh_sjlj
   def test_exception_message(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount'])
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', 'getExceptionMessage', '___get_exception_message'])
-    if '-fwasm-exceptions' in self.emcc_args:
-      exports = self.get_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORTED_FUNCTIONS', exports + ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception'])
-
+    self.set_setting('EXCEPTION_PRINTING_SUPPORT')
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
     if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:

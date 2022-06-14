@@ -686,6 +686,34 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_ALLOWED = [];
 
+// Make the exception message printing function, 'getExceptionMessage' available
+// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS
+// and DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
+//
+// This works with both Emscripten EH and Wasm EH. When you catch an exception
+// from JS, that gives you a user-thrown value in case of Emscripten EH, and a
+// WebAssembly.Exception object in case of Wasm EH. 'getExceptionMessage' takes
+// the user-thrown value in case of Emscripten EH and the WebAssembly.Exception
+// object in case of Wssm EH, meaning in both cases you can pass a caught
+// exception directly to the function.
+//
+// When used with Wasm EH, this option additionally provides these functions in
+// the JS library:
+// - getCppExceptionTag: Returns the C++ tag
+// - getCppExceptionThrownObjectFromWebAssemblyException:
+//   Given an WebAssembly.Exception object, returns the actual user-thrown C++
+//   object address in Wasm memory.
+//
+// Setting this option also adds refcount increasing and decreasing functions
+// ('incrementExceptionRefcount' and 'decrementExceptionRefcount') in the JS
+// library because if you catch an exception from JS, you may need to manipulate
+// the refcount manually not to leak memory. What you need to do is different
+// depending on the kind of EH you use
+// (https://github.com/emscripten-core/emscripten/issues/17115).
+//
+// See test_exception_message in tests/test_core.py for an example usage.
+var EXCEPTION_PRINTING_SUPPORT = false;
+
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
 // -fno-exceptions to the build disable exceptions support. (This is basically
