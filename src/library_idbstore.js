@@ -13,7 +13,7 @@ var LibraryIDBStore = {
   $IDBStore:
 #include IDBStore.js
   ,
-
+  emscripten_idb_async_load__sig: 'vppppp',
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
       if (error) {
@@ -26,6 +26,7 @@ var LibraryIDBStore = {
       _free(buffer);
     });
   },
+  emscripten_idb_async_store__sig: 'vpppippp',
   emscripten_idb_async_store: function(db, id, ptr, num, arg, onstore, onerror) {
     // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
@@ -36,6 +37,7 @@ var LibraryIDBStore = {
       if (onstore) {{{ makeDynCall('vi', 'onstore') }}}(arg);
     });
   },
+  emscripten_idb_async_delete__sig: 'vppppp',
   emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
       if (error) {
@@ -45,6 +47,7 @@ var LibraryIDBStore = {
       if (ondelete) {{{ makeDynCall('vi', 'ondelete') }}}(arg);
     });
   },
+  emscripten_idb_async_exists__sig: 'vppppp',
   emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
       if (error) {
