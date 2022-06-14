@@ -565,6 +565,24 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       value = int(value)
     self.settings_mods[key] = value
 
+  def append_setting(self, key, value):
+    if value is None:
+      return
+    if key not in self.settings_mods or self.settings_mods[key] is None:
+      self.settings_mods[key] = [value]
+      return
+    assert isinstance(self.settings_mods[key], list)
+    self.settings_mods[key].append(value)
+
+  def extend_setting(self, key, iterable):
+    if iterable is None:
+      return
+    assert isinstance(iterable, list)
+    if key not in self.settings_mods or self.settings_mods[key] is None:
+      self.settings_mods[key] = iterable
+    assert isinstance(self.settings_mods[key], list)
+    self.settings_mods[key] += iterable
+
   def has_changed_setting(self, key):
     return key in self.settings_mods
 
