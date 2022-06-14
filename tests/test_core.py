@@ -9403,6 +9403,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_linking_rust_library(self):
     """Rust libraries have an extra lib.rmeta file which can't be linked with --whole-archive."""
+    if self.get_setting('MEMORY64'):
+      self.skipTest('MEMORY64 does not yet support SJLJ')
+
     create_file('a.c', 'int f() { return 1; }')
     create_file('main.c', r'''
       #include <stdio.h>
