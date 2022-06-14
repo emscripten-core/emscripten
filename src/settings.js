@@ -694,7 +694,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // from JS, that gives you a user-thrown value in case of Emscripten EH, and a
 // WebAssembly.Exception object in case of Wasm EH. 'getExceptionMessage' takes
 // the user-thrown value in case of Emscripten EH and the WebAssembly.Exception
-// object in case of Wssm EH, meaning in both cases you can pass a caught
+// object in case of Wasm EH, meaning in both cases you can pass a caught
 // exception directly to the function.
 //
 // When used with Wasm EH, this option additionally provides these functions in
