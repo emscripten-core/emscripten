@@ -9401,35 +9401,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')
 
-  def test_rust_gxx_personality_v0(self):
-    create_file('main.c', r'''
-      #include <stdio.h>
-      void __gxx_personality_v0();
-      void rust_eh_personality(){
-        __gxx_personality_v0();
-      }
-      int main(int argc, char** argv) {
-        printf("result: %d\n", argc);
-        if(argc == 2){
-          rust_eh_personality();
-        }
-        return 0;
-      }
-    ''')
-    self.emcc('main.c', ['-c'])
-
-    self.run_process([EMCC, '-o', 'main.js', 'main.o'] + self.get_emcc_args())
-
-    self.do_run('main.js', 'result: 1', no_build=True)
-    try:
-      self.do_run('main.js', 'result: 1', no_build=True, args=["1"])
-      raise RuntimeError('should not have passed')
-    except AssertionError as e:
-      err = e
-    assert "__gxx_personality_v0 called" in err.args[0]
-    del err
-
-
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
   if env is None:

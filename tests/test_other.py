@@ -12126,3 +12126,31 @@ Module['postRun'] = function() {{
     self.assertContained('hello_world.o:(__original_main)', out)
     out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
     self.assertEqual(out, out2)
+
+  def test_rust_gxx_personality_v0(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      void __gxx_personality_v0();
+      void rust_eh_personality(){
+        __gxx_personality_v0();
+      }
+      int main(int argc, char** argv) {
+        printf("result: %d\n", argc);
+        if(argc == 2){
+          rust_eh_personality();
+        }
+        return 0;
+      }
+    ''')
+    self.emcc('main.c', ['-c'])
+
+    self.run_process([EMCC, '-o', 'main.js', 'main.o'] + self.get_emcc_args())
+
+    self.do_run('main.js', 'result: 1', no_build=True)
+    try:
+      self.do_run('main.js', 'result: 1', no_build=True, args=["1"])
+      raise RuntimeError('should not have passed')
+    except AssertionError as e:
+      err = e
+    assert "__gxx_personality_v0 called" in err.args[0]
+    del err
