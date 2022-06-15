@@ -2075,7 +2075,8 @@ var LibraryEmbind = {
 
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
-    '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes'],
+    '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
+    '$craftInvokerFunction'],
   _embind_register_class_constructor: function(
     rawClassType,
     argCount,

@@ -398,31 +398,36 @@ var LibraryExceptions = {
     return Module['asm']['__cpp_exception'];
   },
 
-  $getCppExceptionThrownValue__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
-  $getCppExceptionThrownValue: function(ex) {
+  // Given an WebAssembly.Exception object, returns the actual user-thrown
+  // C++ object address in the Wasm memory.
+  // WebAssembly.Exception is a JS object representing a Wasm exception,
+  // provided by Wasm JS API:
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
+  $getCppExceptionThrownObjectFromWebAssemblyException__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
+  $getCppExceptionThrownObjectFromWebAssemblyException: function(ex) {
     // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer
     // to the unwind header. Convert it to the actual thrown value.
-    var unwind_ex = ex.getArg(getCppExceptionTag(), 0);
-    return ___thrown_object_from_unwind_exception(unwind_ex);
+    var unwind_header = ex.getArg(getCppExceptionTag(), 0);
+    return ___thrown_object_from_unwind_exception(unwind_header);
   },
 
-  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownValue'],
-  $incrementExceptionRefcount: function(obj) {
-    var ptr = getCppExceptionThrownValue(obj);
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $incrementExceptionRefcount: function(ex) {
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
     ___cxa_increment_exception_refcount(ptr);
   },
 
-  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount', '$getCppExceptionThrownValue'],
-  $decrementExceptionRefcount: function(obj) {
-    var ptr = getCppExceptionThrownValue(obj);
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $decrementExceptionRefcount: function(ex) {
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
     ___cxa_decrement_exception_refcount(ptr);
   },
 
-  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownValue'],
-  $getExceptionMessage: function(obj) {
+  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $getExceptionMessage: function(ex) {
     // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
     // thrown value from it.
-    var ptr = getCppExceptionThrownValue(obj);
+    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
     var utf8_addr = ___get_exception_message(ptr);
     var result = UTF8ToString(utf8_addr);
     _free(utf8_addr);

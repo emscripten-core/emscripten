@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <emscripten.h>
+#include <assert.h>
 
 
 int main() {
@@ -59,5 +60,14 @@ int main() {
   read(g, buf, 5);
   // should print "buf: abc\n"
   printf("buf: %s\n", buf);
+
+
+  int fd1 = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
+  int fd2 = dup(fd1);
+  int n = write(fd1, "abcabc\n", 7);
+  assert(n == 7);
+  assert(lseek(fd1, 0, SEEK_CUR) == 7);
+  assert(lseek(fd2, 0, SEEK_CUR) == 7);
+
   return 0;
 }

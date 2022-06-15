@@ -52,36 +52,48 @@ void _wasmfs_opfs_get_entries(em_proxying_ctx* ctx,
                               int dirID,
                               std::vector<Directory::Entry>* entries);
 
-void _wasmfs_opfs_open(em_proxying_ctx* ctx, int file_id, int* access_id);
+void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
+                              int file_id,
+                              int* access_id);
 
-void _wasmfs_opfs_close(em_proxying_ctx* ctx, int access_id);
+void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id);
 
 void _wasmfs_opfs_free_file(int file_id);
 
 void _wasmfs_opfs_free_directory(int dir_id);
 
 // Synchronous read. Return the number of bytes read.
-int _wasmfs_opfs_read(int access_id, uint8_t* buf, uint32_t len, uint32_t pos);
+int _wasmfs_opfs_read_access(int access_id,
+                             uint8_t* buf,
+                             uint32_t len,
+                             uint32_t pos);
 
 // Synchronous write. Return the number of bytes written.
-int _wasmfs_opfs_write(int access_id,
-                       const uint8_t* buf,
-                       uint32_t len,
-                       uint32_t pos);
+int _wasmfs_opfs_write_access(int access_id,
+                              const uint8_t* buf,
+                              uint32_t len,
+                              uint32_t pos);
 
 // Get the size via an AccessHandle.
 void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   uint32_t* size);
 
-// Get the size via a File Blob.
-void _wasmfs_opfs_get_size_blob(em_proxying_ctx* ctx,
-                                int access_id,
+// Get the size of a file handle via a File Blob.
+void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
+                                int file_id,
                                 uint32_t* size);
 
-void _wasmfs_opfs_set_size(em_proxying_ctx* ctx, int access_id, uint32_t size);
+void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
+                                  int access_id,
+                                  uint32_t size);
 
-void _wasmfs_opfs_flush(em_proxying_ctx* ctx, int access_id);
+void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
+                                int file_id,
+                                uint32_t size,
+                                int* err);
+
+void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id);
 
 } // extern "C"
 
@@ -116,7 +128,7 @@ private:
     uint32_t size;
     if (accessID == -1) {
       proxy(
-        [&](auto ctx) { _wasmfs_opfs_get_size_blob(ctx.ctx, fileID, &size); });
+        [&](auto ctx) { _wasmfs_opfs_get_size_file(ctx.ctx, fileID, &size); });
     } else {
       proxy([&](auto ctx) {
         _wasmfs_opfs_get_size_access(ctx.ctx, accessID, &size);
@@ -126,12 +138,24 @@ private:
   }
 
   void setSize(size_t size) override {
-    proxy([&](auto ctx) { _wasmfs_opfs_set_size(ctx.ctx, accessID, size); });
+    if (accessID == -1) {
+      int err;
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
+      });
+      assert(err == 0 && "TODO: better error handling");
+    } else {
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_set_size_access(ctx.ctx, accessID, size);
+      });
+    }
   }
 
   void open(oflags_t flags) override {
     if (openCount == 0) {
-      proxy([&](auto ctx) { _wasmfs_opfs_open(ctx.ctx, fileID, &accessID); });
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_open_access(ctx.ctx, fileID, &accessID);
+      });
       ++openCount;
     }
     // TODO: proper error handling.
@@ -141,25 +165,28 @@ private:
   void close() override {
     assert(openCount >= 1);
     if (--openCount == 0) {
-      proxy([&](auto ctx) { _wasmfs_opfs_close(ctx.ctx, accessID); });
+      proxy([&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, accessID); });
       accessID = -1;
     }
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;
-    proxy([&]() { nread = _wasmfs_opfs_read(accessID, buf, len, offset); });
+    proxy(
+      [&]() { nread = _wasmfs_opfs_read_access(accessID, buf, len, offset); });
     return nread;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nwritten;
-    proxy([&]() { nwritten = _wasmfs_opfs_write(accessID, buf, len, offset); });
+    proxy([&]() {
+      nwritten = _wasmfs_opfs_write_access(accessID, buf, len, offset);
+    });
     return nwritten;
   }
 
   void flush() override {
-    proxy([&](auto ctx) { _wasmfs_opfs_flush(ctx.ctx, accessID); });
+    proxy([&](auto ctx) { _wasmfs_opfs_flush_access(ctx.ctx, accessID); });
   }
 };
 
