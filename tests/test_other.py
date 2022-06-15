@@ -12128,23 +12128,25 @@ Module['postRun'] = function() {{
     self.assertEqual(out, out2)
 
   def test_rust_gxx_personality_v0(self):
-    create_file('main.c', r'''
+    create_file('main.cpp', r'''
       #include <stdio.h>
-      void __gxx_personality_v0();
-      void rust_eh_personality(){
-        __gxx_personality_v0();
-      }
-      int main(int argc, char** argv) {
-        printf("result: %d\n", argc);
-        if(argc == 2){
-          rust_eh_personality();
+      extern "C" {
+        void __gxx_personality_v0();
+        void rust_eh_personality(){
+          __gxx_personality_v0();
         }
-        return 0;
+        int main(int argc, char** argv) {
+          printf("result: %d\n", argc);
+          if(argc == 2){
+            rust_eh_personality();
+          }
+          return 0;
+        }
       }
     ''')
-    self.emcc('main.c', ['-c'])
+    self.run_process([EMXX, '-c', 'main.cpp'])
 
-    self.run_process([EMCC, '-o', 'main.js', 'main.o'] + self.get_emcc_args())
+    self.run_process([EMXX, '-o', 'main.js', 'main.o', '-lc++abi'] + self.get_emcc_args())
 
     self.do_run('main.js', 'result: 1', no_build=True)
     try:
