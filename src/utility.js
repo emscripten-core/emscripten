@@ -92,14 +92,14 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-enum LibraryParam {
+const LibraryParam = Object.freeze({
   DisallowOverride: 1
-}
+});
 
 // if allowOverride is false, it shows error in case of symbol redefinition
-function mergeInto(obj, other, libraryOptions = 0) {
+function mergeInto(obj, other, libraryParams = 0) {
   // check for unintended symbol redefinition
-  if (libraryOptions === LibraryParam.DisallowOverride) {
+  if (libraryParams === LibraryParam.DisallowOverride) {
     for (const key of Object.keys(other)) {
       if (obj.hasOwnProperty(key)) {
         error('Symbol re-definition in JavaScript library: ' + key + '. Use allowOverride if this is intended');
