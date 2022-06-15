@@ -2620,6 +2620,7 @@ var LibraryHTML5 = {
   }, 
 #else
   emscripten_get_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  emscripten_get_canvas_element_size__sig: 'ippp',
   emscripten_get_canvas_element_size: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
