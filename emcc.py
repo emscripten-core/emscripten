@@ -2613,6 +2613,18 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
+  # Make `getExceptionMessage` and other necessary functions available for use.
+  if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # We also export refcount increasing and decreasing functions because if you
+    # catch an exception, be it an Emscripten exception or a Wasm exception, in
+    # JS, you may need to manipulate the refcount manually not to leak memory.
+    # What you need to do is different depending on the kind of EH you use
+    # (https://github.com/emscripten-core/emscripten/issues/17115).
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
+    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message']
+    if settings.WASM_EXCEPTIONS:
+      settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
+
   apply_min_browser_versions(user_settings)
 
   return target, wasm_target
