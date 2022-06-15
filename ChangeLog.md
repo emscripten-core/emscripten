@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.2.0
 -----
+- Emscripten now knows what minimum browser versions the `WASM_BIGINT` feature
+  requires and will automatically set the defaults accordingly. (#17163)
 - Weak undefined symbols fixed in dynamic linking. (#17164)
 - Internally, the name of `main` function now gets mangled (by clang) in the
   same way as with other wasm targets.  This means that within the wasm module
@@ -31,6 +33,8 @@ See docs/process.md for more on how version tagging works.
   are now exposed to native code and can be used to keep the runtime alive
   without immediately unwinding the event loop (as
   `emscripten_exit_with_live_runtime()` does). (#17160)
+- The file packager option `--use-preload-cache` now only invalidates the
+  cache if the data contents has changed. (#16807)
 
 3.1.13 - 06/02/2022
 -------------------

@@ -807,30 +807,6 @@ var LibraryPThread = {
     return 0;
   },
 
-#if PROXY_TO_PTHREAD
-  __call_main__deps: ['exit', '$exitOnMainThread'],
-  __call_main: function(argc, argv) {
-#if !EXIT_RUNTIME
-    // EXIT_RUNTIME==0 set, keeping main thread alive by default.
-    noExitRuntime = true;
-#endif
-    var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
-#if EXIT_RUNTIME
-    if (!keepRuntimeAlive()) {
-      // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
-#if PTHREADS_DEBUG
-      err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
-#endif
-      exitOnMainThread(returnCode);
-    }
-#else
-#if PTHREADS_DEBUG
-    err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
-#endif
-#endif
-  },
-#endif
-
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the

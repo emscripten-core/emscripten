@@ -17,6 +17,9 @@ global.proxiedFunctionTable = ['null'/* Reserve index 0 for an undefined functio
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
+  if (f === '__main_argc_argv') {
+    f = 'main';
+  }
   return f[0] == '$' ? f.substr(1) : '_' + f;
 }
 
@@ -51,6 +54,9 @@ function stringifyWithFunctions(obj) {
 
 function isDefined(symName) {
   if (WASM_EXPORTS.has(symName) || SIDE_MODULE_EXPORTS.has(symName)) {
+    return true;
+  }
+  if (symName == '__main_argc_argv' && SIDE_MODULE_EXPORTS.has('main')) {
     return true;
   }
   // 'invoke_' symbols are created at runtime in libary_dylink.py so can
@@ -208,9 +214,13 @@ function ${name}(${args}) {
         }
         const isWeakImport = WEAK_IMPORTS.has(ident);
         if (!isDefined(ident) && !isWeakImport) {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && ident == '__main_argc_argv') {
+            error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
+            return;
+          }
           let undefinedSym = ident;
           if (ident === '__main_argc_argv') {
-            undefinedSym = 'main';
+            undefinedSym = 'main/__main_argc_argv';
           }
           let msg = 'undefined symbol: ' + undefinedSym;
           if (dependent) msg += ` (referenced by ${dependent})`;
@@ -224,7 +234,7 @@ function ${name}(${args}) {
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
-          if (undefinedSym === 'main' && STANDALONE_WASM) {
+          if (ident === '__main_argc_argv' && STANDALONE_WASM) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }

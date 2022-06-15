@@ -231,6 +231,7 @@ var LibraryHtml5WebGL = {
     GL.currentContextIsProxied = true;
   },
 #else
+  emscripten_webgl_make_context_current__sig: 'ii',
   emscripten_webgl_make_context_current: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
     return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};

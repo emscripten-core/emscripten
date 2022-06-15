@@ -7,7 +7,9 @@
 
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
-
+:: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
+:: of cpython used in cross compilation via setup.py.
+@set _PYTHON_SYSCONFIGDATA_NAME=
 @set EM_PY=%EMSDK_PYTHON%
 @if "%EM_PY%"=="" (
   set EM_PY=python
@@ -16,7 +18,7 @@
 :: If _EMCC_CCACHE is not set, do a regular invocation of the python compiler driver.
 :: Otherwise remove the ccache env. var, and then reinvoke this script with ccache enabled.
 @if "%_EMCC_CCACHE%"=="" (
-  set CMD="%EM_PY%" "%~dp0\%~n0.py"
+  set CMD="%EM_PY%" -E "%~dp0\%~n0.py"
 ) else (
   set _EMCC_CCACHE=
   set CMD=ccache "%~dp0\%~n0.bat"

@@ -20,7 +20,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner')
 
 from tools.shared import try_delete, PIPE
-from tools.shared import PYTHON, EMCC, EMAR
+from tools.shared import EMCC, EMAR
 from tools.utils import WINDOWS, MACOS, write_file
 from tools import shared, building, config, webassembly
 import common
@@ -28,7 +28,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
+from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -9192,6 +9192,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  def test_pthread_dylink_main_module_1(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('MAIN_MODULE')
+    self.do_runf(test_file('hello_world.c'))
+
+  @needs_dylink
+  @node_pthreads
   def test_Module_dynamicLibraries_pthreads(self):
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += ['-pthread', '-Wno-experimental']
@@ -9254,7 +9263,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # In standalone we don't support implicitly building without main.  The user has to explicitly
       # opt out (see below).
       err = self.expect_fail([EMCC, test_file('core/test_ctors_no_main.cpp')] + self.get_emcc_args())
-      self.assertContained('error: undefined symbol: main (referenced by top-level compiled C/C++ code)', err)
+      self.assertContained('error: undefined symbol: main/__main_argc_argv (referenced by top-level compiled C/C++ code)', err)
       self.assertContained('warning: To build in STANDALONE_WASM mode without a main(), use emcc --no-entry', err)
     elif not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
       # Traditionally in emscripten we allow main to be implicitly undefined.  This allows programs

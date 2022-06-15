@@ -101,27 +101,28 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_BADF;
   }
 
-  auto lockedOpenFile = openFile->locked();
-
-  if (setOffset == OffsetHandling::OpenFileState) {
-    offset = lockedOpenFile.getPosition();
-  }
-
   if (iovs_len < 0 || offset < 0) {
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for write permissions.
-
+  auto lockedOpenFile = openFile->locked();
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
 
   auto lockedFile = file->locked();
+
+  if (setOffset == OffsetHandling::OpenFileState) {
+    if (lockedOpenFile.getFlags() & O_APPEND) {
+      offset = lockedFile.getSize();
+      lockedOpenFile.setPosition(offset);
+    } else {
+      offset = lockedOpenFile.getPosition();
+    }
+  }
+
+  // TODO: Check open file access mode for write permissions.
 
   size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {
@@ -465,6 +466,10 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EEXIST;
   }
 
+  // Note that we open the file before truncating it because some backends may
+  // truncate opened files more efficiently (e.g. OPFS).
+  auto openFile = std::make_shared<OpenFileState>(0, flags, child);
+
   // If O_TRUNC, truncate the file if possible.
   if ((flags & O_TRUNC) && child->is<DataFile>()) {
     if (fileMode & WASMFS_PERM_WRITE) {
@@ -474,7 +479,6 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     }
   }
 
-  auto openFile = std::make_shared<OpenFileState>(0, flags, child);
   return wasmFS.getFileTable().locked().addEntry(openFile);
 }
 

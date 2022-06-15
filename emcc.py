@@ -396,6 +396,21 @@ def apply_settings(user_settings):
       settings.LTO = 0 if value else 'full'
 
 
+# apply minimum browser version defaults based on user settings. if
+# a user requests a feature that we know is only supported in browsers
+# from a specific version and above, we can assume that browser version.
+def apply_min_browser_versions(user_settings):
+
+  def default_min_browser_version(browser, version):
+    default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
+
+  if settings.WASM_BIGINT:
+    default_min_browser_version('Safari', 150000)
+    default_min_browser_version('Edge', 79)
+    default_min_browser_version('Firefox', 68)
+    # Chrome has BigInt since v67 which is less than default min version.
+
+
 def is_ar_file_with_missing_index(archive_file):
   # We parse the archive header outselves because llvm-nm --print-armap is slower and less
   # reliable.
@@ -1089,7 +1104,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      cmd = [shared.PYTHON, sys.argv[0], utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      compiler = shared.EMCC
+      if run_via_emxx:
+        compiler = shared.EMXX
+      cmd = [compiler, utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
       proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)
@@ -1726,7 +1744,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      settings.EXPORTED_FUNCTIONS = ['_main']
+      # With PROXY_TO_PTHREAD we don't export `main` at all but instead
+      # we export `emscripten_proxy_main` (elsewhwere).
+      if not settings.PROXY_TO_PTHREAD:
+        settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -2504,12 +2525,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # they are indirect calls, since that is what they do - we can't see their
       # targets statically.
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
-    # with pthreads we may call main through the __call_main mechanism, which can
-    # therefore reach anything in the program, so mark it as possibly causing a
-    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-    # see what it itself calls)
-    if settings.USE_PTHREADS:
-      settings.ASYNCIFY_IMPORTS += ['__call_main']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
 
@@ -2596,6 +2611,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
+
+  apply_min_browser_versions(user_settings)
 
   return target, wasm_target
 

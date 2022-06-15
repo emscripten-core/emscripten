@@ -21,7 +21,6 @@ import sys
 import time
 import tempfile
 import unittest
-import uuid
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -29,13 +28,13 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, requires_v8, requires_node
-from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE
+from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
@@ -1249,7 +1248,9 @@ int f() {
       };
     ''')
 
-    self.emcc('lib.c', ['-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
+    # Explicitly test with -Oz to ensure libc_optz is included alongside
+    # libc when `--whole-archive` is used.
+    self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
   def test_export_all_and_exported_functions(self):
@@ -2463,6 +2464,33 @@ int f() {
     self.run_process([EMXX, 'main.cpp', '-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  def test_embind_no_function(self):
+    create_file('post.js', '''
+      Module['onRuntimeInitialized'] = function() {
+        out((new Module['MyClass'](42)).x);
+      };
+    ''')
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      class MyClass {
+      public:
+          MyClass(int x) : x(x) {}
+
+          int getX() const {return x;}
+          void setX(int newX) {x = newX;}
+      private:
+          int x;
+      };
+      EMSCRIPTEN_BINDINGS(my_module) {
+          class_<MyClass>("MyClass")
+              .constructor<int>()
+              .property("x", &MyClass::getX, &MyClass::setX);
+      }
+    ''')
+    self.do_runf('main.cpp', '42', emcc_args=['-lembind', '--post-js', 'post.js'])
+
   def test_embind_closure_no_dynamic_execution(self):
     create_file('post.js', '''
       Module['onRuntimeInitialized'] = function() {
@@ -2499,6 +2527,8 @@ int f() {
   def test_embind(self, extra_args):
     test_cases = [
       (['-lembind']),
+      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+      (['-lembind', '-std=c++17']),
       (['-lembind', '-O1']),
       (['-lembind', '-O2']),
       (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
@@ -2657,7 +2687,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -2665,7 +2695,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, read_file('immutable.js'))
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
@@ -2676,8 +2706,7 @@ int f() {
     assert metadata['files'][1]['start'] == len('data1') and metadata['files'][1]['end'] == len('data1') + len('data2') and metadata['files'][1]['filename'] == '/subdir/data2.txt'
     assert metadata['remote_package_size'] == len('data1') + len('data2')
 
-    # can only assert the uuid format is correct, the uuid's value is expected to differ in between invocation
-    uuid.UUID(metadata['package_uuid'], version=4)
+    self.assertEqual(metadata['package_uuid'], 'sha256-53ddc03623f867c7d4a631ded19c2613f2cb61d47b6aa214f47ff3cc15445bcd')
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
@@ -7431,7 +7460,8 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    # Disabled while llvm change rolls in
+    #'main_module_2': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
@@ -11419,7 +11449,7 @@ EMSCRIPTEN_KEEPALIVE
 void foo() {}
 ''')
     err = self.expect_fail([EMCC, 'lib.cpp', '-pthread', '-sPROXY_TO_PTHREAD'])
-    self.assertContained('emcc: error: PROXY_TO_PTHREAD proxies main() for you, but no main exists', err)
+    self.assertContained('error: PROXY_TO_PTHREAD proxies main() for you, but no main exists', err)
 
   def test_archive_bad_extension(self):
     # Regression test for https://github.com/emscripten-core/emscripten/issues/14012
@@ -11734,6 +11764,10 @@ Module['postRun'] = function() {{
   @also_with_wasmfs
   def test_unistd_open(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
+
+  @also_with_wasmfs
+  def test_unistd_open_append(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_open_append.c')
 
   @also_with_wasmfs
   def test_unistd_stat(self):
