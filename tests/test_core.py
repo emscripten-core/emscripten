@@ -6236,39 +6236,6 @@ PORT: 3979
     self.emcc_args += ['--js-library', 'mylib1.js', '--js-library', 'mylib2.js']
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
-  def test_duplicate_js_functions(self):
-    create_file('duplicated_func.cpp', '''
-      #include <stdio.h>
-      extern "C" {
-        extern int duplicatedFunc();
-      }
-      int main() {
-        int res = duplicatedFunc();
-        printf("*%d*\\n", res);
-        return 0;
-      }
-    ''')
-    create_file('duplicated_func_1.js', '''
-      mergeInto(LibraryManager.library, {
-        duplicatedFunc : function() {
-            return 1;
-          }
-        }, false
-      );
-    ''')
-    create_file('duplicated_func_2.js', '''
-      mergeInto(LibraryManager.library, {
-        duplicatedFunc : function() {
-            return 2;
-          }
-        }, false
-      );
-    ''')
-
-    self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
-    err = self.expect_fail([EMCC, 'duplicated_func.cpp'] + self.get_emcc_args())
-    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Use allowOverride if this is intended', err)
-
   def test_unicode_js_library(self):
     create_file('main.cpp', '''
       #include <stdio.h>
