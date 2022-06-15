@@ -12133,14 +12133,8 @@ Module['postRun'] = function() {{
       #include <stdint.h>
       extern "C" {
         int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
-        int rust_eh_personality(int version, void* actions, uint64_t exception_class, void* exception_object, void* context){
-          return __gxx_personality_v0(version, actions, exception_class, exception_object, context);
-        }
-        int main(int argc, char** argv) {
-          printf("result: %d\n", argc);
-          if(argc == 2){
-            rust_eh_personality(0, NULL, 0, NULL, NULL);
-          }
+        int main() {
+          __gxx_personality_v0(0, NULL, 0, NULL, NULL);
           return 0;
         }
       }
@@ -12149,9 +12143,8 @@ Module['postRun'] = function() {{
 
     self.run_process([EMXX, '-o', 'main.js', 'main.o', '-lc++abi'] + self.get_emcc_args())
 
-    self.do_run('main.js', 'result: 1', no_build=True)
     try:
-      self.do_run('main.js', 'result: 1', no_build=True, args=["1"])
+      self.do_run('main.js', no_build=True)
       raise RuntimeError('should not have passed')
     except AssertionError as e:
       err = e
