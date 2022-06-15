@@ -5,16 +5,17 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $wasmFS$preloadedFiles: [],
-  $wasmFS$preloadedDirs: [],
+  $wasmFSPreloadedFiles: [],
+  $wasmFSPreloadedDirs: [],
 #if USE_CLOSURE_COMPILER
   // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
   $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
 #endif
   $FS__deps: [
-    '$wasmFS$preloadedFiles',
-    '$wasmFS$preloadedDirs',
+    '$wasmFSPreloadedFiles',
+    '$wasmFSPreloadedDirs',
     '$asyncLoad',
+    '$PATH',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -60,11 +61,19 @@ mergeInto(LibraryManager.library, {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
-      wasmFS$preloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
+      wasmFSPreloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
-      wasmFS$preloadedDirs.push({parentPath: parent, childName: path});
+      var parts = path.split('/').reverse();
+      while (parts.length) {
+        var part = parts.pop();
+        if (!part) continue;
+        var current = PATH.join2(parent, part);
+        wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        parent = current;
+      }
+      return current;
     },
     readFile: (path, opts) => {
       opts = opts || {};
@@ -136,37 +145,37 @@ mergeInto(LibraryManager.library, {
     },
 #endif
   },
-  _wasmfs_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
+  _wasmfs_get_num_preloaded_files__deps: ['$wasmFSPreloadedFiles'],
   _wasmfs_get_num_preloaded_files: function() {
-    return wasmFS$preloadedFiles.length;
+    return wasmFSPreloadedFiles.length;
   },
-  _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFS$preloadedDirs'],
+  _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFSPreloadedDirs'],
   _wasmfs_get_num_preloaded_dirs: function() {
-    return wasmFS$preloadedDirs.length;
+    return wasmFSPreloadedDirs.length;
   },
   _wasmfs_get_preloaded_file_mode: function(index) {
-    return wasmFS$preloadedFiles[index].mode;
+    return wasmFSPreloadedFiles[index].mode;
   },
   _wasmfs_get_preloaded_parent_path: function(index, parentPathBuffer) {
-    var s = wasmFS$preloadedDirs[index].parentPath;
+    var s = wasmFSPreloadedDirs[index].parentPath;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, parentPathBuffer, len);
   },
   _wasmfs_get_preloaded_child_path: function(index, childNameBuffer) {
-    var s = wasmFS$preloadedDirs[index].childName;
+    var s = wasmFSPreloadedDirs[index].childName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, childNameBuffer, len);
   },
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
-    var s = wasmFS$preloadedFiles[index].pathName;
+    var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
   _wasmfs_get_preloaded_file_size: function(index) {
-    return wasmFS$preloadedFiles[index].fileData.length;
+    return wasmFSPreloadedFiles[index].fileData.length;
   },
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
-    HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
+    HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   }
 });
 

@@ -529,32 +529,6 @@ class DebugLibrary(Library):
     return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
 
 
-class OptimizedAggressivelyForSizeLibrary(Library):
-  def __init__(self, **kwargs):
-    self.is_optz = kwargs.pop('is_optz')
-    super().__init__(**kwargs)
-
-  def get_base_name(self):
-    name = super().get_base_name()
-    if self.is_optz:
-      name += '-optz'
-    return name
-
-  def get_cflags(self):
-    cflags = super().get_cflags()
-    if self.is_optz:
-      cflags += ['-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
-    return cflags
-
-  @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['is_optz']
-
-  @classmethod
-  def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
-
-
 class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
@@ -727,7 +701,6 @@ class libnoexit(Library):
 
 class libc(MuslInternalLibrary,
            DebugLibrary,
-           OptimizedAggressivelyForSizeLibrary,
            AsanInstrumentedLibrary,
            MTLibrary):
   name = 'libc'
@@ -782,7 +755,6 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow_small.c', 'log_small.c', 'log2_small.c',
       'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
@@ -862,7 +834,6 @@ class libc(MuslInternalLibrary,
           'proxying.c',
           'pthread_create.c',
           'pthread_kill.c',
-          'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
@@ -908,10 +879,10 @@ class libc(MuslInternalLibrary,
           'proxying_stub.c',
         ])
 
-    if self.is_optz:
-      ignore += ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
-    else:
-      ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
+    # These files are in libc directories, but only built in libc_optz.
+    ignore += [
+      'pow_small.c', 'log_small.c', 'log2_small.c'
+    ]
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1041,6 +1012,56 @@ class libc(MuslInternalLibrary,
     return cmd
 
 
+# Contains the files from libc that are optimized differently in -Oz mode, where
+# we want to aggressively optimize them for size. This is linked in before libc
+# so we can override those specific files, when in -Oz.
+class libc_optz(libc):
+  name = 'libc_optz'
+
+  cflags = ['-Os', '-fno-builtin', '-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
+
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
+    self.non_lto_files = self.get_libcall_files()
+
+  def get_libcall_files(self):
+    # see comments in libc.customize_build_cmd
+
+    # some files also appear in libc, and a #define affects them
+    mem_files = files_in_path(
+      path='system/lib/libc',
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_memmove.c'])
+
+    # some functions have separate files
+    math_files = files_in_path(
+      path='system/lib/libc/musl/src/math',
+      filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
+
+    return mem_files + math_files
+
+  def get_files(self):
+    libcall_files = self.get_libcall_files()
+
+    # some files also appear in libc, and a #define affects them
+    mem_files = files_in_path(
+      path='system/lib/libc/musl/src/string',
+      filenames=['memcmp.c'])
+
+    return libcall_files + mem_files
+
+  def customize_build_cmd(self, cmd, filename):
+    if filename in self.non_lto_files:
+      # see comments in libc.customize_build_cmd
+      cmd = [a for a in cmd if not a.startswith('-flto')]
+      cmd = [a for a in cmd if not a.startswith('-O')]
+      cmd += ['-O2']
+    return cmd
+
+  def can_use(self):
+    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2
+
+
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
@@ -1146,6 +1167,20 @@ class crt1_reactor(MuslInternalLibrary):
 
   def can_use(self):
     return super().can_use() and settings.STANDALONE_WASM
+
+
+class crt1_proxy_main(MuslInternalLibrary):
+  name = 'crt1_proxy_main'
+  src_dir = 'system/lib/libc'
+  src_files = ['crt1_proxy_main.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super().can_use() and settings.PROXY_TO_PTHREAD
 
 
 class crtbegin(MuslInternalLibrary):
@@ -1706,8 +1741,9 @@ class libstubs(DebugLibrary):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explictly exported
-  if settings.STANDALONE_WASM:
+  # In STANDALONE_WASM we don't expect main to be explictly exported.
+  # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
+  if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
     return
   if '_main' not in settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
@@ -1802,11 +1838,14 @@ def get_libs_to_link(args, forced, only_forced):
     if settings.SHARED_MEMORY:
       add_library('crtbegin')
 
-    if settings.STANDALONE_WASM:
-      if settings.EXPECT_MAIN:
-        add_library('crt1')
-      else:
-        add_library('crt1_reactor')
+    if not settings.SIDE_MODULE:
+      if settings.STANDALONE_WASM:
+        if settings.EXPECT_MAIN:
+          add_library('crt1')
+        else:
+          add_library('crt1_reactor')
+      elif settings.PROXY_TO_PTHREAD:
+        add_library('crt1_proxy_main')
 
   if settings.SIDE_MODULE:
     return libs_to_link
@@ -1835,9 +1874,17 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.JS_MATH:
     add_library('libjsmath')
 
-  # to override the normal libc printf, we must come before it
+  # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
+  # Becuase libc_optz overrides parts of libc, it is not compatible with `LINKABLE`
+  # (used in `MAIN_MODULE=1`) because with that setting we use `--whole-archive` to
+  # include all system libraries.
+  # However, because libc_optz is a size optimization it is not really important
+  # when used with `MAIN_MODULE=1` (which links in all system libraries, leading
+  # to overheads far bigger than any savings from libc_optz)
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE:
+    add_library('libc_optz')
 
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')

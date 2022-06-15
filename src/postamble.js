@@ -131,7 +131,7 @@ function callMain(args) {
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
   // that will call the user's real main() for the application.
-  var entryFunction = Module['_emscripten_proxy_main'];
+  var entryFunction = Module['__emscripten_proxy_main'];
 #else
   var entryFunction = Module['_main'];
 #endif

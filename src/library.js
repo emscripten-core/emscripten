@@ -364,9 +364,11 @@ mergeInto(LibraryManager.library, {
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // (However, in MAIN_MODULE=1 mode we link in all system libraries, which does
+  // end up adding code that refers to this.)
+  // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
-#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
+#if (SHRINK_LEVEL < 2 || LINKABLE) && !STANDALONE_WASM
 
   emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
@@ -3623,6 +3625,32 @@ mergeInto(LibraryManager.library, {
   __c_longjmp_import: true,
 #endif
 #endif
+
+  _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
+  _emscripten_fs_load_embedded_files__sig: 'vp',
+  _emscripten_fs_load_embedded_files: function(ptr) {
+#if RUNTIME_DEBUG
+    err('preloading data files');
+#endif
+    do {
+      var name_addr = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var len = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var content = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var name = UTF8ToString(name_addr)
+#if RUNTIME_DEBUG
+      err('preloading files: ' + name);
+#endif
+      FS.createPath('/', PATH.dirname(name), true, true);
+      // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+    } while ({{{ makeGetValue('ptr', '0', '*') }}});
+#if RUNTIME_DEBUG
+    err('done preloading data files');
+#endif
+  },
 });
 
 function autoAddDeps(object, name) {

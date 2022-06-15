@@ -22,7 +22,7 @@ from . import shared
 from . import webassembly
 from . import config
 from . import utils
-from .shared import CLANG_CC, CLANG_CXX, PYTHON
+from .shared import CLANG_CC, CLANG_CXX
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
@@ -38,11 +38,12 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
+EXPECTED_BINARYEN_VERSION = 109
 
-EXPECTED_BINARYEN_VERSION = 108
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
+
 # the exports the user requested
 user_requested_exports = set()
 
@@ -335,11 +336,14 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-      # For now we need to do this sice the entry point can be either `main` or
-      # `__main_argv_argc`, but we should address that by using a single `_start`
-      # function like we do in STANDALONE_WASM mode.
-      cmd += ['--no-entry']
+      if settings.PROXY_TO_PTHREAD:
+        cmd += ['--entry=_emscripten_proxy_main']
+      else:
+        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+        # For now we need to do this sice the entry point can be either `main` or
+        # `__main_argv_argc`, but we should address that by using a single `_start`
+        # function like we do in STANDALONE_WASM mode.
+        cmd += ['--no-entry']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
@@ -1432,7 +1436,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
   base_path = os.path.dirname(os.path.abspath(final_wasm))
-  sourcemap_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
+  sourcemap_cmd = [sys.executable, '-E', path_from_root('tools/wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,

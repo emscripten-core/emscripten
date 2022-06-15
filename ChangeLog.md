@@ -18,8 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.14
-------
+3.2.0
+-----
+- `tools/file_packager` no longer generates (or requires) any "pre-js" code when
+  running in `--embed-file` mode.  Instead the embedded files are loaded at
+  static constructor time.
+- Emscripten now knows what minimum browser versions the `WASM_BIGINT` feature
+  requires and will automatically set the defaults accordingly. (#17163)
+- Weak undefined symbols fixed in dynamic linking. (#17164)
+- Internally, the name of `main` function now gets mangled (by clang) in the
+  same way as with other wasm targets.  This means that within the wasm module
+  the name of the main function can now be `__main_argc_argv`, but, since we
+  still export this to JS as `_main`, this should not be a user-visible change.
+- Use of pkg-config from cmake not longer causes the C++ include path to be
+  broken. (#17137)
+- `emscripten_runtime_keeplive_push()` and `emscripten_runtime_keeplive_push()`
+  are now exposed to native code and can be used to keep the runtime alive
+  without immediately unwinding the event loop (as
+  `emscripten_exit_with_live_runtime()` does). (#17160)
+- The file packager option `--use-preload-cache` now only invalidates the
+  cache if the data contents has changed. (#16807)
 
 3.1.13 - 06/02/2022
 -------------------
