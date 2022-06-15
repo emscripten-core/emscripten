@@ -1228,7 +1228,6 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'private_typeinfo.cpp',
       'cxa_exception_emscripten.cpp',
     ]
-    print("HI!")
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
     elif self.eh_mode == Exceptions.WASM:
