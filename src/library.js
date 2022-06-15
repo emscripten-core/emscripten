@@ -405,13 +405,6 @@ mergeInto(LibraryManager.library, {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
-  // TODO: Remove this when Rust doesn't need it anymore.
-  // https://github.com/rust-lang/rust/pull/97888
-  __gxx_personality_v0: function() {
-    console.warn("__gxx_personality_v0 called", arguments);
-    abort("__gxx_personality_v0 called");
-  },
-
   // ==========================================================================
   // time.h
   // ==========================================================================

@@ -12130,15 +12130,16 @@ Module['postRun'] = function() {{
   def test_rust_gxx_personality_v0(self):
     create_file('main.cpp', r'''
       #include <stdio.h>
+      #include <stdint.h>
       extern "C" {
-        void __gxx_personality_v0();
-        void rust_eh_personality(){
-          __gxx_personality_v0();
+        int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
+        int rust_eh_personality(int version, void* actions, uint64_t exception_class, void* exception_object, void* context){
+          return __gxx_personality_v0(version, actions, exception_class, exception_object, context);
         }
         int main(int argc, char** argv) {
           printf("result: %d\n", argc);
           if(argc == 2){
-            rust_eh_personality();
+            rust_eh_personality(0, NULL, 0, NULL, NULL);
           }
           return 0;
         }
@@ -12154,5 +12155,5 @@ Module['postRun'] = function() {{
       raise RuntimeError('should not have passed')
     except AssertionError as e:
       err = e
-    assert "__gxx_personality_v0 called" in err.args[0]
+    assert "Aborted(native code called abort())" in err.args[0]
     del err
