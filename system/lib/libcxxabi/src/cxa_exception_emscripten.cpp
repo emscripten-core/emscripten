@@ -14,9 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
-  defined(__USING_WASM_EXCEPTIONS__)
-
+#if !defined(__USING_WASM_EXCEPTIONS__)
 // Until recently, Rust's `rust_eh_personality` for emscripten referred to this
 // symbol. If Emscripten doesn't provide it, there will be errors when linking
 // rust. The rust personality function is never called so we can just abort.
@@ -30,6 +28,10 @@ __gxx_personality_v0(int version,
                      _Unwind_Context* context) {
     abort();
 }
+#endif // !defined(__USING_WASM_EXCEPTIONS__)
+
+#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
+  defined(__USING_WASM_EXCEPTIONS__)
 
 using namespace __cxxabiv1;
 

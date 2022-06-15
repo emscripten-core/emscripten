@@ -12157,7 +12157,6 @@ Module['postRun'] = function() {{
     self.assertEqual(out, out2)
 
   def test_rust_gxx_personality_v0(self):
-    self.emcc_args.append('-fwasm-exceptions')
     self.do_run(r'''
       #include <stdio.h>
       #include <stdint.h>
