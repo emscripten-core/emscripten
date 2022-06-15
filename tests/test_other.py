@@ -12168,9 +12168,9 @@ Module['postRun'] = function() {{
         }
       }
     ''')
-    self.run_process([EMXX, '-c', 'main.cpp'])
+    self.run_process([EMXX, '-c', 'main.cpp', '-fexceptions'])
 
-    self.run_process([EMXX, '-o', 'main.js', 'main.o', '-lc++abi'] + self.get_emcc_args())
+    self.run_process([EMXX, '-o', 'main.js', 'main.o', '-fexceptions'] + self.get_emcc_args())
 
     try:
       self.do_run('main.js', no_build=True)
