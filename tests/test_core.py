@@ -20,7 +20,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner')
 
 from tools.shared import try_delete, PIPE
-from tools.shared import PYTHON, EMCC, EMAR
+from tools.shared import EMCC, EMAR
 from tools.utils import WINDOWS, MACOS, write_file
 from tools import shared, building, config, webassembly
 import common
@@ -28,7 +28,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
+from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -9400,6 +9400,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # used to recieve i64 argument in syscalls.
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
