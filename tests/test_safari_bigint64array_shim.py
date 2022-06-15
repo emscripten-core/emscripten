@@ -46,44 +46,44 @@ let arr2unsigned = new BigUint64Array(arr1unsigned.buffer);
 
 result.arr1_to_arr1_signed = [];
 for(let x of bigint_list){
-arr1signed[0] = x;
-result.arr1_to_arr1_signed.push(arr1signed[0]);
+  arr1signed[0] = x;
+  result.arr1_to_arr1_signed.push(arr1signed[0]);
 }
 
 result.arr1_to_arr1_unsigned = [];
 for(let x of bigint_list){
-arr1unsigned[0] = x;
-result.arr1_to_arr1_unsigned.push(arr1unsigned[0]);
+  arr1unsigned[0] = x;
+  result.arr1_to_arr1_unsigned.push(arr1unsigned[0]);
 }
 
 result.arr1_to_arr2_signed = [];
 for(let x of bigint_list){
-arr1signed[0] = x;
-result.arr1_to_arr2_signed.push(arr2signed[0]);
+  arr1signed[0] = x;
+  result.arr1_to_arr2_signed.push(arr2signed[0]);
 }
 
 result.arr1_to_arr2_unsigned = [];
 for(let x of bigint_list){
-arr1unsigned[0] = x;
-result.arr1_to_arr2_unsigned.push(arr2unsigned[0]);
+  arr1unsigned[0] = x;
+  result.arr1_to_arr2_unsigned.push(arr2unsigned[0]);
 }
 
 result.arr2_to_arr1_signed = [];
 for(let x of bigint_list){
-arr2signed[0] = x;
-result.arr2_to_arr1_signed.push(arr1signed[0]);
+  arr2signed[0] = x;
+  result.arr2_to_arr1_signed.push(arr1signed[0]);
 }
 
 result.arr2_to_arr1_unsigned = [];
 for(let x of bigint_list){
-arr2unsigned[0] = x;
-result.arr2_to_arr1_unsigned.push(arr1unsigned[0]);
+  arr2unsigned[0] = x;
+  result.arr2_to_arr1_unsigned.push(arr1unsigned[0]);
 }
 
 
 result.assertEquals = [];
 function assertEqual(cb){
-result.assertEquals.push([cb.toString(), cb()]);
+  result.assertEquals.push([cb.toString(), cb()]);
 }
 
 let arr1 = arr1unsigned;
@@ -100,7 +100,7 @@ result.arr2_slice = Array.from(arr2.slice(1, 5));
 result.arr2_subarray = Array.from(arr2.subarray(1, 5));
 let reducer = (k, v) => typeof v  === "bigint" ? v.toString() + "n" : v;
 function arraytostring(arr){
-return JSON.stringify(Array.from(Array.from(arr)), reducer);
+  return JSON.stringify(Array.from(Array.from(arr)), reducer);
 }
 
 let sub = arr2.subarray(1, 5);
