@@ -149,7 +149,7 @@ void ConcatArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
 
 using emscripten::val;
 
-template <size_t N = 20 /*BUFF_SIZE*/ >
+template <size_t N = 16 /*BUFF_SIZE*/ >
 class ValHelper {
  public:
   ValHelper() : ValHelper(OBJECT) {}
@@ -257,7 +257,7 @@ class ValHelper {
     cursor_->type = TYPE::ARRAY;
     cursor_->value.w[0].addr = a;
     cursor_->value.w[1].item.t = (uint8_t)t;
-    cursor_->value.w[1].item.f = 0;
+    cursor_->value.w[1].item.f = FLAG_NONE;
     cursor_->value.w[1].item.n = n;
     advance_and_may_finalize();
   }
@@ -360,7 +360,7 @@ class ValHelper {
     }
   }
 
-  enum { FLAG_CONCAT = 1, FLAG_VAL_KEY = 2 };
+  enum { FLAG_NONE = 0, FLAG_CONCAT = 1, FLAG_VAL_KEY = 2 };
 
   // |Entry| is 16B in length, keep it a POD.
   struct Entry {
