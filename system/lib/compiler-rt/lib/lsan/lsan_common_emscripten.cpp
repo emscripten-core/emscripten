@@ -134,12 +134,12 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
                                             &tls_begin, &tls_end,
                                             &cache_begin, &cache_end, &dtls);
   if (!thread_found) {
-    LOG_THREADS("Thread %d not found in registry.\n", os_id);
+    LOG_THREADS("Thread %llu not found in registry.\n", os_id);
     return;
   }
 
   if (flags()->use_stacks) {
-    LOG_THREADS("Stack at %p-%p.\n", stack_begin, stack_end);
+    LOG_THREADS("Stack at %p-%p.\n", (void*)stack_begin, (void*)stack_end);
 
     // We can't get the SP for other threads to narrow down the range, but we
     // we can for the current thread.
@@ -160,7 +160,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
   }
 
   if (flags()->use_tls && tls_begin) {
-    LOG_THREADS("TLS at %p-%p.\n", tls_begin, tls_end);
+    LOG_THREADS("TLS at %p-%p.\n", (void*)tls_begin, (void*)tls_end);
     // If the tls and cache ranges don't overlap, scan full tls range,
     // otherwise, only scan the non-overlapping portions
     if (cache_begin == cache_end || tls_end < cache_begin ||

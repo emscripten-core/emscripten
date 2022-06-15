@@ -125,6 +125,7 @@ function isJsLibraryConfigIdentifier(ident) {
     '__nothrow',
     '__noleakcheck',
     '__internal',
+    '__user',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }

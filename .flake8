@@ -7,7 +7,6 @@ exclude =
  ./tests/third_party/, # third-party code
  ./site/source/conf.py,
  ./tools/debug/,
- ./tools/ffdb.py,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
  .git

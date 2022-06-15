@@ -19,7 +19,7 @@ Presentations
 
     - `Video of talk <https://www.youtube.com/watch?v=Dsgws5zJiwk&list=UUMlGfpWw-RUdWX_JbLCukXg>`__
 
-- Slides from GDC 2014: `Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/>`_ (`kripken <https://github.com/kripken>`_, `lwagner <https://blog.mozilla.org/luke/>`_)
+- Slides from GDC 2014: `Getting started with asm.js and Emscripten <https://web.archive.org/web/20140325222509/http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/>`_ (`kripken <https://github.com/kripken>`_, `lwagner <https://blog.mozilla.org/luke/>`_)
 - Slides from Strange Loop 2013: `Native speed on the web, JavaScript and asm.js <http://kripken.github.io/mloc_emscripten_talk/sloop.html#/>`_ (`kripken <https://github.com/kripken>`_)
 - Slides from GDC Europe 2013: `C++ on the Web <http://www.slideshare.net/andreweissflog3/gdce2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)
 - Slides from QCon 2013: `Connecting languages together <http://kripken.github.io/mloc_emscripten_talk/qcon.html>`_ (`kripken <https://github.com/kripken>`_)

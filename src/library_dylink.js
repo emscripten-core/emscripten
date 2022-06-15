@@ -20,6 +20,9 @@ var LibraryDylink = {
 #endif
     if (!sym) {
       sym = asmLibraryArg[symName];
+      // Ignore 'stub' symbols that are auto-generated as part of the original
+      // `asmLibraryArg` used to instantate the main module.
+      if (sym && sym.stub) sym = undefined;
     }
 
     // Check for the symbol on the Module object.  This is the only
@@ -44,20 +47,28 @@ var LibraryDylink = {
   },
 
   $GOT: {},
+  $CurrentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
 
   // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT'],
+  $GOTHandler__deps: ['$GOT', '$CurrentModuleWeakSymbols'],
   $GOTHandler: {
     'get': function(obj, symName) {
-      if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true});
+      var rtn = GOT[symName];
+      if (!rtn) {
+        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
       }
-      return GOT[symName]
+      if (!CurrentModuleWeakSymbols.has(symName)) {
+        // Any non-weak reference to a symbol marks it as `required`, which
+        // enabled `reportUndefinedSymbols` to report undefeind symbol errors
+        // correctly.
+        rtn.required = true;
+      }
+      return rtn;
     }
   },
 
@@ -72,7 +83,7 @@ var LibraryDylink = {
       '__tls_size',
       '__tls_align',
       '__set_stack_limits',
-      'emscripten_tls_init',
+      '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
     ].includes(symName)
@@ -175,6 +186,13 @@ var LibraryDylink = {
     for (var symName in GOT) {
       if (GOT[symName].value == 0) {
         var value = resolveGlobalSymbol(symName, true)
+        if (!value && !GOT[symName].required) {
+          // Ignore undefined symbols that are imported as weak.
+#if DYLINK_DEBUG
+          err('ignoring undefined weak symbol: ' + symName);
+#endif
+          continue;
+        }
 #if ASSERTIONS
         assert(value, 'undefined symbol `' + symName + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
@@ -220,7 +238,7 @@ var LibraryDylink = {
   _dlsym_js: function(handle, symbol) {
     abort(dlopenMissingError);
   },
-  _dlinit: function() {},
+  _dlinit: function(main_dso_handle) {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
@@ -349,7 +367,7 @@ var LibraryDylink = {
       name = getString();
     }
 
-    var customSection = { neededDynlibs: [], tlsExports: {} };
+    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set() };
     if (name == 'dylink') {
       customSection.memorySize = getLEB();
       customSection.memoryAlign = getLEB();
@@ -368,7 +386,10 @@ var LibraryDylink = {
       var WASM_DYLINK_MEM_INFO = 0x1;
       var WASM_DYLINK_NEEDED = 0x2;
       var WASM_DYLINK_EXPORT_INFO = 0x3;
+      var WASM_DYLINK_IMPORT_INFO = 0x4;
       var WASM_SYMBOL_TLS = 0x100;
+      var WASM_SYMBOL_BINDING_MASK = 0x3;
+      var WASM_SYMBOL_BINDING_WEAK = 0x1;
       while (offset < end) {
         var subsectionType = getU8();
         var subsectionSize = getLEB();
@@ -389,7 +410,17 @@ var LibraryDylink = {
             var symname = getString();
             var flags = getLEB();
             if (flags & WASM_SYMBOL_TLS) {
-              customSection.tlsExports[symname] = 1;
+              customSection.tlsExports.add(symname);
+            }
+          }
+        } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
+          var count = getLEB();
+          while (count--) {
+            var modname = getString();
+            var symname = getString();
+            var flags = getLEB();
+            if ((flags & WASM_SYMBOL_BINDING_MASK) == WASM_SYMBOL_BINDING_WEAK) {
+              customSection.weakImports.add(symname);
             }
           }
         } else {
@@ -448,6 +479,13 @@ var LibraryDylink = {
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }
+#if !hasExportedFunction('_main')
+      // If the main module doesn't define main it could be defined in one of
+      // the side modules, and we need to handle the mangled named.
+      if (sym == '__main_argc_argv') {
+        Module['_main'] = exports[sym];
+      }
+#endif
     }
   },
 
@@ -465,9 +503,12 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
+    '$alignMemory', '$zeroMemory',
+    '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
+    CurrentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
     var originalTable = wasmTable;
 #endif
@@ -587,14 +628,21 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        if (moduleExports['__set_stack_limits']) {
+#if USE_PTHREADS
+          // When we are on an uninitialized pthread we delay calling
+          // __set_stack_limits until $setDylinkStackLimits.
+          if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
+#endif
+          moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+        }
 #endif
 
         // initialize the module
 #if USE_PTHREADS
         // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call emscripten_tls_init
-        registerTlsInit(moduleExports['emscripten_tls_init'], instance.exports, metadata)
+        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
         if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
           var init = moduleExports['__wasm_call_ctors'];
@@ -644,14 +692,21 @@ var LibraryDylink = {
     return loadModule();
   },
 
-#if STACK_OVERFLOW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2 && USE_PTHREADS
+  // With USE_PTHREADS we load libraries before we are running a pthread and
+  // therefore before we have a stack.  Instead we delay calling
+  // `__set_stack_limits` until we start running a thread.  We also need to call
+  // this again for each new thread that the runs on a worker (since each thread
+  // has its own separate stack region).
   $setDylinkStackLimits: function(stackTop, stackMax) {
     for (var name in LDSO.loadedLibsByName) {
 #if DYLINK_DEBUG
       err('setDylinkStackLimits[' + name + ']');
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      lib.module['__set_stack_limits'](stackTop, stackMax);
+      if (lib.module['__set_stack_limits']) {
+        lib.module['__set_stack_limits'](stackTop, stackMax);
+      }
     }
   },
 #endif

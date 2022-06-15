@@ -400,22 +400,42 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function(){};
-        FS.FSStream.prototype = {
+        FS.FSStream = /** @constructor */ function() {
+          this.shared = { };
+        };
+        FS.FSStream.prototype = {};
+        Object.defineProperties(FS.FSStream.prototype, {
           object: {
+            /** @this {FS.FSStream} */
             get: function() { return this.node; },
+            /** @this {FS.FSStream} */
             set: function(val) { this.node = val; }
           },
           isRead: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
           },
           isWrite: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
           },
           isAppend: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
-          }
-        };
+          },
+          flags: {
+            /** @this {FS.FSStream} */
+            get: function() { return this.shared.flags; },
+            /** @this {FS.FSStream} */
+            set: function(val) { this.shared.flags = val; },
+          },
+          position : {
+            /** @this {FS.FSStream} */
+            get: function() { return this.shared.position; },
+            /** @this {FS.FSStream} */
+            set: function(val) { this.shared.position = val; },
+          },
+        });
       }
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
@@ -980,7 +1000,7 @@ FS.staticInit();` +
         timestamp: Math.max(atime, mtime)
       });
     },
-    open: (path, flags, mode, fd_start, fd_end) => {
+    open: (path, flags, mode) => {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
@@ -1040,7 +1060,7 @@ FS.staticInit();` +
         }
       }
       // do truncation if necessary
-      if ((flags & {{{ cDefine('O_TRUNC')}}})) {
+      if ((flags & {{{ cDefine('O_TRUNC')}}}) && !created) {
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
@@ -1060,7 +1080,7 @@ FS.staticInit();` +
         // used by the file family libc calls (fopen, fwrite, ferror, etc.)
         ungotten: [],
         error: false
-      }, fd_start, fd_end);
+      });
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
@@ -1214,10 +1234,7 @@ FS.staticInit();` +
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: (stream, address, length, position, prot, flags) => {
-#if CAN_ADDRESS_2GB
-      address >>>= 0;
-#endif
+    mmap: (stream, length, position, prot, flags) => {
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
       // MAP_PRIVATE flag is set. According to POSIX spec it is possible
@@ -1235,7 +1252,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
       }
-      return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
+      return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync: (stream, buffer, offset, length, mmapFlags) => {
 #if CAN_ADDRESS_2GB
@@ -1482,10 +1499,9 @@ FS.staticInit();` +
     },
     quit: () => {
       FS.init.initialized = false;
-      // Call musl-internal function to close all stdio streams, so nothing is
-      // left in internal buffers.
-#if hasExportedFunction('___stdio_exit')
-      ___stdio_exit();
+      // force-flush all streams, so we get musl std streams printed out
+#if hasExportedFunction('_fflush')
+      _fflush(0);
 #endif
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
@@ -1801,9 +1817,7 @@ FS.staticInit();` +
           return fn.apply(null, arguments);
         };
       });
-      // use a custom read function
-      stream_ops.read = (stream, buffer, offset, length, position) => {
-        FS.forceLoadFile(node);
+      function writeChunks(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= contents.length)
           return 0;
@@ -1821,6 +1835,21 @@ FS.staticInit();` +
           }
         }
         return size;
+      }
+      // use a custom read function
+      stream_ops.read = (stream, buffer, offset, length, position) => {
+        FS.forceLoadFile(node);
+        return writeChunks(stream, buffer, offset, length, position)
+      };
+      // use a custom mmap function
+      stream_ops.mmap = (stream, length, position, prot, flags) => {
+        FS.forceLoadFile(node);
+        var ptr = mmapAlloc(length);
+        if (!ptr) {
+          throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+        }
+        writeChunks(stream, HEAP8, ptr, length, position);
+        return { ptr: ptr, allocated: true };
       };
       node.stream_ops = stream_ops;
       return node;

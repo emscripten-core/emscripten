@@ -3,7 +3,7 @@
 'use strict';
 
 const acorn = require('acorn');
-const terser = require('../third_party/terser');
+const terser = require('../third_party/terser/terser');
 const fs = require('fs');
 
 // Utilities
@@ -1374,8 +1374,8 @@ function safeHeap(ast) {
     FunctionDeclaration(node, c) {
       if (node.id.type === 'Identifier' &&
           (node.id.name.startsWith('SAFE_HEAP') ||
-           node.id.name === 'setValue' ||
-           node.id.name === 'getValue')) {
+           node.id.name === 'setValue_safe' ||
+           node.id.name === 'getValue_safe')) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {

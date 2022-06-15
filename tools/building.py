@@ -22,7 +22,7 @@ from . import shared
 from . import webassembly
 from . import config
 from . import utils
-from .shared import CLANG_CC, CLANG_CXX, PYTHON
+from .shared import CLANG_CC, CLANG_CXX
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
@@ -38,11 +38,12 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
+EXPECTED_BINARYEN_VERSION = 109
 
-EXPECTED_BINARYEN_VERSION = 105
 # cache results of nm - it can be slow to run
 nm_cache = {}
 _is_ar_cache = {}
+
 # the exports the user requested
 user_requested_exports = set()
 
@@ -149,7 +150,7 @@ def get_building_env():
   env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
   env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
@@ -233,7 +234,7 @@ def llvm_backend_args():
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
     if 'main' in settings.EXCEPTION_CATCHING_ALLOWED:
-      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
+      settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main', '__main_argc_argv']
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
@@ -282,9 +283,6 @@ def lld_flags_for_executable(external_symbols):
   if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')
 
-  if settings.MEMORY64:
-    cmd.append('-mwasm64')
-
   # wasm-ld can strip debug info for us. this strips both the Names
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
@@ -295,7 +293,6 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.LINKABLE:
     cmd.append('--export-dynamic')
-    cmd.append('--no-gc-sections')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
@@ -339,9 +336,13 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      if settings.EXPECT_MAIN and not settings.IGNORE_MISSING_MAIN:
-        cmd += ['--entry=main']
+      if settings.PROXY_TO_PTHREAD:
+        cmd += ['--entry=_emscripten_proxy_main']
       else:
+        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+        # For now we need to do this sice the entry point can be either `main` or
+        # `__main_argv_argc`, but we should address that by using a single `_start`
+        # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
@@ -375,10 +376,13 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  if settings.EXCEPTION_HANDLING:
+  if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
-  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
+
+  if settings.MEMORY64:
+    cmd.append('-mwasm64')
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -655,7 +659,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
+def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
@@ -674,10 +678,13 @@ def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
     if has_wasm_call_ctors:
       ctors += [WASM_CALL_CTORS]
     if settings.HAS_MAIN:
-      ctors += ['main']
+      main = 'main'
+      if '__main_argc_argv' in settings.WASM_EXPORTS:
+        main = '__main_argc_argv'
+      ctors += [main]
       # TODO perhaps remove the call to main from the JS? or is this an abi
       #      we want to preserve?
-      kept_ctors += ['main']
+      kept_ctors += [main]
     if not ctors:
       logger.info('ctor_evaller: no ctors')
       return
@@ -913,7 +920,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
     logger.error('Closure compiler run failed:\n')
   elif len(proc.stderr.strip()) > 0:
     if settings.CLOSURE_WARNINGS == 'error':
-      logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
+      logger.error('Closure compiler completed with warnings and -sCLOSURE_WARNINGS=error enabled, aborting!\n')
     elif settings.CLOSURE_WARNINGS == 'warn':
       logger.warn('Closure compiler completed with warnings:\n')
 
@@ -946,7 +953,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if settings.CLOSURE_WARNINGS == 'error':
-      exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+      exit_with_error('closure compiler produced warnings and -sCLOSURE_WARNINGS=error enabled')
 
   return outfile
 
@@ -1000,6 +1007,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     exports = settings.WASM_EXPORTS
   else:
     exports = settings.WASM_FUNCTION_EXPORTS
+
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
@@ -1294,7 +1302,6 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
-  # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)
@@ -1405,8 +1412,8 @@ def map_to_js_libs(library_name):
   return (None, None)
 
 
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will have the same effect as
-# -s USE_SDL=2.
+# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
+# have the same effect as -sUSE_SDL=2.
 def map_and_apply_to_settings(library_name):
   # most libraries just work, because the -l name matches the name of the
   # library we build. however, if a library has variations, which cause us to
@@ -1429,7 +1436,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
   base_path = os.path.dirname(os.path.abspath(final_wasm))
-  sourcemap_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
+  sourcemap_cmd = [sys.executable, '-E', path_from_root('tools/wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
@@ -1484,21 +1491,6 @@ binaryen_kept_debug_info = False
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and \
-     (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
-    # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we use source maps (which are
-    # implemented separately from dwarf).
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    cmd += ['--strip-dwarf']
   cmd += args
   if infile:
     cmd += [infile]
@@ -1511,7 +1503,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
       # legalization. show a clear error for those (as the flags the user passed
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
+        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 0:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
@@ -1534,8 +1526,22 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(*args, **kwargs):
-  return run_binaryen_command('wasm-opt', *args, **kwargs)
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+  if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
+    # remove any dwarf debug info sections, if the debug level is <3, as
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
+    # note that we add this pass first, so that it doesn't interfere with
+    # the final set of passes (which may generate stack IR, and nothing
+    # should be run after that)
+    # TODO: if lld can strip dwarf then we don't need this. atm though it can
+    #       only strip all debug info or none, which includes the name section
+    #       which we may need
+    # TODO: once fastcomp is gone, either remove source maps entirely, or
+    #       support them by emitting a source map at the end from the dwarf,
+    #       and use llvm-objcopy to remove that final dwarf
+    args.insert(0, '--strip-dwarf')
+  return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
 save_intermediate_counter = 0

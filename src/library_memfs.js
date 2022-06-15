@@ -333,11 +333,7 @@ mergeInto(LibraryManager.library, {
         MEMFS.expandFileStorage(stream.node, offset + length);
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
-      mmap: function(stream, address, length, position, prot, flags) {
-        if (address !== 0) {
-          // We don't currently support location hints for the address of the mapping
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
-        }
+      mmap: function(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }

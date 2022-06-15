@@ -1,12 +1,11 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "proxying.h"
 
 // The worker threads we will use. `looper` sits in a loop, continuously
 // processing work as it becomes available, while `returner` returns to the JS
@@ -21,9 +20,6 @@ em_proxying_queue* proxy_queue = NULL;
 // Whether `looper` should exit.
 _Atomic int should_quit = 0;
 
-// Whether `returner` has spun up.
-_Atomic int has_begun = 0;
-
 void* looper_main(void* arg) {
   while (!should_quit) {
     emscripten_proxy_execute_queue(proxy_queue);
@@ -32,8 +28,7 @@ void* looper_main(void* arg) {
   return NULL;
 }
 
-void* returner_main(void* arg) {
-  has_begun = 1;
+void* returner_main(void* queue) {
   emscripten_exit_with_live_runtime();
 }
 
@@ -286,8 +281,8 @@ void test_proxying_queue_growth(void) {
   arg.queue = em_proxying_queue_create();
   assert(arg.queue != NULL);
 
-  pthread_create(&arg.a, NULL, returner_main, NULL);
-  pthread_create(&arg.b, NULL, returner_main, NULL);
+  pthread_create(&arg.a, NULL, returner_main, arg.queue);
+  pthread_create(&arg.b, NULL, returner_main, arg.queue);
 
   arg.work_count = 0;
 
@@ -328,12 +323,7 @@ int main(int argc, char* argv[]) {
   assert(proxy_queue != NULL);
 
   pthread_create(&looper, NULL, looper_main, NULL);
-  pthread_create(&returner, NULL, returner_main, NULL);
-
-  // `returner` can't process its queue until it starts up.
-  while (!has_begun) {
-    sched_yield();
-  }
+  pthread_create(&returner, NULL, returner_main, proxy_queue);
 
   test_proxy_async();
   test_proxy_sync();

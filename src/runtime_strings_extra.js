@@ -15,7 +15,7 @@ function AsciiToString(ptr) {
 #endif
   var str = '';
   while (1) {
-    var ch = {{{ makeGetValue('ptr++', 0, 'i8', null, true) }}};
+    var ch = {{{ makeGetValue('ptr++', 0, 'u8') }}};
     if (!ch) return str;
     str += String.fromCharCode(ch);
   }

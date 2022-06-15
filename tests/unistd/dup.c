@@ -9,6 +9,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <emscripten.h>
+#include <assert.h>
+
 
 int main() {
   int f, f2, f3;
@@ -44,7 +47,27 @@ int main() {
   printf("f: %d\n", f == -1);
   printf("errno: %d\n", errno);
   printf("close(f): %d\n", close(f));
+  printf("\n");
   errno = 0;
+
+
+  printf("DUP2 pipe\n");
+  int p[2];
+  pipe(p);
+  int g = dup2(p[0], 7);
+  write(p[1], "abc\n", 3);
+  char buf[5];
+  read(g, buf, 5);
+  // should print "buf: abc\n"
+  printf("buf: %s\n", buf);
+
+
+  int fd1 = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
+  int fd2 = dup(fd1);
+  int n = write(fd1, "abcabc\n", 7);
+  assert(n == 7);
+  assert(lseek(fd1, 0, SEEK_CUR) == 7);
+  assert(lseek(fd2, 0, SEEK_CUR) == 7);
 
   return 0;
 }

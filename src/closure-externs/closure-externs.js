@@ -76,9 +76,30 @@ var WebAssembly = {};
 WebAssembly.Global = function(globalDescriptor, value) {};
 /**
  * @constructor
- * @param {Object} tagDescriptor
+ * @param {Object} type
  */
-WebAssembly.Tag = function(tagDescriptor) {};
+WebAssembly.Tag = function(type) {};
+/**
+ * @constructor
+ * @param {!WebAssembly.Tag} tag
+ * @param {Array<Object>} payload
+ * @param {Object=} options
+ */
+WebAssembly.Exception = function(tag, payload, options) {};
+/**
+ * @param {!WebAssembly.Tag} tag
+ * @param {number} index
+ */
+WebAssembly.Exception.getArg = function(tag, index) {};
+/**
+ * @param {!WebAssembly.Tag} tag
+ */
+WebAssembly.Exception.is = function(tag) {};
+/**
+ * @type {string}
+ */
+WebAssembly.Exception.stack;
+
 /**
  * Note: Closure compiler does not support function overloading, omit this overload for now.
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}

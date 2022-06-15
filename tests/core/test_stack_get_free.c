@@ -14,10 +14,10 @@ void TestStackValidity() {
   uintptr_t base = emscripten_stack_get_base();
   uintptr_t end = emscripten_stack_get_end();
 
-  uintptr_t used = abs((intptr_t)base - (intptr_t)emscripten_stack_get_current());
-  uintptr_t free = abs((intptr_t)end - (intptr_t)emscripten_stack_get_current());
+  uintptr_t used = labs((intptr_t)base - (intptr_t)emscripten_stack_get_current());
+  uintptr_t free = labs((intptr_t)end - (intptr_t)emscripten_stack_get_current());
   uintptr_t free2 = emscripten_stack_get_free();
-  uintptr_t total = abs((intptr_t)end - (intptr_t)base);
+  uintptr_t total = labs((intptr_t)end - (intptr_t)base);
   assert(used + free == total);
   assert(free == free2);
 }

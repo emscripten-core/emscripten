@@ -4,9 +4,12 @@
 // found in the LICENSE file.
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 int main()
 {
@@ -142,6 +145,14 @@ int main()
   FILE *n = fopen("/dev/null", "w");
   printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
   fclose(n);
+  
+  // Test file creation with O_TRUNC (regression test for #16784)
+  const char *file_name = "test.out";
+  int fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
+  assert(fd >= 0);
+  int status = write(fd, "blablabla\n", 10);
+  assert(status == 10);
+  close(fd);
 
   printf("ok.\n");
 

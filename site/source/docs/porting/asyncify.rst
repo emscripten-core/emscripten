@@ -66,7 +66,7 @@ You can compile that with
 
 ::
 
-    emcc -O3 example.cpp -s ASYNCIFY
+    emcc -O3 example.cpp -sASYNCIFY
 
 .. note:: It's very important to optimize (``-O3`` here) when using Asyncify, as
           unoptimized builds are very large.
@@ -132,7 +132,7 @@ To run this example, first compile it with
 
 ::
 
-    emcc example.c -O3 -o a.html -s ASYNCIFY
+    emcc example.c -O3 -o a.html -sASYNCIFY
 
 To run this, you must run a :ref:`local webserver <faq-local-webserver>`
 and then browse to ``http://localhost:8000/a.html``.
@@ -175,7 +175,7 @@ instrument the code to allow pausing and resuming (see more details later down):
 
 ::
 
-    emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
+    emcc example.c -O3 -o a.html -sASYNCIFY -sASYNCIFY_IMPORTS=do_fetch
 
 Finally, if you can't use Promises either, you can desugar the example to use
 ``Asyncify.handleSleep``, which will pass a ``wakeUp`` callback to your
@@ -249,7 +249,7 @@ returning a ``Promise`` to the return value, as demonstrated below.
 Build with
 ::
 
-    emcc -O3 example.cpp --bind -s ASYNCIFY
+    emcc -O3 example.cpp --bind -sASYNCIFY
 
 Then invoke from JavaScript
 
@@ -381,8 +381,8 @@ Migrating from older APIs
 #########################
 
 If you have code uses the old Emterpreter-Async API, or the old Asyncify, then
-almost everything should just work when you replace ``-s EMTERPRETIFY`` usage
-with ``-s ASYNCIFY``. In particular all the things like ``emscripten_wget``
+almost everything should just work when you replace ``-sEMTERPRETIFY`` usage
+with ``-sASYNCIFY``. In particular all the things like ``emscripten_wget``
 should just work as they did before.
 
 Some minor differences include:

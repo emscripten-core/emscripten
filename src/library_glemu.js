@@ -162,7 +162,7 @@ var LibraryGLEmulation = {
       // Add some emulation workarounds
       err('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 1
-      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
+      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -sGL_UNSAFE_OPTS=0');
 #endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
@@ -2881,7 +2881,7 @@ var LibraryGLEmulation = {
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
       // Limit to a maximum of 28 to not overflow the state bits used for renderer caching (31 bits = 3 attributes + 28 texture units).
-      GLImmediate.MAX_TEXTURES = Math.max(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
+      GLImmediate.MAX_TEXTURES = Math.min(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
 
       GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
 
@@ -3065,7 +3065,7 @@ var LibraryGLEmulation = {
           assert(!GLctx.currentElementArrayBufferBinding);
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
-            var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
+            var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
             GLImmediate.firstVertex = Math.min(GLImmediate.firstVertex, currIndex);
             GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
           }

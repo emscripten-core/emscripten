@@ -17,7 +17,7 @@ WebAssembly is emitted by default, without the need for any special flags.
 
 ::
 
-  emcc [..args..] -s WASM=0
+  emcc [..args..] -sWASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
 .. note:: Deciding to compile to wasm or JS can be done at the linking stage: it doesn't affect the object files.

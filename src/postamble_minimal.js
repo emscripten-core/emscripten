@@ -19,7 +19,7 @@ function run() {
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = _emscripten_proxy_main();
+  var ret = __emscripten_proxy_main();
 #else
   var ret = _main();
 
@@ -32,12 +32,12 @@ function run() {
 
 #endif
 
-#if IN_TEST_HARNESS && hasExportedFunction('___stdio_exit')
+#if IN_TEST_HARNESS && hasExportedFunction('_flush')
   // flush any stdio streams for test harness, since there are existing
   // tests that depend on this behavior.
   // For production use, instead print full lines to avoid this kind of lazy
   // behavior.
-  ___stdio_exit();
+  _fflush();
 #endif
 
 #if EXIT_RUNTIME
@@ -85,7 +85,7 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
-  PThread.tlsInitFunctions.push(asm['emscripten_tls_init']);
+  PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
 #if hasExportedFunction('___wasm_call_ctors')
@@ -197,6 +197,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 #else
   asm = output.instance.exports;
+#endif
+
+#if MEMORY64
+  asm = instrumentWasmExportsForMemory64(asm);
 #endif
 
 #if USE_OFFSET_CONVERTER
