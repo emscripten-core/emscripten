@@ -12157,7 +12157,8 @@ Module['postRun'] = function() {{
     self.assertEqual(out, out2)
 
   def test_rust_gxx_personality_v0(self):
-    create_file('main.cpp', r'''
+    self.emcc_args.append('-fwasm-exceptions')
+    self.do_run(r'''
       #include <stdio.h>
       #include <stdint.h>
       extern "C" {
@@ -12167,15 +12168,4 @@ Module['postRun'] = function() {{
           return 0;
         }
       }
-    ''')
-    self.run_process([EMXX, '-c', 'main.cpp', '-fexceptions'])
-
-    self.run_process([EMXX, '-o', 'main.js', 'main.o', '-fexceptions'] + self.get_emcc_args())
-
-    try:
-      self.do_run('main.js', no_build=True)
-      raise RuntimeError('should not have passed')
-    except AssertionError as e:
-      err = e
-    assert "Aborted(native code called abort())" in err.args[0]
-    del err
+    ''', 'Aborted(native code called abort())', assert_returncode=NON_ZERO)
