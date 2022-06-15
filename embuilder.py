@@ -56,6 +56,7 @@ MINIMAL_TASKS = [
     'struct_info',
     'libstandalonewasm',
     'crt1',
+    'crt1_proxy_main',
     'libunwind-except',
     'libnoexit',
 ]

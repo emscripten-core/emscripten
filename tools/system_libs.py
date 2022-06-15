@@ -834,7 +834,6 @@ class libc(MuslInternalLibrary,
           'proxying.c',
           'pthread_create.c',
           'pthread_kill.c',
-          'emscripten_proxy_main.c',
           'emscripten_thread_init.c',
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
@@ -1168,6 +1167,20 @@ class crt1_reactor(MuslInternalLibrary):
 
   def can_use(self):
     return super().can_use() and settings.STANDALONE_WASM
+
+
+class crt1_proxy_main(MuslInternalLibrary):
+  name = 'crt1_proxy_main'
+  src_dir = 'system/lib/libc'
+  src_files = ['crt1_proxy_main.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super().can_use() and settings.PROXY_TO_PTHREAD
 
 
 class crtbegin(MuslInternalLibrary):
@@ -1825,11 +1838,14 @@ def get_libs_to_link(args, forced, only_forced):
     if settings.SHARED_MEMORY:
       add_library('crtbegin')
 
-    if settings.STANDALONE_WASM:
-      if settings.EXPECT_MAIN:
-        add_library('crt1')
-      else:
-        add_library('crt1_reactor')
+    if not settings.SIDE_MODULE:
+      if settings.STANDALONE_WASM:
+        if settings.EXPECT_MAIN:
+          add_library('crt1')
+        else:
+          add_library('crt1_reactor')
+      elif settings.PROXY_TO_PTHREAD:
+        add_library('crt1_proxy_main')
 
   if settings.SIDE_MODULE:
     return libs_to_link
