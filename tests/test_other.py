@@ -12167,4 +12167,4 @@ Module['postRun'] = function() {{
           return 0;
         }
       }
-    ''', 'Aborted(native code called abort())', assert_returncode=NON_ZERO)
+    ''', assert_returncode=NON_ZERO)
