@@ -17,8 +17,11 @@
 #if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
   defined(__USING_WASM_EXCEPTIONS__)
 
-// TODO: Remove this when Rust doesn't need it anymore.
+// Until recently, Rust's `rust_eh_personality` for emscripten referred to this
+// symbol. If Emscripten doesn't provide it, there will be errors when linking
+// rust. The rust personality function is never called so we can just abort.
 // https://github.com/rust-lang/rust/pull/97888
+// TODO: Remove this when Rust doesn't need it anymore.
 extern "C" _LIBCXXABI_FUNC_VIS _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
