@@ -37,9 +37,7 @@ let bigint_list = {bigint_list_strs}.map(x => BigInt(x));
 let arr1signed = new BigInt64Array(20);
 let arr1unsigned = new BigUint64Array(20);
 delete globalThis.BigInt64Array;
-"""
-            + Path(bigint64array).read_text()
-            + """
+""" + Path(bigint64array).read_text() + """
 let result = {};
 result.BigInt64Array_name = BigInt64Array.name;
 //result.push(bigint_list);
