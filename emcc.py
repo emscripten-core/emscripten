@@ -1014,9 +1014,14 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
-  file_code = shared.check_call(cmd, stdout=PIPE).stdout
-
-  options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  if options.preload_files:
+    # Preloading files uses --pre-js code that runs before the module is loaded.
+    file_code = shared.check_call(cmd, stdout=PIPE).stdout
+    options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  else:
+    # Otherwise, we are embedding files, which does not require --pre-js code,
+    # and instead relies on a static constrcutor to populate the filesystem.
+    shared.check_call(cmd)
 
   return rtn
 
