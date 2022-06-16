@@ -206,6 +206,47 @@ void test_perf() {
   printf("test_valhelper loop %zu cost: %f\n", LoopTimes, emscripten_get_now() - start);
 }
 
+void test_perf_chaining() {
+  const size_t LoopTimes = 100000;
+  std::string s("test hello world!!");
+  val vi = val(256);
+
+  double start = emscripten_get_now();
+  for (size_t i = 0; i < LoopTimes; i++) {
+    // val (non chaining)
+    val v = val::object();
+    v.set("key1", 1);
+    v.set("key2", 2);
+    v.set("key3", 1.234f);
+    v.set("key4", true);
+    v.set("key5", "012345678910");
+    v.set("key6", s);
+    v.set("key7", vi);
+    v.set("key8", 8);
+  }
+  auto val_cost = emscripten_get_now() - start;
+  printf("test_chain_val loop %zu cost: %f\n", LoopTimes, val_cost);
+
+  start = emscripten_get_now();
+  for (size_t i = 0; i < LoopTimes; i++) {
+    // use valhelper (chaining)
+    VH v(OBJECT);
+    v.set("key1", 1);
+    v.set("key2", 2);
+    v.set("key3", 1.234f);
+    v.set("key4", true);
+    v.set("key5", "012345678910");
+    v.set("key6", s);
+    v.set("key7", vi);
+    v.set("key8", 8);
+    val o = v.toval();  // finalized
+  }
+  auto vh_cost = emscripten_get_now() - start;
+  printf("test_chain_vh loop %zu cost: %f\n", LoopTimes, vh_cost);
+
+  printf("val/vh = %f\n", val_cost / vh_cost);
+}
+
 // loop 100000 val biga cost: 4519.156967
 // loop 100000 VH biga cost: 214.419598
 void test_perf_biga() {
@@ -400,6 +441,7 @@ void test_cases() {
 int main() {
   tests::test_cases();
 
+  // tests::test_perf_chaining();
   // tests::test_perf();
   // tests::test_perf_biga();
   return 0;
