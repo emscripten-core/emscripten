@@ -2077,6 +2077,7 @@ var LibraryEmbind = {
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
     '$craftInvokerFunction'],
+  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor: function(
     rawClassType,
     argCount,
@@ -2164,6 +2165,7 @@ var LibraryEmbind = {
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved'],
+  _embind_register_class_function__sig: 'vppippppi',
   _embind_register_class_function: function(rawClassType,
                                             methodName,
                                             argCount,

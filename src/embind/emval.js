@@ -475,6 +475,7 @@ var LibraryEmVal = {
   },
 
   _emval_call_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
+  _emval_call_method__sig: 'dppppp',
   _emval_call_method: function(caller, handle, methodName, destructorsRef, args) {
     caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
