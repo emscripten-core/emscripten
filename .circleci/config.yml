@@ -478,6 +478,11 @@ jobs:
             core2.test_sse1
             core2.test_ccall
             core2.test_utf16
+            core2.test_em_asm_unicode
+            core2.test_em_js
+            core2.test_em_js_pthreads
+            other.test_prejs_unicode
+            other.test_em_js_side_module
             other.test_es5_transpile
             other.test_emcc_cflags
             other.test_stdin
