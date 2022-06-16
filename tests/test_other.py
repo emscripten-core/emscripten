@@ -4949,6 +4949,7 @@ int main()
   def test_strptime_symmetry(self):
     self.do_runf(test_file('strptime_symmetry.cpp'), 'TEST PASSED')
 
+  @also_with_wasmfs
   def test_truncate_from_0(self):
     create_file('src.cpp', r'''
 #include <cerrno>
