@@ -75,16 +75,19 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   // The root directory is its own parent.
   lockedRoot.setParent(rootDirectory);
 
-  auto devDirectory =
-    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO, rootBackend);
-  lockedRoot.mountChild("dev", devDirectory);
-  auto lockedDev = devDirectory->locked();
+  auto devDir = lockedRoot.insertDirectory("dev", S_IRUGO | S_IXUGO);
+  assert(devDir);
+  {
+    auto lockedDev = devDir->locked();
+    lockedDev.mountChild("stdin", SpecialFiles::getStdin());
+    lockedDev.mountChild("stdout", SpecialFiles::getStdout());
+    lockedDev.mountChild("stderr", SpecialFiles::getStderr());
+    lockedDev.mountChild("random", SpecialFiles::getRandom());
+    lockedDev.mountChild("urandom", SpecialFiles::getURandom());
+  }
 
-  lockedDev.mountChild("stdin", SpecialFiles::getStdin());
-  lockedDev.mountChild("stdout", SpecialFiles::getStdout());
-  lockedDev.mountChild("stderr", SpecialFiles::getStderr());
-  lockedDev.mountChild("random", SpecialFiles::getRandom());
-  lockedDev.mountChild("urandom", SpecialFiles::getURandom());
+  [[maybe_unused]] auto tmpDir = lockedRoot.insertDirectory("tmp", S_IRWXUGO);
+  assert(tmpDir);
 
   return rootDirectory;
 }
