@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.2.0
 -----
+- `tools/file_packager` no longer generates (or requires) any "pre-js" code when
+  running in `--embed-file` mode.  Instead the embedded files are loaded at
+  static constructor time.
 - Emscripten now knows what minimum browser versions the `WASM_BIGINT` feature
   requires and will automatically set the defaults accordingly. (#17163)
 - Weak undefined symbols fixed in dynamic linking. (#17164)

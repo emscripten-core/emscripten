@@ -336,11 +336,14 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-      # For now we need to do this sice the entry point can be either `main` or
-      # `__main_argv_argc`, but we should address that by using a single `_start`
-      # function like we do in STANDALONE_WASM mode.
-      cmd += ['--no-entry']
+      if settings.PROXY_TO_PTHREAD:
+        cmd += ['--entry=_emscripten_proxy_main']
+      else:
+        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+        # For now we need to do this sice the entry point can be either `main` or
+        # `__main_argv_argc`, but we should address that by using a single `_start`
+        # function like we do in STANDALONE_WASM mode.
+        cmd += ['--no-entry']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
