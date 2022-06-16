@@ -614,9 +614,15 @@ f.close()
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_print_search_dirs(self):
-    result = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('programs: =', result.stdout)
-    self.assertContained('libraries: =', result.stdout)
+    output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
+    self.assertContained('programs: =', output)
+    self.assertContained('libraries: =', output)
+    self.assertContained(str(shared.Cache.get_lib_dir(absolute=True)), output)
+
+  def test_emcc_print_file_name(self):
+    self.run_process([EMBUILDER, 'build', 'libc'])
+    output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
+    self.assertContained(shared.Cache.get_lib_name('libc.a'), output)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
