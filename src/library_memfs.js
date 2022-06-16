@@ -117,7 +117,12 @@ mergeInto(LibraryManager.library, {
       newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = node.contents;
-      node.contents = new Uint8Array(newCapacity); // Allocate new storage.
+      try {
+        node.contents = new Uint8Array(newCapacity); // Allocate new storage.
+      }
+      catch(e) {
+        throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+      }
       if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
     },
 
@@ -132,7 +137,12 @@ mergeInto(LibraryManager.library, {
         node.usedBytes = 0;
       } else {
         var oldContents = node.contents;
-        node.contents = new Uint8Array(newSize); // Allocate new storage.
+        try {
+          node.contents = new Uint8Array(newSize); // Allocate new storage.
+        }
+        catch(e) {
+          throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+        }
         if (oldContents) {
           node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
         }
