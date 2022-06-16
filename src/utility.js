@@ -92,7 +92,7 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-const global.LibraryParam = Object.freeze({
+global.LibraryParam = Object.freeze({
   DisallowOverride: 1,
 });
 
