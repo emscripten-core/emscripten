@@ -93,7 +93,7 @@ function sum(x) {
 }
 
 const LibraryParam = Object.freeze({
-  DisallowOverride: 1
+  DisallowOverride: 1,
 });
 
 // if allowOverride is false, it shows error in case of symbol redefinition
