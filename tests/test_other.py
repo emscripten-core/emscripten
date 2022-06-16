@@ -12204,3 +12204,16 @@ Module['postRun'] = function() {{
     self.assertContained('hello_world.o:(__original_main)', out)
     out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
     self.assertEqual(out, out2)
+
+  def test_rust_gxx_personality_v0(self):
+    self.do_run(r'''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern "C" {
+        int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
+        int main() {
+          __gxx_personality_v0(0, NULL, 0, NULL, NULL);
+          return 0;
+        }
+      }
+    ''', assert_returncode=NON_ZERO)
