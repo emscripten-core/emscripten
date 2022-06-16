@@ -39,32 +39,6 @@ let LibraryWebAudio = {
     return EmAudio[objectHandle];
   },
 
-  emscripten_destroy_audio_context__sig: 'vi',
-  emscripten_destroy_audio_context: function(contextHandle) {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_destroy_audio_context() on an already freed context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_destroy_audio_context() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
-#endif
-#if WEBAUDIO_DEBUG
-    console.log(`Destroyed WebAudio context with ID ${contextHandle}`);
-#endif
-    delete EmAudio[contextHandle];
-  },
-
-  emscripten_destroy_web_audio_node: function(objectHandle) {
-#if ASSERTIONS
-    assert(EmAudio[objectHandle], `Called emscripten_destroy_web_audio_node() on a nonexisting/already freed object handle ${objectHandle}`);
-    assert(EmAudio[objectHandle].disconnect, `Called emscripten_destroy_web_audio_node() on a handle ${objectHandle} that is not an Web Audio Node, but of type ${typeof EmAudio[objectHandle]}`);
-#endif
-#if WEBAUDIO_DEBUG
-    console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
-#endif
-    // Explicitly disconnect the node from Web Audio graph before letting it GC,
-    // to work around browser bugs such as https://bugs.webkit.org/show_bug.cgi?id=222098#c23
-    EmAudio[objectHandle].disconnect();
-    delete EmAudio[objectHandle];
-  },
-
   // emscripten_create_audio_context() does not itself use emscriptenGetAudioObject() function, but mark it as a
   // dependency, because the user will not be able to utilize the node unless they call emscriptenGetAudioObject()
   // on it on JS side to connect it to the graph, so this avoids the user needing to manually do it on the command line.
@@ -100,6 +74,52 @@ let LibraryWebAudio = {
     console.log(`emscripten_resume_audio_context_async() resuming...`);
 #endif
     EmAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
+  },
+
+  emscripten_resume_audio_context_sync: function(contextHandle) {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_resume_audio_context_sync() on a nonexisting context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_resume_audio_context_sync() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`AudioContext.resume() on WebAudio context with ID ${contextHandle}`);
+#endif
+    EmAudio[contextHandle].resume();
+  },
+
+  emscripten_audio_context_state: function(contextHandle) {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_audio_context_state() on a nonexisting context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_state() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#endif
+    return ['suspended', 'running', 'closed', 'interrupted'].indexOf(EmAudio[contextHandle].state);
+  },
+
+  emscripten_destroy_audio_context__sig: 'vi',
+  emscripten_destroy_audio_context: function(contextHandle) {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_destroy_audio_context() on an already freed context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_destroy_audio_context() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`Destroyed WebAudio context with ID ${contextHandle}`);
+#endif
+    EmAudio[contextHandle].suspend();
+    delete EmAudio[contextHandle];
+  },
+
+  emscripten_destroy_web_audio_node: function(objectHandle) {
+#if ASSERTIONS
+    assert(EmAudio[objectHandle], `Called emscripten_destroy_web_audio_node() on a nonexisting/already freed object handle ${objectHandle}`);
+    assert(EmAudio[objectHandle].disconnect, `Called emscripten_destroy_web_audio_node() on a handle ${objectHandle} that is not an Web Audio Node, but of type ${typeof EmAudio[objectHandle]}`);
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
+#endif
+    // Explicitly disconnect the node from Web Audio graph before letting it GC,
+    // to work around browser bugs such as https://bugs.webkit.org/show_bug.cgi?id=222098#c23
+    EmAudio[objectHandle].disconnect();
+    delete EmAudio[objectHandle];
   },
 
 #if AUDIO_WORKLET

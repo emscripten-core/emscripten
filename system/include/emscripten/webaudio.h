@@ -32,6 +32,7 @@ typedef int AUDIO_CONTEXT_STATE;
 #define AUDIO_CONTEXT_STATE_SUSPENDED 0
 #define AUDIO_CONTEXT_STATE_RUNNING 1
 #define AUDIO_CONTEXT_STATE_CLOSED 2
+#define AUDIO_CONTEXT_STATE_INTERRUPTED	3
 
 typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, AUDIO_CONTEXT_STATE state, void *userData);
 
@@ -39,7 +40,23 @@ typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audio
 // inside a user event handler (mousedown, button click, etc.)
 void emscripten_resume_audio_context_async(EMSCRIPTEN_WEBAUDIO_T audioContext, EmscriptenResumeAudioContextCallback callback, void *userData);
 
+// Synchronously attempts to resume the given AudioContext.
+void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
+// Returns the current AudioContext state.
+AUDIO_CONTEXT_STATE emscripten_audio_context_state(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
 typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData);
+
+// Calls .suspend() on the given AudioContext and releases the JS object table
+// reference to the given audio context. The specified handle is invalid
+// after calling this function.
+void emscripten_destroy_audio_context(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
+// Disconnects the given audio node from its audio graph, and then releases
+// the JS object table reference to the given audio node. The specified handle
+// is invalid after calling this function.
+void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.
