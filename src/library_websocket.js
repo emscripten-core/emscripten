@@ -416,7 +416,7 @@ var LibraryWebSocket = {
     err('emscripten_websocket_delete(socketId='+socketId+')');
 #endif
     socket.onopen = socket.onerror = socket.onclose = socket.onmessage = null;
-    delete WS.sockets[socket];
+    delete WS.sockets[socketId];
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

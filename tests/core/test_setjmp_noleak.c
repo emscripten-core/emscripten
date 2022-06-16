@@ -1,12 +1,12 @@
-#include <setjmp.h>
-#include <stdio.h>
 #include <assert.h>
+#include <emscripten/console.h>
+#include <setjmp.h>
 
 jmp_buf env;
 
 void luaWork(int d){
   int x;
-  printf("d is at %d\n", d);
+  _emscripten_outf("d is at %d\n", d);
 
   longjmp(env, 1);
 }
@@ -16,12 +16,12 @@ void luaWork(int d){
 
 void dump() {
   struct mallinfo m = mallinfo();
-  printf("dump: %d , %d\n", m.arena, m.uordblks);
+  _emscripten_outf("dump: %d , %d\n", m.arena, m.uordblks);
 }
 
 void work(int n)
 {
-  printf("work %d\n", n);
+  _emscripten_outf("work %d\n", n);
   dump();
 
   if(!setjmp(env)){
@@ -38,5 +38,5 @@ int main() {
   dump();
   struct mallinfo m2 = mallinfo();
   assert(m1.uordblks == m2.uordblks);
-  printf("ok.\n");
+  _emscripten_out("ok.\n");
 }

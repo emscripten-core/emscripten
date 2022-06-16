@@ -109,9 +109,9 @@ along with the main module, during startup and they are linked together
 before your application starts to run.
 
 -  Build one part of your code as the main module, linking it using
-   ``-s MAIN_MODULE``.
+   ``-sMAIN_MODULE``.
 -  Build other parts of your code as side modules, linking it using
-   ``-s SIDE_MODULE``.
+   ``-sSIDE_MODULE``.
 
 For the main module the output suffix should be ``.js`` (the WebAssembly
 file will be generated alongside it just like normal).  For the side
@@ -125,7 +125,7 @@ the command line when you link the main module. e.g.
 
 ::
 
-     emcc -s MAIN_MODULE main.c libsomething.wasm
+     emcc -sMAIN_MODULE main.c libsomething.wasm
 
 At runtime, the JavaScript loading code will load ``libsomthing.wasm`` (along
 with any other side modules) along with the main module before the application
@@ -171,7 +171,7 @@ libraries linked in, and also all the JS library code.
 
 That is the default behavior since it is the least surprising. But it is
 also possible to use normal dead code elimination, by building with
-``-s MAIN_MODULE=2`` (instead of 1). In that mode, the main module is
+``-sMAIN_MODULE=2`` (instead of 1). In that mode, the main module is
 built normally, with no special behavior for keeping code alive. It is
 then your responsibility to make sure that code that side modules need
 is kept alive. You can do this either by adding to ``EXPORTED_FUNCTIONS`` or
@@ -183,7 +183,7 @@ the side modules specified on the command line will be kept alive
 automatically. For this reason we strongly recommend using ``MAIN_MODULE=2``
 when doing load time dynamic linking.
 
-There is also the corresponding ``-s SIDE_MODULE=2`` for side modules.
+There is also the corresponding ``-sSIDE_MODULE=2`` for side modules.
 
 Miscellaneous Notes
 ===================
@@ -198,7 +198,7 @@ symbols remain unresolved, and code can start to run even if there are.
 It will run successfully if they are not called in practice. If they
 are, you will get a runtime error. What went wrong should be clear from
 the stack trace (in an unminified build); building with
-``-s ASSERTIONS`` can help some more.
+``-sASSERTIONS`` can help some more.
 
 Limitations
 -----------

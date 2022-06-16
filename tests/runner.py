@@ -64,6 +64,7 @@ passing_core_test_modes = [
   'wasm2jsz',
   'asan',
   'lsan',
+  'ubsan',
 ]
 
 # The default core test mode, used when none is specified
@@ -87,6 +88,8 @@ misc_test_modes = [
   'minimal0',
   'wasmfs',
   'wasm64',
+  'wasm64l',
+  'bigint',
 ]
 
 
@@ -141,23 +144,26 @@ def tests_with_expanded_wildcards(args, all_tests):
   return new_args
 
 
+def skip_test(tests_to_skip, modules):
+  suite_name, test_name = tests_to_skip.split('.')
+  skipped = False
+  for m in modules:
+    suite = getattr(m, suite_name, None)
+    if suite:
+      setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
+      skipped = True
+      break
+  assert skipped, "Not able to skip test " + tests_to_skip
+
+
 def skip_requested_tests(args, modules):
+  os.environ['EMTEST_SKIP'] = ''
   for i, arg in enumerate(args):
     if arg.startswith('skip:'):
-      which = [arg.split('skip:')[1]]
-
-      print(','.join(which), file=sys.stderr)
-      skipped = False
-      for test in which:
-        print('will skip "%s"' % test, file=sys.stderr)
-        suite_name, test_name = test.split('.')
-        for m in modules:
-          suite = getattr(m, suite_name, None)
-          if suite:
-            setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
-            skipped = True
-            break
-      assert skipped, "Not able to skip test " + test
+      which = arg.split('skip:')[1]
+      os.environ['EMTEST_SKIP'] = os.environ['EMTEST_SKIP'] + ' ' + which
+      print('will skip "%s"' % which, file=sys.stderr)
+      skip_test(which, modules)
       args[i] = None
   return [a for a in args if a is not None]
 
@@ -236,7 +242,7 @@ def replace_legacy_suite_names(args):
   newargs = []
 
   for a in args:
-    if a.startswith('wasm') and not a.startswith('wasm2js') and not a.startswith('wasmfs'):
+    if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
       print('warning: test suites in test_core.py have been renamed from `wasm` to `core`. Please use the new names')
       a = a.replace('wasm', 'core', 1)
     newargs.append(a)
@@ -432,3 +438,14 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
+else:
+  # We are not the main process, and most likely a child process of
+  # the multiprocess pool.  In this mode the modifications made to the
+  # test class by `skip_test` need to be re-applied in each child
+  # subprocess (sad but true).  This is needed in particular on macOS
+  # and Windows where the default mode for multiprocessing is `spawn`
+  # rather than `fork`
+  if 'EMTEST_SKIP' in os.environ:
+    modules = get_and_import_modules()
+    for skip in os.environ['EMTEST_SKIP'].split():
+      skip_test(skip, modules)

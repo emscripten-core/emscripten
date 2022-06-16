@@ -12,6 +12,13 @@
 
 // Roundtrip a (non-)null-terminated string between C++ and JS.
 EM_JS(void, roundtripString, (const char16_t* str, int strBytes, char16_t* result, int resultBytes), {
+#if __wasm64__
+  // TODO(sbc): Use a library helper to do this conversions
+  // See: https://github.com/emscripten-core/emscripten/pull/16787
+  str = Number(str);
+  strBytes = Number(strBytes);
+  result = Number(result);
+#endif
   var jsStr = UTF16ToString(str, strBytes >= 0 ? strBytes : undefined);
   out(jsStr);
   var bytesWritten = stringToUTF16(jsStr, result, resultBytes);

@@ -24,8 +24,14 @@ var LibraryBrowser = {
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };\n' +
-                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() }\n' +
-                     'Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) }',
+                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() };\n' +
+                     'Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) };\n' +
+#if MAIN_MODULE
+                     'var preloadedWasm = {};\n' +
+#endif
+                     'var preloadedImages = {};\n' +
+                     'var preloadedAudios = {};\n',
+
   $Browser: {
     mainLoop: {
       running: false,
@@ -157,7 +163,7 @@ var LibraryBrowser = {
           canvas.height = img.height;
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
-          Module["preloadedImages"][name] = canvas;
+          preloadedImages[name] = canvas;
           Browser.URLObject.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
@@ -178,13 +184,13 @@ var LibraryBrowser = {
         function finish(audio) {
           if (done) return;
           done = true;
-          Module["preloadedAudios"][name] = audio;
+          preloadedAudios[name] = audio;
           if (onload) onload(byteArray);
         }
         function fail() {
           if (done) return;
           done = true;
-          Module["preloadedAudios"][name] = new Audio(); // empty shim
+          preloadedAudios[name] = new Audio(); // empty shim
           if (onerror) onerror();
         }
         if (Browser.hasBlobConstructor) {
@@ -257,7 +263,7 @@ var LibraryBrowser = {
               return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
             }).then(
               function(module) {
-                Module['preloadedWasm'][name] = module;
+                preloadedWasm[name] = module;
                 onload();
               },
               function(err) {
@@ -707,7 +713,7 @@ var LibraryBrowser = {
     setFullscreenCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
@@ -718,7 +724,7 @@ var LibraryBrowser = {
     setWindowedCanvasSize: function() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
-        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
@@ -771,36 +777,6 @@ var LibraryBrowser = {
         }
       }
     },
-  },
-
-  $funcWrappers: {},
-
-  $getFuncWrapper__deps: ['$funcWrappers', '$dynCall'],
-  $getFuncWrapper: function(func, sig) {
-    if (!func) return; // on null pointer, return undefined
-    assert(sig);
-    if (!funcWrappers[sig]) {
-      funcWrappers[sig] = {};
-    }
-    var sigCache = funcWrappers[sig];
-    if (!sigCache[func]) {
-      // optimize away arguments usage in common cases
-      if (sig.length === 1) {
-        sigCache[func] = function dynCall_wrapper() {
-          return dynCall(sig, func);
-        };
-      } else if (sig.length === 2) {
-        sigCache[func] = function dynCall_wrapper(arg) {
-          return dynCall(sig, func, [arg]);
-        };
-      } else {
-        // general case
-        sigCache[func] = function dynCall_wrapper() {
-          return dynCall(sig, func, Array.prototype.slice.call(arguments));
-        };
-      }
-    }
-    return sigCache[func];
   },
 
   emscripten_run_preload_plugins__deps: ['$PATH',
@@ -1186,11 +1162,11 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__sig: 'viii',
+  emscripten_async_call__sig: 'vppi',
   emscripten_async_call__deps: ['$safeSetTimeout'],
   emscripten_async_call: function(func, arg, millis) {
     function wrapper() {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }
 
     if (millis >= 0
@@ -1399,7 +1375,7 @@ var LibraryBrowser = {
 
     path = PATH_FS.resolve(path);
 
-    var canvas = /** @type {HTMLCanvasElement} */(Module["preloadedImages"][path]);
+    var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
     if (canvas) {
       var ctx = canvas.getContext("2d");
       var image = ctx.getImageData(0, 0, canvas.width, canvas.height);

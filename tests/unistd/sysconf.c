@@ -5,9 +5,11 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 int main() {
   int vals[] = {
@@ -262,12 +264,11 @@ int main() {
 
   for (int i = 0; i < sizeof vals / sizeof vals[0]; i++) {
     printf("%s: %ld\n", names[i], sysconf(vals[i]));
-    printf("errno: %d\n\n", errno);
-    errno = 0;
+    assert(errno == 0);
   }
 
   printf("(invalid): %ld\n", sysconf(-123));
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
 
   return 0;
 }

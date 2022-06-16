@@ -668,7 +668,7 @@ fi
         f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"\n')
         # BINARYEN_ROOT needs to exist in the config, even though this test
         # doesn't actually use it.
-        f.write('BINARYEN_ROOT= "%s"\n' % self.in_dir('fake', 'bin'))
+        f.write('BINARYEN_ROOT = "%s"\n' % self.in_dir('fake', 'bin'))
 
       make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
       make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)

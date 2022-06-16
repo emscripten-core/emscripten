@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-LibraryManager.library = {
+mergeInto(LibraryManager.library, {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   //
@@ -36,6 +36,10 @@ LibraryManager.library = {
   setTempRet0__sig: 'vi',
   setTempRet0: function(val) {
     setTempRet0(val);
+  },
+
+  $ptrToString: function(ptr) {
+    return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
   $zeroMemory: function(address, size) {
@@ -83,7 +87,16 @@ LibraryManager.library = {
   },
 #endif
 
+  // Returns a pointer ('p'), which means an i32 on wasm32 and an i64 wasm64
+  // We have a separate JS version `getHeapMax()` which can be called directly
+  // avoiding any wrapper added for wasm64.
+  emscripten_get_heap_max__sig: 'p',
+  emscripten_get_heap_max__deps: ['$getHeapMax'],
   emscripten_get_heap_max: function() {
+    return getHeapMax();
+  },
+
+  $getHeapMax: function() {
 #if ALLOW_MEMORY_GROWTH
     // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
     // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
@@ -99,9 +112,9 @@ LibraryManager.library = {
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1 (that is, the default when growth is enabled is to not abort, but you have overridden that)');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). If you want malloc to return NULL (0) instead of this abort, do not link with -sABORTING_MALLOC (that is, the default when growth is enabled is to not abort, but you have overridden that)');
 #else // ALLOW_MEMORY_GROWTH
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ' + HEAP8.length + ', (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0');
 #endif // ALLOW_MEMORY_GROWTH
 #else // ASSERTIONS
     abort('OOM');
@@ -141,8 +154,9 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
+  emscripten_resize_heap__sig: 'ip',
   emscripten_resize_heap__deps: [
-    'emscripten_get_heap_max',
+    '$getHeapMax',
 #if ASSERTIONS == 2
     'emscripten_get_now',
 #endif
@@ -197,7 +211,7 @@ LibraryManager.library = {
 
     // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-    var maxHeapSize = _emscripten_get_heap_max();
+    var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -336,6 +350,7 @@ LibraryManager.library = {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
+  getloadavg__sig: 'ipi',
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
@@ -349,10 +364,13 @@ LibraryManager.library = {
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // (However, in MAIN_MODULE=1 mode we link in all system libraries, which does
+  // end up adding code that refers to this.)
+  // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
-#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
+#if (SHRINK_LEVEL < 2 || LINKABLE) && !STANDALONE_WASM
 
+  emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -382,7 +400,7 @@ LibraryManager.library = {
   // assert.h
   // ==========================================================================
 
-  __assert_fail__sig: 'viiii',
+  __assert_fail__sig: 'vppip',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
@@ -396,7 +414,7 @@ LibraryManager.library = {
     return Date.now();
   },
 
-  _mktime_js__sig: 'ii',
+  _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -438,7 +456,7 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  _gmtime_js__sig: 'iii',
+  _gmtime_js__sig: 'ipp',
   _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -453,7 +471,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
-  _timegm_js__sig: 'ii',
+  _timegm_js__sig: 'ip',
   _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -472,7 +490,7 @@ LibraryManager.library = {
     return (date.getTime() / 1000)|0;
   },
 
-  _localtime_js__sig: 'iii',
+  _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -496,7 +514,7 @@ LibraryManager.library = {
   },
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r__sig: 'iii',
+  __asctime_r__sig: 'ppp',
   __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -536,7 +554,7 @@ LibraryManager.library = {
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
   _tzset_js__deps: ['tzset_impl'],
-  _tzset_js__sig: 'viii',
+  _tzset_js__sig: 'vppp',
   _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (__tzset_js.called) return;
@@ -591,12 +609,6 @@ LibraryManager.library = {
     }
   },
 
-  __map_file__deps: ['$setErrNo'],
-  __map_file: function(pathname, size) {
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
-  },
-
   _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
 
@@ -647,7 +659,7 @@ LibraryManager.library = {
     , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
-  strftime__sig: 'iiiii',
+  strftime__sig: 'ppppp',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -946,6 +958,7 @@ LibraryManager.library = {
     , '$intArrayFromString'
 #endif
   ],
+  strptime__sig: 'pppp',
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -1024,12 +1037,12 @@ LibraryManager.library = {
         return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
-        year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
-        month: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32', 0, 0, 1) }}}, 0, 11),
-        day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32', 0, 0, 1) }}}, 1, 31),
-        hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32', 0, 0, 1) }}}, 0, 23),
-        min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32', 0, 0, 1) }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32', 0, 0, 1) }}}, 0, 59)
+        year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900 , 1970, 9999),
+        month: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32') }}}, 0, 11),
+        day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}}, 1, 31),
+        hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}}, 0, 23),
+        min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}}, 0, 59),
+        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59)
       };
     };
 
@@ -1186,22 +1199,10 @@ LibraryManager.library = {
 
     return 0;
   },
+  strptime_l__sig: 'pppp',
   strptime_l__deps: ['strptime'],
   strptime_l: function(buf, format, tm) {
     return _strptime(buf, format, tm); // no locale support yet
-  },
-
-  // ==========================================================================
-  // sys/timeb.h
-  // ==========================================================================
-
-  ftime: function(p) {
-    var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
-    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
   },
 
   // ==========================================================================
@@ -1683,7 +1684,7 @@ LibraryManager.library = {
   $readSockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
-    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
+    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'u16') }}});
     var addr;
 
     switch (family) {
@@ -1827,16 +1828,16 @@ LibraryManager.library = {
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
     var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
     stringToUTF8(name, nameBuf, name.length+1);
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
     var aliasesBuf = _malloc(4);
-    {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}};
+    {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
     var afinet = {{{ cDefine('AF_INET') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
     var addrListBuf = _malloc(12);
-    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}};
-    {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}};
+    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', POINTER_TYPE) }}};
+    {{{ makeSetValue('addrListBuf', '4', '0', POINTER_TYPE) }}};
     {{{ makeSetValue('addrListBuf', '8', 'inetPton4(DNS.lookup_name(name))', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
     return ret;
@@ -2100,14 +2101,14 @@ LibraryManager.library = {
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
         writeAsciiToMemory(alias, aliasBuf);
-        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', 'i8*') }}};
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
       }
-      {{{ makeSetValue('aliasListBuf', 'j', '0', 'i8*') }}}; // Terminating NULL pointer.
+      {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
 
       // generate protoent
       var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', 'i8*') }}};
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', 'i8**') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', POINTER_TYPE) }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', POINTER_TYPE) }}};
       {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
       return pe;
     };
@@ -2223,6 +2224,7 @@ LibraryManager.library = {
   },
 
   getentropy__deps: ['$getRandomDevice'],
+  getentropy__sig: 'ipp',
   getentropy: function(buffer, size) {
     if (!_getentropy.randomDevice) {
       _getentropy.randomDevice = getRandomDevice();
@@ -2245,6 +2247,7 @@ LibraryManager.library = {
 
   // Helper for raise() to avoid signature mismatch failures:
   // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler__sig: 'vpi',
   __call_sighandler: function(fp, sig) {
     {{{ makeDynCall('vi', 'fp') }}}(sig);
   },
@@ -2253,12 +2256,12 @@ LibraryManager.library = {
   // emscripten.h
   // ==========================================================================
 
-  emscripten_run_script__sig: 'vi',
+  emscripten_run_script__sig: 'vp',
   emscripten_run_script: function(ptr) {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
-  emscripten_run_script_int__sig: 'ii',
+  emscripten_run_script_int__sig: 'ip',
   emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
@@ -2267,7 +2270,7 @@ LibraryManager.library = {
   // We use builtin_malloc and builtin_free here because otherwise lsan will
   // report the last returned string as a leak.
   emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
-  emscripten_run_script_string__sig: 'ii',
+  emscripten_run_script_string__sig: 'pp',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2290,6 +2293,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_now__import: true,
+  emscripten_get_now__sig: 'd',
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
@@ -2419,7 +2423,9 @@ LibraryManager.library = {
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
-    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everything up to these from the output.
+    // Find the symbols in the callstack that corresponds to the functions that
+    // report callstack information, and remove everything up to these from the
+    // output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
@@ -2429,7 +2435,8 @@ LibraryManager.library = {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
-    // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
+    // If user requested to see the original source stack, but no source map
+    // information is available, just fall back to showing the JS stack.
     if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
@@ -2438,7 +2445,8 @@ LibraryManager.library = {
 
     var stack_args = null;
     if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
-      // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
+      // To get the actual parameters to the functions, traverse the stack via
+      // the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
       while (stack_args[1].includes('_emscripten_'))
         stack_args = traverseStack(stack_args[0]);
@@ -2447,9 +2455,15 @@ LibraryManager.library = {
     // Process all lines:
     var lines = callstack.split('\n');
     callstack = '';
-    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
-    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
-    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
+    // New FF30 with column info: extract components of form:
+    // '       Object._main@http://server.com:4324:12'
+    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
+    // Old FF without column info: extract components of form:
+    // '       Object._main@http://server.com:4324'
+    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?');
+    // Extract components of form:
+    // '    at Object._main (http://server.com/file.html:4324:12)'
+    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)');
 
     for (var l in lines) {
       var line = lines[l];
@@ -2472,9 +2486,12 @@ LibraryManager.library = {
           symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
-          column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          // Old Firefox doesn't carry column information, but in new FF30, it
+          // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          column = parts[4]|0;
         } else {
-          // Was not able to extract this line for demangling/sourcemapping purposes. Output it as-is.
+          // Was not able to extract this line for demangling/sourcemapping
+          // purposes. Output it as-is.
           callstack += line + '\n';
           continue;
         }
@@ -2499,7 +2516,8 @@ LibraryManager.library = {
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
-      // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
+      // If we are still keeping track with the callstack by traversing via
+      // 'arguments.callee', print the function parameters as well.
       if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
@@ -2515,6 +2533,10 @@ LibraryManager.library = {
 
   emscripten_get_callstack__deps: ['emscripten_get_callstack_js'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
+    // Use explicit calls to from64 rather then using the __sig
+    // magic here.  This is because the __sig wrapper uses arrow function
+    // notation which causes the inner call to traverseStack to fail.
+    {{{ from64('str') }}};
     var callstack = _emscripten_get_callstack_js(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
@@ -2553,6 +2575,7 @@ LibraryManager.library = {
     }
   },
 
+  emscripten_log__sig: 'vipp',
   emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
   emscripten_log: function(flags, format, varargs) {
     var result = formatString(format, varargs);
@@ -2563,12 +2586,13 @@ LibraryManager.library = {
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
+  emscripten_get_compiler_setting__sig: 'pp',
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number') return ret;
+    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
@@ -2578,7 +2602,7 @@ LibraryManager.library = {
     stringToUTF8(ret + '', cache[name], ret.length + 1);
     return cache[name];
 #else
-    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
+    throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
   },
 
@@ -2590,6 +2614,7 @@ LibraryManager.library = {
     debugger;
   },
 
+  emscripten_print_double__sig: 'iipi',
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -2603,7 +2628,7 @@ LibraryManager.library = {
   $convertFrameToPC__internal: true,
   $convertFrameToPC: function(frame) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
 #else
 #if ASSERTIONS
     assert(wasmOffsetConverter);
@@ -2632,60 +2657,75 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['$convertFrameToPC'],
+  emscripten_return_address__sig: 'pi',
+  emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: function(level) {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return convertFrameToPC(callstack[level + 2]);
+#if MEMORY64
+    // MEMORY64 injects and extra wrapper within emscripten_return_address
+    // to handle BigInt convertions.
+    var caller = callstack[level + 4];
+#else
+    var caller = callstack[level + 3];
+#endif
+    return convertFrameToPC(caller);
   },
 
   $UNWIND_CACHE: {},
 
-  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so that
-  // our representation of the program counter is mapped to the line of the stack trace
-  // for every line in the stack trace. This allows emscripten_pc_get_* to lookup the
-  // line of the stack trace from the PC and return meaningful information.
+  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so
+  // that our representation of the program counter is mapped to the line of the
+  // stack trace for every line in the stack trace. This allows
+  // emscripten_pc_get_* to lookup the line of the stack trace from the PC and
+  // return meaningful information.
   //
-  // Additionally, it saves a copy of the entire stack trace and the return address of
-  // the caller. This is because there are two common forms of a stack trace.
-  // The first form starts the stack trace at the caller of the function requesting a stack
-  // trace. In this case, the function can simply walk down the stack from the return address
-  // using emscripten_return_address with increasing values for level.
-  // The second form starts the stack trace at the current function. This requires a helper
-  // function to get the program counter. This helper function will return the return address.
-  // This is the program counter at the call site. But there is a problem: when calling into
-  // code that performs stack unwinding, the program counter has changed since execution
-  // continued from calling the helper function. So we can't just walk down the stack and expect
-  // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
-  // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
-  // will have to call emscripten_stack_snapshot to cache the stack. We also return the return
-  // address of the caller so the PC helper function does not need to call
-  // emscripten_return_address, saving a lot of time.
+  // Additionally, it saves a copy of the entire stack trace and the return
+  // address of the caller. This is because there are two common forms of a
+  // stack trace.  The first form starts the stack trace at the caller of the
+  // function requesting a stack trace. In this case, the function can simply
+  // walk down the stack from the return address using emscripten_return_address
+  // with increasing values for level.  The second form starts the stack trace
+  // at the current function. This requires a helper function to get the program
+  // counter. This helper function will return the return address.  This is the
+  // program counter at the call site. But there is a problem: when calling into
+  // code that performs stack unwinding, the program counter has changed since
+  // execution continued from calling the helper function. So we can't just walk
+  // down the stack and expect to see the PC value we got. By caching the call
+  // stack, we can call emscripten_stack_unwind with the PC value and use that
+  // to unwind the cached stack. Naturally, the PC helper function will have to
+  // call emscripten_stack_snapshot to cache the stack. We also return the
+  // return address of the caller so the PC helper function does not need to
+  // call emscripten_return_address, saving a lot of time.
   //
-  // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
-  // how many functions to skip from the stack. However, existing libraries do not work this way.
-  // For example, compiler-rt's sanitizer_common library has macros GET_CALLER_PC_BP_SP and
-  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases stated above,
-  // respectively. Then, it passes the PC, BP, SP values along until some other function uses them
-  // to unwind. On standard machines, the stack can be unwound by treating BP as a linked list.
-  // This makes PC unnecessary to walk the stack, since walking is done with BP, which remains
-  // valid until the function returns. But on Emscripten, BP does not exist, at least in
-  // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
-  // a PC value that may no longer be on the execution stack, and so we are forced to cache the
-  // entire call stack.
-  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache'],
+  // One might expect that a sensible solution is to call the stack unwinder and
+  // explicitly tell it how many functions to skip from the stack. However,
+  // existing libraries do not work this way.  For example, compiler-rt's
+  // sanitizer_common library has macros GET_CALLER_PC_BP_SP and
+  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases
+  // stated above, respectively. Then, it passes the PC, BP, SP values along
+  // until some other function uses them to unwind. On standard machines, the
+  // stack can be unwound by treating BP as a linked list.  This makes PC
+  // unnecessary to walk the stack, since walking is done with BP, which remains
+  // valid until the function returns. But on Emscripten, BP does not exist, at
+  // least in JavaScript frames, so we have to rely on PC values. Therefore, we
+  // must be able to unwind from a PC value that may no longer be on the
+  // execution stack, and so we are forced to cache the entire call stack.
+  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
+  emscripten_stack_snapshot__sig: 'p',
   emscripten_stack_snapshot: function () {
-    var callstack = new Error().stack.split('\n');
+    var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     saveInUnwindCache(callstack);
 
-    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
-    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[2]);
+    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can
+    // unwind from this spot.
+    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[3]);
     UNWIND_CACHE.last_stack = callstack;
     return UNWIND_CACHE.last_addr;
   },
@@ -2693,7 +2733,7 @@ LibraryManager.library = {
   $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
   $saveInUnwindCache__internal: true,
   $saveInUnwindCache: function (callstack) {
-    callstack.forEach(function (frame) {
+    callstack.forEach((frame) => {
       var pc = convertFrameToPC(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
@@ -2701,29 +2741,31 @@ LibraryManager.library = {
     });
   },
 
-  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
-  // addr must be the return address of the last call to emscripten_stack_snapshot, or this
-  // function will instead use the current call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC'],
+  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for
+  // how this is used.  addr must be the return address of the last call to
+  // emscripten_stack_snapshot, or this function will instead use the current
+  // call stack.
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
+  emscripten_stack_unwind_buffer__sig: 'ippi',
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
       stack = UNWIND_CACHE.last_stack;
     } else {
-      stack = new Error().stack.split('\n');
+      stack = jsStackTrace().split('\n');
       if (stack[0] == 'Error') {
         stack.shift();
       }
       saveInUnwindCache(stack);
     }
 
-    var offset = 2;
+    var offset = 3;
     while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
       ++offset;
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', 0, true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32') }}};
     }
     return i;
   },
@@ -2739,10 +2781,11 @@ LibraryManager.library = {
   ],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
+  emscripten_pc_get_function__sig: 'pp',
 #endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
 #else
     var name;
     if (pc & 0x80000000) {
@@ -2775,10 +2818,7 @@ LibraryManager.library = {
     var source;
 #if LOAD_SOURCE_MAP
     if (wasmSourceMap) {
-      var info = wasmSourceMap.lookup(pc);
-      if (info) {
-        source = {file: info.source, line: info.line, column: info.column};
-      }
+      source = wasmSourceMap.lookup(pc);
     }
 #endif
 
@@ -2806,6 +2846,7 @@ LibraryManager.library = {
   ],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
+  emscripten_pc_get_file__sig: 'pp',
   emscripten_pc_get_file: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
@@ -2817,6 +2858,7 @@ LibraryManager.library = {
 
   // Look up the line number from our stack frame cache with our PC representation.
   emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
+  emscripten_pc_get_line__sig: 'pp',
   emscripten_pc_get_line: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
@@ -2824,6 +2866,7 @@ LibraryManager.library = {
 
   // Look up the column number from our stack frame cache with our PC representation.
   emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
+  emscripten_pc_get_column__sig: 'pp',
   emscripten_pc_get_column: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
@@ -2861,9 +2904,13 @@ LibraryManager.library = {
 #endif
 
   $readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
+  $readAsmConstArgs__deps: [
+    '$readAsmConstArgsArray',
+#if MEMORY64
+    '$readI53FromI64',
+#endif
+  ],
   $readAsmConstArgs: function(sigPtr, buf) {
-    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -2877,19 +2924,42 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
+      var chr = String.fromCharCode(ch);
+      var validChars = ['d', 'f', 'i'];
+#if WASM_BIGINT
+      // In WASM_BIGINT mode we support passing i64 values as bigint.
+      validChars.push('j');
 #endif
-      // A double takes two 32-bit slots, and must also be aligned - the backend
-      // will emit padding to avoid that.
-      var readAsmConstArgsDouble = ch < 105;
-      if (readAsmConstArgsDouble && (buf & 1)) buf++;
-      readAsmConstArgsArray.push(readAsmConstArgsDouble ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+#if MEMORY64
+      // In MEMORY64 mode we also support passing i64 pointer types which
+      // get automatically converted to int53/Double.
+      validChars.push('p');
+#endif
+      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
+#endif
+      // Floats are always passed as doubles, and doubles and int64s take up 8
+      // bytes (two 32-bit slots) in memory, align reads to these:
+      buf += (ch != 105/*i*/) & buf;
+#if MEMORY64
+      // Special case for pointers under wasm64 which we read as int53 Numbers.
+      if (ch == 112/*p*/) {
+        readAsmConstArgsArray.push(readI53FromI64(buf++ << 2));
+      } else
+#endif
+      readAsmConstArgsArray.push(
+        ch == 105/*i*/ ? HEAP32[buf] :
+#if WASM_BIGINT
+       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
+#else
+       HEAPF64[buf++ >> 1]
+#endif
+      );
       ++buf;
     }
     return readAsmConstArgsArray;
   },
 
-  emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__sig: 'ippp',
   emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
@@ -2899,11 +2969,26 @@ LibraryManager.library = {
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
+#if MEMORY64
+    return Number(ASM_CONSTS[code].apply(null, args));
+#else
     return ASM_CONSTS[code].apply(null, args);
+#endif
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
 
+#if MEMORY64
+  emscripten_asm_const_ptr__sig: 'pppp',
+  emscripten_asm_const_ptr__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
+    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+  },
+#else
+  emscripten_asm_const_ptr: 'emscripten_asm_const_int',
+#endif
+
   $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
+  $mainThreadEM_ASM__sig: 'iippi',
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3039,6 +3124,7 @@ LibraryManager.library = {
 
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
+  __handle_stack_overflow__sig: 'vp',
   __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
@@ -3100,7 +3186,7 @@ LibraryManager.library = {
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
-    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"] linker flag to include it!');
+    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #else
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
@@ -3194,7 +3280,10 @@ LibraryManager.library = {
   $setWasmTableEntry__deps: ['$wasmTableMirror'],
   $setWasmTableEntry: function(idx, func) {
     wasmTable.set(idx, func);
-    wasmTableMirror[idx] = func;
+    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
+    // functions so we need to call it here to retrieve the potential wrapper correctly
+    // instead of just storing 'func' directly into wasmTableMirror
+    wasmTableMirror[idx] = wasmTable.get(idx);
   },
 
   $getWasmTableEntry__internal: true,
@@ -3283,7 +3372,7 @@ LibraryManager.library = {
   #endif
   },
 
-  emscripten_console_log__sig: 'vi',
+  emscripten_console_log__sig: 'vp',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3291,7 +3380,7 @@ LibraryManager.library = {
     console.log(UTF8ToString(str));
   },
 
-  emscripten_console_warn__sig: 'vi',
+  emscripten_console_warn__sig: 'vp',
   emscripten_console_warn: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3299,7 +3388,7 @@ LibraryManager.library = {
     console.warn(UTF8ToString(str));
   },
 
-  emscripten_console_error__sig: 'vi',
+  emscripten_console_error__sig: 'vp',
   emscripten_console_error: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3357,6 +3446,14 @@ LibraryManager.library = {
     err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
 #endif
 #endif
+  },
+
+  emscripten_runtime_keepalive_push: '$runtimeKeepalivePush',
+  emscripten_runtime_keepalive_pop: '$runtimeKeepalivePop',
+  emscripten_runtime_keepalive_check: function() {
+    // keepRuntimeAlive is a runtime function rather than a library function,
+    // so we can't use an alias like we do for the two functions above.
+    return keepRuntimeAlive();
   },
 
   // Used to call user callbacks from the embedder / event loop.  For example
@@ -3500,13 +3597,13 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
-  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
   __table_base__import: true,
 #if MEMORY64
   __table_base32: 1,
@@ -3518,17 +3615,43 @@ LibraryManager.library = {
   // global, basically).
   __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
-#if EXCEPTION_HANDLING
+#if WASM_EXCEPTIONS
   // In dynamic linking we define tags here and feed them to each module
-  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
   __cpp_exception__import: true,
 #endif
 #if SUPPORT_LONGJMP == 'wasm'
-  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
   __c_longjmp_import: true,
 #endif
 #endif
-};
+
+  _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
+  _emscripten_fs_load_embedded_files__sig: 'vp',
+  _emscripten_fs_load_embedded_files: function(ptr) {
+#if RUNTIME_DEBUG
+    err('preloading data files');
+#endif
+    do {
+      var name_addr = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var len = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var content = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var name = UTF8ToString(name_addr)
+#if RUNTIME_DEBUG
+      err('preloading files: ' + name);
+#endif
+      FS.createPath('/', PATH.dirname(name), true, true);
+      // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+    } while ({{{ makeGetValue('ptr', '0', '*') }}});
+#if RUNTIME_DEBUG
+    err('done preloading data files');
+#endif
+  },
+});
 
 function autoAddDeps(object, name) {
   for (var item in object) {

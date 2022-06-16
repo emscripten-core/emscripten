@@ -46,6 +46,10 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
+void _emscripten_yield() {
+  // nop
+}
+
 int pthread_mutex_init(
   pthread_mutex_t* __restrict mutex, const pthread_mutexattr_t* __restrict attr) {
   return 0;
@@ -281,11 +285,11 @@ int pthread_attr_destroy(pthread_attr_t *attr) {
   return 0;
 }
 
-int pthread_setcancelstate() {
+int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
 
-int pthread_setcanceltype() {
+int pthread_setcanceltype(int type, int* oldtype) {
   return 0;
 }
 

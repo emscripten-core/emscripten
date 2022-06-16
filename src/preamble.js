@@ -42,7 +42,13 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
+#if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
 
 // Wasm globals
 
@@ -97,6 +103,9 @@ function getCFunc(ident) {
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
+#if MEMORY64
+    'pointer': (p) => {{{ to64('p') }}},
+#endif
     'string': function(str) {
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
@@ -105,17 +114,23 @@ function ccall(ident, returnType, argTypes, args, opts) {
         ret = stackAlloc(len);
         stringToUTF8(str, ret, len);
       }
-      return ret;
+      return {{{ to64('ret') }}};
     },
     'array': function(arr) {
       var ret = stackAlloc(arr.length);
       writeArrayToMemory(arr, ret);
-      return ret;
+      return {{{ to64('ret') }}};
     }
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      {{{ from64('ret') }}}
+      return UTF8ToString(ret);
+    }
+#if MEMORY64
+    if (returnType === 'pointer') return Number(ret);
+#endif
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -290,7 +305,7 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -306,8 +321,8 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #else // IMPORTED_MEMORY
 #if ASSERTIONS
 // If memory is defined in wasm, the user can't provide it.
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -s IMPORTED_MEMORY to define wasmMemory externally');
-assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -s IMPORTED_MEMORY to define wasmMemory dynamically');
+assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
+assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // ASSERTIONS
 #endif // IMPORTED_MEMORY
 
@@ -356,9 +371,6 @@ function preRun() {
 }
 
 function initRuntime() {
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
 #if ASSERTIONS
   assert(!runtimeInitialized);
 #endif
@@ -370,6 +382,10 @@ function initRuntime() {
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -564,12 +580,6 @@ function removeRunDependency(id) {
   }
 }
 
-Module["preloadedImages"] = {}; // maps url to image data
-Module["preloadedAudios"] = {}; // maps url to audio data
-#if MAIN_MODULE
-Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-#endif
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -599,18 +609,26 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  what += '. Build with -s ASSERTIONS=1 for more info.';
+  what += '. Build with -sASSERTIONS for more info.';
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
+  // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
+  // a trap or not based on a hidden field within the object. So at the moment
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
+#if WASM_EXCEPTIONS == 1
+  // See above, in the meantime, we resort to wasm code for trapping.
+  ___trap();
+#else
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -621,6 +639,7 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
+#endif
 }
 
 // {{MEM_INITIALIZER}}
@@ -631,7 +650,7 @@ function abort(what) {
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
-    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
+    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
   },
   init: function() { FS.error() },
   createDataFile: function() { FS.error() },
@@ -740,7 +759,6 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -753,52 +771,6 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
-
-#if MEMORY64
-// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
-// BigInts. For now we keep JS as much the same as it always was, that is,
-// stackAlloc() receives and returns a Number from the JS point of view -
-// we translate BigInts automatically for that.
-// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
-// back on for MEMORY64.
-function instrumentWasmExportsForMemory64(exports) {
-  var instExports = {};
-  for (var name in exports) {
-    (function(name) {
-      var original = exports[name];
-      var replacement = original;
-      if (name === 'stackAlloc' || name === 'malloc') {
-        // get one i64, return an i64
-        replacement = (x) => {
-          var r = Number(original(BigInt(x)));
-          return r;
-        };
-      } else if (name === 'free') {
-        // get one i64
-        replacement = (x) => {
-          original(BigInt(x));
-        };
-      } else if (name === 'emscripten_stack_get_end' ||
-                 name === 'emscripten_stack_get_base' ||
-                 name === 'emscripten_stack_get_current') {
-        // return an i64
-        replacement = () => {
-          var r = Number(original());
-          return r;
-        };
-      } else if (name === 'main') {
-        // get a i64 as second arg
-        replacement = (x, y) => {
-          var r = original(x, BigInt(y));
-          return r;
-        };
-      }
-      instExports[name] = replacement;
-    })(name);
-  }
-  return instExports;
-}
-#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
@@ -889,7 +861,7 @@ var wasmOffsetConverter;
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
@@ -910,6 +882,13 @@ var splitModuleProxyHandler = {
     }
   }
 };
+#endif
+
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runOnMainThread("removeRunDependency('source-map');") }}}
+}
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
@@ -1040,9 +1019,9 @@ function createWasm() {
 
 #if USE_PTHREADS
 #if MAIN_MODULE
-    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
 #else
-    registerTlsInit(Module['asm']['emscripten_tls_init']);
+    registerTLSInit(Module['asm']['_emscripten_tls_init']);
 #endif
 #endif
 
@@ -1129,11 +1108,6 @@ function createWasm() {
 
 #if LOAD_SOURCE_MAP
   {{{ runOnMainThread("addRunDependency('source-map');") }}}
-
-  function receiveSourceMapJSON(sourceMap) {
-    wasmSourceMap = new WasmSourceMap(sourceMap);
-    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
-  }
 #endif
 
   // Prefer streaming instantiation if available.
@@ -1214,6 +1188,15 @@ function createWasm() {
 #if ENVIRONMENT_MAY_BE_WEBVIEW
         // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
         !isFileURI(wasmBinaryFile) &&
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+        // Avoid instantiateStreaming() on Node.js environment for now, as while
+        // Node.js v18.1.0 implements it, it does not have a full fetch()
+        // implementation yet.
+        //
+        // Reference:
+        //   https://github.com/emscripten-core/emscripten/pull/16917
+        !ENVIRONMENT_IS_NODE &&
 #endif
         typeof fetch == 'function') {
       return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {

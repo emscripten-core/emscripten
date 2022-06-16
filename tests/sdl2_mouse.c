@@ -26,11 +26,10 @@ void one() {
         printf("motion : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
 
         if (mouse_motions == 0) {
-          // xrel/yrel will be zero for the first motion
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 0) && eq(m->yrel, 0));
+          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 5) && eq(m->yrel, 15));
 #else
-          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 0) && eq(m->yrel, 0));
+          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 10) && eq(m->yrel, 20));
 #endif
         } else if (mouse_motions == 1) {
 #ifdef TEST_SDL_MOUSE_OFFSETS

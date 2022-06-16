@@ -15,21 +15,6 @@
         }
     },
     {
-        "file": "limits.h",
-        "defines": [
-            "INT_MAX"
-        ]
-    },
-    {
-        "file": "utime.h",
-        "structs": {
-            "utimbuf": [
-                "actime",
-                "modtime"
-            ]
-        }
-    },
-    {
         "file": "sys/stat.h",
         "defines": [
             "S_IFDIR",
@@ -147,20 +132,9 @@
         }
     },
     {
-        "file": "sys/time.h",
-        "structs": {
-            "timeval": [
-                "tv_sec",
-                "tv_usec"
-            ]
-        }
-    },
-    {
         "file": "time.h",
         "defines": [
-            "CLOCK_REALTIME",
-            "CLOCK_MONOTONIC",
-            "CLOCK_MONOTONIC_RAW"
+            "CLOCK_REALTIME"
         ],
         "structs": {
             "tm": [
@@ -179,17 +153,6 @@
             "timespec": [
                 "tv_sec",
                 "tv_nsec"
-            ]
-        }
-    },
-    {
-        "file": "compat/sys/timeb.h",
-        "structs": {
-            "timeb": [
-                "time",
-                "millitm",
-                "timezone",
-                "dstflag"
             ]
         }
     },
@@ -1185,9 +1148,10 @@
                 "offset",
                 "length"
             ],
-            "WGPUComputePassDescriptor": [
-                "nextInChain",
-                "label"
+            "WGPUComputePassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1270,6 +1234,10 @@
                 "pipelineStatistics",
                 "pipelineStatisticsCount"
             ],
+            "WGPUQueueDescriptor": [
+                "nextInChain",
+                "label"
+            ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
                 "label"
@@ -1288,12 +1256,17 @@
                 "view",
                 "depthLoadOp",
                 "depthStoreOp",
-                "clearDepth",
+                "depthClearValue",
                 "depthReadOnly",
                 "stencilLoadOp",
                 "stencilStoreOp",
-                "clearStencil",
+                "stencilClearValue",
                 "stencilReadOnly"
+            ],
+            "WGPURenderPassTimestampWrite": [
+                "querySet",
+                "queryIndex",
+                "location"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1414,6 +1387,12 @@
                 "messageCount",
                 "messages"
             ],
+            "WGPUComputePassDescriptor": [
+                "nextInChain",
+                "label",
+                "timestampWriteCount",
+                "timestampWrites"
+            ],
             "WGPUDepthStencilState": [
                 "nextInChain",
                 "format",
@@ -1451,7 +1430,7 @@
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
-                "clearColor"
+                "clearValue"
             ],
             "WGPURequiredLimits": [
                 "nextInChain",
@@ -1469,7 +1448,9 @@
                 "size",
                 "format",
                 "mipLevelCount",
-                "sampleCount"
+                "sampleCount",
+                "viewFormatCount",
+                "viewFormats"
             ],
             "WGPUVertexBufferLayout": [
                 "arrayStride",
@@ -1500,7 +1481,8 @@
                 "label",
                 "requiredFeaturesCount",
                 "requiredFeatures",
-                "requiredLimits"
+                "requiredLimits",
+                "defaultQueue"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
@@ -1508,7 +1490,9 @@
                 "colorAttachmentCount",
                 "colorAttachments",
                 "depthStencilAttachment",
-                "occlusionQuerySet"
+                "occlusionQuerySet",
+                "timestampWriteCount",
+                "timestampWrites"
             ],
             "WGPUVertexState": [
                 "nextInChain",

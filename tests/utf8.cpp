@@ -22,7 +22,7 @@ int main() {
   char asciiString2[128] = {};
   EM_ASM({
     var str = AsciiToString($0);
-    out(str);
+    out("stringToAscii " + $0 + " -> " + str);
     stringToAscii(str, $1);
   }, asciiString, asciiString2);
   assert(!strcmp(asciiString, asciiString2));

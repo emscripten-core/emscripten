@@ -13,7 +13,6 @@
 #include <sys/mman.h>
 
 #include <emscripten/heap.h>
-#include <emscripten/emmalloc.h>
 
 #include "lock.h"
 #include "syscall.h"
@@ -34,11 +33,11 @@ static volatile int lock[1];
 static struct map* mappings;
 
 // JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-long _mmap_js(long addr, long length, long prot, long flags, long fd, long offset, int* allocated);
-long _munmap_js(long addr, long length, long prot, long flags, long fd, long offset);
-long _msync_js(long addr, long length, long flags, long fd);
+intptr_t _mmap_js(size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
+int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+int _msync_js(intptr_t addr, size_t length, int flags, int fd);
 
-static struct map* find_mapping(long addr, struct map** prev) {
+static struct map* find_mapping(intptr_t addr, struct map** prev) {
   struct map* map = mappings;
   while (map) {
     if (map->addr == (void*)addr) {
@@ -52,7 +51,7 @@ static struct map* find_mapping(long addr, struct map** prev) {
   return map;
 }
 
-long __syscall_munmap(long addr, long length) {
+int __syscall_munmap(intptr_t addr, size_t length) {
   LOCK(lock);
   struct map* prev = NULL;
   struct map* map = find_mapping(addr, &prev);
@@ -95,7 +94,7 @@ long __syscall_munmap(long addr, long length) {
   return 0;
 }
 
-long __syscall_msync(long addr, long len, long flags) {
+int __syscall_msync(intptr_t addr, size_t len, int flags) {
   LOCK(lock);
   struct map* map = find_mapping(addr, NULL);
   UNLOCK(lock);
@@ -108,9 +107,9 @@ long __syscall_msync(long addr, long len, long flags) {
   return _msync_js(addr, len, map->flags, map->fd);
 }
 
-long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
-  // addr argument must be page aligned if MAP_FIXED flag is set.
-  if (flags & MAP_FIXED && (addr % WASM_PAGE_SIZE) != 0) {
+intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
+  if (addr != 0) {
+    // We don't currently support location hints for the address of the mapping
     return -EINVAL;
   }
 
@@ -133,7 +132,7 @@ long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long o
     new_map->allocated = true;
   } else {
     new_map = emscripten_builtin_malloc(sizeof(struct map));
-    long rtn = _mmap_js(addr, len, prot, flags, fd, off, &new_map->allocated);
+    long rtn = _mmap_js(len, prot, flags, fd, off, &new_map->allocated);
     if (rtn < 0) {
       emscripten_builtin_free(new_map);
       return rtn;

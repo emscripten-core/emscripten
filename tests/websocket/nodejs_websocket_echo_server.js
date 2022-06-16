@@ -16,21 +16,23 @@ function hexDump(bytes) {
   console.log(s);
 }
 
+var decoder = new TextDecoder('utf-8');
 var port = 8088;
 var ws = require('ws');
-var wss = new ws.Server({ port: port });
+var wss = new ws.WebSocketServer({ port: port });
 console.log('WebSocket server listening on ws://localhost:' + port + '/');
 wss.on('connection', function(ws) {
   console.log('Client connected!');
-  ws.on('message', function(message) {
-    if (typeof message === 'string') {
-      console.log('received TEXT: ' + message.length + ' characters:');
-      console.log('  "' + message + '"');
+  ws.on('message', function(message, isBinary) {
+    if (!isBinary) {
+      var text = decoder.decode((new Uint8Array(message)).buffer);
+      console.log('received TEXT: ' + text.length + ' characters:');
+      console.log('  "' + text + '"');
     } else {
       console.log('received BINARY: ' + message.length + ' bytes:');
       hexDump(message);
     }
     console.log('');
-    ws.send(message); // Echo back the received message
+    ws.send(message, { binary: isBinary }); // Echo back the received message
   });
 });

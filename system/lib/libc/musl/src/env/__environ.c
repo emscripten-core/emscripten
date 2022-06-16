@@ -8,9 +8,7 @@ weak_alias(__environ, environ);
 #ifdef __EMSCRIPTEN__
 #include <stdlib.h>
 #include <wasi/api.h>
-// Included for emscripten_builtin_free / emscripten_builtin_malloc
-// TODO(sbc): Should these be in their own header to avoid emmalloc here?
-#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
 
 // We use emscripten_builtin_malloc here because this memory is never freed and
 // and we don't want LSan to consider this a leak.

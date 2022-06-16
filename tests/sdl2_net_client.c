@@ -12,7 +12,7 @@
  *
  * or
  *
- * emcc -Wall sdl2_net_client.c -s USE_SDL_NET=2 -s USE_SDL=2 -o sdl2_net_client.js
+ * emcc -Wall sdl2_net_client.c -sUSE_SDL_NET=2 -sUSE_SDL=2 -o sdl2_net_client.js
  */
 
 #include <stdio.h>

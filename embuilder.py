@@ -16,6 +16,7 @@ import argparse
 import logging
 import sys
 import time
+from contextlib import contextmanager
 
 from tools import shared
 from tools import system_libs
@@ -29,8 +30,8 @@ MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc-debug',
-    'libc-optz',
-    'libc-optz-debug',
+    'libc_optz',
+    'libc_optz-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
@@ -39,6 +40,8 @@ MINIMAL_TASKS = [
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
+    'libdlmalloc-noerrno',
+    'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libemmalloc',
     'libemmalloc-debug',
@@ -53,8 +56,36 @@ MINIMAL_TASKS = [
     'struct_info',
     'libstandalonewasm',
     'crt1',
+    'crt1_proxy_main',
     'libunwind-except',
     'libnoexit',
+]
+
+# Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
+# CI (which has slightly more tests than other modes that want to use MINIMAL)
+MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+    'libcompiler_rt-mt',
+    'libcompiler_rt-wasm-sjlj',
+    'libc-mt',
+    'libc-mt-debug',
+    'libc_optz-mt',
+    'libc_optz-mt-debug',
+    'libc++abi-mt',
+    'libc++abi-mt-noexcept',
+    'libc++-mt',
+    'libc++-mt-noexcept',
+    'libdlmalloc-mt',
+    'libGL-emu',
+    'libGL-mt',
+    'libsockets_proxy',
+    'libsockets-mt',
+    'crtbegin',
+    'libsanitizer_common_rt',
+    'libubsan_rt',
+    'libwasm_workers_stub-debug',
+    'libwebgpu_cpp',
+    'libfetch',
+    'libwasmfs',
 ]
 
 # Variant builds that we want to support for certain ports
@@ -69,11 +100,12 @@ PORT_VARIANTS = {
     'sdl2_mixer_none': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': []}),
     'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
     'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
+    'libpng-mt': ('libpng', {'USE_PTHREADS': 1}),
 }
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
-temp_files = shared.configuration.get_temp_files()
+temp_files = shared.get_temp_files()
 logger = logging.getLogger('embuilder')
 legacy_prefixes = {
   'libgl': 'libGL',
@@ -92,22 +124,30 @@ Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
 
 
-def clear_port(port_name):
-  ports.clear_port(port_name, settings)
-
-
-def build_port(port_name):
-  if port_name in PORT_VARIANTS:
-    port_name, extra_settings = PORT_VARIANTS[port_name]
+@contextmanager
+def get_port_variant(name):
+  if name in PORT_VARIANTS:
+    name, extra_settings = PORT_VARIANTS[name]
     old_settings = settings.dict().copy()
     for key, value in extra_settings.items():
       setattr(settings, key, value)
   else:
     old_settings = None
 
-  ports.build_port(port_name, settings)
+  yield name
+
   if old_settings:
     settings.dict().update(old_settings)
+
+
+def clear_port(port_name):
+  with get_port_variant(port_name) as port_name:
+    ports.clear_port(port_name, settings)
+
+
+def build_port(port_name):
+  with get_port_variant(port_name) as port_name:
+    ports.build_port(port_name, settings)
 
 
 def get_system_tasks():
@@ -182,12 +222,15 @@ def main():
   elif 'MINIMAL' in tasks:
     tasks = MINIMAL_TASKS
     auto_tasks = True
+  elif 'MINIMAL_PIC' in tasks:
+    tasks = MINIMAL_PIC_TASKS
+    auto_tasks = True
   elif 'ALL' in tasks:
     tasks = system_tasks + PORTS
     auto_tasks = True
   if auto_tasks:
-    # cocos2d: must be ported, errors on
-    # "Cannot recognize the target platform; are you targeting an unsupported platform?"
+    # There are some ports that we don't want to build as part
+    # of ALL since the are not well tested or widely used:
     skip_tasks = ['cocos2d']
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))

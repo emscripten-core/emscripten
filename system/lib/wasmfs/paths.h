@@ -73,4 +73,9 @@ public:
 
 ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
 
+// Like `parseFile`, but handle the case where `flags & AT_EMPTY_PATH`. Does not
+// validate the flags since different callers have different allowed flags.
+// TODO: Handle AT_SYMLINK_NOFOLLOW as well.
+ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags);
+
 } // namespace wasmfs::path

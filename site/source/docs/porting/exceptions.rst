@@ -28,7 +28,7 @@ The first ``throw`` will abort the program and you'll see something like this in
 .. code-block:: text
 
   throw...  
-  exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -s NO_DISABLE_EXCEPTION_CATCHING or -s EXCEPTION_CATCHING_ALLOWED=[..] to catch.
+  exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.
 
 If you want to opt-in, you have two following options.
 

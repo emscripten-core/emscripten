@@ -1,12 +1,9 @@
 #define SYS_link		  __syscall_link
 #define SYS_chdir		 __syscall_chdir
-#define SYS_mknod		 __syscall_mknod
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
 #define SYS_pause		 __syscall_pause
-#define SYS_nice		 __syscall_nice
 #define SYS_sync		 __syscall_sync
-#define SYS_mkdir		 __syscall_mkdir
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
 #define SYS_pipe		 __syscall_pipe
@@ -49,7 +46,6 @@
 #define SYS_stat64		__syscall_stat64
 #define SYS_lstat64		__syscall_lstat64
 #define SYS_fstat64		__syscall_fstat64
-#define SYS_lchown32		__syscall_lchown32
 #define SYS_getuid32		__syscall_getuid32
 #define SYS_getgid32		__syscall_getgid32
 #define SYS_geteuid32		__syscall_geteuid32
@@ -58,14 +54,13 @@
 #define SYS_fchown32		__syscall_fchown32
 #define SYS_getresuid32	__syscall_getresuid32
 #define SYS_getresgid32	__syscall_getresgid32
-#define SYS_chown32		__syscall_chown32
 #define SYS_mincore		__syscall_mincore
 #define SYS_madvise		__syscall_madvise
 #define SYS_getdents64		__syscall_getdents64
 #define SYS_fcntl64		__syscall_fcntl64
 #define SYS_statfs64		__syscall_statfs64
 #define SYS_fstatfs64		__syscall_fstatfs64
-#define SYS_fadvise64_64	__syscall_fadvise64_64
+#define SYS_fadvise64		__syscall_fadvise64
 #define SYS_openat		__syscall_openat
 #define SYS_mkdirat		__syscall_mkdirat
 #define SYS_mknodat		__syscall_mknodat

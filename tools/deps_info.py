@@ -94,7 +94,6 @@ _deps_info = {
   'emscripten_idb_async_load': ['malloc', 'free'],
   'emscripten_idb_load': ['malloc', 'free'],
   'emscripten_init_websocket_to_posix_socket_bridge': ['malloc', 'free'],
-  'emscripten_log': ['strlen'],
   # This list is the same as setjmp's dependencies. In non-LTO builds, setjmp
   # does not exist in the object files; it is converted into a code sequence
   # that includes several functions, one of which is emscripten_longjmp. This is
@@ -194,8 +193,9 @@ _deps_info = {
 
 
 def get_deps_info():
-  if not settings.EXCEPTION_HANDLING and settings.LINK_AS_CXX:
+  if not settings.WASM_EXCEPTIONS and settings.LINK_AS_CXX:
     _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
+    _deps_info['__cxa_throw'] = ['__cxa_is_pointer_type']
     _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch']
@@ -217,4 +217,5 @@ def get_deps_info():
     _deps_info['emscripten_set_offscreencanvas_size_on_target_thread_js'] = ['malloc']
   if settings.USE_PTHREADS:
     _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['emscripten_dispatch_to_thread_']
+
   return _deps_info

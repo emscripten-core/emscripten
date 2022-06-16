@@ -12,10 +12,11 @@ executors:
       - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
-      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
+      EMTEST_BUILD_VERBOSE: "2"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -30,10 +31,10 @@ commands:
           name: download chrome
           command: |
             # Using stable rather than beta until we can fix
-            # Currently downloading form our own buckets due to:
-            # https://github.com/emscripten-core/emscripten/issues/14987
-            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-            wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            # https://github.com/emscripten-core/emscripten/issues/14369
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # If that download link breaks, temporarily use this URL instead:
+            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -118,7 +119,7 @@ commands:
       - run:
           name: embuilder (PIC)
           command: |
-            ./embuilder build SYSTEM --pic
+            ./embuilder build MINIMAL_PIC --pic
             ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
@@ -155,6 +156,7 @@ commands:
       - emsdk-env
       - npm-install
       - pip-install
+      - run: apt-get install ninja-build
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -205,8 +207,6 @@ commands:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
-          # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
-          # which is not included in emsdk (not compatible with FROZEN_CACHE).
           name: run tests
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
@@ -220,10 +220,14 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
+            # There are a tests in the browser test suite that using library
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
             echo "-----"
             echo "Running browser tests"
             echo "-----"
-            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget skip:browser.test_sdl2_misc_main_module
+            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
@@ -239,16 +243,18 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            # There are a tests in the browser test suite that using library
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
-            # which is not included in emsdk (not compatible with FROZEN_CACHE).
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_sdl2_misc_main_module
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
             tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -298,6 +304,13 @@ jobs:
           test_targets: "sanity"
   build-linux:
     executor: bionic
+    # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
+    # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
+    # cost for the same work), but given this blocks almost all the other jobs
+    # we want it to finish asap
+    resource_class: xlarge
+    environment:
+      EMCC_CORES: 16
     steps:
       - checkout
       - run:
@@ -349,7 +362,9 @@ jobs:
       EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
-          test_targets: "core0"
+          # test_em_js_pthreads current triggers a bug in python metadata
+          # extraction: https://github.com/emscripten-core/emscripten/issues/16573
+          test_targets: "core0 skip:core0.test_em_js_pthreads"
   test-core2:
     executor: bionic
     environment:
@@ -357,14 +372,51 @@ jobs:
     steps:
       - run-tests-linux:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
-          test_targets: "core2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
+          test_targets: "
+            core2
+            asan.test_stat
+            asan.test_float_builtins
+            asan.test_embind*
+            asan.test_abort_on_exceptions
+            asan.test_ubsan_full_left_shift_fsanitize_integer
+            asan.test_pthread*
+            asan.test_dyncall_specific_minimal_runtime
+            asan.test_async_hello
+            lsan.test_stdio_locking
+            lsan.test_pthread_create
+            browser.test_pthread_join"
   test-core3:
     executor: bionic
     steps:
       - run-tests-linux:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
-          test_targets: "core3 wasm2js3.test_memorygrowth_2 wasmfs.test_hello_world wasmfs.test_hello_world_standalone wasmfs.test_unistd_links* wasmfs.test_atexit_standalone wasmfs.test_emscripten_get_now wasmfs.test_dyncall_specific_minimal_runtime core2ss.test_pthread_dylink wasmfs.test_utime wasmfs.test_unistd_unlink wasmfs.test_unistd_access wasmfs.test_unistd_close wasmfs.test_unistd_truncate wasmfs.test_readdir wasmfs.test_unistd_pipe"
+          test_targets: "
+            core3
+            core2ss.test_pthread_dylink
+            core2ss.test_pthread_thread_local_storage
+            wasm2js3.test_memorygrowth_2
+            other.test_unistd_fstatfs_wasmfs
+            wasmfs.test_hello_world
+            wasmfs.test_hello_world_standalone
+            wasmfs.test_unistd_links*
+            wasmfs.test_atexit_standalone
+            wasmfs.test_emscripten_get_now
+            wasmfs.test_dyncall_specific_minimal_runtime
+            wasmfs.test_utime
+            wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_access
+            wasmfs.test_unistd_close
+            wasmfs.test_unistd_truncate
+            wasmfs.test_readdir
+            wasmfs.test_unistd_pipe
+            wasmfs.test_dlfcn_self
+            wasmfs.test_dlfcn_unique_sig
+            wasmfs.test_dylink_basics
+            wasmfs.test_exit_status
+            wasmfs.test_minimal_runtime_memorygrowth
+            wasmfs.test_mmap_anon*
+            wasmfs.test_getcwd_with_non_ascii_name"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -374,7 +426,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world"
+          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
   test-other:
     executor: bionic
     steps:
@@ -402,9 +454,6 @@ jobs:
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
-      # Override the default locale to use UTF-8 encoding for all files and stdio 
-      # streams (see PEP540), since oure test files are encoded with UTF-8.
-      PYTHONUTF8: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
@@ -415,26 +464,44 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install cmake.portable ninja
-            choco install python --version 3.8.0
+            choco install cmake.portable ninja pkgconfiglite
       - run:
           name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python38/:/c/python38/Scripts/\"" >> $BASH_ENV
+          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding other.test_libc_progname other.test_realpath other.test_embed_file_dup"
-      # Run a single websockify-based test to ensure it works on windows.
-      # We need to do this using the system python since the emsdk version
-      # does not have `pip` or come preloaded with `websockify`.
-      - run:
-          name: Set system python
-          command: echo "export EMSDK_PYTHON=/c/Python38/python.exe" >> $BASH_ENV
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "sockets.test_nodejs_sockets_echo"
+          test_targets: "
+            core2.test_sse1
+            core2.test_ccall
+            core2.test_utf16
+            other.test_es5_transpile
+            other.test_emcc_cflags
+            other.test_stdin
+            other.test_bad_triple
+            other.test_closure_externs
+            other.test_binaryen_debug
+            other.test_js_optimizer_parse_error
+            other.test_output_to_nowhere
+            other.test_emcc_dev_null
+            other.test_cmake*
+            other.test_system_include_paths
+            other.test_emar_response_file
+            other.test_special_chars_in_arguments
+            other.test_toolchain_profiler
+            other.test_realpath_nodefs
+            other.test_response_file_encoding
+            other.test_libc_progname
+            other.test_realpath
+            other.test_embed_file_dup
+            other.test_dot_a_all_contents_invalid
+            other.test_pkg_config*"
+      # Run a single websockify-based test to ensure it works on windows.
+      - run-tests:
+          test_targets: "sockets.test_nodejs_sockets_echo*"
   test-mac:
     executor: mac
     environment:
@@ -446,7 +513,9 @@ jobs:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
             brew list cmake || brew install cmake
+            brew list ninja || brew install ninja
             brew list python3 || brew install python3
+            brew list pkg-config || brew install pkg-config
       - checkout
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
@@ -454,7 +523,16 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          test_targets: "other sockets.test_nodejs_sockets_echo core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
+          # skip other.test_stack_switching_size as we do not currently install
+          # d8 on mac
+          test_targets: "
+            other
+            sockets.test_nodejs_sockets_echo*
+            core0.test_lua
+            core0.test_longjmp_standalone
+            core2.test_sse1
+            skip:other.test_native_link_error_message
+            skip:other.test_stack_switching_size"
 
 workflows:
   build-test:

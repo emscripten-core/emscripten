@@ -7,8 +7,21 @@
               "referenceCount",
               "exceptionType",
               "caught",
-              "rethrown"
+              "rethrown",
+              "adjustedPtr"
             ]
         }
+    },
+    // ===========================================
+    // WasmFS
+    // ===========================================
+    {
+        "file": "file.h",
+        "defines": [
+            "wasmfs::File::UnknownKind",
+            "wasmfs::File::DataFileKind",
+            "wasmfs::File::DirectoryKind",
+            "wasmfs::File::SymlinkKind"
+        ]
     }
 ]

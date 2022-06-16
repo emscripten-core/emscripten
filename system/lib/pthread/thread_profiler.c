@@ -10,9 +10,7 @@
 #include <stdbool.h>
 #include "pthread_impl.h"
 #include <emscripten/threading.h>
-// Included for emscripten_builtin_free / emscripten_builtin_malloc
-// TODO(sbc): Should these be in their own header to avoid emmalloc here?
-#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
 
 static bool enabled = false;
 

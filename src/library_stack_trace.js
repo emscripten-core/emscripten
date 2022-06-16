@@ -38,7 +38,7 @@ var LibraryStackTrace = {
     });
 #else // DEMANGLE_SUPPORT
 #if ASSERTIONS
-    warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+    warnOnce('warning: build with -sDEMANGLE_SUPPORT to link in libcxxabi demangling');
 #endif // ASSERTIONS
     return func;
 #endif // DEMANGLE_SUPPORT
@@ -57,8 +57,8 @@ var LibraryStackTrace = {
   $jsStackTrace: function() {
     var error = new Error();
     if (!error.stack) {
-      // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
-      // so try that as a special-case.
+      // IE10+ special cases: It does have callstack info, but it is only
+      // populated if an Error object is thrown, so try that as a special-case.
       try {
         throw new Error();
       } catch(e) {

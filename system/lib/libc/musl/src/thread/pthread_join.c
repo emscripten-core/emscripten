@@ -7,19 +7,16 @@ static void dummy1(pthread_t t)
 }
 weak_alias(dummy1, __tl_sync);
 
-#ifdef __EMSCRIPTEN__ // XXX Emscripten add extern for __emscripten_thread_cleanup
-extern void __emscripten_thread_cleanup(pthread_t thread);
-#endif
-
 static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec *at)
 {
 #ifdef __EMSCRIPTEN__
 	// Attempt to join a thread which does not point to a valid thread, or
 	// does not exist anymore.
-	if (t->self != t) return ESRCH;
+	if (!_emscripten_thread_is_valid(t)) return ESRCH;
 	// Thread is attempting to join to itself.  Already detached threads are
 	// handled below by returning EINVAL instead.
-	// TODO: The detached check here is just to satisfy the `other.test_{proxy,main}_pthread_join_detach` tests.
+	// TODO: The detached check here is just to satisfy the
+	// `other.test_{proxy,main}_pthread_join_detach` tests.
 	if (t->detach_state != DT_DETACHED && __pthread_self() == t) return EDEADLK;
 #endif
 	int state, cs, r = 0;

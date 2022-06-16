@@ -98,7 +98,8 @@ def get(ports, settings, shared):
                        '-I' + dest_path + '/psaux',
                        '-I' + dest_path + '/psnames',
                        '-I' + dest_path + '/truetype',
-                       '-w'])
+                       '-w',
+                       '-pthread'])
       o_s.append(o)
 
     ports.run_commands(commands)
@@ -116,7 +117,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')]
+  return ['-I' + ports.get_include_dir('freetype2/freetype')]
 
 
 def show():

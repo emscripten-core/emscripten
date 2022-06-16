@@ -35,6 +35,8 @@ Usage:
 
   --obj-output=FILE create an object file from embedded files, for direct linking into a wasm binary.
 
+  --wasm64 When used with `--obj-output` create a wasm64 object file
+
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
   --no-force Don't create output if no valid input file is specified.
@@ -62,13 +64,13 @@ Notes:
 import base64
 import ctypes
 import fnmatch
+import hashlib
 import json
 import os
 import posixpath
 import random
 import shutil
 import sys
-import uuid
 from subprocess import PIPE
 from textwrap import dedent
 
@@ -117,6 +119,7 @@ class Options:
     self.lz4 = False
     self.use_preload_plugins = False
     self.support_node = True
+    self.wasm64 = False
 
 
 class DataFile:
@@ -285,7 +288,29 @@ def generate_object_file(data_files):
       .size {f.c_symbol_name}, {size}
       '''))
 
-    out.write(dedent('''
+    if options.wasm64:
+      align = 3
+      ptr_type = 'i64'
+      bits = 64
+    else:
+      align = 2
+      ptr_type = 'i32'
+      bits = 32
+    out.write(dedent(f'''
+      .functype _emscripten_fs_load_embedded_files ({ptr_type}) -> ()
+      .section .text,"",@
+      init_file_data:
+        .functype init_file_data () -> ()
+        global.get __emscripten_embedded_file_data@GOT
+        call _emscripten_fs_load_embedded_files
+        end_function
+
+      # Run init_file_data on startup.
+      # See system/lib/README.md for ordering of system constructors.
+      .section .init_array.49,"",@
+      .p2align {align}
+      .int{bits} init_file_data
+
       # A list of triples of:
       # (file_name_ptr, file_data_size, file_data_ptr)
       # The list in null terminate with a single 0
@@ -293,17 +318,20 @@ def generate_object_file(data_files):
       .export_name __emscripten_embedded_file_data, __emscripten_embedded_file_data
       .section .rodata.__emscripten_embedded_file_data,"",@
       __emscripten_embedded_file_data:
-      .p2align 2
+      .p2align {align}
       '''))
 
     for f in embed_files:
       # The `.dc.a` directive gives us a pointer (address) sized entry.
       # See https://sourceware.org/binutils/docs/as/Dc.html
       out.write(dedent(f'''\
+        .p2align %s
         .dc.a {f.c_symbol_name}_name
+        .p2align %s
         .int32 {os.path.getsize(f.srcpath)}
+        .p2align %s
         .dc.a {f.c_symbol_name}
-        '''))
+        ''' % (align, align, align)))
 
     ptr_size = 4
     elem_size = (2 * ptr_size) + 4
@@ -312,9 +340,13 @@ def generate_object_file(data_files):
       .dc.a 0
       .size __emscripten_embedded_file_data, {total_size}
       '''))
+  if options.wasm64:
+    target = 'wasm64-unknown-emscripten'
+  else:
+    target = 'wasm32-unknown-emscripten'
   shared.check_call([shared.LLVM_MC,
                      '-filetype=obj',
-                     '-triple=' + shared.get_llvm_target(),
+                     '-triple=' + target,
                      '-o', options.obj_output,
                      asm_file])
 
@@ -367,6 +399,8 @@ def main():
     elif arg.startswith('--obj-output'):
       options.obj_output = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
+    elif arg == '--wasm64':
+      options.wasm64 = True
     elif arg.startswith('--export-name'):
       if '=' in arg:
         options.export_name = arg.split('=', 1)[1]
@@ -503,6 +537,8 @@ def main():
       err('--obj-output is only applicable when embedding files')
       return 1
     generate_object_file(data_files)
+    if not options.has_preloaded:
+      return 0
 
   ret = generate_js(data_target, data_files, metadata)
 
@@ -584,7 +620,6 @@ def generate_js(data_target, data_files, metadata):
         start += len(curr)
         data.write(curr)
 
-    # TODO: sha256sum on data_target
     if start > 256 * 1024 * 1024:
       err('warning: file packager is creating an asset bundle of %d MB. '
           'this is very large, and browsers might have trouble loading it. '
@@ -639,33 +674,20 @@ def generate_js(data_target, data_files, metadata):
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
-  if options.has_embedded:
-    if options.obj_output:
-      code += '''\
-      var start32 = Module['___emscripten_embedded_file_data'] >> 2;
-      do {
-        var name_addr = HEAPU32[start32++];
-        var len = HEAPU32[start32++];
-        var content = HEAPU32[start32++];
-        var name = UTF8ToString(name_addr)
-        // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-        Module['FS_createDataFile'](name, null, HEAP8.subarray(content, content + len), true, true, true);
-      } while (HEAPU32[start32]);'''
-    else:
-      err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more effecient than JS encoding')
+  if options.has_embedded and not options.obj_output:
+    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more effecient than JS encoding')
 
-  for (counter, file_) in enumerate(data_files):
+  for counter, file_ in enumerate(data_files):
     filename = file_.dstpath
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
     if file_.mode == 'embed':
-      if not options.obj_output:
-        # Embed
-        data = base64_encode(utils.read_binary(file_.srcpath))
-        code += "      var fileData%d = '%s';\n" % (counter, data)
-        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
-                 % (dirname, basename, counter))
+      # Embed
+      data = base64_encode(utils.read_binary(file_.srcpath))
+      code += "      var fileData%d = '%s';\n" % (counter, data)
+      # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
+      code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+               % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
       metadata_el = {
@@ -702,11 +724,10 @@ def generate_js(data_target, data_files, metadata):
       os.unlink(temp)
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
-            assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+            assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
-    package_uuid = uuid.uuid4()
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
     remote_package_name = os.path.basename(package_name)
@@ -726,13 +747,17 @@ def generate_js(data_target, data_files, metadata):
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    metadata['package_uuid'] = str(package_uuid)
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
-      var PACKAGE_UUID = metadata['package_uuid'];\n'''
+    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
 
     if options.use_preload_cache:
+      # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
+      # if the data has not changed.
+      data = utils.read_binary(data_target)
+      package_uuid = 'sha256-' + hashlib.sha256(data).hexdigest()
+      metadata['package_uuid'] = str(package_uuid)
+
       code += r'''
+        var PACKAGE_UUID = metadata['package_uuid'];
         var indexedDB;
         if (typeof window === 'object') {
           indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;

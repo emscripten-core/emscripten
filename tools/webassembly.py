@@ -36,6 +36,11 @@ PREFIX_MATH = 0xfc
 PREFIX_THREADS = 0xfe
 PREFIX_SIMD = 0xfd
 
+SYMBOL_BINDING_MASK = 0x3
+SYMBOL_BINDING_GLOBAL = 0x0
+SYMBOL_BINDING_WEAK = 0x1
+SYMBOL_BINDING_LOCAL = 0x2
+
 
 def toLEB(num):
   return leb128.u.encode(num)
@@ -114,13 +119,14 @@ class InvalidWasmError(BaseException):
 
 Section = namedtuple('Section', ['type', 'size', 'offset', 'name'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
-Import = namedtuple('Import', ['kind', 'module', 'field'])
+Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
+FuncType = namedtuple('FuncType', ['params', 'returns'])
 
 
 class Module:
@@ -210,18 +216,38 @@ class Module:
       yield Section(section_type, section_size, section_offset, name)
       offset = section_offset + section_size
 
+  def get_types(self):
+    type_section = self.get_section(SecType.TYPE)
+    if not type_section:
+      return []
+    self.seek(type_section.offset)
+    num_types = self.readULEB()
+    types = []
+    for i in range(num_types):
+      params = []
+      returns = []
+      type_form = self.readByte()
+      assert type_form == 0x60
+      num_params = self.readULEB()
+      for j in range(num_params):
+        params.append(self.read_type())
+      num_returns = self.readULEB()
+      for j in range(num_returns):
+        returns.append(self.read_type())
+      types.append(FuncType(params, returns))
+    return types
+
   def parse_features_section(self):
     features = []
-    for sec in self.sections():
-      if sec.type == SecType.CUSTOM and sec.name == 'target_features':
-        self.seek(sec.offset)
-        self.readString()  # name
-        feature_count = self.readULEB()
-        while feature_count:
-          prefix = self.readByte()
-          features.append((chr(prefix), self.readString()))
-          feature_count -= 1
-        break
+    sec = self.get_custom_section('target_features')
+    if sec:
+      self.seek(sec.offset)
+      self.readString()  # name
+      feature_count = self.readULEB()
+      while feature_count:
+        prefix = self.readByte()
+        features.append((chr(prefix), self.readString()))
+        feature_count -= 1
     return features
 
   def parse_dylink_section(self):
@@ -289,7 +315,7 @@ class Module:
     return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
 
   def get_exports(self):
-    export_section = next((s for s in self.sections() if s.type == SecType.EXPORT), None)
+    export_section = self.get_section(SecType.EXPORT)
     if not export_section:
       return []
 
@@ -305,7 +331,7 @@ class Module:
     return exports
 
   def get_imports(self):
-    import_section = next((s for s in self.sections() if s.type == SecType.IMPORT), None)
+    import_section = self.get_section(SecType.IMPORT)
     if not import_section:
       return []
 
@@ -316,27 +342,28 @@ class Module:
       mod = self.readString()
       field = self.readString()
       kind = ExternType(self.readByte())
-      imports.append(Import(kind, mod, field))
+      type_ = None
       if kind == ExternType.FUNC:
-        self.readULEB()  # sig
+        type_ = self.readULEB()
       elif kind == ExternType.GLOBAL:
-        self.readSLEB()  # global type
+        type_ = self.readSLEB()
         self.readByte()  # mutable
       elif kind == ExternType.MEMORY:
         self.read_limits()  # limits
       elif kind == ExternType.TABLE:
-        self.readSLEB()  # table type
+        type_ = self.readSLEB()
         self.read_limits()  # limits
       elif kind == ExternType.TAG:
         self.readByte()  # attribute
-        self.readULEB()  # sig
+        type_ = self.readULEB()
       else:
         assert False
+      imports.append(Import(kind, mod, field, type_))
 
     return imports
 
   def get_globals(self):
-    global_section = next((s for s in self.sections() if s.type == SecType.GLOBAL), None)
+    global_section = self.get_section(SecType.GLOBAL)
     if not global_section:
       return []
     globls = []
@@ -350,7 +377,7 @@ class Module:
     return globls
 
   def get_functions(self):
-    code_section = next((s for s in self.sections() if s.type == SecType.CODE), None)
+    code_section = self.get_section(SecType.CODE)
     if not code_section:
       return []
     functions = []
@@ -363,9 +390,18 @@ class Module:
       self.seek(start + body_size)
     return functions
 
+  def get_section(self, section_code):
+    return next((s for s in self.sections() if s.type == section_code), None)
+
+  def get_custom_section(self, name):
+    for section in self.sections():
+      if section.type == SecType.CUSTOM and section.name == name:
+        return section
+    return None
+
   def get_segments(self):
     segments = []
-    data_section = next((s for s in self.sections() if s.type == SecType.DATA), None)
+    data_section = self.get_section(SecType.DATA)
     self.seek(data_section.offset)
     num_segments = self.readULEB()
     for i in range(num_segments):
@@ -381,7 +417,7 @@ class Module:
     return segments
 
   def get_tables(self):
-    table_section = next((s for s in self.sections() if s.type == SecType.TABLE), None)
+    table_section = self.get_section(SecType.TABLE)
     if not table_section:
       return []
 
@@ -396,10 +432,7 @@ class Module:
     return tables
 
   def has_name_section(self):
-    for section in self.sections():
-      if section.type == SecType.CUSTOM and section.name == 'name':
-        return True
-    return False
+    return self.get_custom_section('name') is not None
 
 
 def parse_dylink_section(wasm_file):
