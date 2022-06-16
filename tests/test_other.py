@@ -1771,8 +1771,8 @@ int f() {
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
-        '-sEXIT_RUNTIME=1',
-        '-sMAIN_MODULE=1',
+        '-sEXIT_RUNTIME',
+        '-sMAIN_MODULE=2',
         'side.wasm',
       ])
 
@@ -1795,6 +1795,55 @@ int f() {
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-Wno-experimental']
     self.do_runf(test_file('core/test_em_js.cpp'))
+
+  @node_pthreads
+  def test_dylink_pthread_comdat(self):
+    # Test that the comdat info for `Foo`, which is defined in the side module,
+    # is visible to the main module.
+    create_file('foo.h', r'''
+    struct Foo {
+      // Making this method virtual causes the comdat group for the
+      // class to only be defined in the side module.
+      virtual void method() const;
+    };
+    ''')
+    create_file('main.cpp', r'''
+      #include "foo.h"
+      #include <typeinfo>
+      #include <emscripten/console.h>
+
+      int main() {
+        _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
+
+        Foo().method();
+        return 0;
+      }
+    ''')
+    create_file('side.cpp', r'''
+      #include "foo.h"
+      #include <typeinfo>
+      #include <emscripten/console.h>
+
+      void Foo::method() const {
+        _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'libside.wasm',
+      'side.cpp',
+      '-pthread', '-Wno-experimental',
+      '-sSIDE_MODULE=1'])
+    self.do_runf(
+      'main.cpp',
+      'main: Foo typeid: 3Foo\nside: Foo typeid: 3Foo\n',
+      emcc_args=[
+        '-pthread', '-Wno-experimental',
+        '-sPROXY_TO_PTHREAD',
+        '-sEXIT_RUNTIME',
+        '-sMAIN_MODULE=2',
+        'libside.wasm',
+      ])
 
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
@@ -12188,3 +12237,16 @@ Module['postRun'] = function() {{
     self.assertContained('hello_world.o:(__original_main)', out)
     out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
     self.assertEqual(out, out2)
+
+  def test_rust_gxx_personality_v0(self):
+    self.do_run(r'''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern "C" {
+        int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
+        int main() {
+          __gxx_personality_v0(0, NULL, 0, NULL, NULL);
+          return 0;
+        }
+      }
+    ''', assert_returncode=NON_ZERO)
