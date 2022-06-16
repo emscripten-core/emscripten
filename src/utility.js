@@ -92,7 +92,7 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-const LibraryParam = Object.freeze({
+const global.LibraryParam = Object.freeze({
   DisallowOverride: 1,
 });
 
@@ -102,7 +102,7 @@ function mergeInto(obj, other, libraryParams = 0) {
   if (libraryParams === LibraryParam.DisallowOverride) {
     for (const key of Object.keys(other)) {
       if (obj.hasOwnProperty(key)) {
-        error('Symbol re-definition in JavaScript library: ' + key + '. Use allowOverride if this is intended');
+        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use DisallowOverride if this is intended');
         return;
       }
     }
