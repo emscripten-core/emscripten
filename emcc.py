@@ -3570,10 +3570,15 @@ function(%(EXPORT_NAME)s) {
 
   return %(return_value)s
 }
+%(capture_module_function_for_audio_worklet)s
 ''' % {
     'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
-    'return_value': return_value
+    'return_value': return_value,
+    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+    # it without aliasing/conflicting with the Module variable name.
+    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.USE_PTHREADS:

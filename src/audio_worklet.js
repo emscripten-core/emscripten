@@ -144,6 +144,14 @@ class BootstrapMessages extends AudioWorkletProcessor {
     let p = this.port;
     p.onmessage = (msg) => {
       let d = msg.data;
+#if MODULARIZE
+      // Instantiate the MODULARIZEd Module function, which is stored for us under the special global
+      // name AudioWorkletModule in MODULARIZE+AUDIO_WORKLET builds.
+      if (globalThis.AudioWorkletModule) {
+        AudioWorkletModule(Module); // This populates the Module object with all the Wasm properties
+        delete globalThis.AudioWorkletModule; // We have now instantiated the Module function, can discard it from global scope
+      }
+#endif
       // Register a real AudioWorkletProcessor that will actually do audio processing.
       registerProcessor(d['name'], createWasmAudioWorkletProcessor(d['audioParams']));
 #if WEBAUDIO_DEBUG

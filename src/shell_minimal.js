@@ -20,8 +20,11 @@ var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
 
 #else
+
+#if !MODULARIZE
 // Use 'globalThis' to refer to the global scope Module variable.
 var Module = globalThis.{{{ EXPORT_NAME }}} || {};
+#endif
 #endif
 
 #if MODULARIZE && EXPORT_READY_PROMISE
