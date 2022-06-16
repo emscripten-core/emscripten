@@ -67,4 +67,5 @@ high level it consists of:
    fiber.h
    proxying.h
    wasm_workers
+   wasm_audio_worklets
    advanced-apis

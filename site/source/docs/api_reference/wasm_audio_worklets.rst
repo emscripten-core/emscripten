@@ -1,8 +1,8 @@
 .. _wasm_audio_worklets:
 
-================
+=======================
 Wasm Audio Worklets API
-================
+=======================
 
 The AudioWorklet extension to the `Web Audio API specification 
 <https://webaudio.github.io/web-audio-api/#AudioWorklet>`_ enables web sites
@@ -15,21 +15,24 @@ sensitive audio processing code in JavaScript.
 The Emscripten Wasm Audio Worklets API is an Emscripten-specific integration
 of these AudioWorklet nodes to WebAssembly. Wasm Audio Worklets enables
 developers to implement AudioWorklet processing nodes in C/C++ code that
-compile down to WebAssembly, rather than implementing audio processing in
-JavaScript.
+compile down to WebAssembly, rather than using JavaScript for the task.
 
 Developing AudioWorkletProcessors in WebAssembly provides the benefit of
-greatly improved performance compared to JavaScript, and the Emscripten
+improved performance compared to JavaScript, and the Emscripten
 Wasm Audio Worklets system runtime has been carefully developed to guarantee
 that no temporary JavaScript level VM garbage will be generated, eliminating
-the possibility of GC pauses from impacting audio performance.
+the possibility of GC pauses from impacting audio synthesis performance.
 
 Development Overview
 ====================
 
-Authoring Wasm Audio Worklets is very similar to developing Audio Worklets
-API based applications in general (see `MDN: Using AudioWorklets <https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_AudioWorklet>`_), with the exception that a
-small amount of JS <-> Wasm (C/C++) interop needs to be taken into account.
+Authoring Wasm Audio Worklets is similar to developing Audio Worklets
+API based applications in JS (see `MDN: Using AudioWorklets <https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_AudioWorklet>`_), with the exception that users will not manually implement
+the JS code for the ScriptProcessorNode files in the AudioWorkletGlobalScope.
+This is managed automatically by the Emscripten Wasm AudioWorklets runtime.
+
+Instead, application developers will need to implement a small amount of JS <-> Wasm
+(C/C++) interop to interact with the AudioContext and AudioNodes from Wasm.
 
 Audio Worklets operate on a two layer "class type & its instance" design:
 first one defines one or more node types (or classes) called AudioWorkletProcessors,
@@ -51,17 +54,17 @@ Programming Example
 ===================
 
 To get hands-on experience with programming Wasm Audio Worklets, let's create a
-simple application which outputs random noise through the output channels.
+simple audio node that outputs random noise through its output channels.
 
 1. First, we will create a Web Audio context in C/C++ code. This is achieved
 via the ``emscripten_create_audio_context()`` function. In a larger application
 that integrates existing Web Audio libraries, you may already have an
 ``AudioContext`` created via some other library, in which case you would instead
-register the context to be visible to WebAssembly by calling the function
+register that context to be visible to WebAssembly by calling the function
 ``emscriptenRegisterAudioObject()``.
 
-Then, we will instruct the Emscripten runtime to establish a Wasm Audio Worklet
-thread scope on this context. The code for this looks like:
+Then, we will instruct the Emscripten runtime to initialize a Wasm Audio Worklet
+thread scope on this context. The code to achieve these tasks looks like:
 
 .. code-block:: cpp
 
@@ -71,9 +74,10 @@ thread scope on this context. The code for this looks like:
 
   int main()
   {
-    EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0 /* use default constructor options */);
+    EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0);
 
-    emscripten_start_wasm_audio_worklet_thread_async(context, audioThreadStack, sizeof(audioThreadStack), AudioThreadInitialized, 0);
+    emscripten_start_wasm_audio_worklet_thread_async(context, audioThreadStack, sizeof(audioThreadStack),
+                                                     &AudioThreadInitialized, 0);
   }
 
 2. When the worklet thread context has been initialized, we are ready to define our
@@ -87,7 +91,7 @@ own noise generator AudioWorkletProcessor node type:
     WebAudioWorkletProcessorCreateOptions opts = {
       .name = "noise-generator",
     };
-    emscripten_create_wasm_audio_worklet_processor_async(audioContext, &opts, AudioWorkletProcessorCreated, 0);
+    emscripten_create_wasm_audio_worklet_processor_async(audioContext, &opts, &AudioWorkletProcessorCreated, 0);
   }
 
 3. After the processor has initialized, we can now instantiate and connect it as a node on the graph. Since on
@@ -96,40 +100,41 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
 
 .. code-block:: cpp
 
-void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
-{
+  void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
+  {
     if (!success) return; // Check browser console in a debug build for detailed errors
 
-  int outputChannelCounts[1] = { 1 };
-  EmscriptenAudioWorkletNodeCreateOptions options = {
-    .numberOfInputs = 0,
-    .numberOfOutputs = 1,
-    .outputChannelCounts = outputChannelCounts
-  };
+    int outputChannelCounts[1] = { 1 };
+    EmscriptenAudioWorkletNodeCreateOptions options = {
+      .numberOfInputs = 0,
+      .numberOfOutputs = 1,
+      .outputChannelCounts = outputChannelCounts
+    };
 
-  // Create node
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &GenerateNoise, 0);
+    // Create node
+    EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext,
+                                                              "noise-generator", &options, &GenerateNoise, 0);
 
-  // Connect it to audio context destination
-  EM_ASM({emscriptenGetAudioObject($0).connect(emscriptenGetAudioObject($1).destination)},
-    wasmAudioWorklet, audioContext);
+    // Connect it to audio context destination
+    EM_ASM({emscriptenGetAudioObject($0).connect(emscriptenGetAudioObject($1).destination)},
+      wasmAudioWorklet, audioContext);
 
-  // Resume context on mouse click
-  emscripten_set_click_callback("canvas", (void*)audioContext, 0, OnCanvasClick);
-}
+    // Resume context on mouse click
+    emscripten_set_click_callback("canvas", (void*)audioContext, 0, OnCanvasClick);
+  }
 
 4. The code to resume the audio context on click looks like this:
 
 .. code-block:: cpp
 
-EM_BOOL OnCanvasClick(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
-{
-  EMSCRIPTEN_WEBAUDIO_T audioContext = (EMSCRIPTEN_WEBAUDIO_T)userData;
-  if (emscripten_audio_context_state(audioContext) != AUDIO_CONTEXT_STATE_RUNNING) {
-    emscripten_resume_audio_context_sync(audioContext);
+  EM_BOOL OnCanvasClick(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
+  {
+    EMSCRIPTEN_WEBAUDIO_T audioContext = (EMSCRIPTEN_WEBAUDIO_T)userData;
+    if (emscripten_audio_context_state(audioContext) != AUDIO_CONTEXT_STATE_RUNNING) {
+      emscripten_resume_audio_context_sync(audioContext);
+    }
+    return EM_FALSE;
   }
-  return EM_FALSE;
-}
 
 5. Finally we can implement the audio callback that is to generate the noise:
 
@@ -137,11 +142,14 @@ EM_BOOL OnCanvasClick(int eventType, const EmscriptenMouseEvent *mouseEvent, voi
 
   #include <emscripten/em_math.h>
 
-  EM_BOOL GenerateNoise(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData)
+  EM_BOOL GenerateNoise(int numInputs, const AudioSampleFrame *inputs,
+                        int numOutputs, AudioSampleFrame *outputs,
+                        int numParams, const AudioParamFrame *params,
+                        void *userData)
   {
     for(int i = 0; i < numOutputs; ++i)
       for(int j = 0; j < 128*outputs[i].numberOfChannels; ++j)
-        outputs[i].data[j] = emscripten_random() * 0.2 - 0.1; // Warning: scale down audio volume, raw noise can be really loud otherwise
+        outputs[i].data[j] = emscripten_random() * 0.2 - 0.1; // Warning: scale down audio volume by factor of 0.2, raw noise can be really loud otherwise
 
     return EM_TRUE; // Keep the graph output going
   }
