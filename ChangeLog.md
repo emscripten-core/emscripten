@@ -18,8 +18,8 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.2.0
------
+3.1.14
+------
 - emcc now accepts `-print-file-name` and reports the correct library paths in
   `-print-search-dirs`.
 - `tools/file_packager` no longer generates (or requires) any "pre-js" code when
