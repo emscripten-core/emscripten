@@ -1252,11 +1252,11 @@ def emit_debug_on_side(wasm_file):
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
   filename_bytes = embedded_path.encode('utf-8')
-  contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
+  contents = webassembly.to_leb(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
-    f.write(webassembly.toLEB(section_size))
+    f.write(webassembly.to_leb(section_size))
     f.write(section_name)
     f.write(contents)
 
@@ -1353,7 +1353,7 @@ def is_wasm_dylib(filename):
   section = next(module.sections())
   if section.type == webassembly.SecType.CUSTOM:
     module.seek(section.offset)
-    if module.readString() in ('dylink', 'dylink.0'):
+    if module.read_string() in ('dylink', 'dylink.0'):
       return True
   return False
 

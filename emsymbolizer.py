@@ -165,9 +165,9 @@ def symbolize_address_sourcemap(module, address, force_file):
     section = get_sourceMappingURL_section(module)
     assert section
     module.seek(section.offset)
-    assert module.readString() == 'sourceMappingURL'
+    assert module.read_string() == 'sourceMappingURL'
     # TODO: support stripping/replacing a prefix from the URL
-    URL = module.readString()
+    URL = module.read_string()
 
   if shared.DEBUG:
     print(f'Source Mapping URL: {URL}')

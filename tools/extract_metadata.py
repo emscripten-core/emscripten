@@ -10,21 +10,21 @@ from .settings import settings
 
 def is_wrapper_function(module, function):
   module.seek(function.offset)
-  num_local_decls = module.readULEB()
+  num_local_decls = module.read_uleb()
   while num_local_decls:
-    local_count = module.readULEB()  # noqa
+    local_count = module.read_uleb()  # noqa
     local_type = module.read_type()  # noqa
     num_local_decls -= 1
   end = function.offset + function.size
   while module.tell() != end:
-    opcode = module.readByte()
+    opcode = module.read_byte()
     try:
       opcode = webassembly.OpCode(opcode)
     except ValueError as e:
       print(e)
       return False
     if opcode == webassembly.OpCode.CALL:
-      callee = module.readULEB()  # noqa
+      callee = module.read_uleb()  # noqa
     elif opcode == webassembly.OpCode.END:
       break
     else:
@@ -100,7 +100,7 @@ def get_asm_strings(module, globls, export_map, imported_globals):
 
   asm_strings = {}
   str_start = seg_offset
-  data = module.readAt(seg.offset, seg.size)
+  data = module.read_at(seg.offset, seg.size)
   size = end_addr - start_addr
   end = seg_offset + size
   while str_start < end:
@@ -157,7 +157,7 @@ def update_metadata(filename, metadata):
 
 def get_string_at(module, address):
   seg, offset = find_segment_with_address(module, address)
-  data = module.readAt(seg.offset, seg.size)
+  data = module.read_at(seg.offset, seg.size)
   str_end = data.find(b'\0', offset)
   return data_to_string(data[offset:str_end])
 
