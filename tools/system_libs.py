@@ -1867,7 +1867,9 @@ def get_libs_to_link(args, forced, only_forced):
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
-  if settings.SHRINK_LEVEL >= 2:
+  # See comment in libc_optz itself
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
+     not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
 
   if settings.STANDALONE_WASM:
