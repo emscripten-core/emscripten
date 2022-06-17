@@ -206,6 +206,30 @@ void test_perf() {
   printf("test_valhelper loop %zu cost: %f\n", LoopTimes, emscripten_get_now() - start);
 }
 
+EM_JS(emscripten::EM_VAL,
+      pushDataEmjs,
+      (const char* k1, int v1,
+       const char* k2, int v2,
+       const char* k3, float v3,
+       const char* k4, bool v4,
+       const char* k5, const char* v5,
+       const char* k6, const char* v6,
+       const char* k7, emscripten::EM_VAL v7,
+       const char* k8, int v8),
+    {
+        var o = {};
+        o[readLatin1String(k1)] = v1;
+        o[readLatin1String(k2)] = v2;
+        o[readLatin1String(k3)] = v3;
+        o[readLatin1String(k4)] = !!v4;
+        o[readLatin1String(k5)] = UTF8ToString(v5);
+        o[readLatin1String(k6)] = UTF8ToString(v6);
+        o[readLatin1String(k7)] = Emval.toValue(v7);
+        o[readLatin1String(k8)] = v8;
+        return Emval.toHandle(o);
+    }
+);
+
 void test_perf_chaining() {
   const size_t LoopTimes = 100000;
   std::string s("test hello world!!");
@@ -274,8 +298,32 @@ void test_perf_chaining() {
   auto vh_cost = emscripten_get_now() - start;
   printf("test_chain_vh loop %zu cost: %f\n", LoopTimes, vh_cost);
 
+  start = emscripten_get_now();
+  for (size_t i = 0; i < LoopTimes; i++) {
+    // use EM_JS (chaining)
+    val v = val::take_ownership(pushDataEmjs("key1",
+                                             1,
+                                             "key2",
+                                             2,
+                                             "key3",
+                                             1.234f,
+                                             "key4",
+                                             true,
+                                             "key5",
+                                             "012345678910",
+                                             "key6",
+                                             s.c_str(),
+                                             "key7",
+                                             vi.as_handle(),
+                                             "key8",
+                                             8));
+  }
+  auto emjs_cost = emscripten_get_now() - start;
+  printf("test_chain_emjs loop %zu cost: %f\n", LoopTimes, emjs_cost);
+
   printf("val-vh = %f\n", val_cost - vh_cost);
   printf("val/vh = %f\n", val_cost / vh_cost);
+  printf("vh/emjs = %f\n", vh_cost / emjs_cost);
 }
 
 // loop 100000 val biga cost: 4519.156967
