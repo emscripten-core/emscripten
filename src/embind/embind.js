@@ -420,6 +420,7 @@ var LibraryEmbind = {
     return impl;
   },
 
+  _embind_register_void__sig: 'vpp',
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
@@ -437,6 +438,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
   _embind_register_bool__sig: 'vpppii',
@@ -544,6 +546,7 @@ var LibraryEmbind = {
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
+  _embind_register_integer__sig: 'vpppii',
   _embind_register_integer__deps: [
     'embind_repr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
@@ -601,6 +604,7 @@ var LibraryEmbind = {
   },
 
 #if WASM_BIGINT
+  _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint__deps: [
     'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint__sig: 'vpppjj',
@@ -641,6 +645,7 @@ var LibraryEmbind = {
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
+  _embind_register_float__sig: 'vppp',
   _embind_register_float__deps: [
     'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
@@ -674,6 +679,7 @@ var LibraryEmbind = {
     return this['fromWireType'](HEAPU32[pointer >> 2]);
   },
 
+  _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError'],
@@ -776,6 +782,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
 #if MINIMAL_RUNTIME
@@ -854,6 +861,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_emval__sig: 'vpp',
   _embind_register_emval__deps: [
     '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
@@ -878,6 +886,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_memory_view__sig: 'vpip',
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
@@ -1181,6 +1190,7 @@ var LibraryEmbind = {
     return fp;
   },
 
+  _embind_register_function__sig: 'vpipppp',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
@@ -1204,6 +1214,7 @@ var LibraryEmbind = {
 
   $tupleRegistrations: {},
 
+  _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1222,6 +1233,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: function(
@@ -1245,6 +1257,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1969,6 +1982,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
@@ -2079,6 +2093,7 @@ var LibraryEmbind = {
     );
   },
 
+  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
@@ -2166,6 +2181,7 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
+  _embind_register_class_function__sig: 'vppippppi',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2232,6 +2248,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_property__sig: 'vpppppppppp',
   _embind_register_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2303,6 +2320,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_function__sig: 'vppipppp',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2359,6 +2377,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_property__sig: 'vpppppppp',
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2422,6 +2441,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
@@ -2505,6 +2525,7 @@ var LibraryEmbind = {
     return name;
   },
 
+  _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
@@ -2543,6 +2564,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_enum__sig: 'vpppi',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
@@ -2568,6 +2590,7 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
+  _embind_register_enum_value__sig: 'vppi',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
@@ -2583,6 +2606,7 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
+  _embind_register_constant__sig: 'vppd',
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: function(name, type, value) {
     name = readLatin1String(name);
