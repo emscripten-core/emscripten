@@ -4,43 +4,48 @@
 # found in the LICENSE file.
 
 from . import webassembly
+from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
 
 
-def is_wrapper_function(module, function):
-  module.seek(function.offset)
+def skip_function_header(module):
   num_local_decls = module.read_uleb()
   while num_local_decls:
     local_count = module.read_uleb()  # noqa
     local_type = module.read_type()  # noqa
     num_local_decls -= 1
+
+
+def is_wrapper_function(module, function):
+  module.seek(function.offset)
+  skip_function_header(module)
   end = function.offset + function.size
   while module.tell() != end:
     opcode = module.read_byte()
     try:
-      opcode = webassembly.OpCode(opcode)
+      opcode = OpCode(opcode)
     except ValueError as e:
       print(e)
       return False
-    if opcode == webassembly.OpCode.CALL:
+    if opcode == OpCode.CALL:
       callee = module.read_uleb()  # noqa
-    elif opcode == webassembly.OpCode.END:
+    elif opcode == OpCode.END:
       break
     else:
       return False
-  assert opcode == webassembly.OpCode.END
+  assert opcode == OpCode.END
   return True
 
 
 def get_const_expr_value(expr):
   assert len(expr) == 2
-  assert expr[1][0] == webassembly.OpCode.END
+  assert expr[1][0] == OpCode.END
   opcode, immediates = expr[0]
-  if opcode in (webassembly.OpCode.I32_CONST, webassembly.OpCode.I64_CONST):
+  if opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
     assert len(immediates) == 1
     return immediates[0]
-  elif opcode in (webassembly.OpCode.GLOBAL_GET,):
+  elif opcode in (OpCode.GLOBAL_GET,):
     return 0
   else:
     exit_with_error('unexpected opcode in const expr: ' + str(opcode))
@@ -50,7 +55,87 @@ def get_global_value(globl):
   return get_const_expr_value(globl.init)
 
 
-def find_segment_with_address(module, address, size=0):
+def parse_function_for_memory_inits(module, func_index, offset_map):
+  """Very limited function parser that uses `memory.init` instructions
+  to derive segment offset.
+
+  When segments are passive they don't have an offset but (at least with
+  llvm-generated code) are loaded during the start function
+  (`__wasm_init_memory`) using `memory.init` instructions.
+
+  Here we parse the `__wasm_init_memory` function and make many assumptions
+  about its layout.  For example, we assume the first argument to `memory.init`
+  is either an `i32.const` or the result of an `i32.add`.
+  """
+  segments = module.get_segments()
+  func = module.get_function(func_index)
+  module.seek(func.offset)
+  skip_function_header(module)
+  end = func.offset + func.size
+  const_values = []
+  call_targets = []
+  while module.tell() != end:
+    opcode = OpCode(module.read_byte())
+    if opcode in (OpCode.END, OpCode.NOP, OpCode.DROP, OpCode.I32_ADD):
+      pass
+    elif opcode in (OpCode.BLOCK,):
+      module.read_type()
+    elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
+      const_values.append(module.read_uleb())
+    elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
+      module.read_uleb()
+    elif opcode == OpCode.CALL:
+      call_targets.append(module.read_uleb())
+    elif opcode == OpCode.MEMORY_PREFIX:
+      opcode = MemoryOpCode(module.read_byte())
+      if opcode == MemoryOpCode.MEMORY_INIT:
+        segment_idx = module.read_uleb()
+        segment = segments[segment_idx]
+        offset = const_values[-3]
+        offset_map[segment] = offset
+        memory = module.read_uleb()
+        assert memory == 0
+      elif opcode == MemoryOpCode.MEMORY_FILL:
+        memory = module.read_uleb() # noqa
+        assert memory == 0
+      elif opcode == MemoryOpCode.MEMORY_DROP:
+        segment = module.read_uleb() # noqa
+      else:
+        assert False, "unknown: %s" % opcode
+    elif opcode == OpCode.ATOMIC_PREFIX:
+      opcode = AtomicOpCode(module.read_byte())
+      if opcode in (AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
+                    AtomicOpCode.ATOMIC_NOTIFY, AtomicOpCode.ATOMIC_WAIT32,
+                    AtomicOpCode.ATOMIC_WAIT64):
+        module.read_uleb()
+        module.read_uleb()
+      else:
+        assert False, "unknown: %s" % opcode
+    elif opcode == OpCode.BR_TABLE:
+      count = module.read_uleb()
+      for _ in range(count):
+        depth = module.read_uleb() # noqa
+      default = module.read_uleb() # noqa
+    else:
+      assert False, "unknown: %s" % opcode
+
+  # Recursion is safe here because the layout of the wasm-ld-generated
+  # start function has a specific structure and has at most on level
+  # of call stack depth.
+  for t in call_targets:
+    parse_function_for_memory_inits(module, t, offset_map)
+
+
+@webassembly.memoize
+def get_passive_segment_offsets(module):
+  start_func_index = module.get_start()
+  assert start_func_index is not None
+  offset_map = {}
+  parse_function_for_memory_inits(module, start_func_index, offset_map)
+  return offset_map
+
+
+def find_segment_with_address(module, address):
   segments = module.get_segments()
   active = [s for s in segments if s.init]
 
@@ -58,15 +143,15 @@ def find_segment_with_address(module, address, size=0):
     offset = get_const_expr_value(seg.init)
     if offset is None:
       continue
-    if offset == address:
-      return (seg, 0)
-    if address > offset and address < offset + seg.size:
+    if address >= offset and address < offset + seg.size:
       return (seg, address - offset)
 
   passive = [s for s in segments if not s.init]
-  for seg in passive:
-    if seg.size == size:
-      return (seg, 0)
+  if passive:
+    offset_map = get_passive_segment_offsets(module)
+    for seg, offset in offset_map.items():
+      if address >= offset and address < offset + seg.size:
+        return (seg, address - offset)
 
   raise AssertionError('unable to find segment for address: %s' % address)
 
@@ -95,7 +180,7 @@ def get_asm_strings(module, export_map):
   start_addr = get_global_value(start_global)
   end_addr = get_global_value(end_global)
 
-  seg = find_segment_with_address(module, start_addr, end_addr - start_addr)
+  seg = find_segment_with_address(module, start_addr)
   if not seg:
     exit_with_error('unable to find segment starting at __start_em_asm: %s' % start_addr)
   seg, seg_offset = seg

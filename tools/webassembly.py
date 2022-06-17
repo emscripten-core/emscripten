@@ -87,15 +87,20 @@ class Type(IntEnum):
   V128 = 0x7b # -0x5
   FUNCREF = 0x70 # -0x10
   EXTERNREF = 0x6f # -0x11
+  VOID = 0x40 # -0x40
 
 
 class OpCode(IntEnum):
   NOP = 0x01
   BLOCK = 0x02
-  CALL = 0x10
   END = 0x0b
+  BR = 0x0c
+  BR_TABLE = 0x0e
+  CALL = 0x10
+  DROP = 0x1a
   LOCAL_GET = 0x20
   LOCAL_SET = 0x21
+  LOCAL_TEE = 0x22
   GLOBAL_GET = 0x23
   GLOBAL_SET = 0x24
   RETURN = 0x0f
@@ -103,7 +108,25 @@ class OpCode(IntEnum):
   I64_CONST = 0x42
   F32_CONST = 0x43
   F64_CONST = 0x44
+  I32_ADD = 0x6a
   REF_NULL = 0xd0
+  ATOMIC_PREFIX = 0xfe
+  MEMORY_PREFIX = 0xfc
+
+
+class MemoryOpCode(IntEnum):
+  MEMORY_INIT = 0x08
+  MEMORY_DROP = 0x09
+  MEMORY_COPY = 0x0a
+  MEMORY_FILL = 0x0b
+
+
+class AtomicOpCode(IntEnum):
+  ATOMIC_NOTIFY = 0x00
+  ATOMIC_WAIT32 = 0x01
+  ATOMIC_WAIT64 = 0x02
+  ATOMIC_I32_STORE = 0x17
+  ATOMIC_I32_RMW_CMPXCHG = 0x48
 
 
 class SecType(IntEnum):
@@ -405,6 +428,14 @@ class Module:
       init = self.read_init()
       globls.append(Global(global_type, mutable, init))
     return globls
+
+  @memoize
+  def get_start(self):
+    start_section = self.get_section(SecType.START)
+    if not start_section:
+      return None
+    self.seek(start_section.offset)
+    return self.read_uleb()
 
   @memoize
   def get_functions(self):
