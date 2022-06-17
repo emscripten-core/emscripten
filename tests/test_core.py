@@ -340,21 +340,6 @@ def no_sanitize(note):
   return decorator
 
 
-def no_memory64(note):
-  assert not callable(note)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if self.get_setting('MEMORY64'):
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
 def no_wasmfs(note):
   assert not callable(note)
 
@@ -617,7 +602,7 @@ class TestCoreBase(RunnerCore):
   def test_sha1(self):
     self.do_runf(test_file('sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
-  @no_memory64('tests 32-bit specific sizes')
+  @no_wasm64('tests 32-bit specific sizes')
   def test_wasm32_unknown_emscripten(self):
     # No other configuration is supported, so always run this.
     self.do_runf(test_file('wasm32-unknown-emscripten.c'), '')
@@ -1025,7 +1010,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   @parameterized({
     'normal': [],
     'memvalidate': ['-DEMMALLOC_MEMVALIDATE'],
@@ -1045,7 +1030,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   def test_emmalloc_usable_size(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += list(args)
@@ -1056,7 +1041,7 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @no_ubsan('UBSan changes memory consumption')
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   def test_emmalloc_memory_statistics(self, *args):
 
     self.set_setting('MALLOC', 'emmalloc')
@@ -1067,7 +1052,7 @@ base align: 0, 0, 0, 0'''])
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112'] + list(args)
@@ -1075,7 +1060,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_trim.cpp')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   def test_emmalloc_memalign_corruption(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
@@ -2399,7 +2384,7 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_memory64('does not fail under wasm64')
+  @no_wasm64('does not fail under wasm64')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2830,7 +2815,7 @@ The current type of b is: 9
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_memory64('emmalloc does not yet support MEMORY64')
+  @no_wasm64('emmalloc does not yet support MEMORY64')
   @node_pthreads
   def test_pthread_emmalloc(self):
     self.emcc_args += ['-fno-builtin']
@@ -7164,7 +7149,7 @@ void* operator new(size_t size) {
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
-  @no_memory64('gives: TypeError: WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function')
+  @no_wasm64('gives: TypeError: WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function')
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -7946,7 +7931,7 @@ void* operator new(size_t size) {
   def test_vswprintf_utf8(self):
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_hello(self):
     # needs to flush stdio streams
@@ -7972,11 +7957,11 @@ int main() {
     self.do_runf('main.c', 'HelloWorld!99')
 
   @requires_v8
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8007,7 +7992,7 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_ccall_good(self):
     # check reasonable ccall use
@@ -8037,7 +8022,7 @@ Module['onRuntimeInitialized'] = function() {
     '': (False,),
     'exit_runtime': (True,),
   })
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_promise(self, exit_runtime):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME')
@@ -8077,7 +8062,7 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -8100,7 +8085,7 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8131,7 +8116,7 @@ Module['onRuntimeInitialized'] = function() {
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
     'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8145,12 +8130,12 @@ Module['onRuntimeInitialized'] = function() {
         raise
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8159,7 +8144,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8178,7 +8163,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_hello_world.c')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8754,7 +8739,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_memory64('TODO: ASAN in memory64')
+  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
@@ -8770,7 +8755,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # stores, and then the stores identified as dead, which leaves nothing for
   # asan to test. here we want to test asan itself, so we work around that.
   @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_memory64('TODO: ASAN in memory64')
+  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -8842,7 +8827,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_memory64('TODO: ASAN in memory64')
+  @no_wasm64('TODO: ASAN in memory64')
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
@@ -8852,7 +8837,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_memory64('TODO: ASAN in memory64')
+  @no_wasm64('TODO: ASAN in memory64')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('INITIAL_MEMORY', '300mb')
@@ -8860,7 +8845,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_memory64('TODO: ASAN in memory64')
+  @no_wasm64('TODO: ASAN in memory64')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9311,7 +9296,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  @no_memory64('missing "crashing"')
+  @no_wasm64('missing "crashing"')
   def test_abort_on_exceptions(self):
     # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
     # https://github.com/emscripten-core/emscripten/issues/15080
@@ -9371,7 +9356,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_em_async_js(self):
     self.uses_es6 = True
     self.set_setting('ASYNCIFY')
