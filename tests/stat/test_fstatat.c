@@ -58,6 +58,7 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+  // WasmFS correctly counts 512B blocks, but MEMFS counts 4kb blocks.
 #ifdef WASMFS
   assert(s.st_blocks == 8);
 #else
