@@ -23,6 +23,8 @@ using Error = long;
 // or is a view into a static string.
 using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
 
+enum LinkBehavior { FollowLinks, FollowParentLinks, NoFollowLinks };
+
 struct ParsedParent {
 private:
   std::variant<Error, ParentChild> val;
@@ -46,7 +48,9 @@ public:
   }
 };
 
-ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
+ParsedParent parseParent(std::string_view path,
+                         __wasi_fd_t basefd = AT_FDCWD,
+                         LinkBehavior links = FollowLinks);
 
 struct ParsedFile {
 private:
@@ -71,7 +75,9 @@ public:
   }
 };
 
-ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
+ParsedFile parseFile(std::string_view path,
+                     __wasi_fd_t basefd = AT_FDCWD,
+                     LinkBehavior links = FollowLinks);
 
 // Like `parseFile`, but handle the case where `flags & AT_EMPTY_PATH`. Does not
 // validate the flags since different callers have different allowed flags.

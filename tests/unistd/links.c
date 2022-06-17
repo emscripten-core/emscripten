@@ -82,7 +82,6 @@ int main() {
 #endif
   errno = 0;
 
-#ifndef WASMFS
   // FS.lookupPath should notice the symlink loop and return ELOOP, not go into
   // an infinite recurse.
   //
@@ -94,7 +93,6 @@ int main() {
   printf("errno: %d\n", errno);
   assert(errno == ELOOP);
   errno = 0;
-#endif
 
   return 0;
 }
