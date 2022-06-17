@@ -7317,7 +7317,6 @@ void* operator new(size_t size) {
 
     do_test(test2, level=2, prefix='hello_libcxx')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind(self):
     # Verify that both the old `--bind` arg and the new `-lembind` arg work
     for args in [['-lembind'], ['--bind']]:

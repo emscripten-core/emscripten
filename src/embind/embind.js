@@ -439,6 +439,7 @@ var LibraryEmbind = {
 
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
+  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
     var shift = getShiftFromSize(size);
 
@@ -546,9 +547,12 @@ var LibraryEmbind = {
   _embind_register_integer__deps: [
     'embind_repr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
+  _embind_register_integer__sig: 'vpppii',
   _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
-    if (maxRange === -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
+    // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
+    // out as 'i32 -1'. Always treat those as max u32.
+    if (maxRange === -1) {
         maxRange = 4294967295;
     }
 
@@ -599,6 +603,7 @@ var LibraryEmbind = {
 #if WASM_BIGINT
   _embind_register_bigint__deps: [
     'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+  _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
 
@@ -639,6 +644,7 @@ var LibraryEmbind = {
   _embind_register_float__deps: [
     'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
+  _embind_register_float__sig: 'vppp',
   _embind_register_float: function(rawType, name, size) {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
