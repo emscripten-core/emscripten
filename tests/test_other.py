@@ -21,7 +21,6 @@ import sys
 import time
 import tempfile
 import unittest
-import uuid
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -615,9 +614,15 @@ f.close()
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_print_search_dirs(self):
-    result = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('programs: =', result.stdout)
-    self.assertContained('libraries: =', result.stdout)
+    output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
+    self.assertContained('programs: =', output)
+    self.assertContained('libraries: =', output)
+    self.assertContained(str(shared.Cache.get_lib_dir(absolute=True)), output)
+
+  def test_emcc_print_file_name(self):
+    self.run_process([EMBUILDER, 'build', 'libc'])
+    output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
+    self.assertContained(shared.Cache.get_lib_name('libc.a'), output)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
@@ -1772,8 +1777,8 @@ int f() {
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
-        '-sEXIT_RUNTIME=1',
-        '-sMAIN_MODULE=1',
+        '-sEXIT_RUNTIME',
+        '-sMAIN_MODULE=2',
         'side.wasm',
       ])
 
@@ -1796,6 +1801,55 @@ int f() {
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-Wno-experimental']
     self.do_runf(test_file('core/test_em_js.cpp'))
+
+  @node_pthreads
+  def test_dylink_pthread_comdat(self):
+    # Test that the comdat info for `Foo`, which is defined in the side module,
+    # is visible to the main module.
+    create_file('foo.h', r'''
+    struct Foo {
+      // Making this method virtual causes the comdat group for the
+      // class to only be defined in the side module.
+      virtual void method() const;
+    };
+    ''')
+    create_file('main.cpp', r'''
+      #include "foo.h"
+      #include <typeinfo>
+      #include <emscripten/console.h>
+
+      int main() {
+        _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
+
+        Foo().method();
+        return 0;
+      }
+    ''')
+    create_file('side.cpp', r'''
+      #include "foo.h"
+      #include <typeinfo>
+      #include <emscripten/console.h>
+
+      void Foo::method() const {
+        _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'libside.wasm',
+      'side.cpp',
+      '-pthread', '-Wno-experimental',
+      '-sSIDE_MODULE=1'])
+    self.do_runf(
+      'main.cpp',
+      'main: Foo typeid: 3Foo\nside: Foo typeid: 3Foo\n',
+      emcc_args=[
+        '-pthread', '-Wno-experimental',
+        '-sPROXY_TO_PTHREAD',
+        '-sEXIT_RUNTIME',
+        '-sMAIN_MODULE=2',
+        'libside.wasm',
+      ])
 
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
@@ -2688,7 +2742,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -2696,7 +2750,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, read_file('immutable.js'))
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
@@ -2707,8 +2761,7 @@ int f() {
     assert metadata['files'][1]['start'] == len('data1') and metadata['files'][1]['end'] == len('data1') + len('data2') and metadata['files'][1]['filename'] == '/subdir/data2.txt'
     assert metadata['remote_package_size'] == len('data1') + len('data2')
 
-    # can only assert the uuid format is correct, the uuid's value is expected to differ in between invocation
-    uuid.UUID(metadata['package_uuid'], version=4)
+    self.assertEqual(metadata['package_uuid'], 'sha256-53ddc03623f867c7d4a631ded19c2613f2cb61d47b6aa214f47ff3cc15445bcd')
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
@@ -2758,7 +2811,7 @@ int f() {
     err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
     self.assertContained('--obj-output is recommended when using --embed', err)
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o', '--js-output=data.js'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o'])
 
     create_file('test.c', '''
     #include <stdio.h>
@@ -2773,7 +2826,7 @@ int f() {
       return 0;
     }
     ''')
-    self.run_process([EMCC, '--pre-js=data.js', 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
+    self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
@@ -4902,6 +4955,7 @@ int main()
   def test_strptime_symmetry(self):
     self.do_runf(test_file('strptime_symmetry.cpp'), 'TEST PASSED')
 
+  @also_with_wasmfs
   def test_truncate_from_0(self):
     create_file('src.cpp', r'''
 #include <cerrno>
@@ -5958,9 +6012,9 @@ double hello4(double x) {
 }
 ''')
     create_file('pre.js', r'''
-Module['preRun'].push(function (){
+Module['preRun'] = function () {
   ENV['LD_LIBRARY_PATH']='/lib:/usr/lib';
-});
+};
 ''')
     create_file('main.c', r'''
 #include <stdio.h>
@@ -9911,19 +9965,19 @@ int main(void) {
     # a pre-js can set Module to a new object or otherwise undo file preloading/
     # embedding changes to Module.preRun. we show an error to avoid confusion
     create_file('pre.js', 'Module = {};')
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
       #include <stdio.h>
       int main() {
-        printf("file exists: %d\n", !!fopen("src.cpp", "rb"));
+        printf("file exists: %p\n", fopen("src.cpp", "rb"));
       }
     ''')
-    self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+    self.run_process([EMCC, 'src.c', '--pre-js=pre.js', '--preload-file=src.c'])
     result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('Module.preRun should exist because file support used it; did a pre-js delete it?', result)
 
     def test_error(pre):
       create_file('pre.js', pre)
-      self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '--embed-file', 'src.cpp'])
+      self.run_process([EMXX, 'src.c', '--pre-js=pre.js', '--preload-file=src.c'])
       result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?', result)
 
@@ -12157,3 +12211,16 @@ Module['postRun'] = function() {{
     self.assertContained('hello_world.o:(__original_main)', out)
     out2 = self.run_process([EMCC, 'hello_world.o', '-Wl,-M'], stdout=PIPE).stdout
     self.assertEqual(out, out2)
+
+  def test_rust_gxx_personality_v0(self):
+    self.do_run(r'''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern "C" {
+        int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
+        int main() {
+          __gxx_personality_v0(0, NULL, 0, NULL, NULL);
+          return 0;
+        }
+      }
+    ''', assert_returncode=NON_ZERO)

@@ -9,7 +9,10 @@
 
 namespace wasmfs::SpecialFiles {
 
-// /dev/stdin/
+// /dev/null
+std::shared_ptr<DataFile> getNull();
+
+// /dev/stdin
 std::shared_ptr<DataFile> getStdin();
 
 // /dev/stdout

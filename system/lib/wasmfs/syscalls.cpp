@@ -347,7 +347,7 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_uid = 0;
   buffer->st_gid = 0;
   // Device ID (if special file) No meaning right now for Emscripten.
-  buffer->st_rdev = 1;
+  buffer->st_rdev = 0;
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
@@ -438,6 +438,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       if (returnMode == OpenReturnMode::Nothing) {
         return 0;
       }
+
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
@@ -561,13 +562,6 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   }
 
   // TODO: Check that the insertion is successful.
-
-  // Update the times.
-  auto lockedFile = created->locked();
-  time_t now = time(NULL);
-  lockedFile.setATime(now);
-  lockedFile.setMTime(now);
-  lockedFile.setCTime(now);
 
   return 0;
 }

@@ -63,15 +63,15 @@ void _embind_register_integer(
     TYPEID integerType,
     const char* name,
     size_t size,
-    long minRange,
-    unsigned long maxRange);
+    int32_t minRange,
+    uint32_t maxRange);
 
 void _embind_register_bigint(
     TYPEID integerType,
     const char* name,
     size_t size,
-    long long minRange,
-    unsigned long long maxRange);
+    int64_t minRange,
+    uint64_t maxRange);
 
 void _embind_register_float(
     TYPEID floatType,

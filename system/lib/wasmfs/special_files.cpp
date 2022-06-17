@@ -17,6 +17,25 @@ namespace wasmfs::SpecialFiles {
 
 namespace {
 
+// No-op reads and writes: /dev/null
+class NullFile : public DataFile {
+  void open(oflags_t) override {}
+  void close() override {}
+
+  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    return len;
+  }
+
+  ssize_t read(uint8_t* buf, size_t len, off_t offset) override { return 0; }
+
+  void flush() override {}
+  size_t getSize() override { return 0; }
+  void setSize(size_t size) override {}
+
+public:
+  NullFile() : DataFile(S_IRUGO | S_IWUGO, NullBackend, S_IFCHR) {}
+};
+
 class StdinFile : public DataFile {
   void open(oflags_t) override {}
   void close() override {}
@@ -140,6 +159,11 @@ public:
 };
 
 } // anonymous namespace
+
+std::shared_ptr<DataFile> getNull() {
+  static auto null = std::make_shared<NullFile>();
+  return null;
+}
 
 std::shared_ptr<DataFile> getStdin() {
   static auto stdin = std::make_shared<StdinFile>();
