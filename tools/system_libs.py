@@ -1066,7 +1066,7 @@ class libc_optz(libc):
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
     return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
-           not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
+        not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
 class libprintf_long_double(libc):
