@@ -617,7 +617,11 @@ f.close()
     output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
     self.assertContained('programs: =', output)
     self.assertContained('libraries: =', output)
-    self.assertContained(str(shared.Cache.get_lib_dir(absolute=True)), output)
+    libpath = output.split('libraries: =', 1)[1].strip()
+    libpath = libpath.split(os.pathsep)
+    libpath = [Path(p) for p in libpath]
+    print(libpath)
+    self.assertIn(shared.Cache.get_lib_dir(absolute=True), libpath)
 
   def test_emcc_print_file_name(self):
     self.run_process([EMBUILDER, 'build', 'libc'])
