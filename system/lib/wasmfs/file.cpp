@@ -99,6 +99,7 @@ Directory::Handle::insertDataFile(const std::string& name, mode_t mode) {
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
+  setMTime(time(NULL));
   return child;
 }
 
@@ -113,6 +114,7 @@ Directory::Handle::insertDirectory(const std::string& name, mode_t mode) {
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
+  setMTime(time(NULL));
   return child;
 }
 
@@ -128,6 +130,7 @@ Directory::Handle::insertSymlink(const std::string& name,
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
+  setMTime(time(NULL));
   return child;
 }
 
@@ -141,7 +144,8 @@ bool Directory::Handle::insertMove(const std::string& name,
     return false;
   }
   // Look up the file in its old parent's cache.
-  auto& oldCache = file->locked().getParent()->dcache;
+  auto oldParent = file->locked().getParent();
+  auto& oldCache = oldParent->dcache;
   auto oldIt = std::find_if(oldCache.begin(), oldCache.end(), [&](auto& kv) {
     return kv.second.file == file;
   });
@@ -162,6 +166,11 @@ bool Directory::Handle::insertMove(const std::string& name,
     it->second = entry;
   }
   file->locked().setParent(getDir());
+
+  auto now = time(NULL);
+  oldParent->locked().setMTime(now);
+  setMTime(now);
+
   return true;
 }
 
@@ -180,6 +189,7 @@ bool Directory::Handle::removeChild(const std::string& name) {
     entry->second.file->locked().setParent(nullptr);
     dcache.erase(entry);
   }
+  setMTime(time(NULL));
   return true;
 }
 

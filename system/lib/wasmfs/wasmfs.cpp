@@ -79,6 +79,7 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   assert(devDir);
   {
     auto lockedDev = devDir->locked();
+    lockedDev.mountChild("null", SpecialFiles::getNull());
     lockedDev.mountChild("stdin", SpecialFiles::getStdin());
     lockedDev.mountChild("stdout", SpecialFiles::getStdout());
     lockedDev.mountChild("stderr", SpecialFiles::getStderr());
