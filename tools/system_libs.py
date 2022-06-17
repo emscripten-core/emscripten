@@ -1059,7 +1059,13 @@ class libc_optz(libc):
     return cmd
 
   def can_use(self):
-    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2
+    # Because libc_optz overrides parts of libc, it is not compatible with
+    # dynamic linking which uses --whole-archive. In addition,
+    # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
+    # In both cases, the build is not one that is hyper-focused on code size,
+    # and so optz is not that important.
+    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
+        not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
 class libprintf_long_double(libc):
@@ -1877,13 +1883,9 @@ def get_libs_to_link(args, forced, only_forced):
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
-  # Becuase libc_optz overrides parts of libc, it is not compatible with `LINKABLE`
-  # (used in `MAIN_MODULE=1`) because with that setting we use `--whole-archive` to
-  # include all system libraries.
-  # However, because libc_optz is a size optimization it is not really important
-  # when used with `MAIN_MODULE=1` (which links in all system libraries, leading
-  # to overheads far bigger than any savings from libc_optz)
-  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE:
+  # See comment in libc_optz itself
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
+     not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
 
   if settings.STANDALONE_WASM:

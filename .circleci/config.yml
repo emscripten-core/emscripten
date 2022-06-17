@@ -372,6 +372,7 @@ jobs:
     steps:
       - run-tests-linux:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
+          # also add a corez test of dynamic linking + forced syslibs
           test_targets: "
             core2
             asan.test_stat
@@ -384,7 +385,8 @@ jobs:
             asan.test_async_hello
             lsan.test_stdio_locking
             lsan.test_pthread_create
-            browser.test_pthread_join"
+            browser.test_pthread_join
+            corez.test_dylink_syslibs_all"
   test-core3:
     executor: bionic
     steps:
