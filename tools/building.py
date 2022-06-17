@@ -1225,7 +1225,6 @@ def strip(infile, outfile, debug=False, sections=None):
     cmd += ['--remove-section=.debug*']
   if sections:
     cmd += ['--remove-section=' + section for section in sections]
-  print(cmd)
   check_call(cmd)
 
 
@@ -1249,7 +1248,10 @@ def emit_debug_on_side(wasm_file):
 
   # Strip code and data from the debug file to limit its size. The other known
   # sections are still required to correctly interpret the DWARF info.
-  strip(wasm_file_with_dwarf, wasm_file_with_dwarf, section=['CODE', 'DATA'])
+  # TODO(dschuff): Also strip the DATA section? To make this work we'd need to
+  # either allow "invalid" data segment name entries, or maybe convert the DATA
+  # to a DATACOUNT section.
+  strip(wasm_file_with_dwarf, wasm_file_with_dwarf, sections=['CODE'])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
