@@ -8475,7 +8475,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js', '--source-map-base', 'dir/'])
     output = read_binary('a.wasm')
     # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
-    source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
+    source_mapping_url_content = webassembly.to_leb(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.to_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertEqual(output.count(source_mapping_url_content), 1)
     # make sure no DWARF debug info sections remain - they would just waste space
     self.assertNotIn(b'.debug_', output)
@@ -8502,7 +8502,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js'] + list(args))
     output = read_binary('a.wasm')
     # has sourceMappingURL section content and points to 'a.wasm.map' file
-    source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('a.wasm.map')) + b'a.wasm.map'
+    source_mapping_url_content = webassembly.to_leb(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.to_leb(len('a.wasm.map')) + b'a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):
