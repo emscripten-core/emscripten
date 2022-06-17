@@ -165,4 +165,9 @@ ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags) {
   return path::parseFile(path, fd, links);
 }
 
+ParsedFile getFileFrom(std::shared_ptr<Directory> base, std::string_view path) {
+  size_t recursions = 0;
+  return doParseFile(path, base, FollowLinks, recursions, true);
+}
+
 } // namespace wasmfs::path

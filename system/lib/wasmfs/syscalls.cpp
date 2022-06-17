@@ -387,9 +387,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
-                    O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) ==
-         0);
+  assert((flags &
+          ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
+            O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW | O_CLOEXEC)) == 0);
 
   if (auto err = parsed.getError()) {
     return err;
@@ -444,7 +444,28 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     }
   }
 
-  // TODO: Return EISDIR if child is a directory and write access is requested.
+  if (auto link = child->dynCast<Symlink>()) {
+    if (flags & O_NOFOLLOW) {
+      return -ELOOP;
+    }
+    // TODO: The link dereference count starts back at 0 here. We could
+    // propagate it from the previous path parsing instead.
+    auto target = link->getTarget();
+    auto parsedLink = path::getFileFrom(parent, target);
+    if (auto err = parsedLink.getError()) {
+      return err;
+    }
+    child = parsedLink.getFile();
+  }
+
+  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
+  if (flags & O_EXCL && flags & O_CREAT) {
+    return -EEXIST;
+  }
+
+  if (child->is<Directory>() && accessMode != O_RDONLY) {
+    return -EISDIR;
+  }
 
   // Check user permissions.
   auto fileMode = child->locked().getMode();
@@ -462,21 +483,20 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
-  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
-  if (flags & O_EXCL && flags & O_CREAT) {
-    return -EEXIST;
-  }
-
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   auto openFile = std::make_shared<OpenFileState>(0, flags, child);
 
   // If O_TRUNC, truncate the file if possible.
-  if ((flags & O_TRUNC) && child->is<DataFile>()) {
-    if (fileMode & WASMFS_PERM_WRITE) {
-      child->cast<DataFile>()->locked().setSize(0);
+  if (flags & O_TRUNC) {
+    if (child->is<DataFile>()) {
+      if (fileMode & WASMFS_PERM_WRITE) {
+        child->cast<DataFile>()->locked().setSize(0);
+      } else {
+        return -EACCES;
+      }
     } else {
-      return -EACCES;
+      return -EISDIR;
     }
   }
 

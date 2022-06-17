@@ -478,6 +478,14 @@ success: 1
 errno: 0
 st_mode: 0100000
 
+EXISTING LINK 0,0
+success: 1
+errno: 0
+
+EXISTING LINK 0,1
+success: 0
+errno: 32
+
 EXISTING FILE 1,0
 success: 1
 errno: 0
@@ -958,6 +966,14 @@ success: 1
 errno: 0
 st_mode: 0100000
 
+EXISTING LINK 1,0
+success: 1
+errno: 0
+
+EXISTING LINK 1,1
+success: 0
+errno: 32
+
 EXISTING FILE 2,0
 success: 1
 errno: 0
@@ -1437,6 +1453,14 @@ NON-EXISTING 2,31
 success: 1
 errno: 0
 st_mode: 0100000
+
+EXISTING LINK 2,0
+success: 1
+errno: 0
+
+EXISTING LINK 2,1
+success: 0
+errno: 32
 
 CREAT
 success: 1
