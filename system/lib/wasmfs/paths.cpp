@@ -20,7 +20,7 @@ ParsedFile doParseFile(std::string_view path,
                        LinkBehavior links,
                        size_t& recursions);
 
-ParsedFile getBase(__wasi_fd_t basefd) {
+ParsedFile getBaseDir(__wasi_fd_t basefd) {
   if (basefd == AT_FDCWD) {
     return {wasmFS.getCWD()};
   }
@@ -129,7 +129,7 @@ ParsedFile doParseFile(std::string_view path,
 } // anonymous namespace
 
 ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd) {
-  auto base = getBase(basefd);
+  auto base = getBaseDir(basefd);
   if (auto err = base.getError()) {
     return err;
   }
@@ -140,7 +140,7 @@ ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd) {
 
 ParsedFile
 parseFile(std::string_view path, __wasi_fd_t basefd, LinkBehavior links) {
-  auto base = getBase(basefd);
+  auto base = getBaseDir(basefd);
   if (auto err = base.getError()) {
     return err;
   }
