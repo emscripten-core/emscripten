@@ -211,6 +211,21 @@ void test_perf_chaining() {
   std::string s("test hello world!!");
   val vi = val(256);
 
+  const size_t PreWarmLoopTimes = 10000;
+  // pre-warm
+  for (size_t i = 0; i < PreWarmLoopTimes; i++) {
+    // val (non chaining)
+    val v = val::object();
+    v.set("key1", 1);
+    v.set("key2", 2);
+    v.set("key3", 1.234f);
+    v.set("key4", true);
+    v.set("key5", "012345678910");
+    v.set("key6", s);
+    v.set("key7", vi);
+    v.set("key8", 8);
+  }
+
   double start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
     // val (non chaining)
@@ -226,6 +241,21 @@ void test_perf_chaining() {
   }
   auto val_cost = emscripten_get_now() - start;
   printf("test_chain_val loop %zu cost: %f\n", LoopTimes, val_cost);
+
+  // pre-warm
+  for (size_t i = 0; i < PreWarmLoopTimes; i++) {
+    // use valhelper (chaining)
+    VH v(OBJECT);
+    v.set("key1", 1);
+    v.set("key2", 2);
+    v.set("key3", 1.234f);
+    v.set("key4", true);
+    v.set("key5", "012345678910");
+    v.set("key6", s);
+    v.set("key7", vi);
+    v.set("key8", 8);
+    val o = v.toval();  // finalized
+  }
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
@@ -244,6 +274,7 @@ void test_perf_chaining() {
   auto vh_cost = emscripten_get_now() - start;
   printf("test_chain_vh loop %zu cost: %f\n", LoopTimes, vh_cost);
 
+  printf("val-vh = %f\n", val_cost - vh_cost);
   printf("val/vh = %f\n", val_cost / vh_cost);
 }
 
