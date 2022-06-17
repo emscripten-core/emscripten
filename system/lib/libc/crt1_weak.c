@@ -11,10 +11,13 @@
 static int _main_argc;
 static char** _main_argv;
 
-int __main_argc_argv(int argc, char *argv[]);
+weak int __main_argc_argv(int argc, char *argv[]);
 
 weak int __main_void(void) {
-  return __main_argc_argv(_main_argc, _main_argv);
+  if (__main_argc_argv) {
+    return __main_argc_argv(_main_argc, _main_argv);
+  }
+  return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE int _emscripten_start(int argc, char** argv) {

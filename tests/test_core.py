@@ -992,6 +992,7 @@ base align: 0, 0, 0, 0'''])
   def test_errar(self):
     self.do_core_test('test_errar.c')
 
+  @disabled('no longer supported since we switched to crt1.o startup')
   def test_mainenv(self):
     self.do_core_test('test_mainenv.c')
 
@@ -4047,9 +4048,7 @@ ok
     if need_reverse:
       print('flip')
       # Test the reverse as well.  There we flip the role of the side module and main module.
-      # - We add --no-entry since the side module doesn't have a `main`
-      self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
-                        need_reverse=False, **kwargs)
+      self.dylink_testf(side, main, expected, force_c, main_emcc_args, need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -5059,16 +5058,16 @@ main main sees -524, -534, 72.
     # example.c uses K&R style function declarations
     self.emcc_args.append('-Wno-deprecated-non-prototype')
     self.emcc_args.append('-I' + test_file('third_party/zlib'))
-    self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
-                     side=zlib_archive,
-                     expected=read_file(test_file('core/test_zlib.out')),
-                     force_c=True)
+    self.dylink_testf(test_file('third_party/zlib/example.c'),
+                      side=zlib_archive,
+                      expected=read_file(test_file('core/test_zlib.out')),
+                      force_c=True)
 
   # @needs_dylink
   # def test_dylink_bullet(self):
   #   self.emcc_args += ['-I' + test_file('bullet/src')]
   #   side = self.get_bullet_library(self, True)
-  #   self.dylink_test(main=read_file(test_file('bullet/Demos/HelloWorld/HelloWorld.cpp')),
+  #   self.dylink_test(test_file('bullet/Demos/HelloWorld/HelloWorld.cpp'),
   #                    side=side,
   #                    expected=[read_file(test_file('bullet/output.txt')), # different roundings
   #                              read_file(test_file('bullet/output2.txt')),
@@ -9265,7 +9264,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
       self.set_setting('IGNORE_MISSING_MAIN', 0)
       err = self.expect_fail([EMCC, test_file('core/test_ctors_no_main.cpp')] + self.get_emcc_args())
-      self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
+      self.assertContained('error: undefined symbol: main/__main_argc_argv (referenced by top-level compiled C/C++ code)', err)
 
       # In non-standalone mode exporting an empty list of functions signal that we don't
       # have a main and so should not generate an error.

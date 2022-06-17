@@ -614,9 +614,15 @@ f.close()
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_print_search_dirs(self):
-    result = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('programs: =', result.stdout)
-    self.assertContained('libraries: =', result.stdout)
+    output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
+    self.assertContained('programs: =', output)
+    self.assertContained('libraries: =', output)
+    self.assertContained(str(shared.Cache.get_lib_dir(absolute=True)), output)
+
+  def test_emcc_print_file_name(self):
+    self.run_process([EMBUILDER, 'build', 'libc'])
+    output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
+    self.assertContained(shared.Cache.get_lib_name('libc.a'), output)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
@@ -6855,9 +6861,9 @@ high = 1234
     self.assertContained('error: undefined exported symbol: "foo"', err)
 
   def test_dash_s_hex(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-nodefaultlibs', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
     # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
-    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-nodefaultlibs', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
 
   def test_zeroinit(self):
     create_file('src.c', r'''
@@ -8568,12 +8574,12 @@ int main() {
           [emsymbolizer, 'test_dwarf.wasm', address], stdout=PIPE).stdout
 
     # Check a location in foo(), not inlined.
-    self.assertIn('test_dwarf.c:6:3', get_addr('0x101'))
+    self.assertIn('test_dwarf.c:6:3', get_addr('0x116'))
     # Check that both bar (inlined) and main (inlinee) are in the output,
     # as described by the DWARF.
     # TODO: consider also checking the function names once the output format
     # stabilizes more
-    self.assertRegex(get_addr('0x124').replace('\n', ''),
+    self.assertRegex(get_addr('0x139').replace('\n', ''),
                      'test_dwarf.c:15:3.*test_dwarf.c:20:3')
 
   def test_separate_dwarf(self):
@@ -10592,15 +10598,16 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.run_process([EMCC, test_file('unistd/close.c')])
 
     err = 'symbol exported via --export not found: __errno_location'
-    self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
+    crt1 = shared.Cache.get_lib_dir(absolute=True) / 'crt1.o'
+    self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib', crt1]))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
     libs = ['-lc', '-lcompiler_rt']
-    self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib', crt1] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
-    self.run_process([EMCC, test_file('unistd/close.c'), '-nostartfiles'])
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nostartfiles', crt1])
 
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix

@@ -266,7 +266,7 @@ def inspect_headers(headers, cflags):
                                '-O0',
                                '-Werror',
                                '-Wno-format',
-                               '-nostdlib',
+                               '-nodefaultlibs',
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO=1',
                                '-sLLD_REPORT_UNDEFINED=1',

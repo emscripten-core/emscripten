@@ -1158,6 +1158,34 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
+    return super().can_use() and not settings.STANDALONE_WASM and settings.EXPECT_MAIN and not settings.IGNORE_MISSING_MAIN
+
+
+class crt1_weak(MuslInternalLibrary):
+  name = 'crt1_weak'
+  src_dir = 'system/lib/libc'
+  src_files = ['crt1_weak.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return super().can_use() and not settings.STANDALONE_WASM and (not settings.EXPECT_MAIN or settings.IGNORE_MISSING_MAIN)
+
+
+class crt1_standalone(MuslInternalLibrary):
+  name = 'crt1_standalone'
+  src_dir = 'system/lib/libc'
+  src_files = ['crt1_standalone.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
     return super().can_use() and settings.STANDALONE_WASM
 
 
@@ -1751,7 +1779,7 @@ def warn_on_unexported_main(symbolses):
   # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
   if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
     return
-  if '_main' not in settings.EXPORTED_FUNCTIONS:
+  if not settings.EXPECT_MAIN:
     for symbols in symbolses:
       if 'main' in symbols['defs']:
         logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
@@ -1847,11 +1875,20 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.SIDE_MODULE:
       if settings.STANDALONE_WASM:
         if settings.EXPECT_MAIN:
-          add_library('crt1')
+          add_library('crt1_standalone')
         else:
           add_library('crt1_reactor')
       elif settings.PROXY_TO_PTHREAD:
         add_library('crt1_proxy_main')
+      else:
+        if not settings.EXPECT_MAIN:
+          # No crt1 used in this case.
+          # TODO(sbc): Update this once we merge __wasm_call_ctors into _emscripten_start
+          pass
+        elif settings.IGNORE_MISSING_MAIN:
+          add_library('crt1_weak')
+        else:
+          add_library('crt1')
 
   if settings.SIDE_MODULE:
     return libs_to_link

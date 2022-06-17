@@ -47,8 +47,8 @@ WebAssembly.instantiate(b.wasm, {
     }
 }).then((function(a) {
     a = a.instance.exports;
-    p = a.g;
-    q = a.i;
+    p = a.i;
+    q = a.j;
     f = a.h;
     c ? (a = b, q(a.sb, a.sz), removeEventListener("message", l), m = m.forEach(n), 
     addEventListener("message", n)) : a.f();

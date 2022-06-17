@@ -21,6 +21,7 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_start
 $dynCall_jiji
 $emscripten_stack_get_base
 $emscripten_stack_get_end
