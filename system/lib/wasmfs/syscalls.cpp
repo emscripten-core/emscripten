@@ -982,10 +982,9 @@ int __syscall_symlink(intptr_t target, intptr_t linkpath) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-// TODO: Test that FollowParentLinks is not the same as NoFollowLinks
 int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
   // TODO: Handle empty paths.
-  auto parsed = path::parseFile((char*)path, dirfd, path::FollowParentLinks);
+  auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
     return err;
   }

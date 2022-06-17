@@ -23,7 +23,9 @@ using Error = long;
 // or is a view into a static string.
 using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
 
-enum LinkBehavior { FollowLinks, FollowParentLinks, NoFollowLinks };
+// If the path refers to a link, whether we should follow that link. Links among
+// the parent directories in the path are always followed.
+enum LinkBehavior { FollowLinks, NoFollowLinks };
 
 struct ParsedParent {
 private:
@@ -48,9 +50,7 @@ public:
   }
 };
 
-ParsedParent parseParent(std::string_view path,
-                         __wasi_fd_t basefd = AT_FDCWD,
-                         LinkBehavior links = FollowLinks);
+ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
 
 struct ParsedFile {
 private:

@@ -18,8 +18,7 @@ static inline constexpr size_t MAX_RECURSIONS = 40;
 ParsedFile doParseFile(std::string_view path,
                        std::shared_ptr<Directory> base,
                        LinkBehavior links,
-                       size_t& recursions,
-                       bool topLevel = false);
+                       size_t& recursions);
 
 ParsedFile getBase(__wasi_fd_t basefd) {
   if (basefd == AT_FDCWD) {
@@ -52,7 +51,7 @@ ParsedFile getChild(std::shared_ptr<Directory> dir,
       if (target.empty()) {
         return -ENOENT;
       }
-      auto parsed = doParseFile(target, dir, links, recursions);
+      auto parsed = doParseFile(target, dir, FollowLinks, recursions);
       if (auto err = parsed.getError()) {
         return err;
       }
@@ -64,7 +63,6 @@ ParsedFile getChild(std::shared_ptr<Directory> dir,
 
 ParsedParent doParseParent(std::string_view path,
                            std::shared_ptr<Directory> curr,
-                           LinkBehavior links,
                            size_t& recursions) {
   // Empty paths never exist.
   if (path.empty()) {
@@ -104,7 +102,7 @@ ParsedParent doParseParent(std::string_view path,
     // Try to descend into the child segment.
     // TODO: Check permissions on intermediate directories.
     auto segment = path.substr(0, segment_end);
-    auto child = getChild(curr, segment, links, recursions);
+    auto child = getChild(curr, segment, FollowLinks, recursions);
     if (auto err = child.getError()) {
       return err;
     }
@@ -119,30 +117,25 @@ ParsedParent doParseParent(std::string_view path,
 ParsedFile doParseFile(std::string_view path,
                        std::shared_ptr<Directory> base,
                        LinkBehavior links,
-                       size_t& recursions,
-                       bool topLevel) {
-  auto parsed = doParseParent(path, base, links, recursions);
+                       size_t& recursions) {
+  auto parsed = doParseParent(path, base, recursions);
   if (auto err = parsed.getError()) {
     return {err};
   }
   auto& [parent, child] = parsed.getParentChild();
-  if (topLevel && links == FollowParentLinks) {
-    links = NoFollowLinks;
-  }
   return getChild(parent, child, links, recursions);
 }
 
 } // anonymous namespace
 
-ParsedParent
-parseParent(std::string_view path, __wasi_fd_t basefd, LinkBehavior links) {
+ParsedParent parseParent(std::string_view path, __wasi_fd_t basefd) {
   auto base = getBase(basefd);
   if (auto err = base.getError()) {
     return err;
   }
   size_t recursions = 0;
   auto baseDir = base.getFile()->cast<Directory>();
-  return doParseParent(path, baseDir, links, recursions);
+  return doParseParent(path, baseDir, recursions);
 }
 
 ParsedFile
@@ -153,7 +146,7 @@ parseFile(std::string_view path, __wasi_fd_t basefd, LinkBehavior links) {
   }
   size_t recursions = 0;
   auto baseDir = base.getFile()->cast<Directory>();
-  return doParseFile(path, baseDir, links, recursions, true);
+  return doParseFile(path, baseDir, links, recursions);
 }
 
 ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags) {
@@ -168,7 +161,7 @@ ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags) {
     }
     return {openFile->locked().getFile()};
   }
-  auto links = (flags & AT_SYMLINK_NOFOLLOW) ? FollowParentLinks : FollowLinks;
+  auto links = (flags & AT_SYMLINK_NOFOLLOW) ? NoFollowLinks : FollowLinks;
   return path::parseFile(path, fd, links);
 }
 
