@@ -457,9 +457,10 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     }
     child = parsedLink.getFile();
   }
+  assert(!child->is<Symlink>());
 
   // Return an error if the file exists and O_CREAT and O_EXCL are specified.
-  if (flags & O_EXCL && flags & O_CREAT) {
+  if ((flags & O_EXCL) && (flags & O_CREAT)) {
     return -EEXIST;
   }
 
