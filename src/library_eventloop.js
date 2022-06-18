@@ -73,6 +73,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_set_immediate__sig: 'iii',
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
@@ -89,6 +90,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_clear_immediate__sig: 'vi',
   emscripten_clear_immediate: function(id) {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
@@ -99,6 +101,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_set_immediate_loop__sig: 'vii' ,
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
@@ -119,6 +122,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_set_timeout__sig: 'iidi',
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -129,6 +133,7 @@ LibraryJSEventLoop = {
     }, msecs);
   },
 
+  emscripten_clear_timeout__sig: 'vi',
   emscripten_clear_timeout: function(id) {
     clearTimeout(id);
   },
@@ -138,6 +143,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_set_timeout_loop__sig: 'vidi',
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
@@ -162,6 +168,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
+  emscripten_set_interval__sig: 'iidi',
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
@@ -174,6 +181,7 @@ LibraryJSEventLoop = {
 #if !MINIMAL_RUNTIME
   emscripten_clear_interval__deps: ['$runtimeKeepalivePop'],
 #endif
+  emscripten_clear_interval__sig: 'vi',
   emscripten_clear_interval: function(id) {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);
