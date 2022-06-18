@@ -626,7 +626,8 @@ f.close()
   def test_emcc_print_file_name(self):
     self.run_process([EMBUILDER, 'build', 'libc'])
     output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
-    self.assertContained(shared.Cache.get_lib_name('libc.a'), output)
+    filename = Path(output)
+    self.assertContained(shared.Cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
