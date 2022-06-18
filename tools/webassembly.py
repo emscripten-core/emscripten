@@ -54,6 +54,32 @@ def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
 
 
+# TODO(sbc): Use the builtin functools.cache once we update to python 3.9
+def cache(f):
+  results = {}
+
+  def helper(*args, **kwargs):
+    assert not kwargs
+    key = args
+    if key not in results:
+      results[key] = f(*args, **kwargs)
+    return results[key]
+
+  return helper
+
+
+def once(f):
+  done = False
+
+  def helper(*args, **kwargs):
+    nonlocal done
+    if not done:
+      done = True
+      f(*args, **kwargs)
+
+  return helper
+
+
 class Type(IntEnum):
   I32 = 0x7f # -0x1
   I64 = 0x7e # -0x2
@@ -141,6 +167,7 @@ class Module:
     version = self.buf.read(4)
     if magic != MAGIC or version != VERSION:
       raise InvalidWasmError(f'{filename} is not a valid wasm file')
+    self._done_calc_indexes = False
 
   def __del__(self):
     if self.buf:
@@ -250,6 +277,7 @@ class Module:
         feature_count -= 1
     return features
 
+  @cache
   def parse_dylink_section(self):
     dylink_section = next(self.sections())
     assert dylink_section.type == SecType.CUSTOM
@@ -314,6 +342,7 @@ class Module:
 
     return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
 
+  @cache
   def get_exports(self):
     export_section = self.get_section(SecType.EXPORT)
     if not export_section:
@@ -330,6 +359,7 @@ class Module:
 
     return exports
 
+  @cache
   def get_imports(self):
     import_section = self.get_section(SecType.IMPORT)
     if not import_section:
@@ -362,6 +392,7 @@ class Module:
 
     return imports
 
+  @cache
   def get_globals(self):
     global_section = self.get_section(SecType.GLOBAL)
     if not global_section:
@@ -376,6 +407,7 @@ class Module:
       globls.append(Global(global_type, mutable, init))
     return globls
 
+  @cache
   def get_functions(self):
     code_section = self.get_section(SecType.CODE)
     if not code_section:
@@ -393,12 +425,14 @@ class Module:
   def get_section(self, section_code):
     return next((s for s in self.sections() if s.type == section_code), None)
 
+  @cache
   def get_custom_section(self, name):
     for section in self.sections():
       if section.type == SecType.CUSTOM and section.name == name:
         return section
     return None
 
+  @cache
   def get_segments(self):
     segments = []
     data_section = self.get_section(SecType.DATA)
@@ -416,6 +450,7 @@ class Module:
       self.seek(offset + size)
     return segments
 
+  @cache
   def get_tables(self):
     table_section = self.get_section(SecType.TABLE)
     if not table_section:
@@ -433,6 +468,37 @@ class Module:
 
   def has_name_section(self):
     return self.get_custom_section('name') is not None
+
+  @once
+  def _calc_indexes(self):
+    self.num_imported_funcs = 0
+    self.num_imported_globals = 0
+    self.num_imported_memories = 0
+    self.num_imported_tables = 0
+    self.num_imported_tags = 0
+    for i in self.get_imports():
+      if i.kind == ExternType.FUNC:
+        self.num_imported_funcs += 1
+      elif i.kind == ExternType.GLOBAL:
+        self.num_imported_globals += 1
+      elif i.kind == ExternType.MEMORY:
+        self.num_imported_memories += 1
+      elif i.kind == ExternType.TABLE:
+        self.num_imported_tables += 1
+      elif i.kind == ExternType.TAG:
+        self.num_imported_tags += 1
+      else:
+        assert False, 'unhandled export type: %s' % i.kind
+
+  def get_function(self, idx):
+    self._calc_indexes()
+    assert idx >= self.num_imported_funcs
+    return self.get_functions()[idx - self.num_imported_funcs]
+
+  def get_global(self, idx):
+    self._calc_indexes()
+    assert idx >= self.num_imported_globals
+    return self.get_globals()[idx - self.num_imported_globals]
 
 
 def parse_dylink_section(wasm_file):

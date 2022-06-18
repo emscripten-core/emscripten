@@ -68,6 +68,8 @@ def find_segment_with_address(module, address, size=0):
     if seg.size == size:
       return (seg, 0)
 
+  raise AssertionError('unable to find segment for address: %s' % address)
+
 
 def data_to_string(data):
   data = data.decode('utf8')
@@ -82,14 +84,14 @@ def data_to_string(data):
   return data
 
 
-def get_asm_strings(module, globls, export_map, imported_globals):
+def get_asm_strings(module, export_map):
   if '__start_em_asm' not in export_map or '__stop_em_asm' not in export_map:
     return {}
 
   start = export_map['__start_em_asm']
   end = export_map['__stop_em_asm']
-  start_global = globls[start.index - imported_globals]
-  end_global = globls[end.index - imported_globals]
+  start_global = module.get_global(start.index)
+  end_global = module.get_global(end.index)
   start_addr = get_global_value(start_global)
   end_addr = get_global_value(end_global)
 
@@ -110,7 +112,7 @@ def get_asm_strings(module, globls, export_map, imported_globals):
   return asm_strings
 
 
-def get_main_reads_params(module, export_map, imported_funcs):
+def get_main_reads_params(module, export_map):
   if settings.STANDALONE_WASM:
     return 1
 
@@ -118,21 +120,20 @@ def get_main_reads_params(module, export_map, imported_funcs):
   if not main or main.kind != webassembly.ExternType.FUNC:
     return 0
 
-  functions = module.get_functions()
-  main_func = functions[main.index - imported_funcs]
+  main_func = module.get_function(main.index)
   if is_wrapper_function(module, main_func):
     return 0
   else:
     return 1
 
 
-def get_names_globals(globls, exports, imported_globals):
+def get_named_globals(module, exports):
   named_globals = {}
   for export in exports:
     if export.kind == webassembly.ExternType.GLOBAL:
       if export.name in ('__start_em_asm', '__stop_em_asm') or export.name.startswith('__em_js__'):
         continue
-      g = globls[export.index - imported_globals]
+      g = module.get_global(export.index)
       named_globals[export.name] = str(get_global_value(g))
   return named_globals
 
@@ -167,26 +168,20 @@ def extract_metadata(filename):
   export_names = []
   declares = []
   invoke_funcs = []
-  imported_funcs = 0
-  imported_globals = 0
   global_imports = []
   em_js_funcs = {}
   exports = module.get_exports()
   imports = module.get_imports()
-  globls = module.get_globals()
 
   for i in imports:
-    if i.kind == webassembly.ExternType.FUNC:
-      imported_funcs += 1
-    elif i.kind == webassembly.ExternType.GLOBAL:
-      imported_globals += 1
+    if i.kind == webassembly.ExternType.GLOBAL:
       global_imports.append(i.field)
 
   export_map = {e.name: e for e in exports}
   for e in exports:
     if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
       name = e.name[len('__em_js__'):]
-      globl = globls[e.index - imported_globals]
+      globl = module.get_global(e.index)
       string_address = get_global_value(globl)
       em_js_funcs[name] = get_string_at(module, string_address)
 
@@ -208,14 +203,14 @@ def extract_metadata(filename):
   # If main does not read its parameters, it will just be a stub that
   # calls __original_main (which has no parameters).
   metadata = {}
-  metadata['asmConsts'] = get_asm_strings(module, globls, export_map, imported_globals)
+  metadata['asmConsts'] = get_asm_strings(module, export_map)
   metadata['declares'] = declares
   metadata['emJsFuncs'] = em_js_funcs
   metadata['exports'] = export_names
   metadata['features'] = features
   metadata['globalImports'] = global_imports
   metadata['invokeFuncs'] = invoke_funcs
-  metadata['mainReadsParams'] = get_main_reads_params(module, export_map, imported_funcs)
-  metadata['namedGlobals'] = get_names_globals(globls, exports, imported_globals)
+  metadata['mainReadsParams'] = get_main_reads_params(module, export_map)
+  metadata['namedGlobals'] = get_named_globals(module, exports)
   # print("Metadata parsed: " + pprint.pformat(metadata))
   return metadata
