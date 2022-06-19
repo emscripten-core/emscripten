@@ -205,14 +205,11 @@ var LibraryEmbind = {
       return body.apply(this, arguments);
     };
 #else
-    /*jshint evil:true*/
-    return new Function(
-        "body",
-        "return function " + name + "() {\n" +
-        "    \"use strict\";" +
-        "    return body.apply(this, arguments);\n" +
-        "};\n"
-    )(body);
+    return {
+      [name](...args) {
+        return body(...args);
+      }
+    }[name];
 #endif
   },
 
