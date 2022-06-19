@@ -87,7 +87,7 @@ class WasmSourceMap(object):
       result = []
       shift = 0
       value = 0
-      for i, c in enumerate(string):
+      for c in string:
         try:
           integer = vlq_map[c]
         except ValueError:
@@ -107,7 +107,7 @@ class WasmSourceMap(object):
     line = 1
     col = 1
     name = 0
-    for i, segment in enumerate(source_map_json['mappings'].split(',')):
+    for segment in source_map_json['mappings'].split(','):
       data = decodeVLQ(segment)
       info = []
 

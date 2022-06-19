@@ -168,7 +168,7 @@ class other(RunnerCore):
   def assertIsWasmDylib(self, filename):
     self.assertTrue(building.is_wasm_dylib(filename))
 
-  def do_other_test(self, testname, emcc_args=[], **kwargs):
+  def do_other_test(self, testname, emcc_args=None, **kwargs):
     self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
 
   def run_on_pty(self, cmd):
@@ -647,7 +647,7 @@ f.close()
     expected = read_file(test_file('other/test_emsize.out'))
     cmd = [emsize, test_file('other/test_emsize.js')]
     for command in [cmd, cmd + ['--format=sysv']]:
-      output = self.run_process(cmd, stdout=PIPE).stdout
+      output = self.run_process(command, stdout=PIPE).stdout
       self.assertContained(expected, output)
 
   def test_emstrip(self):
@@ -3642,7 +3642,7 @@ return 0;
     # when modern features are lacking, we can polyfill them or at least warn
     create_file('pre.js', 'Math.imul = undefined;')
 
-    def test(expected, opts=[]):
+    def test(expected, opts):
       print(opts)
       result = self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
       if result.returncode == 0:
@@ -3651,7 +3651,7 @@ return 0;
         self.assertContained(expected, result.stderr)
 
     # when legacy is needed, we show an error indicating so
-    test('build with LEGACY_VM_SUPPORT')
+    test('build with LEGACY_VM_SUPPORT', [])
     # legacy + disabling wasm works
     test('hello, world!', ['-sLEGACY_VM_SUPPORT', '-sWASM=0'])
 
@@ -4051,7 +4051,7 @@ int main()
       return minified_middle
 
     def guess_symbols_file_type(symbols_file):
-      for minified, full in get_symbols_lines(symbols_file):
+      for _minified, full in get_symbols_lines(symbols_file):
         # define symbolication file by JS specific entries
         if full in ['FUNCTION_TABLE', 'HEAP32']:
           return 'js'
@@ -4695,12 +4695,12 @@ int main() {
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
 
-    def test(args=[]):
+    def test(args):
       print(args)
       out = self.run_process([EMXX, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
       self.assertContained('%d %d %d __attribute__((used))' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), out)
 
-    test()
+    test([])
     test(['-lembind'])
 
   def test_dashE_respect_dashO(self):
@@ -5889,7 +5889,7 @@ int main(int argc, char** argv) {
   def test_minimal_dynamic(self, wasm):
     library_file = 'library.wasm' if wasm else 'library.js'
 
-    def test(name, main_args, library_args=[], expected='hello from main\nhello from library', assert_returncode=0):
+    def test(name, main_args, library_args, expected='hello from main\nhello from library', assert_returncode=0):
       print(f'testing {name}', main_args, library_args)
       self.clear()
       create_file('library.c', r'''
@@ -5935,17 +5935,17 @@ int main(int argc, char** argv) {
       large = max(x, y)
       return float(100 * large) / small - 100
 
-    full = test('full', main_args=['-sMAIN_MODULE'])
+    full = test('full', main_args=['-sMAIN_MODULE'], library_args=[])
     # printf is not used in main, but libc was linked in, so it's there
     printf = test('printf', main_args=['-sMAIN_MODULE'], library_args=['-DUSE_PRINTF'])
 
     # main module tests
 
     # dce in main, and it fails since puts is not exported
-    test('dce', main_args=['-sMAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    test('dce', main_args=['-sMAIN_MODULE=2'], library_args=[], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # with exporting, it works
-    dce = test('dce', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_puts'])
+    dce = test('dce', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_puts'], library_args=[])
 
     # printf is not used in main, and we dce, so we failz
     dce_fail = test('dce_fail', main_args=['-sMAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
@@ -7099,7 +7099,7 @@ int main() {}
   def test_warn_module_print_err(self):
     error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)'
 
-    def test(contents, expected, args=[], assert_returncode=0):
+    def test(contents, expected, args=[], assert_returncode=0):  # noqa
       create_file('src.cpp', r'''
   #include <emscripten.h>
   int main() {
@@ -7363,10 +7363,10 @@ int main() {
     self.assertEqual(len(set(sizes)), 2)
 
   def test_binaryen_passes_extra(self):
-    def build(args=[]):
+    def build(args):
       return self.run_process([EMXX, test_file('hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
 
-    build()
+    build([])
     base_size = os.path.getsize('a.out.wasm')
     out = build(['-sBINARYEN_EXTRA_PASSES="--metrics"'])
     # and --metrics output appears
@@ -7385,7 +7385,7 @@ int main() {
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
     self.assertLess(ratio, size_slack)
 
-  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,
+  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -7630,26 +7630,23 @@ int main() {
 
   def test_no_legalize_js_ffi(self):
     # test minimal JS FFI legalization for invoke and dyncalls
-    for (args, js_ffi) in [
-        (['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0'], False),
-      ]:
-      print(args)
-      try_delete('a.out.wasm')
-      with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
-        cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      text = self.get_wasm_text('a.out.wasm')
-      # remove internal comments and extra whitespace
-      text = re.sub(r'\(;[^;]+;\)', '', text)
-      text = re.sub(r'\$var\$*.', '', text)
-      text = re.sub(r'param \$\d+', 'param ', text)
-      text = re.sub(r' +', ' ', text)
-      # print("text: %s" % text)
-      i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
-      assert i_legalimport_i64, 'legal import not generated for invoke call'
-      assert e_legalstub_i32, 'legal stub not generated for dyncall'
+    args = ['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0']
+    try_delete('a.out.wasm')
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+      cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
+    print(' '.join(cmd))
+    self.run_process(cmd)
+    text = self.get_wasm_text('a.out.wasm')
+    # remove internal comments and extra whitespace
+    text = re.sub(r'\(;[^;]+;\)', '', text)
+    text = re.sub(r'\$var\$*.', '', text)
+    text = re.sub(r'param \$\d+', 'param ', text)
+    text = re.sub(r' +', ' ', text)
+    # print("text: %s" % text)
+    i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
+    e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
+    assert i_legalimport_i64, 'legal import not generated for invoke call'
+    assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
   def test_export_aliasee(self):
     # build side module
@@ -8099,7 +8096,7 @@ end
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_flag_aliases(self):
-    def assert_aliases_match(flag1, flag2, flagarg, extra_args=[]):
+    def assert_aliases_match(flag1, flag2, flagarg, extra_args):
       results = {}
       for f in (flag1, flag2):
         self.run_process([EMCC, test_file('hello_world.c'), '-s', f + '=' + flagarg] + extra_args)
@@ -8108,8 +8105,8 @@ end
       self.assertEqual(results[flag1 + '.js'], results[flag2 + '.js'], 'js results should be identical')
       self.assertEqual(results[flag1 + '.wasm'], results[flag2 + '.wasm'], 'wasm results should be identical')
 
-    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '16777216')
-    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '64MB')
+    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '16777216', [])
+    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '64MB', [])
     assert_aliases_match('MAXIMUM_MEMORY', 'WASM_MEM_MAX', '16777216', ['-sALLOW_MEMORY_GROWTH'])
     assert_aliases_match('MAXIMUM_MEMORY', 'BINARYEN_MEM_MAX', '16777216', ['-sALLOW_MEMORY_GROWTH'])
 
@@ -8126,7 +8123,7 @@ end
       }
     ''')
 
-    def test(check, extra=[]):
+    def test(check, extra):
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--pre-js', 'pre.js'] + extra
       proc = self.run_process(cmd, check=check, stderr=PIPE)
       if not check:
@@ -8135,7 +8132,7 @@ end
 
     WARNING = 'Variable dupe declared more than once'
 
-    proc = test(check=False)
+    proc = test(check=False, extra=[])
     self.assertContained(WARNING, proc.stderr)
     proc = test(check=True, extra=['-sIGNORE_CLOSURE_COMPILER_ERRORS'])
     self.assertNotContained(WARNING, proc.stderr)
@@ -11335,7 +11332,7 @@ exec "$@"
     count = 1000
     for i in range(count):
       name = 'a' + str(i)
-      for j in range(5):
+      for _ in range(5):
         name += name
       create_o(name, i)
 

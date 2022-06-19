@@ -1117,11 +1117,8 @@ base align: 0, 0, 0, 0'''])
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
     self.v8_args.append('--experimental-wasm-eh')
-    old_args = self.emcc_args.copy()
     for arg in ['-fwasm-exceptions', '-fno-exceptions']:
-      self.emcc_args.append(arg)
-      self.do_core_test('test_longjmp.c')
-      self.emcc_args = old_args
+      self.do_core_test('test_longjmp.c', emcc_args=[arg])
 
   @with_both_eh_sjlj
   def test_longjmp2(self):
@@ -1265,6 +1262,9 @@ int main()
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     for support_longjmp in [0, 1]:
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      if support_longjmp and self.is_wasm64():
+        self.skipTest('MEMORY64 does not yet support SJLJ')
       self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -3984,10 +3984,11 @@ ok
 
     return self.dylink_testf(main, side, expected, force_c, main_module=main_module, **kwargs)
 
-  def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=[],
+  def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=None,
                    main_module=2,
                    so_name='liblib.so',
                    need_reverse=True, **kwargs):
+    main_emcc_args = main_emcc_args or []
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -4968,7 +4969,7 @@ res64 - external 64\n''', header='''\
 
   @needs_dylink
   def test_dylink_dso_needed(self):
-    def do_run(src, expected_output, emcc_args=[]):
+    def do_run(src, expected_output, emcc_args=None):
       create_file('main.c', src + 'int main() { return test_main(); }')
       self.do_runf('main.c', expected_output, emcc_args=emcc_args)
     self._test_dylink_dso_needed(do_run)
@@ -5825,14 +5826,12 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS', 'NODERAWFS']:
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       if fs == 'NODERAWFS':
         self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
-      self.do_run_in_out_file_test('fs/test_mmap.c')
+      self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
   @parameterized({
     '': [],
@@ -6064,8 +6063,7 @@ Module['onRuntimeInitialized'] = function() {
   })
   def test_unistd_misc(self, fs):
     self.set_setting('LLD_REPORT_UNDEFINED')
-    orig_compiler_opts = self.emcc_args.copy()
-    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+    self.emcc_args += ['-D' + fs]
     if fs == 'NODEFS':
       self.require_node()
       self.emcc_args += ['-lnodefs.js']
@@ -6291,19 +6289,20 @@ int main(void) {
                (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
 
-    old = self.emcc_args
     orig_src = read_file(test_file('fasta.cpp'))
 
     def test(extra_args):
-      self.emcc_args = old + extra_args
       for t in ['float', 'double']:
         print(t)
         src = orig_src.replace('double', t)
         with open('fasta.cpp', 'w') as f:
           f.write(src)
-        self.build('fasta.cpp')
+        self.build('fasta.cpp', emcc_args=extra_args)
         for arg, output in results:
-          self.do_run('fasta.js', output, args=[str(arg)], output_nicerizer=lambda x: x.replace('\n', '*'), no_build=True)
+          self.do_run('fasta.js', output, args=[str(arg)],
+                      output_nicerizer=lambda x: x.replace('\n', '*'),
+                      no_build=True,
+                      emcc_args=extra_args)
         shutil.copyfile('fasta.js', '%s.js' % t)
 
     test([])
@@ -7007,7 +7006,7 @@ void* operator new(size_t size) {
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=[], assert_returncode=0):
+    def test(output_prefix='', args=None, assert_returncode=0):
       src = test_file('core/test_getValue_setValue.cpp')
       expected = test_file('core/test_getValue_setValue' + output_prefix + '.out')
       self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
@@ -7030,7 +7029,7 @@ void* operator new(size_t size) {
   })
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=[], assert_returncode=0):
+    def test(output_prefix='', args=None, assert_returncode=0):
       args += extra_args
       print(args)
       self.do_runf(test_file('core/FS_exports.cpp'),
@@ -7044,7 +7043,7 @@ void* operator new(size_t size) {
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    test('_assert', args=[], assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
@@ -7052,13 +7051,10 @@ void* operator new(size_t size) {
 
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args.copy()
-      self.emcc_args += args
+    def test(output_prefix='', args=None, assert_returncode=0):
       src = test_file('core/legacy_exported_runtime_numbers.cpp')
       expected = test_file('core/legacy_exported_runtime_numbers%s.out' % output_prefix)
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode)
-      self.emcc_args = old
+      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -7790,7 +7786,7 @@ void* operator new(size_t size) {
     def get_wat_addr(call_index):
       # find the call_index-th call
       call_loc = -1
-      for i in range(call_index + 1):
+      for _ in range(call_index + 1):
         call_loc = wat.find('call $out_to_js', call_loc + 1)
         assert call_loc > 0
       # the call begins with the local.get/i32.const printed below it, which is
@@ -8222,10 +8218,10 @@ Module['onRuntimeInitialized'] = function() {
       self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
       return True
 
-    def verify_working(args=['0']):
+    def verify_working(args):
       self.assertContained('foo_end\n', self.run_js('emscripten_lazy_load_code.js', args=args))
 
-    def verify_broken(args=['0']):
+    def verify_broken(args):
       self.assertNotContained('foo_end\n', self.run_js('emscripten_lazy_load_code.js', args=args, assert_returncode=NON_ZERO))
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
@@ -8233,25 +8229,25 @@ Module['onRuntimeInitialized'] = function() {
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
     if not conditional and self.is_optimizing():
       self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
-    verify_working()
+    verify_working(['0'])
     # but breaking the second wasm actually breaks us
     if not break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm'):
       raise Exception('could not break lazy wasm - missing expected code')
-    verify_broken()
+    verify_broken(['0'])
 
     # restore
     shutil.copyfile('emscripten_lazy_load_code.wasm.orig', 'emscripten_lazy_load_code.wasm')
     shutil.copyfile('emscripten_lazy_load_code.wasm.lazy.wasm.orig', 'emscripten_lazy_load_code.wasm.lazy.wasm')
-    verify_working()
+    verify_working(['0'])
 
     if conditional:
       # if we do not call the lazy load function, then we do not need the lazy wasm,
       # and we do the second call in the first wasm
       os.remove('emscripten_lazy_load_code.wasm.lazy.wasm')
-      verify_broken()
+      verify_broken(['0'])
       verify_working(['42'])
       break_wasm('emscripten_lazy_load_code.wasm')
-      verify_broken()
+      verify_broken(['0'])
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
@@ -9398,7 +9394,7 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v
     try:
       super(TT, self).tearDown()
     finally:
-      for k, v in self.env.items():
+      for k in self.env.keys():
         del os.environ[k]
 
   TT.tearDown = tearDown
