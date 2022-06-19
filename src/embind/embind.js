@@ -212,7 +212,7 @@ var LibraryEmbind = {
           context[prop] = body[prop];
         };
         return body.apply(context,arguments);
-      }
+      }()
     }[name];
 #endif
   },
