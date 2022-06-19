@@ -207,7 +207,7 @@ var LibraryEmbind = {
 #else
     return {
       [name]: function(arguments){
-        return (new body.apply(null,arguments))();
+        return body.apply(null,arguments);
       };
     }[name];
 #endif
