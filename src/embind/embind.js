@@ -207,7 +207,11 @@ var LibraryEmbind = {
 #else
     return {
       [name]: function(arguments){
-        return body.apply(null,arguments);
+        var context = {};
+        for (var prop in body) {
+          context[prop] = body[prop];
+        };
+        return body.apply(context,arguments);
       }
     }[name];
 #endif
