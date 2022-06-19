@@ -73,7 +73,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_set_immediate__sig: 'iii',
+  emscripten_set_immediate__sig: 'ipp',
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
@@ -101,7 +101,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_set_immediate_loop__sig: 'vii' ,
+  emscripten_set_immediate_loop__sig: 'vpp' ,
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
@@ -122,7 +122,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_set_timeout__sig: 'iidi',
+  emscripten_set_timeout__sig: 'ipdp',
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -143,7 +143,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_set_timeout_loop__sig: 'vidi',
+  emscripten_set_timeout_loop__sig: 'vpdp',
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
@@ -168,7 +168,7 @@ LibraryJSEventLoop = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_set_interval__sig: 'iidi',
+  emscripten_set_interval__sig: 'ipdp',
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
