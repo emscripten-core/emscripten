@@ -8,6 +8,7 @@
 
 from collections import namedtuple
 from enum import IntEnum
+from functools import wraps
 import logging
 import os
 import sys
@@ -54,28 +55,26 @@ def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
 
 
-# TODO(sbc): Use the builtin functools.cache once we update to python 3.9
-def cache(f):
-  results = {}
+def cache(method):
 
-  def helper(*args, **kwargs):
+  @wraps(method)
+  def wrapper(self, *args, **kwargs):
     assert not kwargs
-    key = args
-    if key not in results:
-      results[key] = f(*args, **kwargs)
-    return results[key]
+    key = method
+    if key not in self._cache:
+      self._cache[key] = method(self, *args, **kwargs)
+    return self._cache[key]
 
-  return helper
+  return wrapper
 
 
-def once(f):
-  done = False
+def once(method):
 
-  def helper(*args, **kwargs):
-    nonlocal done
-    if not done:
-      done = True
-      f(*args, **kwargs)
+  @wraps(method)
+  def helper(self, *args, **kwargs):
+    key = method
+    if key not in self._cache:
+      self._cache[key] = method(self, *args, **kwargs)
 
   return helper
 
@@ -167,7 +166,7 @@ class Module:
     version = self.buf.read(4)
     if magic != MAGIC or version != VERSION:
       raise InvalidWasmError(f'{filename} is not a valid wasm file')
-    self._done_calc_indexes = False
+    self._cache = {}
 
   def __del__(self):
     if self.buf:
