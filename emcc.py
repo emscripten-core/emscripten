@@ -2567,6 +2567,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
+  if not settings.MODULARIZE and 'EXPORT_NAME' in user_settings:
+    exit_with_error('-sEXPORT_NAME can only be used with -sMODULARIZE')
+
   if settings.EMSCRIPTEN_TRACING and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
     settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',

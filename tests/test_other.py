@@ -5578,9 +5578,8 @@ int main(void) {
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   def test_EXPORT_NAME_with_html(self):
-    result = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'], stdout=PIPE, check=False, stderr=STDOUT)
-    self.assertNotEqual(result.returncode, 0)
-    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', result.stdout)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other', '-sMODULARIZE'])
+    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
     create_file('post.js', r'''
@@ -6805,8 +6804,8 @@ high = 1234
   def test_dash_s_response_file_string(self):
     create_file('response_file.txt', 'MyModule\n')
     create_file('response_file.json', '"MyModule"\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-sEXPORT_NAME=@response_file.txt'])
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-sEXPORT_NAME=@response_file.json'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-sMODULARIZE', '-sEXPORT_NAME=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-sMODULARIZE', '-sEXPORT_NAME=@response_file.json'])
 
   def test_dash_s_response_file_list(self):
     create_file('response_file.txt', '_main\n_malloc\n')

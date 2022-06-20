@@ -372,8 +372,8 @@ That puts all of the generated JavaScript into a factory function, which you can
 call to create an instance of your module. The factory function returns a
 Promise that resolves with the module instance. The promise is resolved once
 it's safe to call the compiled code, i.e. after the compiled code has been
-downloaded and instantiated. For example, if you build with ``-sMODULARIZE -s
-'EXPORT_NAME="createMyModule"'``, then you can do this:
+downloaded and instantiated. For example, if you build with ``-sMODULARIZE
+-sEXPORT_NAME=createMyModule``, then you can do this:
 
 ::
 
