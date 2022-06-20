@@ -17,6 +17,8 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+      # Currently pinned to 10.5.35 due to https://github.com/emscripten-core/emscripten/issues/17278
+      V8_VERSION: "10.5.35"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -82,7 +84,7 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
@@ -344,7 +346,8 @@ jobs:
             export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
-            jsvu --os=default --engines=v8
+            jsvu --os=default --engines=v8 v8@${V8_VERSION}
+
       - build
       - build-libs-and-freeze
       - persist
