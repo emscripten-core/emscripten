@@ -55,7 +55,7 @@ def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
 
 
-def cache(method):
+def memoize(method):
 
   @wraps(method)
   def wrapper(self, *args, **kwargs):
@@ -276,7 +276,7 @@ class Module:
         feature_count -= 1
     return features
 
-  @cache
+  @memoize
   def parse_dylink_section(self):
     dylink_section = next(self.sections())
     assert dylink_section.type == SecType.CUSTOM
@@ -341,7 +341,7 @@ class Module:
 
     return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
 
-  @cache
+  @memoize
   def get_exports(self):
     export_section = self.get_section(SecType.EXPORT)
     if not export_section:
@@ -358,7 +358,7 @@ class Module:
 
     return exports
 
-  @cache
+  @memoize
   def get_imports(self):
     import_section = self.get_section(SecType.IMPORT)
     if not import_section:
@@ -391,7 +391,7 @@ class Module:
 
     return imports
 
-  @cache
+  @memoize
   def get_globals(self):
     global_section = self.get_section(SecType.GLOBAL)
     if not global_section:
@@ -406,7 +406,7 @@ class Module:
       globls.append(Global(global_type, mutable, init))
     return globls
 
-  @cache
+  @memoize
   def get_functions(self):
     code_section = self.get_section(SecType.CODE)
     if not code_section:
@@ -424,14 +424,14 @@ class Module:
   def get_section(self, section_code):
     return next((s for s in self.sections() if s.type == section_code), None)
 
-  @cache
+  @memoize
   def get_custom_section(self, name):
     for section in self.sections():
       if section.type == SecType.CUSTOM and section.name == name:
         return section
     return None
 
-  @cache
+  @memoize
   def get_segments(self):
     segments = []
     data_section = self.get_section(SecType.DATA)
@@ -449,7 +449,7 @@ class Module:
       self.seek(offset + size)
     return segments
 
-  @cache
+  @memoize
   def get_tables(self):
     table_section = self.get_section(SecType.TABLE)
     if not table_section:
