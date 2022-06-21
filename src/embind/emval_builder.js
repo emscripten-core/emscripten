@@ -8,12 +8,12 @@
 /*global readLatin1String, UTF8ToString*/
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global _emvalhelper_finalize, _emvalhelper_audit*/
+/*global _emvalbuilder_finalize*/
 
 mergeInto(LibraryManager.library, {
 
-  _emvalhelper_finalize__deps: ['$Emval', '$readLatin1String'],
-  _emvalhelper_finalize: function(o, ptr, size) {
+  _emvalbuilder_finalize__deps: ['$Emval', '$readLatin1String'],
+  _emvalbuilder_finalize: function(o, ptr, size) {
     o = Emval.toValue(o);
     var is_array = (o instanceof Array);
     for (var i = 0; i < size; i++) {
@@ -56,6 +56,7 @@ mergeInto(LibraryManager.library, {
                 }
                 if (!skip) {
                     v = [];
+                    // Seems using for..loop is faster than slice()!
                     if (ty == 5) {  // BOOL(Byte)
                         for (var j = 0; j < n; j++) v[j] = !!heap[ad+j];
                     } else {
@@ -79,10 +80,6 @@ mergeInto(LibraryManager.library, {
             o[k] = v;
         }
     }
-  },
-
-  _emvalhelper_audit: function(c, n, o) {
-      console.log("valhelper buffer full times: " + c, n);
   },
 
 });

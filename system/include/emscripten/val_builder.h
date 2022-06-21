@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <vector>
 
-// ValHelper caches changes and commit them bulkly to the binding val.
+// ValBuilder caches changes and commit them bulkly to the binding val.
 //
 // Why is fast?
 //  1) saving context switches
@@ -23,22 +23,22 @@
 //  3) no extra copies
 //
 // Usage:
-//          ValHelper vh(OBJECT);
-//          vh.set("k1", 1);
-//          vh.set("k3", "hello");
-//          vh.set("k2", std::vector<float>{1,2,3,4,5,6,7,8,9});
-//          vh.finalize();
+//          ValBuilder vb(OBJECT);
+//          vb.set("k1", 1);
+//          vb.set("k3", "hello");
+//          vb.set("k2", std::vector<float>{1,2,3,4,5,6,7,8,9});
+//          vb.finalize();
 //
 // Caveats:
 //  1) For sub-scoped objects set/added, preferring finalize inside, or use
 //     std::move if only few ones(1 or 2).
-//          ValHelper vh(ARRAY);
+//          ValBuilder vb(ARRAY);
 //          if (condition) {
 //              std::string temp;
 //              generate_string(&temp);
-//              vh.add(std::move(temp));
+//              vb.add(std::move(temp));
 //          }
-//  2) When you passed ValHelper as argument, always do finalize() before
+//  2) When you passed ValBuilder as argument, always do finalize() before
 //     leaving the scope as cached pointers may be stale immediately.
 //
 namespace emscripten {
@@ -111,11 +111,7 @@ namespace internal {
 
 extern "C" {
 
-void _emvalhelper_finalize(emscripten::EM_VAL h, const void* ptr, int size);
-
-#ifdef __PERF_VAL_HELPER
-void _emvalhelper_audit(int c, int n, emscripten::EM_VAL h);
-#endif
+void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
 
 } // extern "C"
 
@@ -150,17 +146,17 @@ void ConcatArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
 using emscripten::val;
 
 template <size_t N = 16 /*BUFF_SIZE*/ >
-class ValHelper {
+class ValBuilder {
  public:
-  ValHelper() : ValHelper(OBJECT) {}
-  ~ValHelper() = default;
+  ValBuilder() : ValBuilder(OBJECT) {}
+  ~ValBuilder() = default;
 
   // disallow copy & move operations.
-  ValHelper(const ValHelper&) = delete;
-  ValHelper& operator=(const ValHelper&) = delete;
+  ValBuilder(const ValBuilder&) = delete;
+  ValBuilder& operator=(const ValBuilder&) = delete;
 
-  explicit ValHelper(const val& v) : val_(v) {}
-  explicit ValHelper(EmValType t)
+  explicit ValBuilder(const val& v) : val_(v) {}
+  explicit ValBuilder(EmValType t)
     : val_(t == ARRAY ? val::array() : val::object()) {}
 
   template <typename V>
@@ -187,7 +183,7 @@ class ValHelper {
     advance_and_may_finalize();
   }
   void add(size_t v) {
-    return add(static_cast<unsigned int>(v));
+    add(static_cast<unsigned int>(v));
   }
   void add(unsigned int v) {
     cursor_->type = TYPE::UINT32;
@@ -230,11 +226,6 @@ class ValHelper {
     cached_strings_.push_back(std::move(cached));
   }
 
-  // accept |ValHelper| but only lvalue reference
-  template<size_t SZ>
-  void add(ValHelper<SZ>& vh) {
-    add(vh.toval());
-  }
   void add(const val& v) {
     cursor_->type = TYPE::EMVAL;
     cursor_->value.w[0].v = v.as_handle();
@@ -244,6 +235,11 @@ class ValHelper {
     if (!cached_vals_.capacity()) cached_vals_.reserve(4);
     cached_vals_.push_back(std::move(v));  // efficient op
     add(cached_vals_.back());
+  }
+  // accept |ValBuilder| but only lvalue reference
+  template<size_t SZ>
+  void add(ValBuilder<SZ>& vb) {
+    add(vb.toval());
   }
 
   template <typename Iter>
@@ -315,7 +311,7 @@ class ValHelper {
   }
 
   void finalize() {
-    internal::_emvalhelper_finalize(val_.as_handle(), buffer(), size());
+    internal::_emvalbuilder_finalize(val_.as_handle(), buffer(), size());
     reset();
   }
 
@@ -352,11 +348,6 @@ class ValHelper {
     cursor_++;
     if (size() >= N) {
       finalize();
-
-#ifdef __PERF_VAL_HELPER
-      static uint32_t count = 0;
-      internal::_emvalhelper_audit(++count, N, val_.as_handle());
-#endif
     }
   }
 

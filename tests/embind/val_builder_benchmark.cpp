@@ -1,17 +1,15 @@
 
 #include <array>
 #include <emscripten.h>
-#include <emscripten/val_helper.h>
+#include <emscripten/val_builder.h>
 #include <iostream>
 #include <stdio.h>
 #include <string>
 #include <vector>
 
-#include <unistd.h>
-
 using namespace emscripten;
 
-using VH = emscripten::ValHelper<32>;
+using VB = emscripten::ValBuilder<32>;
 
 namespace std {
 
@@ -20,32 +18,7 @@ constexpr std::size_t size(const T (&array)[N]) noexcept {
     return N;
 }
 
-}
-
-void fail() { std::cout << "fail\n"; }
-
-void pass() { std::cout << "pass\n"; }
-
-void test(std::string message) { std::cout << "test:\n" << message << "\n"; }
-
-void ensure(bool value) {
-  if (value)
-    pass();
-  else
-    fail();
-}
-
-void ensure_not(bool value) { ensure(!value); }
-
-void ensure_js(std::string js_code) {
-  ensure(emscripten_run_script_int(js_code.c_str()));
-}
-
-void ensure_js_not(std::string js_code) {
-  js_code.insert(0, "!( ");
-  js_code.append(" )");
-  ensure_js(js_code);
-}
+}  // namespace std
 
 namespace tests {
 
@@ -140,8 +113,8 @@ void test_val() {
   // EM_ASM({console.log(Emval.toValue($0));}, v.as_handle());
 }
 
-void test_valhelper() {
-  VH v;
+void test_valbuilder() {
+  VB v;
   v.set("key1", 1);
   v.set("key2", 2);
   v.set("key3", "333333333333333333333333");
@@ -163,14 +136,14 @@ void test_valhelper() {
   v.set("big_array", biga);
 
   // embed an array
-  VH ar(ARRAY);
+  VB ar(ARRAY);
   std::vector<std::string> vs{"string1", "string2", "string3", "string4", ls};
   ar.concat(vs);
   ar.concat(veci);
   v.set("key_array", ar.toval());
 
   // embed an object
-  VH ob;
+  VB ob;
   ob.set("subkey1", 1);
   ob.set("subkey2", 1.0f);
   ob.set("subkey3", 9.9);
@@ -185,11 +158,11 @@ void test_valhelper() {
 }
 
 // test_val loop 100000 cost: 1340.400000
-// test_valhelper loop 100000 cost: 609.800000
+// test_valbuilder loop 100000 cost: 609.800000
 
 // WITH LONG_S & BIG_A
 // test_val loop 100000 cost: 5737.500000
-// test_valhelper loop 100000 cost: 1155.300000
+// test_valbuilder loop 100000 cost: 1155.300000
 
 void test_perf() {
   const size_t LoopTimes = 100000;
@@ -201,31 +174,33 @@ void test_perf() {
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
-    test_valhelper();
+    test_valbuilder();
   }
-  printf("test_valhelper loop %zu cost: %f\n", LoopTimes, emscripten_get_now() - start);
+  printf("test_valbuilder loop %zu cost: %f\n", LoopTimes, emscripten_get_now() - start);
+  printf("\n");
 }
+
 
 EM_JS(emscripten::EM_VAL,
       pushDataEmjs,
-      (const char* k1, int v1,
-       const char* k2, int v2,
-       const char* k3, float v3,
-       const char* k4, bool v4,
-       const char* k5, const char* v5,
-       const char* k6, const char* v6,
-       const char* k7, emscripten::EM_VAL v7,
-       const char* k8, int v8),
+      (int v1,
+       int v2,
+       float v3,
+       bool v4,
+       const char* v5,
+       const char* v6,
+       emscripten::EM_VAL v7,
+       int v8),
     {
         var o = {};
-        o[readLatin1String(k1)] = v1;
-        o[readLatin1String(k2)] = v2;
-        o[readLatin1String(k3)] = v3;
-        o[readLatin1String(k4)] = !!v4;
-        o[readLatin1String(k5)] = UTF8ToString(v5);
-        o[readLatin1String(k6)] = UTF8ToString(v6);
-        o[readLatin1String(k7)] = Emval.toValue(v7);
-        o[readLatin1String(k8)] = v8;
+        o["key1"] = v1;
+        o["key2"] = v2;
+        o["key3"] = v3;
+        o["key4"] = !!v4;
+        o["key5"] = UTF8ToString(v5);
+        o["key6"] = UTF8ToString(v6);
+        o["key7"] = Emval.toValue(v7);
+        o["key8"] = v8;
         return Emval.toHandle(o);
     }
 );
@@ -268,8 +243,8 @@ void test_perf_chaining() {
 
   // pre-warm
   for (size_t i = 0; i < PreWarmLoopTimes; i++) {
-    // use valhelper (chaining)
-    VH v(OBJECT);
+    // use valbuilder (chaining)
+    VB v(OBJECT);
     v.set("key1", 1);
     v.set("key2", 2);
     v.set("key3", 1.234f);
@@ -283,8 +258,8 @@ void test_perf_chaining() {
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
-    // use valhelper (chaining)
-    VH v(OBJECT);
+    // use valbuilder (chaining)
+    VB v(OBJECT);
     v.set("key1", 1);
     v.set("key2", 2);
     v.set("key3", 1.234f);
@@ -295,39 +270,33 @@ void test_perf_chaining() {
     v.set("key8", 8);
     val o = v.toval();  // finalized
   }
-  auto vh_cost = emscripten_get_now() - start;
-  printf("test_chain_vh loop %zu cost: %f\n", LoopTimes, vh_cost);
+  auto vb_cost = emscripten_get_now() - start;
+  printf("test_chain_valbuilder loop %zu cost: %f\n", LoopTimes, vb_cost);
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
     // use EM_JS (chaining)
-    val v = val::take_ownership(pushDataEmjs("key1",
+    val v = val::take_ownership(pushDataEmjs(
                                              1,
-                                             "key2",
                                              2,
-                                             "key3",
                                              1.234f,
-                                             "key4",
                                              true,
-                                             "key5",
                                              "012345678910",
-                                             "key6",
                                              s.c_str(),
-                                             "key7",
                                              vi.as_handle(),
-                                             "key8",
                                              8));
   }
   auto emjs_cost = emscripten_get_now() - start;
   printf("test_chain_emjs loop %zu cost: %f\n", LoopTimes, emjs_cost);
 
-  printf("val-vh = %f\n", val_cost - vh_cost);
-  printf("val/vh = %f\n", val_cost / vh_cost);
-  printf("vh/emjs = %f\n", vh_cost / emjs_cost);
+  printf("val-vb = %f\n", val_cost - vb_cost);
+  printf("val/vb = %f\n", val_cost / vb_cost);
+  printf("val/emjs = %f\n", val_cost / emjs_cost);
+  printf("\n");
 }
 
 // loop 100000 val biga cost: 4519.156967
-// loop 100000 VH biga cost: 214.419598
+// loop 100000 VB biga cost: 214.419598
 void test_perf_biga() {
   const size_t LoopTimes = 100000;
   double start = emscripten_get_now();
@@ -335,193 +304,23 @@ void test_perf_biga() {
     val vo = val::object();
     vo.set("k", val::array(BIG_A, BIG_A+std::size(BIG_A)));
   }
-  printf("loop %zu val biga cost: %f\n", LoopTimes, emscripten_get_now() - start);
+  printf("test big-array loop %zu val cost: %f\n", LoopTimes, emscripten_get_now() - start);
 
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
-    VH vo;
+    VB vo;
     vo.set("k", BIG_A);
     vo.finalize();
   }
-  printf("loop %zu VH biga cost: %f\n", LoopTimes, emscripten_get_now() - start);
-}
-
-void test_cases() {
-  printf("start\n");
-
-  test("add() overloads");
-  EM_ASM(
-    a = [];
-  );
-  VH va(val::global("a"));
-  va.add(1);
-  va.add(1.1);
-  va.add((char)3);
-  va.add((uint8_t)4);
-  va.add((uint32_t)-1);
-  va.add(1.0f);
-  va.add((float)1.1);
-  va.finalize();
-  ensure_js("a[0] == 1");
-  ensure_js("a[1] == 1.1");
-  ensure_js("a[2] == 3");
-  ensure_js("a[3] == 4");
-  ensure_js("a[4] == 4294967295");  // (unsigned)-1
-  ensure_js("a[5] == 1.0");
-  ensure_js("parseFloat(a[6]).toFixed(1) == 1.1");
-
-  va.add("hello");
-  va.add(std::string("world"));
-  va.add(val::array());
-  va.add(val(10));
-  va.finalize();
-  ensure_js("a[7] == 'hello'");
-  ensure_js("a[8] == 'world'");
-  ensure_js("Array.isArray(a[9]) && a[9].length == 0");
-  ensure_js("a[10] == 10");
-
-  test("add(array)");
-  EM_ASM(
-    a = [];
-  );
-  va.attach(val::global("a"));
-  std::vector<int> vec{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-  va.add(vec);
-  va.add(std::vector<int>{5, 6, 7, 8, 9});
-  va.add(std::vector<std::string>{"1", "2", "3"});
-  std::vector<std::string> vs{"4", "5", "6"};
-  va.add(vs);
-  std::array<int, 5> ar{1, 2, 3, 4, 5};
-  va.add(ar);
-  std::array<std::string, 3> ar1{"4", "99"};
-  va.add(ar1);
-  char ar2[]{6, 7, 8};
-  va.add(ar2);
-  va.finalize();
-  ensure_js("a[0].length == 16 && a[0][0] == 1 && a[0][2] == 3 && a[0][15] == 16");
-  ensure_js("a[1].length == 5 && a[1][0] == 5 && a[1][1] == 6 && a[1][5] == undefined");
-  ensure_js("a[2].length == 3 && a[2][0] == '1' && a[2][1] == '2' && a[2][2] == '3' ");
-  ensure_js("a[3].length == 3 && a[3][0] == '4' && a[3][1] == '5' && a[3][2] == '6' ");
-  ensure_js("a[4].length == 5 && a[4][0] == 1 && a[4][1] == 2 && a[4][4] == 5");
-  ensure_js("a[5].length == 3 && a[5][0] == '4' && a[5][1] == '99' && a[5][2] == ''");
-  ensure_js("a[6].length == 3 && a[6][0] == 6 && a[6][1] == 7 && a[6][2] == 8");
-
-  test("concat(array&)");
-  EM_ASM(
-    a = [];
-
-  );
-  va.attach(val::global("a"));
-  va.add(0);
-  va.concat(vec);
-  va.finalize();
-  ensure_js("a[0] == 0");
-  ensure_js("a[1] == 1 && a[2] == 2 && a[3] == 3 && a[16] == 16");
-  ensure_js("a[17] === undefined");
-  ensure_js("a.length == 17");
-
-  va.concat(std::vector<std::string>{"1", "2", "3", "4", "5", "6"});                                                                                                                                                                                                                                                                         
-  va.concat(std::vector<float>{1.1, 1.2, 1.3});
-  va.concat(std::vector<short>{1, 2, 3});
-  va.finalize();
-  ensure_js("a.length == 29");
-  ensure_js("a[17] == '1' && a[18] == '2' && a[19] == '3' && a[20] == '4'");
-  // Floating number is not accurate
-  ensure_js("parseFloat(a[23]).toFixed(1) == '1.1' ");
-  ensure_js("parseFloat(a[24]).toFixed(1) == '1.2' ");
-  ensure_js("parseFloat(a[25]).toFixed(1) == '1.3' ");
-  ensure_js("a[26] == 1 && a[27] == 2 && a[28] == 3");
-
-  test("set(k,v)");
-  EM_ASM(
-    a = {};
-  );
-  VH vo(val::global("a"));
-  vo.set("k1", 1);
-  vo.set("k2", 1.1);
-  vo.set("k3", "hi");
-  vo.set("k4", std::string("world"));
-  vo.set("k5", (uint16_t)5);
-  val a("ka");
-  vo.set(a, "value_a");
-  vo.set("k6", val(6));
-  vo.finalize();
-  ensure_js("a.k1 == 1");
-  ensure_js("a.k2 == 1.1");
-  ensure_js("a.k3 == 'hi'");
-  ensure_js("a.k4 == 'world'");
-  ensure_js("a.k5 == 5");
-  ensure_js("a.ka == 'value_a'");
-  ensure_js("a.k6 == 6");
-
-  test("set(k, array)");
-  vo.set("k6", vec);
-  vo.set("k7", std::vector<float>{1, 2, 3, 4, 5, 6});
-  vo.set("k8", ar2);
-  vo.finalize();
-  ensure_js("a.k6 instanceof Array && a.k6.length == 16");
-  ensure_js("a.k6[0] == 1 && a.k6[1] == 2 && a.k6[9] == 10 && a.k6[15] == 16");
-  ensure_js("a.k7 instanceof Array && a.k7.length == 6");
-  ensure_js("a.k7[0] == 1 && a.k7[1] == 2 && a.k7[2] == 3 && a.k7[5] == 6");
-  ensure_js("a.k8 instanceof Array && a.k8.length == 3");
-  ensure_js("a.k8[0] == 6 && a.k8[1] == 7 && a.k8[2] == 8");
-
-  test("set(k, VH)");
-  VH vha(ARRAY);
-  vha.add(1);
-  vo.set("k8", vha);
-  vo.finalize();
-  ensure_js("a['k8'] instanceof Array && a['k8'][0] == 1");
-
-  VH vho(OBJECT);
-  vho.set("k1", 2);
-  vho.set("k2", "v2");
-  vo.set("k9", vho);
-  vo.finalize();
-  ensure_js("a['k9'] instanceof Object");
-  ensure_js("a['k9']['k1'] == 2");
-  ensure_js("a['k9']['k2'] == 'v2'");
-
-  test("use local scope values");
-  {
-    std::string s1;
-    vo.set("ks1", std::move(s1));
-    std::string s2("abc");
-    vo.set("ks2", std::move(s2));
-    std::string s3("def");
-    vo.set("ks3", std::move(s3));
-  }
-  vo.finalize();
-  ensure_js("a.ks1 == ''");
-  ensure_js("a.ks2 == 'abc'");
-  ensure_js("a.ks3 == 'def'");
-
-  test("use local emscripten::val");
-  {
-    val o = val::object();
-    o.set("k1", 1);
-    o.set("k2", "a");
-    val a = val::array();
-    a.call<void>("push", 1);
-    a.call<void>("push", 2);
-    vo.set("o", std::move(o));
-    vo.set("a", std::move(a));
-  }
-  vo.finalize();
-  ensure_js("a.o.k1 == 1");
-  ensure_js("a.o.k2 == 'a'");
-  ensure_js("a.a[0]== 1 && a.a[1] == 2");
-
-  printf("end\n");
+  printf("test big-array loop %zu VB cost: %f\n", LoopTimes, emscripten_get_now() - start);
+  printf("\n");
 }
 
 }  // namespace tests
 
 int main() {
-  tests::test_cases();
-
-  // tests::test_perf_chaining();
-  // tests::test_perf();
-  // tests::test_perf_biga();
+  tests::test_perf();
+  tests::test_perf_chaining();
+  tests::test_perf_biga();
   return 0;
 }

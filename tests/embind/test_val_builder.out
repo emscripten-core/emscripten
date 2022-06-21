@@ -51,7 +51,7 @@ pass
 pass
 pass
 test:
-set(k, VH)
+set(k, VB)
 pass
 pass
 pass

@@ -7943,7 +7943,7 @@ int main() {
         # These headers are C++ only and cannot be included from C code.
         # But we still want to check they can be included on there own without
         # any errors or warnings.
-        cxx_only = header in ['wire.h', 'val.h', 'val_helper.h', 'bind.h', 'webgpu_cpp.h']
+        cxx_only = header in ['wire.h', 'val.h', 'val_builder.h', 'bind.h', 'webgpu_cpp.h']
         if directory:
           header = f'{directory}/{header}'
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
