@@ -2950,14 +2950,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.MODULARIZE:
     modularize()
 
-  module_export_name_substitution()
+  if settings.USE_CLOSURE_COMPILER:
+    module_export_name_substitution()
 
-  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-  # by processing steps that occurred after Closure.
+  # Run a final optimization pass to clean up items that were not possible to
+  # optimize by Closure, or unoptimalities that were left behind by processing
+  # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
-    # to run in advanced mode)
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
@@ -3617,16 +3620,13 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL:
+    # On the web, with MINIMAL_RUNTIME, the Module object is always provided
+    # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  # For Node.js and other shell environments, create an unminified Module object so that
-  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
