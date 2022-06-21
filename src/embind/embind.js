@@ -201,7 +201,7 @@ var LibraryEmbind = {
     name = makeLegalFunctionName(name);
     return { [name]: function(arguments){
                 return body.apply(this,arguments);
-          }.bind(body);}  [name]
+          }.bind(body)}  [name];
   },
   embind_repr: function(v) {
     if (v === null) {
