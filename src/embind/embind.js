@@ -199,13 +199,11 @@ var LibraryEmbind = {
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
-    return new function () {
-      return {
-        [name]: function () {
-          return body.apply(body, arguments);
-        }
-      }[name];
-    }() 
+    return {
+      [name]: function () {
+        return body.apply(body, arguments);
+      }
+    }[name];
   },
 
   embind_repr: function(v) {
