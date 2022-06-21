@@ -197,11 +197,15 @@ var LibraryEmbind = {
 
   // from https://github.com/imvu/imvujs/blob/master/src/function.js
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
-  $createNamedFunction: function(name, body) {
+  $createNamedFunction: function createNamedFunction(name, body) {
     name = makeLegalFunctionName(name);
-    return { [name]: function(arguments){
-                return body.apply(this,arguments);
-          }.bind(body)}  [name];
+    return new function () {
+      return {
+        [name]: function () {
+          return body.apply(body, arguments);
+        }
+      }[name];
+    }() 
   },
 
   embind_repr: function(v) {
