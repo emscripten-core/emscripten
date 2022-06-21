@@ -316,7 +316,7 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
-int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
+int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -359,15 +359,15 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
 }
 
 int __syscall_stat64(intptr_t path, intptr_t buf) {
-  return __syscall_fstatat64(AT_FDCWD, path, buf, 0);
+  return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
 int __syscall_lstat64(intptr_t path, intptr_t buf) {
-  return __syscall_fstatat64(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
+  return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
 int __syscall_fstat64(int fd, intptr_t buf) {
-  return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
+  return __syscall_newfstatat(fd, (intptr_t) "", buf, AT_EMPTY_PATH);
 }
 
 // When calling doOpen(), we may request an FD be returned, or we may not need
@@ -983,7 +983,8 @@ int __syscall_symlink(intptr_t target, intptr_t linkpath) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
-  auto parsed = path::parseFile((char*)path, dirfd);
+  // TODO: Handle empty paths.
+  auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1448,17 +1449,6 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
     return -EBADF;
   }
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
-}
-
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
-  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
-    return -EINVAL;
-  }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
-  if (auto err = parsed.getError()) {
-    return err;
-  }
-  return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
 }
 
 intptr_t _mmap_js(

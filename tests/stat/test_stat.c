@@ -142,8 +142,6 @@ void test() {
   assert(s.st_blocks == 0);
 #endif
 
-  // WasmFS does not follow symlinks yet.
-#ifndef WASMFS
   // stat a link (should match the file stat from above)
   memset(&s, 0, sizeof(s));
   err = stat("folder/file-link", &s);
@@ -160,7 +158,6 @@ void test() {
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
-#endif
 #endif
 
   // lstat a link (should NOT match the file stat from above)

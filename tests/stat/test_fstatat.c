@@ -58,7 +58,12 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+  // WasmFS correctly counts 512B blocks, but MEMFS counts 4kb blocks.
+#ifdef WASMFS
+  assert(s.st_blocks == 8);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   // stat a file
@@ -110,7 +115,11 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+#ifdef WASMFS
+  assert(s.st_blocks == 8);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   close(fd);
@@ -135,7 +144,7 @@ void test() {
 #endif
 
   close(fd);
-  
+
   // lstat a link - with AT_FDCWD and AT_SYMLINK_NOFOLLOW.
   memset(&s, 0, sizeof(s));
   err = fstatat(AT_FDCWD, "folder/file-link", &s, AT_SYMLINK_NOFOLLOW);
