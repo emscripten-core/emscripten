@@ -199,21 +199,9 @@ var LibraryEmbind = {
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
-#if DYNAMIC_EXECUTION == 0
-    return function() {
-      "use strict";
-      return body.apply(this, arguments);
-    };
-#else
-    /*jshint evil:true*/
-    return new Function(
-        "body",
-        "return function " + name + "() {\n" +
-        "    \"use strict\";" +
-        "    return body.apply(this, arguments);\n" +
-        "};\n"
-    )(body);
-#endif
+    return { [name]: function(arguments){
+                return body.apply(this,arguments);
+          }.bind(body)}  [name];
   },
 
   embind_repr: function(v) {
