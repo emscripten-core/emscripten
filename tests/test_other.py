@@ -12227,8 +12227,8 @@ Module['postRun'] = function() {{
       }
     ''', assert_returncode=NON_ZERO)
 
-  def test_safari_bigint64array_shim(self):
-    bigint64array = Path(path_from_root("src/polyfill/bigint64array.js")).read_text()
+  def test_bigint64array_polyfill(self):
+    bigint64array = read_file(path_from_root("src/polyfill/bigint64array.js"))
     test_code = read_file(test_file('test_safari_bigint64array_shim.js'))
     bigint_list = [
       0,
@@ -12263,7 +12263,6 @@ Module['postRun'] = function() {{
       """ + bigint64array + test_code
     )
     output = json.loads(self.run_js("test.js"))
-    print(output)
     self.assertEqual(output["BigInt64Array_name"], "createBigInt64Array")
     for key in ["arr1_to_arr1", "arr1_to_arr2", "arr2_to_arr1"]:
       print(key + "_unsigned")
