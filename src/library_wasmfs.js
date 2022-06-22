@@ -15,6 +15,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
+    '$PATH',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -64,7 +65,15 @@ mergeInto(LibraryManager.library, {
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
-      wasmFSPreloadedDirs.push({parentPath: parent, childName: path});
+      var parts = path.split('/').reverse();
+      while (parts.length) {
+        var part = parts.pop();
+        if (!part) continue;
+        var current = PATH.join2(parent, part);
+        wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        parent = current;
+      }
+      return current;
     },
     readFile: (path, opts) => {
       opts = opts || {};

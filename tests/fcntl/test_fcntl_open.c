@@ -33,6 +33,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   create_file("test-file", "abcdef", 0777);
   mkdir("test-folder", 0777);
+  symlink("test-file", "test-link");
   assert(!errno);
 }
 
@@ -135,6 +136,25 @@ void test() {
       }
 
       memset(&s, 0, sizeof s);
+      printf("\n");
+      errno = 0;
+    }
+
+    for (int j = 0; j < 2; j++) {
+      int flags = modes[i];
+      if (j) flags |= O_NOFOLLOW;
+
+      printf("EXISTING LINK %d,%d\n", i, j);
+      int success = open("test-link", flags, 0777) != -1;
+      printf("success: %d\n", success);
+      printf("errno: %d\n", errno);
+      if (flags & O_NOFOLLOW) {
+        assert(!success);
+        assert(errno == ELOOP);
+      } else {
+        assert(success);
+        assert(errno == 0);
+      }
       printf("\n");
       errno = 0;
     }

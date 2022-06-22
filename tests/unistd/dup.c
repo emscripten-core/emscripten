@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <emscripten.h>
 #include <assert.h>
+#include <string.h>
 
 
 int main() {
@@ -50,18 +51,20 @@ int main() {
   printf("\n");
   errno = 0;
 
-
   printf("DUP2 pipe\n");
   int p[2];
   pipe(p);
   int g = dup2(p[0], 7);
-  write(p[1], "abc\n", 3);
-  char buf[5];
-  read(g, buf, 5);
-  // should print "buf: abc\n"
+  int rtn = write(p[1], "abc", 3);
+  assert(rtn == 3);
+  char buf[5] = {0};
+  rtn = read(g, buf, 5);
+  assert(rtn == 3);
   printf("buf: %s\n", buf);
+  assert(strcmp(buf, "abc") == 0);
+  printf("\n");
 
-
+  printf("DUP2 shared seek position\n");
   int fd1 = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
   int fd2 = dup(fd1);
   int n = write(fd1, "abcabc\n", 7);

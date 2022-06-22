@@ -93,7 +93,10 @@ public:
 
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
-    : kind(kind), mode(mode), backend(backend) {}
+    : kind(kind), mode(mode), backend(backend) {
+    atime = mtime = ctime = time(NULL);
+  }
+
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
@@ -101,9 +104,9 @@ protected:
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
-  time_t ctime = 0; // Time when the file node was last modified.
-  time_t mtime = 0; // Time when the file content was last modified.
   time_t atime = 0; // Time when the content was last accessed.
+  time_t mtime = 0; // Time when the file content was last modified.
+  time_t ctime = 0; // Time when the file node was last modified.
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
@@ -233,7 +236,7 @@ public:
   // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
   // not matter, so that value will never be read (what matters is the mode of
   // the target).
-  Symlink(backend_t backend) : File(File::SymlinkKind, 0, backend) {}
+  Symlink(backend_t backend) : File(File::SymlinkKind, S_IFLNK, backend) {}
   virtual ~Symlink() = default;
 
   // Constant, and therefore thread-safe, and can be done without locking.

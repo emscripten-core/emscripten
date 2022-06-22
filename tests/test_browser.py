@@ -31,7 +31,8 @@ from tools.shared import try_delete
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
-    def sendheaders(s, extra=[], length=len(data)):
+    def sendheaders(s, extra=None, length=None):
+      length = length or len(data)
       s.send_response(200)
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
@@ -41,8 +42,9 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
         s.send_header("Accept-Ranges", "bytes")
-      for i in extra:
-        s.send_header(i[0], i[1])
+      if extra:
+        for key, value in extra:
+          s.send_header(key, value)
       s.end_headers()
 
     def do_HEAD(s):
@@ -69,7 +71,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
   # CORS preflight makes OPTIONS requests which we need to account for.
   expectedConns = 22
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
-  for i in range(expectedConns + 1):
+  for _ in range(expectedConns + 1):
     httpd.handle_request()
 
 
@@ -1720,13 +1722,13 @@ keydown(100);keyup(100); // trigger the end
       time.sleep(2)
 
   @requires_graphics_hardware
-  def test_glgears(self, extra_args=[]):
+  def test_glgears(self, extra_args=[]):  # noqa
     self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
                args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
 
   @requires_graphics_hardware
   @requires_threads
-  def test_glgears_pthreads(self, extra_args=[]):
+  def test_glgears_pthreads(self, extra_args=[]):  # noqa
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
     self.test_glgears(['-sUSE_PTHREADS'])
@@ -3608,7 +3610,7 @@ window.close = function() {
     if inworker:
       self.emcc_args += ['--proxy-to-worker']
 
-    def do_run(src, expected_output, emcc_args=[]):
+    def do_run(src, expected_output, emcc_args):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
       # -> do the assert about expected output inside browser.
       #
@@ -3636,7 +3638,7 @@ window.close = function() {
           return rtn;
         }
       ''' % expected_output)
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'] + emcc_args)
+      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
@@ -3777,7 +3779,7 @@ window.close = function() {
     'closure': (['--closure=1'],),
   })
   @requires_threads
-  def test_pthread_atomics(self, args=[]):
+  def test_pthread_atomics(self, args):
     self.btest_exit(test_file('pthread/test_pthread_atomics.cpp'), args=['-sINITIAL_MEMORY=64MB', '-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
@@ -4176,20 +4178,20 @@ window.close = function() {
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak'],
+    'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @requires_threads
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
-  def test_pthread_lsan(self, name, args=[]):
+  def test_pthread_lsan(self, name, args):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-sINITIAL_MEMORY=256MB', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @parameterized({
     # Reusing the LSan test files for ASan.
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak'],
+    'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @requires_threads
-  def test_pthread_asan(self, name, args=[]):
+  def test_pthread_asan(self, name, args):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @requires_threads
@@ -4335,7 +4337,7 @@ window.close = function() {
     '': ([],),
     'asan': (['-fsanitize=address', '-sINITIAL_MEMORY=128MB'],)
   })
-  def test_manual_wasm_instantiate(self, args=[]):
+  def test_manual_wasm_instantiate(self, args):
     self.compile_btest([test_file('manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(test_file('manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
@@ -4619,10 +4621,10 @@ window.close = function() {
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
     s = '12345678'
-    for i in range(14):
+    for _ in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
     with open('largefile.txt', 'w') as f:
-      for i in range(1024):
+      for _ in range(1024):
         f.write(s)
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
@@ -4751,10 +4753,10 @@ window.close = function() {
   def test_pthread_growth_mainthread(self):
     self.emcc_args.remove('-Werror')
 
-    def run(emcc_args=[]):
+    def run(emcc_args):
       self.btest_exit(test_file('pthread/test_pthread_memory_growth_mainthread.c'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args, also_wasm2js=False)
 
-    run()
+    run([])
     run(['-sPROXY_TO_PTHREAD'])
 
   # Tests memory growth in a pthread.
@@ -4762,10 +4764,10 @@ window.close = function() {
   def test_pthread_growth(self):
     self.emcc_args.remove('-Werror')
 
-    def run(emcc_args=[]):
+    def run(emcc_args):
       self.btest_exit(test_file('pthread/test_pthread_memory_growth.c'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_wasm2js=False)
 
-    run()
+    run([])
     run(['-sASSERTIONS'])
     run(['-sPROXY_TO_PTHREAD'])
 

@@ -364,11 +364,11 @@ mergeInto(LibraryManager.library, {
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // (However, in MAIN_MODULE=1 mode we link in all system libraries, which does
-  // end up adding code that refers to this.)
   // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
-#if (SHRINK_LEVEL < 2 || LINKABLE) && !STANDALONE_WASM
+  // In MAIN_MODULE=1 or EMCC_FORCE_STDLIBS mode all of libc is force included
+  // so we cannot override parts of it, and therefore cannot use libc_optz.
+#if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM
 
   emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
@@ -3626,30 +3626,29 @@ mergeInto(LibraryManager.library, {
 #endif
 #endif
 
-  _emscripten_fs_load_embedded_files__deps: ['$FS'],
+  _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files__sig: 'vp',
   _emscripten_fs_load_embedded_files: function(ptr) {
-#if MEMORY64
-    var start64 = ptr >> 3;
+#if RUNTIME_DEBUG
+    err('preloading data files');
+#endif
     do {
-      var name_addr = Number(HEAPU64[start64++]);
-      var len = HEAPU32[start64 << 1];
-      start64++;
-      var content = Number(HEAPU64[start64++]);
+      var name_addr = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var len = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
+      var content = {{{ makeGetValue('ptr', '0', '*') }}};
+      ptr += {{{ POINTER_SIZE }}};
       var name = UTF8ToString(name_addr)
+#if RUNTIME_DEBUG
+      err('preloading files: ' + name);
+#endif
+      FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
       FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
-    } while (HEAPU64[start64]);
-#else
-    var start32 = ptr >> 2;
-    do {
-      var name_addr = HEAPU32[start32++];
-      var len = HEAPU32[start32++];
-      var content = HEAPU32[start32++];
-      var name = UTF8ToString(name_addr)
-      // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
-    } while (HEAPU32[start32]);
+    } while ({{{ makeGetValue('ptr', '0', '*') }}});
+#if RUNTIME_DEBUG
+    err('done preloading data files');
 #endif
   },
 });

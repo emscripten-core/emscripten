@@ -336,11 +336,14 @@ def lld_flags_for_executable(external_symbols):
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
     else:
-      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-      # For now we need to do this sice the entry point can be either `main` or
-      # `__main_argv_argc`, but we should address that by using a single `_start`
-      # function like we do in STANDALONE_WASM mode.
-      cmd += ['--no-entry']
+      if settings.PROXY_TO_PTHREAD:
+        cmd += ['--entry=_emscripten_proxy_main']
+      else:
+        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+        # For now we need to do this sice the entry point can be either `main` or
+        # `__main_argv_argc`, but we should address that by using a single `_start`
+        # function like we do in STANDALONE_WASM mode.
+        cmd += ['--no-entry']
     if not settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
@@ -1249,11 +1252,11 @@ def emit_debug_on_side(wasm_file):
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
   filename_bytes = embedded_path.encode('utf-8')
-  contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
+  contents = webassembly.to_leb(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
-    f.write(webassembly.toLEB(section_size))
+    f.write(webassembly.to_leb(section_size))
     f.write(section_name)
     f.write(contents)
 
@@ -1350,7 +1353,7 @@ def is_wasm_dylib(filename):
   section = next(module.sections())
   if section.type == webassembly.SecType.CUSTOM:
     module.seek(section.offset)
-    if module.readString() in ('dylink', 'dylink.0'):
+    if module.read_string() in ('dylink', 'dylink.0'):
       return True
   return False
 
@@ -1486,9 +1489,10 @@ def get_binaryen_bin():
 binaryen_kept_debug_info = False
 
 
-def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
+def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  cmd += args
+  if args:
+    cmd += args
   if infile:
     cmd += [infile]
   if outfile:
@@ -1523,7 +1527,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
     # remove any dwarf debug info sections, if the debug level is <3, as
     # we don't need them; also remove them if we use source maps (which are

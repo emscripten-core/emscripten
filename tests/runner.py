@@ -128,7 +128,7 @@ def get_all_tests(modules):
 def tests_with_expanded_wildcards(args, all_tests):
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
   new_args = []
-  for i, arg in enumerate(args):
+  for arg in args:
     if '*' in arg:
       if arg.startswith('skip:'):
         arg = arg[5:]

@@ -43,6 +43,7 @@ MINIMAL_TASKS = [
     'libdlmalloc-noerrno',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libembind-rtti',
     'libemmalloc',
     'libemmalloc-debug',
     'libemmalloc-memvalidate',
@@ -56,6 +57,7 @@ MINIMAL_TASKS = [
     'struct_info',
     'libstandalonewasm',
     'crt1',
+    'crt1_proxy_main',
     'libunwind-except',
     'libnoexit',
 ]

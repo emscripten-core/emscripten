@@ -38,7 +38,9 @@ int main() {
   assert(file.st_nlink);
   assert(file.st_uid == 0);
   assert(file.st_gid == 0);
-  assert(file.st_rdev);
+#ifdef WASMFS
+  assert(file.st_rdev == 0);
+#endif
   assert(file.st_blocks == 0);
   assert(file.st_blksize == 4096);
 
@@ -67,12 +69,12 @@ int main() {
   assert(directory.st_nlink);
   assert(directory.st_uid == 0);
   assert(directory.st_gid == 0);
+  assert(directory.st_rdev == 0);
 #ifdef WASMFS
-  assert(directory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(directory.st_blocks == 8);
 #else
-  assert(!directory.st_rdev);
+  assert(directory.st_rdev == 0);
   // The JS file system calculates st_blocks using Math.ceil(attr.size /
   // attr.blksize);
   assert(directory.st_blocks == 1);
@@ -100,7 +102,9 @@ int main() {
   assert(statFile.st_nlink);
   assert(statFile.st_uid == 0);
   assert(statFile.st_gid == 0);
-  assert(statFile.st_rdev);
+#ifdef WASMFS
+  assert(statFile.st_rdev == 0);
+#endif
   assert(statFile.st_blocks == 0);
   assert(statFile.st_blksize == 4096);
 
@@ -114,12 +118,11 @@ int main() {
   assert(statDirectory.st_nlink);
   assert(statDirectory.st_uid == 0);
   assert(statDirectory.st_gid == 0);
+  assert(statDirectory.st_rdev == 0);
 #ifdef WASMFS
-  assert(statDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(statDirectory.st_blocks == 8);
 #else
-  assert(!statDirectory.st_rdev);
   assert(statDirectory.st_blocks == 1);
 #endif
   assert(statDirectory.st_blksize == 4096);
@@ -150,16 +153,15 @@ int main() {
   assert(lstatFile.st_uid == 0);
   assert(lstatFile.st_gid == 0);
   assert(lstatFile.st_blksize == 4096);
+  assert(lstatFile.st_rdev == 0);
 #ifdef WASMFS
   assert(lstatFile.st_size == 0);
   assert(lstatFile.st_blocks == 0);
-  assert(lstatFile.st_rdev);
 #else
   // dev/stdout is a symlink to dev/tty.
   // TODO: When symlinks are added, one should return stat info on the symlink.
   assert(lstatFile.st_size == 8);
   assert(lstatFile.st_blocks == 1);
-  assert(!lstatFile.st_rdev);
 #endif
 
   // Test calling lstat without opening a directory.
@@ -172,12 +174,11 @@ int main() {
   assert(lstatDirectory.st_nlink);
   assert(lstatDirectory.st_uid == 0);
   assert(lstatDirectory.st_gid == 0);
+  assert(lstatDirectory.st_rdev == 0);
 #ifdef WASMFS
-  assert(lstatDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(lstatDirectory.st_blocks == 8);
 #else
-  assert(!lstatDirectory.st_rdev);
   assert(lstatDirectory.st_blocks == 1);
 #endif
   assert(lstatDirectory.st_blksize == 4096);

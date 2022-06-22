@@ -1014,9 +1014,14 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
-  file_code = shared.check_call(cmd, stdout=PIPE).stdout
-
-  options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  if options.preload_files:
+    # Preloading files uses --pre-js code that runs before the module is loaded.
+    file_code = shared.check_call(cmd, stdout=PIPE).stdout
+    options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  else:
+    # Otherwise, we are embedding files, which does not require --pre-js code,
+    # and instead relies on a static constrcutor to populate the filesystem.
+    shared.check_call(cmd)
 
   return rtn
 
@@ -1120,8 +1125,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity()
 
-  if '-print-search-dirs' in args:
-    return run_process([clang, '-print-search-dirs'], check=False).returncode
+  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
+  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
+    return run_process([clang] + args + get_cflags(args), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -1547,9 +1553,6 @@ def setup_pthreads(target):
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
-  if settings.PROXY_TO_PTHREAD:
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
-
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
@@ -1744,8 +1747,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead
-      # we export `emscripten_proxy_main` (elsewhwere).
+      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
       if not settings.PROXY_TO_PTHREAD:
         settings.EXPORTED_FUNCTIONS = ['_main']
 
@@ -2612,6 +2614,18 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
+  # Make `getExceptionMessage` and other necessary functions available for use.
+  if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # We also export refcount increasing and decreasing functions because if you
+    # catch an exception, be it an Emscripten exception or a Wasm exception, in
+    # JS, you may need to manipulate the refcount manually not to leak memory.
+    # What you need to do is different depending on the kind of EH you use
+    # (https://github.com/emscripten-core/emscripten/issues/17115).
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
+    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message']
+    if settings.WASM_EXCEPTIONS:
+      settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
+
   apply_min_browser_versions(user_settings)
 
   return target, wasm_target
@@ -2936,14 +2950,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.MODULARIZE:
     modularize()
 
-  module_export_name_substitution()
+  if settings.USE_CLOSURE_COMPILER:
+    module_export_name_substitution()
 
-  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-  # by processing steps that occurred after Closure.
+  # Run a final optimization pass to clean up items that were not possible to
+  # optimize by Closure, or unoptimalities that were left behind by processing
+  # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
-    # to run in advanced mode)
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
@@ -3603,16 +3620,13 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL:
+    # On the web, with MINIMAL_RUNTIME, the Module object is always provided
+    # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  # For Node.js and other shell environments, create an unminified Module object so that
-  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
