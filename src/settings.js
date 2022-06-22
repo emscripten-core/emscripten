@@ -1498,6 +1498,10 @@ var SDL2_IMAGE_FORMATS = [];
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
+// 1 = use sqlite3 from emscripten-ports
+// [link]
+var USE_SQLITE3 = false;
+
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
 var IN_TEST_HARNESS = false;
