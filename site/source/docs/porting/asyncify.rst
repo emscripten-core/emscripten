@@ -214,7 +214,8 @@ Asyncify with Dynamic Linking
 #############################
 
 If you want to use Asyncify in dynamic libraries, those methods which are imported
-from other linked modules should be listed in ``ASYNCIFY_IMPORTS``.
+from other linked modules (and that will be on the stack in an async operation)
+should be listed in ``ASYNCIFY_IMPORTS``.
 
 .. code-block:: cpp
 
@@ -225,7 +226,7 @@ from other linked modules should be listed in ``ASYNCIFY_IMPORTS``.
       emscripten_sleep(100);
     }
 
-In the side module, you can compile sleep.cpp in ordinal emscripten's dynamic
+In the side module, you can compile sleep.cpp in the ordinal emscripten dynamic
 linking manner:
 
 ::
