@@ -145,23 +145,6 @@ it (except for ``dlopen(NULL)`` which means to open the current executable,
 which just works without filesystem integration). That’s basically it - you can
 then use ``dlopen(), dlsym()``, etc. normally.
 
-System Libraries
-================
-
-As mentioned earlier, system libraries are handled in a special way by
-the Emscripten linker, and in dynamic linking, only the main module is
-linked against system libraries. A possible issue is if a side module
-depends on a system library that the main does not. If so, you’ll get a
-runtime error. This section explains what to do to fix that.
-
-To get around this, you can build the main module with
-``EMCC_FORCE_STDLIBS=1`` in the environment to force inclusion of all
-standard libs. A more refined approach is to build the side module with
-``-v`` in order to see which system libs are actually needed - look for
-``including lib[...]`` messages - and then building the main module with
-something like ``EMCC_FORCE_STDLIBS=libcxx,libcxxabi`` (if you need
-those two libs).
-
 Code Size
 =========
 
@@ -184,6 +167,26 @@ automatically. For this reason we strongly recommend using ``MAIN_MODULE=2``
 when doing load time dynamic linking.
 
 There is also the corresponding ``-sSIDE_MODULE=2`` for side modules.
+
+System Libraries
+================
+
+As mentioned earlier, system libraries are handled in a special way by the
+Emscripten linker, and in dynamic linking, only the main module is linked
+against system libraries. When linking the main module it is possible to pass
+the side modules on the command line, in which case any system library
+dependencies are automatically handled.
+
+However when linking a main module without its side modules (Usually with
+``-sMAIN_MODULE=1``) it is possible that required system libraries are not
+included.  This section explains what to do to fix that by forcing the main
+module to be linked against certain libraries.
+
+You can build the main module with ``EMCC_FORCE_STDLIBS=1`` in the environment
+to force inclusion of all standard libs.  A more refined approach is to name the
+system libraries that you want to explicitly include.  For example, with
+something like ``EMCC_FORCE_STDLIBS=libcxx,libcxxabi`` (if you need those two
+libs).
 
 Miscellaneous Notes
 ===================
