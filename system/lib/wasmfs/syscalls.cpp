@@ -937,7 +937,10 @@ int __syscall_renameat(int olddirfd,
     return -EACCES;
   }
 
-  // TODO: Check that the source and parent directories have the same backends.
+  // Both parents must have the same backend.
+  if (oldParent->getBackend() != newParent->getBackend()) {
+    return -EXDEV;
+  }
 
   // Check that oldDir is not an ancestor of newDir.
   for (auto curr = newParent; curr != root; curr = curr->locked().getParent()) {
