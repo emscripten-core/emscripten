@@ -337,7 +337,7 @@ public:
 
     template<typename T>
     static val array(const std::vector<T>& vec) {
-      if constexpr (std::is_arithmetic<T>::value && !std::is_same<T, bool>::value) {
+      if constexpr (internal::typeSupportsMemoryView<T>()) {
           // for numeric types, pass memory view and copy in JS side one-off
           val view{ typed_memory_view(vec.size(), vec.data()) };
           return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
