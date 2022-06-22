@@ -405,7 +405,9 @@ var LibraryEmbind = {
   $heap32VectorToArray: function(count, firstElement) {
     var array = [];
     for (var i = 0; i < count; i++) {
-        array.push(HEAP32[(firstElement >> 2) + i]);
+        // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
+        // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
+        array.push({{{ makeGetValue('firstElement', 'i * ' * POINTER_SIZE, '*') }}});
     }
     return array;
   },
