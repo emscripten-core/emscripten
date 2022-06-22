@@ -16,7 +16,6 @@
 #include <climits>
 #include <emscripten/wire.h>
 #include <stdint.h> // uintptr_t
-#include <type_traits>
 #include <vector>
 
 
