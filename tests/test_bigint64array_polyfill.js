@@ -57,7 +57,7 @@ arr1[0] = 1n; arr1[1] = 2n; arr1[2] = 3n; arr1[3] = 4n; arr1[4] = 5n;
 
 result.arr2_slice = Array.from(arr2.slice(1, 5));
 result.arr2_subarray = Array.from(arr2.subarray(1, 5));
-let reducer = (k, v) => typeof v  === "bigint" ? v.toString() + "n" : v;
+let reducer = (k, v) => typeof v  === 'bigint' ? v.toString() + 'n' : v;
 function arraytostring(arr){
   return JSON.stringify(Array.from(Array.from(arr)), reducer);
 }
