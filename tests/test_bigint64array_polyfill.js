@@ -1,6 +1,5 @@
 let result = {};
 result.BigInt64Array_name = BigInt64Array.name;
-//result.push(bigint_list);
 let arr2signed = new BigInt64Array(arr1signed.buffer);
 let arr2unsigned = new BigUint64Array(arr1unsigned.buffer);
 
