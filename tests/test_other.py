@@ -12229,7 +12229,7 @@ Module['postRun'] = function() {{
 
   def test_bigint64array_polyfill(self):
     bigint64array = read_file(path_from_root("src/polyfill/bigint64array.js"))
-    test_code = read_file(test_file('test_safari_bigint64array_shim.js'))
+    test_code = read_file(test_file('test_bigint64array_polyfill.js'))
     bigint_list = [
       0,
       1,
@@ -12251,7 +12251,7 @@ Module['postRun'] = function() {{
     bigint_list_unsigned_n = [f"{x}n" for x in bigint_list_unsigned]
     bigint_list_signed_n = [f"{x}n" for x in bigint_list_signed]
 
-    bigint64array = "".join(bigint64array.splitlines(keepends=True)[3:])
+    bigint64array = "\n".join(bigint64array.splitlines()[3:])
 
     create_file(
       "test.js",
