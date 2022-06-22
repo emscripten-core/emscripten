@@ -12370,6 +12370,13 @@ Module['postRun'] = function() {{
         // arror funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
+
+        // Computed property names
+        var key = 'mykey';
+        var obj2 = {
+          [key]: 42,
+        };
+        err('value: ' + obj2[key]);
       }
     });
     ''')
@@ -12403,19 +12410,19 @@ Module['postRun'] = function() {{
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test2')
-    check_for_es6('test2.js', False)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test_old')
+    check_for_es6('test_old.js', False)
 
     # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test3')
-    check_for_es6('test3.js', True)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test_no_closure')
+    check_for_es6('test_no_closure.js', True)
 
     # If we use `--closure=1` closure will run in full optimization mode
     # and also transpile to ES5
     print('with old browser + --closure=1')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
-    check_for_es6('test4.js', False)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test_closure')
+    check_for_es6('test_closure.js', False)
 
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
