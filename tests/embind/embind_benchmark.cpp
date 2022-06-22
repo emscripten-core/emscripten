@@ -149,7 +149,7 @@ public:
     virtual void call0() = 0;
     virtual std::wstring call1(const std::wstring& str1, const std::wstring& str2) = 0;
     virtual void call_with_typed_array(size_t size, const void*) = 0;
-    virtual void call_with_memory_view(size_t size, const void*) = 0;
+    virtual void call_with_memory_view(size_t size, const unsigned int*) = 0;
 };
 
 EMSCRIPTEN_SYMBOL(HEAP8);
@@ -183,7 +183,7 @@ public:
                 size));
     }
 
-    void call_with_memory_view(size_t size, const void* data) {
+    void call_with_memory_view(size_t size, const unsigned int* data) {
         return call<void>(
             call_with_memory_view_symbol,
             emscripten::typed_memory_view(size, data));
@@ -464,7 +464,6 @@ void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
 
 int main()
 {
-    /*
     for(int i = 1000; i <= 100000; i *= 10)
         emscripten_get_now_benchmark(i);
 
@@ -501,7 +500,7 @@ int main()
     printf("\n");
     pass_gameobject_ptr_benchmark();
     pass_gameobject_ptr_benchmark_embind_js();
-    */
+
     emscripten_get_now();
     call_through_interface0();
     call_through_interface1();
