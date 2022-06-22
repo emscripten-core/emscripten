@@ -3976,11 +3976,10 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME', 1)
-    self.emcc_args += ['-sASYNCIFY_IGNORE_INDIRECT=0']
 
     create_file('liblib.c', r'''
         #include <stdio.h>
@@ -8140,7 +8139,7 @@ Module['onRuntimeInitialized'] = function() {
         raise
 
   @needs_dylink
-  @no_memory64('TODO: asyncify for wasm64')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME', 1)
