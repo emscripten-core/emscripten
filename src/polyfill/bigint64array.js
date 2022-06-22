@@ -33,7 +33,6 @@ if (typeof globalThis.BigInt64Array === "undefined") {
           array = new Uint32Array(array);
         } else {
           orig_array = array;
-
           array = new Uint32Array(array.length * 2);
         }
       }
