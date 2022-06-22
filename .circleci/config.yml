@@ -365,9 +365,7 @@ jobs:
       EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
-          # test_em_js_pthreads current triggers a bug in python metadata
-          # extraction: https://github.com/emscripten-core/emscripten/issues/16573
-          test_targets: "core0 skip:core0.test_em_js_pthreads"
+          test_targets: "core0"
   test-core2:
     executor: bionic
     environment:

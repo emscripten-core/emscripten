@@ -2230,12 +2230,13 @@ int main(int argc, char **argv) {
   @parameterized({
     '': ([], False),
     'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
+    'pthreads_dylink': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sMAIN_MODULE=2', '-Wno-experimental'], False),
     'c': ([], True),
-    'linked': (['-sMAIN_MODULE'], False),
-    'linked_c': (['-sMAIN_MODULE'], True),
+    'dylink': (['-sMAIN_MODULE=2'], False),
+    'dylink_c': (['-sMAIN_MODULE=2'], True),
   })
   def test_em_js(self, args, force_c):
-    if '-sMAIN_MODULE' in args:
+    if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
     else:
       self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
