@@ -3247,12 +3247,8 @@ mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
-      var callback = callbacks.shift();
-      if (typeof callback == 'function') {
-        callback(Module); // Pass the module as the first argument.
-      } else {
-        callback.func(callback.arg === undefined ? null : callback.arg);
-      }
+      // Pass the module as the first argument.
+      callbacks.shift()(Module);
     }
   },
 
