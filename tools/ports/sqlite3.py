@@ -7,7 +7,10 @@ import os
 import shutil
 import logging
 
-TAG = '3380500'
+# sqlite amalgamation download URL uses relase year and tag
+# 2022  and (3, 38, 5) -> '/2022/sqlite-amalgamation-3380500.zip'
+VERSION = (3, 38, 5)
+VERSION_YEAR = 2022
 HASH = '4fc2992e4c1ca1664a9b01e07c9b944003c4ed0612978e471eff262a7114e4a0699244d91e71ae4ad2b5e1fc9829917cd7d5f0313aa5859036905f974548d94a'
 
 deps = []
@@ -22,13 +25,14 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  # TODO: This is an emscripten-hosted mirror of the sqlite repo from sqlite.prg.
-  ports.fetch_project('sqlite3', 'https://www.sqlite.org/2022/sqlite-amalgamation-' + TAG + '.zip', 'sqlite-amalgamation-' + TAG, sha512hash=HASH)
+  release = f'sqlite-amalgamation-{VERSION[0]}{VERSION[1]:02}{VERSION[2]:02}00'
+  # TODO: Fetch the file from an emscripten-hosted mirror.
+  ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', release, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libsqlite3')
 
-    source_path = os.path.join(ports.get_dir(), 'sqlite3', 'sqlite-amalgamation-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'sqlite3', release)
     dest_path = os.path.join(ports.get_build_dir(), 'sqlite3')
 
     shutil.rmtree(dest_path, ignore_errors=True)
@@ -62,12 +66,14 @@ def get(ports, settings, shared):
       '-DSQLITE_ENABLE_FTS5=1',
       '-DSQLITE_ENABLE_RTREE=1',
       '-DSQLITE_ENABLE_GEOPOLY=1',
-      '-DSQLITE_OMIT_POPEN=1'
+      '-DSQLITE_OMIT_POPEN=1',
     ]
     if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS=1']
-      flags += ['-DSQLITE_THREADSAFE=1']
-      flags += ['-D_REENTRANT=1']
+      flags += [
+        '-sUSE_PTHREADS=1',
+        '-DSQLITE_THREADSAFE=1',
+        '-D_REENTRANT=1',
+      ]
     else:
       flags += ['-DSQLITE_THREADSAFE=0']
 
@@ -78,10 +84,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.Cache.erase_lib(get_lib_name(settings))
-
-
-def process_dependencies(settings):
-  pass
 
 
 def process_args(ports):
