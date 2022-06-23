@@ -12,27 +12,27 @@ int counter = 0;
 
 extern "C" {
 
-int __attribute__((noinline)) get_counter()
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE get_counter()
 {
     return counter;
 }
 
-void __attribute__((noinline)) increment_counter()
+void __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE increment_counter()
 {
     ++counter;
 }
 
-int __attribute__((noinline)) sum_int(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_int(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
 {
     return v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9;
 }
 
-float __attribute__((noinline)) sum_float(float v1, float v2, float v3, float v4, float v5, float v6, float v7, float v8, float v9)
+float __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_float(float v1, float v2, float v3, float v4, float v5, float v6, float v7, float v8, float v9)
 {
     return v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9;
 }
 
-int __attribute__((noinline)) returns_input(int i)
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE returns_input(int i)
 {
     return i;
 }
@@ -462,7 +462,7 @@ void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
     printf("C++ pass_gameobject_ptr %d iters: %f msecs.\n", N, (t2-t));
 }
 
-int main()
+int EMSCRIPTEN_KEEPALIVE main()
 {
     for(int i = 1000; i <= 100000; i *= 10)
         emscripten_get_now_benchmark(i);
