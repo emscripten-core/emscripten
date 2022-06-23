@@ -281,27 +281,13 @@ mergeInto(LibraryManager.library, {
     let nread = 0;
 
     try {
-      // TODO: BYOB reader doesn't work because we don't have a byte stream?
-      // // Use ReadableStreamBYOBReader if supported.
-      // if (typeof ReadableStreamBYOBReader === 'function') {
-      //   let stream = slice.stream();
-      //   let reader = stream.getReader({mode: "byob"});
-      //   while (true) {
-      //     let read = await reader.read(HEAPU8.subarray(bufPtr + nread));
-      //     if (read.done) {
-      //       break;
-      //     }
-      //     nread += read.value.length;
-      //   }
-      //   reader.releaseLock();
-      // } else {
-        // ReadableStreamBYOBReader not supported. We could use
-        // ReadableStreamDefaultReader, but this is simpler.
-        let buf = await slice.arrayBuffer();
-        let data = new Uint8Array(buf);
-        HEAPU8.set(data, bufPtr);
-        nread += data.length;
-      // }
+      // TODO: Use ReadableStreamBYOBReader once
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=1189621 is
+      // resolved.
+      let buf = await slice.arrayBuffer();
+      let data = new Uint8Array(buf);
+      HEAPU8.set(data, bufPtr);
+      nread += data.length;
     } catch (e) {
       if (e instanceof RangeError) {
         nread = -1;
