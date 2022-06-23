@@ -127,6 +127,7 @@ var LibraryEmVal = {
     return Emval.toHandle([]);
   },
 
+  _emval_new_array_from_memory_view__sig: 'ip',
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: function(view) {
     view = Emval.toValue(view);
