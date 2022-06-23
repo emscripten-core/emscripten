@@ -66,14 +66,20 @@ void test() {
   assert(s.st_ino);
   assert(S_ISDIR(s.st_mode));
   assert(s.st_nlink);
+#ifndef WASMFS
   assert(s.st_rdev == 0);
+#endif
   assert(s.st_size);
   assert(s.st_atime == 1200000000);
   assert(s.st_mtime == 1200000000);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+#ifdef WASMFS
+  assert(s.st_blocks == 8);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   // stat a file
@@ -121,8 +127,11 @@ void test() {
   assert(S_ISCHR(s.st_mode));
   assert(s.st_nlink);
 #ifndef __APPLE__
+#ifndef WASMFS
   // mac uses makedev(3, 2) for /dev/null
+  // WasmFS doesn't report a meaningful st_rdev.
   assert(s.st_rdev == makedev(1, 3));
+#endif
 #endif
   assert(!s.st_size);
   assert(s.st_atime);

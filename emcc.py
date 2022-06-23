@@ -1125,8 +1125,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity()
 
-  if '-print-search-dirs' in args:
-    return run_process([clang, '-print-search-dirs'], check=False).returncode
+  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
+  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
+    return run_process([clang] + args + get_cflags(args), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -2965,14 +2966,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.MODULARIZE:
     modularize()
 
-  module_export_name_substitution()
+  if settings.USE_CLOSURE_COMPILER:
+    module_export_name_substitution()
 
-  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-  # by processing steps that occurred after Closure.
+  # Run a final optimization pass to clean up items that were not possible to
+  # optimize by Closure, or unoptimalities that were left behind by processing
+  # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
-    # to run in advanced mode)
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
@@ -3637,8 +3641,9 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME and not (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')) and not settings.AUDIO_WORKLET:
-    # In MINIMAL_RUNTIME web-only builds, the Module object is always present to provide the .wasm content
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.AUDIO_WORKLET:
+    # On the web, with MINIMAL_RUNTIME, the Module object is always provided
+    # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}

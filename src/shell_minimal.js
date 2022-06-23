@@ -7,9 +7,14 @@
 #if !AUDIO_WORKLET && (MIN_CHROME_VERSION < 71 || MIN_EDGE_VERSION < 79 || MIN_FIREFOX_VERSION < 65 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 120100 /*|| MIN_NODE_VERSION < 120000*/)
 
 #if USE_CLOSURE_COMPILER
-// if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
+// if (!Module)` is crucial for Closure Compiler here as it will
+// otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+// When running on the web we expect Module to be defined externally, in the
+// HTML.  Otherwise we must define it here before its first use
+var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #else
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
 var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};

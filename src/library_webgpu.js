@@ -144,6 +144,9 @@
       Success: 0,
       Error: 1,
     },
+    TextureFormat: {
+      Undefined: 0,
+    },
   };
   return null;
 })(); }}}
@@ -1168,6 +1171,7 @@ var LibraryWebGPU = {
       function makeColorFormats(count, formatsPtr) {
         var formats = [];
         for (var i = 0; i < count; ++i, formatsPtr += 4) {
+          // format could be undefined
           formats.push(WebGPU.TextureFormat[{{{ gpu.makeGetU32('formatsPtr', 0) }}}]);
         }
         return formats;
@@ -1255,9 +1259,9 @@ var LibraryWebGPU = {
 
     function makeColorState(csPtr) {
       {{{ gpu.makeCheckDescriptor('csPtr') }}}
-      return {
-        "format": WebGPU.TextureFormat[
-          {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.format) }}}],
+      var formatInt = {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.format) }}};
+      return formatInt === {{{ gpu.TextureFormat.Undefined }}} ? undefined : {
+        "format": WebGPU.TextureFormat[formatInt],
         "blend": makeBlendState({{{ makeGetValue('csPtr', C_STRUCTS.WGPUColorTargetState.blend, '*') }}}),
         "writeMask": {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.writeMask) }}},
       };
@@ -1576,6 +1580,12 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheck('descriptor') }}}
 
     function makeColorAttachment(caPtr) {
+      var viewPtr = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}};
+      if (viewPtr === 0) {
+        // view could be undefined.
+        return undefined;
+      }
+
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
           assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
@@ -1589,8 +1599,7 @@ var LibraryWebGPU = {
       var clearValue = WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}});
 
       return {
-        "view": WebGPU.mgrTextureView.get(
-          {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}}),
+        "view": WebGPU.mgrTextureView.get(viewPtr),
         "resolveTarget": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.resolveTarget) }}}),
         "clearValue": clearValue,

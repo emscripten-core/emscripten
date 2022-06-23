@@ -69,7 +69,7 @@ class WebsockifyServerHarness():
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    for i in range(10):
+    for _ in range(10):
       try:
         if self.do_server_check:
             server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)

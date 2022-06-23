@@ -14,6 +14,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if WASMFS
+#include <emscripten/wasmfs.h>
+#endif
 
 void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -226,6 +229,25 @@ void test() {
   assert(errno == EBUSY);
 #else
   assert(errno == ENOTEMPTY);
+#endif
+
+#ifdef WASMFS
+  // Files cannot be renamed between backends.
+
+  // Create a new backend (and make sure it is different).
+  backend_t js_backend = wasmfs_create_js_file_backend();
+  assert(js_backend != wasmfs_get_backend_by_path("/"));
+
+  // Create a directory and a file.
+  err = wasmfs_create_directory("/js-dir", 0777, js_backend);
+  assert(err == 0);
+  int fd = wasmfs_create_file("/js-dir/js-file", 0777, js_backend);
+  assert(fd >= 0);
+
+  // Try to move it.
+  err = rename("/js-dir/js-file", "/moved-js-file");
+  assert(err == -1);
+  assert(errno == EXDEV);
 #endif
 
   puts("success");
