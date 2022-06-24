@@ -3409,7 +3409,8 @@ def phase_binaryen(target, options, wasm_target):
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
-    building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
+    sections = ['producers'] if strip_producers else []
+    building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
     building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:

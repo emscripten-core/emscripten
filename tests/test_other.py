@@ -8635,8 +8635,8 @@ int main() {
     if not debug_wasm.has_name_section():
       self.fail('name section not found in separate dwarf file')
     for sec in debug_wasm.sections():
-      # TODO: check for absence of code section (see
-      # https://github.com/emscripten-core/emscripten/issues/13084)
+      if sec.type == webassembly.SecType.CODE:
+        self.fail(f'section of type "{sec.type}" found in separate dwarf file')
       if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
         self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
 

@@ -1219,19 +1219,17 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
-def strip(infile, outfile, debug=False, producers=False):
+def strip(infile, outfile, debug=False, sections=None):
   cmd = [LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
-  if producers:
-    cmd += ['--remove-section=producers']
+  if sections:
+    cmd += ['--remove-section=' + section for section in sections]
   check_call(cmd)
 
 
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
-# TODO: emit only debug sections in the side file, and not the entire
-#       wasm as well
 def emit_debug_on_side(wasm_file):
   # if the dwarf filename wasn't provided, use the default target + a suffix
   wasm_file_with_dwarf = settings.SEPARATE_DWARF
@@ -1247,6 +1245,13 @@ def emit_debug_on_side(wasm_file):
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
+
+  # Strip code and data from the debug file to limit its size. The other known
+  # sections are still required to correctly interpret the DWARF info.
+  # TODO(dschuff): Also strip the DATA section? To make this work we'd need to
+  # either allow "invalid" data segment name entries, or maybe convert the DATA
+  # to a DATACOUNT section.
+  strip(wasm_file_with_dwarf, wasm_file_with_dwarf, sections=['CODE'])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
