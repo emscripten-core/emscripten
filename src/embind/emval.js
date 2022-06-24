@@ -96,7 +96,7 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_incref__sig: 'vi',
+  _emval_incref__sig: 'vp',
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
     if (handle > 4) {
@@ -104,7 +104,7 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_decref__sig: 'vi',
+  _emval_decref__sig: 'vp',
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
     if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
@@ -113,7 +113,7 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_run_destructors__sig: 'vi',
+  _emval_run_destructors__sig: 'vp',
   _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
   _emval_run_destructors: function(handle) {
     var destructors = Emval.toValue(handle);
@@ -121,36 +121,37 @@ var LibraryEmVal = {
     __emval_decref(handle);
   },
 
+  _emval_new_array__sig: 'p',
   _emval_new_array__deps: ['$Emval'],
   _emval_new_array: function() {
     return Emval.toHandle([]);
   },
 
-  _emval_new_object__sig: 'i',
+  _emval_new_object__sig: 'p',
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: function() {
     return Emval.toHandle({});
   },
 
-  _emval_new_cstring__sig: 'ii',
+  _emval_new_cstring__sig: 'pp',
   _emval_new_cstring__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_new_cstring: function(v) {
     return Emval.toHandle(getStringOrSymbol(v));
   },
 
-  _emval_new_u8string__sig: 'ii',
+  _emval_new_u8string__sig: 'pp',
   _emval_new_u8string__deps: ['$Emval'],
   _emval_new_u8string: function(v) {
     return Emval.toHandle(UTF8ToString(v));
   },
 
-  _emval_new_u16string__sig: 'ii',
+  _emval_new_u16string__sig: 'pp',
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: function(v) {
     return Emval.toHandle(UTF16ToString(v));
   },
 
-  _emval_take_value__sig: 'iii',
+  _emval_take_value__sig: 'ppp',
   _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
   _emval_take_value: function(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
@@ -177,7 +178,7 @@ var LibraryEmVal = {
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
       for (var i = 0; i < argCount; ++i) {
-        var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
+        var argType = requireRegisteredType({{{ makeGetValue('argTypes', 'i * POINTER_SIZE', '*') }}}, 'parameter ' + i);
         argsList[i + 1] = argType['readValueFromPointer'](args);
         args += argType['argPackAdvance'];
       }
@@ -195,9 +196,10 @@ var LibraryEmVal = {
 
     for (var i = 0; i < argCount; ++i) {
         functionBody +=
-            "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >>> 2) + "+i+"], \"parameter "+i+"\");\n" +
+            "var argType"+i+" = requireRegisteredType({{{ makeGetValue('argTypes', '0', '*') }}}, 'parameter "+i+"');\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
-            "args += argType"+i+"['argPackAdvance'];\n";
+            "args += argType"+i+"['argPackAdvance'];\n" +
+            "argTypes += {{{ POINTER_SIZE }}};\n";
     }
     functionBody +=
         "var obj = new constructor("+argsList+");\n" +
@@ -205,12 +207,12 @@ var LibraryEmVal = {
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "valueToHandle", functionBody))(
-        requireRegisteredType, Module, Emval.toHandle);
+    return (new Function("requireRegisteredType", "Module", "valueToHandle", "{{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}}" , functionBody))(
+        requireRegisteredType, Module, Emval.toHandle, {{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}});
 #endif
   },
 
-  _emval_new__sig: 'iiiii',
+  _emval_new__sig: 'ppipp',
   _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$Emval'],
   _emval_new: function(handle, argCount, argTypes, args) {
     handle = Emval.toValue(handle);
@@ -272,7 +274,7 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_get_module_property__sig: 'ii',
+  _emval_get_module_property__sig: 'pp',
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_get_module_property: function(name) {
     name = getStringOrSymbol(name);
@@ -287,7 +289,7 @@ var LibraryEmVal = {
     return Emval.toHandle(handle[key]);
   },
 
-  _emval_set_property__sig: 'viii',
+  _emval_set_property__sig: 'vppp',
   _emval_set_property__deps: ['$Emval'],
   _emval_set_property: function(handle, key, value) {
     handle = Emval.toValue(handle);
@@ -303,7 +305,7 @@ var LibraryEmVal = {
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     var rd = Emval.toHandle(destructors);
-    HEAP32[destructorsRef >> 2] = rd;
+    {{{ makeSetValue('destructorsRef', '0', 'rd', '*') }}};
     return returnType['toWireType'](destructors, handle);
   },
 
@@ -392,7 +394,7 @@ var LibraryEmVal = {
   $emval_allocateDestructors__deps: ['$Emval'],
   $emval_allocateDestructors: function(destructorsRef) {
     var destructors = [];
-    HEAP32[destructorsRef >> 2] = Emval.toHandle(destructors);
+    {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
     return destructors;
   },
 
