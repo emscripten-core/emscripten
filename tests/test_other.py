@@ -1808,11 +1808,18 @@ int f() {
     self.do_runf(test_file('core/test_em_js.cpp'))
 
   @node_pthreads
-  def test_dylink_pthread_comdat(self):
+  @parameterized({
+    '': (False,),
+    'flipped': (True,),
+  })
+  def test_dylink_pthread_comdat(self, flipped):
     # Test that the comdat info for `Foo`, which is defined in the side module,
     # is visible to the main module.
     create_file('foo.h', r'''
     struct Foo {
+      Foo() {
+        method();
+      }
       // Making this method virtual causes the comdat group for the
       // class to only be defined in the side module.
       virtual void method() const;
@@ -1822,6 +1829,12 @@ int f() {
       #include "foo.h"
       #include <typeinfo>
       #include <emscripten/console.h>
+
+      // Foo constructor calls a virtual function, with the vtable defined
+      // in the side module. This verifies that the side module's data
+      // reloctions are applied before calling static constructors in the
+      // main module.
+      Foo g_foo;
 
       int main() {
         _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
@@ -1839,14 +1852,21 @@ int f() {
         _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
       }
       ''')
+    if flipped:
+      side = 'main.cpp'
+      main = 'side.cpp'
+    else:
+      self.skipTest('https://reviews.llvm.org/D128515')
+      side = 'side.cpp'
+      main = 'main.cpp'
     self.run_process([
       EMCC,
       '-o', 'libside.wasm',
-      'side.cpp',
+      side,
       '-pthread', '-Wno-experimental',
       '-sSIDE_MODULE=1'])
     self.do_runf(
-      'main.cpp',
+      main,
       'main: Foo typeid: 3Foo\nside: Foo typeid: 3Foo\n',
       emcc_args=[
         '-pthread', '-Wno-experimental',

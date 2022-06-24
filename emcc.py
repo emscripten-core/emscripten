@@ -2094,6 +2094,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
 
+  if settings.RELOCATABLE:
+    # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
+    # llvm change lands
+    settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
+
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 

@@ -654,6 +654,14 @@ var LibraryDylink = {
               __ATINIT__.push(init);
             }
           }
+          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+          if (applyRelocs) {
+            if (runtimeInitialized) {
+              applyRelocs();
+            } else {
+              __RELOC_FUNCS__.push(applyRelocs);
+            }
+          }
 #if USE_PTHREADS
         }
 #endif
