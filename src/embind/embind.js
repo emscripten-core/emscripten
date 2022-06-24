@@ -407,7 +407,7 @@ var LibraryEmbind = {
     for (var i = 0; i < count; i++) {
         // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
         // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
-        array.push({{{ makeGetValue('firstElement', 'i * ' * POINTER_SIZE, '*') }}});
+        array.push({{{ makeGetValue('firstElement', 'i * ' + POINTER_SIZE, '*') }}});
     }
     return array;
   },
