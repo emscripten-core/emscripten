@@ -336,13 +336,13 @@ public:
 
     template<typename T>
     static val array(const std::vector<T>& vec) {
-      if constexpr (internal::typeSupportsMemoryView<T>()) {
-          // for numeric types, pass memory view and copy in JS side one-off
-          val view{ typed_memory_view(vec.size(), vec.data()) };
-          return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
-      } else {
-          return array(vec.begin(), vec.end());
-      }
+        if constexpr (internal::typeSupportsMemoryView<T>()) {
+            // for numeric types, pass memory view and copy in JS side one-off
+            val view{ typed_memory_view(vec.size(), vec.data()) };
+            return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+        } else {
+            return array(vec.begin(), vec.end());
+        }
     }
 
     static val object() {
