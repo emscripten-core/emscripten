@@ -10,7 +10,9 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+#if ASSERTIONS
       assert(this.allocated[i] !== undefined);
+#endif
       return this.allocated[i];
     }
   },
@@ -19,7 +21,9 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+#if ASSERTIONS
       assert(this.allocated[i] !== undefined);
+#endif
       return this.allocated[i];
     }
   },
@@ -28,7 +32,9 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+#if ASSERTIONS
       assert(this.allocated[i] !== undefined);
+#endif
       return this.allocated[i];
     }
   },
@@ -37,7 +43,9 @@ mergeInto(LibraryManager.library, {
     allocated: [],
     free: [],
     get: function(i) {
+#if ASSERTIONS
       assert(this.allocated[i] !== undefined);
+#endif
       return this.allocated[i];
     }
   },
@@ -55,7 +63,9 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsOPFSFree: function(ids, id) {
+#if ASSERTIONS
     assert(ids.allocated[id] !== undefined);
+#endif
     delete ids.allocated[id];
     ids.free.push(id);
   },

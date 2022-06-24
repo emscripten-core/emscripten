@@ -492,7 +492,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   if (flags & O_TRUNC) {
     if (child->is<DataFile>()) {
       if (fileMode & WASMFS_PERM_WRITE) {
-        // TODO: Linux still truncates the file in when it's opened only for
+        // TODO: Linux still truncates the file when it's opened only for
         // reading, so we should too. But until we get proper error reporting
         // from setSize (which we can then ignore here), the OPFS backend will
         // crash in this case because it does not support truncating files open

@@ -129,8 +129,8 @@ public:
 
   int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
     int result;
-    if (openCount == 0) {
-      assert(kind == None);
+    if (kind == None) {
+      assert(openCount == 0);
       switch (flags) {
         case O_RDWR:
         case O_WRONLY:
@@ -144,6 +144,7 @@ public:
           kind = Access;
           break;
         case O_RDONLY:
+          // We only need read access, so open as a Blob
           proxy(
             [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
           if (id < 0) {
@@ -154,8 +155,7 @@ public:
         default:
           WASMFS_UNREACHABLE("Unexpected open access mode");
       }
-    } else if (openFlags == O_RDONLY &&
-               (flags == O_WRONLY || flags == O_RDWR)) {
+    } else if (kind == Blob && (flags == O_WRONLY || flags == O_RDWR)) {
       // Try to upgrade to an AccessHandle.
       int newID;
       proxy(
@@ -167,12 +167,7 @@ public:
       proxy([&]() { _wasmfs_opfs_close_blob(getBlobID()); });
       id = newID;
       kind = Access;
-    } else {
-      // Reuse existing object.
-      ++openCount;
-      return 0;
     }
-    openFlags = flags;
     ++openCount;
     return 0;
   }
@@ -261,13 +256,15 @@ private:
         // become invalidated and refreshing it while ensuring other in-flight
         // operations on the same file do not observe the invalidated blob would
         // be extermely complicated.
-        assert(false && "TODO: proper error handling");
+        WASMFS_UNREACHABLE("TODO: proper setSize error handling");
       case OpenState::None: {
         int err;
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
         });
-        assert(!err);
+        if (!err) {
+          WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+        }
         break;
       }
       default:
