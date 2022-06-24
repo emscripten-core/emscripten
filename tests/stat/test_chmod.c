@@ -48,25 +48,38 @@ void cleanup() {
 void test() {
   int err;
   int lastctime;
+  int fd;
   struct stat s;
-  
+
   //
   // chmod a file
   //
-  // get the current ctime for the file
+  // get the current ctime for the file, and a file handle
+  fd = open("file", O_WRONLY);
   memset(&s, 0, sizeof s);
   stat("file", &s);
   lastctime = s.st_ctime;
   sleep(1);
 
   // do the actual chmod
-  err = chmod("file", 0200);
+  err = chmod("file", 0);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-  assert(s.st_mode == (0200 | S_IFREG));
+  assert(s.st_mode == (0 | S_IFREG));
   assert(s.st_ctime != lastctime);
+
+  // ensure file handles opened *before* the operation behave according to previous mode
+  // see https://github.com/emscripten-core/emscripten/issues/14866
+  assert(ftruncate(fd, s.st_size) == 0);
+
+  // ensure chmod has been applied
+  close(fd);
+  assert(open("file", O_WRONLY) == -1);
+
+  // set chmod to writeonly for later tests
+  assert(chmod("file", 0200) == 0);
 
   //
   // fchmod a file

@@ -907,6 +907,8 @@ FS.staticInit();` +
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
@@ -926,13 +928,15 @@ FS.staticInit();` +
       if (!stream) {
         throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
-      FS.chmod(stream.node, mode);
+      FS.chmod(stream, mode);
     },
     chown: (path, uid, gid, dontFollow) => {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
@@ -952,7 +956,7 @@ FS.staticInit();` +
       if (!stream) {
         throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
-      FS.chown(stream.node, uid, gid);
+      FS.chown(stream, uid, gid);
     },
     truncate: (path, len) => {
       if (len < 0) {
@@ -962,6 +966,8 @@ FS.staticInit();` +
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: true });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
@@ -974,9 +980,17 @@ FS.staticInit();` +
       if (!FS.isFile(node.mode)) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var errCode = FS.nodePermissions(node, 'w');
+      var errCode;
+      if (path.node) { // FSStream, check perms against it instead of the node
+        errCode = FS.nodePermissions(path, 'w');
+      } else {
+        errCode = FS.nodePermissions(node, 'w');
+      }
       if (errCode) {
         throw new FS.ErrnoError(errCode);
+      }
+      if (node.node) {
+        node = node.node;
       }
       node.node_ops.setattr(node, {
         size: len,
@@ -991,7 +1005,7 @@ FS.staticInit();` +
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      FS.truncate(stream.node, len);
+      FS.truncate(stream, len);
     },
     utime: (path, atime, mtime) => {
       var lookup = FS.lookupPath(path, { follow: true });
