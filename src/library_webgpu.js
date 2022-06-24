@@ -1520,7 +1520,10 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     var bufferOffset = {{{ gpu.makeU64ToNumber('bufferOffset_low', 'bufferOffset_high') }}};
-    queue["writeBuffer"](buffer, bufferOffset, HEAPU8, data, size);
+    // There is a size limitation for ArrayBufferView. Work around by passing in a subarray
+    // instead of the whole heap. crbug.com/1201109
+    var subarray = HEAPU8.subarray(data, data + size);
+    queue["writeBuffer"](buffer, bufferOffset, subarray, 0, size);
   },
 
   wgpuQueueWriteTexture: function(queueId,
