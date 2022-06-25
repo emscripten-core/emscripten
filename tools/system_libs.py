@@ -1538,7 +1538,7 @@ class libstb_image(Library):
     return [utils.path_from_root('system/lib/stb_image.c')]
 
 
-class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
+class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libwasmfs'
 
   cflags = ['-fno-exceptions', '-std=c++17']
