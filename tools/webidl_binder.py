@@ -368,11 +368,25 @@ def deref_if_nonpointer(m):
   return ''
 
 
+# def type_to_cdec(raw):
+#   ret = type_to_c(raw.type.name, non_pointing=True)
+#   if raw.getExtendedAttribute('Const'):
+#     ret = 'const ' + ret
+#   if raw.type.name not in interfaces:
+#     return ret
+#   if raw.getExtendedAttribute('Ref'):
+#     return ret + '&'
+#   if raw.getExtendedAttribute('Value'):
+#     return ret
+#   return ret + '*'
+
 def type_to_cdec(raw):
   ret = type_to_c(raw.type.name, non_pointing=True)
   if raw.getExtendedAttribute('Const'):
     ret = 'const ' + ret
   if raw.type.name not in interfaces:
+    if raw.type.isArray():
+      return ret + '*'
     return ret
   if raw.getExtendedAttribute('Ref'):
     return ret + '&'
@@ -591,13 +605,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         js_call_args = ', '.join(['%s%s' % (('(ptrdiff_t)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
         js_impl_methods.append(r'''  %s %s(%s) %s {
-    %sEM_ASM_%s({
+    %s (%s) EM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (ptrdiff_t)this%s);
   }''' % (c_return_type, func_name, dec_args, maybe_const,
-          basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          basic_return, c_return_type, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           class_name,
           func_name, class_name, func_name,
           return_prefix,
