@@ -1522,7 +1522,6 @@ intptr_t _mmap_js(
   if (!ptr) {
     return -ENOMEM;
   }
-  *allocated = true;
 
   auto written = file->locked().read(ptr, length, offset);
   if (written < 0) {
