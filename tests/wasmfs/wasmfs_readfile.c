@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -25,10 +26,13 @@ int main() {
   errno = 0;
   write(fd, msg, strlen(msg));
   assert(errno == 0);
+  err = close(fd);
+  assert(err == 0);
 
   EM_ASM({
-    var output = FS.readFile("/root/test", {encoding : 'utf8'});
-    out(output);
+    var output = FS.readFile("/root/test");
+    out(UTF8ArrayToString(output, 0));
+    out("Length: " + output.byteLength);
   });
 
   EM_ASM({

@@ -33,7 +33,7 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
+  uint8_t* result = (uint8_t*)malloc(size + sizeof(size));
   *(uint32_t*)result = size;
 
   int fd = open(path, O_RDONLY);
