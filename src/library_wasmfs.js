@@ -125,7 +125,12 @@ mergeInto(LibraryManager.library, {
     // TODO: open
     // TODO: create
     // TODO: close
-    // TODO: unlink
+    unlink: (path) => {
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_unlink(buffer);
+      });
+    },
     chdir: (path) => {
       return withStackSave(() => {
         var buffer = allocateUTF8OnStack(path);

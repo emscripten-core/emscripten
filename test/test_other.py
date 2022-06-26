@@ -12199,10 +12199,12 @@ Module['postRun'] = function() {{
 
   @wasmfs_all_backends
   def test_wasmfs_readfile(self):
+    self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   @wasmfs_all_backends
   def test_wasmfs_readfile_bigint(self):
+    self.set_setting('FORCE_FILESYSTEM')
     self.set_setting('WASM_BIGINT')
     self.node_args += shared.node_bigint_flags()
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
