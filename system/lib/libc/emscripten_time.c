@@ -25,6 +25,15 @@ void _localtime_js(const time_t *restrict t, struct tm *restrict tm);
 void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
 double _emscripten_date_now();
 double emscripten_get_now_res();
+void _emscripten_get_timezone_js(char* buffer, int length);
+
+const char* emscripten_get_timezone() {
+  // Time zones have unique names in the form "Area/Location"
+  // The Area and Location names have a maximum length of 14 characters.
+  static thread_local char buffer[30];
+  _emscripten_get_timezone_js(buffer, sizeof(buffer));
+  return buffer;
+}
 
 __attribute__((__weak__))
 void tzset() {

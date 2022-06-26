@@ -2327,6 +2327,15 @@ mergeInto(LibraryManager.library, {
                                "_emscripten_get_now = () => performance.now();\n",
 #endif
 
+  $emscriptenGetTimeZone: function() {
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+  },
+  
+  _emscripten_get_timezone_js__deps: ['$emscriptenGetTimeZone'],
+  _emscripten_get_timezone_js__sig: 'vii',
+  _emscripten_get_timezone_js:  function(str, len) {
+    stringToUTF8(emscriptenGetTimeZone(), str, len);
+  }, 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {

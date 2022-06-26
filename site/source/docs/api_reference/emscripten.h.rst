@@ -533,6 +533,14 @@ Functions
   :rtype: double
   :return: The current time, in milliseconds (ms).
 
+.. c:function:: char * emscripten_get_timezone(void)
+
+  Returns the the current IANA time zone name that the browser provides.
+
+  The returned string will be valid until the next call of the function
+
+  :rtype: rtype
+
 .. c:function:: float emscripten_random(void)
 
   Generates a random number in the range 0-1. This maps to ``Math.random()``.

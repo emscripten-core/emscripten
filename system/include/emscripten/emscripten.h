@@ -84,6 +84,7 @@ void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated
 void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
 double emscripten_get_now(void);
+const char* emscripten_get_timezone(void);
 float emscripten_random(void);
 
 // IDB

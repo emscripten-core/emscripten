@@ -15,16 +15,18 @@ var WasiLibrary = {
 #endif
   },
 
-  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '$getExecutableName', '$emscriptenGetTimeZone'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
 #if !DETERMINISTIC
       // Browser language detection #8751
       var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      var tz = emscriptenGetTimeZone();
 #else
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
+      var tz = 'Etc/UTC';
 #endif
       var env = {
         'USER': 'web_user',
@@ -33,6 +35,7 @@ var WasiLibrary = {
         'PWD': '/',
         'HOME': '/home/web_user',
         'LANG': lang,
+        'TZ': tz,
         '_': getExecutableName()
       };
       // Apply the user-provided values, if any.
