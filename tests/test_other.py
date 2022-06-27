@@ -12246,3 +12246,53 @@ Module['postRun'] = function() {{
         }
       }
     ''', assert_returncode=NON_ZERO)
+
+  def test_bigint64array_polyfill(self):
+    bigint64array = read_file(path_from_root('src/polyfill/bigint64array.js'))
+    test_code = read_file(test_file('test_bigint64array_polyfill.js'))
+    bigint_list = [
+      0,
+      1,
+      -1,
+      5,
+      (1 << 64),
+      (1 << 64) - 1,
+      (1 << 64) + 1,
+      (1 << 63),
+      (1 << 63) - 1,
+      (1 << 63) + 1,
+    ]
+    bigint_list_strs = [str(x) for x in bigint_list]
+
+    bigint_list_unsigned = [x % (1 << 64) for x in bigint_list]
+    bigint_list_signed = [
+      x if x < 0 else (x % (1 << 64)) - 2 * (x & (1 << 63)) for x in bigint_list
+    ]
+    bigint_list_unsigned_n = [f'{x}n' for x in bigint_list_unsigned]
+    bigint_list_signed_n = [f'{x}n' for x in bigint_list_signed]
+
+    bigint64array = '\n'.join(bigint64array.splitlines()[3:])
+
+    create_file(
+      'test.js',
+      f'''
+      let bigint_list = {bigint_list_strs}.map(x => BigInt(x));
+      let arr1signed = new BigInt64Array(20);
+      let arr1unsigned = new BigUint64Array(20);
+      delete globalThis.BigInt64Array;
+      ''' + bigint64array + test_code
+    )
+    output = json.loads(self.run_js('test.js'))
+    self.assertEqual(output['BigInt64Array_name'], 'createBigInt64Array')
+    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+      print(key + '_unsigned')
+      self.assertEqual(output[key + '_unsigned'], bigint_list_unsigned_n)
+    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+      print(key + '_signed')
+      self.assertEqual(output[key + '_signed'], bigint_list_signed_n)
+
+    self.assertEqual(output['arr2_slice'], ['2n', '3n', '4n', '5n'])
+    self.assertEqual(output['arr2_subarray'], ['2n', '3n', '4n', '5n'])
+
+    for m, [v1, v2] in output['assertEquals']:
+      self.assertEqual(v1, v2, msg=m)

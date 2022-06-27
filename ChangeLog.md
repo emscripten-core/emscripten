@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.15
 ------
+- Added a shim for `BigInt64Array` so `-sWASM_BIGINT` can be used in Safari
+  v14. (#17103)
 
 3.1.14 - 06/20/2022
 -------------------
