@@ -150,6 +150,14 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
+#if ENVIRONMENT_MAY_BE_NODE
+          if (ENVIRONMENT_IS_NODE) {
+            if(val === {{{ charCode('\n') }}}){
+              tty.output.push({{{ charCode('\n') }}});
+            }
+            process.stdout.write(Buffer.from(tty.output));
+          } else
+#endif
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
@@ -171,6 +179,14 @@ mergeInto(LibraryManager.library, {
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
+#if ENVIRONMENT_MAY_BE_NODE
+          if (ENVIRONMENT_IS_NODE) {
+            if(val === {{{ charCode('\n') }}}){
+              tty.output.push({{{ charCode('\n') }}});
+            }
+            process.stderr.write(Buffer.from(tty.output));
+          } else
+#endif
           err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
