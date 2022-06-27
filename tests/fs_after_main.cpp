@@ -14,6 +14,7 @@
 EMSCRIPTEN_KEEPALIVE
 extern "C" void finish(void*) {
   EM_ASM({
+    console.log(" Module['extraSecretBuffer']",  Module['extraSecretBuffer']);
     var printed = Module['extraSecretBuffer'].split('Iteration').length - 1;
     console.log(printed);
     assert(printed == 5, 'should have printed 5 iterations');

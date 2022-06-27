@@ -8375,6 +8375,7 @@ end
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test('test_fflush_fs.cpp', emcc_args=['-sFORCE_FILESYSTEM'])
 
+  @requires_v8
   def test_fflush_fs_exit(self):
     # on exit, we can send out a newline as no more code will run
     self.do_other_test('test_fflush_fs_exit.cpp', emcc_args=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
