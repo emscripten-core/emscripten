@@ -83,7 +83,7 @@ int main() {
 //   s = pthread_cancel(thr[3]);
 //   assert(s == 0);
   pthread_cleanup_pop(1);
-  printf("Cleanup state variable: %ld", cleanupState);
+  printf("Cleanup state variable: %ld\n", cleanupState);
   assert(cleanupState == 907640832);
 
   pthread_cleanup_pop(1);
