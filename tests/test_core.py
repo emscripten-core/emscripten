@@ -7334,12 +7334,11 @@ void* operator new(size_t size) {
       ''')
       self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_2(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printLerp() {
-          out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7348,14 +7347,14 @@ void* operator new(size_t size) {
       #include <emscripten/bind.h>
       using namespace emscripten;
       int lerp(int a, int b, int t) {
-          return (100 - t) * a + t * b;
+        return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
-          function("lerp", &lerp);
+        function("lerp", &lerp);
       }
       int main(int argc, char **argv) {
-          EM_ASM(printLerp());
-          return 0;
+        EM_ASM(printLerp());
+        return 0;
       }
     ''')
     self.do_runf('test_embind_2.cpp', 'lerp 166')
@@ -7388,7 +7387,6 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_4(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
@@ -7440,7 +7438,6 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
 
   @also_with_wasm_bigint
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_unsigned(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
@@ -7474,7 +7471,6 @@ void* operator new(size_t size) {
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''
       #include <emscripten.h>
@@ -7508,7 +7504,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
       #include <emscripten.h>

@@ -1165,7 +1165,7 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT || MEMORY64
     , '$getDynCaller'
 #endif
   ],
@@ -1178,6 +1178,10 @@ var LibraryEmbind = {
 #else
 #if !WASM_BIGINT
       if (signature.includes('j')) {
+        return getDynCaller(signature, rawFunction);
+      }
+#elif MEMORY64
+      if (signature.includes('p')) {
         return getDynCaller(signature, rawFunction);
       }
 #endif
