@@ -91,8 +91,16 @@ static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 typedef struct Region
 {
   uint32_t size;
-  // Use a circular doubly linked list to represent free region data.
-  struct Region *prev, *next;
+  union {
+    // Use a circular doubly linked list to represent free region data.
+    struct FreeRegionPayload {
+      struct Region *prev, *next;
+    } freeInfo;
+    struct RootRegionPayload {
+      struct Region *next;
+      uint8_t* endPtr;
+    } rootInfo;
+  };
   // ... N bytes of free data
   uint32_t _at_the_end_of_this_struct_size; // do not dereference, this is present for convenient struct sizeof() computation only
 } Region;
@@ -118,20 +126,24 @@ static volatile uint8_t multithreadingLock = 0;
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
 static_assert(MALLOC_ALIGNMENT >= 4, "Smallest possible MALLOC_ALIGNMENT if 4!");
 
-// A region that contains as payload a single forward linked list of pointers to head regions of each disjoint region blocks.
-static Region *listOfAllRegions = 0;
+// A region that contains as payload a single forward linked list of pointers to
+// root regions of each disjoint region blocks.  The payload of these root
+// regions is defined by the `rootInfo` member of the Region struct.
+static Region *listOfAllRegions = NULL;
 
 // For each of the buckets, maintain a linked list head node. The head node for each
 // free region is a sentinel node that does not actually represent any free space, but
 // the sentinel is used to avoid awkward testing against (if node == freeRegionHeadNode)
 // when adding and removing elements from the linked list, i.e. we are guaranteed that
 // the sentinel node is always fixed and there, and the actual free region list elements
-// start at freeRegionBuckets[i].next each.
+// start at freeRegionBuckets[i].freeInfo.next each.
+// The payload of these regions is defined by the `freeInfo` member of the
+// Region struct.
 static Region freeRegionBuckets[NUM_FREE_BUCKETS];
 
-// A bitmask that tracks the population status for each of the 32 distinct memory regions:
+// A bitmask that tracks the population status for each of the 64 distinct memory regions:
 // a zero at bit position i means that the free list bucket i is empty. This bitmask is
-// used to avoid redundant scanning of the 32 different free region buckets: instead by
+// used to avoid redundant scanning of the 64 different free region buckets: instead by
 // looking at the bitmask we can find in constant time an index to a free region bucket
 // that contains free memory of desired size.
 static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
@@ -305,21 +317,21 @@ static void prepend_to_free_list(Region *region, Region *prependTo)
   // which represents a dummy node that is technically not a free node, so
   // region_is_free(prependTo) does not hold.
   assert(region_is_free((Region*)region));
-  region->next = prependTo;
-  region->prev = prependTo->prev;
-  assert(region->prev);
-  prependTo->prev = region;
-  region->prev->next = region;
+  region->freeInfo.next = prependTo;
+  region->freeInfo.prev = prependTo->freeInfo.prev;
+  assert(region->freeInfo.prev);
+  prependTo->freeInfo.prev = region;
+  region->freeInfo.prev->freeInfo.next = region;
 }
 
 static void unlink_from_free_list(Region *region)
 {
   assert(region);
   assert(region_is_free((Region*)region));
-  assert(region->prev);
-  assert(region->next);
-  region->prev->next = region->next;
-  region->next->prev = region->prev;
+  assert(region->freeInfo.prev);
+  assert(region->freeInfo.next);
+  region->freeInfo.prev->freeInfo.next = region->freeInfo.next;
+  region->freeInfo.next->freeInfo.prev = region->freeInfo.prev;
 }
 
 static void link_to_free_list(Region *freeRegion)
@@ -328,11 +340,11 @@ static void link_to_free_list(Region *freeRegion)
   assert(freeRegion->size >= sizeof(Region));
   int bucketIndex = compute_free_list_bucket(freeRegion->size-REGION_HEADER_SIZE);
   Region *freeListHead = freeRegionBuckets + bucketIndex;
-  freeRegion->prev = freeListHead;
-  freeRegion->next = freeListHead->next;
-  assert(freeRegion->next);
-  freeListHead->next = freeRegion;
-  freeRegion->next->prev = freeRegion;
+  freeRegion->freeInfo.prev = freeListHead;
+  freeRegion->freeInfo.next = freeListHead->freeInfo.next;
+  assert(freeRegion->freeInfo.next);
+  freeListHead->freeInfo.next = freeRegion;
+  freeRegion->freeInfo.next->freeInfo.prev = freeRegion;
   freeRegionBucketsUsed |= ((BUCKET_BITMASK_T)1) << bucketIndex;
 }
 
@@ -345,7 +357,7 @@ static void dump_memory_regions()
   {
     Region *r = root;
     assert(debug_region_is_consistent(r));
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->rootInfo.endPtr;
     MAIN_THREAD_ASYNC_EM_ASM(console.log('Region block 0x'+($0>>>0).toString(16)+' - 0x'+($1>>>0).toString(16)+ ' ('+($2>>>0)+' bytes):'),
       r, lastRegionEnd, lastRegionEnd-(uint8_t*)r);
     while((uint8_t*)r < lastRegionEnd)
@@ -361,25 +373,25 @@ static void dump_memory_regions()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->rootInfo.next;
     MAIN_THREAD_ASYNC_EM_ASM(console.log(""));
   }
   MAIN_THREAD_ASYNC_EM_ASM(console.log('Free regions:'));
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
   {
     Region *prev = &freeRegionBuckets[i];
-    Region *fr = freeRegionBuckets[i].next;
+    Region *fr = freeRegionBuckets[i].freeInfo.next;
     while(fr != &freeRegionBuckets[i])
     {
       MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16)),
-        i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
+        i, fr, fr->size, size_of_region_from_ceiling(fr), fr->freeInfo.prev, fr->freeInfo.next);
       assert(debug_region_is_consistent(fr));
       assert(region_is_free(fr));
-      assert(fr->prev == prev);
+      assert(fr->freeInfo.prev == prev);
       prev = fr;
-      assert(fr->next != fr);
-      assert(fr->prev != fr);
-      fr = fr->next;
+      assert(fr->freeInfo.next != fr);
+      assert(fr->freeInfo.prev != fr);
+      fr = fr->freeInfo.next;
     }
   }
   MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: ' + ($0>>>0).toString(2) + ' ' + ($1>>>0).toString(2)), (uint32_t)(freeRegionBucketsUsed >> 32), (uint32_t)freeRegionBucketsUsed);
@@ -406,7 +418,7 @@ static int validate_memory_regions()
         r, r->size, region_ceiling_size(r) == r->size);
       return 1;
     }
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->rootInfo.endPtr;
     while((uint8_t*)r < lastRegionEnd)
     {
       if (!debug_region_is_consistent(r))
@@ -419,22 +431,22 @@ static int validate_memory_regions()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->rootInfo.next;
   }
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
   {
     Region *prev = &freeRegionBuckets[i];
-    Region *fr = freeRegionBuckets[i].next;
+    Region *fr = freeRegionBuckets[i].freeInfo.next;
     while(fr != &freeRegionBuckets[i])
     {
-      if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
+      if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->freeInfo.prev != prev || fr->freeInfo.next == fr || fr->freeInfo.prev == fr)
       {
         MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt!'),
-          i, fr, fr->size, size_of_region_from_ceiling((Region*)fr), fr->prev, fr->next);
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->freeInfo.prev, fr->freeInfo.next);
         return 1;
       }
       prev = fr;
-      fr = fr->next;
+      fr = fr->freeInfo.next;
     }
   }
   return 0;
@@ -479,7 +491,7 @@ static bool claim_more_memory(size_t numBytes)
 
   // If we are the sole user of sbrk(), it will feed us continuous/consecutive memory addresses - take advantage
   // of that if so: instead of creating two disjoint memory regions blocks, expand the previous one to a larger size.
-  uint8_t *previousSbrkEndAddress = listOfAllRegions ? (uint8_t*)((uint32_t*)listOfAllRegions)[2] : 0;
+  uint8_t *previousSbrkEndAddress = listOfAllRegions ? listOfAllRegions->rootInfo.endPtr : 0;
   if (startPtr == previousSbrkEndAddress)
   {
     Region *prevEndSentinel = prev_region((Region*)startPtr);
@@ -488,7 +500,7 @@ static bool claim_more_memory(size_t numBytes)
     Region *prevRegion = prev_region(prevEndSentinel);
     assert(debug_region_is_consistent(prevRegion));
 
-    ((uint32_t*)listOfAllRegions)[2] = (uint32_t)endPtr;
+    listOfAllRegions->rootInfo.endPtr = endPtr;
 
     // Two scenarios, either the last region of the previous block was in use, in which case we need to create
     // a new free region in the newly allocated space; or it was free, in which case we can extend that region
@@ -507,13 +519,13 @@ static bool claim_more_memory(size_t numBytes)
   }
   else
   {
-    // Create a sentinel region at the start of the heap block
+    // Create a root region at the start of the heap block
     create_used_region(startPtr, sizeof(Region));
 
     // Dynamic heap start region:
     Region *newRegionBlock = (Region*)startPtr;
-    ((uint32_t*)newRegionBlock)[1] = (uint32_t)listOfAllRegions; // Pointer to next region block head
-    ((uint32_t*)newRegionBlock)[2] = (uint32_t)endPtr; // Pointer to the end address of this region block
+    newRegionBlock->rootInfo.next = listOfAllRegions; // Pointer to next region block head
+    newRegionBlock->rootInfo.endPtr = endPtr; // Pointer to the end address of this region block
     listOfAllRegions = newRegionBlock;
     startPtr += sizeof(Region);
   }
@@ -533,7 +545,7 @@ static void initialize_emmalloc_heap()
   // Never useful to unroll this for loop, just takes up code size.
 #pragma clang loop unroll(disable)
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
-    freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
+    freeRegionBuckets[i].freeInfo.prev = freeRegionBuckets[i].freeInfo.next = &freeRegionBuckets[i];
 
 #ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_emmalloc_heap()'));
@@ -546,7 +558,7 @@ static void initialize_emmalloc_heap()
 void emmalloc_blank_slate_from_orbit()
 {
   MALLOC_ACQUIRE();
-  listOfAllRegions = 0;
+  listOfAllRegions = NULL;
   freeRegionBucketsUsed = 0;
   initialize_emmalloc_heap();
   MALLOC_RELEASE();
@@ -567,7 +579,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 
   // Do we have enough free space, taking into account alignment?
   if (payloadStartPtrAligned + size > payloadEndPtr)
-    return 0;
+    return NULL;
 
   // We have enough free space, so the memory allocation will be made into this region. Remove this free region
   // from the list of free regions: whatever slop remains will be later added back to the free region pool.
@@ -692,7 +704,7 @@ static void *allocate_memory(size_t alignment, size_t size)
     assert(bucketIndex <= NUM_FREE_BUCKETS-1);
     assert(freeRegionBucketsUsed & (((BUCKET_BITMASK_T)1) << bucketIndex));
 
-    Region *freeRegion = freeRegionBuckets[bucketIndex].next;
+    Region *freeRegion = freeRegionBuckets[bucketIndex].freeInfo.next;
     assert(freeRegion);
     if (freeRegion != &freeRegionBuckets[bucketIndex])
     {
@@ -741,7 +753,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   // In such case, prefer to sbrk() in more memory right away.
   int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
   // freeRegion will be null if there is absolutely no memory left. (all buckets are 100% used)
-  Region *freeRegion = freeRegionBucketsUsed ? freeRegionBuckets[largestBucketIndex].next : 0;
+  Region *freeRegion = freeRegionBucketsUsed ? freeRegionBuckets[largestBucketIndex].freeInfo.next : 0;
   if (freeRegionBucketsUsed >> 30)
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
@@ -753,7 +765,7 @@ static void *allocate_memory(size_t alignment, size_t size)
       void *ptr = attempt_allocate(freeRegion, alignment, size);
       if (ptr)
         return ptr;
-      freeRegion = freeRegion->next;
+      freeRegion = freeRegion->freeInfo.next;
     }
   }
 
@@ -774,7 +786,7 @@ static void *allocate_memory(size_t alignment, size_t size)
       void *ptr = attempt_allocate(freeRegion, alignment, size);
       if (ptr)
         return ptr;
-      freeRegion = freeRegion->next;
+      freeRegion = freeRegion->freeInfo.next;
     }
   }
 
@@ -1180,7 +1192,7 @@ void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
 static int count_linked_list_size(Region *list)
 {
   int size = 1;
-  for(Region *i = list->next; i != list; list = list->next)
+  for(Region *i = list->freeInfo.next; i != list; list = list->freeInfo.next)
     ++size;
   return size;
 }
@@ -1188,7 +1200,7 @@ static int count_linked_list_size(Region *list)
 static size_t count_linked_list_space(Region *list)
 {
   size_t space = 0;
-  for(Region *i = list->next; i != list; list = list->next)
+  for(Region *i = list->freeInfo.next; i != list; list = list->freeInfo.next)
     space += region_payload_end_ptr(i) - region_payload_start_ptr(i);
   return space;
 }
@@ -1228,7 +1240,7 @@ struct mallinfo emmalloc_mallinfo()
   info.fordblks = 0; // The total number of bytes in free blocks.
   // The total amount of releasable free space at the top of the heap.
   // This is the maximum number of bytes that could ideally be released by malloc_trim(3).
-  Region *lastActualRegion = prev_region((Region*)((uint8_t*)((uint32_t*)listOfAllRegions)[2] - sizeof(Region)));
+  Region *lastActualRegion = prev_region((Region*)(listOfAllRegions->rootInfo.endPtr - sizeof(Region)));
   info.keepcost = region_is_free(lastActualRegion) ? lastActualRegion->size : 0;
 
   Region *root = listOfAllRegions;
@@ -1236,7 +1248,7 @@ struct mallinfo emmalloc_mallinfo()
   {
     Region *r = root;
     assert(debug_region_is_consistent(r));
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->rootInfo.endPtr;
     while((uint8_t*)r < lastRegionEnd)
     {
       assert(debug_region_is_consistent(r));
@@ -1259,7 +1271,7 @@ struct mallinfo emmalloc_mallinfo()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->rootInfo.next;
   }
 
   MALLOC_RELEASE();
@@ -1279,11 +1291,11 @@ static int trim_dynamic_heap_reservation(size_t pad)
 
   if (!listOfAllRegions)
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
-  uint32_t *previousSbrkEndAddress = (uint32_t*)((uint32_t*)listOfAllRegions)[2];
+  uint8_t *previousSbrkEndAddress = listOfAllRegions->rootInfo.endPtr;
   assert(sbrk(0) == previousSbrkEndAddress);
-  uint32_t lastMemoryRegionSize = previousSbrkEndAddress[-1];
+  uint32_t lastMemoryRegionSize = ((uint32_t*)previousSbrkEndAddress)[-1];
   assert(lastMemoryRegionSize == 16); // // The last memory region should be a sentinel node of exactly 16 bytes in size.
-  Region *endSentinelRegion = (Region*)((uint8_t*)previousSbrkEndAddress - sizeof(Region));
+  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - sizeof(Region));
   Region *lastActualRegion = prev_region(endSentinelRegion);
 
   // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
@@ -1313,7 +1325,7 @@ static int trim_dynamic_heap_reservation(size_t pad)
   create_used_region(endSentinelRegion, sizeof(Region));
 
   // And update the size field of the whole region block.
-  ((uint32_t*)listOfAllRegions)[2] = (uint32_t)endSentinelRegion + sizeof(Region);
+  listOfAllRegions->rootInfo.endPtr = (uint8_t*)endSentinelRegion + sizeof(Region);
 
   // Finally call sbrk() to shrink the memory area.
   void *oldSbrk = sbrk(-(intptr_t)shrinkAmount);
@@ -1346,9 +1358,9 @@ size_t emmalloc_dynamic_heap_size()
   while(root)
   {
     Region *r = root;
-    uintptr_t blockEndPtr = ((uint32_t*)r)[2];
+    uintptr_t blockEndPtr = (uintptr_t)root->rootInfo.endPtr;
     dynamicHeapSize += blockEndPtr - (uintptr_t)r;
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->rootInfo.next;
   }
   MALLOC_RELEASE();
   return dynamicHeapSize;
@@ -1369,9 +1381,9 @@ size_t emmalloc_free_dynamic_memory()
     BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
-    for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;
+    for(Region *freeRegion = freeRegionBuckets[bucketIndex].freeInfo.next;
       freeRegion != &freeRegionBuckets[bucketIndex];
-      freeRegion = freeRegion->next)
+      freeRegion = freeRegion->freeInfo.next)
     {
       freeDynamicMemory += freeRegion->size - REGION_HEADER_SIZE;
     }
@@ -1397,9 +1409,9 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
     BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
-    for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;
+    for(Region *freeRegion = freeRegionBuckets[bucketIndex].freeInfo.next;
       freeRegion != &freeRegionBuckets[bucketIndex];
-      freeRegion = freeRegion->next)
+      freeRegion = freeRegion->freeInfo.next)
     {
       ++numFreeMemoryRegions;
       size_t freeDynamicMemory = freeRegion->size - REGION_HEADER_SIZE;
