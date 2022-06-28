@@ -1808,11 +1808,18 @@ int f() {
     self.do_runf(test_file('core/test_em_js.cpp'))
 
   @node_pthreads
-  def test_dylink_pthread_comdat(self):
+  @parameterized({
+    '': (False,),
+    'flipped': (True,),
+  })
+  def test_dylink_pthread_comdat(self, flipped):
     # Test that the comdat info for `Foo`, which is defined in the side module,
     # is visible to the main module.
     create_file('foo.h', r'''
     struct Foo {
+      Foo() {
+        method();
+      }
       // Making this method virtual causes the comdat group for the
       // class to only be defined in the side module.
       virtual void method() const;
@@ -1822,6 +1829,12 @@ int f() {
       #include "foo.h"
       #include <typeinfo>
       #include <emscripten/console.h>
+
+      // Foo constructor calls a virtual function, with the vtable defined
+      // in the side module. This verifies that the side module's data
+      // reloctions are applied before calling static constructors in the
+      // main module.
+      Foo g_foo;
 
       int main() {
         _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
@@ -1839,14 +1852,21 @@ int f() {
         _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
       }
       ''')
+    if flipped:
+      side = 'main.cpp'
+      main = 'side.cpp'
+    else:
+      self.skipTest('https://reviews.llvm.org/D128515')
+      side = 'side.cpp'
+      main = 'main.cpp'
     self.run_process([
       EMCC,
       '-o', 'libside.wasm',
-      'side.cpp',
+      side,
       '-pthread', '-Wno-experimental',
       '-sSIDE_MODULE=1'])
     self.do_runf(
-      'main.cpp',
+      main,
       'main: Foo typeid: 3Foo\nside: Foo typeid: 3Foo\n',
       emcc_args=[
         '-pthread', '-Wno-experimental',
@@ -8615,8 +8635,8 @@ int main() {
     if not debug_wasm.has_name_section():
       self.fail('name section not found in separate dwarf file')
     for sec in debug_wasm.sections():
-      # TODO: check for absence of code section (see
-      # https://github.com/emscripten-core/emscripten/issues/13084)
+      if sec.type == webassembly.SecType.CODE:
+        self.fail(f'section of type "{sec.type}" found in separate dwarf file')
       if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
         self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
 
@@ -9927,7 +9947,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 4975), 150)
+    self.assertLess(abs(changed - 4690), 150)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', '''
@@ -12226,3 +12246,53 @@ Module['postRun'] = function() {{
         }
       }
     ''', assert_returncode=NON_ZERO)
+
+  def test_bigint64array_polyfill(self):
+    bigint64array = read_file(path_from_root('src/polyfill/bigint64array.js'))
+    test_code = read_file(test_file('test_bigint64array_polyfill.js'))
+    bigint_list = [
+      0,
+      1,
+      -1,
+      5,
+      (1 << 64),
+      (1 << 64) - 1,
+      (1 << 64) + 1,
+      (1 << 63),
+      (1 << 63) - 1,
+      (1 << 63) + 1,
+    ]
+    bigint_list_strs = [str(x) for x in bigint_list]
+
+    bigint_list_unsigned = [x % (1 << 64) for x in bigint_list]
+    bigint_list_signed = [
+      x if x < 0 else (x % (1 << 64)) - 2 * (x & (1 << 63)) for x in bigint_list
+    ]
+    bigint_list_unsigned_n = [f'{x}n' for x in bigint_list_unsigned]
+    bigint_list_signed_n = [f'{x}n' for x in bigint_list_signed]
+
+    bigint64array = '\n'.join(bigint64array.splitlines()[3:])
+
+    create_file(
+      'test.js',
+      f'''
+      let bigint_list = {bigint_list_strs}.map(x => BigInt(x));
+      let arr1signed = new BigInt64Array(20);
+      let arr1unsigned = new BigUint64Array(20);
+      delete globalThis.BigInt64Array;
+      ''' + bigint64array + test_code
+    )
+    output = json.loads(self.run_js('test.js'))
+    self.assertEqual(output['BigInt64Array_name'], 'createBigInt64Array')
+    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+      print(key + '_unsigned')
+      self.assertEqual(output[key + '_unsigned'], bigint_list_unsigned_n)
+    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+      print(key + '_signed')
+      self.assertEqual(output[key + '_signed'], bigint_list_signed_n)
+
+    self.assertEqual(output['arr2_slice'], ['2n', '3n', '4n', '5n'])
+    self.assertEqual(output['arr2_subarray'], ['2n', '3n', '4n', '5n'])
+
+    for m, [v1, v2] in output['assertEquals']:
+      self.assertEqual(v1, v2, msg=m)

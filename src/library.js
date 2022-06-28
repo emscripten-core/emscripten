@@ -3201,11 +3201,12 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-    var f = Module["dynCall_" + sig];
+    var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#endif
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
@@ -3213,7 +3214,7 @@ mergeInto(LibraryManager.library, {
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
 #if ASSERTIONS && !DYNCALLS
-    assert(sig.includes('j'), 'getDynCaller should only be called with i64 sigs')
+    assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
     return function() {
@@ -3222,7 +3223,6 @@ mergeInto(LibraryManager.library, {
       return dynCall(sig, ptr, argCache);
     };
   },
-#endif
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: function(sig, ptr, args) {
@@ -3240,6 +3240,21 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
+#if MEMORY64
+    // With MEMORY64 we have an additional step to covert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    if (sig.includes('p')) {
+      var new_args = [];
+      args.forEach((arg, index) => {
+        if (sig[index + 1] == 'p') {
+          arg = BigInt(arg);
+        }
+        new_args.push(arg);
+      });
+      args = new_args;
+    }
+#endif
     return getWasmTableEntry(ptr).apply(null, args)
 #endif
   },
@@ -3247,26 +3262,8 @@ mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
-      var callback = callbacks.shift();
-      if (typeof callback == 'function') {
-        callback(Module); // Pass the module as the first argument.
-        continue;
-      }
-      var func = callback.func;
-      if (typeof func == 'number') {
-        if (callback.arg === undefined) {
-          // Run the wasm function ptr with signature 'v'. If no function
-          // with such signature was exported, this call does not need
-          // to be emitted (and would confuse Closure)
-          {{{ makeDynCall('v', 'func') }}}();
-        } else {
-          // If any function with signature 'vi' was exported, run
-          // the callback with that signature.
-          {{{ makeDynCall('vi', 'func') }}}(callback.arg);
-        }
-      } else {
-        func(callback.arg === undefined ? null : callback.arg);
-      }
+      // Pass the module as the first argument.
+      callbacks.shift()(Module);
     }
   },
 
