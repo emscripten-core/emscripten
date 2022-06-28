@@ -21,9 +21,11 @@ __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 // The buffer will also contain the file length.
 // Caller must free the returned pointer.
 void* _wasmfs_read_file(char* path) {
-  struct stat file;
+  static_assert(sizeof(off64_t) == 8, "File offset type must be 64-bit");
+
+  struct stat64 file;
   int err = 0;
-  err = stat(path, &file);
+  err = stat64(path, &file);
   if (err < 0) {
     emscripten_console_error("Fatal error in FS.readFile");
     abort();
@@ -32,9 +34,9 @@ void* _wasmfs_read_file(char* path) {
   // The function will return a pointer to a buffer with the file length in the
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
-  off_t size = file.st_size;
+  off64_t size = file.st_size;
   uint8_t* result = (uint8_t*)malloc(size + sizeof(size));
-  *(uint32_t*)result = size;
+  *(off64_t*)result = size;
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
