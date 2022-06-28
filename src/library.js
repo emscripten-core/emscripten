@@ -3188,8 +3188,6 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
-#else
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
@@ -3201,11 +3199,164 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
+    if (!('dynCall_' + sig in Module)) {
+      Module['dynCall_' + sig] = createDyncallWrapper(sig);
+    }
     var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
+#if MINIMAL_RUNTIME
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#else
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry', '$createDyncallWrapper'],
+#endif
+#endif
+#if DYNCALLS || !WASM_BIGINT
+  $createDyncallWrapper: function(sig) {
+    var sections = [];
+    var prelude = [
+      0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+      0x01, 0x00, 0x00, 0x00, // version: 1
+    ];
+    sections.push(prelude);
+    var insig = [sig[0] === "j" ? "i" : sig[0], "i",];
+    for (var i = 1; i < sig.length; i++) {
+      var cur = sig[i];
+      if (cur === "j") {
+        insig.push("ii")
+      } else {
+        insig.push(cur);
+      }
+    }
+    insig = insig.join("");
+
+    // The module is static, with the exception of the type section, which is
+    // generated based on the signature passed in.
+    var typeSection = [
+      0x03, // count: 3
+    ].concat(generate_func_type(insig), generate_func_type(sig), generate_func_type("vi"));
+
+    // Write the section code and overall length of the type section into the
+    // section header
+    typeSection = [0x01 /* Type section code */].concat(
+      uleb128Encode(typeSection.length),
+      typeSection
+    );
+    sections.push(typeSection);
+
+    var importSection = [
+      0x02, // import section
+      0x0F, // byte length
+      0x02, // 2 imports
+      0x01, 0x65, // name "e"
+      0x01, 0x74, // name "t"
+      0x01, 0x70, // importing a table
+      0x00, // with no max # of elements
+      0x00, // and min of 0 elements
+      0x01, 0x65, // name "e"
+      0x01, 0x72, // name "r"
+      0x00, // importing a function
+      0x02, // type 2
+    ];
+    sections.push(importSection);
+
+    var functionSection = [
+      0x03, // function section
+      0x02, // length in bytes
+      0x01, // number of functions
+      0x00, // type 0
+    ];
+    sections.push(functionSection);
+
+    var exportSection = [
+      0x07, 0x05, // export section
+      0x01, // One export
+      0x01, 0x66, // name "f"
+      0x00, // type: function
+      0x01, // the wrapper function (index 0 is ret0)
+    ];
+    sections.push(exportSection);
+
+    var convert_code = [];
+    if (sig[0] === "j") {
+      convert_code = [0x01, 0x01, 0x7e];
+    } else {
+      convert_code.push(0x00); // no additional local variables
+    }
+
+    var j = 1;
+    for (var i = 1; i < sig.length; i++) {
+      if (sig[i] == "j") {
+        convert_code = convert_code.concat(
+          [0x20], // local.get
+          uleb128Encode(j + 1),
+          [
+            0xad, // i64.extend_i32_unsigned
+            0x42, // i64.const
+            0x20, // 32
+            0x86, // i64.shl,
+            0x20, // local.get
+          ],
+          uleb128Encode(j),
+          [
+              0xac, // i64.extend_i32_signed
+              0x84, // i64.or
+          ]
+        );
+        j+=2;
+      } else {
+        convert_code.push(0x20); // local.get
+        convert_code = convert_code.concat(uleb128Encode(j));
+        j++;
+      }
+    }
+
+    convert_code = convert_code.concat([
+      0x20, 0x00, // local.get 0 (put function pointer on stack)
+      0x11, 0x01, 0x00, // call_indirect 1 0
+    ]);
+
+    if (sig[0] === "j") {
+      convert_code = convert_code.concat([
+        0x22, // tee
+        ...uleb128Encode(j),
+        0x42, 0x20,            // i64.const 32
+        0x88, // i64.shr_u
+        0xa7, // i32.wrap_i64
+        0x10, 0x00, // Call function 0
+        0x20, ...uleb128Encode(j), // local.get
+        0xa7, // i32.wrap_i64
+      ]);
+    }
+    convert_code.push(0x0b); // end
+
+    var codeSection = [].concat(
+      [0x01], // one code
+      uleb128Encode(convert_code.length),
+      convert_code,
+    );
+    codeSection = [0x0A /* Code section code */].concat(
+      uleb128Encode(codeSection.length),
+      codeSection
+    );
+    sections.push(codeSection);
+
+    var bytes = new Uint8Array([].concat.apply([], sections));
+    const fs = require("fs")
+    fs.writeFileSync("blah.wasm", bytes);
+
+    // We can compile this wasm module synchronously because it is small.
+    var module = new WebAssembly.Module(bytes);
+    var instance = new WebAssembly.Instance(module, {
+      'e': {
+        't': wasmTable,
+        'r': setTempRet0,
+      }
+    });
+    var wrappedFunc = instance.exports['f'];
+    return wrappedFunc;
+  },
 #endif
 
   // Used in library code to get JS function from wasm function pointer.

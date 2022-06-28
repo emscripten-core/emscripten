@@ -43,6 +43,41 @@ function sigToWasmTypes(sig) {
   return type;
 }
 
+function generate_func_type(sig){
+  var sigRet = sig.slice(0, 1);
+  var sigParam = sig.slice(1);
+  var typeCodes = {
+    'i': 0x7f, // i32
+#if MEMORY64
+    'p': 0x7e, // i64
+#else
+    'p': 0x7f, // i32
+#endif
+    'j': 0x7e, // i64
+    'f': 0x7d, // f32
+    'd': 0x7c, // f64
+  };
+
+  // Parameters, length + signatures
+  var result = [    0x60, /* form: func */];
+  result = result.concat(uleb128Encode(sigParam.length));
+  for (var i = 0; i < sigParam.length; ++i) {
+#if ASSERTIONS
+    assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
+#endif
+    result.push(typeCodes[sigParam[i]]);
+  }
+
+  // Return values, length + signatures
+  // With no multi-return in MVP, either 0 (void) or 1 (anything else)
+  if (sigRet == 'v') {
+    result.push(0x00);
+  } else {
+    result = result.concat([0x01, typeCodes[sigRet]]);
+  }
+  return result;
+}
+
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
@@ -61,39 +96,7 @@ function convertJsFunctionToWasm(func, sig) {
   // generated based on the signature passed in.
   var typeSection = [
     0x01, // count: 1
-    0x60, // form: func
-  ];
-  var sigRet = sig.slice(0, 1);
-  var sigParam = sig.slice(1);
-  var typeCodes = {
-    'i': 0x7f, // i32
-#if MEMORY64
-    'p': 0x7e, // i64
-#else
-    'p': 0x7f, // i32
-#endif
-    'j': 0x7e, // i64
-    'f': 0x7d, // f32
-    'd': 0x7c, // f64
-  };
-
-  // Parameters, length + signatures
-  typeSection = typeSection.concat(uleb128Encode(sigParam.length));
-  for (var i = 0; i < sigParam.length; ++i) {
-#if ASSERTIONS
-    assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
-#endif
-    typeSection.push(typeCodes[sigParam[i]]);
-  }
-
-  // Return values, length + signatures
-  // With no multi-return in MVP, either 0 (void) or 1 (anything else)
-  if (sigRet == 'v') {
-    typeSection.push(0x00);
-  } else {
-    typeSection = typeSection.concat([0x01, typeCodes[sigRet]]);
-  }
-
+  ].concat(generate_func_type(sig));
   // Write the section code and overall length of the type section into the
   // section header
   typeSection = [0x01 /* Type section code */].concat(
