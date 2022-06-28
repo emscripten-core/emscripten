@@ -167,6 +167,7 @@ mergeInto(LibraryManager.library, {
     '$emscripten_realloc_buffer',
 #endif
   ],
+  emscripten_resize_heap: 'ip',
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
     requestedSize = requestedSize >>> 0;

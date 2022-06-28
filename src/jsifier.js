@@ -101,13 +101,15 @@ function runJSify(functionsOnly) {
     // to double (this limits the range to int53).
     // And convert the return value if the function returns a pointer.
     return modifyFunction(snippet, (name, args, body) => {
-      const argNames = args.split(',');
+      let argLines = args.split('\n');
+      argLines = argLines.map((line) => line.split('//')[0]);
+      const argNames = argLines.join(' ').split(',').map((name) => name.trim());
       let newArgs = [];
       let argConvertions = '';
       for (let i = 1; i < sig.length; i++) {
         const name = argNames[i - 1];
         if (sig[i] == 'p') {
-          argConvertions += `${name} = Number(${name})\n`;
+          argConvertions += `  ${name} = Number(${name});\n`;
           newArgs.push(`Number(${name})`);
         } else {
           newArgs.push(name);
@@ -130,7 +132,7 @@ function ${name}(${args}) {
       // before executing the function body.
       return `\
 function ${name}(${args}) {
-  ${argConvertions};
+${argConvertions}
   ${body};
 }`;
     });

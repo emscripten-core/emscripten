@@ -153,9 +153,9 @@ var LibraryEmVal = {
 
   _emval_take_value__sig: 'ppp',
   _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_take_value: function(type, argv) {
+  _emval_take_value: function(type, arg) {
     type = requireRegisteredType(type, '_emval_take_value');
-    var v = type['readValueFromPointer'](argv);
+    var v = type['readValueFromPointer'](arg);
     return Emval.toHandle(v);
   },
 
