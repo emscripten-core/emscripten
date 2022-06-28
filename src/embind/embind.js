@@ -14,7 +14,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
+/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
@@ -216,7 +216,7 @@ var LibraryEmbind = {
 #endif
   },
 
-  embind_repr: function(v) {
+  $embindRepr: function(v) {
     if (v === null) {
         return 'null';
     }
@@ -550,7 +550,7 @@ var LibraryEmbind = {
   // [minRange, maxRange], inclusive.
   _embind_register_integer__sig: 'vpppii',
   _embind_register_integer__deps: [
-    'embind_repr', '$getShiftFromSize', '$integerReadValueFromPointer',
+    '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_integer__sig: 'vpppii',
   _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
@@ -574,10 +574,10 @@ var LibraryEmbind = {
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
+            throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
         }
         if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+            throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
         }
 #endif
     }
@@ -608,7 +608,7 @@ var LibraryEmbind = {
 #if WASM_BIGINT
   _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint__deps: [
-    'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+    '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
@@ -630,10 +630,10 @@ var LibraryEmbind = {
         },
         'toWireType': function (destructors, value) {
             if (typeof value != "bigint") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+                throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
             }
             return value;
         },
@@ -649,7 +649,7 @@ var LibraryEmbind = {
 
   _embind_register_float__sig: 'vppp',
   _embind_register_float__deps: [
-    'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
+    '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
   _embind_register_float__sig: 'vppp',
   _embind_register_float: function(rawType, name, size) {
@@ -663,7 +663,7 @@ var LibraryEmbind = {
         'toWireType': function(destructors, value) {
 #if ASSERTIONS
             if (typeof value != "number" && typeof value != "boolean") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
             }
 #endif
             // The VM will perform JS to Wasm value conversion, according to the spec:
@@ -1463,7 +1463,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1532,7 +1532,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1554,7 +1554,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
