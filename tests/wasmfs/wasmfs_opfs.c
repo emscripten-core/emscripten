@@ -19,7 +19,7 @@
 void cleanup(void);
 
 int main(int argc, char* argv[]) {
-  int err, fd;
+  int err, fd, nwritten;
   const char* msg = "Hello, OPFS!";
   const char* msg2 = "Hello, OPFS!Hello, OPFS!";
 
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
   assert(fd > 0);
   emscripten_console_log("created OPFS file");
 
-  int nwritten = write(fd, msg, strlen(msg));
+  nwritten = write(fd, msg, strlen(msg));
   assert(nwritten == strlen(msg));
   emscripten_console_logf("wrote message: %s (%d)", msg, nwritten);
 
