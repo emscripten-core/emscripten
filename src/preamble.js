@@ -338,6 +338,10 @@ var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
+#if RELOCATABLE
+var __RELOC_FUNCS__ = [];
+#endif
+
 var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
@@ -393,6 +397,9 @@ function initRuntime() {
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
+#if RELOCATABLE
+  callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
   <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
@@ -1049,6 +1056,10 @@ function createWasm() {
 
 #if hasExportedFunction('___wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
+#endif
+
+#if hasExportedFunction('___wasm_apply_data_relocs')
+    __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

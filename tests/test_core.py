@@ -7146,7 +7146,6 @@ void* operator new(size_t size) {
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
-  @no_wasm64('gives: TypeError: WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function')
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -7335,12 +7334,11 @@ void* operator new(size_t size) {
       ''')
       self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_2(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printLerp() {
-          out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7349,19 +7347,18 @@ void* operator new(size_t size) {
       #include <emscripten/bind.h>
       using namespace emscripten;
       int lerp(int a, int b, int t) {
-          return (100 - t) * a + t * b;
+        return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
-          function("lerp", &lerp);
+        function("lerp", &lerp);
       }
       int main(int argc, char **argv) {
-          EM_ASM(printLerp());
-          return 0;
+        EM_ASM(printLerp());
+        return 0;
       }
     ''')
     self.do_runf('test_embind_2.cpp', 'lerp 166')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_3(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
@@ -7390,7 +7387,6 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_4(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
@@ -7429,22 +7425,18 @@ void* operator new(size_t size) {
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_embind_5.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_custom_marshal(self):
     self.emcc_args += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
     self.do_run_in_out_file_test('embind/test_custom_marshal.cpp', assert_identical=True)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_float_constants(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_float_constants.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_negative_constants(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
     self.emcc_args += ['-lembind']
@@ -7455,7 +7447,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
@@ -7466,7 +7457,6 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
 
   @no_wasm2js('wasm_bigint')
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
@@ -7481,8 +7471,6 @@ void* operator new(size_t size) {
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
-  @no_wasm64('embind does not yet support MEMORY64')
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''
       #include <emscripten.h>
@@ -7516,7 +7504,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
       #include <emscripten.h>
@@ -9334,8 +9321,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
-  @no_wasm64('embind does not yet support MEMORY64')
   @no_asan('asyncify stack operations confuse asan')
+  @no_wasm64('TODO: asyncify for wasm64')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)

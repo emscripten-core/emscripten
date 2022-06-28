@@ -51,6 +51,11 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
 #include "polyfill/objassign.js"
 #endif
+
+// See https://caniuse.com/mdn-javascript_builtins_bigint64array
+#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
+#include "polyfill/bigint64array.js"
+#endif
 #endif // POLYFILL
 
 #if MODULARIZE
