@@ -735,20 +735,19 @@ var LibraryEmbind = {
                 value = new Uint8Array(value);
             }
 
-            var getLength;
+            var length;
             var valueIsOfTypeString = (typeof value == 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
             }
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = () => lengthBytesUTF8(value);
+                length = lengthBytesUTF8(value);
             } else {
-                getLength = () => value.length;
+                length = value.length;
             }
 
             // assumes 4-byte alignment
-            var length = getLength();
             var ptr = _malloc(4 + length + 1);
 #if CAN_ADDRESS_2GB
             ptr >>>= 0;
