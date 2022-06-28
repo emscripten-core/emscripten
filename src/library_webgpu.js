@@ -92,6 +92,8 @@
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
     WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
+    MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
+    ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
       Unknown: 3,
     },
@@ -1975,15 +1977,17 @@ var LibraryWebGPU = {
     var desc;
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      var mipLevelCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.mipLevelCount) }}};
+      var arrayLayerCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.arrayLayerCount) }}};
       desc = {
         "format": WebGPU.TextureFormat[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.format) }}}],
         "dimension": WebGPU.TextureViewDimension[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.dimension) }}}],
         "baseMipLevel": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.baseMipLevel) }}},
-        "mipLevelCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.mipLevelCount) }}},
+        "mipLevelCount": mipLevelCount === {{{ gpu.MIP_LEVEL_COUNT_UNDEFINED }}} ? undefined : mipLevelCount,
         "baseArrayLayer": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.baseArrayLayer) }}},
-        "arrayLayerCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.arrayLayerCount) }}},
+        "arrayLayerCount": arrayLayerCount === {{{ gpu.ARRAY_LAYER_COUNT_UNDEFINED }}} ? undefined : arrayLayerCount,
         "aspect": WebGPU.TextureAspect[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.aspect) }}}],
       };
