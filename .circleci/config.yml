@@ -396,6 +396,7 @@ jobs:
           # also add a little select wasmfs testing
           test_targets: "
             core3
+            core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
