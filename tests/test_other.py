@@ -11860,8 +11860,8 @@ Module['postRun'] = function() {{
 
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
-    # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
+    self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   @wasmfs_all_backends
