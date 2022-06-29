@@ -9,9 +9,9 @@ import logging
 
 # sqlite amalgamation download URL uses relase year and tag
 # 2022  and (3, 38, 5) -> '/2022/sqlite-amalgamation-3380500.zip'
-VERSION = (3, 38, 5)
+VERSION = (3, 39, 0)
 VERSION_YEAR = 2022
-HASH = '4fc2992e4c1ca1664a9b01e07c9b944003c4ed0612978e471eff262a7114e4a0699244d91e71ae4ad2b5e1fc9829917cd7d5f0313aa5859036905f974548d94a'
+HASH = 'cbaf4adb3e404d9aa403b34f133c5beca5f641ae1e23f84dbb021da1fb9efdc7c56b5922eb533ae5cb6d26410ac60cb3f026085591bc83ebc1c225aed0cf37ca'
 
 deps = []
 
@@ -70,9 +70,8 @@ def get(ports, settings, shared):
     ]
     if settings.USE_PTHREADS:
       flags += [
-        '-sUSE_PTHREADS=1',
+        '-sUSE_PTHREADS',
         '-DSQLITE_THREADSAFE=1',
-        '-D_REENTRANT=1',
       ]
     else:
       flags += ['-DSQLITE_THREADSAFE=0']
