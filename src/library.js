@@ -3218,40 +3218,40 @@ mergeInto(LibraryManager.library, {
       0x01, 0x00, 0x00, 0x00, // version: 1
     ];
     sections.push(prelude);
-    var insig = [sig[0] === "j" ? "i" : sig[0], "i",];
-    for (var i = 1; i < sig.length; i++) {
-      var cur = sig[i];
-      if (cur === "j") {
-        insig.push("ii")
-      } else {
-        insig.push(cur);
-      }
-    }
-    insig = insig.join("");
+    var wrappersig = [
+      // if return type is j, we will put the upper 32 bits into tempRet0.
+      sig[0].replace("j", "i"),
+      "i", // The first argument is the function pointer to call
+      // in the rest of the argument list, one 64 bit integer is legalized into
+      // two 32 bit integers.
+      sig.slice(1).replace("j", "ii"),
+    ].join("");
 
-    // The module is static, with the exception of the type section, which is
-    // generated based on the signature passed in.
     var typeSection = [
-      0x03, // count: 3
-    ].concat(generateFuncType(insig), generateFuncType(sig), generateFuncType("vi"));
+      0x03, // number of types = 3
+    ].concat(
+      generateFuncType(wrappersig), // The signature of the wrapper we are generating
+      generateFuncType(sig),  // the signature of the function pointer we will call
+      generateFuncType("vi"), // the signature of setTempRet0
+    );
 
-    // Write the section code and overall length of the type section into the
-    // section header
     typeSection = [0x01 /* Type section code */].concat(
-      uleb128Encode(typeSection.length),
+      uleb128Encode(typeSection.length), // length of section in bytes
       typeSection
     );
     sections.push(typeSection);
 
     var importSection = [
-      0x02, // import section
-      0x0F, // byte length
-      0x02, // 2 imports
+      0x02, // import section code
+      0x0F, // length of section in bytes
+      0x02, // number of imports = 2
+      // Import the wasmTable, which we will call "t"
       0x01, 0x65, // name "e"
       0x01, 0x74, // name "t"
       0x01, 0x70, // importing a table
       0x00, // with no max # of elements
       0x00, // and min of 0 elements
+      // Import the setTempRet0 function, which we will call "r"
       0x01, 0x65, // name "e"
       0x01, 0x72, // name "r"
       0x00, // importing a function
@@ -3260,41 +3260,47 @@ mergeInto(LibraryManager.library, {
     sections.push(importSection);
 
     var functionSection = [
-      0x03, // function section
-      0x02, // length in bytes
-      0x01, // number of functions
-      0x00, // type 0
+      0x03, // function section code
+      0x02, // length of section in bytes
+      0x01, // number of functions = 1
+      0x00, // type 0 = wrappersig
     ];
     sections.push(functionSection);
 
     var exportSection = [
-      0x07, 0x05, // export section
+      0x07, // export section code
+      0x05, // length of section in bytes
       0x01, // One export
       0x01, 0x66, // name "f"
       0x00, // type: function
-      0x01, // the wrapper function (index 0 is ret0)
+      0x01, // function index 1 = the wrapper function (index 0 is setTempRet0)
     ];
     sections.push(exportSection);
 
     var convert_code = [];
     if (sig[0] === "j") {
-      convert_code = [0x01, 0x01, 0x7e];
+      // Add a single extra i64 local. In order to legalize the return value we
+      // need a local to store it in. Local variables are run length encoded.
+      convert_code = [
+        0x01, // One run
+        0x01, // of length 1
+        0x7e, // of i64
+      ];
     } else {
-      convert_code.push(0x00); // no additional local variables
+      convert_code.push(0x00); // no local variables (except the arguments)
     }
 
     var j = 1;
     for (var i = 1; i < sig.length; i++) {
       if (sig[i] == "j") {
         convert_code = convert_code.concat(
-          [0x20], // local.get
+          [0x20], // local.get j + 1
           uleb128Encode(j + 1),
           [
             0xad, // i64.extend_i32_unsigned
-            0x42, // i64.const
-            0x20, // 32
+            0x42, 0x20, // i64.const 32
             0x86, // i64.shl,
-            0x20, // local.get
+            0x20, // local.get j
           ],
           uleb128Encode(j),
           [
@@ -3304,7 +3310,7 @@ mergeInto(LibraryManager.library, {
         );
         j+=2;
       } else {
-        convert_code.push(0x20); // local.get
+        convert_code.push(0x20); // local.get j
         convert_code = convert_code.concat(uleb128Encode(j));
         j++;
       }
@@ -3312,18 +3318,20 @@ mergeInto(LibraryManager.library, {
 
     convert_code = convert_code.concat([
       0x20, 0x00, // local.get 0 (put function pointer on stack)
-      0x11, 0x01, 0x00, // call_indirect 1 0
+      0x11, 0x01, 0x00, // call_indirect type 1 = wrapped_sig, table 0 = only table
     ]);
 
     if (sig[0] === "j") {
       convert_code = convert_code.concat([
-        0x22, // tee
+        // tee into j (after the argument handling loop, j is one past the
+        // argument list so it points to the i64 local we added)
+        0x22,
         ...uleb128Encode(j),
-        0x42, 0x20,            // i64.const 32
+        0x42, 0x20, // i64.const 32
         0x88, // i64.shr_u
         0xa7, // i32.wrap_i64
         0x10, 0x00, // Call function 0
-        0x20, ...uleb128Encode(j), // local.get
+        0x20, ...uleb128Encode(j), // local.get j
         0xa7, // i32.wrap_i64
       ]);
     }
@@ -3341,8 +3349,6 @@ mergeInto(LibraryManager.library, {
     sections.push(codeSection);
 
     var bytes = new Uint8Array([].concat.apply([], sections));
-    const fs = require("fs")
-    fs.writeFileSync("blah.wasm", bytes);
 
     // We can compile this wasm module synchronously because it is small.
     var module = new WebAssembly.Module(bytes);
