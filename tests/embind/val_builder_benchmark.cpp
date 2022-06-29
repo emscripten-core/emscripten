@@ -2,7 +2,6 @@
 #include <array>
 #include <emscripten.h>
 #include <emscripten/val_builder.h>
-#include <iostream>
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -11,6 +10,7 @@ using namespace emscripten;
 
 using VB = emscripten::ValBuilder<32>;
 
+#if _LIBCPP_STD_VER < 20
 namespace std {
 
 template <class T, std::size_t N>
@@ -19,6 +19,7 @@ constexpr std::size_t size(const T (&array)[N]) noexcept {
 }
 
 }  // namespace std
+#endif  // _LIBCPP_STD_VER
 
 namespace tests {
 
@@ -180,7 +181,6 @@ void test_perf() {
   printf("\n");
 }
 
-
 EM_JS(emscripten::EM_VAL,
       pushDataEmjs,
       (int v1,
@@ -197,7 +197,7 @@ EM_JS(emscripten::EM_VAL,
         o["key2"] = v2;
         o["key3"] = v3;
         o["key4"] = !!v4;
-        o["key5"] = UTF8ToString(v5);
+        o["key5"] = readLatin1String(v5);
         o["key6"] = UTF8ToString(v6);
         o["key7"] = Emval.toValue(v7);
         o["key8"] = v8;
@@ -207,11 +207,11 @@ EM_JS(emscripten::EM_VAL,
 
 void test_perf_chaining() {
   const size_t LoopTimes = 100000;
+  const size_t PreWarmLoopTimes = 10000;
   std::string s("test hello world!!");
   val vi = val(256);
 
-  const size_t PreWarmLoopTimes = 10000;
-  // pre-warm
+  // pre-warm: val
   for (size_t i = 0; i < PreWarmLoopTimes; i++) {
     // val (non chaining)
     val v = val::object();
@@ -241,7 +241,7 @@ void test_perf_chaining() {
   auto val_cost = emscripten_get_now() - start;
   printf("test_chain_val loop %zu cost: %f\n", LoopTimes, val_cost);
 
-  // pre-warm
+  // pre-warm: val_builder
   for (size_t i = 0; i < PreWarmLoopTimes; i++) {
     // use valbuilder (chaining)
     VB v(OBJECT);
@@ -273,18 +273,18 @@ void test_perf_chaining() {
   auto vb_cost = emscripten_get_now() - start;
   printf("test_chain_valbuilder loop %zu cost: %f\n", LoopTimes, vb_cost);
 
+  // pre-warm: EM_JS
+  for (size_t i = 0; i < PreWarmLoopTimes; i++) {
+    // use EM_JS (chaining)
+    val v = val::take_ownership(pushDataEmjs(
+      1, 2, 1.234f, true, "012345678910", s.c_str(), vi.as_handle(), 8));
+  }
+
   start = emscripten_get_now();
   for (size_t i = 0; i < LoopTimes; i++) {
     // use EM_JS (chaining)
     val v = val::take_ownership(pushDataEmjs(
-                                             1,
-                                             2,
-                                             1.234f,
-                                             true,
-                                             "012345678910",
-                                             s.c_str(),
-                                             vi.as_handle(),
-                                             8));
+      1, 2, 1.234f, true, "012345678910", s.c_str(), vi.as_handle(), 8));
   }
   auto emjs_cost = emscripten_get_now() - start;
   printf("test_chain_emjs loop %zu cost: %f\n", LoopTimes, emjs_cost);
@@ -324,3 +324,6 @@ int main() {
   tests::test_perf_biga();
   return 0;
 }
+
+// build command-line:
+// ../../emcc -lembind -g -o val_builder_benchmark.html val_builder_benchmark.cpp
