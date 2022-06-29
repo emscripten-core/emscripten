@@ -6665,37 +6665,23 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
   @is_slow_test
-  def test_sqlite(self):
+  @parameterized({
+    'single': (False,),
+    'pthreads': (True,),
+  })
+  def test_sqlite(self, use_pthreads):
+    if use_pthreads:
+      self.set_setting('USE_PTHREADS')
+      self.setup_node_pthreads()
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT')
 
-    # newer clang has a warning for implicit conversions that lose information,
-    # which happens in sqlite (see #9138)
-    self.emcc_args += ['-Wno-implicit-int-float-conversion']
-    # newer clang warns about "suspicious concatenation of string literals in an
-    # array initialization; did you mean to separate the elements with a comma?"
-    self.emcc_args += ['-Wno-string-concatenation']
-    # ignore unknown flags, which lets the above flags be used on github CI
-    # before the LLVM change rolls in (the same LLVM change that adds the
-    # warning also starts to warn on it)
-    self.emcc_args += ['-Wno-unknown-warning-option']
-    self.emcc_args += ['-Wno-pointer-bool-conversion']
-
-    self.emcc_args += ['-I' + test_file('third_party/sqlite')]
-
-    src = '''
-       #define SQLITE_DISABLE_LFS
-       #define LONGDOUBLE_TYPE double
-       #define SQLITE_INT64_TYPE long long int
-       #define SQLITE_THREADSAFE 0
-    '''
-    src += read_file(test_file('third_party/sqlite/sqlite3.c'))
-    src += read_file(test_file('sqlite/benchmark.c'))
+    self.emcc_args += ['-sUSE_SQLITE3']
+    src = read_file(test_file('sqlite/benchmark.c'))
     self.do_run(src,
                 read_file(test_file('sqlite/benchmark.txt')),
-                includes=[test_file('sqlite')],
                 force_c=True)
 
   @needs_make('mingw32-make')
