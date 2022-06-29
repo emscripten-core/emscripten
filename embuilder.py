@@ -61,6 +61,8 @@ MINIMAL_TASKS = [
     'crt1_proxy_main',
     'libunwind-except',
     'libnoexit',
+    'sqlite3',
+    'sqlite3-mt',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
