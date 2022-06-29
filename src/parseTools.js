@@ -411,7 +411,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
-  if (slab.substr(slab.length - 2) == '64') {
+  if (MEMORY64 && isPointerType(type)) {
     ret = `Number(${ret})`;
   }
   return ret;
