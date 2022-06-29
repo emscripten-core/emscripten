@@ -6673,16 +6673,12 @@ void* operator new(size_t size) {
     if use_pthreads:
       self.set_setting('USE_PTHREADS')
       self.setup_node_pthreads()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
-    if '-g' in self.emcc_args:
-      print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
-      self.set_setting('INLINING_LIMIT')
-
     self.emcc_args += ['-sUSE_SQLITE3']
-    src = read_file(test_file('sqlite/benchmark.c'))
-    self.do_run(src,
-                read_file(test_file('sqlite/benchmark.txt')),
-                force_c=True)
+    self.do_run_from_file(
+      test_file('sqlite/benchmark.c'),
+      test_file('sqlite/benchmark.txt'),
+      force_c=True
+    )
 
   @needs_make('mingw32-make')
   @is_slow_test
