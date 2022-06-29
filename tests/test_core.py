@@ -459,7 +459,13 @@ class TestCoreBase(RunnerCore):
 
   @also_with_standalone_wasm()
   def test_hello_argc(self):
-    self.do_core_test('test_hello_argc.c')
+    self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
+
+  @node_pthreads
+  def test_hello_argc_pthreads(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
   @also_with_wasmfs
   def test_intvars(self):
