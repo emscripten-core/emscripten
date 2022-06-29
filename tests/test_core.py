@@ -3982,28 +3982,26 @@ ok
     self.set_setting('EXIT_RUNTIME', 1)
 
     create_file('liblib.c', r'''
-        #include <stdio.h>
-        #include <emscripten/emscripten.h>
+      #include <stdio.h>
+      #include <emscripten/emscripten.h>
 
-        int side_module_run()
-        {
-          printf("before sleep\n");
-          emscripten_sleep(1000);
-          printf("after sleep\n");
-          return 42;
-        }
+      int side_module_run() {
+        printf("before sleep\n");
+        emscripten_sleep(1000);
+        printf("after sleep\n");
+        return 42;
+      }
       ''')
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
-      #include <iostream>
+      #include <stdio.h>
       #include <dlfcn.h>
 
       typedef int (*func_t)();
 
-      int main(int argc, char **argv)
-      {
+      int main(int argc, char **argv) {
         void *_dlHandle = dlopen("liblib.so", RTLD_NOW | RTLD_LOCAL);
         func_t my_func = (func_t)dlsym(_dlHandle, "side_module_run");
         printf("%d\n", my_func());
@@ -8143,7 +8141,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME', 1)
-    self.emcc_args += ['-sASYNCIFY_IMPORTS=["my_sleep"]']
+    self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -8155,8 +8153,8 @@ Module['onRuntimeInitialized'] = function() {
         return 0;
       }
     ''', r'''
-      #include <emscripten.h>
       #include <stdio.h>
+      #include <emscripten.h>
       #include "header.h"
 
       void my_sleep(int milli_seconds) {
