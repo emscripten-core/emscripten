@@ -6666,7 +6666,7 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large for VMs')
   @is_slow_test
   @parameterized({
-    'single': (False,),
+    '': (False,),
     'pthreads': (True,),
   })
   def test_sqlite(self, use_pthreads):
