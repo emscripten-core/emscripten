@@ -43,6 +43,7 @@
 //
 namespace emscripten {
 
+// TODO: include all primitive types here.
 enum class TYPE : uint8_t {
     NONE = 0,
     INT32,
@@ -125,7 +126,7 @@ void AddArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
   } else {
     VH tp(ARRAY);
     tp.add(start, start + n);
-    h->add(tp);  // always commit
+    h->add(tp);  // always committed
   }
 }
 
@@ -173,36 +174,16 @@ class ValBuilder {
     if constexpr (check_arg_pointer_wont_dangle<V>()) {}
 
     cursor_->key = k;
-    cursor_->key_flag = 0;
+    cursor_->key_flag = FLAG_NONE;
     add(std::forward<V>(v));
   }
 
-  void add(int v) {
-    cursor_->type = TYPE::INT32;
-    cursor_->value.w[0].i = v;
-    advance_and_may_finalize();
-  }
-  void add(size_t v) {
-    add(static_cast<unsigned int>(v));
-  }
-  void add(unsigned int v) {
-    cursor_->type = TYPE::UINT32;
-    cursor_->value.w[0].u = v;
-    advance_and_may_finalize();
-  }
-  void add(float v) {
-    cursor_->type = TYPE::FLOAT32;
-    cursor_->value.w[0].f = v;
-    advance_and_may_finalize();
-  }
-  void add(double v) {
-    cursor_->type = TYPE::FLOAT64;
-    cursor_->value.d = v;
-    advance_and_may_finalize();
-  }
-  void add(bool v) {
-    cursor_->type = TYPE::BOOL;
-    cursor_->value.b = v;
+  // This takes care of all supported primitive types.
+  template<typename V,
+        typename = std::enable_if_t<is_supported_array_type(map<V>::type)>>
+  void add(const V& v) {
+    cursor_->type = map<V>::type;
+    memcpy(cursor_->value.w, &v, sizeof(V));
     advance_and_may_finalize();
   }
 
@@ -220,6 +201,7 @@ class ValBuilder {
     add_u8(v.c_str());
   }
   void add(std::string&& v) {
+    // This is not efficient, hoping seldom used.
     auto cached = std::make_unique<std::string>(std::move(v));
     add_u8(cached->data());
     if (!cached_strings_.capacity()) cached_strings_.reserve(4);
@@ -236,6 +218,7 @@ class ValBuilder {
     cached_vals_.push_back(std::move(v));  // efficient op
     add(cached_vals_.back());
   }
+
   // accept |ValBuilder| but only lvalue reference
   template<size_t SZ>
   void add(ValBuilder<SZ>& vb) {
