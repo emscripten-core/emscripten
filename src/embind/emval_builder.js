@@ -12,6 +12,7 @@
 
 mergeInto(LibraryManager.library, {
 
+  _emvalbuilder_finalize__sig: 'vppp',
   _emvalbuilder_finalize__deps: ['$Emval', '$readLatin1String'],
   _emvalbuilder_finalize: function(o, ptr, size) {
     o = Emval.toValue(o);

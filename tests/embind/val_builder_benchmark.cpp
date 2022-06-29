@@ -326,4 +326,4 @@ int main() {
 }
 
 // build command-line:
-// ../../emcc -lembind -g -o val_builder_benchmark.html val_builder_benchmark.cpp
+// ../../emcc -lembind -O2 -o val_builder_benchmark.html val_builder_benchmark.cpp
