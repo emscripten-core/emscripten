@@ -139,7 +139,7 @@ var _scriptDir = import.meta.url;
 var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 
 if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location == null ? '' : self.location.href;
+  _scriptDir = self.location ? self.location.href : '';
 }
 #if ENVIRONMENT_MAY_BE_NODE
 else if (ENVIRONMENT_IS_NODE) {
@@ -362,7 +362,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location == null ? '' : self.location.href;
+    scriptDirectory = self.location ? self.location.href : '';
   } else if (typeof document != 'undefined' && document.currentScript) { // web
     scriptDirectory = document.currentScript.src;
   }
