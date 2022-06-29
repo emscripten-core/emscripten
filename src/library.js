@@ -3199,20 +3199,18 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
+    #if MAIN_MODULE == 1
     if (!('dynCall_' + sig in Module)) {
       Module['dynCall_' + sig] = createDyncallWrapper(sig);
     }
+    #endif
     var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
-#if MINIMAL_RUNTIME
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
-#else
-  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry', '$createDyncallWrapper'],
-#endif
-#endif
-#if DYNCALLS || !WASM_BIGINT
+#if MAIN_MODULE == 1
+  $dynCallLegacy__deps: ['$createDyncallWrapper'],
   $createDyncallWrapper: function(sig) {
     var sections = [];
     var prelude = [
@@ -3357,6 +3355,7 @@ mergeInto(LibraryManager.library, {
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
   },
+#endif
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
