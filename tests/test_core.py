@@ -7401,7 +7401,6 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_4.cpp', '107')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_5(self):
     self.emcc_args += ['-lembind']
     self.set_setting('EXIT_RUNTIME')
@@ -7444,7 +7443,6 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
@@ -7479,7 +7477,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_polymorphic_class_no_rtti(self):
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
