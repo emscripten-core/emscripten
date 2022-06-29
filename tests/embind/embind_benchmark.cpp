@@ -462,6 +462,33 @@ void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
     printf("C++ pass_gameobject_ptr %d iters: %f msecs.\n", N, (t2-t));
 }
 
+void __attribute__((noinline)) numeric_val_array_benchmark() {
+  using emscripten::val;
+
+  std::vector<int> vec = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+                          26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+                          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+                          52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63};
+
+  const int kLoopTimes = 100000;
+  double t = emscripten_get_now();
+  for (int i = 0; i < kLoopTimes; i++) {
+    val v = val::array(vec.begin(), vec.end());
+  }
+  printf("val::array: %lf\n", emscripten_get_now() - t);
+
+  t = emscripten_get_now();
+  for (int i = 0; i < kLoopTimes; i++) {
+    val v = val::array(vec);
+  }
+  printf("val::array opt numeric types: %lf\n", emscripten_get_now() - t);
+
+  // It's about 20x times faster.
+  // val::array: 1021.525756
+  // val::array opt numeric types: 50.600682
+}
+
 int EMSCRIPTEN_KEEPALIVE main()
 {
     for(int i = 1000; i <= 100000; i *= 10)
@@ -506,4 +533,5 @@ int EMSCRIPTEN_KEEPALIVE main()
     call_through_interface1();
     call_through_interface2();
     returns_val_benchmark();
+    numeric_val_array_benchmark();
 }

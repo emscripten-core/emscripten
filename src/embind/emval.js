@@ -127,6 +127,16 @@ var LibraryEmVal = {
     return Emval.toHandle([]);
   },
 
+  _emval_new_array_from_memory_view__sig: 'pp',
+  _emval_new_array_from_memory_view__deps: ['$Emval'],
+  _emval_new_array_from_memory_view: function(view) {
+    view = Emval.toValue(view);
+    // using for..loop is faster than Array.from
+    var a = new Array(view.length);
+    for (i = 0; i < view.length; i++) a[i] = view[i];
+    return Emval.toHandle(a);
+  },
+
   _emval_new_object__sig: 'p',
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: function() {
