@@ -957,7 +957,6 @@ base align: 0, 0, 0, 0'''])
 
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
-  @no_wasm64('MEMORY64 does not yet support dynamic linking')
   def test_stack_placement_pic(self):
     self.set_setting('TOTAL_STACK', 1024)
     self.set_setting('MAIN_MODULE')
@@ -3036,7 +3035,6 @@ The current type of b is: 9
     self.do_run(src, expected)
 
   def prep_dlfcn_main(self):
-    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
     # Link against the side modules but don't load them on startup.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
@@ -3067,7 +3065,12 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory, open 'libfoo.so'")
+
+    if self.js_engines == [config.V8_ENGINE]:
+      expected = "error: Could not load dynamic lib: libfoo.so\nError: Error reading file"
+    else:
+      expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory, open 'libfoo.so'"
+    self.do_run(src, expected)
 
   @needs_dylink
   def test_dlfcn_basic(self):
@@ -3751,6 +3754,7 @@ ok
     self.do_runf(test_file('dlmalloc_proxy.c'), '*293,153*')
 
   @needs_dylink
+  @no_wasm64('MEMORY64 does not yet support SJLJ')
   def test_dlfcn_longjmp(self):
     create_file('liblib.c', r'''
       #include <setjmp.h>
@@ -3908,7 +3912,6 @@ ok
     shutil.move(indir('liblib.so'), indir('libb.so'))
 
     self.set_setting('MAIN_MODULE')
-    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
 
     create_file('main.c', r'''
@@ -4106,6 +4109,8 @@ ok
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
+    if self.get_setting('MEMORY64') == 2:
+      self.skipTest('MEMORY64=2 always requires module re-writing')
     self.set_setting('WASM_BIGINT')
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
@@ -4451,6 +4456,7 @@ res64 - external 64\n''', header='''\
 
   @needs_dylink
   @also_with_wasm_bigint
+  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_dylink_i64_invoke(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.dylink_test(r'''\
@@ -4736,12 +4742,10 @@ res64 - external 64\n''', header='''\
       };
     ''', main=r'''
       #include "header.h"
-      #include <iostream>
-
-      using namespace std;
+      #include <stdio.h>
 
       int main() {
-        cout << "starting main" << endl;
+        printf("starting main\n");
 
         Base *base = new Base();
         Base *derived = new Derived();
@@ -4749,9 +4753,9 @@ res64 - external 64\n''', header='''\
         derived->printName();
 
         if (dynamic_cast<Derived*>(derived)) {
-          cout << "OK" << endl;
+          printf("OK\n");
         } else {
-          cout << "KO" << endl;
+          printf("KO\n");
         }
 
         delete base;
@@ -4760,16 +4764,14 @@ res64 - external 64\n''', header='''\
       }
     ''', side=r'''
       #include "header.h"
-      #include <iostream>
-
-      using namespace std;
+      #include <stdio.h>
 
       void Base::printName() {
-          cout << "Base" << endl;
+        printf("Base\n");
       }
 
       void Derived::printName() {
-          cout << "Derived" << endl;
+        printf("Derived\n");
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
@@ -4979,6 +4981,7 @@ res64 - external 64\n''', header='''\
     self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dylink
+  @requires_node
   def test_dylink_load_compiled_side_module(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args.append('-lnodefs.js')
@@ -4995,7 +4998,7 @@ res64 - external 64\n''', header='''\
       int main() {
         EM_ASM({
           FS.mkdir('/working');
-          FS.mount(NODEFS,{ root: '.' }, '/working');
+          FS.mount(NODEFS, { root: '.' }, '/working');
           var libData = FS.readFile('/working/liblib.so', {encoding: 'binary'});
           if (!(libData instanceof Uint8Array)) {
             libData = new Uint8Array(libData);
@@ -8270,7 +8273,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
-  @no_wasm64('MEMORY64 does not yet support dynamic linking')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_main_module(self):
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('MAIN_MODULE', 2)

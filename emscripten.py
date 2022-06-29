@@ -306,6 +306,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
+  if settings.RELOCATABLE and settings.MEMORY64 == 2:
+    metadata['globalImports'] += ['__memory_base32']
+
   update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
@@ -814,6 +817,7 @@ def create_wasm64_wrappers(metadata):
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
     '_wasmfs_write_file': '_ppp',
+    '__dl_seterr': '_pp',
   }
 
   wasm64_wrappers = '''

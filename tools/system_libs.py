@@ -1235,8 +1235,7 @@ class libwasm_workers(MTLibrary):
   name = 'libwasm_workers'
 
   def get_cflags(self):
-    cflags = ['-pthread',
-              '-D_DEBUG' if self.debug else '-Oz']
+    cflags = get_base_cflags() + ['-pthread', '-D_DEBUG' if self.debug else '-Oz']
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:

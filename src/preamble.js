@@ -857,10 +857,6 @@ function createWasm() {
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
-#endif
-
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
@@ -868,8 +864,6 @@ function createWasm() {
 #if ABORT_ON_WASM_EXCEPTIONS
     exports = instrumentWasmExportsWithAbort(exports);
 #endif
-
-    Module['asm'] = exports;
 
 #if MAIN_MODULE
     var metadata = getDylinkMetadata(module);
@@ -880,6 +874,12 @@ function createWasm() {
 #endif
     mergeLibSymbols(exports, 'main')
 #endif
+
+#if MEMORY64
+    exports = instrumentWasmExportsForMemory64(exports);
+#endif
+
+    Module['asm'] = exports;
 
 #if USE_PTHREADS
 #if MAIN_MODULE

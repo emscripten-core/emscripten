@@ -167,7 +167,7 @@ function callMain(args) {
     // that if we get here main returned zero.
     var ret = 0;
 #else
-    var ret = entryFunction(argc, argv);
+    var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
 
 #if BENCHMARK
