@@ -43,7 +43,7 @@ function sigToWasmTypes(sig) {
   return type;
 }
 
-function generate_func_type(sig){
+function generateFuncType(sig){
   var sigRet = sig.slice(0, 1);
   var sigParam = sig.slice(1);
   var typeCodes = {
@@ -96,7 +96,7 @@ function convertJsFunctionToWasm(func, sig) {
   // generated based on the signature passed in.
   var typeSection = [
     0x01, // count: 1
-  ].concat(generate_func_type(sig));
+  ].concat(generateFuncType(sig));
   // Write the section code and overall length of the type section into the
   // section header
   typeSection = [0x01 /* Type section code */].concat(

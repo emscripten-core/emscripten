@@ -3235,7 +3235,7 @@ mergeInto(LibraryManager.library, {
     // generated based on the signature passed in.
     var typeSection = [
       0x03, // count: 3
-    ].concat(generate_func_type(insig), generate_func_type(sig), generate_func_type("vi"));
+    ].concat(generateFuncType(insig), generateFuncType(sig), generateFuncType("vi"));
 
     // Write the section code and overall length of the type section into the
     // section header
