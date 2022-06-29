@@ -103,6 +103,7 @@ PORT_VARIANTS = {
     'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
     'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
     'libpng-mt': ('libpng', {'USE_PTHREADS': 1}),
+    'sqlite3-mt': ('sqlite3', {'USE_PTHREADS': 1}),
 }
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
