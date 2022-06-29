@@ -6989,10 +6989,10 @@ void* operator new(size_t size) {
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=None, assert_returncode=0):
-      src = test_file('core/test_getValue_setValue.cpp')
-      expected = test_file('core/test_getValue_setValue' + output_prefix + '.out')
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
+    def test(out_suffix='', args=None, assert_returncode=0):
+      if not out_suffix and self.is_wasm64():
+        out_suffix = '64'
+      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
