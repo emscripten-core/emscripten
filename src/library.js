@@ -3256,7 +3256,13 @@ mergeInto(LibraryManager.library, {
       args = new_args;
     }
 #endif
-    return getWasmTableEntry(ptr).apply(null, args)
+    var rtn = getWasmTableEntry(ptr).apply(null, args);
+#if MEMORY64
+    if (sig[0] == 'p') {
+      rtn = Number(rtn);
+    }
+#endif
+    return rtn;
 #endif
   },
 
