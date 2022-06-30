@@ -114,10 +114,22 @@ mergeInto(LibraryManager.library, {
       var buffer = allocateUTF8OnStack(path);
       __wasmfs_mkdir(buffer, mode);
     },
+    // TODO: mkdirTree
+    // TDOO: rmdir
+    // TODO: open
+    // TODO: create
+    // TODO: close
+    // TODO: unlink
     chdir: (path) => {
       var buffer = allocateUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     },
+    // TODO: read
+    // TODO: write
+    // TODO: allocate
+    // TODO: mmap
+    // TODO: msync
+    // TODO: munmap
     writeFile: (path, data) => {
       var pathBuffer = allocateUTF8OnStack(path);
       var dataBuffer = _malloc(data);
@@ -129,10 +141,21 @@ mergeInto(LibraryManager.library, {
       var linkpathBuffer = allocateUTF8OnStack(linkpath);
       __wasmfs_symlink(targetBuffer, linkpathBuffer);
     },
+    // TODO: readlink
+    // TODO: stat
+    // TODO: lstat
     chmod: (path, mode) => {
       var buffer = allocateUTF8OnStack(path);
       return __wasmfs_chmod(buffer, mode);
     },
+    // TODO: lchmod
+    // TODO: fchmod
+    // TDOO: chown
+    // TODO: lchown
+    // TODO: fchown
+    // TODO: truncate
+    // TODO: ftruncate
+    // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
       if (result == {{{ cDefine('ENOENT') }}}) {
@@ -143,6 +166,31 @@ mergeInto(LibraryManager.library, {
         isDevice: false, // TODO: wasmfs support for devices
       };
     },
+    readdir: (path) => {
+      var pathBuffer = allocateUTF8OnStack(path);
+      var entries = [];
+      var state = __wasmfs_readdir_start(pathBuffer);
+      if (!state) {
+        // TODO: The old FS threw an ErrnoError here.
+        throw new Error("No such directory");
+      }
+      var entry;
+      while (entry = __wasmfs_readdir_get(state)) {
+        entries.push(UTF8ToString(entry));
+      }
+      __wasmfs_readdir_finish(state);
+      return entries;
+    }
+    // TODO: mount
+    // TODO: unmount
+    // TODO: lookup
+    // TODO: mknod
+    // TODO: mkdev
+    // TODO: rename
+    // TODO: syncfs
+    // TODO: llseek
+    // TODO: ioctl
+
 #endif
   },
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFSPreloadedFiles'],

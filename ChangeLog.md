@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.15
 ------
+- Post-link metadata extraction switched from wasm-emscripten-finalize
+  (binaryen) to python code within emscripten.  This change should have no
+  semantic effect, but can temporarily be reverted by setting
+  `EMCC_READ_METADATA=binaryen` in the environment. (#17337)
+- Added a shim for `BigInt64Array` so `-sWASM_BIGINT` can be used in Safari
+  v14. (#17103)
 
 3.1.14 - 06/20/2022
 -------------------

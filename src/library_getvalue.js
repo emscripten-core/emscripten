@@ -12,7 +12,7 @@ var LibraryMemOps = {
    * @param {string} type
    */`,
   $setValue: function(ptr, value, type = 'i8') {
-    if (type.endsWith('*')) type = '{{{ POINTER_WASM_TYPE }}}';
+    if (type.endsWith('*')) type = '*';
     switch (type) {
       case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
@@ -21,6 +21,7 @@ var LibraryMemOps = {
       case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
       case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
       case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+      case '*': {{{ makeSetValue('ptr', '0', 'value', '*') }}}; break;
       default: abort('invalid type for setValue: ' + type);
     }
   },
@@ -31,7 +32,7 @@ var LibraryMemOps = {
    * @param {string} type
    */`,
   $getValue: function(ptr, type = 'i8') {
-    if (type.endsWith('*')) type = '{{{ POINTER_WASM_TYPE }}}';
+    if (type.endsWith('*')) type = '*';
     switch (type) {
       case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
       case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
@@ -40,6 +41,7 @@ var LibraryMemOps = {
       case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
       case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
       case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+      case '*': return {{{ makeGetValue('ptr', '0', '*') }}};
       default: abort('invalid type for getValue: ' + type);
     }
     return null;

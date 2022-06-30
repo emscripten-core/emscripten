@@ -1536,9 +1536,9 @@ int main(int argc, char **argv)
         }
 
         if (std::uncaught_exception())
-          std::cout << "ERROR: uncaught_exception still set.";
+          std::cout << "ERROR: uncaught_exception still set.\n";
         else
-          std::cout << "OK";
+          std::cout << "OK\n";
       }
     '''
     self.do_run(src, 'OK\n')
@@ -6665,38 +6665,20 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
   @is_slow_test
-  def test_sqlite(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
-    if '-g' in self.emcc_args:
-      print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
-      self.set_setting('INLINING_LIMIT')
-
-    # newer clang has a warning for implicit conversions that lose information,
-    # which happens in sqlite (see #9138)
-    self.emcc_args += ['-Wno-implicit-int-float-conversion']
-    # newer clang warns about "suspicious concatenation of string literals in an
-    # array initialization; did you mean to separate the elements with a comma?"
-    self.emcc_args += ['-Wno-string-concatenation']
-    # ignore unknown flags, which lets the above flags be used on github CI
-    # before the LLVM change rolls in (the same LLVM change that adds the
-    # warning also starts to warn on it)
-    self.emcc_args += ['-Wno-unknown-warning-option']
-    self.emcc_args += ['-Wno-pointer-bool-conversion']
-
-    self.emcc_args += ['-I' + test_file('third_party/sqlite')]
-
-    src = '''
-       #define SQLITE_DISABLE_LFS
-       #define LONGDOUBLE_TYPE double
-       #define SQLITE_INT64_TYPE long long int
-       #define SQLITE_THREADSAFE 0
-    '''
-    src += read_file(test_file('third_party/sqlite/sqlite3.c'))
-    src += read_file(test_file('sqlite/benchmark.c'))
-    self.do_run(src,
-                read_file(test_file('sqlite/benchmark.txt')),
-                includes=[test_file('sqlite')],
-                force_c=True)
+  @parameterized({
+    '': (False,),
+    'pthreads': (True,),
+  })
+  def test_sqlite(self, use_pthreads):
+    if use_pthreads:
+      self.set_setting('USE_PTHREADS')
+      self.setup_node_pthreads()
+    self.emcc_args += ['-sUSE_SQLITE3']
+    self.do_run_from_file(
+      test_file('sqlite/benchmark.c'),
+      test_file('sqlite/benchmark.txt'),
+      force_c=True
+    )
 
   @needs_make('mingw32-make')
   @is_slow_test
@@ -7007,10 +6989,10 @@ void* operator new(size_t size) {
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=None, assert_returncode=0):
-      src = test_file('core/test_getValue_setValue.cpp')
-      expected = test_file('core/test_getValue_setValue' + output_prefix + '.out')
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
+    def test(out_suffix='', args=None, assert_returncode=0):
+      if not out_suffix and self.is_wasm64():
+        out_suffix = '64'
+      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -7334,12 +7316,11 @@ void* operator new(size_t size) {
       ''')
       self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_2(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printLerp() {
-          out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7348,14 +7329,14 @@ void* operator new(size_t size) {
       #include <emscripten/bind.h>
       using namespace emscripten;
       int lerp(int a, int b, int t) {
-          return (100 - t) * a + t * b;
+        return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
-          function("lerp", &lerp);
+        function("lerp", &lerp);
       }
       int main(int argc, char **argv) {
-          EM_ASM(printLerp());
-          return 0;
+        EM_ASM(printLerp());
+        return 0;
       }
     ''')
     self.do_runf('test_embind_2.cpp', 'lerp 166')
@@ -7388,7 +7369,6 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_4(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
@@ -7440,12 +7420,10 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
 
   @also_with_wasm_bigint
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_unsigned(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_val(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
@@ -7454,7 +7432,6 @@ void* operator new(size_t size) {
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
@@ -7474,7 +7451,6 @@ void* operator new(size_t size) {
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''
       #include <emscripten.h>
@@ -7508,7 +7484,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
       #include <emscripten.h>

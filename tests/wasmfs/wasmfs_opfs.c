@@ -19,8 +19,9 @@
 void cleanup(void);
 
 int main(int argc, char* argv[]) {
-  int err, fd;
+  int err, fd, nwritten;
   const char* msg = "Hello, OPFS!";
+  const char* msg2 = "Hello, OPFS!Hello, OPFS!";
 
   emscripten_console_log("starting main");
 
@@ -50,7 +51,7 @@ int main(int argc, char* argv[]) {
   assert(fd > 0);
   emscripten_console_log("created OPFS file");
 
-  int nwritten = write(fd, msg, strlen(msg));
+  nwritten = write(fd, msg, strlen(msg));
   assert(nwritten == strlen(msg));
   emscripten_console_logf("wrote message: %s (%d)", msg, nwritten);
 
@@ -84,13 +85,6 @@ int main(int argc, char* argv[]) {
   assert(stat_buf.st_size == 100);
   emscripten_console_log("truncated to 100");
 
-  err = ftruncate(fd, 1);
-  assert(err == 0);
-  err = fstat(fd, &stat_buf);
-  assert(err == 0);
-  assert(stat_buf.st_size == 1);
-  emscripten_console_log("truncated to 1");
-
   struct dirent** entries;
   int nentries = scandir("/opfs/working", &entries, NULL, alphasort);
   assert(nentries == 3);
@@ -120,7 +114,7 @@ int main(int argc, char* argv[]) {
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
-  assert(stat_buf.st_size == 1);
+  assert(stat_buf.st_size == 100);
   emscripten_console_log("statted while closed");
 
   err = truncate("/opfs/working/foo.txt", 42);
@@ -132,15 +126,59 @@ int main(int argc, char* argv[]) {
   assert(stat_buf.st_size == 42);
   emscripten_console_log("statted while closed again");
 
+  fd = open("/opfs/working/foo.txt", O_RDONLY);
+  assert(fd > 0);
+  emscripten_console_log("opened file in read-only mode");
+
+  char buf2[100] = {};
+  nread = read(fd, buf2, 100);
+  emscripten_console_logf("read message: %s (%d)", buf2, nread);
+  assert(nread == 42);
+  assert(strcmp(buf2, msg) == 0);
+
+  err = fstat(fd, &stat_buf);
+  assert(err == 0);
+  assert(stat_buf.st_size == 42);
+  emscripten_console_log("statted while open in read-only mode");
+
+  int fd2 = open("/opfs/working/foo.txt", O_WRONLY);
+  assert(fd > 0);
+  emscripten_console_log("upgraded open state to read-write");
+
+  lseek(fd2, strlen(msg), SEEK_SET);
+  nwritten = write(fd2, msg, strlen(msg));
+  assert(nwritten == strlen(msg));
+  emscripten_console_logf("wrote message: %s (%d)", msg, nwritten);
+
+  char buf3[100] = {};
+  lseek(fd, 0, SEEK_SET);
+  nread = read(fd, buf3, 100);
+  assert(nread == 42);
+  assert(strcmp(buf3, msg2) == 0);
+  emscripten_console_logf("read message: %s (%d)", buf3, nread);
+
+  close(fd);
+  close(fd2);
+
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
   assert(fd > 0);
-  emscripten_console_log("truncated while opening");
+  emscripten_console_log("truncated while opening read-only");
+  close(fd);
+
+  err = stat("/opfs/working/foo.txt", &stat_buf);
+  assert(err == 0);
+  assert(stat_buf.st_size == 42);
+  emscripten_console_log("statted after failed truncation");
+
+  fd = open("/opfs/working/foo.txt", O_WRONLY | O_TRUNC);
+  assert(fd > 0);
+  emscripten_console_log("truncated while opening write-only");
   close(fd);
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
   assert(stat_buf.st_size == 0);
-  emscripten_console_log("statted after truncation");
+  emscripten_console_log("statted after successful truncation");
 
   err = rename("/opfs/working/foo.txt", "/opfs/foo.txt");
   assert(err == 0);
