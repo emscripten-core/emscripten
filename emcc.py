@@ -1747,9 +1747,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
-      if not settings.PROXY_TO_PTHREAD:
-        settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
