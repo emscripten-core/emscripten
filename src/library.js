@@ -3256,7 +3256,7 @@ mergeInto(LibraryManager.library, {
       args = new_args;
     }
 #endif
-    var rtn = getWasmTableEntry(ptr).apply(null, args)
+    var rtn = getWasmTableEntry(ptr).apply(null, args);
 #if MEMORY64
     if (sig[0] == 'p') {
       rtn = Number(rtn);
