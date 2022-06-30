@@ -91,7 +91,12 @@ mergeInto(LibraryManager.library, {
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
+#if WASM_BIGINT
+      // The length as BigInt must be converted to a Number.
+      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + Number(length)));
+#else
       var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
+#endif
       if (opts.encoding === 'utf8') {
         ret = UTF8ArrayToString(ret, 0);
       }
