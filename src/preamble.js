@@ -220,12 +220,12 @@ function cwrap(ident, returnType, argTypes, opts) {
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !hasExportedFunction('_malloc')
+#if !hasExportedSymbol('malloc')
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !hasExportedFunction('_free')
+#if !hasExportedSymbol('free')
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -1054,11 +1054,11 @@ function createWasm() {
 #endif
 #endif
 
-#if hasExportedFunction('___wasm_call_ctors')
+#if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
 #endif
 
-#if hasExportedFunction('___wasm_apply_data_relocs')
+#if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
 #endif
 
