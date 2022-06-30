@@ -832,7 +832,7 @@ New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
     if (DYNCALLS) {
-      if (!hasExportedFunction(`dynCall_${sig}`)) {
+      if (!hasExportedSymbol(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
           return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
         } else {
@@ -846,7 +846,7 @@ Please update to new syntax.`);
   }
 
   if (DYNCALLS) {
-    if (!hasExportedFunction(`dynCall_${sig}`)) {
+    if (!hasExportedSymbol(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
         return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
       } else {
@@ -1085,12 +1085,18 @@ function _asmjsDemangle(symbol) {
     return symbol;
   }
   // Strip leading "_"
-  assert(symbol.startsWith('_'));
+  assert(symbol.startsWith('_'), 'expected mangled symbol: ' + symbol);
   return symbol.substr(1);
 }
 
+// TODO(sbc): Remove this function along with _asmjsDemangle.
 function hasExportedFunction(func) {
+  warnOnce('hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name');
   return WASM_EXPORTS.has(_asmjsDemangle(func));
+}
+
+function hasExportedSymbol(sym) {
+  return WASM_EXPORTS.has(sym);
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1170,7 +1176,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if (hasExportedFunction('_malloc')) {
+  if (hasExportedSymbol('malloc')) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

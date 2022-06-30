@@ -3577,7 +3577,7 @@ mergeInto(LibraryManager.library, {
   // page-aligned size, and clears the allocated space.
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
   $mmapAlloc: function(size) {
-#if hasExportedFunction('_emscripten_builtin_memalign')
+#if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;
