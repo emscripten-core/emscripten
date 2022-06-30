@@ -105,6 +105,7 @@ def also_with_wasmfs(f):
                             'wasmfs': (True,)}
   return metafunc
 
+
 # The wasm_bigint parameter means that we also add test variants for the
 # WASM_BIGINT setting.
 def wasmfs_all_backends(wasm_bigint=False):
