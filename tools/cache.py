@@ -142,7 +142,7 @@ class Cache:
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
   def get(self, shortname, creator, what=None, force=False):
-    cachename = Path(self.dirname, shortname).resolve()
+    cachename = Path(self.dirname, shortname)
     # Check for existence before taking the lock in case we can avoid the
     # lock completely.
     if cachename.exists() and not force:
