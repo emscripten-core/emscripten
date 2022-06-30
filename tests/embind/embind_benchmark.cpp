@@ -476,17 +476,21 @@ void __attribute__((noinline)) numeric_val_array_benchmark() {
   for (int i = 0; i < kLoopTimes; i++) {
     val v = val::array(vec.begin(), vec.end());
   }
-  printf("val::array: %lf\n", emscripten_get_now() - t);
+  printf("\nval::array(Iter begin, Iter end): %lf msecs.\n", emscripten_get_now() - t);
 
   t = emscripten_get_now();
   for (int i = 0; i < kLoopTimes; i++) {
     val v = val::array(vec);
   }
-  printf("val::array opt numeric types: %lf\n", emscripten_get_now() - t);
+  printf("val::array(const std::vector<T>& vec) with opt numeric types: %lf msecs.\n", emscripten_get_now() - t);
 
   // It's about 20x times faster.
-  // val::array: 1021.525756
-  // val::array opt numeric types: 50.600682
+  // val::array(Iter begin, Iter end): 727.300000 msecs.
+  // val::array(const std::vector<T>& vec) with opt numeric types: 29.700000 msecs.
+
+  // If compile with `--std=c++20`, the result is very close.
+  // val::array(Iter begin, Iter end): 30.400000 msecs.
+  // val::array(const std::vector<T>& vec) with opt numeric types: 27.500000 msecs.
 }
 
 int EMSCRIPTEN_KEEPALIVE main()
