@@ -3306,6 +3306,7 @@ window.close = function() {
     ])
 
   @requires_graphics_hardware
+  @disabled('https://github.com/llvm/llvm-project/issues/56302')
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
