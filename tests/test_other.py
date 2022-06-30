@@ -105,17 +105,32 @@ def also_with_wasmfs(f):
                             'wasmfs': (True,)}
   return metafunc
 
+# The wasm_bigint parameter means that we also add test variants for the
+# WASM_BIGINT setting.
+def wasmfs_all_backends(wasm_bigint=False):
+  def decorated(func):
+    def metafunc(self, backend, bigint):
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      self.emcc_args.append(f'-D{backend}')
+      if bigint:
+        self.set_setting('WASM_BIGINT')
+        self.require_node()
+        self.node_args.append('--experimental-wasm-bigint')
+      func(self)
 
-def wasmfs_all_backends(f):
-  def metafunc(self, backend):
-    self.set_setting('WASMFS')
-    self.emcc_args.append('-DWASMFS')
-    self.emcc_args.append(f'-D{backend}')
-    f(self)
+    params = {'': ('WASMFS_MEMORY_BACKEND', False,),
+              'node': ('WASMFS_NODE_BACKEND', False,)}
 
-  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
-                            'node': ('WASMFS_NODE_BACKEND',)}
-  return metafunc
+    if wasm_bigint:
+      params['bigint'] = ('WASMFS_MEMORY_BACKEND', True,)
+      params['node_bigint'] = ('WASMFS_NODE_BACKEND', True,)
+
+    metafunc._parameterize = params
+
+    return metafunc
+
+  return decorated
 
 
 def also_with_wasmfs_all_backends(f):
@@ -11878,20 +11893,14 @@ Module['postRun'] = function() {{
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_chown.c')
 
-  @wasmfs_all_backends
+  @wasmfs_all_backends()
   def test_wasmfs_getdents(self):
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
-  @wasmfs_all_backends
+  @wasmfs_all_backends(wasm_bigint=True)
   def test_wasmfs_readfile(self):
-    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
-
-  @wasmfs_all_backends
-  def test_wasmfs_readfile_bigint(self):
-    self.set_setting('WASM_BIGINT')
-    self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   def test_wasmfs_jsfile(self):
