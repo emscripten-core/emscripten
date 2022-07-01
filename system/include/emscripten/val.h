@@ -331,7 +331,7 @@ public:
         if constexpr (std::contiguous_iterator<Iter> &&
                       internal::typeSupportsMemoryView<
                         typename std::iterator_traits<Iter>::value_type>()) {
-            val view{typed_memory_view(end - begin, std::to_address(begin))};
+            val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
             return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
         }
         // For numeric arrays, following codes are unreachable and the compiler
