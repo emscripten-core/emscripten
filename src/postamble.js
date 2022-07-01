@@ -380,7 +380,7 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
-#elif hasExportedFunction('_fflush')
+#elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems

@@ -3256,7 +3256,13 @@ mergeInto(LibraryManager.library, {
       args = new_args;
     }
 #endif
-    return getWasmTableEntry(ptr).apply(null, args)
+    var rtn = getWasmTableEntry(ptr).apply(null, args);
+#if MEMORY64
+    if (sig[0] == 'p') {
+      rtn = Number(rtn);
+    }
+#endif
+    return rtn;
 #endif
   },
 
@@ -3577,7 +3583,7 @@ mergeInto(LibraryManager.library, {
   // page-aligned size, and clears the allocated space.
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
   $mmapAlloc: function(size) {
-#if hasExportedFunction('_emscripten_builtin_memalign')
+#if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;

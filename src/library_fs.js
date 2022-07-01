@@ -1500,7 +1500,7 @@ FS.staticInit();` +
     quit: () => {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
-#if hasExportedFunction('_fflush')
+#if hasExportedSymbol('fflush')
       _fflush(0);
 #endif
       // close all of our streams
