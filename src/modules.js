@@ -38,6 +38,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
       'library_math.js',
@@ -441,8 +442,6 @@ function exportRuntime() {
     'getFunctionTables',
     'alignFunctionTables',
     'registerFunctions',
-    'addFunction',
-    'removeFunction',
     'prettyPrint',
     'getCompilerSetting',
     'print',
@@ -510,6 +509,7 @@ function exportRuntime() {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
   }
+
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
