@@ -5744,6 +5744,9 @@ main( int argv, char ** argc ) {
   def test_std_cout_new(self):
     self.do_core_test('test_std_cout_new.cpp')
 
+  def test_std_filesystem_permissions(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_filesystem_permissions.cpp')
+
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
@@ -9010,6 +9013,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/12932')
+  def test_std_filesystem_permission(self):
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_std_filesystem_permissions.pre.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_filesystem_permissions.cpp', assert_returncode=43)
 
   @no_asan('incompatibility with atomics')
   @node_pthreads
