@@ -1685,8 +1685,8 @@ int main(int argc, char **argv)
     expected = '''\
 exception of type int
 exception of type char
-exception of type std::runtime_error: abc
-exception of type myexception: My exception happened
+std::runtime_error: abc
+myexception: My exception happened
 exception of type char const*
 '''
 
