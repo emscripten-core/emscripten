@@ -113,7 +113,6 @@ function isJsLibraryConfigIdentifier(ident) {
     '__deps',
     '__postset',
     '__docs',
-    '__import',
     '__nothrow',
     '__noleakcheck',
     '__internal',
