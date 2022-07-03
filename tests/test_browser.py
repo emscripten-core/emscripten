@@ -3307,10 +3307,13 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
+    # cocos2d build contains a bunch of warnings about tiff symbols being missing at link time:
+    # e.g. warning: undefined symbol: TIFFClientOpen
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     '-Wno-js-compiler',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override'],
                message='You should see Cocos2d logo')

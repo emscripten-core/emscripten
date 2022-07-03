@@ -530,6 +530,7 @@ function ${name}(${args}) {
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       libraryFunctions: libraryFunctions,
+      warnings: warnings,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
