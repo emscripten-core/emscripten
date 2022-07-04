@@ -36,6 +36,9 @@ See docs/process.md for more on how version tagging works.
   added to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
 - The `run` runtime function is no longer exported by default.  It can be added
   to `EXPORTED_RUNTIME_METHODS` if needed.
+- The getWasmTableEntry/setWasmTableEntry library function are no longer
+  included by default.  Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or
+  `EXPORTED_RUNTIME_METHODS` if you want to use them outside of JS library code.
 
 3.1.15 - 07/01/2022
 -------------------
