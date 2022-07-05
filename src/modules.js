@@ -152,6 +152,10 @@ global.LibraryManager = {
       libraries.push('library_html5_webgpu.js');
     }
 
+    if (!STRICT) {
+      libraries.push('library_legacy.js');
+    }
+
     if (BOOTSTRAPPING_STRUCT_INFO) {
       libraries = [
         'library_bootstrap.js',
@@ -407,11 +411,8 @@ function exportRuntime() {
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
-    'ALLOC_NORMAL',
-    'ALLOC_STACK',
     'ccall',
     'cwrap',
-    'allocate',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',

@@ -12072,9 +12072,21 @@ Module['postRun'] = function() {{
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+
+    # By default `allocate` is not available (its a JS library function not included by default)
+    self.do_runf(test_file('other/test_legacy_runtime.c'),
+                 'Aborted(Call to `allocate` which is a library function and not included by default',
+                 assert_returncode=NON_ZERO)
+
+    # Adding it to EXPORTED_RUNTIME_METHODS makes it available.
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate', 'ALLOC_NORMAL'])
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
+
+    # In string mode the library function is even available, so we get a build time error
     self.set_setting('STRICT')
-    self.do_runf(test_file('other/test_legacy_runtime.c'), 'ReferenceError: allocate is not defined', assert_returncode=NON_ZERO)
+    err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c')] + self.get_emcc_args())
+    self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''

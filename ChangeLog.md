@@ -29,11 +29,15 @@ See docs/process.md for more on how version tagging works.
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.  This change allows us to transition
   runtime functions to JS library functions without the need to folks to add
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17369)
-- The `addFunction`/`removeFunction` runtime functions were converted into JS
-  library functions.  This means that won't get included in the output unless
-  explictly required.  Exporting them via `EXPORTED_RUNTIME_METHODS` will
-  continue to work.  For internal usage (without exporting them) they can be
-  added to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
+- The following function, which were previously part of the default runtime, are
+  now JS library functions:
+   - addFunction
+   - removeFunction
+   - allocate
+  This means they won't get included in the output unless explictly required.
+  Exporting them via `EXPORTED_RUNTIME_METHODS` will continue to work.  For
+  internal usage (without exporting them) they can be added to
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
 - The `run` runtime function is no longer exported by default.  It can be added
   to `EXPORTED_RUNTIME_METHODS` if needed.
 - The getWasmTableEntry/setWasmTableEntry library function are no longer
