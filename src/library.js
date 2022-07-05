@@ -565,11 +565,7 @@ mergeInto(LibraryManager.library, {
   tzset_impl__internal: true,
   tzset_impl__proxy: 'sync',
   tzset_impl__sig: 'viii',
-  tzset_impl__deps: [
-#if MINIMAL_RUNTIME
-    '$allocateUTF8'
-#endif
-  ],
+  tzset_impl__deps: ['$allocateUTF8'],
   tzset_impl: function(timezone, daylight, tzname) {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
@@ -654,10 +650,8 @@ mergeInto(LibraryManager.library, {
 
   // Note: this is not used in STANDALONE_WASM mode, because it is more
   //       compact to do it in JS.
-  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
-#if MINIMAL_RUNTIME
-    , '$intArrayFromString', '$writeArrayToMemory'
-#endif
+  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+                   '$intArrayFromString', '$writeArrayToMemory'
   ],
   strftime__sig: 'ppppp',
   strftime: function(s, maxsize, format, tm) {
@@ -953,11 +947,8 @@ mergeInto(LibraryManager.library, {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP', '$jstoi_q'
-#if MINIMAL_RUNTIME
-    , '$intArrayFromString'
-#endif
-  ],
+  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+                   '$jstoi_q', '$intArrayFromString' ],
   strptime__sig: 'pppp',
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
@@ -2078,11 +2069,7 @@ mergeInto(LibraryManager.library, {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
+  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -2771,13 +2758,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the function name from our stack frame cache with our PC representation.
 #if USE_OFFSET_CONVERTER
-  emscripten_pc_get_function__deps: [
-    '$UNWIND_CACHE',
-    'free',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$allocateUTF8'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
   emscripten_pc_get_function__sig: 'pp',
@@ -2838,11 +2819,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$allocateUTF8'],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file__sig: 'pp',
@@ -3651,3 +3628,28 @@ function autoAddDeps(object, name) {
     }
   }
 }
+
+#if LEGACY_RUNTIME
+// Library functions that were previously included as runtime functions are
+// automatically included when `LEGACY_RUNTIME` is set.
+DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+  '$addFunction',
+  '$removeFunction',
+  '$allocate',
+  '$AsciiToString',
+  '$stringToAscii',
+  '$UTF16ToString',
+  '$stringToUTF16',
+  '$lengthBytesUTF16',
+  '$UTF32ToString',
+  '$stringToUTF32',
+  '$lengthBytesUTF32',
+  '$allocateUTF8',
+  '$allocateUTF8OnStack',
+  '$writeStringToMemory',
+  '$writeArrayToMemory',
+  '$writeAsciiToMemory',
+  '$intArrayFromString',
+  '$intArrayToString',
+);
+#endif

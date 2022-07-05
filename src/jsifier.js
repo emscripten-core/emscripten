@@ -502,8 +502,6 @@ function ${name}(${args}) {
 
     if (!MINIMAL_RUNTIME) {
       print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
-
-      print(preprocess(read('arrayUtils.js')));
     }
 
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {

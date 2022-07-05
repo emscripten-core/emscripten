@@ -1788,11 +1788,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
     default_setting(user_settings, 'SUPPORT_ERRNO', 0)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
     default_setting(user_settings, 'STRICT_JS', 1)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
@@ -2132,7 +2134,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '$jsStackTrace',
         '$stackTrace',
         # Called by `callMain` to handle exceptions
-        '$handleException'
+        '$handleException',
+        # Needed by ccall (remove this once ccall itself is a library function)
+        '$writeArrayToMemory',
       ]
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
@@ -2873,6 +2877,8 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
 
   if embed_memfile():
     settings.SUPPORT_BASE64_EMBEDDING = 1
+    # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile)
   save_intermediate('original')

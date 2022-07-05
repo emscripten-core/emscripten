@@ -151,11 +151,13 @@ mergeInto(LibraryManager.library, {
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
   $updateTableMap: function(offset, count) {
-    for (var i = offset; i < offset + count; i++) {
-      var item = getWasmTableEntry(i);
-      // Ignore null values.
-      if (item) {
-        functionsInTableMap.set(item, i);
+    if (functionsInTableMap) {
+      for (var i = offset; i < offset + count; i++) {
+        var item = getWasmTableEntry(i);
+        // Ignore null values.
+        if (item) {
+          functionsInTableMap.set(item, i);
+        }
       }
     }
   },

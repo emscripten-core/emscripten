@@ -234,7 +234,6 @@ function _free() {
 #endif // ASSERTIONS
 
 #include "runtime_strings.js"
-#include "runtime_strings_extra.js"
 
 // Memory management
 

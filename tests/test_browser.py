@@ -4369,13 +4369,7 @@ window.close = function() {
     td_with_fallback = os.path.getsize('test.js')
     self.btest('browser_test_hello_world.c', '0', args=['-sTEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
-    # pthread TextDecoder support is more complex due to
-    # https://github.com/whatwg/encoding/issues/172
-    # and therefore the expected code size win there is actually a loss
-    if '-pthread' not in self.emcc_args:
-      self.assertLess(td_without_fallback, just_fallback)
-    else:
-      self.assertGreater(td_without_fallback, just_fallback)
+    self.assertGreater(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
 
   def test_small_js_flags(self):

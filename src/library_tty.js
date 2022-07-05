@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $TTY__deps: ['$FS'],
+  $TTY__deps: ['$FS', '$intArrayFromString'],
 #if !MINIMAL_RUNTIME
   $TTY__postset: function() {
     addAtInit('TTY.init();');

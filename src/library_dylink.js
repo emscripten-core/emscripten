@@ -249,11 +249,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr',
-#if MINIMAL_RUNTIME
-   '$intArrayFromString'
-#endif
-  ],
+  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack'],
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
@@ -505,6 +501,7 @@ var LibraryDylink = {
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$alignMemory', '$zeroMemory',
     '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$updateTableMap',
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);

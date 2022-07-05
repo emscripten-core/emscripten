@@ -81,6 +81,7 @@ var LibraryGLFW = {
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
     '$callUserCallback',
+    '$allocateUTF8',
 #if FILESYSTEM
     '$FS',
 #endif

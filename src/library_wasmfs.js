@@ -16,6 +16,8 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
     '$PATH',
+    '$allocateUTF8',
+    '$allocateUTF8OnStack',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.

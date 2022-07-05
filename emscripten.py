@@ -152,6 +152,9 @@ def update_settings_glue(wasm_file, metadata):
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on this library function
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$allocateUTF8OnStack']
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
