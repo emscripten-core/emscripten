@@ -65,7 +65,7 @@ class Benchmarker():
   def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
     self.times = []
     self.reps = reps
-    for i in range(reps):
+    for _ in range(reps):
       start = time.time()
       output = self.run(args)
       if expected_output is not None and expected_output not in output:
@@ -125,13 +125,15 @@ class Benchmarker():
 
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx, args=[OPTIMIZATIONS]):
+  def __init__(self, name, cc, cxx, args=None):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args.copy()
+    self.args = args or [OPTIMIZATIONS]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    native_args = native_args or []
+    shared_args = shared_args or []
     self.parent = parent
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
@@ -173,15 +175,17 @@ def run_binaryen_opts(filename, opts):
 
 
 class EmscriptenBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
+  def __init__(self, name, engine, extra_args=None, env=None, binaryen_opts=None):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args.copy()
+    self.extra_args = extra_args or []
     self.env = os.environ.copy()
-    self.env.update(env)
-    self.binaryen_opts = binaryen_opts.copy()
+    if env:
+      self.env.update(env)
+    self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
     if lib_builder:
@@ -190,7 +194,7 @@ class EmscriptenBenchmarker(Benchmarker):
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
       env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
-      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
+      emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
@@ -201,7 +205,9 @@ class EmscriptenBenchmarker(Benchmarker):
       '-sENVIRONMENT=node,shell',
       '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
-    ] + shared_args + LLVM_FEATURE_FLAGS
+    ] + LLVM_FEATURE_FLAGS
+    if shared_args:
+      cmd += shared_args
     if common.EMTEST_FORCE64:
       cmd += ['--profiling']
     else:
@@ -281,11 +287,11 @@ CHEERP_BIN = '/opt/cheerp/bin/'
 
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=[OPTIMIZATIONS], binaryen_opts=[]):
+  def __init__(self, name, engine, args=None, binaryen_opts=None):
     self.name = name
     self.engine = engine
-    self.args = args.copy()
-    self.binaryen_opts = binaryen_opts.copy()
+    self.args = args or [OPTIMIZATIONS]
+    self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     cheerp_args = [
@@ -435,8 +441,8 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG
     return code
 
-  def do_benchmark(self, name, src, expected_output='FAIL', args=[],
-                   emcc_args=[], native_args=[], shared_args=[],
+  def do_benchmark(self, name, src, expected_output='FAIL', args=None,
+                   emcc_args=None, native_args=None, shared_args=None,
                    force_c=False, reps=TEST_REPS, native_exec=None,
                    output_parser=None, args_processor=None, lib_builder=None,
                    skip_native=False):
@@ -809,7 +815,7 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('corrections64', src, 'final:')
 
-  def fasta(self, name, double_rep, emcc_args=[]):
+  def fasta(self, name, double_rep):
     src = read_file(test_file('fasta.cpp')).replace('double', double_rep)
     src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
       int n;

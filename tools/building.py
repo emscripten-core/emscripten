@@ -1219,19 +1219,17 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   return js_file
 
 
-def strip(infile, outfile, debug=False, producers=False):
+def strip(infile, outfile, debug=False, sections=None):
   cmd = [LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
-  if producers:
-    cmd += ['--remove-section=producers']
+  if sections:
+    cmd += ['--remove-section=' + section for section in sections]
   check_call(cmd)
 
 
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
-# TODO: emit only debug sections in the side file, and not the entire
-#       wasm as well
 def emit_debug_on_side(wasm_file):
   # if the dwarf filename wasn't provided, use the default target + a suffix
   wasm_file_with_dwarf = settings.SEPARATE_DWARF
@@ -1248,15 +1246,22 @@ def emit_debug_on_side(wasm_file):
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
 
+  # Strip code and data from the debug file to limit its size. The other known
+  # sections are still required to correctly interpret the DWARF info.
+  # TODO(dschuff): Also strip the DATA section? To make this work we'd need to
+  # either allow "invalid" data segment name entries, or maybe convert the DATA
+  # to a DATACOUNT section.
+  strip(wasm_file_with_dwarf, wasm_file_with_dwarf, sections=['CODE'])
+
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
   filename_bytes = embedded_path.encode('utf-8')
-  contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
+  contents = webassembly.to_leb(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
     f.write(b'\0') # user section is code 0
-    f.write(webassembly.toLEB(section_size))
+    f.write(webassembly.to_leb(section_size))
     f.write(section_name)
     f.write(contents)
 
@@ -1353,7 +1358,7 @@ def is_wasm_dylib(filename):
   section = next(module.sections())
   if section.type == webassembly.SecType.CUSTOM:
     module.seek(section.offset)
-    if module.readString() in ('dylink', 'dylink.0'):
+    if module.read_string() in ('dylink', 'dylink.0'):
       return True
   return False
 
@@ -1489,9 +1494,10 @@ def get_binaryen_bin():
 binaryen_kept_debug_info = False
 
 
-def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
+def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  cmd += args
+  if args:
+    cmd += args
   if infile:
     cmd += [infile]
   if outfile:
@@ -1526,7 +1532,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   return ret
 
 
-def run_wasm_opt(infile, outfile=None, args=[], **kwargs):
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
     # remove any dwarf debug info sections, if the debug level is <3, as
     # we don't need them; also remove them if we use source maps (which are

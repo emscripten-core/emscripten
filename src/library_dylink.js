@@ -479,7 +479,7 @@ var LibraryDylink = {
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }
-#if !hasExportedFunction('_main')
+#if !hasExportedSymbol('main')
       // If the main module doesn't define main it could be defined in one of
       // the side modules, and we need to handle the mangled named.
       if (sym == '__main_argc_argv') {
@@ -652,6 +652,14 @@ var LibraryDylink = {
             } else {
               // we aren't ready to run compiled code yet
               __ATINIT__.push(init);
+            }
+          }
+          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+          if (applyRelocs) {
+            if (runtimeInitialized) {
+              applyRelocs();
+            } else {
+              __RELOC_FUNCS__.push(applyRelocs);
             }
           }
 #if USE_PTHREADS

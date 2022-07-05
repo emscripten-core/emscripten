@@ -16,7 +16,8 @@ WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps 
 DEFAULT_TIMEOUT = 5 * 60
 
 
-def make_command(filename, engine, args=[]):
+def make_command(filename, engine, args=None):
+  args = args or []
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
@@ -85,7 +86,7 @@ def require_engine(engine):
     sys.exit(1)
 
 
-def run_js(filename, engine, args=[],
+def run_js(filename, engine, args=None,
            stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, skip_check=False,
            timeout=DEFAULT_TIMEOUT):

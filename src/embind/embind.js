@@ -14,7 +14,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
+/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
@@ -216,7 +216,7 @@ var LibraryEmbind = {
 #endif
   },
 
-  embind_repr: function(v) {
+  $embindRepr: function(v) {
     if (v === null) {
         return 'null';
     }
@@ -405,7 +405,9 @@ var LibraryEmbind = {
   $heap32VectorToArray: function(count, firstElement) {
     var array = [];
     for (var i = 0; i < count; i++) {
-        array.push(HEAP32[(firstElement >> 2) + i]);
+        // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
+        // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
+        array.push({{{ makeGetValue('firstElement', 'i * ' + POINTER_SIZE, '*') }}});
     }
     return array;
   },
@@ -420,6 +422,7 @@ var LibraryEmbind = {
     return impl;
   },
 
+  _embind_register_void__sig: 'vpp',
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
@@ -437,6 +440,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
   _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
@@ -543,12 +547,15 @@ var LibraryEmbind = {
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
+  _embind_register_integer__sig: 'vpppii',
   _embind_register_integer__deps: [
-    'embind_repr', '$getShiftFromSize', '$integerReadValueFromPointer',
+    '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
-    if (maxRange === -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
+    // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
+    // out as 'i32 -1'. Always treat those as max u32.
+    if (maxRange === -1) {
         maxRange = 4294967295;
     }
 
@@ -565,10 +572,10 @@ var LibraryEmbind = {
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
+            throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
         }
         if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+            throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
         }
 #endif
     }
@@ -597,8 +604,9 @@ var LibraryEmbind = {
   },
 
 #if WASM_BIGINT
+  _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint__deps: [
-    'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+    '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
 
@@ -618,11 +626,11 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function (destructors, value) {
-            if (typeof value != "bigint") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            if (typeof value != "bigint" && typeof value != "number") {
+                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+                throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
             }
             return value;
         },
@@ -636,8 +644,9 @@ var LibraryEmbind = {
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
+  _embind_register_float__sig: 'vppp',
   _embind_register_float__deps: [
-    'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
+    '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
   _embind_register_float: function(rawType, name, size) {
     var shift = getShiftFromSize(size);
@@ -650,7 +659,7 @@ var LibraryEmbind = {
         'toWireType': function(destructors, value) {
 #if ASSERTIONS
             if (typeof value != "number" && typeof value != "boolean") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
             }
 #endif
             // The VM will perform JS to Wasm value conversion, according to the spec:
@@ -665,9 +674,10 @@ var LibraryEmbind = {
 
   // For types whose wire types are 32-bit pointers.
   $simpleReadValueFromPointer: function(pointer) {
-    return this['fromWireType'](HEAPU32[pointer >> 2]);
+    return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
+  _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError'],
@@ -684,14 +694,15 @@ var LibraryEmbind = {
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
-            var length = HEAPU32[value >> 2];
+            var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
+            var payload = value + {{{ POINTER_SIZE }}};
 
             var str;
             if (stdStringIsUTF8) {
-                var decodeStartPtr = value + 4;
+                var decodeStartPtr = payload;
                 // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
-                    var currentBytePtr = value + 4 + i;
+                    var currentBytePtr = payload + i;
                     if (i == length || HEAPU8[currentBytePtr] == 0) {
                         var maxRead = currentBytePtr - decodeStartPtr;
                         var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
@@ -707,7 +718,7 @@ var LibraryEmbind = {
             } else {
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
-                    a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
+                    a[i] = String.fromCharCode(HEAPU8[payload + i]);
                 }
                 str = a.join('');
             }
@@ -721,27 +732,27 @@ var LibraryEmbind = {
                 value = new Uint8Array(value);
             }
 
-            var getLength;
+            var length;
             var valueIsOfTypeString = (typeof value == 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
             }
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = () => lengthBytesUTF8(value);
+                length = lengthBytesUTF8(value);
             } else {
-                getLength = () => value.length;
+                length = value.length;
             }
 
             // assumes 4-byte alignment
-            var length = getLength();
-            var ptr = _malloc(4 + length + 1);
+            var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
+            var ptr = base + {{{ POINTER_SIZE }}};
 #if CAN_ADDRESS_2GB
             ptr >>>= 0;
 #endif
-            HEAPU32[ptr >> 2] = length;
+            {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                stringToUTF8(value, ptr + 4, length + 1);
+                stringToUTF8(value, ptr, length + 1);
             } else {
                 if (valueIsOfTypeString) {
                     for (var i = 0; i < length; ++i) {
@@ -750,19 +761,19 @@ var LibraryEmbind = {
                             _free(ptr);
                             throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
                         }
-                        HEAPU8[ptr + 4 + i] = charCode;
+                        HEAPU8[ptr + i] = charCode;
                     }
                 } else {
                     for (var i = 0; i < length; ++i) {
-                        HEAPU8[ptr + 4 + i] = value[i];
+                        HEAPU8[ptr + i] = value[i];
                     }
                 }
             }
 
             if (destructors !== null) {
-                destructors.push(_free, ptr);
+                destructors.push(_free, base);
             }
-            return ptr;
+            return base;
         },
         'argPackAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
@@ -770,6 +781,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
 #if MINIMAL_RUNTIME
@@ -848,6 +860,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_emval__sig: 'vpp',
   _embind_register_emval__deps: [
     '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
@@ -872,6 +885,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_memory_view__sig: 'vpip',
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
@@ -1148,7 +1162,7 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT || MEMORY64
     , '$getDynCaller'
 #endif
   ],
@@ -1163,6 +1177,10 @@ var LibraryEmbind = {
       if (signature.includes('j')) {
         return getDynCaller(signature, rawFunction);
       }
+#elif MEMORY64
+      if (signature.includes('p')) {
+        return getDynCaller(signature, rawFunction);
+      }
 #endif
       return getWasmTableEntry(rawFunction);
 #endif
@@ -1175,6 +1193,7 @@ var LibraryEmbind = {
     return fp;
   },
 
+  _embind_register_function__sig: 'vpipppp',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
@@ -1198,6 +1217,7 @@ var LibraryEmbind = {
 
   $tupleRegistrations: {},
 
+  _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1216,6 +1236,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: function(
@@ -1239,6 +1260,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1438,7 +1460,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1507,7 +1529,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1529,7 +1551,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1634,9 +1656,19 @@ var LibraryEmbind = {
 
   $RegisteredPointer_fromWireType__deps: [
     '$downcastPointer', '$registeredPointers',
-    '$getInheritedInstance', '$makeClassHandle'],
+    '$getInheritedInstance', '$makeClassHandle',
+#if MEMORY64
+    '$bigintToI53Checked'
+#endif
+  ],
   $RegisteredPointer_fromWireType: function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
+#if MEMORY64
+    ptr = bigintToI53Checked(ptr);
+#if ASSERTIONS
+    assert(ptr != NaN);
+#endif
+#endif
 
     // rawPointer is a maybe-null raw pointer
     var rawPointer = this.getPointee(ptr);
@@ -1963,6 +1995,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
@@ -2073,6 +2106,7 @@ var LibraryEmbind = {
     );
   },
 
+  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
@@ -2160,6 +2194,7 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
+  _embind_register_class_function__sig: 'vppippppi',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2226,6 +2261,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_property__sig: 'vpppppppppp',
   _embind_register_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2297,6 +2333,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_function__sig: 'vppipppp',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2353,6 +2390,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_property__sig: 'vpppppppp',
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2416,6 +2454,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
@@ -2499,6 +2538,7 @@ var LibraryEmbind = {
     return name;
   },
 
+  _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
@@ -2537,6 +2577,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_enum__sig: 'vpppi',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
@@ -2562,6 +2603,7 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
+  _embind_register_enum_value__sig: 'vppi',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
@@ -2577,6 +2619,7 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
+  _embind_register_constant__sig: 'vppd',
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: function(name, type, value) {
     name = readLatin1String(name);

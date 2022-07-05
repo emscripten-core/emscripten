@@ -46,6 +46,7 @@ $emscripten_stack_set_limits
 $get_tasks_for_thread
 $init_file_lock
 $init_mparams
+$main
 $memset
 $pthread_attr_destroy
 $sbrk

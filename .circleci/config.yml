@@ -17,6 +17,8 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+      # Currently pinned to 10.5.35 due to https://github.com/emscripten-core/emscripten/issues/17278
+      V8_VERSION: "10.5.35"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -82,7 +84,7 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
@@ -344,7 +346,8 @@ jobs:
             export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
-            jsvu --os=default --engines=v8
+            jsvu --os=default --engines=v8 v8@${V8_VERSION}
+
       - build
       - build-libs-and-freeze
       - persist
@@ -362,9 +365,7 @@ jobs:
       EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
-          # test_em_js_pthreads current triggers a bug in python metadata
-          # extraction: https://github.com/emscripten-core/emscripten/issues/16573
-          test_targets: "core0 skip:core0.test_em_js_pthreads"
+          test_targets: "core0"
   test-core2:
     executor: bionic
     environment:
@@ -372,6 +373,7 @@ jobs:
     steps:
       - run-tests-linux:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
+          # also add a corez test of dynamic linking + forced syslibs
           test_targets: "
             core2
             asan.test_stat
@@ -384,7 +386,8 @@ jobs:
             asan.test_async_hello
             lsan.test_stdio_locking
             lsan.test_pthread_create
-            browser.test_pthread_join"
+            browser.test_pthread_join
+            corez.test_dylink_syslibs_all"
   test-core3:
     executor: bionic
     steps:
@@ -393,6 +396,8 @@ jobs:
           # also add a little select wasmfs testing
           test_targets: "
             core3
+            core2g.test_externref
+            corez.test_dylink_iostream
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
             wasm2js3.test_memorygrowth_2
@@ -416,7 +421,11 @@ jobs:
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
-            wasmfs.test_getcwd_with_non_ascii_name"
+            wasmfs.test_getcwd_with_non_ascii_name
+            wasmfs.test_stat
+            wasmfs.test_fstatat
+            wasmfs.test_unistd_links_memfs
+            wasmfs.test_fcntl_open"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -478,6 +487,12 @@ jobs:
             core2.test_sse1
             core2.test_ccall
             core2.test_utf16
+            core2.test_em_asm_unicode
+            core2.test_em_js
+            core2.test_em_js_pthreads
+            other.test_c_preprocessor
+            other.test_prejs_unicode
+            other.test_em_js_side_module
             other.test_es5_transpile
             other.test_emcc_cflags
             other.test_stdin
@@ -498,6 +513,8 @@ jobs:
             other.test_realpath
             other.test_embed_file_dup
             other.test_dot_a_all_contents_invalid
+            other.test_emcc_print_search_dirs
+            other.test_emcc_print_file_name
             other.test_pkg_config*"
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:

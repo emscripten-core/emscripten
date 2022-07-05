@@ -21,3 +21,5 @@ close(f): -1
 
 DUP2 pipe
 buf: abc
+
+DUP2 shared seek position

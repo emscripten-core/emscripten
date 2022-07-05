@@ -316,7 +316,7 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
-int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
+int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -347,7 +347,7 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_uid = 0;
   buffer->st_gid = 0;
   // Device ID (if special file) No meaning right now for Emscripten.
-  buffer->st_rdev = 1;
+  buffer->st_rdev = 0;
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
@@ -359,15 +359,15 @@ int __syscall_fstatat64(int dirfd, intptr_t path, intptr_t buf, int flags) {
 }
 
 int __syscall_stat64(intptr_t path, intptr_t buf) {
-  return __syscall_fstatat64(AT_FDCWD, path, buf, 0);
+  return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
 int __syscall_lstat64(intptr_t path, intptr_t buf) {
-  return __syscall_fstatat64(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
+  return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
 int __syscall_fstat64(int fd, intptr_t buf) {
-  return __syscall_fstatat64(fd, (intptr_t)"", buf, AT_EMPTY_PATH);
+  return __syscall_newfstatat(fd, (intptr_t) "", buf, AT_EMPTY_PATH);
 }
 
 // When calling doOpen(), we may request an FD be returned, or we may not need
@@ -387,9 +387,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
-                    O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) ==
-         0);
+  assert((flags &
+          ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
+            O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW | O_CLOEXEC)) == 0);
 
   if (auto err = parsed.getError()) {
     return err;
@@ -438,12 +438,35 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       if (returnMode == OpenReturnMode::Nothing) {
         return 0;
       }
+
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
 
-  // TODO: Return EISDIR if child is a directory and write access is requested.
+  if (auto link = child->dynCast<Symlink>()) {
+    if (flags & O_NOFOLLOW) {
+      return -ELOOP;
+    }
+    // TODO: The link dereference count starts back at 0 here. We could
+    // propagate it from the previous path parsing instead.
+    auto target = link->getTarget();
+    auto parsedLink = path::getFileFrom(parent, target);
+    if (auto err = parsedLink.getError()) {
+      return err;
+    }
+    child = parsedLink.getFile();
+  }
+  assert(!child->is<Symlink>());
+
+  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
+  if ((flags & O_EXCL) && (flags & O_CREAT)) {
+    return -EEXIST;
+  }
+
+  if (child->is<Directory>() && accessMode != O_RDONLY) {
+    return -EISDIR;
+  }
 
   // Check user permissions.
   auto fileMode = child->locked().getMode();
@@ -461,21 +484,27 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
-  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
-  if (flags & O_EXCL && flags & O_CREAT) {
-    return -EEXIST;
-  }
-
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   auto openFile = std::make_shared<OpenFileState>(0, flags, child);
 
   // If O_TRUNC, truncate the file if possible.
-  if ((flags & O_TRUNC) && child->is<DataFile>()) {
-    if (fileMode & WASMFS_PERM_WRITE) {
-      child->cast<DataFile>()->locked().setSize(0);
+  if (flags & O_TRUNC) {
+    if (child->is<DataFile>()) {
+      if (fileMode & WASMFS_PERM_WRITE) {
+        // TODO: Linux still truncates the file when it's opened only for
+        // reading, so we should too. But until we get proper error reporting
+        // from setSize (which we can then ignore here), the OPFS backend will
+        // crash in this case because it does not support truncating files open
+        // only for reading.
+        if (accessMode != O_RDONLY) {
+          child->cast<DataFile>()->locked().setSize(0);
+        }
+      } else {
+        return -EACCES;
+      }
     } else {
-      return -EACCES;
+      return -EISDIR;
     }
   }
 
@@ -561,13 +590,6 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   }
 
   // TODO: Check that the insertion is successful.
-
-  // Update the times.
-  auto lockedFile = created->locked();
-  time_t now = time(NULL);
-  lockedFile.setATime(now);
-  lockedFile.setMTime(now);
-  lockedFile.setCTime(now);
 
   return 0;
 }
@@ -922,7 +944,10 @@ int __syscall_renameat(int olddirfd,
     return -EACCES;
   }
 
-  // TODO: Check that the source and parent directories have the same backends.
+  // Both parents must have the same backend.
+  if (oldParent->getBackend() != newParent->getBackend()) {
+    return -EXDEV;
+  }
 
   // Check that oldDir is not an ancestor of newDir.
   for (auto curr = newParent; curr != root; curr = curr->locked().getParent()) {
@@ -989,7 +1014,8 @@ int __syscall_symlink(intptr_t target, intptr_t linkpath) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
-  auto parsed = path::parseFile((char*)path, dirfd);
+  // TODO: Handle empty paths.
+  auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1454,17 +1480,6 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
     return -EBADF;
   }
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
-}
-
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
-  if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
-    return -EINVAL;
-  }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
-  if (auto err = parsed.getError()) {
-    return err;
-  }
-  return doStatFS(parsed.getFile(), sizeof(struct statfs), (struct statfs*)buf);
 }
 
 intptr_t _mmap_js(

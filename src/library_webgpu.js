@@ -92,6 +92,8 @@
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
     WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
+    MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
+    ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
       Unknown: 3,
     },
@@ -143,6 +145,9 @@
     QueueWorkDoneStatus: {
       Success: 0,
       Error: 1,
+    },
+    TextureFormat: {
+      Undefined: 0,
     },
   };
   return null;
@@ -1168,6 +1173,7 @@ var LibraryWebGPU = {
       function makeColorFormats(count, formatsPtr) {
         var formats = [];
         for (var i = 0; i < count; ++i, formatsPtr += 4) {
+          // format could be undefined
           formats.push(WebGPU.TextureFormat[{{{ gpu.makeGetU32('formatsPtr', 0) }}}]);
         }
         return formats;
@@ -1255,9 +1261,9 @@ var LibraryWebGPU = {
 
     function makeColorState(csPtr) {
       {{{ gpu.makeCheckDescriptor('csPtr') }}}
-      return {
-        "format": WebGPU.TextureFormat[
-          {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.format) }}}],
+      var formatInt = {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.format) }}};
+      return formatInt === {{{ gpu.TextureFormat.Undefined }}} ? undefined : {
+        "format": WebGPU.TextureFormat[formatInt],
         "blend": makeBlendState({{{ makeGetValue('csPtr', C_STRUCTS.WGPUColorTargetState.blend, '*') }}}),
         "writeMask": {{{ gpu.makeGetU32('csPtr', C_STRUCTS.WGPUColorTargetState.writeMask) }}},
       };
@@ -1516,7 +1522,10 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     var bufferOffset = {{{ gpu.makeU64ToNumber('bufferOffset_low', 'bufferOffset_high') }}};
-    queue["writeBuffer"](buffer, bufferOffset, HEAPU8, data, size);
+    // There is a size limitation for ArrayBufferView. Work around by passing in a subarray
+    // instead of the whole heap. crbug.com/1201109
+    var subarray = HEAPU8.subarray(data, data + size);
+    queue["writeBuffer"](buffer, bufferOffset, subarray, 0, size);
   },
 
   wgpuQueueWriteTexture: function(queueId,
@@ -1576,6 +1585,12 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheck('descriptor') }}}
 
     function makeColorAttachment(caPtr) {
+      var viewPtr = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}};
+      if (viewPtr === 0) {
+        // view could be undefined.
+        return undefined;
+      }
+
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
           assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
@@ -1589,8 +1604,7 @@ var LibraryWebGPU = {
       var clearValue = WebGPU.makeColor(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.clearValue }}});
 
       return {
-        "view": WebGPU.mgrTextureView.get(
-          {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.view) }}}),
+        "view": WebGPU.mgrTextureView.get(viewPtr),
         "resolveTarget": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.resolveTarget) }}}),
         "clearValue": clearValue,
@@ -1963,15 +1977,17 @@ var LibraryWebGPU = {
     var desc;
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      var mipLevelCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.mipLevelCount) }}};
+      var arrayLayerCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.arrayLayerCount) }}};
       desc = {
         "format": WebGPU.TextureFormat[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.format) }}}],
         "dimension": WebGPU.TextureViewDimension[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.dimension) }}}],
         "baseMipLevel": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.baseMipLevel) }}},
-        "mipLevelCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.mipLevelCount) }}},
+        "mipLevelCount": mipLevelCount === {{{ gpu.MIP_LEVEL_COUNT_UNDEFINED }}} ? undefined : mipLevelCount,
         "baseArrayLayer": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.baseArrayLayer) }}},
-        "arrayLayerCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.arrayLayerCount) }}},
+        "arrayLayerCount": arrayLayerCount === {{{ gpu.ARRAY_LAYER_COUNT_UNDEFINED }}} ? undefined : arrayLayerCount,
         "aspect": WebGPU.TextureAspect[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureViewDescriptor.aspect) }}}],
       };

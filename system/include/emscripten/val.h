@@ -11,6 +11,7 @@
 #error Including <emscripten/val.h> requires building with -std=c++11 or newer!
 #endif
 
+#include <cassert>
 #include <array>
 #include <climits>
 #include <emscripten/wire.h>
@@ -52,6 +53,7 @@ void _emval_decref(EM_VAL value);
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
 EM_VAL _emval_new_array();
+EM_VAL _emval_new_array_from_memory_view(EM_VAL mv);
 EM_VAL _emval_new_object();
 EM_VAL _emval_new_cstring(const char*);
 EM_VAL _emval_new_u8string(const char*);
@@ -190,15 +192,14 @@ union GenericWireType {
     union {
         unsigned u;
         float f;
-        #if __ILP32__
-        const void* p;
-        #endif
+        // Use uint32_t for pointer values.  This limits us, for now, to 32-bit
+        // address ranges even on wasm64.  This is enforced by assertions below.
+        // TODO(sbc): Allow full 64-bit address range here under wasm64, most
+        // likely by increasing the size of GenericWireType on wasm64.
+        uint32_t p;
     } w[2];
     double d;
     uint64_t u;
-    #if __LP64__
-    const void* p;
-    #endif
 };
 static_assert(sizeof(GenericWireType) == 8, "GenericWireType must be 8 bytes");
 static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
@@ -225,29 +226,18 @@ inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
 
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T* wt) {
-    #if __ILP32__
-    cursor->w[0].p = wt;
-    #else
-    cursor->p = wt;
-    // FIXME: This requires the JS reading code to be audited to be compatible with it.
-    assert(false);
-    abort();
-    #endif
+    uintptr_t short_ptr = reinterpret_cast<uintptr_t>(wt);
+    assert(short_ptr <= UINT32_MAX);
+    cursor->w[0].p = short_ptr;
     ++cursor;
 }
 
 template<typename ElementType>
 inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
+    uintptr_t short_ptr = reinterpret_cast<uintptr_t>(wt.data);
+    assert(short_ptr <= UINT32_MAX);
     cursor->w[0].u = wt.size;
-    #if __ILP32__
-    cursor->w[1].p = wt.data;
-    #else
-    // FIXME: need to change GenericWireType such that it can store a 64-bit pointer?
-    // This requires the JS reading code to be audited to be compatible with it.
-    cursor->w[1].u = 0;
-    assert(false);
-    abort();
-    #endif
+    cursor->w[1].p = short_ptr;
     ++cursor;
 }
 
@@ -346,7 +336,13 @@ public:
 
     template<typename T>
     static val array(const std::vector<T>& vec) {
-        return array(vec.begin(), vec.end());
+        if constexpr (internal::typeSupportsMemoryView<T>()) {
+            // for numeric types, pass memory view and copy in JS side one-off
+            val view{ typed_memory_view(vec.size(), vec.data()) };
+            return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+        } else {
+            return array(vec.begin(), vec.end());
+        }
     }
 
     static val object() {
