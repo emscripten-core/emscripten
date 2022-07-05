@@ -81,6 +81,7 @@ MAP_FUNDAMENTAL_TYPE(long, TYPE::INT32)
 MAP_FUNDAMENTAL_TYPE(unsigned long, TYPE::UINT32)
 MAP_FUNDAMENTAL_TYPE(float, TYPE::FLOAT32)
 MAP_FUNDAMENTAL_TYPE(double, TYPE::FLOAT64)
+MAP_FUNDAMENTAL_TYPE(bool, TYPE::BOOL)
 #undef MAP_FUNDAMENTAL_TYPE
 
 namespace internal {
@@ -260,6 +261,10 @@ class ValBuilder {
   void add(std::array<T, SIZE>&& a) {
     internal::AddArraySpan(a.data(), SIZE, this, true);
   }
+  template <typename T, size_t SIZE>
+  void add(const T(&a)[SIZE]) {
+    internal::AddArraySpan(a, SIZE, this, false);
+  }
 
   void concat_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
     cursor_->type = TYPE::ARRAY;
@@ -286,6 +291,10 @@ class ValBuilder {
   template <typename T, size_t SIZE>
   void concat(std::array<T, SIZE>&& a) {
     internal::ConcatArraySpan(a.data(), SIZE, this, true);
+  }
+  template <typename T, size_t SIZE>
+  void concat(const T(&a)[SIZE]) {
+    internal::ConcatArraySpan(a, SIZE, this, false);
   }
 
   void finalize() {

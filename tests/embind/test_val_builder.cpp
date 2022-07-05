@@ -144,7 +144,6 @@ void test_cases() {
   test("concat(array&)");
   EM_ASM(
     a = [];
-
   );
   va.attach(val::global("a"));
   va.add(0);

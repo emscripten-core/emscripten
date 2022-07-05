@@ -71,12 +71,12 @@ mergeInto(LibraryManager.library, {
                     v = new Array(n);
                     // Seems using for..loop is faster than slice()!
                     if (ty == 11) {  // BOOL(Byte)
-                        for (var j = 0; j < n; j++) v[j] = !!heap[ad+j];
+                        for (var j = 0; j < n; j++) v[j] = !!heap[ad + j];
                     } else {
-                        for (var j = 0; j < n; j++) v[j] = heap[ad+j];
+                        for (var j = 0; j < n; j++) v[j] = heap[ad + j];
                     }
                     if (con) {
-                        o.concat(v);
+                        o.push(...v);
                         skip = true;
                     }
                 }
