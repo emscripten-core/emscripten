@@ -99,6 +99,11 @@ global.LibraryManager = {
       libraries.push('library_wasmfs_opfs.js');
     }
 
+    if (XTERMPTY) {
+      libraries.push('library_termios.js');
+      libraries.push('library_xtermpty.js');
+    }
+
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([

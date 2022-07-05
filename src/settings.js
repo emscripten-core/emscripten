@@ -936,6 +936,10 @@ var FILESYSTEM = true;
 // [link]
 var FORCE_FILESYSTEM = false;
 
+// Enables support for xterm-pty integration. A TTY client needs to be
+// set on Module['tty'].
+var XTERMPTY = false;
+
 // Enables support for the NODERAWFS filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
 // operations, without the need to do `FS.mount()`, and this backend only

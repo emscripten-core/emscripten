@@ -489,6 +489,69 @@
             "RTLD_NODELETE"
         ]
     },
+    {
+        "file": "termios.h",
+        "defines": [
+            "NCCS",
+            "ISTRIP",
+            "INLCR",
+            "IGNCR",
+            "ICRNL",
+            "IUCLC",
+            "IXON",
+            "IXANY",
+            "IMAXBEL",
+            "IUTF8",
+            "OPOST",
+            "OLCUC",
+            "ONLCR",
+            "OCRNL",
+            "ONOCR",
+            "ONLRET",
+            "TABDLY",
+            "XTABS",
+            "ISIG",
+            "ICANON",
+            "ECHO",
+            "ECHOE",
+            "ECHOK",
+            "ECHONL",
+            "NOFLSH",
+            "ECHOCTL",
+            "ECHOPRT",
+            "ECHOKE",
+            "IEXTEN",
+            "VINTR",
+            "VQUIT",
+            "VERASE",
+            "VKILL",
+            "VEOF",
+            "VTIME",
+            "VMIN",
+            "VSWTC",
+            "VSTART",
+            "VSTOP",
+            "VSUSP",
+            "VEOL",
+            "VREPRINT",
+            "VDISCARD",
+            "VWERASE",
+            "VLNEXT",
+            "VEOL2"
+        ],
+        "structs": {
+          "termios": [
+            "c_iflag",
+            "c_oflag",
+            "c_cflag",
+            "c_lflag",
+            "c_line",
+            "c_cc",
+            "__c_ispeed",
+            "__c_ospeed"
+          ]
+        }
+    },
     // ===========================================
     // SDL
     // ===========================================

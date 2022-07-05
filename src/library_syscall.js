@@ -211,48 +211,20 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (op) {
       case {{{ cDefine('TCGETA') }}}:
-      case {{{ cDefine('TCGETS') }}}: {
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-#if SYSCALL_DEBUG
-        err('warning: not filling tio struct');
-#endif
-        return 0;
-      }
+      case {{{ cDefine('TCGETS') }}}:
       case {{{ cDefine('TCSETA') }}}:
       case {{{ cDefine('TCSETAW') }}}:
       case {{{ cDefine('TCSETAF') }}}:
       case {{{ cDefine('TCSETS') }}}:
       case {{{ cDefine('TCSETSW') }}}:
-      case {{{ cDefine('TCSETSF') }}}: {
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-        return 0; // no-op, not actually adjusting terminal settings
-      }
-      case {{{ cDefine('TIOCGPGRP') }}}: {
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-        var argp = SYSCALLS.get();
-        {{{ makeSetValue('argp', 0, 0, 'i32') }}};
-        return 0;
-      }
-      case {{{ cDefine('TIOCSPGRP') }}}: {
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-        return -{{{ cDefine('EINVAL') }}}; // not supported
-      }
+      case {{{ cDefine('TCSETSF') }}}:
+      case {{{ cDefine('TIOCGPGRP') }}}:
+      case {{{ cDefine('TIOCSPGRP') }}}:
+      case {{{ cDefine('TIOCGWINSZ') }}}:
+      case {{{ cDefine('TIOCSWINSZ') }}}:
       case {{{ cDefine('FIONREAD') }}}: {
         var argp = SYSCALLS.get();
         return FS.ioctl(stream, op, argp);
-      }
-      case {{{ cDefine('TIOCGWINSZ') }}}: {
-        // TODO: in theory we should write to the winsize struct that gets
-        // passed in, but for now musl doesn't read anything on it
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-        return 0;
-      }
-      case {{{ cDefine('TIOCSWINSZ') }}}: {
-        // TODO: technically, this ioctl call should change the window size.
-        // but, since emscripten doesn't have any concept of a terminal window
-        // yet, we'll just silently throw it away as we do TIOCGWINSZ
-        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
-        return 0;
       }
       default: abort('bad ioctl syscall ' + op);
     }
