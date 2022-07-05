@@ -25,40 +25,52 @@ mergeInto(LibraryManager.library, {
         var v;
         var skip = false;
         switch (t) {
-            case 1:  // INT32
+            case 1:  // INT8
+                v = HEAP8[ptr]; break;
+            case 2:  // UINT8
+                v = HEAPU8[ptr]; break;
+            case 3:  // INT16
+                v = HEAP16[(ptr >> 1)]; break;
+            case 4:  // UINT16
+                v = HEAPU16[(ptr >> 1)]; break;
+            case 5:  // INT32
                 v = HEAP32[(ptr >> 2)]; break;
-            case 2:  // UINT32
+            case 6:  // UINT32
                 v = HEAPU32[(ptr >> 2)]; break;
-            case 3:  // FLOAT32
+            case 7:  // FLOAT32
                 v = HEAPF32[(ptr >> 2)]; break;
-            case 4:  // FLOAT64
+            case 8:  // FLOAT64
                 v = HEAPF64[(ptr >> 3)]; break;
-            case 5:  // BOOL
+            case 11:  // BOOL
                 v = !!HEAPU8[ptr]; break;
-            case 6:  // STRING
+            case 12:  // STRING
                 v = readLatin1String(HEAP32[(ptr >> 2)]); break;
-            case 7:  // U8STRING
+            case 13:  // U8STRING
                 v = UTF8ToString(HEAP32[(ptr >> 2)]); break;
-            case 8:  // EMVAL
+            case 14:  // EMVAL
                 v = Emval.toValue(HEAP32[(ptr >> 2)]); break;
-            case 9: {  // ARRAY
+            case 15: {  // ARRAY
                 var ad = HEAP32[(ptr >> 2)];
                 var ty = HEAPU8[(ptr + 4)];
                 var con = !!HEAPU8[(ptr + 5)];
                 var n = HEAPU16[(ptr >> 1) + 3];
                 var heap;
                 switch (ty) {
-                    case 1: ad >>= 2; heap = HEAP32;  break;  // INT32
-                    case 2: ad >>= 2; heap = HEAPU32; break;  // UINT32
-                    case 3: ad >>= 2; heap = HEAPF32; break;  // FLOAT32
-                    case 4: ad >>= 3; heap = HEAPF64; break;  // FLOAT64
-                    case 5:           heap = HEAPU8;  break;  // BOOL
+                    case 1:           heap = HEAP8;  break;   // INT8
+                    case 2:           heap = HEAPU8; break;   // UINT8
+                    case 3: ad >>= 1; heap = HEAP16; break;   // INT16
+                    case 4: ad >>= 1; heap = HEAPU16; break;  // UINT16
+                    case 5: ad >>= 2; heap = HEAP32;  break;  // INT32
+                    case 6: ad >>= 2; heap = HEAPU32; break;  // UINT32
+                    case 7: ad >>= 2; heap = HEAPF32; break;  // FLOAT32
+                    case 8: ad >>= 3; heap = HEAPF64; break;  // FLOAT64
+                    case 11:          heap = HEAPU8;  break;  // BOOL
                     default: skip = true; break;
                 }
                 if (!skip) {
                     v = new Array(n);
                     // Seems using for..loop is faster than slice()!
-                    if (ty == 5) {  // BOOL(Byte)
+                    if (ty == 11) {  // BOOL(Byte)
                         for (var j = 0; j < n; j++) v[j] = !!heap[ad+j];
                     } else {
                         for (var j = 0; j < n; j++) v[j] = heap[ad+j];

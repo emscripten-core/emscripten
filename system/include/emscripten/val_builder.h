@@ -34,47 +34,58 @@
 //     std::move if only few ones(1 or 2).
 //          ValBuilder vb(ARRAY);
 //          if (condition) {
-//              std::string temp;
-//              generate_string(&temp);
-//              vb.add(std::move(temp));
+//              val a = val(1);
+//              vb.add(std::move(a));
 //          }
 //  2) When you passed ValBuilder as argument, always do finalize() before
 //     leaving the scope as cached pointers may be stale immediately.
 //
 namespace emscripten {
 
-// TODO: include all primitive types here.
-enum class TYPE : uint8_t {
-    NONE = 0,
-    INT32,
-    UINT32,
-    FLOAT32,
-    FLOAT64,
-    BOOL,
-    STRING,
-    U8STRING,
-    EMVAL,
-    ARRAY,
-    MAX
-};
-
 enum EmValType {
     OBJECT = 0,  // Default
     ARRAY,
 };
 
+enum class TYPE : uint8_t {
+    NONE = 0,
+    INT8,
+    UINT8,
+    INT16,
+    UINT16,
+    INT32,
+    UINT32,
+    FLOAT32,
+    FLOAT64,
+    // 9,10 reserved
+    BOOL = 11,
+    STRING,
+    U8STRING,
+    EMVAL,
+    ARRAY,
+};
+
 template<typename T>
 struct map { static constexpr TYPE type = TYPE::NONE; };
-template<> struct map<int> { static constexpr TYPE type = TYPE::INT32; };
-template<> struct map<uint32_t> { static constexpr TYPE type = TYPE::UINT32; };
-template<> struct map<float> { static constexpr TYPE type = TYPE::FLOAT32; };
-template<> struct map<double> { static constexpr TYPE type = TYPE::FLOAT64; };
-template<> struct map<bool> { static constexpr TYPE type = TYPE::BOOL; };
 
-constexpr bool is_supported_array_type(TYPE t) {
-  return (t == TYPE::INT32 || t == TYPE::UINT32 || t == TYPE::FLOAT32 ||
-          t == TYPE::FLOAT64 || t == TYPE::BOOL);
-}
+#define MAP_FUNDAMENTAL_TYPE(F, T)      \
+template<> struct map<F> { static constexpr TYPE type = T; };
+
+MAP_FUNDAMENTAL_TYPE(char, TYPE::INT8)
+MAP_FUNDAMENTAL_TYPE(unsigned char, TYPE::UINT8)
+MAP_FUNDAMENTAL_TYPE(short, TYPE::INT16)
+MAP_FUNDAMENTAL_TYPE(unsigned short, TYPE::UINT16)
+MAP_FUNDAMENTAL_TYPE(int, TYPE::INT32)
+MAP_FUNDAMENTAL_TYPE(unsigned int, TYPE::UINT32)
+MAP_FUNDAMENTAL_TYPE(long, TYPE::INT32)
+MAP_FUNDAMENTAL_TYPE(unsigned long, TYPE::UINT32)
+MAP_FUNDAMENTAL_TYPE(float, TYPE::FLOAT32)
+MAP_FUNDAMENTAL_TYPE(double, TYPE::FLOAT64)
+#undef MAP_FUNDAMENTAL_TYPE
+
+namespace internal {
+
+extern "C" void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
 
 template<typename>
 struct is_std_vector : std::false_type {};
@@ -108,32 +119,26 @@ static constexpr bool check_arg_pointer_wont_dangle() {
   return true;
 }
 
-namespace internal {
+template<typename T>
+constexpr bool is_mapped_fundamental_type() {
+  return (map<T>::type != TYPE::NONE);
+}
 
-extern "C" {
-
-void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
-
-} // extern "C"
-
-template<typename T, typename VH>
-void AddArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
-  if constexpr (is_supported_array_type(map<T>::type)) {
-    // much more efficient way.
+template<typename T, typename VB>
+void AddArraySpan(const T* start, size_t n, VB* h, bool commit_now) {
+  if constexpr (is_mapped_fundamental_type<T>()) {
     h->add_array(start, n, map<T>::type);
-    if (commit_now)
-      h->finalize();
+    if (commit_now) h->finalize();
   } else {
-    VH tp(ARRAY);
+    VB tp(ARRAY);
     tp.add(start, start + n);
     h->add(tp);  // always committed
   }
 }
 
-template<typename T, typename VH>
-void ConcatArraySpan(const T* start, size_t n, VH* h, bool commit_now) {
-  if constexpr (is_supported_array_type(map<T>::type)) {
-    // much more efficient way.
+template<typename T, typename VB>
+void ConcatArraySpan(const T* start, size_t n, VB* h, bool commit_now) {
+  if constexpr (is_mapped_fundamental_type<T>()) {
     h->concat_array(start, n, map<T>::type);
   } else {
     h->add(start, start + n);
@@ -162,7 +167,7 @@ class ValBuilder {
 
   template <typename V>
   void set(const val& k, V&& v) {
-    if constexpr (check_arg_pointer_wont_dangle<V>()) {}
+    if constexpr (internal::check_arg_pointer_wont_dangle<V>()) {}
 
     cursor_->key = (const char*)k.as_handle();
     cursor_->key_flag = FLAG_VAL_KEY;
@@ -171,16 +176,15 @@ class ValBuilder {
 
   template <typename V>
   void set(const char* k, V&& v) {
-    if constexpr (check_arg_pointer_wont_dangle<V>()) {}
+    if constexpr (internal::check_arg_pointer_wont_dangle<V>()) {}
 
     cursor_->key = k;
     cursor_->key_flag = FLAG_NONE;
     add(std::forward<V>(v));
   }
 
-  // This takes care of all supported primitive types.
   template<typename V,
-        typename = std::enable_if_t<is_supported_array_type(map<V>::type)>>
+        typename = std::enable_if_t<internal::is_mapped_fundamental_type<V>()>>
   void add(const V& v) {
     cursor_->type = map<V>::type;
     memcpy(cursor_->value.w, &v, sizeof(V));
@@ -231,7 +235,6 @@ class ValBuilder {
       add(*it);
   }
 
-  // Using explicit type
   void add_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
     cursor_->type = TYPE::ARRAY;
     cursor_->value.w[0].addr = a;
@@ -251,15 +254,11 @@ class ValBuilder {
   }
   template <typename T, size_t SIZE>
   void add(const std::array<T, SIZE>& a) {
-    internal::AddArraySpan(a.data(), a.size(), this, false);
+    internal::AddArraySpan(a.data(), SIZE, this, false);
   }
   template <typename T, size_t SIZE>
   void add(std::array<T, SIZE>&& a) {
-    internal::AddArraySpan(a.data(), a.size(), this, true);
-  }
-  template <typename T, size_t SIZE>
-  void add(const T(&a)[SIZE]) {
-    internal::AddArraySpan(a, SIZE, this, false);
+    internal::AddArraySpan(a.data(), SIZE, this, true);
   }
 
   void concat_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
@@ -282,15 +281,11 @@ class ValBuilder {
   }
   template <typename T, size_t SIZE>
   void concat(const std::array<T, SIZE>& a) {
-    internal::ConcatArraySpan(a.data(), a.size(), this, false);
+    internal::ConcatArraySpan(a.data(), SIZE, this, false);
   }
   template <typename T, size_t SIZE>
   void concat(std::array<T, SIZE>&& a) {
-    internal::ConcatArraySpan(a.data(), a.size(), this, true);
-  }
-  template <typename T, size_t SIZE>
-  void concat(const T(&a)[SIZE]) {
-    internal::ConcatArraySpan(a, SIZE, this, false);
+    internal::ConcatArraySpan(a.data(), SIZE, this, true);
   }
 
   void finalize() {
@@ -339,25 +334,22 @@ class ValBuilder {
   // |Entry| is 16B in length, keep it a POD.
   struct Entry {
     TYPE type;  // uint8_t
-    uint8_t key_flag;  // key is emscripten::val
-
-    const char* key;  // key string for OBJECT
+    uint8_t key_flag;  // optional FLAG_VAL_KEY
+    const char* key;   // optional key(ASCII string)
     union {
       union {
         int32_t i;
-        uint32_t u;
-        float f;
         const char* s;
         emscripten::EM_VAL v;
         const void* addr;
         struct {
-          uint8_t t;  // TYPE still
+          uint8_t t;  // TYPE of array
           uint8_t f;  // FLAG_CONCAT
-          uint16_t n;
+          uint16_t n; // size
         } item;
       } w[2];
       double d;
-      uint64_t u;  // not now
+      uint64_t u;  // BIGINT
       bool b;
     } value;
   };
