@@ -598,7 +598,7 @@ var LibraryGLFW = {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      });
+      }, true);
     },
 
     onFramebufferSizeChanged: function() {
@@ -610,7 +610,7 @@ var LibraryGLFW = {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      });
+      }, true);
     },
 
     getTime: function() {

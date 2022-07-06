@@ -41,6 +41,13 @@ assert(glfwSet##Function(Value) == Value); /* The previously set callback */
 assert(glfwSet##Function(Window, Value) == NULL);  /* Default value (no callback was set) */ \
 assert(glfwSet##Function(Window, Value) == Value); /* The previously set callback */
 
+static int exited = 0;
+
+__attribute__((destructor))
+void onExit() {
+    exited = 1;
+}
+
 int main()
 {
     GLFWwindow *window;
@@ -117,10 +124,12 @@ int main()
         glfwGetWindowPos(window, &x, &y); // stub
         glfwGetWindowSize(window, &w, &h);
         assert(w == 640 && h == 480);
+        assert(exited == 0);
 
         glfwSetWindowSize(window, 1, 1);
         glfwGetWindowSize(window, &w, &h);
         assert(w == 1 && h == 1);
+        assert(exited == 0);
 
         glfwSetWindowSize(window, 640, 480);
         glfwGetFramebufferSize(window, &w, &h);
