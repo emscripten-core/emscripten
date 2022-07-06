@@ -81,6 +81,11 @@ function runJSify(functionsOnly) {
     LibraryManager.load();
 
     const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+    for (const sym of EXPORTED_RUNTIME_METHODS) {
+      if ('$' + sym in LibraryManager.library) {
+        libFuncsToInclude.push('$' + sym);
+      }
+    }
     if (INCLUDE_FULL_LIBRARY) {
       for (const key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
