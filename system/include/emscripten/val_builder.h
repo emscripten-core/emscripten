@@ -340,7 +340,7 @@ class ValBuilder {
 
   enum { FLAG_NONE = 0, FLAG_CONCAT = 1, FLAG_VAL_KEY = 2 };
 
-  // |Entry| is 16B in length, keep it a POD.
+  // |Entry| is 16B in length(Wasm32), keep it a POD.
   struct Entry {
     TYPE type;  // uint8_t
     uint8_t key_flag;  // optional FLAG_VAL_KEY
@@ -364,7 +364,6 @@ class ValBuilder {
   };
 
   static_assert(alignof(Entry) == 8, "Entry must be 8B aligned");
-  static_assert(sizeof(Entry) == 16, "Entry must be 16B in length");
 
   // Use fixed-length array instead of vector, as it's used as a buffer.
   // We will `flush` the buffer on the fly when it got full.
