@@ -7799,8 +7799,7 @@ void* operator new(size_t size) {
       '--extern-post-js=post.js',
       '--closure=1',
       '-g1',
-      '-s',
-      'MODULARIZE=1',
+      '-sMODULARIZE',
     ]
     self.do_core_test('modularize_closure_pre.c')
 

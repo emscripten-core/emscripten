@@ -2074,7 +2074,7 @@ int f() {
     self.run_process(cmd)
 
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
-    cmd += ['-s', "EXPORTED_FUNCTIONS=foobar"]
+    cmd += ['-sEXPORTED_FUNCTIONS=foobar']
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
 
