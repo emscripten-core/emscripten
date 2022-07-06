@@ -7405,6 +7405,26 @@ int main() {
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
     self.assertLess(ratio, size_slack)
 
+  def test_unoptimized_code_size(self):
+    # We don't care too about unoptimized code size but we would like to keep it
+    # under control to a certain extent.  This test allows us to track major
+    # changes to the size of the unoptimized and unminified code size.
+    # Run with `--rebase` when this test fails.
+    self.build(test_file('hello_world.c'), emcc_args=['-O0'])
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size.wasm.size'),
+                                     os.path.getsize('hello_world.wasm'))
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
+                                     os.path.getsize('no_asserts.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size.js.size'),
+                                     os.path.getsize('hello_world.js'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
+                                     os.path.getsize('no_asserts.js'))
+
   def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
 
