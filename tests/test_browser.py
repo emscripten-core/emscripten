@@ -5174,12 +5174,18 @@ window.close = function() {
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.btest(test_file('wasm_worker/terminate_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.set_setting('WASM_WORKERS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
+    self.btest(test_file('wasm_worker/terminate_wasm_worker.c'), expected='0')
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate_all(self):
-    self.btest(test_file('wasm_worker/terminate_all_wasm_workers.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.set_setting('WASM_WORKERS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
+    self.btest(test_file('wasm_worker/terminate_all_wasm_workers.c'), expected='0')
 
   # Tests emscripten_wasm_worker_post_function_*() API
   @also_with_minimal_runtime
@@ -5260,8 +5266,12 @@ window.close = function() {
   # Tests that proxied JS functions cannot be called from Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_no_proxied_js_functions(self):
+    self.set_setting('WASM_WORKERS')
+    self.set_setting('ASSERTIONS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
     self.btest(test_file('wasm_worker/no_proxied_js_functions.c'), expected='0',
-               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js')])
 
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime
