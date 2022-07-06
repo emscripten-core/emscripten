@@ -1848,15 +1848,20 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
     exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-  # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
-  if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
-
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
+    if not settings.MINIMAL_RUNTIME:
+      if settings.DYNCALLS:
+        # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+
+      if settings.ASSERTIONS and not settings.EXIT_RUNTIME:
+        # "checkUnflushedContent()" depends on warnOnce
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
+
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
+
     if settings.SAFE_HEAP:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
-    if not settings.MINIMAL_RUNTIME:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE

@@ -776,9 +776,7 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
-#if MINIMAL_RUNTIME
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
-#endif
   emscripten_check_blocking_allowed: function() {
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
 #if ENVIRONMENT_MAY_BE_NODE
