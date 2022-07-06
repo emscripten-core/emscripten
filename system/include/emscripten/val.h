@@ -327,7 +327,7 @@ public:
 
     template<typename Iter>
     static val array(Iter begin, Iter end) {
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
         if constexpr (std::contiguous_iterator<Iter> &&
                       internal::typeSupportsMemoryView<
                         typename std::iterator_traits<Iter>::value_type>()) {
