@@ -44,12 +44,6 @@ function unexportedRuntimeSymbol(sym, isFSSybol) {
     });
   }
 }
-
-function unexportedRuntimeFunction(sym, isFSSybol) {
-  if (!Object.getOwnPropertyDescriptor(Module, sym)) {
-    Module[sym] = () => abort(unexportedMessage(sym, isFSSybol));
-  }
-}
 #endif
 
 #if RUNTIME_DEBUG

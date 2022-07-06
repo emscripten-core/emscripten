@@ -380,7 +380,7 @@ function exportRuntime() {
   // in ASSERTIONS mode we show a useful error if it is used without
   // being exported. how we show the message depends on whether it's
   // a function (almost all of them) or a number.
-  function maybeExport(name, isNumber) {
+  function maybeExport(name) {
     // if requested to be exported, export it
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
@@ -401,20 +401,14 @@ function exportRuntime() {
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
       const fssymbol = isExportedByForceFilesystem(name);
-      if (isNumber) {
-        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
-      } else {
-        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
-      }
+      return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
     }
-  }
-
-  function maybeExportNumber(name) {
-    return maybeExport(name, true);
   }
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
+    'ALLOC_NORMAL',
+    'ALLOC_STACK',
     'ccall',
     'cwrap',
     'allocate',
@@ -532,22 +526,16 @@ function exportRuntime() {
     }
   }
 
-  const runtimeNumbers = [
-    'ALLOC_NORMAL',
-    'ALLOC_STACK',
-  ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     const runtimeElementsSet = new Set(runtimeElements);
-    const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
+      if (!runtimeElementsSet.has(name)) {
         printErr(`warning: invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
   let exports = runtimeElements.map((name) => maybeExport(name));
-  exports = exports.concat(runtimeNumbers.map((name) => maybeExportNumber(name)));
   exports = exports.filter((name) => name);
   return exports.join('\n') + '\n' + addMissingLibraryStubs();
 }
