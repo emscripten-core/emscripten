@@ -10,7 +10,7 @@ using namespace emscripten;
 
 using VB = emscripten::ValBuilder<32>;
 
-#if _LIBCPP_STD_VER < 20
+#if _LIBCPP_STD_VER < 17
 namespace std {
 
 template <class T, std::size_t N>

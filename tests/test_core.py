@@ -7437,10 +7437,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val_builder.cpp')
 
-  def test_val_builder_benchmark(self):
-    self.emcc_args += ['-lembind']
-    self.do_runf(test_file('embind/val_builder_benchmark.cpp'))
-
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
