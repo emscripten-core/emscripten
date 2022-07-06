@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.15
+3.1.16
 ------
+
+3.1.15 - 07/01/2022
+-------------------
 - The JS library helper function `hasExportedFunction` has been replaced with
   `hasExportedSymbol`, which takes an unmangled (no leading underscore) symbol
   name.

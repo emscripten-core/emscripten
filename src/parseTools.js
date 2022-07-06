@@ -1164,15 +1164,16 @@ function addReadyPromiseAssertions(promise) {
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');
-  return properties.map((property) => {
-    const warningEnding = `${property} on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js`;
-    return `
-      if (!Object.getOwnPropertyDescriptor(${promise}, '${property}')) {
-        Object.defineProperty(${promise}, '${property}', { configurable: true, get: function() { abort('You are getting ${warningEnding}') } });
-        Object.defineProperty(${promise}, '${property}', { configurable: true, set: function() { abort('You are setting ${warningEnding}') } });
-      }
-    `;
-  }).join('\n');
+  const warningEnding = ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
+  const res = JSON.stringify(properties);
+  return res + `.forEach((prop) => {
+  if (!Object.getOwnPropertyDescriptor(${promise}, prop)) {
+    Object.defineProperty(${promise}, prop, {
+      get: () => abort('You are getting ' + prop + '${warningEnding}'),
+      set: () => abort('You are setting ' + prop + '${warningEnding}'),
+    });
+  }
+});`;
 }
 
 function makeMalloc(source, param) {
