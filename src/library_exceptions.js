@@ -425,13 +425,25 @@ var LibraryExceptions = {
 
   $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObjectFromWebAssemblyException'],
   $getExceptionMessage: function(ex) {
-    // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
-    // thrown value from it.
-    var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
-    var utf8_addr = ___get_exception_message(ptr);
-    var result = UTF8ToString(utf8_addr);
-    _free(utf8_addr);
-    return result;
+    return withStackSave(function() {
+        // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
+      // thrown value from it.
+      var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
+
+      var type_addr_addr = stackAlloc(4);
+      var message_addr_addr = stackAlloc(4);
+      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
+      var type_addr = HEAP32[type_addr_addr/4];
+      var message_addr = HEAP32[message_addr_addr/4];
+      var type = UTF8ToString(type_addr);
+      _free(type_addr);
+      var message;
+      if (message_addr) {
+        message = UTF8ToString(message_addr);
+        _free(message_addr);
+      }
+      return [type, message];
+    });
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
@@ -447,10 +459,21 @@ var LibraryExceptions = {
 
   $getExceptionMessage__deps: ['__get_exception_message', 'free'],
   $getExceptionMessage: function(ptr) {
-    var utf8_addr = ___get_exception_message(ptr);
-    var result = UTF8ToString(utf8_addr);
-    _free(utf8_addr);
-    return result;
+    return withStackSave(function() {
+      var type_addr_addr = stackAlloc(4);
+      var message_addr_addr = stackAlloc(4);
+      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
+      var type_addr = HEAP32[type_addr_addr/4];
+      var message_addr = HEAP32[message_addr_addr/4];
+      var type = UTF8ToString(type_addr);
+      _free(type_addr);
+      var message;
+      if (message_addr) {
+        message = UTF8ToString(message_addr);
+        _free(message_addr);
+      }
+      return [type, message];
+    });
   },
 #endif
 };

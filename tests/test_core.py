@@ -1689,11 +1689,11 @@ int main(int argc, char **argv)
       }
     '''
     expected = '''\
-exception of type int
-exception of type char
-exception of type std::runtime_error: abc
-exception of type myexception: My exception happened
-exception of type char const*
+[ 'int', undefined ]
+[ 'char', undefined ]
+[ 'std::runtime_error', 'abc' ]
+[ 'myexception', 'My exception happened' ]
+[ 'char const*', undefined ]
 '''
 
     self.do_run(src, expected)
