@@ -20,6 +20,16 @@ See docs/process.md for more on how version tagging works.
 
 3.1.16
 ------
+- When JS library functions are included as part of `EXPORTED_RUNTIME_METHODS`
+  it is no longer necessary to also add them to
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.  This change allows us to transition
+  runtime functions to JS library functions without the need to folks to add
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17369)
+- The `addFunction`/`removeFunction` runtime functions were converted into JS
+  library functions.  This means that won't get included in the output unless
+  explictly required.  Exporting them via `EXPORTED_RUNTIME_METHODS` will
+  continue to work.  For internal usage (without exporting them) they can be
+  added to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
 
 3.1.15 - 07/01/2022
 -------------------

@@ -17,8 +17,6 @@ function warnOnce(text) {
   }
 }
 
-#include "runtime_functions.js"
-
 #include "runtime_debug.js"
 
 var tempRet0 = 0;

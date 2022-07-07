@@ -5680,22 +5680,16 @@ main( int argv, char ** argc ) {
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32'])
-    else:
-      self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf(test_file('utf32.cpp'), 'OK.')
     self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
   def test_utf16(self):
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['writeAsciiToMemory'])
     self.do_runf(test_file('core/test_utf16.cpp'), 'OK.')
 
   def test_utf8(self):
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
-    else:
-      self.set_setting('EXPORTED_RUNTIME_METHODS',
-                       ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii', 'writeAsciiToMemory'])
     self.do_runf(test_file('utf8.cpp'), 'OK.')
 
   @also_with_wasm_bigint
@@ -7139,6 +7133,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction', '$removeFunction'])
     src = test_file('interop/test_add_function.cpp')
     post_js = test_file('interop/test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
@@ -9275,6 +9270,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
 

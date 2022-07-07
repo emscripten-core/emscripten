@@ -30,6 +30,10 @@ function unexportedMessage(sym, isFSSybol) {
   return msg;
 }
 
+function missingLibraryFunc(sym) {
+  return () => abort('Call to `' + sym + '` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line');
+}
+
 function unexportedRuntimeSymbol(sym, isFSSybol) {
   if (!Object.getOwnPropertyDescriptor(Module, sym)) {
     Object.defineProperty(Module, sym, {

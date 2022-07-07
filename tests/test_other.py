@@ -3085,8 +3085,8 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'undefined'
 
-    self.run_process([EMCC, 'count.c', '-sFORCE_FILESYSTEM', '-s',
-                     'EXPORTED_RUNTIME_METHODS=FS_writeFile', '-o', 'count.js'])
+    self.run_process([EMCC, 'count.c', '-sFORCE_FILESYSTEM',
+                      '-sEXPORTED_RUNTIME_METHODS=FS_writeFile', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
     self.assertNotContained(reference_error_text, self.run_js('index.js'))
@@ -3096,6 +3096,15 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # Check that the Module.FS_writeFile is not exported
     out = self.run_js('index.js')
     self.assertContained(reference_error_text, out)
+
+  def test_exported_runtime_methods_from_js_library(self):
+    create_file('pre.js', '''
+      Module.onRuntimeInitialized = () => {
+        Module.setErrNo(88);
+        console.log('done');
+      }
+    ''')
+    self.do_runf(test_file('hello_world.c'), 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=setErrNo'])
 
   def test_fs_stream_proto(self):
     open('src.cpp', 'wb').write(br'''
@@ -7405,6 +7414,26 @@ int main() {
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
     self.assertLess(ratio, size_slack)
 
+  def test_unoptimized_code_size(self):
+    # We don't care too about unoptimized code size but we would like to keep it
+    # under control to a certain extent.  This test allows us to track major
+    # changes to the size of the unoptimized and unminified code size.
+    # Run with `--rebase` when this test fails.
+    self.build(test_file('hello_world.c'), emcc_args=['-O0'])
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size.wasm.size'),
+                                     os.path.getsize('hello_world.wasm'))
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
+                                     os.path.getsize('no_asserts.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size.js.size'),
+                                     os.path.getsize('hello_world.js'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
+                                     os.path.getsize('no_asserts.js'))
+
   def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
 
@@ -11603,7 +11632,7 @@ void foo() {}
     create_file('post.js', 'alignMemory(100, 4);')
     self.run_process([EMCC, test_file('hello_world.c'), '--post-js=post.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('`alignMemory` is now a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
+    self.assertContained('Call to `alignMemory` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_override_system_js_lib_symbol(self):

@@ -863,10 +863,7 @@ var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
-// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
-// that methods on this list are only exported if they are included (either
-// automatically from linking, or due to being in
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
 // having "FS" in this list.

@@ -38,6 +38,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
       'library_math.js',
@@ -344,6 +345,33 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+function isInternalSymbol(ident) {
+  return ident + '__internal' in LibraryManager.library;
+}
+
+// When running with ASSERTIONS enabled we create stubs for each library
+// function that that was not included in the build.  This gives useful errors
+// when library dependencies are missing from `__deps` or depended on without
+// being added to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+// TODO(sbc): These errors could potentially be generated at build time via
+// some kind of acorn pass that searched for uses of these missing symbols.
+function addMissingLibraryStubs() {
+  if (!ASSERTIONS) return '';
+  let rtn = '';
+  const librarySymbolSet = new Set(libraryFunctions);
+  for (const ident in LibraryManager.library) {
+    if (typeof LibraryManager.library[ident] === 'function') {
+      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+        const name = ident.substr(1);
+        if (!librarySymbolSet.has(name)) {
+          rtn += `var ${name} = missingLibraryFunc('${name}');\n`;
+        }
+      }
+    }
+  }
+  return rtn;
+}
+
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
@@ -379,7 +407,6 @@ function exportRuntime() {
         return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
       }
     }
-    return '';
   }
 
   function maybeExportNumber(name) {
@@ -415,8 +442,6 @@ function exportRuntime() {
     'getFunctionTables',
     'alignFunctionTables',
     'registerFunctions',
-    'addFunction',
-    'removeFunction',
     'prettyPrint',
     'getCompilerSetting',
     'print',
@@ -484,6 +509,7 @@ function exportRuntime() {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
   }
+
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
@@ -499,7 +525,7 @@ function exportRuntime() {
   // '$ which indicates they are JS methods.
   const runtimeElementsSet = new Set(runtimeElements);
   for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
@@ -516,12 +542,12 @@ function exportRuntime() {
     const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
       if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
-        printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
+        printErr(`warning: invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
   let exports = runtimeElements.map((name) => maybeExport(name));
   exports = exports.concat(runtimeNumbers.map((name) => maybeExportNumber(name)));
-  exports = exports.filter((name) => name != '');
-  return exports.join('\n');
+  exports = exports.filter((name) => name);
+  return exports.join('\n') + '\n' + addMissingLibraryStubs();
 }
