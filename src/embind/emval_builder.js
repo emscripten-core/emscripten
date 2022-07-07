@@ -41,6 +41,12 @@ mergeInto(LibraryManager.library, {
                 v = HEAPF32[(ptr >> 2)]; break;
             case 8:  // FLOAT64
                 v = HEAPF64[(ptr >> 3)]; break;
+#if WASM_BIGINT
+            case 9:  // INT64
+                v = HEAP64[(ptr >> 3)]; break;
+            case 10:  // UINT64
+                v = HEAPU64[(ptr >> 3)]; break;
+#endif
             case 11:  // BOOL
                 v = !!HEAPU8[ptr]; break;
             case 12:  // STRING
