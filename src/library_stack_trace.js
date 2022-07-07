@@ -12,7 +12,7 @@ var LibraryStackTrace = {
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
     demangle.recursionGuard = (demangle.recursionGuard|0)+1;
     if (demangle.recursionGuard > 1) return func;
-#ASSERTIONS 
+#if ASSERTIONS
     assert(___cxa_demangle);
 #endif
     return withStackSave(function() {
