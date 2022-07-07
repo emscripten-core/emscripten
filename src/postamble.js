@@ -355,7 +355,6 @@ function run(args) {
   checkStackCookie();
 #endif
 }
-Module['run'] = run;
 
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
