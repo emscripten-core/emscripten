@@ -590,6 +590,7 @@ var LibraryGLFW = {
 
       if (!GLFW.active.windowSizeFunc) return;
 
+      {{{ runtimeKeepalivePush() }}}
       callUserCallback(function() {
 #if USE_GLFW == 2
         {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
@@ -598,7 +599,8 @@ var LibraryGLFW = {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      }, true);
+      });
+      {{{ runtimeKeepalivePop() }}}
     },
 
     onFramebufferSizeChanged: function() {
@@ -606,11 +608,13 @@ var LibraryGLFW = {
 
       if (!GLFW.active.framebufferSizeFunc) return;
 
+      {{{ runtimeKeepalivePush() }}}
       callUserCallback(function() {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      }, true);
+      });
+      {{{ runtimeKeepalivePop() }}}
     },
 
     getTime: function() {
