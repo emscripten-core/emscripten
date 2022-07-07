@@ -50,14 +50,14 @@ mergeInto(LibraryManager.library, {
           case {{{ cDefine('TCSETAW') }}}:
           case {{{ cDefine('TCSETAF') }}}: {
             if (!Module['tty']) return 0;
-            return {{{ cDefine('EINVAL') }}};
+            return -{{{ cDefine('ENOTTY') }}};
           }
           case {{{ cDefine('TIOCGPGRP') }}}: {
             {{{ makeSetValue('argp', 0, 0, 'i32') }}};
             return 0;
           }
           case {{{ cDefine('TIOCSPGRP') }}}: {
-            return -{{{ cDefine('EINVAL') }}}; // not supported
+            return -{{{ cDefine('ENOTTY') }}}; // not supported
           }
           case {{{ cDefine('TIOCGWINSZ') }}}: {
             if (!Module['tty']) return 0;
@@ -67,7 +67,7 @@ mergeInto(LibraryManager.library, {
           }
           case {{{ cDefine('TIOCSWINSZ') }}}: {
             if (!Module['tty']) return 0;
-            return -{{{ cDefine('EINVAL') }}}; // not supported
+            return -{{{ cDefine('ENOTTY') }}}; // not supported
           }
           case {{{ cDefine('FIONREAD') }}}: {
             var avail = tty.input.length;
