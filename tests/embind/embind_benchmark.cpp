@@ -146,6 +146,7 @@ public:
 class Interface
 {
 public:
+    virtual ~Interface() {}
     virtual void call0() = 0;
     virtual std::wstring call1(const std::wstring& str1, const std::wstring& str2) = 0;
     virtual void call_with_typed_array(size_t size, const void*) = 0;
@@ -170,11 +171,11 @@ public:
         return call<void>(call0_symbol);
     }
 
-    std::wstring call1(const std::wstring& str1, const std::wstring& str2) {
+    std::wstring call1(const std::wstring& str1, const std::wstring& str2) override {
         return call<std::wstring>(call1_symbol, str1, str2);
     }
 
-    void call_with_typed_array(size_t size, const void* data) {
+    void call_with_typed_array(size_t size, const void* data) override {
         return call<void>(
             call_with_typed_array_symbol,
             emscripten::val::global(Uint8Array_symbol).new_(
@@ -183,7 +184,7 @@ public:
                 size));
     }
 
-    void call_with_memory_view(size_t size, const unsigned int* data) {
+    void call_with_memory_view(size_t size, const unsigned int* data) override {
         return call<void>(
             call_with_memory_view_symbol,
             emscripten::typed_memory_view(size, data));
