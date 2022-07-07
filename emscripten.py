@@ -354,6 +354,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   forwarded_json = json.loads(forwarded_data)
 
+  if forwarded_json['warnings']:
+    diagnostics.warning('js-compiler', 'warnings in JS library compilation')
+
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
   if settings.ASSERTIONS:

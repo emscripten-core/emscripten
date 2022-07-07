@@ -531,7 +531,7 @@ function exportRuntime() {
     const runtimeElementsSet = new Set(runtimeElements);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
       if (!runtimeElementsSet.has(name)) {
-        printErr(`warning: invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
+        warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
