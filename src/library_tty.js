@@ -133,12 +133,17 @@ TTY.default_tty_ops.ioctl = TTY.default_tty_op_ioctl;
           {{{ makeSetValue('argp', 0, 'tty.input.length', 'i32') }}}
           return 0;
         }
-        case {{{ cDefine('TIOCSPGRP') }}}:
+        case {{{ cDefine('TIOCSPGRP') }}}: {
+          return -{{{ cDefine('ENOTTY') }}}; // not supported
+        }
         default: {
     #if ASSERTIONS
           abort('bad ioctl syscall ' + op);
     #endif
-          return -{{{ cDefine('ENOTTY') }}}; // not supported
+          // Per https://lkml.org/lkml/2012/5/25/142 and
+          // https://lore.kernel.org/lkml/20110709164226.519a81fe@stein/,
+          // unrecognized ioctls should result in ENOTTY, not EINVAL
+          return -{{{ cDefine('ENOTTY') }}};
         }
       }
     },
