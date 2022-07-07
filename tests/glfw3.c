@@ -124,7 +124,6 @@ int main()
         glfwGetWindowPos(window, &x, &y); // stub
         glfwGetWindowSize(window, &w, &h);
         assert(w == 640 && h == 480);
-        assert(exited == 0);
 
         glfwSetWindowSize(window, 1, 1);
         glfwGetWindowSize(window, &w, &h);
@@ -133,6 +132,7 @@ int main()
 
         glfwSetWindowSize(window, 640, 480);
         glfwGetFramebufferSize(window, &w, &h);
+        assert(exited == 0);
 
         // XXX: not implemented
         // glfwIconifyWindow(window);
