@@ -74,7 +74,7 @@ mergeInto(LibraryManager.library, {
             if (avail > 0 && tty.input[avail-1] < 0) {
               avail--;
             }
-            {{{ makeSetValue('argp', 0, 'avail', 'i32') }}}
+            {{{ makeSetValue('argp', 0, 'avail', 'i32') }}};
             return 0;
           }
           default: {
