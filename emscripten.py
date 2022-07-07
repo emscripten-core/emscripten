@@ -147,6 +147,8 @@ def update_settings_glue(wasm_file, metadata):
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS']
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.

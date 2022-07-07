@@ -407,11 +407,6 @@ function exportRuntime() {
     runtimeElements.push('WasmSourceMap');
   }
 
-  if (!MINIMAL_RUNTIME) {
-    // Symbols that only exist in the regular runtime.
-    runtimeElements.push('ExitStatus');
-  }
-
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
