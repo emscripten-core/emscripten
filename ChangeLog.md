@@ -34,6 +34,8 @@ See docs/process.md for more on how version tagging works.
   explictly required.  Exporting them via `EXPORTED_RUNTIME_METHODS` will
   continue to work.  For internal usage (without exporting them) they can be
   added to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
+- The `run` runtime function is no longer exported by default.  It can be added
+  to `EXPORTED_RUNTIME_METHODS` if needed.
 
 3.1.15 - 07/01/2022
 -------------------

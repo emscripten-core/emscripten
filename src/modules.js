@@ -471,6 +471,7 @@ function exportRuntime() {
   if (!MINIMAL_RUNTIME) {
     // MINIMAL_RUNTIME has moved these functions to library_strings.js
     runtimeElements = runtimeElements.concat([
+      'run',
       'warnOnce',
       'stackSave',
       'stackRestore',
