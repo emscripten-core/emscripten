@@ -7433,6 +7433,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
+  @no_wasm64('val_builder does not support MEMORY64 yet')
   def test_embind_val_builder(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val_builder.cpp')
