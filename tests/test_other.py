@@ -12083,7 +12083,7 @@ Module['postRun'] = function() {{
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate', 'ALLOC_NORMAL'])
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
 
-    # In string mode the library function is even available, so we get a build time error
+    # In strict mode the library function is not even available, so we get a build time error
     self.set_setting('STRICT')
     err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c')] + self.get_emcc_args())
     self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
