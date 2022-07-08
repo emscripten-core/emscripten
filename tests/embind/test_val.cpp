@@ -141,6 +141,22 @@ int main() {
   val::global().set("a", val("1"));
   ensure_js("a == '1'");
 
+  test("val()");
+  val a;
+  val::global().set("a", a);
+  ensure_js("a == null");
+  a = val(1);
+  val::global().set("a", a);
+  ensure_js("a == 1");
+  val ar[2];
+  ar[0] = val(1);
+  ar[1] = val(2);
+  val::global().set("a", val::array(ar, ar + 2));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 1");
+  ensure_js("a[1] == 2");
+
   test("bool isNull()");
   EM_ASM(
     a = null;
