@@ -12,6 +12,8 @@ coverage==5.5
 # This version is mentioned in `site/source/docs/site/about.rst`.
 # Please keep them in sync.
 sphinx==2.4.4
+# See https://github.com/readthedocs/readthedocs.org/issues/9038
+jinja2<3.1
 
 # Pin docutils because newer versions are not compatible with sphinx 2.4.4
 docutils==0.17.1
