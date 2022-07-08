@@ -33,9 +33,10 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, read_file, read_binary, EMBUILDER, requires_v8, requires_node
+from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file
+from tools.utils import read_file, write_file, read_binary
 import common
 import jsrun
 import clang_native
@@ -2306,12 +2307,14 @@ int f() {
   })
   def test_js_optimizer(self, input, passes):
     input = test_file(input)
-    expected = os.path.splitext(input)[0] + '-output.js'
-    expected = read_file(expected).replace('\n\n', '\n')
-
+    expected_file = os.path.splitext(input)[0] + '-output.js'
     # test calling optimizer
     js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
-    self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
+    if common.EMTEST_REBASELINE:
+      write_file(expected_file, js)
+    else:
+      expected = read_file(expected_file)
+      self.assertIdentical(expected, js)
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
