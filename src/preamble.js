@@ -233,9 +233,6 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-#if !STRICT
-#include "runtime_legacy.js"
-#endif
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 

@@ -7041,6 +7041,7 @@ void* operator new(size_t size) {
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
