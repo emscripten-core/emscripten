@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,9 +52,9 @@ void test() {
   stat("writeable", &s);
   assert(s.st_atime == s.st_mtime);
   time_t diff = s.st_atime - now;
-  if (abs(diff) > 5) {
-    fprintf(stderr, "st_atime: %i, now: %i, diff: %i\n ", s.st_atime, now, diff);
-    assert(abs(diff) <= 5);
+  if (llabs(diff) > 5) {
+    fprintf(stderr, "st_atime: %" PRId64 ", now: %" PRId64 ", diff: %" PRId64 "\n ", s.st_atime, now, diff);
+    assert(llabs(diff) <= 5);
   }
 
   // write permissions aren't checked when setting node
