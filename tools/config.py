@@ -226,11 +226,11 @@ embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
 # layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
-#  - emsdk/emscipten/1.38.31/emcc
+#  - emsdk/emscripten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.
 # Without this check, when emcc is run from within the emsdk in embedded mode
 # and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
-# will not see any config file at all and fall back to creating a new/emtpy
+# will not see any config file at all and fall back to creating a new/empty
 # one.
 # We could remove this special case if emsdk were to write its embedded config
 # file into the emscripten directory itself.
