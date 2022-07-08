@@ -39,6 +39,8 @@ See docs/process.md for more on how version tagging works.
 - The getWasmTableEntry/setWasmTableEntry library function are no longer
   included by default.  Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or
   `EXPORTED_RUNTIME_METHODS` if you want to use them outside of JS library code.
+- The type of `time_t` was restored 64-bit after being converted to 32-bit in
+  3.1.11. (#17401)
 
 3.1.15 - 07/01/2022
 -------------------

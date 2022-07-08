@@ -1410,30 +1410,30 @@
             "sin6_scope_id": 24
         },
         "stat": {
-            "__size__": 88,
+            "__size__": 112,
             "__st_dev_padding": 4,
             "__st_ino_truncated": 8,
             "__st_rdev_padding": 32,
             "st_atim": {
-                "__size__": 8,
-                "tv_nsec": 60,
+                "__size__": 16,
+                "tv_nsec": 64,
                 "tv_sec": 56
             },
             "st_blksize": 48,
             "st_blocks": 52,
             "st_ctim": {
-                "__size__": 8,
-                "tv_nsec": 76,
-                "tv_sec": 72
+                "__size__": 16,
+                "tv_nsec": 96,
+                "tv_sec": 88
             },
             "st_dev": 0,
             "st_gid": 24,
-            "st_ino": 80,
+            "st_ino": 104,
             "st_mode": 12,
             "st_mtim": {
-                "__size__": 8,
-                "tv_nsec": 68,
-                "tv_sec": 64
+                "__size__": 16,
+                "tv_nsec": 80,
+                "tv_sec": 72
             },
             "st_nlink": 16,
             "st_rdev": 28,
@@ -1461,8 +1461,8 @@
             "timeSpentInStatus": 16
         },
         "timespec": {
-            "__size__": 8,
-            "tv_nsec": 4,
+            "__size__": 16,
+            "tv_nsec": 8,
             "tv_sec": 0
         },
         "tm": {
