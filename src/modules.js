@@ -446,6 +446,11 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
+    // These last three are actually native wasm functions these days but we
+    // allow exporting them via EXPORTED_RUNTIME_METHODS for backwards compat.
+    'stackSave',
+    'stackRestore',
+    'stackAlloc',
   ];
 
   if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
@@ -473,9 +478,6 @@ function exportRuntime() {
     runtimeElements = runtimeElements.concat([
       'run',
       'warnOnce',
-      'stackSave',
-      'stackRestore',
-      'stackAlloc',
       'AsciiToString',
       'stringToAscii',
       'UTF16ToString',
