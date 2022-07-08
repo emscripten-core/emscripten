@@ -20,7 +20,7 @@ __attribute__((__weak__)) char *tzname[2] = { 0, 0 };
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
 // Declare these functions `int` rather than time_t to avoid int64 at the wasm
-// bounday (avoids 64-bit complexity at the boundary when WASM_BIGINT is
+// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
 // missing).
 // TODO(sbc): Covert back to `time_t` before 2038 ...
 int _timegm_js(struct tm *tm);
