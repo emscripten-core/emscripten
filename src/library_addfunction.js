@@ -7,14 +7,15 @@
 mergeInto(LibraryManager.library, {
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
-  $uleb128Encode: function(n) {
+  $uleb128Encode: function(n, target) {
 #if ASSERTIONS
     assert(n < 16384);
 #endif
     if (n < 128) {
-      return [n];
+      target.push(n);
+    } else {
+      target.push((n % 128) | 128, n >> 7);
     }
-    return [(n % 128) | 128, n >> 7];
   },
 
   // Converts a signature like 'vii' into a description of the wasm types, like
@@ -61,7 +62,7 @@ mergeInto(LibraryManager.library, {
 
     // The module is static, with the exception of the type section, which is
     // generated based on the signature passed in.
-    var typeSection = [
+    var typeSectionBody = [
       0x01, // count: 1
       0x60, // form: func
     ];
@@ -80,50 +81,46 @@ mergeInto(LibraryManager.library, {
     };
 
     // Parameters, length + signatures
-    typeSection = typeSection.concat(uleb128Encode(sigParam.length));
+    uleb128Encode(sigParam.length, typeSectionBody);
     for (var i = 0; i < sigParam.length; ++i) {
 #if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
 #endif
-      typeSection.push(typeCodes[sigParam[i]]);
+      typeSectionBody.push(typeCodes[sigParam[i]]);
     }
 
     // Return values, length + signatures
     // With no multi-return in MVP, either 0 (void) or 1 (anything else)
     if (sigRet == 'v') {
-      typeSection.push(0x00);
+      typeSectionBody.push(0x00);
     } else {
-      typeSection = typeSection.concat([0x01, typeCodes[sigRet]]);
+      typeSectionBody.push(0x01, typeCodes[sigRet]);
     }
 
-    // Write the section code and overall length of the type section into the
-    // section header
-    typeSection = [0x01 /* Type section code */].concat(
-      uleb128Encode(typeSection.length),
-      typeSection
-    );
-
     // Rest of the module is static
-    var bytes = new Uint8Array([
+    var bytes = [
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
-    ].concat(typeSection, [
+      0x01, // Type section code
+    ];
+    // Write the overall length of the type section followed by the body
+    uleb128Encode(typeSectionBody.length, bytes);
+    bytes.push.apply(bytes, typeSectionBody);
+
+    // The rest of the module is static
+    bytes.push(
       0x02, 0x07, // import section
         // (import "e" "f" (func 0 (type 0)))
         0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
       0x07, 0x05, // export section
         // (export "f" (func 0 (type 0)))
         0x01, 0x01, 0x66, 0x00, 0x00,
-    ]));
+    );
 
-     // We can compile this wasm module synchronously because it is very small.
+    // We can compile this wasm module synchronously because it is very small.
     // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
-    var module = new WebAssembly.Module(bytes);
-    var instance = new WebAssembly.Instance(module, {
-      'e': {
-        'f': func
-      }
-    });
+    var module = new WebAssembly.Module(new Uint8Array(bytes));
+    var instance = new WebAssembly.Instance(module, { 'e': { 'f': func } });
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
 #endif // WASM2JS
