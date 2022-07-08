@@ -2278,104 +2278,40 @@ int f() {
     # make sure the slack is tiny compared to the whole program
     self.assertGreater(len(js), 100 * SLACK)
 
-  def test_js_optimizer(self):
-    for input, expected, passes in [
-      (test_file('optimizer/test-js-optimizer-minifyGlobals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyGlobals-output.js')),
-       ['minifyGlobals']),
-      (test_file('optimizer/test-js-optimizer-minifyLocals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyLocals-output.js')),
-       ['minifyLocals']),
-      (test_file('optimizer/JSDCE.js'), read_file(test_file('optimizer/JSDCE-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/JSDCE-hasOwnProperty.js'), read_file(test_file('optimizer/JSDCE-hasOwnProperty-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/JSDCE-fors.js'), read_file(test_file('optimizer/JSDCE-fors-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/AJSDCE.js'), read_file(test_file('optimizer/AJSDCE-output.js')),
-       ['AJSDCE']),
-      (test_file('optimizer/emitDCEGraph.js'), read_file(test_file('optimizer/emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph2.js'), read_file(test_file('optimizer/emitDCEGraph2-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph3.js'), read_file(test_file('optimizer/emitDCEGraph3-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph4.js'), read_file(test_file('optimizer/emitDCEGraph4-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph5.js'), read_file(test_file('optimizer/emitDCEGraph5-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/minimal-runtime-applyDCEGraphRemovals.js'), read_file(test_file('optimizer/minimal-runtime-applyDCEGraphRemovals-output.js')),
-       ['applyDCEGraphRemovals']),
-      (test_file('optimizer/applyDCEGraphRemovals.js'), read_file(test_file('optimizer/applyDCEGraphRemovals-output.js')),
-       ['applyDCEGraphRemovals']),
-      (test_file('optimizer/applyImportAndExportNameChanges.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges-output.js')),
-       ['applyImportAndExportNameChanges']),
-      (test_file('optimizer/applyImportAndExportNameChanges2.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges2-output.js')),
-       ['applyImportAndExportNameChanges']),
-      (test_file('optimizer/minimal-runtime-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/minimal-runtime-2-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-2-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/standalone-emitDCEGraph.js'), read_file(test_file('optimizer/standalone-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emittedJSPreservesParens.js'), read_file(test_file('optimizer/emittedJSPreservesParens-output.js')),
-       []),
-      (test_file('optimizer/test-growableHeap.js'), read_file(test_file('optimizer/test-growableHeap-output.js')),
-       ['growableHeap']),
-      (test_file('optimizer/test-unsignPointers.js'), read_file(test_file('optimizer/test-unsignPointers-output.js')),
-       ['unsignPointers']),
-      (test_file('optimizer/test-asanify.js'), read_file(test_file('optimizer/test-asanify-output.js')),
-       ['asanify']),
-      (test_file('optimizer/test-safeHeap.js'), read_file(test_file('optimizer/test-safeHeap-output.js')),
-       ['safeHeap']),
-      (test_file('optimizer/test-LittleEndianHeap.js'), read_file(test_file('optimizer/test-LittleEndianHeap-output.js')),
-       ['littleEndianHeap']),
-    ]:
-      print(input, passes)
+  @parameterized({
+    'minifyGlobals': ('optimizer/test-js-optimizer-minifyGlobals.js', ['minifyGlobals']),
+    'minifyLocals': ('optimizer/test-js-optimizer-minifyLocals.js', ['minifyLocals']),
+    'JSDCE': ('optimizer/JSDCE.js', ['JSDCE']),
+    'JSDCE-hasOwnProperty': ('optimizer/JSDCE-hasOwnProperty.js', ['JSDCE']),
+    'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
+    'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
+    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph1': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-applyDCEGraphRemovals': ('optimizer/minimal-runtime-applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
+    'applyDCEGraphRemovals': ('optimizer/applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
+    'applyImportAndExportNameChanges': ('optimizer/applyImportAndExportNameChanges.js', ['applyImportAndExportNameChanges']),
+    'applyImportAndExportNameChanges2': ('optimizer/applyImportAndExportNameChanges2.js', ['applyImportAndExportNameChanges']),
+    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'emittedJSPreservesParens': ('optimizer/emittedJSPreservesParens.js', []),
+    'growableHeap': ('optimizer/test-growableHeap.js', ['growableHeap']),
+    'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers']),
+    'asanify': ('optimizer/test-asanify.js', ['asanify']),
+    'safeHeap': ('optimizer/test-safeHeap.js', ['safeHeap']),
+    'LittleEndianHeap': ('optimizer/test-LittleEndianHeap.js', ['littleEndianHeap']),
+  })
+  def test_js_optimizer(self, input, passes):
+    input = test_file(input)
+    expected = os.path.splitext(input)[0] + '-output.js'
+    expected = read_file(expected).replace('\n\n', '\n')
 
-      if not isinstance(expected, list):
-        expected = [expected]
-      expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
-
-      # test calling optimizer
-      output = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
-
-      def check_js(js, expected):
-        # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
-        if 'registerizeHarder' in passes:
-          # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
-          def fix(src):
-            if type(src) is list:
-              return list(map(fix, src))
-            src = '\n'.join([line for line in src.split('\n') if 'var ' not in line]) # ignore vars
-
-            def reorder(func):
-              def swap(func, stuff):
-                # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
-                for i in stuff:
-                  if i not in func:
-                    return func
-                indexes = [[i, func.index(i)] for i in stuff]
-                indexes.sort(key=lambda x: x[1])
-                for j in range(len(indexes)):
-                  func = func.replace(indexes[j][0], 'STD_' + str(j))
-                return func
-              func = swap(func, ['i1', 'i2', 'i3'])
-              func = swap(func, ['i1', 'i2'])
-              func = swap(func, ['i4', 'i5'])
-              return func
-
-            src = 'function '.join(map(reorder, src.split('function ')))
-            return src
-          js = fix(js)
-          expected = fix(expected)
-        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
-
-      if input not in [ # tests that are native-optimizer only
-        test_file('optimizer/asmLastOpts.js'),
-        test_file('optimizer/3154.js')
-      ]:
-        check_js(output, expected)
-      else:
-        print('(skip non-native)')
+    # test calling optimizer
+    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+    self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
