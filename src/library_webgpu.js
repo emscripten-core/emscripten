@@ -757,8 +757,6 @@ var LibraryWebGPU = {
     '$callUserCallback',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
@@ -1489,12 +1487,7 @@ var LibraryWebGPU = {
     queue["submit"](cmds);
   },
 
-  wgpuQueueOnSubmittedWorkDone__deps: [
-    '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
   wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
 #if ASSERTIONS
@@ -1911,12 +1904,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferMapAsync__deps: [
-    '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuBufferMapAsync__deps: ['$callUserCallback'],
   wgpuBufferMapAsync: function(bufferId, mode, offset, size, callback, userdata) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -2380,8 +2368,6 @@ var LibraryWebGPU = {
     '$callUserCallback',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
@@ -2466,8 +2452,6 @@ var LibraryWebGPU = {
     '$callUserCallback',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {

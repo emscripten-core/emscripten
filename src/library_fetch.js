@@ -29,10 +29,6 @@ var LibraryFetch = {
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop',
-#endif
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',

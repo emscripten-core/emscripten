@@ -3319,9 +3319,6 @@ mergeInto(LibraryManager.library, {
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',
-#if !MINIMAL_RUNTIME
-  emscripten_exit_with_live_runtime__deps: ['$runtimeKeepalivePush'],
-#endif
   emscripten_exit_with_live_runtime: function() {
     {{{ runtimeKeepalivePush() }}}
     throw 'unwind';
@@ -3535,12 +3532,7 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  $safeSetTimeout__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-   '$runtimeKeepalivePush',
-   '$runtimeKeepalivePop',
-#endif
-  ],
+  $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}

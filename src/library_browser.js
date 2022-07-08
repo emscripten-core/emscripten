@@ -11,10 +11,6 @@ var LibraryBrowser = {
     '$callUserCallback',
     '$safeSetTimeout',
     'emscripten_set_main_loop_timing',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop'
-#endif
   ],
   $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
 #if ASSERTIONS
@@ -779,11 +775,7 @@ var LibraryBrowser = {
     },
   },
 
-  emscripten_run_preload_plugins__deps: ['$PATH',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
@@ -809,9 +801,6 @@ var LibraryBrowser = {
     return 0;
   },
 
-#if !MINIMAL_RUNTIME
-  emscripten_run_preload_plugins_data__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
-#endif
   emscripten_run_preload_plugins_data__proxy: 'sync',
   emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
@@ -962,7 +951,6 @@ var LibraryBrowser = {
     'emscripten_webgl_commit_frame',
 #endif
 #if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
     '$maybeExit',
 #endif
   ],
@@ -1292,9 +1280,6 @@ var LibraryBrowser = {
 
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker__sig: 'viiiiii',
-#if !MINIMAL_RUNTIME
-  emscripten_call_worker__deps: ['$runtimeKeepalivePush'],
-#endif
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
