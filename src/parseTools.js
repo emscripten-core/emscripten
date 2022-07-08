@@ -80,7 +80,7 @@ function preprocess(text, filenameHint) {
             const first = trimmed.split(' ', 1)[0];
             if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
-                warn('warning: use of #ifdef in js library.  Use #if instead.');
+                warn('use of #ifdef in js library.  Use #if instead.');
               }
               if (first == '#elif') {
                 const curr = showStack.pop();
@@ -825,7 +825,7 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    printErr(`warning: ${currentlyParsedFilename}: \
+    warn(`${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \

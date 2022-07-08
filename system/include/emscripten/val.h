@@ -327,6 +327,17 @@ public:
 
     template<typename Iter>
     static val array(Iter begin, Iter end) {
+#if _LIBCPP_STD_VER >= 20
+        if constexpr (std::contiguous_iterator<Iter> &&
+                      internal::typeSupportsMemoryView<
+                        typename std::iterator_traits<Iter>::value_type>()) {
+            val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
+            return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+        }
+        // For numeric arrays, following codes are unreachable and the compiler
+        // will do 'dead code elimination'.
+        // Others fallback old way.
+#endif
         val new_array = array();
         for (auto it = begin; it != end; ++it) {
             new_array.call<void>("push", *it);

@@ -1867,8 +1867,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=0"])
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=1"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=0'])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=1'])
 
   @requires_threads
   def test_emscripten_main_loop(self):
@@ -3307,10 +3307,13 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
+    # cocos2d build contains a bunch of warnings about tiff symbols being missing at link time:
+    # e.g. warning: undefined symbol: TIFFClientOpen
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     '-Wno-js-compiler',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override'],
                message='You should see Cocos2d logo')
@@ -4717,10 +4720,10 @@ window.close = function() {
   def test_emscripten_animate_canvas_element_size(self):
     for args in [
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sOFFSCREENCANVAS_SUPPORT'],
     ]:
       cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args

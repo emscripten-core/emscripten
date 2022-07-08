@@ -112,12 +112,12 @@ var LibraryBrowser = {
         Browser.hasBlobConstructor = true;
       } catch(e) {
         Browser.hasBlobConstructor = false;
-        out("warning: no blob constructor, cannot create blobs with mimetypes");
+        err("warning: no blob constructor, cannot create blobs with mimetypes");
       }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? out("warning: no BlobBuilder") : null));
+      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? err("warning: no BlobBuilder") : null));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
       if (!Module.noImageDecoding && typeof Browser.URLObject == 'undefined') {
-        out("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
+        err("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
         Module.noImageDecoding = true;
       }
 
@@ -207,7 +207,7 @@ var LibraryBrowser = {
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function audio_onerror(event) {
             if (done) return;
-            out('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+            err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
             function encode64(data) {
               var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
               var PAD = '=';

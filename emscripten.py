@@ -347,12 +347,19 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+  invoke_funcs = metadata['invokeFuncs']
+  if invoke_funcs:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
+
   glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+
+  if forwarded_json['warnings']:
+    diagnostics.warning('js-compiler', 'warnings in JS library compilation')
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -394,7 +401,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     out.write(normalize_line_endings(pre))
     pre = None
 
-    invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
