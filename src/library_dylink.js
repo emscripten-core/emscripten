@@ -961,12 +961,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop',
-#endif
-  ],
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     /** @param {Object=} e */
