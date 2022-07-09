@@ -2864,7 +2864,7 @@ Module["preRun"].push(function () {
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
   })
   def test_glfw3(self, args):
-    for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
+    for opts in [[], ['-sEXIT_RUNTIME=1'], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
       print(opts)
       self.btest(test_file('glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
