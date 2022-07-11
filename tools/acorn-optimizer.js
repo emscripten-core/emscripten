@@ -611,14 +611,25 @@ function emitDCEGraph(ast) {
   //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
-  // async compilation is enabled. It can be either:
+  // async compilation is enabled, and whether they are exported to the outside
+  // module or not. They can take any of the following forms:
   //
   //  var _malloc = Module["_malloc"] = asm["_malloc"];
   //
   // or
   //
+  //  var _malloc = asm["_malloc"];
+  //
+  // or
+  //
   //  var _malloc = Module["_malloc"] = (function() {
-  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //   return (_malloc = Module["_malloc"] = Module["asm"]["_malloc"]).apply(null, arguments);
+  //  });
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return (_malloc = Module["asm"]["_malloc"]).apply(null, arguments);
   //  });
   //
   // or, in the minimal runtime, it looks like
@@ -675,38 +686,44 @@ function emitDCEGraph(ast) {
         const item = node.declarations[0];
         const name = item.id.name;
         const value = item.init;
+        if (!value) {
+          return;
+        }
+        let payload = value;
         if (value && value.type === 'AssignmentExpression') {
           const assigned = value.left;
-          if (isModuleUse(assigned) && getAsmOrModuleUseName(assigned) === name) {
-            // this is
-            //  var x = Module['x'] = ?
-            // which looks like a wasm export being received. confirm with the asm use
-            let found = 0;
-            let asmName;
-            fullWalk(value.right, function(node) {
-              if (isAsmUse(node)) {
-                found++;
-                asmName = getAsmOrModuleUseName(node);
-              }
-            });
-            // in the wasm backend, the asm name may have one fewer "_" prefixed
-            if (found === 1) {
-              // this is indeed an export
-              // the asmName is what the wasm provides directly; the outside JS
-              // name may be slightly different (extra "_" in wasm backend)
-              saveAsmExport(name, asmName);
-              emptyOut(node); // ignore this in the second pass; this does not root
-              return;
-            }
-            if (value.right.type === 'Literal') {
-              // this is
-              //  var x = Module['x'] = 1234;
-              // this form occurs when global addresses are exported from the
-              // module.  It doesn't constitute a usage.
-              assert(typeof value.right.value === 'number');
-              emptyOut(node);
-            }
+          if (!isModuleUse(assigned) || getAsmOrModuleUseName(assigned) !== name) {
+            return;
           }
+          // this is
+          //  var x = Module['x'] = ?
+          payload = value.right;
+          if (payload.type === 'Literal') {
+            // this is
+            //  var x = Module['x'] = 1234;
+            // this form occurs when global addresses are exported from the
+            // module.  It doesn't constitute a usage.
+            assert(typeof payload.value === 'number', payload);
+            emptyOut(node);
+            return;
+          }
+        }
+        // which looks like a wasm export being received. confirm with the asm use
+        let asmName;
+        if (isAsmUse(payload)) {
+          asmName = getAsmOrModuleUseName(payload);
+        } else {
+          // console.error("looking for: " + name);
+          asmName = isExportWrapperFunction(payload);
+        }
+        if (asmName) {
+          // console.error("found export: " + name);
+          // this is indeed an export
+          // the asmName is what the wasm provides directly; the outside JS
+          // name may be slightly different (extra "_" in wasm backend)
+          saveAsmExport(name, asmName);
+          emptyOut(node); // ignore this in the second pass; this does not root
+          return;
         }
       }
       // A variable declaration that has no initial values can be ignored in
@@ -781,6 +798,8 @@ function emitDCEGraph(ast) {
   assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
   // Read exports that were declared in extraInfo
   if (extraInfo) {
+    // console.error('extraInfo: ');
+    // console.error(extraInfo);
     for (const exp of extraInfo.exports) {
       saveAsmExport(exp[0], exp[1]);
     }
@@ -835,6 +854,7 @@ function emitDCEGraph(ast) {
       // any remaining asm uses are always rooted in any case
       const name = getAsmOrModuleUseName(node);
       if (exportNameToGraphName.hasOwnProperty(name)) {
+        // console.error("rooting: " + name);
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
@@ -891,9 +911,47 @@ function emitDCEGraph(ast) {
   print(JSON.stringify(graph, null, ' '));
 }
 
+// Matches functions of the form:
+// var stackSave = function() {
+//  return (stackSave = Module["asm"]["stackSave"]).apply(null, arguments);
+// };
+function isExportWrapperFunction(node) {
+  if (node.type !== 'FunctionExpression') {
+    return false;
+  }
+  const body = node.body.body;
+  if (body.length !== 1 || body[0].type !== 'ReturnStatement') {
+    return false;
+  }
+  const returnVal = body[0];
+  if (returnVal.argument.type !== 'CallExpression') {
+    return false;
+  }
+  const callee = returnVal.argument.callee;
+  if (callee.type !== 'MemberExpression') {
+    return false;
+  }
+  let value = callee.object;
+  if (value.type === 'ParenthesizedExpression') {
+    value = value.expression;
+  }
+  if (value.type !== 'AssignmentExpression') {
+    return false;
+  }
+  while (value.type === 'AssignmentExpression') {
+    value = value.right;
+  }
+  if (!isAsmUse(value)) {
+    return false;
+  }
+  return getAsmOrModuleUseName(value);
+}
+
 // Apply graph removals from running wasm-metadce
 function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
+  // console.error("unused:");
+  // console.error(unused);
 
   fullWalk(ast, (node) => {
     if (isAsmLibraryArgAssign(node)) {
@@ -904,7 +962,7 @@ function applyDCEGraphRemovals(ast) {
         const full = 'emcc$import$' + name;
         return !(unused.has(full) && !hasSideEffects(value));
       });
-    } else if (node.type === 'AssignmentExpression') {
+    } else if (false && node.type === 'AssignmentExpression') {
       // when we assign to a thing we don't need, we can just remove the assign
       const target = node.left;
       if (isAsmUse(target) || isModuleUse(target)) {
@@ -915,6 +973,31 @@ function applyDCEGraphRemovals(ast) {
             (isAsmUse(value) || !hasSideEffects(value))) {
           // This will be in a var init, and we just remove that value.
           convertToNothingInVarInit(node);
+        }
+      }
+    } else if (node.type === 'VariableDeclaration') {
+      // In the regular runtime we several different shapes for the export
+      // declarations:
+      // var _x = Module["_x"] = function() {
+      //   return (_x = Module["_x"] = Module["asm"]["x"]).apply(null, arguments);
+      // };
+      // var _x = function() {
+      //   return (_x = Module["asm"]["x"]).apply(null, arguments);
+      // };
+      // var _x = Module["_x"] = asm["x"];
+      // var _x = asm["x"];
+      if (node.declarations.length === 1) {
+        const decl = node.declarations[0];
+        const name = decl.id.name;
+        const full = 'emcc$export$' + name;
+        if (unused.has(full)) {
+          let init = decl.init;
+          if (init.type == 'AssignmentExpression') {
+            init = init.right;
+          }
+          if (isExportWrapperFunction(init) || isAsmUse(init)) {
+            emptyOut(node);
+          }
         }
       }
     } else if (node.type === 'ExpressionStatement') {
