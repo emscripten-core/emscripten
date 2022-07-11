@@ -49,13 +49,10 @@
 
 // Tuning
 
-// Whether we should add runtime assertions, for example to
-// check that each allocation to the stack does not
-// exceed its size, whether all allocations (stack and static) are
-// of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
-// if code flow runs into a fault
+// Whether we should add runtime assertions. This affects both JS and how
+// system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
-// includes internal dlmalloc assertions.
+// includes internal dlmalloc assertions, for example.
 // [link]
 var ASSERTIONS = 1;
 
