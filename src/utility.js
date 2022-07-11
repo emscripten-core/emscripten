@@ -103,7 +103,7 @@ function sum(x) {
 // in case of redefinition
 function mergeInto(obj, other, options = null) {
   // check for unintended symbol redefinition
-  if (options.noOverride) {
+  if (options && options.noOverride) {
     for (const key of Object.keys(other)) {
       if (obj.hasOwnProperty(key)) {
         error('Symbol re-definition in JavaScript library: ' + key + '. Do not use DisallowOverride if this is intended');
