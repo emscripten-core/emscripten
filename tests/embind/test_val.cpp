@@ -144,7 +144,7 @@ int main() {
   test("val()");
   val a;
   val::global().set("a", a);
-  ensure_js("a == null");
+  ensure_js("a === undefined");
   a = val(1);
   val::global().set("a", a);
   ensure_js("a == 1");

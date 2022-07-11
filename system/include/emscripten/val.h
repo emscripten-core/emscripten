@@ -399,7 +399,7 @@ public:
             argv);
     }
 
-    val() : handle(EM_VAL(internal::_EMVAL_NULL)) {}
+    val() : handle(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
 
     explicit val(const char* v)
         : handle(internal::_emval_new_cstring(v))
