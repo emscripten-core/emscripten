@@ -3680,6 +3680,8 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$addFunction',
   '$removeFunction',
   '$allocate',
+  '$ALLOC_NORMAL',
+  '$ALLOC_STACK',
   '$AsciiToString',
   '$stringToAscii',
   '$UTF16ToString',
