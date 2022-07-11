@@ -11095,20 +11095,24 @@ int main(void) {
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
     create_file('src.c', 'int main() {')
-    returncode, output = self.run_on_pty([EMCC, 'src.c'])
+    returncode, output = self.run_on_pty([EMCC, 'src.c', '-c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
     self.assertIn(b"\x1b[31merror: ", output)
 
   @parameterized({
-    'fno_diagnostics_color': ['-fno-diagnostics-color'],
-    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+    '': ['-fno-diagnostics-color'],
+    'never': ['-fdiagnostics-color=never'],
   })
   @no_windows('ptys and select are not available on windows')
   def test_pty_no_color(self, flag):
+    # Ensure that the sysroot is already constructed so that emcc doesn't
+    # output any log information in color.
+    self.emcc(test_file('hello_world.c'), ['-c'])
+
     create_file('src.c', 'int main() {')
 
-    returncode, output = self.run_on_pty([EMCC, flag, 'src.c'])
+    returncode, output = self.run_on_pty([EMCC, flag, 'src.c', '-c'])
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
 
