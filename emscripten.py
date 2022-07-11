@@ -347,12 +347,19 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+  invoke_funcs = metadata['invokeFuncs']
+  if invoke_funcs:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
+
   glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+
+  if forwarded_json['warnings']:
+    diagnostics.warning('js-compiler', 'warnings in JS library compilation')
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -394,7 +401,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     out.write(normalize_line_endings(pre))
     pre = None
 
-    invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
@@ -452,6 +458,8 @@ def get_metadata_python(infile, outfile, modify_wasm, args):
     # TODO(sbc): Remove this once we make the switch away from
     # binaryen metadata.
     metadata['mainReadsParams'] = 1
+  if DEBUG:
+    logger.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
 
 
@@ -544,7 +552,7 @@ def finalize_wasm(infile, outfile, memfile):
   # 2. via local python code
   # We also have a 'compare' mode that runs both extraction methods and
   # checks that they produce identical results.
-  read_metadata = os.environ.get('EMCC_READ_METADATA', 'binaryen')
+  read_metadata = os.environ.get('EMCC_READ_METADATA', 'python')
   if read_metadata == 'binaryen':
     metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
   elif read_metadata == 'python':
@@ -575,6 +583,18 @@ def finalize_wasm(infile, outfile, memfile):
     # we can do so here, since we make sure to zero out that memory (even in
     # the dynamic linking case, our loader zeros it out)
     remove_trailing_zeros(memfile)
+
+  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+
+  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # These are any exports that were not requested on the command line and are
+  # not known auto-generated system functions.
+  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
+  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
+  building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
@@ -897,18 +917,6 @@ def load_metadata_json(metadata_raw):
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
-
-  expected_exports = set(settings.EXPORTED_FUNCTIONS)
-  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
-
-  # Calculate the subset of exports that were explicitly marked with llvm.used.
-  # These are any exports that were not requested on the command line and are
-  # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
-  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
-  building.user_requested_exports.update(unexpected_exports)
-  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 

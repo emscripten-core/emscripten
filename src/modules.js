@@ -38,6 +38,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
       'library_math.js',
@@ -149,6 +150,10 @@ global.LibraryManager = {
     if (USE_WEBGPU) {
       libraries.push('library_webgpu.js');
       libraries.push('library_html5_webgpu.js');
+    }
+
+    if (!STRICT) {
+      libraries.push('library_legacy.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) {
@@ -344,6 +349,33 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+function isInternalSymbol(ident) {
+  return ident + '__internal' in LibraryManager.library;
+}
+
+// When running with ASSERTIONS enabled we create stubs for each library
+// function that that was not included in the build.  This gives useful errors
+// when library dependencies are missing from `__deps` or depended on without
+// being added to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+// TODO(sbc): These errors could potentially be generated at build time via
+// some kind of acorn pass that searched for uses of these missing symbols.
+function addMissingLibraryStubs() {
+  if (!ASSERTIONS) return '';
+  let rtn = '';
+  const librarySymbolSet = new Set(libraryFunctions);
+  for (const ident in LibraryManager.library) {
+    if (typeof LibraryManager.library[ident] === 'function') {
+      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+        const name = ident.substr(1);
+        if (!librarySymbolSet.has(name)) {
+          rtn += `var ${name} = missingLibraryFunc('${name}');\n`;
+        }
+      }
+    }
+  }
+  return rtn;
+}
+
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
@@ -352,7 +384,7 @@ function exportRuntime() {
   // in ASSERTIONS mode we show a useful error if it is used without
   // being exported. how we show the message depends on whether it's
   // a function (almost all of them) or a number.
-  function maybeExport(name, isNumber) {
+  function maybeExport(name) {
     // if requested to be exported, export it
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
@@ -373,24 +405,14 @@ function exportRuntime() {
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
       const fssymbol = isExportedByForceFilesystem(name);
-      if (isNumber) {
-        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
-      } else {
-        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
-      }
+      return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
     }
-    return '';
-  }
-
-  function maybeExportNumber(name) {
-    return maybeExport(name, true);
   }
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'ccall',
     'cwrap',
-    'allocate',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
@@ -415,8 +437,6 @@ function exportRuntime() {
     'getFunctionTables',
     'alignFunctionTables',
     'registerFunctions',
-    'addFunction',
-    'removeFunction',
     'prettyPrint',
     'getCompilerSetting',
     'print',
@@ -427,6 +447,11 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
+    // These last three are actually native wasm functions these days but we
+    // allow exporting them via EXPORTED_RUNTIME_METHODS for backwards compat.
+    'stackSave',
+    'stackRestore',
+    'stackAlloc',
   ];
 
   if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
@@ -452,10 +477,8 @@ function exportRuntime() {
   if (!MINIMAL_RUNTIME) {
     // MINIMAL_RUNTIME has moved these functions to library_strings.js
     runtimeElements = runtimeElements.concat([
+      'run',
       'warnOnce',
-      'stackSave',
-      'stackRestore',
-      'stackAlloc',
       'AsciiToString',
       'stringToAscii',
       'UTF16ToString',
@@ -484,6 +507,7 @@ function exportRuntime() {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
   }
+
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
@@ -499,29 +523,23 @@ function exportRuntime() {
   // '$ which indicates they are JS methods.
   const runtimeElementsSet = new Set(runtimeElements);
   for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }
   }
 
-  const runtimeNumbers = [
-    'ALLOC_NORMAL',
-    'ALLOC_STACK',
-  ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     const runtimeElementsSet = new Set(runtimeElements);
-    const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
-        printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
+      if (!runtimeElementsSet.has(name)) {
+        warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
   let exports = runtimeElements.map((name) => maybeExport(name));
-  exports = exports.concat(runtimeNumbers.map((name) => maybeExportNumber(name)));
-  exports = exports.filter((name) => name != '');
-  return exports.join('\n');
+  exports = exports.filter((name) => name);
+  return exports.join('\n') + '\n' + addMissingLibraryStubs();
 }

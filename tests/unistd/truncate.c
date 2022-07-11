@@ -85,9 +85,8 @@ int main() {
   errno = 0;
   printf("\n");
 
-  // Only permissions of the file, not opening mode, matter for truncation.
   printf("open(O_TRUNC)\n");
-  open("towrite", O_RDONLY | O_TRUNC);
+  open("towrite", O_WRONLY | O_TRUNC);
   printf("errno: %s\n", strerror(errno));
   fstat(f, &s);
   printf("st_size: %lld\n", s.st_size);

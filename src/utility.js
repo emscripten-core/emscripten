@@ -48,7 +48,10 @@ function assert(a, msg) {
   }
 }
 
+global.warnings = false;
+
 function warn(a, msg) {
+  global.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -67,7 +70,7 @@ function warnOnce(a, msg) {
     if (!warnOnce.msgs) warnOnce.msgs = {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
-    printErr('warning: ' + msg);
+    warn(msg);
   }
 }
 

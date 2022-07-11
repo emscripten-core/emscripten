@@ -167,6 +167,7 @@ mergeInto(LibraryManager.library, {
     '$emscripten_realloc_buffer',
 #endif
   ],
+  emscripten_resize_heap: 'ip',
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
     requestedSize = requestedSize >>> 0;
@@ -364,11 +365,11 @@ mergeInto(LibraryManager.library, {
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // (However, in MAIN_MODULE=1 mode we link in all system libraries, which does
-  // end up adding code that refers to this.)
   // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
-#if (SHRINK_LEVEL < 2 || LINKABLE) && !STANDALONE_WASM
+  // In MAIN_MODULE=1 or EMCC_FORCE_STDLIBS mode all of libc is force included
+  // so we cannot override parts of it, and therefore cannot use libc_optz.
+#if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM
 
   emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
@@ -3201,11 +3202,12 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-    var f = Module["dynCall_" + sig];
+    var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#endif
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
@@ -3213,7 +3215,7 @@ mergeInto(LibraryManager.library, {
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
 #if ASSERTIONS && !DYNCALLS
-    assert(sig.includes('j'), 'getDynCaller should only be called with i64 sigs')
+    assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
     return function() {
@@ -3222,7 +3224,6 @@ mergeInto(LibraryManager.library, {
       return dynCall(sig, ptr, argCache);
     };
   },
-#endif
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: function(sig, ptr, args) {
@@ -3240,33 +3241,36 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
-    return getWasmTableEntry(ptr).apply(null, args)
+#if MEMORY64
+    // With MEMORY64 we have an additional step to covert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    if (sig.includes('p')) {
+      var new_args = [];
+      args.forEach((arg, index) => {
+        if (sig[index + 1] == 'p') {
+          arg = BigInt(arg);
+        }
+        new_args.push(arg);
+      });
+      args = new_args;
+    }
+#endif
+    var rtn = getWasmTableEntry(ptr).apply(null, args);
+#if MEMORY64
+    if (sig[0] == 'p') {
+      rtn = Number(rtn);
+    }
+#endif
+    return rtn;
 #endif
   },
 
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
-      var callback = callbacks.shift();
-      if (typeof callback == 'function') {
-        callback(Module); // Pass the module as the first argument.
-        continue;
-      }
-      var func = callback.func;
-      if (typeof func == 'number') {
-        if (callback.arg === undefined) {
-          // Run the wasm function ptr with signature 'v'. If no function
-          // with such signature was exported, this call does not need
-          // to be emitted (and would confuse Closure)
-          {{{ makeDynCall('v', 'func') }}}();
-        } else {
-          // If any function with signature 'vi' was exported, run
-          // the callback with that signature.
-          {{{ makeDynCall('vi', 'func') }}}(callback.arg);
-        }
-      } else {
-        func(callback.arg === undefined ? null : callback.arg);
-      }
+      // Pass the module as the first argument.
+      callbacks.shift()(Module);
     }
   },
 
@@ -3315,9 +3319,6 @@ mergeInto(LibraryManager.library, {
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',
-#if !MINIMAL_RUNTIME
-  emscripten_exit_with_live_runtime__deps: ['$runtimeKeepalivePush'],
-#endif
   emscripten_exit_with_live_runtime: function() {
     {{{ runtimeKeepalivePush() }}}
     throw 'unwind';
@@ -3531,12 +3532,7 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  $safeSetTimeout__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-   '$runtimeKeepalivePush',
-   '$runtimeKeepalivePop',
-#endif
-  ],
+  $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
@@ -3579,7 +3575,7 @@ mergeInto(LibraryManager.library, {
   // page-aligned size, and clears the allocated space.
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
   $mmapAlloc: function(size) {
-#if hasExportedFunction('_emscripten_builtin_memalign')
+#if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;

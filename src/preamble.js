@@ -220,12 +220,12 @@ function cwrap(ident, returnType, argTypes, opts) {
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !hasExportedFunction('_malloc')
+#if !hasExportedSymbol('malloc')
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !hasExportedFunction('_free')
+#if !hasExportedSymbol('free')
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -233,9 +233,6 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-#if !STRICT
-#include "runtime_legacy.js"
-#endif
 #include "runtime_strings.js"
 #include "runtime_strings_extra.js"
 
@@ -338,6 +335,10 @@ var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
+#if RELOCATABLE
+var __RELOC_FUNCS__ = [];
+#endif
+
 var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
@@ -393,6 +394,9 @@ function initRuntime() {
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
+#if RELOCATABLE
+  callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
   <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
@@ -1047,8 +1051,12 @@ function createWasm() {
 #endif
 #endif
 
-#if hasExportedFunction('___wasm_call_ctors')
+#if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
+#endif
+
+#if hasExportedSymbol('__wasm_apply_data_relocs')
+    __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

@@ -32,6 +32,6 @@ int main() {
   rc = pthread_join(t, NULL);
   assert(!rc);
 
-  printf("Done");
+  printf("Done\n");
   return 0;
 }

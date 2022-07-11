@@ -31,7 +31,8 @@ from tools.shared import try_delete
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
-    def sendheaders(s, extra=[], length=len(data)):
+    def sendheaders(s, extra=None, length=None):
+      length = length or len(data)
       s.send_response(200)
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
@@ -41,8 +42,9 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
         s.send_header("Accept-Ranges", "bytes")
-      for i in extra:
-        s.send_header(i[0], i[1])
+      if extra:
+        for key, value in extra:
+          s.send_header(key, value)
       s.end_headers()
 
     def do_HEAD(s):
@@ -69,7 +71,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
   # CORS preflight makes OPTIONS requests which we need to account for.
   expectedConns = 22
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
-  for i in range(expectedConns + 1):
+  for _ in range(expectedConns + 1):
     httpd.handle_request()
 
 
@@ -871,8 +873,8 @@ window.close = function() {
              %s
             }
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-          self.compile_btest([test_file('sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main', '-lSDL', '-lGL'])
-          self.run_browser('page.html', '', '/report_result?223092870')
+          self.compile_btest([test_file('sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main', '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
+          self.run_browser('page.html', '', '/report_result?exit:223092870')
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
@@ -1357,7 +1359,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_memfs_fsync(self):
     args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
     secret = str(time.time())
-    self.btest(test_file('fs/test_memfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"'])
+    self.btest_exit(test_file('fs/test_memfs_fsync.c'), args=args + ['-DSECRET=\"' + secret + '\"'])
 
   def test_fs_workerfs_read(self):
     secret = 'a' * 10
@@ -1374,7 +1376,7 @@ keydown(100);keyup(100); // trigger the end
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest(test_file('fs/test_workerfs_read.c'), '1', args=['-lworkerfs.js', '--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit(test_file('fs/test_workerfs_read.c'), args=['-lworkerfs.js', '--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
@@ -1394,37 +1396,37 @@ keydown(100);keyup(100); // trigger the end
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
     assert os.path.getsize('file1.txt') + os.path.getsize(Path('subdir/file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     create_file('files.js', out, binary=True)
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
     print('    modularize')
-    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-sMODULARIZE=1'])
+    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-sMODULARIZE=1', '-sEXIT_RUNTIME'])
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
         Module()
       </script>
     ''')
-    self.run_browser('a.html', '.', '/report_result?2')
+    self.run_browser('a.html', '.', '/report_result?exit:2')
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest(Path('fs/test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-sCLOSURE_WARNINGS=quiet'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-sCLOSURE_WARNINGS=quiet'])
 
     '''# non-lz4 for comparison
     try:
@@ -1436,7 +1438,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file3.txt', Path('files/file3.txt'))
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     create_file('files.js', out, binary=True)
-    self.btest(Path('fs/test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'])'''
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js'])'''
 
   def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
@@ -1720,13 +1722,13 @@ keydown(100);keyup(100); // trigger the end
       time.sleep(2)
 
   @requires_graphics_hardware
-  def test_glgears(self, extra_args=[]):
+  def test_glgears(self, extra_args=[]):  # noqa
     self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
                args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
 
   @requires_graphics_hardware
   @requires_threads
-  def test_glgears_pthreads(self, extra_args=[]):
+  def test_glgears_pthreads(self, extra_args=[]):  # noqa
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
     self.test_glgears(['-sUSE_PTHREADS'])
@@ -1865,8 +1867,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=0"])
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=1"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=0'])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=1'])
 
   @requires_threads
   def test_emscripten_main_loop(self):
@@ -3305,10 +3307,13 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
+    # cocos2d build contains a bunch of warnings about tiff symbols being missing at link time:
+    # e.g. warning: undefined symbol: TIFFClientOpen
     cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     '-Wno-js-compiler',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override'],
                message='You should see Cocos2d logo')
@@ -3608,7 +3613,7 @@ window.close = function() {
     if inworker:
       self.emcc_args += ['--proxy-to-worker']
 
-    def do_run(src, expected_output, emcc_args=[]):
+    def do_run(src, expected_output, emcc_args):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
       # -> do the assert about expected output inside browser.
       #
@@ -3636,7 +3641,7 @@ window.close = function() {
           return rtn;
         }
       ''' % expected_output)
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'] + emcc_args)
+      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
@@ -3777,7 +3782,7 @@ window.close = function() {
     'closure': (['--closure=1'],),
   })
   @requires_threads
-  def test_pthread_atomics(self, args=[]):
+  def test_pthread_atomics(self, args):
     self.btest_exit(test_file('pthread/test_pthread_atomics.cpp'), args=['-sINITIAL_MEMORY=64MB', '-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
@@ -4176,20 +4181,20 @@ window.close = function() {
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak'],
+    'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @requires_threads
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
-  def test_pthread_lsan(self, name, args=[]):
+  def test_pthread_lsan(self, name, args):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-sINITIAL_MEMORY=256MB', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @parameterized({
     # Reusing the LSan test files for ASan.
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak'],
+    'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @requires_threads
-  def test_pthread_asan(self, name, args=[]):
+  def test_pthread_asan(self, name, args):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @requires_threads
@@ -4249,8 +4254,8 @@ window.close = function() {
   def test_main_thread_em_asm_blocking(self):
     create_file('page.html', read_file(test_file('browser/test_em_asm_blocking.html')))
 
-    self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
-    self.run_browser('page.html', '', '/report_result?8')
+    self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+    self.run_browser('page.html', '', '/report_result?exit:8')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
@@ -4335,7 +4340,7 @@ window.close = function() {
     '': ([],),
     'asan': (['-fsanitize=address', '-sINITIAL_MEMORY=128MB'],)
   })
-  def test_manual_wasm_instantiate(self, args=[]):
+  def test_manual_wasm_instantiate(self, args):
     self.compile_btest([test_file('manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(test_file('manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
@@ -4379,7 +4384,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5500), 100)
+    self.assertLess(abs(size - 5169), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4619,10 +4624,10 @@ window.close = function() {
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
     s = '12345678'
-    for i in range(14):
+    for _ in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
     with open('largefile.txt', 'w') as f:
-      for i in range(1024):
+      for _ in range(1024):
         f.write(s)
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
@@ -4715,10 +4720,10 @@ window.close = function() {
   def test_emscripten_animate_canvas_element_size(self):
     for args in [
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sOFFSCREENCANVAS_SUPPORT'],
     ]:
       cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
@@ -4751,10 +4756,10 @@ window.close = function() {
   def test_pthread_growth_mainthread(self):
     self.emcc_args.remove('-Werror')
 
-    def run(emcc_args=[]):
+    def run(emcc_args):
       self.btest_exit(test_file('pthread/test_pthread_memory_growth_mainthread.c'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args, also_wasm2js=False)
 
-    run()
+    run([])
     run(['-sPROXY_TO_PTHREAD'])
 
   # Tests memory growth in a pthread.
@@ -4762,10 +4767,10 @@ window.close = function() {
   def test_pthread_growth(self):
     self.emcc_args.remove('-Werror')
 
-    def run(emcc_args=[]):
+    def run(emcc_args):
       self.btest_exit(test_file('pthread/test_pthread_memory_growth.c'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_wasm2js=False)
 
-    run()
+    run([])
     run(['-sASSERTIONS'])
     run(['-sPROXY_TO_PTHREAD'])
 
@@ -5172,12 +5177,18 @@ window.close = function() {
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.btest(test_file('wasm_worker/terminate_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.set_setting('WASM_WORKERS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
+    self.btest(test_file('wasm_worker/terminate_wasm_worker.c'), expected='0')
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate_all(self):
-    self.btest(test_file('wasm_worker/terminate_all_wasm_workers.c'), expected='0', args=['-sWASM_WORKERS'])
+    self.set_setting('WASM_WORKERS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
+    self.btest(test_file('wasm_worker/terminate_all_wasm_workers.c'), expected='0')
 
   # Tests emscripten_wasm_worker_post_function_*() API
   @also_with_minimal_runtime
@@ -5258,8 +5269,12 @@ window.close = function() {
   # Tests that proxied JS functions cannot be called from Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_no_proxied_js_functions(self):
+    self.set_setting('WASM_WORKERS')
+    self.set_setting('ASSERTIONS')
+    # Test uses the dynCall library function in its EM_ASM code
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
     self.btest(test_file('wasm_worker/no_proxied_js_functions.c'), expected='0',
-               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js')])
 
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime

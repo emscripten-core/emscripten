@@ -1125,8 +1125,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity()
 
-  if '-print-search-dirs' in args:
-    return run_process([clang, '-print-search-dirs'], check=False).returncode
+  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
+  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
+    return run_process([clang] + args + get_cflags(args), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -1746,9 +1747,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
-      if not settings.PROXY_TO_PTHREAD:
-        settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1852,8 +1851,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    # Include the internal library function since they are used by runtime functions.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
     if settings.SAFE_HEAP:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
     if not settings.MINIMAL_RUNTIME:
@@ -2069,6 +2066,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '_wasmfs_symlink',
         '_wasmfs_chmod',
         '_wasmfs_identify',
+        '_wasmfs_readdir_start',
+        '_wasmfs_readdir_get',
+        '_wasmfs_readdir_finish',
       ]
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
@@ -2092,6 +2092,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
+
+  if settings.RELOCATABLE:
+    # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
+    # llvm change lands
+    settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
 
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -2949,14 +2954,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.MODULARIZE:
     modularize()
 
-  module_export_name_substitution()
+  if settings.USE_CLOSURE_COMPILER:
+    module_export_name_substitution()
 
-  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-  # by processing steps that occurred after Closure.
+  # Run a final optimization pass to clean up items that were not possible to
+  # optimize by Closure, or unoptimalities that were left behind by processing
+  # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
-    # to run in advanced mode)
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
@@ -3400,7 +3408,8 @@ def phase_binaryen(target, options, wasm_target):
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
-    building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
+    sections = ['producers'] if strip_producers else []
+    building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
     building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
@@ -3616,16 +3625,13 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL:
+    # On the web, with MINIMAL_RUNTIME, the Module object is always provided
+    # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  # For Node.js and other shell environments, create an unminified Module object so that
-  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')

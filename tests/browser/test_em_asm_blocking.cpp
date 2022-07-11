@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <emscripten.h>
+#include <emscripten/em_asm.h>
 #include <stdio.h>
 #include <thread>
 #include <math.h>
@@ -18,15 +18,12 @@ void foo() {
   });
   printf("almost PI: %f\n", almost_PI);
   assert(fabs(almost_PI - 3.14159) < 0.001);
-  atomic_store(&ret, len);
+  ret = len;
 }
 
 int main() {
   std::thread t(foo);
   t.join();
-  printf("ret: %d\n", atomic_load(&ret));
-#ifdef REPORT_RESULT
-  REPORT_RESULT(atomic_load(&ret));
-#endif
-  return atomic_load(&ret);
+  printf("ret: %d\n", ret.load());
+  return ret.load();
 }

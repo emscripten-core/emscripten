@@ -73,6 +73,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
+diagnostics.add_warning('js-compiler')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -139,7 +140,14 @@ def returncode_to_str(code):
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
-def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+def run_multiple_processes(commands,
+                           env=None,
+                           route_stdout_to_temp_files_suffix=None,
+                           pipe_stdout=False,
+                           check=True,
+                           cwd=None):
+  if env is None:
+    env = os.environ.copy()
   # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
   # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
@@ -227,7 +235,7 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
