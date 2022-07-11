@@ -3467,7 +3467,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     create_file('duplicated_func.cpp', '''
       #include <stdio.h>
       extern "C" {
-        extern int duplicatedFunc();
+        int duplicatedFunc();
       }
       int main() {
         int res = duplicatedFunc();
@@ -3480,7 +3480,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
         duplicatedFunc : function() {
             return 1;
           }
-        }, LibraryParam.DisallowOverride
+        }, { noOverride: true }
       );
     ''')
     create_file('duplicated_func_2.js', '''
@@ -3488,7 +3488,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
         duplicatedFunc : function() {
             return 2;
           }
-        }, LibraryParam.DisallowOverride
+        }, { noOverride: true }
       );
     ''')
 
