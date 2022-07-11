@@ -1729,6 +1729,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
 // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_FIREFOX_VERSION = 65;
 
@@ -1739,13 +1740,14 @@ var MIN_FIREFOX_VERSION = 65;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
 // Specifies the oldest version of Internet Explorer to target. E.g. pass -s
 // MIN_IE_VERSION = 11 to drop support for IE 10 and older.
 // Internet Explorer is at end of life and does not support WebAssembly.
-// MAX_INT (0x7FFFFFFF) specifies that target is not supported.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_IE_VERSION = 0x7FFFFFFF;
 
@@ -1753,12 +1755,14 @@ var MIN_IE_VERSION = 0x7FFFFFFF;
 // flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
 // EdgeHTML 39 and older.
 // Edge 44.17763 was released on November 13, 2018
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_EDGE_VERSION = 44;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 75.0.3770 was released on 2019-06-04
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_CHROME_VERSION = 75;
 
