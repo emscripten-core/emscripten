@@ -17,8 +17,8 @@ function genArgSequence(n) {
   return args;
 }
 
-// List of functions that were added from the library.
-global.libraryFunctions = [];
+// List of symbols that were added from the library.
+global.librarySymbols = [];
 
 global.LibraryManager = {
   library: {},
@@ -362,7 +362,7 @@ function isInternalSymbol(ident) {
 function addMissingLibraryStubs() {
   if (!ASSERTIONS) return '';
   let rtn = '';
-  const librarySymbolSet = new Set(libraryFunctions);
+  const librarySymbolSet = new Set(librarySymbols);
   for (const ident in LibraryManager.library) {
     if (typeof LibraryManager.library[ident] === 'function') {
       if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {

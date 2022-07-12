@@ -317,11 +317,6 @@ function ${name}(${args}) {
             deps.push(snippet);
             snippet = mangleCSymbolName(snippet);
           }
-          // In asm, we need to know about library functions. If there is a target, though, then no
-          // need to consider this a library function - we will call directly to it anyhow
-          if (!redirectedIdent && (typeof target == 'function')) {
-            libraryFunctions.push(finalName);
-          }
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
@@ -330,14 +325,9 @@ function ${name}(${args}) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName, deps);
         addImplicitDeps(snippet, deps);
-        libraryFunctions.push(finalName);
       }
 
-      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
-      // to wasm module.
-      if (LibraryManager.library[ident + '__import']) {
-        libraryFunctions.push(finalName);
-      }
+      librarySymbols.push(finalName);
 
       if (ONLY_CALC_JS_SYMBOLS) {
         return '';
@@ -555,7 +545,7 @@ function ${name}(${args}) {
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
-      libraryFunctions: libraryFunctions,
+      librarySymbols: librarySymbols,
       warnings: warnings,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
