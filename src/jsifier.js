@@ -290,7 +290,6 @@ function ${name}(${args}) {
 
       const original = LibraryManager.library[ident];
       let snippet = original;
-      let redirectedIdent = null;
       const deps = LibraryManager.library[ident + '__deps'] || [];
       if (!Array.isArray(deps)) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
@@ -313,9 +312,9 @@ function ${name}(${args}) {
           if (target) {
             // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
             // This avoid having duplicate functions with identical content.
-            redirectedIdent = snippet;
-            deps.push(snippet);
-            snippet = mangleCSymbolName(snippet);
+            const redirectedTarget = snippet;
+            deps.push(redirectedTarget);
+            snippet = mangleCSymbolName(redirectedTarget);
           }
         }
       } else if (typeof snippet == 'object') {
@@ -349,9 +348,6 @@ function ${name}(${args}) {
         }
       }
 
-      if (redirectedIdent) {
-        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
-      }
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }

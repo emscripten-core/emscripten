@@ -237,75 +237,12 @@ global.LibraryManager = {
       }
     }
 
-    // apply synonyms. these are typically not speed-sensitive, and doing it
-    // this way makes it possible to not include hacks in the compiler
-    // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
-    const lib = this.library;
-    libloop: for (const x in lib) {
-      if (!Object.prototype.hasOwnProperty.call(lib, x)) {
-        continue;
-      }
-      if (isJsLibraryConfigIdentifier(x)) {
-        const index = x.lastIndexOf('__');
-        const basename = x.slice(0, index);
-        if (!(basename in lib)) {
-          error(`Missing library element '${basename}' for library config '${x}'`);
-        }
-        continue;
-      }
-      if (typeof lib[x] == 'string') {
-        let target = x;
-        while (typeof lib[target] == 'string') {
-          // ignore code and variable assignments, aliases are just simple names
-          if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
-          target = lib[target];
-        }
-        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
-        if (typeof lib[target] == 'undefined' || typeof lib[target] == 'function') {
-          // When functions are aliased, a signature for the function must be
-          // provided so that an efficient form of forwarding can be
-          // implemented.
-          function testStringType(sig) {
-            if (typeof lib[sig] != 'undefined' && typeof typeof lib[sig] != 'string') {
-              error(`${sig} should be a string! (was ${typeof lib[sig]})`);
-            }
-          }
-          const aliasSig = x + '__sig';
-          const targetSig = target + '__sig';
-          testStringType(aliasSig);
-          testStringType(targetSig);
-          if (typeof lib[aliasSig] == 'string' && typeof lib[targetSig] == 'string' && lib[aliasSig] != lib[targetSig]) {
-            error(`${aliasSig} (${lib[aliasSig]}) differs from ${targetSig} (${lib[targetSig]})`);
-          }
-
-          const sig = lib[aliasSig] || lib[targetSig];
-          if (typeof sig != 'string') {
-            error(`Function ${x} aliases to target function ${target}, but neither the alias or the target provide a signature. Please add a ${targetSig}: 'vifj...' annotation or a ${aliasSig}: 'vifj...' annotation to describe the type of function forwarding that is needed!`);
-          }
-
-          // If only one of the target or the alias specifies a sig then copy
-          // this signature to the other.
-          if (!lib[aliasSig]) {
-            lib[aliasSig] = lib[targetSig];
-          } else if (!lib[targetSig]) {
-            lib[targetSig] = lib[aliasSig];
-          }
-
-          if (typeof lib[target] != 'function') {
-            error(`no alias found for ${x}`);
-          }
-
-          const argCount = sig.length - 1;
-          if (argCount !== lib[target].length) {
-            error(`incorrect number of arguments in signature of ${x} (declared: ${argCount}, expected: ${lib[target].length})`);
-          }
-          const ret = sig == 'v' ? '' : 'return ';
-          const args = genArgSequence(argCount).join(',');
-          const mangledName = mangleCSymbolName(target);
-          lib[x] = new Function(args, `${ret}${mangledName}(${args});`);
-
-          if (!lib[x + '__deps']) lib[x + '__deps'] = [];
-          lib[x + '__deps'].push(target);
+    for (const ident in this.library) {
+      if (isJsLibraryConfigIdentifier(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in this.library)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
         }
       }
     }
