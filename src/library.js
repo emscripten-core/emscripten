@@ -73,18 +73,72 @@ mergeInto(LibraryManager.library, {
     return cString;
   },
 
+#if !MINIMAL_RUNTIME
+  $exitJS__docs: '/** @param {boolean|number=} implicit */',
+  $exitJS__deps: ['proc_exit'],
+  $exitJS: function(status, implicit) {
+    EXITSTATUS = status;
+
+#if ASSERTIONS && !EXIT_RUNTIME
+    checkUnflushedContent();
+#endif // ASSERTIONS && !EXIT_RUNTIME
+
+#if USE_PTHREADS
+    if (!implicit) {
+      if (ENVIRONMENT_IS_PTHREAD) {
+#if PTHREADS_DEBUG
+        err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
+#endif
+        // When running in a pthread we propagate the exit back to the main thread
+        // where it can decide if the whole process should be shut down or not.
+        // The pthread may have decided not to exit its own runtime, for example
+        // because it runs a main loop, but that doesn't affect the main thread.
+        exitOnMainThread(status);
+        throw 'unwind';
+      } else {
+#if PTHREADS_DEBUG
+#if EXIT_RUNTIME
+        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+#else
+        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
+#endif
+#endif
+      }
+    }
+#endif
+
+#if EXIT_RUNTIME
+    if (!keepRuntimeAlive()) {
+      exitRuntime();
+    }
+#endif
+
+#if ASSERTIONS
+    // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
+    if (keepRuntimeAlive() && !implicit) {
+#if !EXIT_RUNTIME
+      var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
+#else
+      var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+#endif // EXIT_RUNTIME
+#if MODULARIZE
+      readyPromiseReject(msg);
+#endif // MODULARIZE
+      err(msg);
+    }
+#endif // ASSERTIONS
+
+    _proc_exit(status);
+  },
+#endif
+
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
   // map exit directly to the lower-level proc_exit syscall.
   exit: 'proc_exit',
-  $exit: 'exit',
 #else
-  exit: function(status) {
-    // void _exit(int status);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    exit(status);
-  },
+  exit: '$exitJS',
 #endif
 
   // Returns a pointer ('p'), which means an i32 on wasm32 and an i64 wasm64
@@ -3293,12 +3347,9 @@ mergeInto(LibraryManager.library, {
     throw 'unwind';
   },
 
-  emscripten_force_exit__deps: [
+  emscripten_force_exit__deps: ['exit',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
-#endif
-#if MINIMAL_RUNTIME
-    'exit',
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
@@ -3307,15 +3358,13 @@ mergeInto(LibraryManager.library, {
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
-#if MINIMAL_RUNTIME
-    _exit(status);
-#else
+#if !MINIMAL_RUNTIME
     noExitRuntime = false;
 #if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
 #endif
-    exit(status);
 #endif
+    _exit(status);
   },
 
   _emscripten_out__sig: 'vi',
@@ -3338,13 +3387,13 @@ mergeInto(LibraryManager.library, {
   // programs. This function is for implementing them.
   _emscripten_get_progname__sig: 'vii',
   _emscripten_get_progname: function(str, len) {
-  #if !MINIMAL_RUNTIME
-  #if ASSERTIONS
+#if !MINIMAL_RUNTIME
+#if ASSERTIONS
     assert(typeof str == 'number');
     assert(typeof len == 'number');
-  #endif
+#endif
     stringToUTF8(thisProgram, str, len);
-  #endif
+#endif
   },
 
   emscripten_console_log__sig: 'vp',
@@ -3653,5 +3702,6 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$warnOnce',
   '$ccall',
   '$cwrap',
+  '$ExitStatus',
 );
 #endif

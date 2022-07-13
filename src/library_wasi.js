@@ -5,13 +5,36 @@
  */
 
 var WasiLibrary = {
+#if !MINIMAL_RUNTIME
+  $ExitStatus__docs: '/** @constructor */',
+  $ExitStatus: function(status) {
+    this.name = 'ExitStatus';
+    this.message = 'Program terminated with exit(' + status + ')';
+    this.status = status;
+  },
+  proc_exit__deps: ['$ExitStatus'],
+#endif
+
   proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {
 #if MINIMAL_RUNTIME
     throw 'exit(' + code + ')';
 #else
-    procExit(code);
+#if RUNTIME_DEBUG
+    err('proc_exit: ' + code);
+#endif
+    EXITSTATUS = code;
+    if (!keepRuntimeAlive()) {
+#if USE_PTHREADS
+      PThread.terminateAllThreads();
+#endif
+#if expectToReceiveOnModule('onExit')
+      if (Module['onExit']) Module['onExit'](code);
+#endif
+      ABORT = true;
+    }
+    quit_(code, new ExitStatus(code));
 #endif
   },
 
