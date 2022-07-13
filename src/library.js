@@ -2360,7 +2360,6 @@ mergeInto(LibraryManager.library, {
     return nowIsMonotonic;
   },
 
-#if MINIMAL_RUNTIME
   $warnOnce: function(text) {
     if (!warnOnce.shown) warnOnce.shown = {};
     if (!warnOnce.shown[text]) {
@@ -2368,7 +2367,6 @@ mergeInto(LibraryManager.library, {
       err(text);
     }
   },
-#endif
 
   // Returns [parentFuncArguments, functionName, paramListName]
   $traverseStack: function(args) {
@@ -2400,11 +2398,7 @@ mergeInto(LibraryManager.library, {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace',
-#if MINIMAL_RUNTIME
-    , '$warnOnce'
-#endif
-  ],
+  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
   emscripten_get_callstack_js__docs: '/** @param {number=} flags */',
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
@@ -3299,9 +3293,14 @@ mergeInto(LibraryManager.library, {
     throw 'unwind';
   },
 
-#if MINIMAL_RUNTIME
-  emscripten_force_exit__deps: ['exit'],
+  emscripten_force_exit__deps: [
+#if !EXIT_RUNTIME && ASSERTIONS
+    '$warnOnce',
 #endif
+#if MINIMAL_RUNTIME
+    'exit',
+#endif
+  ],
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3651,5 +3650,6 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$writeAsciiToMemory',
   '$intArrayFromString',
   '$intArrayToString',
+  '$warnOnce',
 );
 #endif

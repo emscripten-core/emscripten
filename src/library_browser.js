@@ -10,6 +10,7 @@ var LibraryBrowser = {
     '$setMainLoop',
     '$callUserCallback',
     '$safeSetTimeout',
+    '$warnOnce',
     'emscripten_set_main_loop_timing',
   ],
   $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
