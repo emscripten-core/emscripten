@@ -34,10 +34,28 @@ See docs/process.md for more on how version tagging works.
    - addFunction
    - removeFunction
    - allocate
-  This means they won't get included in the output unless explictly required.
-  Exporting them via `EXPORTED_RUNTIME_METHODS` will continue to work.  For
-  internal usage (without exporting them) they can be added to
-  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17370)
+   - AsciiToString
+   - stringToAscii
+   - UTF16ToString
+   - stringToUTF16
+   - lengthBytesUTF16
+   - UTF32ToString
+   - stringToUTF32
+   - lengthBytesUTF32
+   - allocateUTF8
+   - allocateUTF8OnStack
+   - writeStringToMemory
+   - writeArrayToMemory
+   - writeAsciiToMemory
+   - intArrayFromString
+   - intArrayToString
+  However, they all still available by default due to a new setting called
+  `LEGACY_RUNTIME` which is enabled by default.  When `LEGACY_RUNTIME` is
+  disabled (which it may be in the future) these symbols would only be included
+  if there were explictly exported via `EXPORTED_RUNTIME_METHODS` or added to
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.  `LEGACY_RUNTIME` is disabled by default
+  in `STRICT` mode so this change only effects users of `STRICT` mode. (#17370,
+  #17403)
 - The `run` runtime function is no longer exported by default.  It can be added
   to `EXPORTED_RUNTIME_METHODS` if needed.
 - The getWasmTableEntry/setWasmTableEntry library function are no longer

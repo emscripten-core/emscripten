@@ -522,9 +522,7 @@ var LibraryEGL = {
   },
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
-#if MINIMAL_RUNTIME
   eglQueryString__deps: ['$allocateUTF8'],
-#endif
   eglQueryString__proxy: 'sync',
   eglQueryString__sig: 'iii',
   eglQueryString: function(display, name) {

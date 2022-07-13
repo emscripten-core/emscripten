@@ -12011,9 +12011,14 @@ Module['postRun'] = function() {{
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
 
-    # By default `allocate` is not available (its a JS library function not included by default)
+    # By default `LEGACY_RUNTIME` is enabled and `allocate` is available to call.
+    self.do_runf(test_file('other/test_legacy_runtime.c'))
+
+    # When we disable `LEGACY_RUNTIME`, `allocate` should not be available implicitly.
+    self.set_setting('LEGACY_RUNTIME', 0)
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     self.do_runf(test_file('other/test_legacy_runtime.c'),
                  'Aborted(Call to `allocate` which is a library function and not included by default',
                  assert_returncode=NON_ZERO)

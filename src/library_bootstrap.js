@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
 
   // printf/puts implementations for when musl is not pulled in - very
   // partial, but enough for bootstrapping structInfo
-  printf__deps: ['$formatString'],
+  printf__deps: ['$formatString', '$intArrayToString'],
   printf__sig: 'ipp',
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);

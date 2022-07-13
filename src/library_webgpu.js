@@ -753,12 +753,7 @@ var LibraryWebGPU = {
     device["pushErrorScope"](WebGPU.ErrorFilter[filter]);
   },
 
-  wgpuDevicePopErrorScope__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuDevicePopErrorScope__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
@@ -798,12 +793,7 @@ var LibraryWebGPU = {
     device.label = UTF8ToString(labelPtr);
   },
 
-  wgpuDeviceSetDeviceLostCallback__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
     var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
@@ -823,12 +813,7 @@ var LibraryWebGPU = {
     };
   },
 
-  wgpuDeviceSetUncapturedErrorCallback__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     device["onuncapturederror"] = function(ev) {
@@ -2364,12 +2349,7 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceRequestAdapter__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
 
@@ -2448,12 +2428,7 @@ var LibraryWebGPU = {
     return adapter.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
-  wgpuAdapterRequestDevice__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
 
