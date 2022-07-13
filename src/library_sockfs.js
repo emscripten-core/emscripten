@@ -727,7 +727,7 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  $_setNetworkCallback__deps: ['$withStackSave'],
+  $_setNetworkCallback__deps: ['$withStackSave', '$allocateUTF8OnStack'],
   $_setNetworkCallback: function(event, userData, callback) {
     function _callback(data) {
       try {

@@ -1092,7 +1092,6 @@ var LINKABLE = false;
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
-//   * LEGACY_RUNTIME is disabled.
 // [compile+link]
 var STRICT = false;
 
@@ -2053,7 +2052,7 @@ var RUNTIME_DEBUG = false;
 // Without this, such symbols can be made available by adding them to
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
 // library symbol.
-var LEGACY_RUNTIME = true;
+var LEGACY_RUNTIME = false;
 
 //===========================================
 // Internal, used for testing only, from here

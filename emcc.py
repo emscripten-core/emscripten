@@ -1810,13 +1810,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
     default_setting(user_settings, 'SUPPORT_ERRNO', 0)
-    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
     default_setting(user_settings, 'STRICT_JS', 1)
-    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
@@ -1874,8 +1872,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
         # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
-      if settings.ASSERTIONS and not settings.EXIT_RUNTIME:
-        # "checkUnflushedContent()" depends on warnOnce
+      if settings.ASSERTIONS:
+        # "checkUnflushedContent()" and "missingLibrarySymbol()" depend on warnOnce
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
