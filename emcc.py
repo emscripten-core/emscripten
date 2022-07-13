@@ -1912,7 +1912,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM2JS:
       exit_with_error('WASM2JS is not compatible with relocatable output')
     # shared modules need memory utilities to allocate their memory
-    settings.EXPORTED_RUNTIME_METHODS += ['allocate']
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
