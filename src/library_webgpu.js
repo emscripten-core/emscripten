@@ -2582,11 +2582,11 @@ var LibraryWebGPU = {
     ];
 
     if (canvasSize[0] !== 0) {
-        context.canvas.width = canvasSize[0];
+        context["canvas"]["width"] = canvasSize[0];
     }
 
     if (canvasSize[1] !== 0) {
-        context.canvas.height = canvasSize[1];
+        context["canvas"]["height"] = canvasSize[1];
     }
 
     var configuration = {
