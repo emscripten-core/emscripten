@@ -7359,19 +7359,28 @@ int main() {
     # changes to the size of the unoptimized and unminified code size.
     # Run with `--rebase` when this test fails.
     self.build(test_file('hello_world.c'), emcc_args=['-O0'])
-    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size.wasm.size'),
                                      os.path.getsize('hello_world.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size.js.size'),
+                                     os.path.getsize('hello_world.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
                                      os.path.getsize('no_asserts.wasm'))
     self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size.js.size'),
-                                     os.path.getsize('hello_world.js'))
-    self.check_expected_size_in_file('js',
                                      test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
                                      os.path.getsize('no_asserts.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sSTRICT'], output_basename='strict')
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size_strict.wasm.size'),
+                                     os.path.getsize('strict.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size_strict.js.size'),
+                                     os.path.getsize('strict.js'))
 
   def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
