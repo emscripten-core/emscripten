@@ -460,14 +460,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
     {{{ runtimeKeepalivePop() }}}
     callUserCallback(() => {
-      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+      if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
     }, fetchAttrSynchronous);
   };
 
   var reportProgress = (fetch, xhr, e) => {
     callUserCallback(() => {
-      if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
+      if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
     }, fetchAttrSynchronous);
   };
@@ -478,7 +478,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
     {{{ runtimeKeepalivePop() }}}
     callUserCallback(() => {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
+      if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(fetch);
       else if (errorcb) errorcb(fetch);
     }, fetchAttrSynchronous);
   };
@@ -488,7 +488,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     console.log('fetch: ready state change. e: ' + e);
 #endif
     callUserCallback(() => {
-      if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
+      if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetch);
       else if (readystatechangecb) readystatechangecb(fetch);
     }, fetchAttrSynchronous);
   };
@@ -511,7 +511,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
       }, fetchAttrSynchronous);
     };
@@ -521,7 +521,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
       }, fetchAttrSynchronous);
     };
