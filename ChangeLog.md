@@ -50,6 +50,8 @@ See docs/process.md for more on how version tagging works.
    - intArrayFromString
    - intArrayToString
    - warnOnce
+   - ccall
+   - cwrap
   However, they all still available by default due to a new setting called
   `LEGACY_RUNTIME` which is enabled by default.  When `LEGACY_RUNTIME` is
   disabled (which it may be in the future) these symbols would only be included

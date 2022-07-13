@@ -38,6 +38,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_ccall.js',
       'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
@@ -345,8 +346,6 @@ function exportRuntime() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'ccall',
-    'cwrap',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
