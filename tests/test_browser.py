@@ -106,6 +106,21 @@ def also_with_wasm2js(f):
   return metafunc
 
 
+def also_with_wasm64(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm64):
+    if with_wasm64:
+      self.set_setting('MEMORY64', 2)
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm64': (True,)}
+  return metafunc
+
+
 def shell_with_script(shell_file, output_file, replacement):
   shell = read_file(path_from_root('src', shell_file))
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
@@ -4626,6 +4641,7 @@ window.close = function() {
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
 
+  @also_with_wasm64
   def test_fetch_headers_received(self):
     self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 

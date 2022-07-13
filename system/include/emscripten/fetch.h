@@ -137,7 +137,7 @@ typedef struct emscripten_fetch_attr_t {
 
 typedef struct emscripten_fetch_t {
   // Unique identifier for this fetch in progress.
-  unsigned int id;
+  uint32_t id;
 
   // Custom data that can be tagged along the process.
   void *userData;
