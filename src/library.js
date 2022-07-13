@@ -3651,5 +3651,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$intArrayFromString',
   '$intArrayToString',
   '$warnOnce',
+  '$ccall',
+  '$cwrap',
 );
 #endif
