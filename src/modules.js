@@ -344,6 +344,7 @@ function exportRuntime() {
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
+    'run',
     'ccall',
     'cwrap',
     'UTF8ArrayToString',
@@ -408,11 +409,8 @@ function exportRuntime() {
   }
 
   if (!MINIMAL_RUNTIME) {
-    // MINIMAL_RUNTIME has moved these functions to library_strings.js
-    runtimeElements = runtimeElements.concat([
-      'run',
-      'ExitStatus',
-    ]);
+    // Symbols that only exist in the regular runtime.
+    runtimeElements.push('ExitStatus');
   }
 
   if (STACK_OVERFLOW_CHECK) {
