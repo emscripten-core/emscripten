@@ -18,7 +18,6 @@ import time
 import logging
 import pprint
 import shutil
-from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
@@ -771,7 +770,7 @@ def add_standard_wasm_imports(send_items_map):
 
 def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
-  send_items_map = OrderedDict()
+  send_items_map = {}
 
   def add_send_items(name, mangled_name, ignore_dups=False):
     # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
