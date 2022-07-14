@@ -203,22 +203,22 @@ class interactive(BrowserCore):
     self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
-    self.btest_exit('test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('interactive/test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_dropfile(self):
-    self.btest_exit('test_glfw_dropfile.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('interactive/test_glfw_dropfile.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_fullscreen(self):
-    self.btest_exit('test_glfw_fullscreen.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_fullscreen.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_get_key_stuck(self):
-    self.btest_exit('test_glfw_get_key_stuck.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_get_key_stuck.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_joystick(self):
-    self.btest_exit('glfw_joystick.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_joystick.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
-    self.btest_exit('test_glfw_pointerlock.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_pointerlock.c', args=['-sUSE_GLFW=3'])
 
   def test_glut_fullscreen(self):
     self.skipTest('looks broken')
