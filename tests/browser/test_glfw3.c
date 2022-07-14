@@ -41,8 +41,14 @@ assert(glfwSet##Function(Value) == Value); /* The previously set callback */
 assert(glfwSet##Function(Window, Value) == NULL);  /* Default value (no callback was set) */ \
 assert(glfwSet##Function(Window, Value) == Value); /* The previously set callback */
 
-int main()
-{
+static int exited = 0;
+
+__attribute__((destructor))
+void onExit() {
+    exited = 1;
+}
+
+int main() {
     GLFWwindow *window;
     char *userptr = "userptr";
 
@@ -121,9 +127,11 @@ int main()
         glfwSetWindowSize(window, 1, 1);
         glfwGetWindowSize(window, &w, &h);
         assert(w == 1 && h == 1);
+        assert(exited == 0);
 
         glfwSetWindowSize(window, 640, 480);
         glfwGetFramebufferSize(window, &w, &h);
+        assert(exited == 0);
 
         // XXX: not implemented
         // glfwIconifyWindow(window);
@@ -210,9 +218,6 @@ int main()
 #endif
 
     glfwTerminate();
-
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
+    printf("done\n");
     return 0;
 }

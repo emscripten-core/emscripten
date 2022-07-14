@@ -167,7 +167,9 @@ function callMain(args) {
     // that if we get here main returned zero.
     var ret = 0;
 #else
+    {{{ runtimeKeepalivePush() }}}
     var ret = entryFunction(argc, argv);
+    {{{ runtimeKeepalivePop() }}}
 #endif // STANDALONE_WASM
 
 #if BENCHMARK

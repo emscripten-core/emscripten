@@ -2492,6 +2492,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
     # always does.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+    if settings.EXIT_RUNTIME or settings.USE_PTHREADS:
+      # Use by callMain
+      # TODO(sbc): have callMain use callUserCallback instead.
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush', '$runtimeKeepalivePop']
 
   if settings.EXIT_RUNTIME and not settings.STANDALONE_WASM:
     # Internal function implemented in musl that calls any functions registered
