@@ -1241,7 +1241,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.btest_exit(test_file('test_glfw_joystick.c'), args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
+    self.btest_exit(test_file('browser/test_glfw_joystick.c'), args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
   def test_webgl_context_attributes(self):
@@ -1580,15 +1580,15 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glfw(self):
-    self.btest_exit('glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
-    self.btest_exit('glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_minimal(self):
-    self.btest_exit('glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_minimal.c', args=['-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_time(self):
-    self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def _test_egl_base(self, *args):
     self.btest_exit(test_file('test_egl.c'), args=['-O2', '-lEGL', '-lGL'] + list(args))
@@ -2881,12 +2881,12 @@ Module["preRun"].push(function () {
   def test_glfw3(self, args):
     for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
       print(opts)
-      self.btest(test_file('glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+      self.btest(test_file('browser/test_glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
-    self.btest(test_file('glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
-    self.btest(test_file('glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
   def test_sdl2_image(self):
