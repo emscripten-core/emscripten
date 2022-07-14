@@ -3274,16 +3274,19 @@ def parse_args(newargs):
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
       shared.reconfigure_cache()
+      # Ensure child processes share the same cache (e.g. when using emcc to compiler system
+      # libraries)
+      os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
       shared.Cache.erase()
-      shared.check_sanity(force=True) # this is a good time for a sanity check
+      shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       ports.clear()
       shared.Cache.erase()
-      shared.check_sanity(force=True) # this is a good time for a sanity check
+      shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--check'):
       print(version_string(), file=sys.stderr)

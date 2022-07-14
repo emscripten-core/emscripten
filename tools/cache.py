@@ -16,15 +16,6 @@ logger = logging.getLogger('cache')
 
 # Permanent cache for system librarys and ports
 class Cache:
-  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct
-  # access to the Emscripten cache without having to obtain an interprocess lock
-  # for it. Generally this is false, and this is used in the case that
-  # Emscripten process recursively calls to itself when building the cache, in
-  # which case the parent Emscripten process has already locked the cache.
-  # Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
-  # child process that the child can reuse the lock that the parent already has
-  # acquired.
-  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
 
   def __init__(self, dirname):
     # figure out the root directory for all caching
@@ -37,42 +28,38 @@ class Cache:
     self.filelock_name = Path(dirname, 'cache.lock')
     self.filelock = filelock.FileLock(self.filelock_name)
 
-  def acquire_cache_lock(self):
+  def acquire_cache_lock(self, reason):
     if config.FROZEN_CACHE:
       # Raise an exception here rather than exit_with_error since in practice this
       # should never happen
       raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
 
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
+    if self.acquired_count == 0:
       logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {self.dirname}')
+      assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
-        # The multiprocess cache locking can be disabled altogether by setting EM_EXCLUSIVE_CACHE_ACCESS=1 environment
-        # variable before building. (in that case, use "embuilder.py build ALL" to prepopulate the cache)
-        logger.warning(f'Accessing the Emscripten cache at "{self.dirname}" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{self.filelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
+        logger.warning(f'Accessing the Emscripten cache at "{self.dirname}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{self.filelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
         self.filelock.acquire()
 
-      self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
-      os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
+      os.environ['EM_CACHE_IS_LOCKED'] = '1'
       logger.debug('done')
     self.acquired_count += 1
 
   def release_cache_lock(self):
     self.acquired_count -= 1
     assert self.acquired_count >= 0, "Called release more times than acquire"
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS:
-        os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
-      else:
-        del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
+    if self.acquired_count == 0:
+      assert os.environ['EM_CACHE_IS_LOCKED'] == '1'
+      del os.environ['EM_CACHE_IS_LOCKED']
       self.filelock.release()
       logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {self.dirname}')
 
   @contextlib.contextmanager
-  def lock(self):
+  def lock(self, reason):
     """A context manager that performs actions in the given directory."""
-    self.acquire_cache_lock()
+    self.acquire_cache_lock(reason)
     try:
       yield
     finally:
@@ -82,7 +69,7 @@ class Cache:
     utils.safe_ensure_dirs(self.dirname)
 
   def erase(self):
-    with self.lock():
+    with self.lock('erase'):
       # Delete everything except the lockfile itself
       utils.delete_contents(self.dirname, exclude=[os.path.basename(self.filelock_name)])
 
@@ -128,7 +115,7 @@ class Cache:
     self.erase_file(self.get_lib_name(name))
 
   def erase_file(self, shortname):
-    with self.lock():
+    with self.lock('erase: ' + shortname):
       name = Path(self.dirname, shortname)
       if name.exists():
         logger.info(f'deleting cached file: {name}')
@@ -152,7 +139,7 @@ class Cache:
       # should never happen
       raise Exception(f'FROZEN_CACHE is set, but cache file is missing: "{shortname}" (in cache root path "{self.dirname}")')
 
-    with self.lock():
+    with self.lock(shortname):
       if cachename.exists() and not force:
         return str(cachename)
       if what is None:

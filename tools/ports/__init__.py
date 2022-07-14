@@ -174,7 +174,7 @@ class Ports:
     if local_ports:
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      with shared.Cache.lock():
+      with shared.Cache.lock('local ports'):
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -243,7 +243,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock():
+    with shared.Cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process build the library while we were
         # waiting for the lock
