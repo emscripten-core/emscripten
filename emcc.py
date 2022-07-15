@@ -620,6 +620,12 @@ def make_js_executable(script):
   cmd = config.JS_ENGINE
   if settings.WASM_BIGINT:
     cmd.append('--experimental-wasm-bigint')
+
+  # Force commonjs mode. This prevents build failures when any parent
+  # directory happen to contain package.json with {"type": "module"}.
+  # See https://github.com/emscripten-core/emscripten/issues/17431
+  cmd.extend(['--experimental-loader', os.path.join(os.path.dirname(__file__), 'commonjs-loader.mjs')])
+
   cmd = shared.shlex_join(cmd)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
