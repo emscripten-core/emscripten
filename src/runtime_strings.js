@@ -191,7 +191,7 @@ function lengthBytesUTF8(str) {
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
-    let c = str.charCodeAt(i); // possibly a lead surrogate
+    var c = str.charCodeAt(i); // possibly a lead surrogate
     if (c <= 0x7F) {
       len++;
     } else if (c <= 0x7FF) {
