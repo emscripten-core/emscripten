@@ -11,7 +11,6 @@ sections from a wasm file.
 """
 
 import argparse
-from collections import OrderedDict
 import json
 import logging
 from math import floor, log
@@ -311,11 +310,11 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     last_source_id = source_id
     last_line = line
     last_column = column
-  return OrderedDict([('version', 3),
-                      ('names', []),
-                      ('sources', sources),
-                      ('sourcesContent', sources_content),
-                      ('mappings', ','.join(mappings))])
+  return {'version': 3,
+          'names': [],
+          'sources': sources,
+          'sourcesContent': sources_content,
+          'mappings': ','.join(mappings)}
 
 
 def main():

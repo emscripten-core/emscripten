@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1500,7 +1500,7 @@ FS.staticInit();` +
     quit: () => {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
-#if hasExportedFunction('_fflush')
+#if hasExportedSymbol('fflush')
       _fflush(0);
 #endif
       // close all of our streams
