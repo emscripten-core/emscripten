@@ -3235,6 +3235,7 @@ mergeInto(LibraryManager.library, {
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 #if MAIN_MODULE == 1
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
+  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode'],
   $createDyncallWrapper: function(sig) {
     var sections = [];
     var prelude = [
@@ -3251,18 +3252,16 @@ mergeInto(LibraryManager.library, {
       sig.slice(1).replace("j", "ii"),
     ].join("");
 
-    var typeSection = [
+    var typeSectionBody = [
       0x03, // number of types = 3
-    ].concat(
-      generateFuncType(wrappersig), // The signature of the wrapper we are generating
-      generateFuncType(sig),  // the signature of the function pointer we will call
-      generateFuncType("vi"), // the signature of setTempRet0
-    );
+    ];
+    generateFuncType(wrappersig, typeSectionBody); // The signature of the wrapper we are generating
+    generateFuncType(sig, typeSectionBody); // the signature of the function pointer we will call
+    generateFuncType("vi", typeSectionBody); // the signature of setTempRet0
 
-    typeSection = [0x01 /* Type section code */].concat(
-      uleb128Encode(typeSection.length), // length of section in bytes
-      typeSection
-    );
+    typeSection = [0x01 /* Type section code */];
+    uleb128Encode(typeSection.length, typeSection); // length of section in bytes
+    typeSection.push.apply(typeSection, typeSectionBody);
     sections.push(typeSection);
 
     var importSection = [
@@ -3317,59 +3316,61 @@ mergeInto(LibraryManager.library, {
     var j = 1;
     for (var i = 1; i < sig.length; i++) {
       if (sig[i] == "j") {
-        convert_code = convert_code.concat(
-          [0x20], // local.get j + 1
-          uleb128Encode(j + 1),
-          [
+        convert_code.push(
+          0x20 // local.get j + 1
+        );
+        uleb128Encode(j + 1, convert_code);
+        convert_code.push(
             0xad, // i64.extend_i32_unsigned
             0x42, 0x20, // i64.const 32
             0x86, // i64.shl,
             0x20, // local.get j
-          ],
-          uleb128Encode(j),
-          [
+        )
+        uleb128Encode(j, convert_code);
+        convert_code.push(
               0xac, // i64.extend_i32_signed
               0x84, // i64.or
-          ]
         );
         j+=2;
       } else {
         convert_code.push(0x20); // local.get j
-        convert_code = convert_code.concat(uleb128Encode(j));
+        uleb128Encode(j, convert_code);
         j++;
       }
     }
 
-    convert_code = convert_code.concat([
+    convert_code.push(
       0x20, 0x00, // local.get 0 (put function pointer on stack)
       0x11, 0x01, 0x00, // call_indirect type 1 = wrapped_sig, table 0 = only table
-    ]);
+    );
 
     if (sig[0] === "j") {
-      convert_code = convert_code.concat([
+      convert_code.push(
         // tee into j (after the argument handling loop, j is one past the
         // argument list so it points to the i64 local we added)
         0x22,
-        ...uleb128Encode(j),
+      )
+      uleb128Encode(j, convert_code);
+      convert_code.push(
         0x42, 0x20, // i64.const 32
         0x88, // i64.shr_u
         0xa7, // i32.wrap_i64
         0x10, 0x00, // Call function 0
-        0x20, ...uleb128Encode(j), // local.get j
+        0x20
+      );
+      uleb128Encode(j, convert_code); // local.get j
+      convert_code.push(
         0xa7, // i32.wrap_i64
-      ]);
+      );
     }
     convert_code.push(0x0b); // end
 
-    var codeSection = [].concat(
-      [0x01], // one code
-      uleb128Encode(convert_code.length),
-      convert_code,
-    );
-    codeSection = [0x0A /* Code section code */].concat(
-      uleb128Encode(codeSection.length),
-      codeSection
-    );
+    var codeBody = [0x01]; // one code
+    uleb128Encode(convert_code.length, codeBody);
+    codeBody.push.apply(codeBody, convert_code);
+    var codeSection = [0x0A /* Code section code */];
+    uleb128Encode(codeBody.length, codeSection);
+    codeSection.push.apply(codeSection, codeBody);
     sections.push(codeSection);
 
     var bytes = new Uint8Array([].concat.apply([], sections));
