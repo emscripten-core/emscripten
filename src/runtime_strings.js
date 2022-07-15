@@ -196,7 +196,7 @@ function lengthBytesUTF8(str) {
       len++;
     } else if (c <= 0x7FF) {
       len += 2;
-    } else if (c >= 0xD800 && c <= 0xDFFF) { // high surrogate occurred
+    } else if (c >= 0xD800 && c <= 0xDFFF) {
       len += 4; ++i;
     } else {
       len += 3;
