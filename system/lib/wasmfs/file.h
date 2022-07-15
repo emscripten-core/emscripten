@@ -93,17 +93,21 @@ public:
 
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
-    : kind(kind), mode(mode), backend(backend) {}
+    : kind(kind), mode(mode), backend(backend) {
+    atime = mtime = ctime = time(NULL);
+  }
+
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
+  // May be called on files that have not been opened.
   virtual size_t getSize() = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
-  time_t ctime = 0; // Time when the file node was last modified.
-  time_t mtime = 0; // Time when the file content was last modified.
   time_t atime = 0; // Time when the content was last accessed.
+  time_t mtime = 0; // Time when the file content was last modified.
+  time_t ctime = 0; // Time when the file node was last modified.
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
@@ -131,15 +135,15 @@ protected:
   virtual void close() = 0;
 
   // Return the accessed length or a negative error code. It is not an error to
-  // access fewer bytes than requested.
+  // access fewer bytes than requested. Will only be called on opened files.
   // TODO: Allow backends to override the version of read with
   // multiple iovecs to make it possible to implement pipes. See #16269.
   virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
-  // should be zero-initialized (often backends have an efficient way to do this
-  // while doing the resizing).
+  // should be zero-initialized. May be called on files that have not been
+  // opened.
   virtual void setSize(size_t size) = 0;
 
   // TODO: Design a proper API for flushing files.
@@ -233,7 +237,7 @@ public:
   // Note that symlinks provide a mode of 0 to File. The mode of a symlink does
   // not matter, so that value will never be read (what matters is the mode of
   // the target).
-  Symlink(backend_t backend) : File(File::SymlinkKind, 0, backend) {}
+  Symlink(backend_t backend) : File(File::SymlinkKind, S_IFLNK, backend) {}
   virtual ~Symlink() = default;
 
   // Constant, and therefore thread-safe, and can be done without locking.

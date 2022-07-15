@@ -92,16 +92,6 @@ function runMemoryInitializer() {
 
 var calledRun;
 
-/**
- * @constructor
- * @this {ExitStatus}
- */
-function ExitStatus(status) {
-  this.name = "ExitStatus";
-  this.message = "Program terminated with exit(" + status + ")";
-  this.status = status;
-}
-
 var calledMain = false;
 
 #if STANDALONE_WASM && MAIN_READS_PARAMS
@@ -131,7 +121,7 @@ function callMain(args) {
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
   // that will call the user's real main() for the application.
-  var entryFunction = Module['_emscripten_proxy_main'];
+  var entryFunction = Module['__emscripten_proxy_main'];
 #else
   var entryFunction = Module['_main'];
 #endif
@@ -192,7 +182,7 @@ function callMain(args) {
 #endif
 #else
     // if we're not running an evented main loop, it's time to exit
-    exit(ret, /* implicit = */ true);
+    exitJS(ret, /* implicit = */ true);
     return ret;
   }
   catch (e) {
@@ -355,7 +345,6 @@ function run(args) {
   checkStackCookie();
 #endif
 }
-Module['run'] = run;
 
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
@@ -380,7 +369,7 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
-#elif hasExportedFunction('_fflush')
+#elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
@@ -408,79 +397,6 @@ function checkUnflushedContent() {
 }
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
-
-/** @param {boolean|number=} implicit */
-function exit(status, implicit) {
-  EXITSTATUS = status;
-
-#if ASSERTIONS && !EXIT_RUNTIME
-  checkUnflushedContent();
-#endif // ASSERTIONS && !EXIT_RUNTIME
-
-#if USE_PTHREADS
-  if (!implicit) {
-    if (ENVIRONMENT_IS_PTHREAD) {
-#if PTHREADS_DEBUG
-      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
-#endif
-      // When running in a pthread we propagate the exit back to the main thread
-      // where it can decide if the whole process should be shut down or not.
-      // The pthread may have decided not to exit its own runtime, for example
-      // because it runs a main loop, but that doesn't affect the main thread.
-      exitOnMainThread(status);
-      throw 'unwind';
-    } else {
-#if PTHREADS_DEBUG
-#if EXIT_RUNTIME
-      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
-#else
-      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
-#endif
-#endif
-    }
-  }
-#endif
-
-#if EXIT_RUNTIME
-  if (!keepRuntimeAlive()) {
-    exitRuntime();
-  }
-#endif
-
-#if ASSERTIONS
-  // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
-  if (keepRuntimeAlive() && !implicit) {
-#if !EXIT_RUNTIME
-    var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-#else
-    var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
-#endif // EXIT_RUNTIME
-#if MODULARIZE
-    readyPromiseReject(msg);
-#endif // MODULARIZE
-    err(msg);
-  }
-#endif // ASSERTIONS
-
-  procExit(status);
-}
-
-function procExit(code) {
-#if RUNTIME_DEBUG
-  err('procExit: ' + code);
-#endif
-  EXITSTATUS = code;
-  if (!keepRuntimeAlive()) {
-#if USE_PTHREADS
-    PThread.terminateAllThreads();
-#endif
-#if expectToReceiveOnModule('onExit')
-    if (Module['onExit']) Module['onExit'](code);
-#endif
-    ABORT = true;
-  }
-  quit_(code, new ExitStatus(code));
-}
 
 #if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {

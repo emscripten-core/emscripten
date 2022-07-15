@@ -47,7 +47,6 @@ from .settings import settings
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "15.0"
-PYTHON = sys.executable
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
@@ -74,6 +73,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
+diagnostics.add_warning('js-compiler')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -104,6 +104,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   sys.stdout.flush()
   sys.stderr.flush()
   kw.setdefault('universal_newlines', True)
+  kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
   logger.debug(debug_text)
@@ -139,7 +140,14 @@ def returncode_to_str(code):
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
-def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+def run_multiple_processes(commands,
+                           env=None,
+                           route_stdout_to_temp_files_suffix=None,
+                           pipe_stdout=False,
+                           check=True,
+                           cwd=None):
+  if env is None:
+    env = os.environ.copy()
   # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
   # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
@@ -227,7 +235,7 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
@@ -567,10 +575,13 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
+  # We also use this function to convert the clang-mangled `__main_argc_argv`
+  # to simply `main` which is expected by the emscripten JS glue code.
+  if name == '__main_argc_argv':
+    name = 'main'
   if treat_as_user_function(name):
     return '_' + name
-  else:
-    return name
+  return name
 
 
 def reconfigure_cache():
@@ -701,6 +712,7 @@ EMCMAKE = bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
 setup_temp_dirs()
 

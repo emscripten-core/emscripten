@@ -491,14 +491,13 @@ var LibraryPThread = {
       if (!__tls_base) {
 #if ASSERTIONS
         // __tls_base should never be zero if there are tls exports
-        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+        assert(__tls_base || metadata.tlsExports.size == 0);
 #endif
         return;
       }
-      for (var sym in metadata.tlsExports) {
-        metadata.tlsExports[sym] = moduleExports[sym];
-      }
-      relocateExports(metadata.tlsExports, __tls_base, /*replace=*/true);
+      var tlsExports = {};
+      metadata.tlsExports.forEach((s) => tlsExports[s] = moduleExports[s]);
+      relocateExports(tlsExports, __tls_base, /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on
@@ -777,9 +776,7 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
-#if MINIMAL_RUNTIME
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
-#endif
   emscripten_check_blocking_allowed: function() {
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
 #if ENVIRONMENT_MAY_BE_NODE
@@ -807,30 +804,6 @@ var LibraryPThread = {
     }
     return 0;
   },
-
-#if PROXY_TO_PTHREAD
-  __call_main__deps: ['exit', '$exitOnMainThread'],
-  __call_main: function(argc, argv) {
-#if !EXIT_RUNTIME
-    // EXIT_RUNTIME==0 set, keeping main thread alive by default.
-    noExitRuntime = true;
-#endif
-    var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
-#if EXIT_RUNTIME
-    if (!keepRuntimeAlive()) {
-      // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
-#if PTHREADS_DEBUG
-      err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
-#endif
-      exitOnMainThread(returnCode);
-    }
-#else
-#if PTHREADS_DEBUG
-    err('Proxied main thread finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
-#endif
-#endif
-  },
-#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.

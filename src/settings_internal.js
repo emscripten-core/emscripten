@@ -226,10 +226,10 @@ var TRANSPILE_TO_ES5 = false;
 
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
-var ALL_INCOMING_MODULE_JS_API = []
+var ALL_INCOMING_MODULE_JS_API = [];
 
-// Get set to true if llvm mangled the name of the main function to
-// `__main_argc_argv`.  In this case we export `__main_argc_argv` as `main`.
-// This means that from a user's POV that name is always `main` even though
-// internally it could have a different mangling.
-var MANGLED_MAIN = false;
+// List of all imports that are weak, and therefore allowed to be undefined at
+// runtime.  This is used by the JS compiler to avoid build-time warnings/errors
+// when weak symbols are undefined.  Only applies in the case of dyanmic linking
+// (MAIN_MODULE).
+var WEAK_IMPORTS = [];

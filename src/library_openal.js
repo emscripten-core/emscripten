@@ -2402,6 +2402,7 @@ var LibraryOpenAL = {
 
   alcGetString__proxy: 'sync',
   alcGetString__sig: 'iii',
+  alcGetString__deps: ['$allocateUTF8'],
   alcGetString: function(deviceId, param) {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
@@ -2657,7 +2658,7 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString'],
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$allocateUTF8'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -3054,6 +3055,7 @@ var LibraryOpenAL = {
 
   alGetString__proxy: 'sync',
   alGetString__sig: 'ii',
+  alGetString__deps: ['$allocateUTF8'],
   alGetString: function(param) {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];

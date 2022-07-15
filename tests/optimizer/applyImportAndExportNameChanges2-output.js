@@ -1,23 +1,32 @@
 var Module;
+
 if (!Module) Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
+
 var ENVIRONMENT_IS_NODE = typeof process === "object";
+
 if (ENVIRONMENT_IS_NODE) {
  var fs = require("fs");
  Module["wasm"] = fs.readFileSync(__dirname + "/a.wasm");
 }
+
 function out(text) {
  console.log(text);
 }
+
 function err(text) {
  console.error(text);
 }
+
 function ready() {
  run();
 }
+
 function abort(what) {
  throw what;
 }
+
 var UTF8Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf8") : undefined;
+
 function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
  var endIdx = idx + maxBytesToRead;
  var endPtr = idx;
@@ -53,25 +62,40 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
  }
  return str;
 }
+
 function UTF8ToString(ptr, maxBytesToRead) {
  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : "";
 }
+
 var TOTAL_MEMORY = 16777216, STATIC_BASE = 1024, DYNAMICTOP_PTR = 6016;
+
 var wasmMaximumMemory = TOTAL_MEMORY;
+
 var wasmMemory = new WebAssembly.Memory({
  "initial": TOTAL_MEMORY >> 16,
  "maximum": wasmMaximumMemory >> 16
 });
+
 var buffer = wasmMemory.buffer;
+
 var HEAP8 = new Int8Array(buffer);
+
 var HEAP16 = new Int16Array(buffer);
+
 var HEAP32 = new Int32Array(buffer);
+
 var HEAPU8 = new Uint8Array(buffer);
+
 var HEAPU16 = new Uint16Array(buffer);
+
 var HEAPU32 = new Uint32Array(buffer);
+
 var HEAPF32 = new Float32Array(buffer);
+
 var HEAPF64 = new Float64Array(buffer);
+
 HEAP32[DYNAMICTOP_PTR >> 2] = 5249152;
+
 var SYSCALLS = {
  buffers: [ null, [], [] ],
  printChar: function(stream, curr) {
@@ -101,6 +125,7 @@ var SYSCALLS = {
   SYSCALLS.get();
  }
 };
+
 function ___syscall140(which, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -115,6 +140,7 @@ function ___syscall140(which, varargs) {
   return -e.errno;
  }
 }
+
 function ___syscall146(which, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -134,6 +160,7 @@ function ___syscall146(which, varargs) {
   return -e.errno;
  }
 }
+
 function ___syscall54(which, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -143,6 +170,7 @@ function ___syscall54(which, varargs) {
   return -e.errno;
  }
 }
+
 function ___syscall6(which, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -154,15 +182,19 @@ function ___syscall6(which, varargs) {
   return -e.errno;
  }
 }
+
 function _emscripten_get_now() {
  abort();
 }
+
 function _emscripten_random() {
  return Math.random();
 }
+
 function _emscripten_memcpy_big(dest, src, num) {
  HEAPU8.set(HEAPU8.subarray(src, src + num), dest);
 }
+
 if (ENVIRONMENT_IS_NODE) {
  _emscripten_get_now = function _emscripten_get_now_actual() {
   var t = process["hrtime"]();
@@ -181,6 +213,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else {
  _emscripten_get_now = Date.now;
 }
+
 var asmLibraryArg = {
  "b": abort,
  "h": ___syscall140,
@@ -191,21 +224,29 @@ var asmLibraryArg = {
  "d": _emscripten_memcpy_big,
  "c": _emscripten_random
 };
+
 function run() {
  var ret = _main();
 }
+
 function initRuntime(asm) {
  asm["i"]();
 }
+
 var env = asmLibraryArg;
+
 env["memory"] = wasmMemory;
+
 env["table"] = new WebAssembly.Table({
  "initial": 6,
  "maximum": 6,
  "element": "anyfunc"
 });
+
 env["__memory_base"] = STATIC_BASE;
+
 env["__table_base"] = 0;
+
 var imports = {
  "env": env,
  "global": {
@@ -222,7 +263,9 @@ var imports = {
   }
  }
 };
+
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
+
 WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
  var asm = output.instance.exports;
  ___errno_location = asm["j"];

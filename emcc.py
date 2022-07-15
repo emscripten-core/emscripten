@@ -396,6 +396,21 @@ def apply_settings(user_settings):
       settings.LTO = 0 if value else 'full'
 
 
+# apply minimum browser version defaults based on user settings. if
+# a user requests a feature that we know is only supported in browsers
+# from a specific version and above, we can assume that browser version.
+def apply_min_browser_versions(user_settings):
+
+  def default_min_browser_version(browser, version):
+    default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
+
+  if settings.WASM_BIGINT:
+    default_min_browser_version('Safari', 150000)
+    default_min_browser_version('Edge', 79)
+    default_min_browser_version('Firefox', 68)
+    # Chrome has BigInt since v67 which is less than default min version.
+
+
 def is_ar_file_with_missing_index(archive_file):
   # We parse the archive header outselves because llvm-nm --print-armap is slower and less
   # reliable.
@@ -446,7 +461,7 @@ def get_all_js_syms():
     glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
     library_syms = set()
-    for name in forwarded_json['libraryFunctions']:
+    for name in forwarded_json['librarySymbols']:
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
         library_syms.add(name)
@@ -602,7 +617,10 @@ def get_binaryen_passes():
 
 def make_js_executable(script):
   src = read_file(script)
-  cmd = shared.shlex_join(config.JS_ENGINE)
+  cmd = config.JS_ENGINE
+  if settings.WASM_BIGINT:
+    cmd.append('--experimental-wasm-bigint')
+  cmd = shared.shlex_join(cmd)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
     cmd = '/usr/bin/env -S ' + cmd
@@ -996,9 +1014,14 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
-  file_code = shared.check_call(cmd, stdout=PIPE).stdout
-
-  options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  if options.preload_files:
+    # Preloading files uses --pre-js code that runs before the module is loaded.
+    file_code = shared.check_call(cmd, stdout=PIPE).stdout
+    options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+  else:
+    # Otherwise, we are embedding files, which does not require --pre-js code,
+    # and instead relies on a static constrcutor to populate the filesystem.
+    shared.check_call(cmd)
 
   return rtn
 
@@ -1086,7 +1109,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      cmd = [shared.PYTHON, sys.argv[0], utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      compiler = shared.EMCC
+      if run_via_emxx:
+        compiler = shared.EMXX
+      cmd = [compiler, utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
       proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)
@@ -1099,8 +1125,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity()
 
-  if '-print-search-dirs' in args:
-    return run_process([clang, '-print-search-dirs'], check=False).returncode
+  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
+  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
+    return run_process([clang] + args + get_cflags(args), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -1526,9 +1553,6 @@ def setup_pthreads(target):
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
-  if settings.PROXY_TO_PTHREAD:
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
-
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
@@ -1764,11 +1788,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
     default_setting(user_settings, 'SUPPORT_ERRNO', 0)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
     default_setting(user_settings, 'STRICT_JS', 1)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
@@ -1822,17 +1848,22 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
     exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-  # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
-  if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+  if not settings.MINIMAL_RUNTIME:
+    if not settings.BOOTSTRAPPING_STRUCT_INFO:
+      if settings.DYNCALLS:
+        # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
-  if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    # Include the internal library function since they are used by runtime functions.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
-    if settings.SAFE_HEAP:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
-    if not settings.MINIMAL_RUNTIME:
+      if settings.ASSERTIONS and not settings.EXIT_RUNTIME:
+        # "checkUnflushedContent()" depends on warnOnce
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
+
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
+
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+  if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -1883,7 +1914,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM2JS:
       exit_with_error('WASM2JS is not compatible with relocatable output')
     # shared modules need memory utilities to allocate their memory
-    settings.EXPORTED_RUNTIME_METHODS += ['allocate']
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
@@ -2044,6 +2074,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '_wasmfs_symlink',
         '_wasmfs_chmod',
         '_wasmfs_identify',
+        '_wasmfs_readdir_start',
+        '_wasmfs_readdir_get',
+        '_wasmfs_readdir_finish',
       ]
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
@@ -2067,6 +2100,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
+
+  if settings.RELOCATABLE:
+    # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
+    # llvm change lands
+    settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
 
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -2102,7 +2140,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '$jsStackTrace',
         '$stackTrace',
         # Called by `callMain` to handle exceptions
-        '$handleException'
+        '$handleException',
+        # Needed by ccall (remove this once ccall itself is a library function)
+        '$writeArrayToMemory',
       ]
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
@@ -2501,12 +2541,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # they are indirect calls, since that is what they do - we can't see their
       # targets statically.
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
-    # with pthreads we may call main through the __call_main mechanism, which can
-    # therefore reach anything in the program, so mark it as possibly causing a
-    # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
-    # see what it itself calls)
-    if settings.USE_PTHREADS:
-      settings.ASYNCIFY_IMPORTS += ['__call_main']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
 
@@ -2593,6 +2627,20 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
+
+  # Make `getExceptionMessage` and other necessary functions available for use.
+  if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # We also export refcount increasing and decreasing functions because if you
+    # catch an exception, be it an Emscripten exception or a Wasm exception, in
+    # JS, you may need to manipulate the refcount manually not to leak memory.
+    # What you need to do is different depending on the kind of EH you use
+    # (https://github.com/emscripten-core/emscripten/issues/17115).
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
+    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message']
+    if settings.WASM_EXCEPTIONS:
+      settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
+
+  apply_min_browser_versions(user_settings)
 
   return target, wasm_target
 
@@ -2835,6 +2883,8 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
 
   if embed_memfile():
     settings.SUPPORT_BASE64_EMBEDDING = 1
+    # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile)
   save_intermediate('original')
@@ -2916,14 +2966,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.MODULARIZE:
     modularize()
 
-  module_export_name_substitution()
+  if settings.USE_CLOSURE_COMPILER:
+    module_export_name_substitution()
 
-  # Run a final optimization pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
-  # by processing steps that occurred after Closure.
+  # Run a final optimization pass to clean up items that were not possible to
+  # optimize by Closure, or unoptimalities that were left behind by processing
+  # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-    # Finally, rerun Closure compile with simple optimizations. It will be able to further minify the code. (n.b. it would not be safe
-    # to run in advanced mode)
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
@@ -3367,7 +3420,8 @@ def phase_binaryen(target, options, wasm_target):
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
-    building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
+    sections = ['producers'] if strip_producers else []
+    building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
     building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
@@ -3583,16 +3637,13 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL:
+    # On the web, with MINIMAL_RUNTIME, the Module object is always provided
+    # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  # For Node.js and other shell environments, create an unminified Module object so that
-  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if settings.MINIMAL_RUNTIME and not settings.MODULARIZE and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')

@@ -30,7 +30,7 @@ def get(ports, settings, shared):
     src_path = os.path.join(dest_path, 'bullet', 'src')
 
     dest_include_path = ports.get_include_dir('bullet')
-    for base, dirs, files in os.walk(src_path):
+    for base, _, files in os.walk(src_path):
       for f in files:
         if shared.suffix(f) != '.h':
           continue
@@ -41,9 +41,9 @@ def get(ports, settings, shared):
         shutil.copyfile(fullpath, target)
 
     includes = []
-    for root, dirs, files in os.walk(src_path, topdown=False):
+    for base, dirs, _ in os.walk(src_path, topdown=False):
       for dir in dirs:
-        includes.append(os.path.join(root, dir))
+        includes.append(os.path.join(base, dir))
 
     ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
 

@@ -1,5 +1,6 @@
 # Define a global of type `externref`
 
+.section .data.my_global,"",@
 .globaltype my_global, externref
 my_global:
 
@@ -9,6 +10,7 @@ my_global:
 .functype log_externref_js (externref) -> ()
 
 .globl log_externref
+.section .text.log_externref,"",@
 log_externref:
   .functype log_externref () -> ()
   global.get my_global

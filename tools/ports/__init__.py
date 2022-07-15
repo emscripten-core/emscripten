@@ -49,7 +49,7 @@ def read_ports():
 
 
 def get_all_files_under(dirname):
-  for path, subdirs, files in os.walk(dirname):
+  for path, _, files in os.walk(dirname):
     for name in files:
       yield os.path.join(path, name)
 
@@ -95,9 +95,9 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):  # noqa
     srcs = []
-    for root, dirs, files in os.walk(src_path, topdown=False):
+    for root, _, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
         continue
       for f in files:

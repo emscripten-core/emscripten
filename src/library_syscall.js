@@ -1043,7 +1043,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
-  post += "if (ret < 0 && canWarn) {\n";
+  post += "if (ret && ret < 0 && canWarn) {\n";
   post += "  err('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
   post += "}\n";
   post += "err('syscall return: ' + ret);\n";

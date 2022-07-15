@@ -119,8 +119,13 @@ void __embind_register_native_and_builtin_types() {
   register_integer<unsigned short>("unsigned short");
   register_integer<signed int>("int");
   register_integer<unsigned int>("unsigned int");
+#if __wasm64__
+  register_bigint<signed long>("long");
+  register_bigint<unsigned long>("unsigned long");
+#else
   register_integer<signed long>("long");
   register_integer<unsigned long>("unsigned long");
+#endif
 
   register_bigint<int64_t>("int64_t");
   register_bigint<uint64_t>("uint64_t");

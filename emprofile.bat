@@ -7,7 +7,9 @@
 
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
-
+:: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
+:: of cpython used in cross compilation via setup.py.
+@set _PYTHON_SYSCONFIGDATA_NAME=
 @set EM_PY=%EMSDK_PYTHON%
 @if "%EM_PY%"=="" (
   set EM_PY=python
@@ -45,16 +47,16 @@
 )
 
 :NORMAL_EXIT
-@"%EM_PY%" "%~dp0\tools\emprofile.py" %*
+@"%EM_PY%" -E "%~dp0\tools\emprofile.py" %*
 @exit %ERRORLEVEL%
 
 :MUTE_STDIN
-@"%EM_PY%" "%~dp0\tools\emprofile.py" %* < NUL
+@"%EM_PY%" -E "%~dp0\tools\emprofile.py" %* < NUL
 @exit /b %ERRORLEVEL%
 
 :MUTE_STDIN_EXIT
-@"%EM_PY%" "%~dp0\tools\emprofile.py" %* < NUL
+@"%EM_PY%" -E "%~dp0\tools\emprofile.py" %* < NUL
 @exit %ERRORLEVEL%
 
 :NORMAL
-@"%EM_PY%" "%~dp0\tools\emprofile.py" %*
+@"%EM_PY%" -E "%~dp0\tools\emprofile.py" %*

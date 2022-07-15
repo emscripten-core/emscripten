@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -403,29 +403,39 @@ FS.staticInit();` +
         FS.FSStream = /** @constructor */ function() {
           this.shared = { };
         };
-        FS.FSStream.prototype = {
+        FS.FSStream.prototype = {};
+        Object.defineProperties(FS.FSStream.prototype, {
           object: {
+            /** @this {FS.FSStream} */
             get: function() { return this.node; },
+            /** @this {FS.FSStream} */
             set: function(val) { this.node = val; }
           },
           isRead: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
           },
           isWrite: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
           },
           isAppend: {
+            /** @this {FS.FSStream} */
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           },
           flags: {
+            /** @this {FS.FSStream} */
             get: function() { return this.shared.flags; },
+            /** @this {FS.FSStream} */
             set: function(val) { this.shared.flags = val; },
           },
           position : {
-            get function() { return this.shared.position; },
+            /** @this {FS.FSStream} */
+            get: function() { return this.shared.position; },
+            /** @this {FS.FSStream} */
             set: function(val) { this.shared.position = val; },
           },
-        };
+        });
       }
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
@@ -1490,7 +1500,7 @@ FS.staticInit();` +
     quit: () => {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
-#if hasExportedFunction('_fflush')
+#if hasExportedSymbol('fflush')
       _fflush(0);
 #endif
       // close all of our streams

@@ -17,8 +17,8 @@ function genArgSequence(n) {
   return args;
 }
 
-// List of functions that were added from the library.
-global.libraryFunctions = [];
+// List of symbols that were added from the library.
+global.librarySymbols = [];
 
 global.LibraryManager = {
   library: {},
@@ -38,10 +38,13 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_ccall.js',
+      'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
       'library_math.js',
       'library_path.js',
+      'library_strings.js',
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
@@ -58,13 +61,7 @@ global.LibraryManager = {
       }
     }
 
-    if (MINIMAL_RUNTIME) {
-      // Classic runtime brings in string-related functions in the runtime preamble, by including
-      // runtime_strings_extra.js that contain the same contents as library_strings.js does. In
-      // MINIMAL_RUNTIME those string functions are available as JS library functions instead from
-      // library_strings.js, to avoid unconditionally bringing in extra code to the build.
-      libraries.push('library_strings.js');
-    } else {
+    if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
       libraries.push('library_wget.js');
     }
@@ -151,10 +148,15 @@ global.LibraryManager = {
       libraries.push('library_html5_webgpu.js');
     }
 
+    if (!STRICT) {
+      libraries.push('library_legacy.js');
+    }
+
     if (BOOTSTRAPPING_STRUCT_INFO) {
       libraries = [
         'library_bootstrap.js',
         'library_formatString.js',
+        'library_strings.js',
         'library_int53.js',
       ];
     }
@@ -232,75 +234,12 @@ global.LibraryManager = {
       }
     }
 
-    // apply synonyms. these are typically not speed-sensitive, and doing it
-    // this way makes it possible to not include hacks in the compiler
-    // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
-    const lib = this.library;
-    libloop: for (const x in lib) {
-      if (!Object.prototype.hasOwnProperty.call(lib, x)) {
-        continue;
-      }
-      if (isJsLibraryConfigIdentifier(x)) {
-        const index = x.lastIndexOf('__');
-        const basename = x.slice(0, index);
-        if (!(basename in lib)) {
-          error(`Missing library element '${basename}' for library config '${x}'`);
-        }
-        continue;
-      }
-      if (typeof lib[x] == 'string') {
-        let target = x;
-        while (typeof lib[target] == 'string') {
-          // ignore code and variable assignments, aliases are just simple names
-          if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
-          target = lib[target];
-        }
-        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
-        if (typeof lib[target] == 'undefined' || typeof lib[target] == 'function') {
-          // When functions are aliased, a signature for the function must be
-          // provided so that an efficient form of forwarding can be
-          // implemented.
-          function testStringType(sig) {
-            if (typeof lib[sig] != 'undefined' && typeof typeof lib[sig] != 'string') {
-              error(`${sig} should be a string! (was ${typeof lib[sig]})`);
-            }
-          }
-          const aliasSig = x + '__sig';
-          const targetSig = target + '__sig';
-          testStringType(aliasSig);
-          testStringType(targetSig);
-          if (typeof lib[aliasSig] == 'string' && typeof lib[targetSig] == 'string' && lib[aliasSig] != lib[targetSig]) {
-            error(`${aliasSig} (${lib[aliasSig]}) differs from ${targetSig} (${lib[targetSig]})`);
-          }
-
-          const sig = lib[aliasSig] || lib[targetSig];
-          if (typeof sig != 'string') {
-            error(`Function ${x} aliases to target function ${target}, but neither the alias or the target provide a signature. Please add a ${targetSig}: 'vifj...' annotation or a ${aliasSig}: 'vifj...' annotation to describe the type of function forwarding that is needed!`);
-          }
-
-          // If only one of the target or the alias specifies a sig then copy
-          // this signature to the other.
-          if (!lib[aliasSig]) {
-            lib[aliasSig] = lib[targetSig];
-          } else if (!lib[targetSig]) {
-            lib[targetSig] = lib[aliasSig];
-          }
-
-          if (typeof lib[target] != 'function') {
-            error(`no alias found for ${x}`);
-          }
-
-          const argCount = sig.length - 1;
-          if (argCount !== lib[target].length) {
-            error(`incorrect number of arguments in signature of ${x} (declared: ${argCount}, expected: ${lib[target].length})`);
-          }
-          const ret = sig == 'v' ? '' : 'return ';
-          const args = genArgSequence(argCount).join(',');
-          const mangledName = mangleCSymbolName(target);
-          lib[x] = new Function(args, `${ret}${mangledName}(${args});`);
-
-          if (!lib[x + '__deps']) lib[x + '__deps'] = [];
-          lib[x + '__deps'].push(target);
+    for (const ident in this.library) {
+      if (isJsLibraryConfigIdentifier(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in this.library)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
         }
       }
     }
@@ -344,6 +283,33 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+function isInternalSymbol(ident) {
+  return ident + '__internal' in LibraryManager.library;
+}
+
+// When running with ASSERTIONS enabled we create stubs for each library
+// function that that was not included in the build.  This gives useful errors
+// when library dependencies are missing from `__deps` or depended on without
+// being added to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+// TODO(sbc): These errors could potentially be generated at build time via
+// some kind of acorn pass that searched for uses of these missing symbols.
+function addMissingLibraryStubs() {
+  if (!ASSERTIONS) return '';
+  let rtn = '';
+  const librarySymbolSet = new Set(librarySymbols);
+  for (const ident in LibraryManager.library) {
+    if (typeof LibraryManager.library[ident] === 'function') {
+      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+        const name = ident.substr(1);
+        if (!librarySymbolSet.has(name)) {
+          rtn += `var ${name} = missingLibraryFunc('${name}');\n`;
+        }
+      }
+    }
+  }
+  return rtn;
+}
+
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
@@ -352,7 +318,7 @@ function exportRuntime() {
   // in ASSERTIONS mode we show a useful error if it is used without
   // being exported. how we show the message depends on whether it's
   // a function (almost all of them) or a number.
-  function maybeExport(name, isNumber) {
+  function maybeExport(name) {
     // if requested to be exported, export it
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
@@ -373,24 +339,13 @@ function exportRuntime() {
     if (ASSERTIONS) {
       // check if it already exists, to support EXPORT_ALL and other cases
       const fssymbol = isExportedByForceFilesystem(name);
-      if (isNumber) {
-        return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
-      } else {
-        return `unexportedRuntimeFunction('${name}', ${fssymbol});`;
-      }
+      return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
     }
-    return '';
-  }
-
-  function maybeExportNumber(name) {
-    return maybeExport(name, true);
   }
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
-    'ccall',
-    'cwrap',
-    'allocate',
+    'run',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
@@ -415,8 +370,6 @@ function exportRuntime() {
     'getFunctionTables',
     'alignFunctionTables',
     'registerFunctions',
-    'addFunction',
-    'removeFunction',
     'prettyPrint',
     'getCompilerSetting',
     'print',
@@ -427,6 +380,11 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
+    // These last three are actually native wasm functions these days but we
+    // allow exporting them via EXPORTED_RUNTIME_METHODS for backwards compat.
+    'stackSave',
+    'stackRestore',
+    'stackAlloc',
   ];
 
   if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
@@ -449,32 +407,6 @@ function exportRuntime() {
     runtimeElements.push('WasmSourceMap');
   }
 
-  if (!MINIMAL_RUNTIME) {
-    // MINIMAL_RUNTIME has moved these functions to library_strings.js
-    runtimeElements = runtimeElements.concat([
-      'warnOnce',
-      'stackSave',
-      'stackRestore',
-      'stackAlloc',
-      'AsciiToString',
-      'stringToAscii',
-      'UTF16ToString',
-      'stringToUTF16',
-      'lengthBytesUTF16',
-      'UTF32ToString',
-      'stringToUTF32',
-      'lengthBytesUTF32',
-      'allocateUTF8',
-      'allocateUTF8OnStack',
-      'ExitStatus',
-      'intArrayFromString',
-      'intArrayToString',
-      'writeStringToMemory',
-      'writeArrayToMemory',
-      'writeAsciiToMemory',
-    ]);
-  }
-
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
@@ -484,6 +416,7 @@ function exportRuntime() {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
   }
+
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
@@ -499,29 +432,23 @@ function exportRuntime() {
   // '$ which indicates they are JS methods.
   const runtimeElementsSet = new Set(runtimeElements);
   for (const ident in LibraryManager.library) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !LibraryManager.library[ident + '__internal']) {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }
   }
 
-  const runtimeNumbers = [
-    'ALLOC_NORMAL',
-    'ALLOC_STACK',
-  ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     const runtimeElementsSet = new Set(runtimeElements);
-    const runtimeNumbersSet = new Set(runtimeNumbers);
     for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElementsSet.has(name) && !runtimeNumbersSet.has(name)) {
-        printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
+      if (!runtimeElementsSet.has(name)) {
+        warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
   let exports = runtimeElements.map((name) => maybeExport(name));
-  exports = exports.concat(runtimeNumbers.map((name) => maybeExportNumber(name)));
-  exports = exports.filter((name) => name != '');
-  return exports.join('\n');
+  exports = exports.filter((name) => name);
+  return exports.join('\n') + '\n' + addMissingLibraryStubs();
 }

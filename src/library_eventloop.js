@@ -68,11 +68,7 @@ LibraryJSEventLoop = {
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
-  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
@@ -84,21 +80,13 @@ LibraryJSEventLoop = {
     });
   },
 
-  emscripten_clear_immediate__deps: ['$polyfillSetImmediate',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
   emscripten_clear_immediate: function(id) {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
@@ -114,11 +102,7 @@ LibraryJSEventLoop = {
     return emSetImmediate(tick);
   },
 
-  emscripten_set_timeout__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_timeout__deps: ['$callUserCallback'],
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -133,11 +117,7 @@ LibraryJSEventLoop = {
     clearTimeout(id);
   },
 
-  emscripten_set_timeout_loop__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_timeout_loop__deps: ['$callUserCallback'],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
@@ -157,11 +137,7 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
-  emscripten_set_interval__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
@@ -171,9 +147,6 @@ LibraryJSEventLoop = {
     }, msecs);
   },
 
-#if !MINIMAL_RUNTIME
-  emscripten_clear_interval__deps: ['$runtimeKeepalivePop'],
-#endif
   emscripten_clear_interval: function(id) {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);

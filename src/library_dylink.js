@@ -1,7 +1,10 @@
-// ==========================================================================
-// Dynamic library loading
-//
-// ==========================================================================
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ *
+ * Dynamic library loading
+ */
 
 var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
 
@@ -20,6 +23,9 @@ var LibraryDylink = {
 #endif
     if (!sym) {
       sym = asmLibraryArg[symName];
+      // Ignore 'stub' symbols that are auto-generated as part of the original
+      // `asmLibraryArg` used to instantate the main module.
+      if (sym && sym.stub) sym = undefined;
     }
 
     // Check for the symbol on the Module object.  This is the only
@@ -44,20 +50,28 @@ var LibraryDylink = {
   },
 
   $GOT: {},
+  $CurrentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
 
   // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT'],
+  $GOTHandler__deps: ['$GOT', '$CurrentModuleWeakSymbols'],
   $GOTHandler: {
     'get': function(obj, symName) {
-      if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
+      var rtn = GOT[symName];
+      if (!rtn) {
+        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
       }
-      return GOT[symName]
+      if (!CurrentModuleWeakSymbols.has(symName)) {
+        // Any non-weak reference to a symbol marks it as `required`, which
+        // enabled `reportUndefinedSymbols` to report undefeind symbol errors
+        // correctly.
+        rtn.required = true;
+      }
+      return rtn;
     }
   },
 
@@ -84,7 +98,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
     err("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -175,6 +189,13 @@ var LibraryDylink = {
     for (var symName in GOT) {
       if (GOT[symName].value == 0) {
         var value = resolveGlobalSymbol(symName, true)
+        if (!value && !GOT[symName].required) {
+          // Ignore undefined symbols that are imported as weak.
+#if DYLINK_DEBUG
+          err('ignoring undefined weak symbol: ' + symName);
+#endif
+          continue;
+        }
 #if ASSERTIONS
         assert(value, 'undefined symbol `' + symName + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
@@ -231,11 +252,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr',
-#if MINIMAL_RUNTIME
-   '$intArrayFromString'
-#endif
-  ],
+  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack'],
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
@@ -349,7 +366,7 @@ var LibraryDylink = {
       name = getString();
     }
 
-    var customSection = { neededDynlibs: [], tlsExports: {} };
+    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set() };
     if (name == 'dylink') {
       customSection.memorySize = getLEB();
       customSection.memoryAlign = getLEB();
@@ -368,7 +385,10 @@ var LibraryDylink = {
       var WASM_DYLINK_MEM_INFO = 0x1;
       var WASM_DYLINK_NEEDED = 0x2;
       var WASM_DYLINK_EXPORT_INFO = 0x3;
+      var WASM_DYLINK_IMPORT_INFO = 0x4;
       var WASM_SYMBOL_TLS = 0x100;
+      var WASM_SYMBOL_BINDING_MASK = 0x3;
+      var WASM_SYMBOL_BINDING_WEAK = 0x1;
       while (offset < end) {
         var subsectionType = getU8();
         var subsectionSize = getLEB();
@@ -389,7 +409,17 @@ var LibraryDylink = {
             var symname = getString();
             var flags = getLEB();
             if (flags & WASM_SYMBOL_TLS) {
-              customSection.tlsExports[symname] = 1;
+              customSection.tlsExports.add(symname);
+            }
+          }
+        } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
+          var count = getLEB();
+          while (count--) {
+            var modname = getString();
+            var symname = getString();
+            var flags = getLEB();
+            if ((flags & WASM_SYMBOL_BINDING_MASK) == WASM_SYMBOL_BINDING_WEAK) {
+              customSection.weakImports.add(symname);
             }
           }
         } else {
@@ -444,16 +474,17 @@ var LibraryDylink = {
 
       // Export native export on the Module object.
       // TODO(sbc): Do all users want this?  Should we skip this by default?
-#if !hasExportedFunction('_main')
-      // If the main module doesn't define main it could be defined in one of
-      // the side module, and we need to handle the mangled named.
-      var module_sym = asmjsMangle(sym == '__main_argc_argv' ? 'main' : sym);
-#else
       var module_sym = asmjsMangle(sym);
-#endif
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }
+#if !hasExportedSymbol('main')
+      // If the main module doesn't define main it could be defined in one of
+      // the side modules, and we need to handle the mangled named.
+      if (sym == '__main_argc_argv') {
+        Module['_main'] = exports[sym];
+      }
+#endif
     }
   },
 
@@ -471,9 +502,13 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
+    '$alignMemory', '$zeroMemory',
+    '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$updateTableMap',
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
+    CurrentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
     var originalTable = wasmTable;
 #endif
@@ -617,6 +652,14 @@ var LibraryDylink = {
             } else {
               // we aren't ready to run compiled code yet
               __ATINIT__.push(init);
+            }
+          }
+          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+          if (applyRelocs) {
+            if (runtimeInitialized) {
+              applyRelocs();
+            } else {
+              __RELOC_FUNCS__.push(applyRelocs);
             }
           }
 #if USE_PTHREADS
@@ -918,12 +961,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop',
-#endif
-  ],
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     /** @param {Object=} e */

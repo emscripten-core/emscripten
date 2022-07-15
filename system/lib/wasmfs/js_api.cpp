@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 
@@ -121,4 +122,43 @@ int _wasmfs_identify(char* path) {
   }
   return EEXIST;
 }
+
+struct wasmfs_readdir_state {
+  int i;
+  int nentries;
+  struct dirent** entries;
+};
+
+struct wasmfs_readdir_state* _wasmfs_readdir_start(char* path) {
+  struct dirent** entries;
+  int nentries = scandir(path, &entries, NULL, alphasort);
+  if (nentries == -1) {
+    return NULL;
+  }
+  struct wasmfs_readdir_state* state =
+    (struct wasmfs_readdir_state*)malloc(sizeof(*state));
+  if (state == NULL) {
+    return NULL;
+  }
+  state->i = 0;
+  state->nentries = nentries;
+  state->entries = entries;
+  return state;
 }
+
+const char* _wasmfs_readdir_get(struct wasmfs_readdir_state* state) {
+  if (state->i < state->nentries) {
+    return state->entries[state->i++]->d_name;
+  }
+  return NULL;
+}
+
+void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
+  for (int i = 0; i < state->nentries; i++) {
+    free(state->entries[i]);
+  }
+  free(state->entries);
+  free(state);
+}
+
+} // extern "C"

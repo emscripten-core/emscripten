@@ -1779,6 +1779,7 @@ var LibrarySDL = {
 
   SDL_GetKeyName__proxy: 'sync',
   SDL_GetKeyName__sig: 'ii',
+  SDL_GetKeyName__deps: ['$allocateUTF8'],
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
       SDL.keyName = allocateUTF8('unknown key');
@@ -1841,6 +1842,7 @@ var LibrarySDL = {
 
   SDL_GetError__proxy: 'sync',
   SDL_GetError__sig: 'i',
+  SDL_GetError__deps: ['$allocateUTF8'],
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
       SDL.errorMessage = allocateUTF8("unknown SDL-emscripten error");
@@ -2584,7 +2586,7 @@ var LibrarySDL = {
           var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-            out('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+            err('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
           }
 #endif
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
@@ -3573,6 +3575,7 @@ var LibrarySDL = {
 
   SDL_JoystickName__proxy: 'sync',
   SDL_JoystickName__sig: 'ii',
+  SDL_JoystickName__deps: ['$allocateUTF8'],
   SDL_JoystickName: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
@@ -3712,6 +3715,7 @@ var LibrarySDL = {
   },
 
   SDL_GetNumAudioDrivers: function() { return 1 },
+  SDL_GetCurrentAudioDriver__deps: ['$allocateUTF8'],
   SDL_GetCurrentAudioDriver: function() {
     return allocateUTF8('Emscripten Audio');
   },

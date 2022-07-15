@@ -17,9 +17,9 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang
+from common import parameterized, requires_native_clang, PYTHON
 from tools import shared, config, utils
-from tools.shared import PYTHON, EMCC, path_from_root, run_process, CLANG_CC
+from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
 
@@ -69,7 +69,7 @@ class WebsockifyServerHarness():
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    for i in range(10):
+    for _ in range(10):
       try:
         if self.do_server_check:
             server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)

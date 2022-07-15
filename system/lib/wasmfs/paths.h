@@ -23,6 +23,10 @@ using Error = long;
 // or is a view into a static string.
 using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
 
+// If the path refers to a link, whether we should follow that link. Links among
+// the parent directories in the path are always followed.
+enum LinkBehavior { FollowLinks, NoFollowLinks };
+
 struct ParsedParent {
 private:
   std::variant<Error, ParentChild> val;
@@ -66,16 +70,20 @@ public:
   // Call only after checking for an error.
   std::shared_ptr<File>& getFile() {
     auto* ptr = std::get_if<std::shared_ptr<File>>(&val);
-    assert(ptr && "Unhandled path parsing error!");
     return *ptr;
   }
 };
 
-ParsedFile parseFile(std::string_view path, __wasi_fd_t basefd = AT_FDCWD);
+ParsedFile parseFile(std::string_view path,
+                     __wasi_fd_t basefd = AT_FDCWD,
+                     LinkBehavior links = FollowLinks);
 
-// Like `parseFile`, but handle the case where `flags & AT_EMPTY_PATH`. Does not
-// validate the flags since different callers have different allowed flags.
-// TODO: Handle AT_SYMLINK_NOFOLLOW as well.
+// Like `parseFile`, but handle the cases where flags include `AT_EMPTY_PATH` or
+// AT_SYMLINK_NOFOLLOW. Does not validate the flags since different callers have
+// different allowed flags.
 ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags);
+
+// Like `parseFile`, but parse the path relative to the given directory.
+ParsedFile getFileFrom(std::shared_ptr<Directory> base, std::string_view path);
 
 } // namespace wasmfs::path
