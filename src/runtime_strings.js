@@ -187,6 +187,7 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 function lengthBytesUTF8(str) {
+  var len = 0;
   for (var i = 0, l = str.length; i < l; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
