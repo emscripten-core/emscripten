@@ -201,7 +201,7 @@ var LibraryBrowser = {
           assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
           var audio = new Audio();
-          audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
+          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
           audio.onerror = function audio_onerror(event) {
             if (done) return;
             err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
@@ -256,14 +256,12 @@ var LibraryBrowser = {
           // than just running the promises in parallel, this makes a chain of
           // promises to run in series.
           wasmPlugin['asyncWasmLoadPromise'] = wasmPlugin['asyncWasmLoadPromise'].then(
-            function() {
-              return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
-            }).then(
-              function(module) {
+            () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
+              (module) => {
                 preloadedWasm[name] = module;
                 onload();
               },
-              function(err) {
+              (err) => {
                 console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
                 onerror();
               });
@@ -289,12 +287,12 @@ var LibraryBrowser = {
                                     canvas['mozRequestPointerLock'] ||
                                     canvas['webkitRequestPointerLock'] ||
                                     canvas['msRequestPointerLock'] ||
-                                    function(){};
+                                    (() => {});
         canvas.exitPointerLock = document['exitPointerLock'] ||
                                  document['mozExitPointerLock'] ||
                                  document['webkitExitPointerLock'] ||
                                  document['msExitPointerLock'] ||
-                                 function(){}; // no-op if function does not exist
+                                 (() => {}); // no-op if function does not exist
         canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
         document.addEventListener('pointerlockchange', pointerLockChange, false);
@@ -303,7 +301,7 @@ var LibraryBrowser = {
         document.addEventListener('mspointerlockchange', pointerLockChange, false);
 
         if (Module['elementPointerLock']) {
-          canvas.addEventListener("click", function(ev) {
+          canvas.addEventListener("click", (ev) => {
             if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
               Module['canvas'].requestPointerLock();
               ev.preventDefault();
@@ -440,8 +438,8 @@ var LibraryBrowser = {
       canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
+                                         (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
+                                         (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
 
       canvasContainer.requestFullscreen();
     },
@@ -789,11 +787,11 @@ var LibraryBrowser = {
       PATH.dirname(_file),
       PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
-      function() {
+      () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vi', 'onload') }}}(file);
       },
-      function() {
+      () => {
         {{{ runtimeKeepalivePop() }}}
         if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(file);
       },
@@ -818,11 +816,11 @@ var LibraryBrowser = {
       name,
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
-      function() {
+      () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vii', 'onload') }}}(arg, cname);
       },
-      function() {
+      () => {
         {{{ runtimeKeepalivePop() }}}
         if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
       },
@@ -864,7 +862,7 @@ var LibraryBrowser = {
         }
       }
     };
-    script.onerror = function() {
+    script.onerror = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onerror) onerror();
     };
@@ -912,14 +910,15 @@ var LibraryBrowser = {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = 'setimmediate';
-        var Browser_setImmediate_messageHandler = function(/** @type {Event} */ event) {
+        /** @param {Event} event */
+        var Browser_setImmediate_messageHandler = (event) => {
           // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
           // so check for both cases.
           if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
             event.stopPropagation();
             setImmediates.shift()();
           }
-        }
+        };
         addEventListener("message", Browser_setImmediate_messageHandler, true);
         setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
@@ -1103,7 +1102,7 @@ var LibraryBrowser = {
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg__sig: 'viiii',
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
-    var browserIterationFunc = function() { {{{ makeDynCall('vi', 'func') }}}(arg); };
+    var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
