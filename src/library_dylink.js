@@ -376,7 +376,7 @@ var LibraryDylink = {
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
-      for (var i = 0; i < neededDynlibsCount; ++i) {
+      for (let i = 0; i < neededDynlibsCount; ++i) {
         var libname = getString();
         customSection.neededDynlibs.push(libname);
       }
@@ -399,7 +399,7 @@ var LibraryDylink = {
           customSection.tableAlign = getLEB();
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
           var neededDynlibsCount = getLEB();
-          for (var i = 0; i < neededDynlibsCount; ++i) {
+          for (let i = 0; i < neededDynlibsCount; ++i) {
             libname = getString();
             customSection.neededDynlibs.push(libname);
           }
@@ -490,7 +490,7 @@ var LibraryDylink = {
 
 #if DYLINK_DEBUG
   $dumpTable: function() {
-    for (var i = 0; i < wasmTable.length; i++)
+    for (let i = 0; i < wasmTable.length; i++)
       err('table: ' + i + ' : ' + wasmTable.get(i));
   },
 #endif

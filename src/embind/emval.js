@@ -37,7 +37,7 @@ var LibraryEmVal = {
   $count_emval_handles__deps: ['$emval_handle_array'],
   $count_emval_handles: function() {
     var count = 0;
-    for (var i = 5; i < emval_handle_array.length; ++i) {
+    for (let i = 5; i < emval_handle_array.length; ++i) {
       if (emval_handle_array[i] !== undefined) {
         ++count;
       }
@@ -47,7 +47,7 @@ var LibraryEmVal = {
 
   $get_first_emval__deps: ['$emval_handle_array'],
   $get_first_emval: function() {
-    for (var i = 5; i < emval_handle_array.length; ++i) {
+    for (let i = 5; i < emval_handle_array.length; ++i) {
       if (emval_handle_array[i] !== undefined) {
         return emval_handle_array[i];
       }
@@ -187,7 +187,7 @@ var LibraryEmVal = {
     var argsList = new Array(argCount + 1);
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
-      for (var i = 0; i < argCount; ++i) {
+      for (let i = 0; i < argCount; ++i) {
         var argType = requireRegisteredType({{{ makeGetValue('argTypes', 'i * POINTER_SIZE', '*') }}}, 'parameter ' + i);
         argsList[i + 1] = argType['readValueFromPointer'](args);
         args += argType['argPackAdvance'];
@@ -197,14 +197,14 @@ var LibraryEmVal = {
     };
 #else
     var argsList = "";
-    for (var i = 0; i < argCount; ++i) {
+    for (let i = 0; i < argCount; ++i) {
       argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
     }
 
     var functionBody =
         "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n";
 
-    for (var i = 0; i < argCount; ++i) {
+    for (let i = 0; i < argCount; ++i) {
         functionBody +=
             "var argType"+i+" = requireRegisteredType({{{ makeGetValue('argTypes', '0', '*') }}}, 'parameter "+i+"');\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
@@ -381,7 +381,7 @@ var LibraryEmVal = {
     var types = emval_lookupTypes(argCount, argTypes);
 
     var args = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
+    for (let i = 0; i < argCount; ++i) {
       var type = types[i];
       args[i] = type['readValueFromPointer'](argv);
       argv += type['argPackAdvance'];
@@ -394,7 +394,7 @@ var LibraryEmVal = {
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
   $emval_lookupTypes: function(argCount, argTypes) {
     var a = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
+    for (let i = 0; i < argCount; ++i) {
       a[i] = requireRegisteredType({{{ makeGetValue('argTypes', 'i * POINTER_SIZE', '*') }}},
                                    "parameter " + i);
     }
@@ -435,12 +435,12 @@ var LibraryEmVal = {
     var argN = new Array(argCount - 1);
     var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
-      for (var i = 0; i < argCount - 1; ++i) {
+      for (let i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
         offset += types[i + 1]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
-      for (var i = 0; i < argCount - 1; ++i) {
+      for (let i = 0; i < argCount - 1; ++i) {
         if (types[i + 1].deleteObject) {
           types[i + 1].deleteObject(argN[i]);
         }
@@ -454,7 +454,7 @@ var LibraryEmVal = {
     var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (let i = 0; i < argCount - 1; ++i) {
       argsList += (i !== 0 ? ", " : "") + "arg" + i;
       params.push("argType" + i);
       args.push(types[1 + i]);
@@ -465,14 +465,14 @@ var LibraryEmVal = {
         "return function " + functionName + "(handle, name, destructors, args) {\n";
 
     var offset = 0;
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (let i = 0; i < argCount - 1; ++i) {
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
         offset += types[i + 1]['argPackAdvance'];
     }
     functionBody +=
         "    var rv = handle[name](" + argsList + ");\n";
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (let i = 0; i < argCount - 1; ++i) {
         if (types[i + 1]['deleteObject']) {
             functionBody +=
             "    argType" + i + ".deleteObject(arg" + i + ");\n";

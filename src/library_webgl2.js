@@ -77,7 +77,7 @@ var LibraryWebGL2 = {
 #endif
     var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
     if (ret === null) return;
-    for (var i = 0; i < ret.length && i < bufSize; ++i) {
+    for (let i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i*4', 'ret[i]', 'i32') }}};
     }
   },
@@ -139,7 +139,7 @@ var LibraryWebGL2 = {
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
 #endif
     var list = tempFixedLengthArray[numAttachments];
-    for (var i = 0; i < numAttachments; i++) {
+    for (let i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
 
@@ -153,7 +153,7 @@ var LibraryWebGL2 = {
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
 #endif
     var list = tempFixedLengthArray[numAttachments];
-    for (var i = 0; i < numAttachments; i++) {
+    for (let i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
 
@@ -199,7 +199,7 @@ var LibraryWebGL2 = {
 
   glDeleteQueries__sig: 'vii',
   glDeleteQueries: function(n, ids) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
@@ -279,7 +279,7 @@ var LibraryWebGL2 = {
 
   glDeleteSamplers__sig: 'vii',
   glDeleteSamplers: function(n, samplers) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
       var sampler = GL.samplers[id];
       if (!sampler) continue;
@@ -383,7 +383,7 @@ var LibraryWebGL2 = {
 
   glDeleteTransformFeedbacks__sig: 'vii',
   glDeleteTransformFeedbacks: function(n, ids) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
       if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
@@ -413,7 +413,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
     var vars = [];
-    for (var i = 0; i < count; i++)
+    for (let i = 0; i < count; i++)
       vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
 
     GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
@@ -554,14 +554,14 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
     var names = [];
-    for (var i = 0; i < uniformCount; i++)
+    for (let i = 0; i < uniformCount; i++)
       names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
     var result = GLctx['getUniformIndices'](program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
 
     var len = result.length;
-    for (var i = 0; i < len; i++) {
+    for (let i = 0; i < len; i++) {
       {{{ makeSetValue('uniformIndices', 'i*4', 'result[i]', 'i32') }}};
     }
   },
@@ -588,7 +588,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
     var ids = [];
-    for (var i = 0; i < uniformCount; i++) {
+    for (let i = 0; i < uniformCount; i++) {
       ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
     }
 
@@ -596,7 +596,7 @@ var LibraryWebGL2 = {
     if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
 
     var len = result.length;
-    for (var i = 0; i < len; i++) {
+    for (let i = 0; i < len; i++) {
       {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
     }
   },
@@ -636,7 +636,7 @@ var LibraryWebGL2 = {
     var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
     if (result === null) return; // If an error occurs, nothing should be written to params.
     if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
-      for (var i = 0; i < result.length; i++) {
+      for (let i = 0; i < result.length; i++) {
         {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
       }
     } else {

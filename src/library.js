@@ -45,7 +45,7 @@ mergeInto(LibraryManager.library, {
   $zeroMemory: function(address, size) {
 #if LEGACY_VM_SUPPORT
     if (!HEAPU8.fill) {
-      for (var i = 0; i < size; i++) {
+      for (let i = 0; i < size; i++) {
         HEAPU8[address + i] = 0;
       }
       return;
@@ -283,7 +283,7 @@ mergeInto(LibraryManager.library, {
     // Loop through potential heap size increases. If we attempt a too eager
     // reservation that fails, cut down on the attempted size and reserve a
     // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-    for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    for (let cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
 #if MEMORY_GROWTH_GEOMETRIC_CAP
@@ -411,7 +411,7 @@ mergeInto(LibraryManager.library, {
     // http://linux.die.net/man/3/getloadavg
     var limit = Math.min(nelem, 3);
     var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
-    for (var i = 0; i < limit; i++) {
+    for (let i = 0; i < limit; i++) {
       {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
     }
     return limit;
@@ -668,7 +668,7 @@ mergeInto(LibraryManager.library, {
 
   _arraySum: function(array, index) {
     var sum = 0;
-    for (var i = 0; i <= index; sum += array[i++]) {
+    for (let i = 0; i <= index; sum += array[i++]) {
       // no-op
     }
     return sum;
@@ -1009,7 +1009,7 @@ mergeInto(LibraryManager.library, {
     // escape special characters
     // TODO: not sure we really need to escape all of these in JS regexps
     var SPECIAL_CHARS = '\\!@#$^&*()+=-[]/{}|:<>?,.';
-    for (var i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
+    for (let i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
       pattern = pattern.replace(new RegExp('\\'+SPECIAL_CHARS[i], 'g'), '\\'+SPECIAL_CHARS[i]);
     }
 
@@ -1066,7 +1066,7 @@ mergeInto(LibraryManager.library, {
 
     // take care of capturing groups
     var capture = [];
-    for (var i=pattern.indexOf('%'); i>=0; i=pattern.indexOf('%')) {
+    for (let i=pattern.indexOf('%'); i>=0; i=pattern.indexOf('%')) {
       capture.push(pattern[i+1]);
       pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
     }
@@ -1160,7 +1160,7 @@ mergeInto(LibraryManager.library, {
         // get day of month from day of year ...
         var day = jstoi_q(value);
         var leapYear = __isLeapYear(date.year);
-        for (var month=0; month<12; ++month) {
+        for (let month=0; month<12; ++month) {
           var daysUntilMonth = __arraySum(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, month-1);
           if (day<=daysUntilMonth+(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[month]) {
             date.day = day-daysUntilMonth;
@@ -1558,7 +1558,7 @@ mergeInto(LibraryManager.library, {
 
   $inetPton4: function(str) {
     var b = str.split('.');
-    for (var i = 0; i < 4; i++) {
+    for (let i = 0; i < 4; i++) {
       var tmp = Number(b[i]);
       if (isNaN(tmp)) return null;
       b[i] = tmp;
@@ -2135,7 +2135,7 @@ mergeInto(LibraryManager.library, {
       var length = aliases.length;
       var aliasListBuf = _malloc((length + 1) * 4); // Use length + 1 so we have space for the terminating NULL ptr.
 
-      for (var i = 0; i < length; i++, j += 4) {
+      for (let i = 0; i < length; i++, j += 4) {
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
         writeAsciiToMemory(alias, aliasBuf);
@@ -2254,7 +2254,7 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
+    return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (let i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
 #else
     return () => abort("randomDevice");
 #endif
@@ -2266,7 +2266,7 @@ mergeInto(LibraryManager.library, {
     if (!_getentropy.randomDevice) {
       _getentropy.randomDevice = getRandomDevice();
     }
-    for (var i = 0; i < size; i++) {
+    for (let i = 0; i < size; i++) {
       {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}};
     }
     return 0;
@@ -3094,7 +3094,7 @@ mergeInto(LibraryManager.library, {
   _Unwind_Backtrace: function(func, arg) {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
-    for (var i = 0; i < parts.length; i++) {
+    for (let i = 0; i < parts.length; i++) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret !== 0) return;
     }

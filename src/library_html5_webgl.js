@@ -14,7 +14,7 @@ var LibraryHtml5WebGL = {
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
-    for (var i = 0; i < writeLength; ++i) {
+    for (let i = 0; i < writeLength; ++i) {
       heap[(dst >> 2) + i] = arr[i];
     }
     return len;
@@ -26,7 +26,7 @@ var LibraryHtml5WebGL = {
     assert(attributes);
 #endif
     var a = attributes >> 2;
-    for (var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
+    for (let i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
       HEAP32[a+i] = 0;
     }
 
@@ -578,7 +578,7 @@ function handleWebGLProxying(funcs) {
 
   function listOfNFunctionArgs(func) {
     var args = [];
-    for (var i = 0; i < func.length; ++i) {
+    for (let i = 0; i < func.length; ++i) {
       args.push('p' + i);
     }
     return args;

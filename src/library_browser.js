@@ -211,7 +211,7 @@ var LibraryBrowser = {
               var ret = '';
               var leftchar = 0;
               var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
+              for (let i = 0; i < data.length; i++) {
                 leftchar = (leftchar << 8) | data[i];
                 leftbits += 8;
                 while (leftbits >= 6) {
@@ -1201,7 +1201,7 @@ var LibraryBrowser = {
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
-    for (var i = 0; i < rules.length; i++) {
+    for (let i = 0; i < rules.length; i++) {
       if (rules[i].cssText.substr(0, 6) == 'canvas') {
         styleSheet.deleteRule(i);
         i--;

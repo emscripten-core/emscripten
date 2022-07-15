@@ -52,7 +52,7 @@ function intArrayFromBase64(s) {
   try {
     var decoded = decodeBase64(s);
     var bytes = new Uint8Array(decoded.length);
-    for (var i = 0 ; i < decoded.length ; ++i) {
+    for (let i = 0 ; i < decoded.length ; ++i) {
       bytes[i] = decoded.charCodeAt(i);
     }
     return bytes;

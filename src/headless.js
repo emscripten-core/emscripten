@@ -60,7 +60,7 @@ var window = {
       // rafs
       var currRafs = window.rafs;
       window.rafs = [];
-      for (var i = 0; i < currRafs.length; i++) {
+      for (let i = 0; i < currRafs.length; i++) {
         var raf = currRafs[i];
         headlessPrint('calling raf: ' + raf.uid);// + ': ' + raf.toString().substring(0, 50));
         raf();
@@ -90,7 +90,7 @@ var window = {
   removeEventListener: function(id, func) {
     var listeners = this.eventListeners[id];
     if (!listeners) return;
-    for (var i = 0; i < listeners.length; i++) {
+    for (let i = 0; i < listeners.length; i++) {
       if (listeners[i] === func) {
         listeners.splice(i, 1);
         return;
@@ -194,7 +194,7 @@ var performance = {
 };
 function fixPath(path) {
   if (path[0] == '/') path = path.substring(1);
-  for (var i = 0; i < window.dirsToDrop; i++) {
+  for (let i = 0; i < window.dirsToDrop; i++) {
     path = '../' + path;
   }
   return path

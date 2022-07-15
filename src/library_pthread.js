@@ -86,7 +86,7 @@ var LibraryPThread = {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for (var i = 0; i < pthreadPoolSize; ++i) {
+      for (let i = 0; i < pthreadPoolSize; ++i) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -171,7 +171,7 @@ var LibraryPThread = {
       assert(PThread.runningWorkers.length === 0);
 #endif
 
-      for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
+      for (let i = 0; i < PThread.unusedWorkers.length; ++i) {
         var worker = PThread.unusedWorkers[i];
 #if ASSERTIONS
         // This Worker should not be hosting a pthread at this time.
@@ -854,7 +854,7 @@ var LibraryPThread = {
       var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
       var args = stackAlloc(serializedNumCallArgs * 8);
       var b = args >> 3;
-      for (var i = 0; i < numCallArgs; i++) {
+      for (let i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
 #if WASM_BIGINT
         if (typeof arg == 'bigint') {
@@ -885,7 +885,7 @@ var LibraryPThread = {
 #endif
     _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;
-    for (var i = 0; i < numCallArgs; i++) {
+    for (let i = 0; i < numCallArgs; i++) {
 #if WASM_BIGINT
       if (HEAP64[b + 2*i]) {
         // It's a BigInt.

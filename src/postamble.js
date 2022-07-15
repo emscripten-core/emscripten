@@ -26,7 +26,7 @@ function runMemoryInitializer() {
     var applyMemoryInitializer = (data) => {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
-      for (var i = 0; i < data.length; i++) {
+      for (let i = 0; i < data.length; i++) {
         assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif

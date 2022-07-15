@@ -343,7 +343,7 @@ var LibraryEmbind = {
         if (myTypeConverters.length !== myTypes.length) {
             throwInternalError('Mismatched type converter count');
         }
-        for (var i = 0; i < myTypes.length; ++i) {
+        for (let i = 0; i < myTypes.length; ++i) {
             registerType(myTypes[i], myTypeConverters[i]);
         }
     }
@@ -378,7 +378,7 @@ var LibraryEmbind = {
   $embind_charCodes: undefined,
   $embind_init_charCodes: function() {
     var codes = new Array(256);
-    for (var i = 0; i < 256; ++i) {
+    for (let i = 0; i < 256; ++i) {
         codes[i] = String.fromCharCode(i);
     }
     embind_charCodes = codes;
@@ -404,7 +404,7 @@ var LibraryEmbind = {
 
   $heap32VectorToArray: function(count, firstElement) {
     var array = [];
-    for (var i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
         // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
         // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
         array.push({{{ makeGetValue('firstElement', 'i * ' + POINTER_SIZE, '*') }}});
@@ -701,7 +701,7 @@ var LibraryEmbind = {
         if (stdStringIsUTF8) {
           var decodeStartPtr = payload;
           // Looping here to support possible embedded '0' bytes
-          for (var i = 0; i <= length; ++i) {
+          for (let i = 0; i <= length; ++i) {
             var currentBytePtr = payload + i;
             if (i == length || HEAPU8[currentBytePtr] == 0) {
               var maxRead = currentBytePtr - decodeStartPtr;
@@ -755,7 +755,7 @@ var LibraryEmbind = {
           stringToUTF8(value, ptr, length + 1);
         } else {
           if (valueIsOfTypeString) {
-            for (var i = 0; i < length; ++i) {
+            for (let i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
                 _free(ptr);
@@ -813,7 +813,7 @@ var LibraryEmbind = {
 
         var decodeStartPtr = value + 4;
         // Looping here to support possible embedded '0' bytes
-        for (var i = 0; i <= length; ++i) {
+        for (let i = 0; i <= length; ++i) {
           var currentBytePtr = value + 4 + i * charSize;
           if (i == length || HEAP[currentBytePtr >> shift] == 0) {
             var maxReadBytes = currentBytePtr - decodeStartPtr;
@@ -999,7 +999,7 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = false;
 
-    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
+    for (let i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
       if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
         needsDestructorStack = true;
         break;
@@ -1030,7 +1030,7 @@ var LibraryEmbind = {
         thisWired = argTypes[1]['toWireType'](destructors, this);
         invokerFuncArgs[1] = thisWired;
       }
-      for (var i = 0; i < expectedArgCount; ++i) {
+      for (let i = 0; i < expectedArgCount; ++i) {
         argsWired[i] = argTypes[i + 2]['toWireType'](destructors, arguments[i]);
         invokerFuncArgs.push(argsWired[i]);
       }
@@ -1041,7 +1041,7 @@ var LibraryEmbind = {
         if (needsDestructorStack) {
           runDestructors(destructors);
         } else {
-          for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; i++) {
+          for (let i = isClassMethodFunc ? 1 : 2; i < argTypes.length; i++) {
             var param = i === 1 ? thisWired : argsWired[i - 2];
             if (argTypes[i].destructorFunction !== null) {
               argTypes[i].destructorFunction(param);
@@ -1069,7 +1069,7 @@ var LibraryEmbind = {
 #else
     var argsList = "";
     var argsListWired = "";
-    for (var i = 0; i < argCount - 2; ++i) {
+    for (let i = 0; i < argCount - 2; ++i) {
       argsList += (i!==0?", ":"")+"arg"+i;
       argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
     }
@@ -1101,7 +1101,7 @@ var LibraryEmbind = {
       invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
     }
 
-    for (var i = 0; i < argCount - 2; ++i) {
+    for (let i = 0; i < argCount - 2; ++i) {
       invokerFnBody += "var arg"+i+"Wired = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
       args1.push("argType"+i);
       args2.push(argTypes[i+2]);
@@ -1123,7 +1123,7 @@ var LibraryEmbind = {
     if (needsDestructorStack) {
       invokerFnBody += "runDestructors(destructors);\n";
     } else {
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+      for (let i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
         var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
         if (argTypes[i].destructorFunction !== null) {
           invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
@@ -1295,7 +1295,7 @@ var LibraryEmbind = {
         name: reg.name,
         'fromWireType': function(ptr) {
           var rv = new Array(elementsLength);
-          for (var i = 0; i < elementsLength; ++i) {
+          for (let i = 0; i < elementsLength; ++i) {
             rv[i] = elements[i].read(ptr);
           }
           rawDestructor(ptr);
@@ -1306,7 +1306,7 @@ var LibraryEmbind = {
             throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
           }
           var ptr = rawConstructor();
-          for (var i = 0; i < elementsLength; ++i) {
+          for (let i = 0; i < elementsLength; ++i) {
             elements[i].write(ptr, o[i]);
           }
           if (destructors !== null) {

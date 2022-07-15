@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
         // return the parent node, creating subdirs as necessary
         var parts = path.split('/');
         var parent = root;
-        for (var i = 0; i < parts.length-1; i++) {
+        for (let i = 0; i < parts.length-1; i++) {
           var curr = parts.slice(0, i+1).join('/');
           // Issue 4254: Using curr as a node name will prevent the node
           // from being found in FS.nameTable when FS.open is called on

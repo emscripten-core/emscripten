@@ -139,7 +139,7 @@ var LibraryGLEmulation = {
 
       GLEmulation.fogColor = new Float32Array(4);
 
-      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+      for (let clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
         GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
       }
 
@@ -151,7 +151,7 @@ var LibraryGLEmulation = {
       GLEmulation.materialShininess = new Float32Array([0.0]);
       GLEmulation.materialEmission = new Float32Array([0.0, 0.0, 0.0, 1.0]);
 
-      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+      for (let lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
         GLEmulation.lightAmbient[lightId] = new Float32Array([0.0, 0.0, 0.0, 1.0]);
         GLEmulation.lightDiffuse[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
         GLEmulation.lightSpecular[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
@@ -487,7 +487,7 @@ var LibraryGLEmulation = {
           if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
           if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
           GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
-          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+          for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             old = source;
             var need_vtc = source.search('v_texCoord' + i) == -1;
@@ -1590,7 +1590,7 @@ var LibraryGLEmulation = {
           assert(maxTexUnits > 0);
 #endif
           s_texUnits = [];
-          for (var i = 0; i < maxTexUnits; i++) {
+          for (let i = 0; i < maxTexUnits; i++) {
             s_texUnits.push(new CTexUnit());
           }
         },
@@ -1606,7 +1606,7 @@ var LibraryGLEmulation = {
           s_requiredTexUnitsForPass.length = 0; // Clear the list.
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
-          for (var i = 0; i < s_texUnits.length; i++) {
+          for (let i = 0; i < s_texUnits.length; i++) {
             if (!s_texUnits[i].enabled()) continue;
 
             s_requiredTexUnitsForPass.push(i);
@@ -1622,7 +1622,7 @@ var LibraryGLEmulation = {
           lines.push(resultDest + " = " + lastPassVar + ";");
 
           var indent = "";
-          for (var i = 0; i < indentSize; i++) indent += " ";
+          for (let i = 0; i < indentSize; i++) indent += " ";
 
           var output = indent + lines.join("\n" + indent);
 
@@ -1638,7 +1638,7 @@ var LibraryGLEmulation = {
         },
 
         traverseState: function(keyView) {
-          for (var i = 0; i < s_texUnits.length; i++) {
+          for (let i = 0; i < s_texUnits.length; i++) {
             s_texUnits[i].traverseState(keyView);
           }
         },
@@ -1879,7 +1879,7 @@ var LibraryGLEmulation = {
           var env = getCurTexUnit().env;
           switch (pname) {
             case GL_TEXTURE_ENV_COLOR: {
-              for (var i = 0; i < 4; i++) {
+              for (let i = 0; i < 4; i++) {
                 var param = {{{ makeGetValue('params', 'i*4', 'float') }}};
                 if (env.envColor[i] != param) {
                   env.invalidateKey(); // We changed FFP emulation renderer state.
@@ -2042,7 +2042,7 @@ var LibraryGLEmulation = {
     setClientAttribute: function setClientAttribute(name, size, type, stride, pointer) {
       var attrib = GLImmediate.clientAttributes[name];
       if (!attrib) {
-        for (var i = 0; i <= name; i++) { // keep flat
+        for (let i = 0; i <= name; i++) { // keep flat
           if (!GLImmediate.clientAttributes[i]) {
             GLImmediate.clientAttributes[i] = {
               name: name,
@@ -2088,7 +2088,7 @@ var LibraryGLEmulation = {
     },
 
     disableBeginEndClientAttributes: function disableBeginEndClientAttributes() {
-      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+      for (let i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
         if (GLImmediate.rendererComponents[i]) GLImmediate.enabledClientAttributes[i] = false;
       }
     },
@@ -2107,7 +2107,7 @@ var LibraryGLEmulation = {
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < attributes.length; i++) {
+      for (let i = 0; i < attributes.length; i++) {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
@@ -2134,13 +2134,13 @@ var LibraryGLEmulation = {
       enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
 
       // By clip plane mode
-      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+      for (let clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
         enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
       }
 
       // By lighting mode and enabled lights
       enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.lightingEnabled;
-      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+      for (let lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
         enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
       }
 
@@ -2180,7 +2180,7 @@ var LibraryGLEmulation = {
     createRenderer: function createRenderer(renderer) {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false;
-      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+      for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
         var texAttribName = GLImmediate.TEXTURE0 + i;
         if (!GLImmediate.enabledClientAttributes[texAttribName])
           continue;
@@ -2246,7 +2246,7 @@ var LibraryGLEmulation = {
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
             this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
-            for (var i = 0; i < this.usedTexUnitList.length; i++) {
+            for (let i = 0; i < this.usedTexUnitList.length; i++) {
               var texUnit = this.usedTexUnitList[i];
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
               texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
@@ -2274,7 +2274,7 @@ var LibraryGLEmulation = {
             var vsClipPlaneInit = '';
             var fsClipPlaneDefs = '';
             var fsClipPlanePass = '';
-            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+            for (let clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
               if (GLEmulation.clipPlaneEnabled[clipPlaneId]) {
                 vsClipPlaneDefs += 'uniform vec4 u_clipPlaneEquation' + clipPlaneId + ';';
                 vsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
@@ -2301,7 +2301,7 @@ var LibraryGLEmulation = {
               vsLightingPass += '  v_color.xyz = u_materialEmission.xyz;';
               vsLightingPass += '  v_color.xyz += u_lightModelAmbient.xyz * u_materialAmbient.xyz;';
 
-              for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+              for (let lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
                 if (GLEmulation.lightEnabled[lightId]) {
                   vsLightingDefs += 'uniform vec4 u_lightAmbient' + lightId + ';';
                   vsLightingDefs += 'uniform vec4 u_lightDiffuse' + lightId + ';';
@@ -2443,7 +2443,7 @@ var LibraryGLEmulation = {
             GLctx.bindAttribLocation(this.program, GLImmediate.COLOR, 'a_color');
             GLctx.bindAttribLocation(this.program, GLImmediate.NORMAL, 'a_normal');
             var maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
-            for (var i = 0; i < GLImmediate.MAX_TEXTURES && GLImmediate.TEXTURE0 + i < maxVertexAttribs; i++) {
+            for (let i = 0; i < GLImmediate.MAX_TEXTURES && GLImmediate.TEXTURE0 + i < maxVertexAttribs; i++) {
               GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, 'a_texCoord'+i);
               GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, aTexCoordPrefix+i);
             }
@@ -2458,7 +2458,7 @@ var LibraryGLEmulation = {
 
           this.texCoordLocations = [];
 
-          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+          for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             if (!GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0 + i]) {
               this.texCoordLocations[i] = -1;
               continue;
@@ -2476,7 +2476,7 @@ var LibraryGLEmulation = {
             var prevBoundProg = GLctx.getParameter(GLctx.CURRENT_PROGRAM);
             GLctx.useProgram(this.program);
             {
-              for (var i = 0; i < this.usedTexUnitList.length; i++) {
+              for (let i = 0; i < this.usedTexUnitList.length; i++) {
                 var texUnitID = this.usedTexUnitList[i];
                 var texSamplerLoc = GLctx.getUniformLocation(this.program, uTexUnitPrefix + texUnitID);
                 GLctx.uniform1i(texSamplerLoc, texUnitID);
@@ -2489,7 +2489,7 @@ var LibraryGLEmulation = {
           }
 
           this.textureMatrixLocations = [];
-          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+          for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             this.textureMatrixLocations[i] = GLctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
           }
           this.normalLocation = GLctx.getAttribLocation(this.program, 'a_normal');
@@ -2517,7 +2517,7 @@ var LibraryGLEmulation = {
 
           this.hasClipPlane = false;
           this.clipPlaneEquationLocation = [];
-          for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+          for (let clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
             this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
             this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
           }
@@ -2533,7 +2533,7 @@ var LibraryGLEmulation = {
           this.lightDiffuseLocation = []
           this.lightSpecularLocation = []
           this.lightPositionLocation = []
-          for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+          for (let lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
             this.lightAmbientLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightAmbient' + lightId);
             this.lightDiffuseLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightDiffuse' + lightId);
             this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightSpecular' + lightId);
@@ -2642,7 +2642,7 @@ var LibraryGLEmulation = {
           }
 #endif
           if (this.hasTextures) {
-            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+            for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
 #if GL_FFP_ONLY
               if (!GLctx.currentArrayBufferBinding) {
                 var attribLoc = GLImmediate.TEXTURE0+i;
@@ -2706,7 +2706,7 @@ var LibraryGLEmulation = {
           }
 
           if (this.hasClipPlane) {
-            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+            for (let clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
               if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
             }
           }
@@ -2718,7 +2718,7 @@ var LibraryGLEmulation = {
             if (this.materialSpecularLocation) GLctx.uniform4fv(this.materialSpecularLocation, GLEmulation.materialSpecular);
             if (this.materialShininessLocation) GLctx.uniform1f(this.materialShininessLocation, GLEmulation.materialShininess[0]);
             if (this.materialEmissionLocation) GLctx.uniform4fv(this.materialEmissionLocation, GLEmulation.materialEmission);
-            for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+            for (let lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
               if (this.lightAmbientLocation[lightId]) GLctx.uniform4fv(this.lightAmbientLocation[lightId], GLEmulation.lightAmbient[lightId]);
               if (this.lightDiffuseLocation[lightId]) GLctx.uniform4fv(this.lightDiffuseLocation[lightId], GLEmulation.lightDiffuse[lightId]);
               if (this.lightSpecularLocation[lightId]) GLctx.uniform4fv(this.lightSpecularLocation[lightId], GLEmulation.lightSpecular[lightId]);
@@ -2741,7 +2741,7 @@ var LibraryGLEmulation = {
 #if !GL_FFP_ONLY
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+            for (let i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
               if (GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
                 GLctx.disableVertexAttribArray(this.texCoordLocations[i]);
               }
@@ -2888,7 +2888,7 @@ var LibraryGLEmulation = {
       GLImmediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GLImmediate.MAX_TEXTURES;
       GLImmediate.clientAttributes = [];
       GLEmulation.enabledClientAttribIndices = [];
-      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+      for (let i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
         GLImmediate.clientAttributes.push({});
         GLEmulation.enabledClientAttribIndices.push(false);
       }
@@ -2899,7 +2899,7 @@ var LibraryGLEmulation = {
       GLImmediate.matrix = [];
       GLImmediate.matrixStack = [];
       GLImmediate.matrixVersion = [];
-      for (var i = 0; i < 2 + GLImmediate.MAX_TEXTURES; i++) { // Modelview, Projection, plus one matrix for each texture coordinate.
+      for (let i = 0; i < 2 + GLImmediate.MAX_TEXTURES; i++) { // Modelview, Projection, plus one matrix for each texture coordinate.
         GLImmediate.matrixStack.push([]);
         GLImmediate.matrixVersion.push(0);
         GLImmediate.matrix.push(GLImmediate.matrixLib.mat4.create());
@@ -2960,7 +2960,7 @@ var LibraryGLEmulation = {
       var maxStride = 0;
       var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
-      for (var i = 0; i < 3+GLImmediate.MAX_TEXTURES; i++) {
+      for (let i = 0; i < 3+GLImmediate.MAX_TEXTURES; i++) {
         if (GLImmediate.enabledClientAttributes[i]) {
           var attr = GLImmediate.clientAttributes[i];
           attributes.push(attr);
@@ -2983,7 +2983,7 @@ var LibraryGLEmulation = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < attributes.length; i++) {
+        for (let i = 0; i < attributes.length; i++) {
           var attr = attributes[i];
           var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
@@ -2991,20 +2991,20 @@ var LibraryGLEmulation = {
           bytes += size;
         }
         // copy out the data (we need to know the stride for that, and define attr.pointer)
-        for (var i = 0; i < attributes.length; i++) {
+        for (let i = 0; i < attributes.length; i++) {
           var attr = attributes[i];
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
             var size4 = attr.sizeBytes>>2;
             var srcStride4 = Math.max(attr.sizeBytes, attr.stride)>>2;
-            for (var j = 0; j < count; j++) {
-              for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+            for (let j = 0; j < count; j++) {
+              for (let k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
                 HEAP32[((start + attr.offset + bytes*j)>>2) + k] = HEAP32[(attr.pointer>>2) + j*srcStride4 + k];
               }
             }
           } else {
-            for (var j = 0; j < count; j++) {
-              for (var k = 0; k < attr.sizeBytes; k++) { // source data was not aligned to multiples of 4, must copy byte by byte.
+            for (let j = 0; j < count; j++) {
+              for (let k = 0; k < attr.sizeBytes; k++) { // source data was not aligned to multiples of 4, must copy byte by byte.
                 HEAP8[start + attr.offset + bytes*j + k] = HEAP8[attr.pointer + j*srcStride + k];
               }
             }
@@ -3020,7 +3020,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < attributes.length; i++) {
+        for (let i = 0; i < attributes.length; i++) {
           var attr = attributes[i];
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
@@ -3064,7 +3064,7 @@ var LibraryGLEmulation = {
           // an element array buffer. But best is to use both buffers!
           assert(!GLctx.currentElementArrayBufferBinding);
 #endif
-          for (var i = 0; i < numProvidedIndexes; i++) {
+          for (let i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
             GLImmediate.firstVertex = Math.min(GLImmediate.firstVertex, currIndex);
             GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
@@ -3131,14 +3131,14 @@ var LibraryGLEmulation = {
 
     GLImmediate.clientAttributes_preBegin = GLImmediate.clientAttributes;
     GLImmediate.clientAttributes = []
-    for (var i = 0; i < GLImmediate.clientAttributes_preBegin.length; i++) {
+    for (let i = 0; i < GLImmediate.clientAttributes_preBegin.length; i++) {
       GLImmediate.clientAttributes.push({});
     }
 
     GLImmediate.mode = mode;
     GLImmediate.vertexCounter = 0;
     var components = GLImmediate.rendererComponents = [];
-    for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+    for (let i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
       components[i] = 0;
     }
     GLImmediate.rendererComponentPointer = 0;
@@ -3570,7 +3570,7 @@ var LibraryGLEmulation = {
   emulGlGenVertexArrays__deps: ['$GLEmulation'],
   emulGlGenVertexArrays__sig: 'vii',
   emulGlGenVertexArrays: function(n, vaos) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
         id: id,
@@ -3585,7 +3585,7 @@ var LibraryGLEmulation = {
   },
   emulGlDeleteVertexArrays__sig: 'vii',
   emulGlDeleteVertexArrays: function(n, vaos) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLEmulation.vaos[id] = null;
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;

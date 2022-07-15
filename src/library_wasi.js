@@ -198,7 +198,7 @@ var WasiLibrary = {
   $doReadv__docs: '/** @param {number=} offset */',
   $doReadv: function(stream, iov, iovcnt, offset) {
     var ret = 0;
-    for (var i = 0; i < iovcnt; i++) {
+    for (let i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
@@ -212,7 +212,7 @@ var WasiLibrary = {
   $doWritev__docs: '/** @param {number=} offset */',
   $doWritev: function(stream, iov, iovcnt, offset) {
     var ret = 0;
-    for (var i = 0; i < iovcnt; i++) {
+    for (let i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
@@ -273,7 +273,7 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      for (var j = 0; j < len; j++) {
+      for (let j = 0; j < len; j++) {
         printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;

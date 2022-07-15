@@ -22,7 +22,7 @@ if (typeof Object.assign == 'undefined') {
    * @suppress {visibility, duplicate, checkTypes}
    */
   Object.assign = function(target, source) {
-    for (var i = 1; i < arguments.length; i++) {
+    for (let i = 1; i < arguments.length; i++) {
       var source = arguments[i];
       if (!source) continue;
       for (var key in source) {

@@ -464,9 +464,9 @@ var LibrarySDL = {
 
       var colors32 = surfData.colors32;
 
-      for (var y = startY; y < endY; ++y) {
+      for (let y = startY; y < endY; ++y) {
         var base = y * fullWidth;
-        for (var x = startX; x < endX; ++x) {
+        for (let x = startX; x < endX; ++x) {
           data32[base + x] = colors32[{{{ makeGetValue('buffer + base + x', '0', 'u8') }}}];
         }
       }
@@ -568,7 +568,7 @@ var LibrarySDL = {
 
           // Clear out any touchstart events that we've already processed
           if (event.type === 'touchstart') {
-            for (var i = 0; i < event.touches.length; i++) {
+            for (let i = 0; i < event.touches.length; i++) {
               var touch = event.touches[i];
               if (SDL.downFingers[touch.identifier] != true) {
                 SDL.downFingers[touch.identifier] = true;
@@ -598,7 +598,7 @@ var LibrarySDL = {
             SDL.events.push(mouseEvent);
           }
 
-          for (var i = 0; i < touches.length; i++) {
+          for (let i = 0; i < touches.length; i++) {
             var touch = touches[i];
             SDL.events.push({
               type: event.type,
@@ -612,7 +612,7 @@ var LibrarySDL = {
 
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          for (var i = 0; i < event.changedTouches.length; i++) {
+          for (let i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             if (SDL.downFingers[touch.identifier] === true) {
               delete SDL.downFingers[touch.identifier];
@@ -628,7 +628,7 @@ var LibrarySDL = {
           SDL.DOMButtons[0] = 0;
           SDL.events.push(mouseEvent);
 
-          for (var i = 0; i < event.changedTouches.length; i++) {
+          for (let i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             SDL.events.push({
               type: 'touchend',
@@ -752,7 +752,7 @@ var LibrarySDL = {
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
-          for (var i = 0; i < 3; i++) {
+          for (let i = 0; i < 3; i++) {
             if (SDL.DOMButtons[i]) {
               SDL.events.push({
                 type: 'mouseup',
@@ -935,7 +935,7 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           // Not filling in windowID for now
           var cStr = intArrayFromString(String.fromCharCode(event.charCode));
-          for (var i = 0; i < cStr.length; ++i) {
+          for (let i = 0; i < cStr.length; ++i) {
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.text + ' + i', 'cStr[i]', 'i8') }}};
           }
           break;
@@ -1082,7 +1082,7 @@ var LibrarySDL = {
       if (SDL.numChannels && SDL.numChannels >= num && num != 0) return;
       SDL.numChannels = num;
       SDL.channels = [];
-      for (var i = 0; i < num; i++) {
+      for (let i = 0; i < num; i++) {
         SDL.channels[i] = {
           audio: null,
           volume: 1.0
@@ -1193,22 +1193,22 @@ var LibrarySDL = {
       // so perform a buffer conversion for the data.
       var audio = SDL_audio();
       var numChannels = audio.channels;
-      for (var c = 0; c < numChannels; ++c) {
+      for (let c = 0; c < numChannels; ++c) {
         var channelData = dstAudioBuffer['getChannelData'](c);
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
         if (audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
-          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (let j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16') }}}) / 0x8000;
           }
         } else if (audio.format == {{{ cDefine('AUDIO_U8') }}}) {
-          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (let j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8') }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
         } else if (audio.format == {{{ cDefine('AUDIO_F32') }}}) {
-          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (let j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
         } else {
@@ -1224,7 +1224,7 @@ var LibrarySDL = {
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
-      for (var i = 0; i < num; i++) {
+      for (let i = 0; i < num; i++) {
         out('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     },
@@ -1239,7 +1239,7 @@ var LibrarySDL = {
     recordJoystickState: function(joystick, state) {
       // Standardize button state.
       var buttons = new Array(state.buttons.length);
-      for (var i = 0; i < state.buttons.length; i++) {
+      for (let i = 0; i < state.buttons.length; i++) {
         buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
       }
 
@@ -1515,7 +1515,7 @@ var LibrarySDL = {
   SDL_AudioQuit__proxy: 'sync',
   SDL_AudioQuit__sig: 'v',
   SDL_AudioQuit: function() {
-    for (var i = 0; i < SDL.numChannels; ++i) {
+    for (let i = 0; i < SDL.numChannels; ++i) {
       var chan = /** @type {{ audio: (HTMLMediaElement|undefined) }} */ (SDL.channels[i]);
       if (chan.audio) {
         chan.audio.pause();
@@ -1577,7 +1577,7 @@ var LibrarySDL = {
     if (surf == SDL.screen && SDL.defaults.opaqueFrontBuffer) {
       var data = surfData.image.data;
       var num = data.length;
-      for (var i = 0; i < num/4; i++) {
+      for (let i = 0; i < num/4; i++) {
         data[i*4+3] = 255; // opacity, as canvases blend alpha
       }
     }
@@ -1593,7 +1593,7 @@ var LibrarySDL = {
         //
         // var size = surfData.width * surfData.height;
         // var data = '';
-        // for (var i = 0; i<size; i++) {
+        // for (let i = 0; i<size; i++) {
         //   var color = SDL.translateRGBAToColor(
         //     surfData.image.data[i*4   ],
         //     surfData.image.data[i*4 +1],
@@ -1701,9 +1701,9 @@ var LibrarySDL = {
       var s = surfData.buffer;
       var data = surfData.image.data;
       var colors = surfData.colors; // TODO: optimize using colors32
-      for (var y = 0; y < height; y++) {
+      for (let y = 0; y < height; y++) {
         var base = y*width*4;
-        for (var x = 0; x < width; x++) {
+        for (let x = 0; x < width; x++) {
           // See comment above about signs
           var val = {{{ makeGetValue('s++', '0', 'u8') }}} * 4;
           var start = base + x*4;
@@ -1878,11 +1878,11 @@ var LibrarySDL = {
     var image = data.ctx.createImageData(width, height);
     var pitchOfDst = width * 4;
 
-    for (var row = 0; row < height; ++row) {
+    for (let row = 0; row < height; ++row) {
       var baseOfSrc = row * pitch;
       var baseOfDst = row * pitchOfDst;
 
-      for (var col = 0; col < width * 4; ++col) {
+      for (let col = 0; col < width * 4; ++col) {
         image.data[baseOfDst + col] = {{{ makeGetValue('pixels', 'baseOfDst + col', 'u8') }}};
       }
     }
@@ -2142,7 +2142,7 @@ var LibrarySDL = {
       surfData.colors32 = new Uint32Array(buffer);
     }
 
-    for (var i = 0; i < nColors; ++i) {
+    for (let i = 0; i < nColors; ++i) {
       var index = (firstColor + i) * 4;
       surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'u8') }}};
       surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'u8') }}};
@@ -2341,7 +2341,7 @@ var LibrarySDL = {
           var data = imageData.data;
           var sourcePtr = raw.data;
           var destPtr = 0;
-          for (var i = 0; i < pixels; i++) {
+          for (let i = 0; i < pixels; i++) {
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
@@ -2353,7 +2353,7 @@ var LibrarySDL = {
           var data = imageData.data;
           var sourcePtr = raw.data;
           var destPtr = 0;
-          for (var i = 0; i < pixels; i++) {
+          for (let i = 0; i < pixels; i++) {
             var gray = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             var alpha = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = gray;
@@ -2367,7 +2367,7 @@ var LibrarySDL = {
           var data = imageData.data;
           var sourcePtr = raw.data;
           var destPtr = 0;
-          for (var i = 0; i < pixels; i++) {
+          for (let i = 0; i < pixels; i++) {
             var value = {{{ makeGetValue('sourcePtr++', 0, 'u8') }}};
             data[destPtr++] = value;
             data[destPtr++] = value;
@@ -2495,7 +2495,7 @@ var LibrarySDL = {
       SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
         if (!SDL.audio) return;
 
-        for (var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
+        for (let i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
           // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
           // and wait to queue more in the next time the callback is run.
           var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
@@ -2742,7 +2742,7 @@ var LibrarySDL = {
   Mix_Volume__sig: 'iii',
   Mix_Volume: function(channel, volume) {
     if (channel == -1) {
-      for (var i = 0; i < SDL.numChannels-1; i++) {
+      for (let i = 0; i < SDL.numChannels-1; i++) {
         _Mix_Volume(i, volume);
       }
       return _Mix_Volume(SDL.numChannels-1, volume);
@@ -2891,7 +2891,7 @@ var LibrarySDL = {
 
     var numSamples = len >> 1; // len is the length in bytes, and the array contains 16-bit PCM values
     var buffer = new Float32Array(numSamples);
-    for (var i = 0; i < numSamples; ++i) {
+    for (let i = 0; i < numSamples; ++i) {
       buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16') }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
     }
 
@@ -2940,7 +2940,7 @@ var LibrarySDL = {
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
     if (channel == -1) {
-      for (var i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
+      for (let i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
           channel = i;
           break;
@@ -3002,7 +3002,7 @@ var LibrarySDL = {
     if (channel != -1) {
       halt(channel);
     } else {
-      for (var i = 0; i < SDL.channels.length; ++i) halt(i);
+      for (let i = 0; i < SDL.channels.length; ++i) halt(i);
     }
     return 0;
   },
@@ -3115,7 +3115,7 @@ var LibrarySDL = {
   Mix_Playing: function(channel) {
     if (channel === -1) {
       var count = 0;
-      for (var i = 0; i < SDL.channels.length; i++) {
+      for (let i = 0; i < SDL.channels.length; i++) {
         count += _Mix_Playing(i);
       }
       return count;
@@ -3131,7 +3131,7 @@ var LibrarySDL = {
   Mix_Pause__sig: 'vi',
   Mix_Pause: function(channel) {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (let i = 0; i<SDL.channels.length;i++) {
         _Mix_Pause(i);
       }
       return;
@@ -3151,7 +3151,7 @@ var LibrarySDL = {
   Mix_Paused: function(channel) {
     if (channel === -1) {
       var pausedCount = 0;
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (let i = 0; i<SDL.channels.length;i++) {
         pausedCount += _Mix_Paused(i);
       }
       return pausedCount;
@@ -3174,7 +3174,7 @@ var LibrarySDL = {
   Mix_Resume__sig: 'vi',
   Mix_Resume: function(channel) {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (let i = 0; i<SDL.channels.length;i++) {
         _Mix_Resume(i);
       }
       return;
@@ -3559,7 +3559,7 @@ var LibrarySDL = {
     var count = 0;
     var gamepads = SDL.getGamepads();
     // The length is not the number of gamepads; check which ones are defined.
-    for (var i = 0; i < gamepads.length; i++) {
+    for (let i = 0; i < gamepads.length; i++) {
       if (gamepads[i] !== undefined) count++;
     }
     return count;

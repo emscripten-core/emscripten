@@ -16,7 +16,7 @@ mergeInto(LibraryManager.library, {
     normalizeArray: (parts, allowAboveRoot) => {
       // if the path tries to go above the root, `up` ends up > 0
       var up = 0;
-      for (var i = parts.length - 1; i >= 0; i--) {
+      for (let i = parts.length - 1; i >= 0; i--) {
         var last = parts[i];
         if (last === '.') {
           parts.splice(i, 1);
@@ -122,14 +122,14 @@ mergeInto(LibraryManager.library, {
       var toParts = trim(to.split('/'));
       var length = Math.min(fromParts.length, toParts.length);
       var samePartsLength = length;
-      for (var i = 0; i < length; i++) {
+      for (let i = 0; i < length; i++) {
         if (fromParts[i] !== toParts[i]) {
           samePartsLength = i;
           break;
         }
       }
       var outputParts = [];
-      for (var i = samePartsLength; i < fromParts.length; i++) {
+      for (let i = samePartsLength; i < fromParts.length; i++) {
         outputParts.push('..');
       }
       outputParts = outputParts.concat(toParts.slice(samePartsLength));

@@ -20,7 +20,7 @@ Module['thisProgram'] = 'thisProgram'; // for consistency between different buil
 function hashMemory(id) {
   var ret = 0;
   var len = _sbrk();
-  for (var i = 0; i < len; i++) {
+  for (let i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }
   return id + ':' + ret;
@@ -28,7 +28,7 @@ function hashMemory(id) {
 
 function hashString(s) {
   var ret = 0;
-  for (var i = 0; i < s.length; i++) {
+  for (let i = 0; i < s.length; i++) {
     ret = (ret*17 + s.charCodeAt(i))|0;
   }
   return ret;

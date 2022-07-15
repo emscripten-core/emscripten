@@ -420,7 +420,7 @@ var LibraryGLFW = {
     onBlur: function(event) {
       if (!GLFW.active) return;
 
-      for (var i = 0; i < GLFW.active.domKeys.length; ++i) {
+      for (let i = 0; i < GLFW.active.domKeys.length; ++i) {
         if (GLFW.active.domKeys[i]) {
           GLFW.onKeyChanged(i, 0); // GLFW_RELEASE
         }
@@ -645,7 +645,7 @@ var LibraryGLFW = {
         GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
         GLFW.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
 
-        for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
+        for (let joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
           var gamepad = GLFW.lastGamepadState[joy];
 
           if (gamepad) {
@@ -666,11 +666,11 @@ var LibraryGLFW = {
 
             var data = GLFW.joys[joy];
 
-            for (var i = 0; i < gamepad.buttons.length;  ++i) {
+            for (let i = 0; i < gamepad.buttons.length;  ++i) {
               {{{ makeSetValue('data.buttons + i', '0', 'gamepad.buttons[i].pressed', 'i8') }}};
             }
 
-            for (var i = 0; i < gamepad.axes.length; ++i) {
+            for (let i = 0; i < gamepad.axes.length; ++i) {
               {{{ makeSetValue('data.axes + i*4', '0', 'gamepad.axes[i]', 'float') }}};
             }
           } else {
@@ -771,7 +771,7 @@ var LibraryGLFW = {
           if (++written === count) {
             {{{ makeDynCall('viii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
 
-            for (var i = 0; i < filenamesArray.length; ++i) {
+            for (let i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
             }
             _free(filenames);
@@ -781,10 +781,10 @@ var LibraryGLFW = {
 
         var filename = allocateUTF8(path);
         filenamesArray.push(filename);
-        {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
+        {{{ makeSetValue('filenames', 'filenamesArray.length*4', 'filename', POINTER_TYPE) }}};
       }
 
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         save(event.dataTransfer.files[i]);
       }
 #endif // FILESYSTEM
@@ -1054,7 +1054,7 @@ var LibraryGLFW = {
         GLFW.active = null;
 
       // Destroy context when no alive windows
-      for (var i = 0; i < GLFW.windows.length; i++)
+      for (let i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);

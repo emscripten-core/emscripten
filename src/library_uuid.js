@@ -56,7 +56,7 @@ mergeInto(LibraryManager.library, {
     if (!uuid) {
       uuid = new Array(16);
       var d = new Date().getTime();
-      for (var i = 0; i < 16; i++) {
+      for (let i = 0; i < 16; i++) {
         var r = ((d + Math.random() * 256) % 256)|0;
         d = (d / 256)|0;
         uuid[i] = r;
@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
   // If the value is equal to the NULL UUID, 1 is returned, otherwise 0 is returned.
   uuid_is_null: function(uu) {
     // int uuid_is_null(const uuid_t uu);
-    for (var i = 0; i < 4; i++, uu = (uu+4)|0) {
+    for (let i = 0; i < 4; i++, uu = (uu+4)|0) {
       var val = {{{ makeGetValue('uu', 0, 'i32') }}};
       if (val) {
         return 0;

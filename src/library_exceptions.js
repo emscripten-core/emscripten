@@ -363,7 +363,7 @@ var LibraryExceptions = {
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
-    for (var i = 0; i < typeArray.length; i++) {
+    for (let i = 0; i < typeArray.length; i++) {
       var caughtType = typeArray[i];
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught

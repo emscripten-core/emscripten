@@ -37,7 +37,7 @@ var emscriptenThreadProfiler = {
     for (var i in PThread.pthreads) {
       threads.push(PThread.pthreads[i].threadInfoStruct);
     }
-    for (var i = 0; i < threads.length; ++i) {
+    for (let i = 0; i < threads.length; ++i) {
       var threadPtr = threads[i];
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
@@ -65,7 +65,7 @@ var emscriptenThreadProfiler = {
       threads.push(PThread.pthreads[i].threadInfoStruct);
     }
 
-    for (var i = 0; i < threads.length; ++i) {
+    for (let i = 0; i < threads.length; ++i) {
       var threadPtr = threads[i];
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
@@ -79,7 +79,7 @@ var emscriptenThreadProfiler = {
 
       var threadTimesInStatus = [];
       var totalTime = 0;
-      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
+      for (let j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
         threadTimesInStatus.push(HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j]);
         totalTime += threadTimesInStatus[j];
         HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j] = 0;

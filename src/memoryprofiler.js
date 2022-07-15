@@ -374,7 +374,7 @@ var emscriptenMemoryProfiler = {
 
     for (var i in AL.currentContext.buf) {
       var buffer = AL.currentContext.buf[i];
-      for (var channel = 0; channel < buffer.numberOfChannels; ++channel) totalMemory += buffer.getChannelData(channel).length * 4;
+      for (let channel = 0; channel < buffer.numberOfChannels; ++channel) totalMemory += buffer.getChannelData(channel).length * 4;
     }
     return totalMemory;
   },
@@ -437,7 +437,7 @@ var emscriptenMemoryProfiler = {
   printHeapResizeLog: function(heapResizes) {
     var demangler = typeof demangleAll != 'undefined' ? demangleAll : function(x) { return x; };
     var html = '';
-    for (var i = 0; i < heapResizes.length; ++i) {
+    for (let i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
       while(j < heapResizes.length) {
         if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {

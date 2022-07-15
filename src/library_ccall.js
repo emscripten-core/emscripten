@@ -65,7 +65,7 @@ mergeInto(LibraryManager.library, {
     assert(returnType !== 'array', 'Return type should not be "array".');
 #endif
     if (args) {
-      for (var i = 0; i < args.length; i++) {
+      for (let i = 0; i < args.length; i++) {
         var converter = toC[argTypes[i]];
         if (converter) {
           if (stack === 0) stack = stackSave();

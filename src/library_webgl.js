@@ -20,7 +20,7 @@ var LibraryGL = {
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
   // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
-  $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
+  $tempFixedLengthArray__postset: 'for (let i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
   $miniTempWebGLFloatBuffers: [],
@@ -240,7 +240,7 @@ var LibraryGL = {
     // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: function(table) {
       var ret = GL.counter++;
-      for (var i = table.length; i < ret; i++) {
+      for (let i = table.length; i < ret; i++) {
         table[i] = null;
       }
       return ret;
@@ -275,7 +275,7 @@ var LibraryGL = {
       context.tempVertexBuffers1.length = context.tempVertexBuffers2.length = largestIndex+1;
       context.tempIndexBuffers = [];
       context.tempIndexBuffers.length = largestIndex+1;
-      for (var i = 0; i <= largestIndex; ++i) {
+      for (let i = 0; i <= largestIndex; ++i) {
         context.tempIndexBuffers[i] = null; // Created on-demand
         context.tempVertexBufferCounters1[i] = context.tempVertexBufferCounters2[i] = 0;
         var ringbufferLength = GL.numTempVertexBuffersPerSize;
@@ -284,7 +284,7 @@ var LibraryGL = {
         var ringbuffer1 = context.tempVertexBuffers1[i];
         var ringbuffer2 = context.tempVertexBuffers2[i];
         ringbuffer1.length = ringbuffer2.length = ringbufferLength;
-        for (var j = 0; j < ringbufferLength; ++j) {
+        for (let j = 0; j < ringbufferLength; ++j) {
           ringbuffer1[j] = ringbuffer2[j] = null; // Created on-demand
         }
       }
@@ -361,7 +361,7 @@ var LibraryGL = {
       GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
       GL.currentContext.tempVertexBufferCounters2 = vb;
       var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
-      for (var i = 0; i <= largestIndex; ++i) {
+      for (let i = 0; i <= largestIndex; ++i) {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
     },
@@ -369,7 +369,7 @@ var LibraryGL = {
 
     getSource: function(shader, count, string, length) {
       var source = '';
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
         source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? undefined : len);
       }
@@ -424,7 +424,7 @@ var LibraryGL = {
       GL.resetBufferBinding = false;
 
       // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
-      for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+      for (let i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
         var cb = GL.currentContext.clientBuffers[i];
         if (!cb.clientside || !cb.enabled) continue;
 
@@ -692,7 +692,7 @@ var LibraryGL = {
       const disableHalfFloatExtensionIfBroken = (ctx) => {
         var t = ctx.createTexture();
         ctx.bindTexture(0xDE1/*GL_TEXTURE_2D*/, t);
-        for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        for (let i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
         var ext = ctx.getExtension('OES_texture_half_float');
         if (!ext) return; // no half-float extension - nothing needed to fix.
         // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
@@ -918,7 +918,7 @@ var LibraryGL = {
           };
           var maxVertexAttribs = gl.getParameter(0x8869 /*GL_MAX_VERTEX_ATTRIBS*/);
           var prevVertexAttribEnables = [];
-          for (var i = 0; i < maxVertexAttribs; ++i) {
+          for (let i = 0; i < maxVertexAttribs; ++i) {
             var prevEnabled = gl.getVertexAttrib(i, 0x8622 /*GL_VERTEX_ATTRIB_ARRAY_ENABLED*/);
             var wantEnabled = i == context.blitPosLoc;
             if (prevEnabled && !wantEnabled) {
@@ -932,7 +932,7 @@ var LibraryGL = {
 
           draw();
 
-          for (var i = 0; i < maxVertexAttribs; ++i) {
+          for (let i = 0; i < maxVertexAttribs; ++i) {
             var prevEnabled = prevVertexAttribEnables[i];
             var nowEnabled = i == context.blitPosLoc;
             if (prevEnabled && !nowEnabled) {
@@ -1024,7 +1024,7 @@ var LibraryGL = {
 #if FULL_ES2
       context.maxVertexAttribs = context.GLctx.getParameter(0x8869 /*GL_MAX_VERTEX_ATTRIBS*/);
       context.clientBuffers = [];
-      for (var i = 0; i < context.maxVertexAttribs; i++) {
+      for (let i = 0; i < context.maxVertexAttribs; i++) {
         context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
       }
 
@@ -1350,7 +1350,7 @@ var LibraryGL = {
                      result instanceof Uint32Array ||
                      result instanceof Int32Array ||
                      result instanceof Array) {
-            for (var i = 0; i < result.length; ++i) {
+            for (let i = 0; i < result.length; ++i) {
               switch (type) {
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
@@ -1415,7 +1415,7 @@ var LibraryGL = {
 
   glDeleteTextures__sig: 'vii',
   glDeleteTextures: function(n, textures) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
       if (!texture) continue; // GL spec: "glDeleteTextures silently ignores 0s and names that do not correspond to existing textures".
@@ -1685,7 +1685,7 @@ var LibraryGL = {
     , functionName
 #endif
     ) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var buffer = GLctx[createFunction]();
       var id = buffer && GL.getNewId(objectTable);
       if (buffer) {
@@ -1723,7 +1723,7 @@ var LibraryGL = {
 
   glDeleteBuffers__sig: 'vii',
   glDeleteBuffers: function(n, buffers) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       var buffer = GL.buffers[id];
 
@@ -1813,7 +1813,7 @@ var LibraryGL = {
   // Queries EXT
   glGenQueriesEXT__sig: 'vii',
   glGenQueriesEXT: function(n, ids) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
       if (!query) {
         GL.recordError(0x502 /* GL_INVALID_OPERATION */);
@@ -1832,7 +1832,7 @@ var LibraryGL = {
 
   glDeleteQueriesEXT__sig: 'vii',
   glDeleteQueriesEXT: function(n, ids) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
@@ -1969,7 +1969,7 @@ var LibraryGL = {
 
   glDeleteRenderbuffers__sig: 'vii',
   glDeleteRenderbuffers: function(n, renderbuffers) {
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       var renderbuffer = GL.renderbuffers[id];
       if (!renderbuffer) continue; // GL spec: "glDeleteRenderbuffers silently ignores 0s and names that do not correspond to existing renderbuffer objects".
@@ -2036,7 +2036,7 @@ var LibraryGL = {
 #endif
       }
     } else {
-      for (var i = 0; i < data.length; i++) {
+      for (let i = 0; i < data.length; i++) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
@@ -2232,7 +2232,7 @@ var LibraryGL = {
 #endif
       }
     } else {
-      for (var i = 0; i < data.length; i++) {
+      for (let i = 0; i < data.length; i++) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
@@ -2382,7 +2382,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = __miniTempWebGLIntBuffers[count-1];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
     } else
@@ -2427,7 +2427,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = __miniTempWebGLIntBuffers[2*count-1];
-      for (var i = 0; i < 2*count; i += 2) {
+      for (let i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
       }
@@ -2473,7 +2473,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = __miniTempWebGLIntBuffers[3*count-1];
-      for (var i = 0; i < 3*count; i += 3) {
+      for (let i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
@@ -2520,7 +2520,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = __miniTempWebGLIntBuffers[4*count-1];
-      for (var i = 0; i < 4*count; i += 4) {
+      for (let i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
@@ -2568,7 +2568,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[count-1];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
     } else
@@ -2613,7 +2613,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[2*count-1];
-      for (var i = 0; i < 2*count; i += 2) {
+      for (let i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
       }
@@ -2659,7 +2659,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[3*count-1];
-      for (var i = 0; i < 3*count; i += 3) {
+      for (let i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2709,7 +2709,7 @@ var LibraryGL = {
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
-      for (var i = 0; i < 4 * count; i += 4) {
+      for (let i = 0; i < 4 * count; i += 4) {
         var dst = value + i;
         view[i] = heap[dst];
         view[i + 1] = heap[dst + 1];
@@ -2758,7 +2758,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[4*count-1];
-      for (var i = 0; i < 4*count; i += 4) {
+      for (let i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2806,7 +2806,7 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[9*count-1];
-      for (var i = 0; i < 9*count; i += 9) {
+      for (let i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2862,7 +2862,7 @@ var LibraryGL = {
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value >>= 2;
-      for (var i = 0; i < 16 * count; i += 16) {
+      for (let i = 0; i < 16 * count; i += 16) {
         var dst = value + i;
         view[i] = heap[dst];
         view[i + 1] = heap[dst + 1];
@@ -3034,7 +3034,7 @@ var LibraryGL = {
       len = maxCount;
     }
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
-    for (var i = 0; i < len; ++i) {
+    for (let i = 0; i < len; ++i) {
       var id = GL.shaders.indexOf(result[i]);
 #if GL_ASSERTIONS
       assert(id !== -1, 'shader not bound to local id');
@@ -3313,21 +3313,21 @@ var LibraryGL = {
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       if (!program.maxUniformLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
+        for (let i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
           program.maxUniformLength = Math.max(program.maxUniformLength, GLctx.getActiveUniform(program, i).name.length+1);
         }
       }
       {{{ makeSetValue('p', '0', 'program.maxUniformLength', 'i32') }}};
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
       if (!program.maxAttributeLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/); ++i) {
+        for (let i = 0; i < GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/); ++i) {
           program.maxAttributeLength = Math.max(program.maxAttributeLength, GLctx.getActiveAttrib(program, i).name.length+1);
         }
       }
       {{{ makeSetValue('p', '0', 'program.maxAttributeLength', 'i32') }}};
     } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
       if (!program.maxUniformBlockNameLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/); ++i) {
+        for (let i = 0; i < GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/); ++i) {
           program.maxUniformBlockNameLength = Math.max(program.maxUniformBlockNameLength, GLctx.getActiveUniformBlockName(program, i).length+1);
         }
       }
@@ -3582,7 +3582,7 @@ var LibraryGL = {
 
   glDeleteFramebuffers__sig: 'vii',
   glDeleteFramebuffers: function(n, framebuffers) {
-    for (var i = 0; i < n; ++i) {
+    for (let i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
       var framebuffer = GL.framebuffers[id];
       if (!framebuffer) continue; // GL spec: "glDeleteFramebuffers silently ignores 0s and names that do not correspond to existing framebuffer objects".
@@ -3659,7 +3659,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLctx['deleteVertexArray'](GL.vaos[id]);
       GL.vaos[id] = null;
@@ -3896,7 +3896,7 @@ var LibraryGL = {
 #endif
 
     var bufArray = tempFixedLengthArray[n];
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
     }
 

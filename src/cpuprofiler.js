@@ -76,7 +76,7 @@ var emscriptenCpuProfiler = {
     var now = performance.realNow();
     if (this.fpsCounterTicks.length < this.fpsCounterNumMostRecentFrames) this.fpsCounterTicks.push(now);
     else {
-      for (var i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
+      for (let i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
       this.fpsCounterTicks[this.fpsCounterTicks.length-1] = now;
     }
   
@@ -90,7 +90,7 @@ var emscriptenCpuProfiler = {
 
       var numSamplesToAccount = Math.min(this.timeSpentInMainloop.length, 120);
       var startX = (this.currentHistogramX - numSamplesToAccount + this.canvas.width) % this.canvas.width;
-      for (var i = 0; i < numSamplesToAccount; ++i) {
+      for (let i = 0; i < numSamplesToAccount; ++i) {
         var x = (startX + i) % this.canvas.width;
         var dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
         totalRAFDt += this.timeSpentInMainloop[x];
@@ -102,7 +102,7 @@ var emscriptenCpuProfiler = {
       var avgDt = totalDt / nSamples;
       var avgFps = 1000.0 / avgDt;
       var dtVariance = 0;
-      for (var i = 1; i < numSamplesToAccount; ++i) {
+      for (let i = 1; i < numSamplesToAccount; ++i) {
         var x = (startX + i) % this.canvas.width;
         var dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
         var d = dt - avgDt;
@@ -162,7 +162,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for (var i = 0; i < numSamples; ++i) {
+          for (let i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
           }
@@ -171,7 +171,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for (var i = 0; i < numSamples; ++i) {
+          for (let i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
           }
@@ -201,7 +201,7 @@ var emscriptenCpuProfiler = {
       if (sect.traceable && timeInSection > this.logWebGLCallsSlowerThan) {
         var funcs = new Error().stack.toString().split('\n');
         var cs = '';
-        for (var i = 2; i < 5 && i < funcs.length; ++i) {
+        for (let i = 2; i < 5 && i < funcs.length; ++i) {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
@@ -232,7 +232,7 @@ var emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (let i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
@@ -420,7 +420,7 @@ var emscriptenCpuProfiler = {
 
   drawBar: function drawBar(x) {
     var timeSpentInSectionsInsideMainLoop = 0;
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (let i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
@@ -431,7 +431,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (let i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
@@ -496,10 +496,10 @@ var emscriptenCpuProfiler = {
     }
 
     if (endX < startX) {
-      for (var x = startX; x < this.canvas.width; ++x) this.drawBar(x);
+      for (let x = startX; x < this.canvas.width; ++x) this.drawBar(x);
       startX = 0;
     }
-    for (var x = startX; x < endX; ++x) this.drawBar(x);
+    for (let x = startX; x < endX; ++x) this.drawBar(x);
   },
 
   // Work around Microsoft Edge bug where webGLContext.function.length always returns 0.

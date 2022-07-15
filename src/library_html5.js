@@ -50,7 +50,7 @@ var LibraryHTML5 = {
     inEventHandler: 0,
 
     removeAllEventListeners: function() {
-      for (var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
+      for (let i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
         JSEvents._removeHandler(i);
       }
       JSEvents.eventHandlers = [];
@@ -103,7 +103,7 @@ var LibraryHTML5 = {
     
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls: function(targetFunction) {
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
+      for (let i = 0; i < JSEvents.deferredCalls.length; ++i) {
         if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
           JSEvents.deferredCalls.splice(i, 1);
           --i;
@@ -119,7 +119,7 @@ var LibraryHTML5 = {
       if (!JSEvents.canPerformEventHandlerRequests()) {
         return;
       }
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
+      for (let i = 0; i < JSEvents.deferredCalls.length; ++i) {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
@@ -137,7 +137,7 @@ var LibraryHTML5 = {
 
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
-      for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+      for (let i = 0; i < JSEvents.eventHandlers.length; ++i) {
         if (JSEvents.eventHandlers[i].target == target && 
           (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
            JSEvents._removeHandler(i--);
@@ -178,7 +178,7 @@ var LibraryHTML5 = {
         JSEvents.registerRemoveEventListeners();
 #endif
       } else {
-        for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        for (let i = 0; i < JSEvents.eventHandlers.length; ++i) {
           if (JSEvents.eventHandlers[i].target == eventHandler.target
            && JSEvents.eventHandlers[i].eventTypeString == eventHandler.eventTypeString) {
              JSEvents._removeHandler(i--);
@@ -1427,7 +1427,7 @@ var LibraryHTML5 = {
     var hiddenElements = [];
     while (child != document.body) {
       var children = parent.children;
-      for (var i = 0; i < children.length; ++i) {
+      for (let i = 0; i < children.length; ++i) {
         if (children[i] != child) {
           hiddenElements.push({ node: children[i], displayState: children[i].style.display });
           children[i].style.display = 'none';
@@ -1441,7 +1441,7 @@ var LibraryHTML5 = {
 
   // Applies old visibility states, given a list of changes returned by hideEverythingExceptGivenElement().
   $restoreHiddenElements: function(hiddenElements) {
-    for (var i = 0; i < hiddenElements.length; ++i) {
+    for (let i = 0; i < hiddenElements.length; ++i) {
       hiddenElements[i].node.style.display = hiddenElements[i].displayState;
     }
   },
@@ -1964,7 +1964,7 @@ var LibraryHTML5 = {
     if (!navigator.vibrate) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 
     var vibrateList = [];
-    for (var i = 0; i < numEntries; ++i) {
+    for (let i = 0; i < numEntries; ++i) {
       var msecs = {{{ makeGetValue('msecsArray', 'i*4', 'i32') }}};
       vibrateList.push(msecs);
     }
@@ -2061,7 +2061,7 @@ var LibraryHTML5 = {
       // only changed touches in e.changedTouches, and touches on target at a.targetTouches), mark a boolean in
       // each Touch object so that we can later loop only once over all touches we see to marshall over to Wasm.
 
-      for (var i = 0; i < et.length; ++i) {
+      for (let i = 0; i < et.length; ++i) {
         t = et[i];
         // Browser might recycle the generated Touch objects between each frame (Firefox on Android), so reset any
         // changed/target states we may have set from previous frame.
@@ -2069,13 +2069,13 @@ var LibraryHTML5 = {
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the changedTouches list.
-      for (var i = 0; i < e.changedTouches.length; ++i) {
+      for (let i = 0; i < e.changedTouches.length; ++i) {
         t = e.changedTouches[i];
         t.isChanged = 1;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the targetTouches list.
-      for (var i = 0; i < e.targetTouches.length; ++i) {
+      for (let i = 0; i < e.targetTouches.length; ++i) {
         touches[e.targetTouches[i].identifier].onTarget = 1;
       }
 
@@ -2176,17 +2176,17 @@ var LibraryHTML5 = {
 
   $fillGamepadEventData: function(eventStruct, e) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}};
-    for (var i = 0; i < e.axes.length; ++i) {
+    for (let i = 0; i < e.axes.length; ++i) {
       {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
     }
-    for (var i = 0; i < e.buttons.length; ++i) {
+    for (let i = 0; i < e.buttons.length; ++i) {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
       } else {
         {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i]', 'double') }}};
       }
     }
-    for (var i = 0; i < e.buttons.length; ++i) {
+    for (let i = 0; i < e.buttons.length; ++i) {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       } else {

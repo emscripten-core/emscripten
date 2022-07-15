@@ -68,7 +68,7 @@ mergeInto(LibraryManager.library, {
   emscripten_math_hypot__sig: 'iip',
   emscripten_math_hypot: function(count, varargs) {
     var args = [];
-    for (var i = 0; i < count; ++i) args.push(HEAPF64[(varargs>>3) + i]);
+    for (let i = 0; i < count; ++i) args.push(HEAPF64[(varargs>>3) + i]);
     return Math.hypot.apply(null, args);
   },
   emscripten_math_sin: function(x) {

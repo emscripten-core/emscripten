@@ -60,7 +60,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
         }
         var bytesRead = 0;
-        for (var i = 0; i < length; i++) {
+        for (let i = 0; i < length; i++) {
           var result;
           try {
             result = stream.tty.ops.get_char(stream.tty);

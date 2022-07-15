@@ -294,7 +294,7 @@ function WebGLClient() {
   function renderAllCommands() {
     // we can skip parts of the frames before the last, as we just need their side effects
     skippable = true;
-    for (var i = 0; i < commandBuffers.length-1; i++) {
+    for (let i = 0; i < commandBuffers.length-1; i++) {
       renderCommands(commandBuffers[i]);
     }
     skippable = false;

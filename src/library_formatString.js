@@ -254,7 +254,7 @@ mergeInto(LibraryManager.library, {
                 currArg = -currArg;
                 argText = (currAbsArg - 1).toString(16);
                 var buffer = [];
-                for (var i = 0; i < argText.length; i++) {
+                for (let i = 0; i < argText.length; i++) {
                   buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
                 }
                 argText = buffer.join('');
@@ -419,7 +419,7 @@ mergeInto(LibraryManager.library, {
               }
             }
             if (arg) {
-              for (var i = 0; i < argLength; i++) {
+              for (let i = 0; i < argLength; i++) {
                 ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
@@ -454,7 +454,7 @@ mergeInto(LibraryManager.library, {
           }
           default: {
             // Unknown specifiers remain untouched.
-            for (var i = startTextIndex; i < textIndex + 2; i++) {
+            for (let i = startTextIndex; i < textIndex + 2; i++) {
               ret.push({{{ makeGetValue(0, 'i', 'i8') }}});
             }
           }

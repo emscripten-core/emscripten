@@ -36,7 +36,7 @@ mergeInto(LibraryManager.library, {
       parameters: [],
       results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
     };
-    for (var i = 1; i < sig.length; ++i) {
+    for (let i = 1; i < sig.length; ++i) {
 #if ASSERTIONS
       assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
 #endif
@@ -82,7 +82,7 @@ mergeInto(LibraryManager.library, {
 
     // Parameters, length + signatures
     uleb128Encode(sigParam.length, typeSectionBody);
-    for (var i = 0; i < sigParam.length; ++i) {
+    for (let i = 0; i < sigParam.length; ++i) {
 #if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
 #endif
@@ -152,7 +152,7 @@ mergeInto(LibraryManager.library, {
   $updateTableMap__deps: ['$getWasmTableEntry'],
   $updateTableMap: function(offset, count) {
     if (functionsInTableMap) {
-      for (var i = offset; i < offset + count; i++) {
+      for (let i = offset; i < offset + count; i++) {
         var item = getWasmTableEntry(i);
         // Ignore null values.
         if (item) {
@@ -191,7 +191,7 @@ mergeInto(LibraryManager.library, {
     // Make sure functionsInTableMap is actually up to date, that is, that this
     // function is not actually in the wasm Table despite not being tracked in
     // functionsInTableMap.
-    for (var i = 0; i < wasmTable.length; i++) {
+    for (let i = 0; i < wasmTable.length; i++) {
       assert(getWasmTableEntry(i) != func, 'function in Table but not functionsInTableMap');
     }
   #endif

@@ -284,7 +284,7 @@ var LibraryWebGPU = {
     makePipelineConstants: function(constantCount, constantsPtr) {
       if (!constantCount) return;
       var constants = {};
-      for (var i = 0; i < constantCount; ++i) {
+      for (let i = 0; i < constantCount; ++i) {
         var entryPtr = constantsPtr + {{{ C_STRUCTS.WGPUConstantEntry.__size__ }}} * i;
         var key = UTF8ToString({{{ makeGetValue('entryPtr', C_STRUCTS.WGPUConstantEntry.key, '*') }}});
         constants[key] = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUConstantEntry.value, 'double') }}};
@@ -1014,7 +1014,7 @@ var LibraryWebGPU = {
 
     function makeEntries(count, entriesPtrs) {
       var entries = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         entries.push(makeEntry(entriesPtrs +
             {{{ C_STRUCTS.WGPUBindGroupLayoutEntry.__size__ }}} * i));
       }
@@ -1077,7 +1077,7 @@ var LibraryWebGPU = {
 
     function makeEntries(count, entriesPtrs) {
       var entries = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         entries.push(makeEntry(entriesPtrs +
             {{{C_STRUCTS.WGPUBindGroupEntry.__size__}}} * i));
       }
@@ -1105,7 +1105,7 @@ var LibraryWebGPU = {
     var bglCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUPipelineLayoutDescriptor.bindGroupLayoutCount) }}};
     var bglPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUPipelineLayoutDescriptor.bindGroupLayouts, '*') }}};
     var bgls = [];
-    for (var i = 0; i < bglCount; ++i) {
+    for (let i = 0; i < bglCount; ++i) {
       bgls.push(WebGPU.mgrBindGroupLayout.get(
         {{{ makeGetValue('bglPtr', '4 * i', '*') }}}));
     }
@@ -1130,7 +1130,7 @@ var LibraryWebGPU = {
       var pipelineStatisticsPtr =
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.pipelineStatistics, '*') }}};
       pipelineStatistics = [];
-      for (var i = 0; i < pipelineStatisticsCount; ++i) {
+      for (let i = 0; i < pipelineStatisticsCount; ++i) {
         pipelineStatistics.push(WebGPU.PipelineStatisticName[
           {{{ gpu.makeGetU32('pipelineStatisticsPtr', '4 * i') }}}]);
       }
@@ -1155,7 +1155,7 @@ var LibraryWebGPU = {
 
       function makeColorFormats(count, formatsPtr) {
         var formats = [];
-        for (var i = 0; i < count; ++i, formatsPtr += 4) {
+        for (let i = 0; i < count; ++i, formatsPtr += 4) {
           // format could be undefined
           formats.push(WebGPU.TextureFormat[{{{ gpu.makeGetU32('formatsPtr', 0) }}}]);
         }
@@ -1254,7 +1254,7 @@ var LibraryWebGPU = {
 
     function makeColorStates(count, csArrayPtr) {
       var states = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         states.push(makeColorState(csArrayPtr + {{{ C_STRUCTS.WGPUColorTargetState.__size__ }}} * i));
       }
       return states;
@@ -1306,7 +1306,7 @@ var LibraryWebGPU = {
 
     function makeVertexAttributes(count, vaArrayPtr) {
       var vas = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         vas.push(makeVertexAttribute(vaArrayPtr + i * {{{ C_STRUCTS.WGPUVertexAttribute.__size__ }}}));
       }
       return vas;
@@ -1329,7 +1329,7 @@ var LibraryWebGPU = {
       if (!count) return undefined;
 
       var vbs = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         vbs.push(makeVertexBuffer(vbArrayPtr + i * {{{ C_STRUCTS.WGPUVertexBufferLayout.__size__ }}}));
       }
       return vbs;
@@ -1536,7 +1536,7 @@ var LibraryWebGPU = {
 
     function makeComputePassTimestampWrites(count, twPtr) {
       var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         timestampWrites.push(makeComputePassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPUComputePassTimestampWrite.__size__ }}} * i));
       }
       return timestampWrites;
@@ -1593,7 +1593,7 @@ var LibraryWebGPU = {
 
     function makeColorAttachments(count, caPtr) {
       var attachments = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         attachments.push(makeColorAttachment(caPtr + {{{ C_STRUCTS.WGPURenderPassColorAttachment.__size__ }}} * i));
       }
       return attachments;
@@ -1632,7 +1632,7 @@ var LibraryWebGPU = {
 
     function makeRenderPassTimestampWrites(count, twPtr) {
       var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
+      for (let i = 0; i < count; ++i) {
         timestampWrites.push(makeRenderPassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPURenderPassTimestampWrite.__size__ }}} * i));
       }
       return timestampWrites;
@@ -1931,7 +1931,7 @@ var LibraryWebGPU = {
       return;
     }
 
-    for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
+    for (let i = 0; i < bufferWrapper.onUnmap.length; ++i) {
       bufferWrapper.onUnmap[i]();
     }
     bufferWrapper.onUnmap = undefined;
@@ -1988,7 +1988,7 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group);
     } else {
       var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+      for (let i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
       pass["setBindGroup"](groupIndex, group, offsets);
@@ -2074,7 +2074,7 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group);
     } else {
       var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+      for (let i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
       pass["setBindGroup"](groupIndex, group, offsets);
@@ -2213,7 +2213,7 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group);
     } else {
       var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+      for (let i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
       pass["setBindGroup"](groupIndex, group, offsets);

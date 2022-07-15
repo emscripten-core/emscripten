@@ -69,7 +69,7 @@ mergeInto(LibraryManager.library, {
           return ({{{ cDefine('POLLWRNORM') }}} | {{{ cDefine('POLLOUT') }}});
         }
         if (pipe.buckets.length > 0) {
-          for (var i = 0; i < pipe.buckets.length; i++) {
+          for (let i = 0; i < pipe.buckets.length; i++) {
             var bucket = pipe.buckets[i];
             if (bucket.offset - bucket.roffset > 0) {
               return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
+        for (let i = 0; i < pipe.buckets.length; i++) {
           var bucket = pipe.buckets[i];
           currentLength += bucket.offset - bucket.roffset;
         }
@@ -113,7 +113,7 @@ mergeInto(LibraryManager.library, {
         var totalRead = toRead;
         var toRemove = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
+        for (let i = 0; i < pipe.buckets.length; i++) {
           var currBucket = pipe.buckets[i];
           var bucketSize = currBucket.offset - currBucket.roffset;
 
@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         var numBuckets = (data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE) | 0;
         var remElements = data.byteLength % PIPEFS.BUCKET_BUFFER_SIZE;
 
-        for (var i = 0; i < numBuckets; i++) {
+        for (let i = 0; i < numBuckets; i++) {
           var newBucket = {
             buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
             offset: PIPEFS.BUCKET_BUFFER_SIZE,

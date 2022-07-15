@@ -421,15 +421,15 @@ var SyscallsLibrary = {
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
-    for (var i = 0; i < num; i++) {
+    for (let i = 0; i < num; i++) {
       total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
     }
     var view = new Uint8Array(total);
     var offset = 0;
-    for (var i = 0; i < num; i++) {
+    for (let i = 0; i < num; i++) {
       var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
       var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-      for (var j = 0; j < iovlen; j++) {  
+      for (let j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
     }
@@ -443,7 +443,7 @@ var SyscallsLibrary = {
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
     // get the total amount of data we can read across all arrays
     var total = 0;
-    for (var i = 0; i < num; i++) {
+    for (let i = 0; i < num; i++) {
       total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
     }
     // try to read total data
@@ -469,7 +469,7 @@ var SyscallsLibrary = {
     // write the buffer out to the scatter-gather arrays
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
-    for (var i = 0; bytesRemaining > 0 && i < num; i++) {
+    for (let i = 0; bytesRemaining > 0 && i < num; i++) {
       var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
       var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
       if (!iovlen) {
@@ -536,7 +536,7 @@ var SyscallsLibrary = {
       return (fd < 32 ? (low & val) : (high & val));
     };
 
-    for (var fd = 0; fd < nfds; fd++) {
+    for (let fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
       if (!(check(fd, allLow, allHigh, mask))) {
         continue;  // index isn't in the set
@@ -595,7 +595,7 @@ var SyscallsLibrary = {
   __syscall_poll__sig: 'ipii',
   __syscall_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
-    for (var i = 0; i < nfds; i++) {
+    for (let i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
       var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};

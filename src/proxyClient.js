@@ -71,7 +71,7 @@ function renderFrame() {
   if (dst.set) {
     dst.set(renderFrameData);
   } else {
-    for (var i = 0; i < renderFrameData.length; i++) {
+    for (let i = 0; i < renderFrameData.length; i++) {
       dst[i] = renderFrameData[i];
     }
   }

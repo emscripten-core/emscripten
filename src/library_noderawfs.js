@@ -46,7 +46,7 @@ mergeInto(LibraryManager.library, {
     },
     createStandardStreams: function() {
       FS.streams[0] = FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0, 0);
-      for (var i = 1; i < 3; i++) {
+      for (let i = 1; i < 3; i++) {
         FS.streams[i] = FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i, i);
       }
     },

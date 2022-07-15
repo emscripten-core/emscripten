@@ -50,7 +50,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
             return createBigInt64Array(new_buf);
           },
           [Symbol.iterator]: function* () {
-            for (var i = 0; i < array.length / 2; i++) {
+            for (let i = 0; i < array.length / 2; i++) {
               yield partsToBigInt(array[2 * i], array[2 * i + 1]);
             }
           },
@@ -72,7 +72,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
               // Firefox: "invalid or out-of-range index"
               throw new RangeError("offset is out of bounds");
             }
-            for (var i = 0; i < source.length; i++) {
+            for (let i = 0; i < source.length; i++) {
               var value = source[i];
               var pair = bigIntToParts(value);
               array.set(pair, 2 * (targetOffset + i));

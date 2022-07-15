@@ -137,7 +137,7 @@ FS.staticInit();` +
       var current = FS.root;
       var current_path = '/';
 
-      for (var i = 0; i < parts.length; i++) {
+      for (let i = 0; i < parts.length; i++) {
         var islast = (i === parts.length-1);
         if (islast && opts.parent) {
           // stop resolving
@@ -197,7 +197,7 @@ FS.staticInit();` +
       name = name.toLowerCase();
 #endif
 
-      for (var i = 0; i < name.length; i++) {
+      for (let i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
       return ((parentid + hash) >>> 0) % FS.nameTable.length;
@@ -387,7 +387,7 @@ FS.staticInit();` +
     //
     MAX_OPEN_FDS: 4096,
     nextfd: (fd_start = 0, fd_end = FS.MAX_OPEN_FDS) => {
-      for (var fd = fd_start; fd <= fd_end; fd++) {
+      for (let fd = fd_start; fd <= fd_end; fd++) {
         if (!FS.streams[fd]) {
           return fd;
         }
@@ -673,7 +673,7 @@ FS.staticInit();` +
     mkdirTree: (path, mode) => {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
+      for (let i = 0; i < dirs.length; ++i) {
         if (!dirs[i]) continue;
         d += '/' + dirs[i];
         try {
@@ -1504,7 +1504,7 @@ FS.staticInit();` +
       _fflush(0);
 #endif
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
+      for (let i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
         if (!stream) {
           continue;
@@ -1589,7 +1589,7 @@ FS.staticInit();` +
       if (data) {
         if (typeof data == 'string') {
           var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
+          for (let i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
           data = arr;
         }
         // make sure we can write to the file
@@ -1620,7 +1620,7 @@ FS.staticInit();` +
         },
         read: (stream, buffer, offset, length, pos /* ignored */) => {
           var bytesRead = 0;
-          for (var i = 0; i < length; i++) {
+          for (let i = 0; i < length; i++) {
             var result;
             try {
               result = input();
@@ -1824,11 +1824,11 @@ FS.staticInit();` +
         assert(size >= 0);
 #endif
         if (contents.slice) { // normal array
-          for (var i = 0; i < size; i++) {
+          for (let i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];
           }
         } else {
-          for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
+          for (let i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
             buffer[offset + i] = contents.get(position + i);
           }
         }

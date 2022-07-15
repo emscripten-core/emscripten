@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
 
       // If maxBytesToRead is not passed explicitly, it will be undefined, and the for-loop's condition
       // will always evaluate to true. The loop is then terminated on the first null char.
-      for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
+      for (let i = 0; !(i >= maxBytesToRead / 2); ++i) {
         var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
         if (codeUnit == 0) break;
         // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
     var numCharsToWrite = (maxBytesToWrite < str.length*2) ? (maxBytesToWrite / 2) : str.length;
-    for (var i = 0; i < numCharsToWrite; ++i) {
+    for (let i = 0; i < numCharsToWrite; ++i) {
       // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
       var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
       {{{ makeSetValue('outPtr', 0, 'codeUnit', 'i16') }}};
@@ -190,7 +190,7 @@ mergeInto(LibraryManager.library, {
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;
-    for (var i = 0; i < str.length; ++i) {
+    for (let i = 0; i < str.length; ++i) {
       // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
       // See http://unicode.org/faq/utf_bom.html#utf16-3
       var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
@@ -211,7 +211,7 @@ mergeInto(LibraryManager.library, {
   // a UTF16 byte array, EXCLUDING the null terminator byte.
   $lengthBytesUTF32: function(str) {
     var len = 0;
-    for (var i = 0; i < str.length; ++i) {
+    for (let i = 0; i < str.length; ++i) {
       // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
       // See http://unicode.org/faq/utf_bom.html#utf16-3
       var codeUnit = str.charCodeAt(i);
@@ -269,7 +269,7 @@ mergeInto(LibraryManager.library, {
 
   $writeAsciiToMemory__docs: '/** @param {boolean=} dontAddNull */',
   $writeAsciiToMemory: function(str, buffer, dontAddNull) {
-    for (var i = 0; i < str.length; ++i) {
+    for (let i = 0; i < str.length; ++i) {
 #if ASSERTIONS
       assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
 #endif

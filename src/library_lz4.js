@@ -25,7 +25,7 @@ mergeInto(LibraryManager.library, {
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
       assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
-      for (var i = 0; i < compressedData['cachedIndexes'].length; i++) {
+      for (let i = 0; i < compressedData['cachedIndexes'].length; i++) {
         compressedData['cachedIndexes'][i] = -1;
         compressedData['cachedChunks'][i] = compressedData['data'].subarray(compressedData['cachedOffset'] + i*LZ4.CHUNK_SIZE,
                                                                       compressedData['cachedOffset'] + (i+1)*LZ4.CHUNK_SIZE);

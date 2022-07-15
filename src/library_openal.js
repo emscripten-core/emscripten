@@ -121,7 +121,7 @@ var LibraryOpenAL = {
       var bufCursor = src.bufsProcessed;
 
       // Advance past any audio that is already scheduled
-      for (var i = 0; i < src.audioQueue.length; i++) {
+      for (let i = 0; i < src.audioQueue.length; i++) {
         var audioSrc = src.audioQueue[i];
         startTime = audioSrc._startTime + audioSrc._duration;
         startOffset = 0.0;
@@ -288,7 +288,7 @@ var LibraryOpenAL = {
         // Since we've already skipped any full-queue loops if there were any, we just need to find
         // out where in the queue the remaining time puts us, which won't require stepping through the
         // entire queue more than once.
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (let i = 0; i < src.bufQueue.length; i++) {
           if (src.bufsProcessed >= src.bufQueue.length) {
             if (src.looping) {
               src.bufsProcessed %= src.bufQueue.length;
@@ -321,7 +321,7 @@ var LibraryOpenAL = {
     cancelPendingSourceAudio: function(src) {
       AL.updateSourceTime(src);
 
-      for (var i = 1; i < src.audioQueue.length; i++) {
+      for (let i = 1; i < src.audioQueue.length; i++) {
         var audioSrc = src.audioQueue[i];
         audioSrc.stop();
       }
@@ -332,7 +332,7 @@ var LibraryOpenAL = {
     },
 
     stopSourceAudio: function(src) {
-      for (var i = 0; i < src.audioQueue.length; i++) {
+      for (let i = 0; i < src.audioQueue.length; i++) {
         src.audioQueue[i].stop();
       }
       src.audioQueue.length = 0;
@@ -400,7 +400,7 @@ var LibraryOpenAL = {
 
       // Find the first non-zero buffer in the queue to determine the proper format
       var templateBuf = AL.buffers[0];
-      for (var i = 0; i < src.bufQueue.length; i++) {
+      for (let i = 0; i < src.bufQueue.length; i++) {
         if (src.bufQueue[i].id !== 0) {
           templateBuf = src.bufQueue[i];
           break;
@@ -698,7 +698,7 @@ var LibraryOpenAL = {
 
     sourceDuration: function(src) {
       var length = 0.0;
-      for (var i = 0; i < src.bufQueue.length; i++) {
+      for (let i = 0; i < src.bufQueue.length; i++) {
         var audioBuf = src.bufQueue[i].audioBuf;
         length += audioBuf ? audioBuf.duration : 0.0;
       }
@@ -709,7 +709,7 @@ var LibraryOpenAL = {
       AL.updateSourceTime(src);
 
       var offset = 0.0;
-      for (var i = 0; i < src.bufsProcessed; i++) {
+      for (let i = 0; i < src.bufsProcessed; i++) {
         if (src.bufQueue[i].audioBuf) {
           offset += src.bufQueue[i].audioBuf.duration;
         }
@@ -1132,7 +1132,7 @@ var LibraryOpenAL = {
       case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
         var length = 0;
         var bytesPerFrame = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (let i = 0; i < src.bufQueue.length; i++) {
           length += src.bufQueue[i].length;
           if (src.bufQueue[i].id !== 0) {
             bytesPerFrame = src.bufQueue[i].bytesPerSample * src.bufQueue[i].channels;
@@ -1141,7 +1141,7 @@ var LibraryOpenAL = {
         return length * bytesPerFrame;
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
         var length = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (let i = 0; i < src.bufQueue.length; i++) {
           length += src.bufQueue[i].length;
         }
         return length;
@@ -1726,7 +1726,7 @@ var LibraryOpenAL = {
 
     var buffers = [];
     try {
-      for (var chan=0; chan < outputChannelCount; ++chan) {
+      for (let chan=0; chan < outputChannelCount; ++chan) {
         buffers[chan] = newSampleArray(bufferFrameCapacity);
       }
     } catch(e) {
@@ -1834,7 +1834,7 @@ var LibraryOpenAL = {
         switch (format) {
         case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i];
           }
@@ -1842,7 +1842,7 @@ var LibraryOpenAL = {
         case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i];
             c.buffers[1][wi] = channel1[i];
@@ -1850,7 +1850,7 @@ var LibraryOpenAL = {
           break;
         case 0x1101:  /* AL_FORMAT_MONO16 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i] * 32767;
           }
@@ -1858,7 +1858,7 @@ var LibraryOpenAL = {
         case 0x1103:  /* AL_FORMAT_STEREO16 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i] * 32767;
             c.buffers[1][wi] = channel1[i] * 32767;
@@ -1866,7 +1866,7 @@ var LibraryOpenAL = {
           break;
         case 0x1100:  /* AL_FORMAT_MONO8 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
           }
@@ -1874,7 +1874,7 @@ var LibraryOpenAL = {
         case 0x1102:  /* AL_FORMAT_STEREO8 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (let i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
             c.buffers[1][wi] = (channel1[i] + 1.0) * 127;
@@ -2028,8 +2028,8 @@ var LibraryOpenAL = {
     
     // If fratio is an integer we don't need linear resampling, just skip samples
     if (Math.floor(fratio) == fratio) {
-      for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
-        for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
+      for (let i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
+        for (let chan = 0; chan < c.buffers.length; ++chan, ++i) {
           setSample(i, c.buffers[chan][c.captureReadhead]);
         }
         c.captureReadhead = (fratio + c.captureReadhead) % c.bufferFrameCapacity;
@@ -2041,11 +2041,11 @@ var LibraryOpenAL = {
       // We don't use OfflineAudioContexts for this: See the discussion at
       // https://github.com/jpernst/emscripten/issues/2#issuecomment-312729735
       // if you're curious about why.
-      for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
+      for (let i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
         var lefti = Math.floor(c.captureReadhead);
         var righti = Math.ceil(c.captureReadhead);
         var d = c.captureReadhead - lefti;
-        for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
+        for (let chan = 0; chan < c.buffers.length; ++chan, ++i) {
           var lefts = c.buffers[chan][lefti];
           var rights = c.buffers[chan][righti];
           setSample(i, (1 - d) * lefts + d * rights);
@@ -2510,7 +2510,7 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var i = 0; i < AL.currentCtx.attrs.length; i++) {
+      for (let i = 0; i < AL.currentCtx.attrs.length; i++) {
         {{{ makeSetValue('pValues', 'i*4', 'AL.currentCtx.attrs[i]', 'i32') }}};
       }
       break;
@@ -2760,7 +2760,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var buf = {
         deviceId: AL.currentCtx.deviceId,
         id: AL.newId(),
@@ -2787,7 +2787,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
       /// Deleting the zero buffer is a legal NOP, so ignore it
       if (bufId === 0) {
@@ -2813,7 +2813,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
       if (bufId === 0) {
         continue;
@@ -2834,7 +2834,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var gain = AL.currentCtx.audioCtx.createGain();
       gain.connect(AL.currentCtx.gain);
       var src = {
@@ -2887,7 +2887,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       if (!AL.currentCtx.sources[srcId]) {
 #if OPENAL_DEBUG
@@ -2898,7 +2898,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
       _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
@@ -3770,7 +3770,7 @@ var LibraryOpenAL = {
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size, freq);
           var channel0 = audioBuf.getChannelData(0);
-          for (var i = 0; i < size; ++i) {
+          for (let i = 0; i < size; ++i) {
             channel0[i] = HEAPU8[pData++] * 0.0078125 /* 1/128 */ - 1.0;
           }
         }
@@ -3783,7 +3783,7 @@ var LibraryOpenAL = {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size >> 1, freq);
           var channel0 = audioBuf.getChannelData(0);
           pData >>= 1;
-          for (var i = 0; i < size >> 1; ++i) {
+          for (let i = 0; i < size >> 1; ++i) {
             channel0[i] = HEAP16[pData++] * 0.000030517578125 /* 1/32768 */;
           }
         }
@@ -3796,7 +3796,7 @@ var LibraryOpenAL = {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(2, size >> 1, freq);
           var channel0 = audioBuf.getChannelData(0);
           var channel1 = audioBuf.getChannelData(1);
-          for (var i = 0; i < size >> 1; ++i) {
+          for (let i = 0; i < size >> 1; ++i) {
             channel0[i] = HEAPU8[pData++] * 0.0078125 /* 1/128 */ - 1.0;
             channel1[i] = HEAPU8[pData++] * 0.0078125 /* 1/128 */ - 1.0;
           }
@@ -3811,7 +3811,7 @@ var LibraryOpenAL = {
           var channel0 = audioBuf.getChannelData(0);
           var channel1 = audioBuf.getChannelData(1);
           pData >>= 1;
-          for (var i = 0; i < size >> 2; ++i) {
+          for (let i = 0; i < size >> 2; ++i) {
             channel0[i] = HEAP16[pData++] * 0.000030517578125 /* 1/32768 */;
             channel1[i] = HEAP16[pData++] * 0.000030517578125 /* 1/32768 */;
           }
@@ -3825,7 +3825,7 @@ var LibraryOpenAL = {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size >> 2, freq);
           var channel0 = audioBuf.getChannelData(0);
           pData >>= 2;
-          for (var i = 0; i < size >> 2; ++i) {
+          for (let i = 0; i < size >> 2; ++i) {
             channel0[i] = HEAPF32[pData++];
           }
         }
@@ -3839,7 +3839,7 @@ var LibraryOpenAL = {
           var channel0 = audioBuf.getChannelData(0);
           var channel1 = audioBuf.getChannelData(1);
           pData >>= 2;
-          for (var i = 0; i < size >> 3; ++i) {
+          for (let i = 0; i < size >> 3; ++i) {
             channel0[i] = HEAPF32[pData++];
             channel1[i] = HEAPF32[pData++];
           }
@@ -4141,14 +4141,14 @@ var LibraryOpenAL = {
 
     // Find the first non-zero buffer in the queue to determine the proper format
     var templateBuf = AL.buffers[0];
-    for (var i = 0; i < src.bufQueue.length; i++) {
+    for (let i = 0; i < src.bufQueue.length; i++) {
       if (src.bufQueue[i].id !== 0) {
         templateBuf = src.bufQueue[i];
         break;
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
       var buf = AL.buffers[bufId];
       if (!buf) {
@@ -4178,7 +4178,7 @@ var LibraryOpenAL = {
     }
 
     src.type = 0x1029 /* AL_STREAMING */;
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
       var buf = AL.buffers[bufId];
       buf.refCount++;
@@ -4220,7 +4220,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    for (var i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
       var buf = src.bufQueue.shift();
       buf.refCount--;
       // Write the buffers index out to the return list.
@@ -4272,7 +4272,7 @@ var LibraryOpenAL = {
 #endif
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
     }
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourcePlayv() called with an invalid source');
@@ -4282,7 +4282,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], 0x1012 /* AL_PLAYING */);
     }
@@ -4323,7 +4323,7 @@ var LibraryOpenAL = {
 #endif
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
     }
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourceStopv() called with an invalid source');
@@ -4333,7 +4333,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
     }
@@ -4377,7 +4377,7 @@ var LibraryOpenAL = {
 #endif
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
     }
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourceRewindv() called with an invalid source');
@@ -4387,7 +4387,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], 0x1011 /* AL_INITIAL */);
     }
@@ -4428,7 +4428,7 @@ var LibraryOpenAL = {
 #endif
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
     }
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourcePausev() called with an invalid source');
@@ -4438,7 +4438,7 @@ var LibraryOpenAL = {
       }
     }
 
-    for (var i = 0; i < count; ++i) {
+    for (let i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], 0x1013 /* AL_PAUSED */);
     }

@@ -253,7 +253,7 @@ mergeInto(LibraryManager.library, {
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
         } else {
-          for (var i = 0; i < size; i++) buffer[offset + i] = contents[position + i];
+          for (let i = 0; i < size; i++) buffer[offset + i] = contents[position + i];
         }
         return size;
       },
@@ -307,7 +307,7 @@ mergeInto(LibraryManager.library, {
           // Use typed array write which is available.
           node.contents.set(buffer.subarray(offset, offset + length), position);
         } else {
-          for (var i = 0; i < length; i++) {
+          for (let i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
         }
