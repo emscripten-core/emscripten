@@ -2423,20 +2423,59 @@ int f() {
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
+  # Verify the existence (or lack thereof) of DWARF info in the given wasm file
+  def verify_dwarf(self, wasm_file, verify_func):
+    self.assertExists(wasm_file)
+    info = self.run_process([LLVM_DWARFDUMP, '--all', wasm_file], stdout=PIPE).stdout
+    verify_func('DW_TAG_subprogram', info) # Subprogram entry in .debug_info
+    verify_func('debug_line[0x', info) # Line table
+
+  def verify_dwarf_exists(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertIn)
+
+  def verify_dwarf_does_not_exist(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertNotIn)
+
+  # Verify if the given file name contains a source map
+  def verify_source_map_exists(self, map_file):
+    self.assertExists(map_file)
+    data = json.load(open(map_file))
+    # Simply check the existence of required sections
+    self.assertIn('version', data)
+    self.assertIn('sources', data)
+    self.assertIn('mappings', data)
+
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
       # Test that -g enables dwarf info in object files and linked wasm
       self.run_process([EMXX, test_file('hello_world.cpp'), '-o', output, '-g'] + args)
-
-    def verify(output):
-      info = self.run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
-      self.assertIn('DW_TAG_subprogram', info) # Ensure there's a subprogram entry in .debug_info
-      self.assertIn('debug_line[0x', info) # Ensure there's a line table
-
     compile_with_dwarf(['-c'], 'a.o')
-    verify('a.o')
+    self.verify_dwarf_exists('a.o')
     compile_with_dwarf([], 'a.js')
-    verify('a.wasm')
+    self.verify_dwarf_exists('a.wasm')
+
+  def test_dwarf_with_source_map(self):
+    source_file = 'hello_world.cpp'
+    js_file = 'a.out.js'
+    wasm_file = 'a.out.wasm'
+    map_file = 'a.out.wasm.map'
+
+    # Generate only DWARF
+    self.emcc(test_file(source_file), ['-g'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.assertFalse(os.path.isfile(map_file))
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate only source map
+    self.emcc(test_file(source_file), ['-gsource-map'], js_file)
+    self.verify_dwarf_does_not_exist(wasm_file)
+    self.verify_source_map_exists(map_file)
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate DWARF with source map
+    self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.verify_source_map_exists(map_file)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
