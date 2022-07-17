@@ -440,8 +440,8 @@ mergeInto(LibraryManager.library, {
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
   emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
-    '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
-    '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
+    '  ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)\n' +
+    '  : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)\n',
 #else
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
@@ -2210,8 +2210,8 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
+    () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
+    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
@@ -2242,7 +2242,7 @@ mergeInto(LibraryManager.library, {
     if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
       var randomBuffer = new Uint8Array(1);
-      return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+      return () => { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
     } else
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -2250,7 +2250,7 @@ mergeInto(LibraryManager.library, {
       try {
         var crypto_module = require('crypto');
         // nodejs has crypto support
-        return function() { return crypto_module['randomBytes'](1)[0]; };
+        return () => crypto_module['randomBytes'](1)[0];
       } catch (e) {
         // nodejs doesn't have crypto support
       }
@@ -2258,9 +2258,9 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    return function() { abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+    return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
 #else
-    return function() { abort("randomDevice"); };
+    return () => abort("randomDevice");
 #endif
   },
 
@@ -3198,7 +3198,7 @@ mergeInto(LibraryManager.library, {
     ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
       elements.forEach(function(element) {
         if (element) {
-          listenOnce(element, event, function() {
+          listenOnce(element, event, () => {
             if (ctx.state === 'suspended') ctx.resume();
           });
         }
@@ -3573,11 +3573,11 @@ mergeInto(LibraryManager.library, {
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
-    readAsync(url, function(arrayBuffer) {
+    readAsync(url, (arrayBuffer) => {
       assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
-    }, function(event) {
+    }, (event) => {
       if (onerror) {
         onerror();
       } else {

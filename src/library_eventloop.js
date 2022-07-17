@@ -16,7 +16,7 @@ LibraryJSEventLoop = {
   $setImmediateWrapped: function(func) {
     if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
     var id = setImmediateWrapped.mapping.length;
-    setImmediateWrapped.mapping[id] = setImmediate(function() {
+    setImmediateWrapped.mapping[id] = setImmediate(() => {
       setImmediateWrapped.mapping[id] = undefined;
       func();
     });
@@ -44,7 +44,7 @@ LibraryJSEventLoop = {
       'var __setImmediate_id_counter = 0;\n' +
       'var __setImmediate_queue = [];\n' +
       'var __setImmediate_message_id = "_si";\n' +
-      'function __setImmediate_cb(/** @type {Event} */e) {\n' +
+      'var __setImmediate_cb = (/** @type {Event} */e) => {\n' +
         'if (e.data === __setImmediate_message_id) {\n' +
           'e.stopPropagation();\n' +
           '__setImmediate_queue.shift()();\n' +
@@ -52,11 +52,11 @@ LibraryJSEventLoop = {
         '}\n' +
       '}\n' +
       'addEventListener("message", __setImmediate_cb, true);\n' +
-      'emSetImmediate = function(func) {\n' +
+      'emSetImmediate = (func) => {\n' +
         'postMessage(__setImmediate_message_id, "*");\n' +
         'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
       '}\n' +
-      'emClearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
+      'emClearImmediate = /**@type{function(number=)}*/((id) => {\n' +
         'var index = id - __setImmediate_id_counter;\n' +
         'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function() {};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
       '})\n' +

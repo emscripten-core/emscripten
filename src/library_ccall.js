@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
 #if MEMORY64
       'pointer': (p) => {{{ to64('p') }}},
 #endif
-      'string': function(str) {
+      'string': (str) => {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
@@ -39,7 +39,7 @@ mergeInto(LibraryManager.library, {
         }
         return {{{ to64('ret') }}};
       },
-      'array': function(arr) {
+      'array': (arr) => {
         var ret = stackAlloc(arr.length);
         writeArrayToMemory(arr, ret);
         return {{{ to64('ret') }}};

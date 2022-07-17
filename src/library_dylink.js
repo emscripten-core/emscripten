@@ -800,7 +800,7 @@ var LibraryDylink = {
 
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          readAsync(libFile, function(data) { resolve(new Uint8Array(data)); }, reject);
+          readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
         });
       }
 
