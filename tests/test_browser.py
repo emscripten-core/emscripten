@@ -1702,8 +1702,6 @@ keydown(100);keyup(100); // trigger the end
       Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
       Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
-    # vs. os.path.join(self.get_dir(), filename)
-    # vs. test_file('hello_world_gles.c')
     self.compile_btest([test_file('checksummer.c'), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
                         '--pre-js', 'worker_prejs.js'])
     chunkSize = 1024

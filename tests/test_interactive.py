@@ -56,11 +56,11 @@ class interactive(BrowserCore):
     self.btest_exit('sdl_togglefullscreen.c', args=['-sUSE_SDL=2'])
 
   def test_sdl_audio(self):
-    shutil.copyfile(test_file('sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    shutil.copyfile(test_file('sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
-    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'the_entertainer.ogg'))
-    open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
+    shutil.copyfile(test_file('sounds', 'alarmvictory_1.ogg'), self.in_dir('sound.ogg'))
+    shutil.copyfile(test_file('sounds', 'alarmcreatemiltaryfoot_1.wav'), self.in_dir('sound2.wav'))
+    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
+    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('the_entertainer.ogg'))
+    open(self.in_dir('bad.ogg'), 'w').write('I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     self.btest_exit(test_file('sdl_audio.c'), args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
@@ -71,7 +71,7 @@ class interactive(BrowserCore):
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=[_main,_play,_play2', '-sUSE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', self.in_dir('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=[_main,_play,_play2', '-sUSE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
   @parameterized({
@@ -79,7 +79,7 @@ class interactive(BrowserCore):
     'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix_channels(self, args):
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('sound.ogg'))
 
     self.btest_exit('sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
 
@@ -88,14 +88,14 @@ class interactive(BrowserCore):
     'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix(self, args):
-    shutil.copyfile(test_file('sounds', 'pluck.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
+    shutil.copyfile(test_file('sounds', 'pluck.ogg'), self.in_dir('sound.ogg'))
+    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('music.ogg'))
+    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
 
     self.btest_exit('sdl_audio_mix.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg'] + args)
 
   def test_sdl_audio_panning(self):
-    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
+    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), self.in_dir('the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     self.btest_exit('sdl_audio_panning.c', args=['-O2', '--closure=1', '--minify=0', '--preload-file', 'the_entertainer.wav', '-sEXPORTED_FUNCTIONS=_main,_play'])
@@ -138,7 +138,7 @@ class interactive(BrowserCore):
     self.btest_exit(test_file('sdl2_audio_beep.cpp'), args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
   def test_openal_playback(self):
-    shutil.copyfile(test_file('sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
+    shutil.copyfile(test_file('sounds', 'audio.wav'), self.in_dir('audio.wav'))
 
     for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
       self.compile_btest(['-O2', test_file('openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
