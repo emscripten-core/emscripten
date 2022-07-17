@@ -2516,7 +2516,7 @@ void *getBindBuffer() {
     self.btest_exit('browser_main.c', args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
-    'non-lz4': ([],),
+    '': ([],),
     'lz4': (['-sLZ4'],)
   })
   def test_preload_module(self, args):
@@ -2528,6 +2528,7 @@ void *getBindBuffer() {
     ''')
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
     create_file('main.c', r'''
+      #include <assert.h>
       #include <dlfcn.h>
       #include <stdio.h>
       #include <emscripten.h>
@@ -2535,18 +2536,13 @@ void *getBindBuffer() {
         int found = EM_ASM_INT(
           return preloadedWasm['/library.so'] !== undefined;
         );
-        if (!found) {
-          return 1;
-        }
+        assert(found);
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
-        if (!lib_handle) {
-          return 2;
-        }
+        assert(lib_handle);
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        if (!x || x() != 42) {
-          return 3;
-        }
+        assert(x);
+        assert(x() == 42);
         return 0;
       }
     ''')
