@@ -821,11 +821,14 @@ If manually bisecting:
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
+    shutil.copyfile(test_file('browser_reporting.js'), self.in_dir('browser_reporting.js'))
+
     html = read_file('test.html')
     html = html.replace('</body>', '''
+<script src="browser_reporting.js"></script>
+<script src="reftest.js"></script>
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-%s
 
 var windowClose = window.close;
 window.close = function() {
@@ -836,7 +839,7 @@ window.close = function() {
   }, 1000);
 };
 </script>
-</body>''' % read_file('reftest.js'))
+</body>''')
     create_file('test.html', html)
 
   def test_sdl_canvas_proxy(self):
@@ -3209,10 +3212,10 @@ Module["preRun"].push(function () {
   def test_sdl2_gl_frames_swap(self):
     def post_build():
       self.post_manual_reftest()
-      html = read_file('test.html')
-      html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
-      assert html != html2
-      create_file('test.html', html2)
+      js = read_file('reftest.js')
+      js2 = js.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
+      assert js != js2
+      create_file('reftest.js', js2)
     self.btest('browser/test_sdl2_gl_frames_swap.c', reference='browser/test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
 
   @requires_graphics_hardware
