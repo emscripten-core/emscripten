@@ -30,9 +30,7 @@ void progress() {
   else if (!got_up) printf("Release a finger to generate a touch up event.\n");
   else
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
+    emscripten_force_exit(0);
   }
 }
 

@@ -16,8 +16,6 @@ static enum {
     STATE_FS,           /* Should remain in full screen */
     STATE_FS_QUIT_REQ,  /* Second click, expecting to leave full screen */
     STATE_FS_QUIT,      /* Left full screen */
-    STATE_SUCCESS,      /* Reported success, test finished */
-    STATE_ERROR         /* Something went wrong, and an error was reported */
 } state = STATE_INITIAL;
 
 int result = 0;
@@ -30,9 +28,8 @@ SDL_Surface *screen = 0;
 #endif
 
 static void fail(const char *msg) {
-  printf("%s Test failed.\n", msg);
-  state = STATE_ERROR;
-  result = 0;
+  printf("%s Test failed (state=%d).\n", msg, state);
+  emscripten_force_exit(1);
 }
 
 static EM_BOOL mouseup(int eventType,
@@ -56,9 +53,6 @@ static EM_BOOL mouseup(int eventType,
       state = STATE_FS_QUIT_REQ;
       break;
     case STATE_FS_QUIT:
-    case STATE_SUCCESS:
-    case STATE_ERROR:
-      break;
     default:
       fail("Unexpected click.");
       break;
@@ -108,18 +102,8 @@ static void mainloop() {
     break;
   case STATE_FS_QUIT:
     if (isInFullscreen) fail("Unexpected full screen.");
-    state = STATE_SUCCESS;
     printf("Exited fullscreen. Test succeeded.\n");
-    result = 1;
-    break;
-  case STATE_ERROR:
-  case STATE_SUCCESS:
-#ifdef REPORT_RESULT
-    {
-      REPORT_RESULT(result);
-    }
-#endif
-    emscripten_cancel_main_loop();
+    emscripten_force_exit(0);
     break;
   }
 }

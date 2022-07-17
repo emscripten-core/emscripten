@@ -18,11 +18,10 @@ static Mix_Music *music = NULL;
 static int soundChannel = 0;
 static int noiseLoopChannel = 0;
 
-void one_iter();
 void one_iter() {
   static int frames = 0;
   frames++;
-  
+
   switch( frames ) {
     case 1:
       soundChannel = Mix_PlayChannel(-1, sound, 0);
@@ -64,9 +63,7 @@ void one_iter() {
     case 120:
       Mix_HaltChannel(soundChannel);
       Mix_HaltMusic();
-#ifdef REPORT_RESULT
-      REPORT_RESULT(1);
-#endif
+      emscripten_force_exit(0);
       break;
   };
 }
@@ -75,12 +72,12 @@ void one_iter() {
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_AUDIO);
   Mix_Init(MIX_INIT_OGG);
-  
+
   // This reserves channel 0 for other purposes.
   // We are just going to verify that we are not
   // allocated channel 0 when we call Mix_PlayChannel(-1, ...)
   Mix_ReserveChannels(1);
-  
+
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
   assert(ret == 0);
 
@@ -98,6 +95,6 @@ int main(int argc, char **argv) {
     Mix_Quit();
   Mix_CloseAudio();
 
-  return 0;
+  return 99;
 }
 

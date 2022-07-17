@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <SDL.h>
 #include <emscripten.h>
 
@@ -32,7 +33,7 @@ void draw(SDL_Window *window, SDL_Surface *surface) {
         sdlError("SDL_UpdateWindowSurface");
 }
 
-int verify(void) {
+void verify(void) {
     int res = EM_ASM_INT({
         var ctx = Module['canvas'].getContext('2d');
         var data = ctx.getImageData(0, 0, 256, 256).data;
@@ -52,7 +53,7 @@ int verify(void) {
     });
 
     printf("%s\n", res ? "FAIL" : "PASS");
-    return res;
+    assert(res == 0);
 }
 
 int main(void) {
@@ -71,7 +72,6 @@ int main(void) {
 
     draw(window, surface);
 
-    int result = verify();
-    REPORT_RESULT(result);
+    verify();
+    return 0;
 }
-

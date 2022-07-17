@@ -6,6 +6,7 @@
  */
 
 #include <emscripten.h>
+#include <assert.h>
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,6 @@ int main(int argc, char *argv[])
     SDL_FreeSurface(surface);
     SDL_FreeSurface(reference);
     int result = is_surface_freed(surface);
-    REPORT_RESULT(result);
+    assert(result);
     return 0;
 }

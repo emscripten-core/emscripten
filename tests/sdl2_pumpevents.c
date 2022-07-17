@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
@@ -14,56 +15,39 @@
 // SDL_GetKeyState instead
 #define SDL_GetKeyState SDL_GetKeyboardState
 
-int result = 0;
-
-int loop1()
-{
+void loop1() {
   printf("loop1\n");
   unsigned i;
-  int r = 0;
 
   // method 1: SDL_PollEvent loop
   SDL_Event e;
   while (SDL_PollEvent(&e));
 
   const Uint8 *keys = SDL_GetKeyState(NULL);
-  if (keys[SDL_SCANCODE_LEFT])
-    r = 1;
-
-  return r;
+  assert(keys[SDL_SCANCODE_LEFT]);
 }
 
-int loop2()
-{
+void loop2() {
   printf("loop2\n");
-  
+
   unsigned i;
-  int r = 0;
-   
+
   // method 2: SDL_PumpEvents
   SDL_PumpEvents();
 
   const Uint8 *keys = SDL_GetKeyState(NULL);
-  if (keys[SDL_SCANCODE_RIGHT])
-    r = 2;
-
-  return r;
+  assert(keys[SDL_SCANCODE_RIGHT]);
 }
 
-int alphakey()
-{
+void alphakey() {
   printf("alpha\n");
-  
+
   unsigned i;
-  int r = 0;
 
   SDL_PumpEvents();
 
   const Uint8 *keys = SDL_GetKeyState(NULL);
-  if (keys[SDL_SCANCODE_A])
-    r = 4;
-
-  return r;
+  assert(keys[SDL_SCANCODE_A]);
 }
 
 int main(int argc, char *argv[])
@@ -71,13 +55,12 @@ int main(int argc, char *argv[])
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window;
   SDL_CreateWindow("window", 0, 0, 600, 450, 0);
-    
+
   emscripten_run_script("keydown(37);"); // left
-  result += loop1();
+  loop1();
   emscripten_run_script("keydown(39);"); // right
-  result += loop2();
+  loop2();
   emscripten_run_script("keydown(65);"); // A
-  result += alphakey();
-  REPORT_RESULT(result);
+  alphakey();
   return 0;
 }

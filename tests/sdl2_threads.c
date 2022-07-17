@@ -16,15 +16,9 @@ int main()
 	int result;
 
 	thread = SDL_CreateThread(test_thread, "Test Thread", (void *)NULL);
+	assert(thread);
 
-	if (NULL == thread) {
-		return 1;
-	} else {
-		SDL_WaitThread(thread, &result);
-	}
-
-#ifdef REPORT_RESULT
-	REPORT_RESULT(result);
-#endif
+	SDL_WaitThread(thread, &result);
+	assert(result == 4);
 	return 0;
 }

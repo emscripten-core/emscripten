@@ -30,7 +30,7 @@ void loop() {
           case 1:
             assert(r->w == 123);
             assert(r->h == 246);
-            REPORT_RESULT(1);
+            emscripten_force_exit(0);
             break;
         }
       }

@@ -14,9 +14,7 @@ void main2()
 	emscripten_cancel_main_loop();
 	Mix_FreeMusic(music);
 	Mix_CloseAudio();
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
+	emscripten_force_exit(0);
 }
 
 int main(int argc, char* argv[])
