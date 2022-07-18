@@ -1554,11 +1554,13 @@ int f() {
 
   @parameterized({
     'embed': (['--embed-file', 'somefile.txt'],),
-    'embed-twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
-    'preload': (['--preload-file', 'somefile.txt'],)
+    'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt'],),
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
+    create_file('hello.txt', 'hello world')
     create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
