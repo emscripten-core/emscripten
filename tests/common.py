@@ -1692,7 +1692,7 @@ class BrowserCore(RunnerCore):
     return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None,
-            reference_slack=0, manual_reference=False, post_build=None,
+            reference_slack=0, manual_reference=None, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
@@ -1710,6 +1710,9 @@ class BrowserCore(RunnerCore):
       self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    else:
+      # manual_reference only makes sense for reference tests
+      assert manual_reference is None
     outfile = 'test.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
