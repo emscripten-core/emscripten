@@ -27,6 +27,8 @@ global.printErr = function(x) {
   process['stderr'].write(x + '\n');
 };
 
+global.assert = require('assert');
+
 function find(filename) {
   const prefixes = [process.cwd(), path.join(__dirname, '..', 'src')];
   for (let i = 0; i < prefixes.length; ++i) {

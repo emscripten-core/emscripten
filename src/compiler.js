@@ -8,6 +8,7 @@
 // LLVM => JavaScript compiler, main entry point
 
 const fs = require('fs');
+global.assert = require('assert');
 global.nodePath = require('path');
 
 global.print = (x) => {
