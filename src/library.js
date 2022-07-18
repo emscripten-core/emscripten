@@ -827,12 +827,10 @@ mergeInto(LibraryManager.library, {
           // this date is after the start of the first week of this year
           if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
             return thisDate.getFullYear()+1;
-          } else {
-            return thisDate.getFullYear();
           }
-        } else {
-          return thisDate.getFullYear()-1;
+          return thisDate.getFullYear();
         }
+        return thisDate.getFullYear()-1;
     }
 
     var EXPANSION_RULES_2 = {
@@ -899,9 +897,8 @@ mergeInto(LibraryManager.library, {
       '%p': function(date) {
         if (date.tm_hour >= 0 && date.tm_hour < 12) {
           return 'AM';
-        } else {
-          return 'PM';
         }
+        return 'PM';
       },
       '%S': function(date) {
         return leadingNulls(date.tm_sec, 2);
@@ -2181,10 +2178,9 @@ mergeInto(LibraryManager.library, {
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
     if (_setprotoent.index === Protocols.list.length) {
       return 0;
-    } else {
-      var result = Protocols.list[_setprotoent.index++];
-      return result;
     }
+    var result = Protocols.list[_setprotoent.index++];
+    return result;
   },
 
   getprotobyname__deps: ['setprotoent', '$Protocols'],

@@ -319,19 +319,17 @@ function asmCoercion(value, type) {
   assert(arguments.length == 2, 'asmCoercion takes exactly two arguments');
   if (type == 'void') {
     return value;
-  } else if (FLOAT_TYPES.has(type)) {
+  }
+  if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
-    } else {
-      if (type === 'float') {
-        return 'Math.fround(' + value + ')';
-      } else {
-        return '(+(' + value + '))';
-      }
     }
-  } else {
-    return '((' + value + ')|0)';
+    if (type === 'float') {
+      return 'Math.fround(' + value + ')';
+    }
+    return '(+(' + value + '))';
   }
+  return '((' + value + ')|0)';
 }
 
 function asmFloatToInt(x) {
@@ -559,9 +557,8 @@ function getFastValue(a, op, b, type) {
       case '/': {
         if (type[0] === 'i') {
           return ((aNumber / bNumber) | 0).toString();
-        } else {
-          return (aNumber / bNumber).toString();
         }
+        return (aNumber / bNumber).toString();
       }
       case '%': return (aNumber % bNumber).toString();
       case '|': return (aNumber | bNumber).toString();
@@ -725,9 +722,8 @@ function makeSignOp(value, type, op, force, ignore) {
       } else { // bits > 32
         if (op === 're') {
           return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits - 1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigIntS');
-        } else {
-          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigIntS');
         }
+        return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigIntS');
       }
     }
     return full;
@@ -1137,9 +1133,8 @@ function from64(x) {
     let ret = '';
     for (e of x) ret += from64(e);
     return ret;
-  } else {
-    return `${x} = Number(${x});`;
   }
+  return `${x} = Number(${x});`;
 }
 
 function to64(x) {

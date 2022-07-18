@@ -47,9 +47,8 @@ function stringifyWithFunctions(obj) {
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
-  } else {
-    return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
+  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
 }
 
 function isDefined(symName) {

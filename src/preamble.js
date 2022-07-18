@@ -672,13 +672,12 @@ function getBinary(file) {
 #endif
     if (readBinary) {
       return readBinary(file);
-    } else {
-#if WASM_ASYNC_COMPILATION
-      throw "both async and sync fetching of the wasm failed";
-#else
-      throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
-#endif
     }
+#if WASM_ASYNC_COMPILATION
+    throw "both async and sync fetching of the wasm failed";
+#else
+    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
   }
   catch (err) {
     abort(err);

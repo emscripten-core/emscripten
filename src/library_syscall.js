@@ -385,10 +385,9 @@ var SyscallsLibrary = {
     if (!dest) {
       // send, no address provided
       return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
-    } else {
-      // sendto an address
-      return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
     }
+    // sendto an address
+    return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: function(fd, level, optname, optval, optlen) {
