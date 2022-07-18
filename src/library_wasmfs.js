@@ -16,6 +16,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
     '$PATH',
+    '$readI53FromI64',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -86,17 +87,12 @@ mergeInto(LibraryManager.library, {
 
       // Copy the file into a JS buffer on the heap.
       var buf = __wasmfs_read_file(pathName);
-      // The integer length resides in the first 8 bytes of the buffer.
-      var length = {{{ makeGetValue('buf', '0', 'i64') }}};
+      // The signed integer length resides in the first 8 bytes of the buffer.
+      var length = {{{ makeGetValue('buf', '0', 'i53') }}};
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
-#if WASM_BIGINT
-      // The length as BigInt must be converted to a Number.
-      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + Number(length)));
-#else
       var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
-#endif
       if (opts.encoding === 'utf8') {
         ret = UTF8ArrayToString(ret, 0);
       }
