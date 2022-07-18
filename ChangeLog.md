@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.17
 ------
+- The `align` argument to the makeGetValue/makeSetValue JS library macros was
+  removed (and replaced with an assert) as it had no uses internally and was
+  removed (and replaced with an assert) as it had now uses internally and was
+  untested.
 
 3.1.16 - 07/14/2022
 -------------------
