@@ -52,10 +52,7 @@ mergeInto(LibraryManager.library, {
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
   $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
-                        '$reSign', '$unSign', '$strLen',
-#if MINIMAL_RUNTIME
-    , '$intArrayFromString'
-#endif
+                        '$reSign', '$unSign', '$strLen', '$intArrayFromString'
   ],
   $formatString: function(format, varargs) {
 #if ASSERTIONS

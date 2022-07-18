@@ -459,7 +459,13 @@ class TestCoreBase(RunnerCore):
 
   @also_with_standalone_wasm()
   def test_hello_argc(self):
-    self.do_core_test('test_hello_argc.c')
+    self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
+
+  @node_pthreads
+  def test_hello_argc_pthreads(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
   @also_with_wasmfs
   def test_intvars(self):
@@ -5674,22 +5680,16 @@ main( int argv, char ** argc ) {
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32'])
-    else:
-      self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf(test_file('utf32.cpp'), 'OK.')
     self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
   def test_utf16(self):
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['writeAsciiToMemory'])
     self.do_runf(test_file('core/test_utf16.cpp'), 'OK.')
 
   def test_utf8(self):
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
-    else:
-      self.set_setting('EXPORTED_RUNTIME_METHODS',
-                       ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii', 'writeAsciiToMemory'])
     self.do_runf(test_file('utf8.cpp'), 'OK.')
 
   @also_with_wasm_bigint
@@ -7041,6 +7041,7 @@ void* operator new(size_t size) {
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
@@ -7133,6 +7134,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction', '$removeFunction'])
     src = test_file('interop/test_add_function.cpp')
     post_js = test_file('interop/test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
@@ -7401,7 +7403,6 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_4.cpp', '107')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_5(self):
     self.emcc_args += ['-lembind']
     self.set_setting('EXIT_RUNTIME')
@@ -7444,7 +7445,6 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
@@ -7479,7 +7479,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
-  @no_wasm64('embind does not yet support MEMORY64')
   def test_embind_polymorphic_class_no_rtti(self):
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
@@ -7796,8 +7795,7 @@ void* operator new(size_t size) {
       '--extern-post-js=post.js',
       '--closure=1',
       '-g1',
-      '-s',
-      'MODULARIZE=1',
+      '-sMODULARIZE',
     ]
     self.do_core_test('modularize_closure_pre.c')
 
@@ -9267,6 +9265,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
 

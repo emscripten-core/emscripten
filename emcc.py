@@ -461,7 +461,7 @@ def get_all_js_syms():
     glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
     library_syms = set()
-    for name in forwarded_json['libraryFunctions']:
+    for name in forwarded_json['librarySymbols']:
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
         library_syms.add(name)
@@ -1747,9 +1747,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
         settings.EXPECT_MAIN = 0
     else:
       assert not settings.EXPORTED_FUNCTIONS
-      # With PROXY_TO_PTHREAD we don't export `main` at all but instead `_emscripten_proxy_main`.
-      if not settings.PROXY_TO_PTHREAD:
-        settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORTED_FUNCTIONS = ['_main']
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1790,11 +1788,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
     default_setting(user_settings, 'SUPPORT_ERRNO', 0)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
     default_setting(user_settings, 'STRICT_JS', 1)
+    default_setting(user_settings, 'LEGACY_RUNTIME', 0)
     default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
     default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
@@ -1848,17 +1848,22 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
     exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-  # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
-  if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
+  if not settings.MINIMAL_RUNTIME:
+    if not settings.BOOTSTRAPPING_STRUCT_INFO:
+      if settings.DYNCALLS:
+        # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
-  if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    # Include the internal library function since they are used by runtime functions.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
-    if settings.SAFE_HEAP:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
-    if not settings.MINIMAL_RUNTIME:
+      if settings.ASSERTIONS and not settings.EXIT_RUNTIME:
+        # "checkUnflushedContent()" depends on warnOnce
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
+
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
+
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+  if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -1909,7 +1914,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM2JS:
       exit_with_error('WASM2JS is not compatible with relocatable output')
     # shared modules need memory utilities to allocate their memory
-    settings.EXPORTED_RUNTIME_METHODS += ['allocate']
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
@@ -2136,7 +2140,9 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '$jsStackTrace',
         '$stackTrace',
         # Called by `callMain` to handle exceptions
-        '$handleException'
+        '$handleException',
+        # Needed by ccall (remove this once ccall itself is a library function)
+        '$writeArrayToMemory',
       ]
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
@@ -2877,6 +2883,8 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
 
   if embed_memfile():
     settings.SUPPORT_BASE64_EMBEDDING = 1
+    # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile)
   save_intermediate('original')

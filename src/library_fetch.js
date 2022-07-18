@@ -13,7 +13,9 @@ var LibraryFetch = {
   $Fetch__postset: 'Fetch.staticInit();',
 #endif
   $Fetch: Fetch,
+  _emscripten_fetch_get_response_headers_length__sig: 'pi',
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
+  _emscripten_fetch_get_response_headers__sig: 'pipp',
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   _emscripten_fetch_free: fetchFree,
 
@@ -24,15 +26,12 @@ var LibraryFetch = {
 #endif
   $fetchXHR: fetchXHR,
 
+  emscripten_start_fetch__sig: 'vp',
   emscripten_start_fetch: startFetch,
   emscripten_start_fetch__deps: [
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop',
-#endif
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',

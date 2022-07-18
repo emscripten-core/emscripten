@@ -80,7 +80,7 @@ function preprocess(text, filenameHint) {
             const first = trimmed.split(' ', 1)[0];
             if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
-                warn('warning: use of #ifdef in js library.  Use #if instead.');
+                warn('use of #ifdef in js library.  Use #if instead.');
               }
               if (first == '#elif') {
                 const curr = showStack.pop();
@@ -828,14 +828,14 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    printErr(`warning: ${currentlyParsedFilename}: \
+    warn(`${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
     if (DYNCALLS) {
-      if (!hasExportedFunction(`dynCall_${sig}`)) {
+      if (!hasExportedSymbol(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
           return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
         } else {
@@ -849,7 +849,7 @@ Please update to new syntax.`);
   }
 
   if (DYNCALLS) {
-    if (!hasExportedFunction(`dynCall_${sig}`)) {
+    if (!hasExportedSymbol(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
         return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
       } else {
@@ -1048,14 +1048,6 @@ function makeRemovedFSAssert(fsName) {
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
-function makeRemovedRuntimeFunction(name) {
-  assert(ASSERTIONS);
-  if (libraryFunctions.includes(name)) {
-    return '';
-  }
-  return `function ${name}() { abort('\`${name}\` is now a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line'); }`;
-}
-
 // Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
 function buildStringArray(array) {
   if (array.length > 0) {
@@ -1088,12 +1080,18 @@ function _asmjsDemangle(symbol) {
     return symbol;
   }
   // Strip leading "_"
-  assert(symbol.startsWith('_'));
+  assert(symbol.startsWith('_'), 'expected mangled symbol: ' + symbol);
   return symbol.substr(1);
 }
 
+// TODO(sbc): Remove this function along with _asmjsDemangle.
 function hasExportedFunction(func) {
+  warnOnce('hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name');
   return WASM_EXPORTS.has(_asmjsDemangle(func));
+}
+
+function hasExportedSymbol(sym) {
+  return WASM_EXPORTS.has(sym);
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1161,19 +1159,20 @@ function addReadyPromiseAssertions(promise) {
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');
-  return properties.map((property) => {
-    const warningEnding = `${property} on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js`;
-    return `
-      if (!Object.getOwnPropertyDescriptor(${promise}, '${property}')) {
-        Object.defineProperty(${promise}, '${property}', { configurable: true, get: function() { abort('You are getting ${warningEnding}') } });
-        Object.defineProperty(${promise}, '${property}', { configurable: true, set: function() { abort('You are setting ${warningEnding}') } });
-      }
-    `;
-  }).join('\n');
+  const warningEnding = ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
+  const res = JSON.stringify(properties);
+  return res + `.forEach((prop) => {
+  if (!Object.getOwnPropertyDescriptor(${promise}, prop)) {
+    Object.defineProperty(${promise}, prop, {
+      get: () => abort('You are getting ' + prop + '${warningEnding}'),
+      set: () => abort('You are setting ' + prop + '${warningEnding}'),
+    });
+  }
+});`;
 }
 
 function makeMalloc(source, param) {
-  if (hasExportedFunction('_malloc')) {
+  if (hasExportedSymbol('malloc')) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

@@ -16,6 +16,8 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
     '$PATH',
+    '$allocateUTF8',
+    '$allocateUTF8OnStack',
     '$readI53FromI64',
   ],
   $FS : {

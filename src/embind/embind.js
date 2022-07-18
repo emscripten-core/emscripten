@@ -172,23 +172,23 @@ var LibraryEmbind = {
   $extendError__deps: ['$createNamedFunction'],
   $extendError: function(baseErrorType, errorName) {
     var errorClass = createNamedFunction(errorName, function(message) {
-        this.name = errorName;
-        this.message = message;
+      this.name = errorName;
+      this.message = message;
 
-        var stack = (new Error(message)).stack;
-        if (stack !== undefined) {
-            this.stack = this.toString() + '\n' +
-                stack.replace(/^Error(:[^\n]*)?\n/, '');
-        }
+      var stack = (new Error(message)).stack;
+      if (stack !== undefined) {
+        this.stack = this.toString() + '\n' +
+            stack.replace(/^Error(:[^\n]*)?\n/, '');
+      }
     });
     errorClass.prototype = Object.create(baseErrorType.prototype);
     errorClass.prototype.constructor = errorClass;
     errorClass.prototype.toString = function() {
-        if (this.message === undefined) {
-            return this.name;
-        } else {
-            return this.name + ': ' + this.message;
-        }
+      if (this.message === undefined) {
+        return this.name;
+      } else {
+        return this.name + ': ' + this.message;
+      }
     };
 
     return errorClass;
@@ -279,9 +279,9 @@ var LibraryEmbind = {
   $getLiveInheritedInstances: function() {
     var rv = [];
     for (var k in registeredInstances) {
-        if (registeredInstances.hasOwnProperty(k)) {
-            rv.push(registeredInstances[k]);
-        }
+      if (registeredInstances.hasOwnProperty(k)) {
+        rv.push(registeredInstances[k]);
+      }
     }
     return rv;
   },
@@ -571,35 +571,35 @@ var LibraryEmbind = {
     var isUnsignedType = (name.includes('unsigned'));
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
-        if (typeof value != "number" && typeof value != "boolean") {
-            throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
-        }
-        if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-        }
+      if (typeof value != "number" && typeof value != "boolean") {
+        throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
+      }
+      if (value < minRange || value > maxRange) {
+        throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+      }
 #endif
     }
     var toWireType;
     if (isUnsignedType) {
-        toWireType = function(destructors, value) {
-            checkAssertions(value, this.name);
-            return value >>> 0;
-        }
+      toWireType = function(destructors, value) {
+        checkAssertions(value, this.name);
+        return value >>> 0;
+      }
     } else {
-        toWireType = function(destructors, value) {
-            checkAssertions(value, this.name);
-            // The VM will perform JS to Wasm value conversion, according to the spec:
-            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
-            return value;
-        }
+      toWireType = function(destructors, value) {
+        checkAssertions(value, this.name);
+        // The VM will perform JS to Wasm value conversion, according to the spec:
+        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+        return value;
+      }
     }
     registerType(primitiveType, {
-        name: name,
-        'fromWireType': fromWireType,
-        'toWireType': toWireType,
-        'argPackAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
-        destructorFunction: null, // This type does not need a destructor
+      name: name,
+      'fromWireType': fromWireType,
+      'toWireType': toWireType,
+      'argPackAdvance': 8,
+      'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -616,27 +616,27 @@ var LibraryEmbind = {
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-        // Use string because acorn does recognize bigint literals
-        maxRange = (1n << 64n) - 1n;
+      // Use string because acorn does recognize bigint literals
+      maxRange = (1n << 64n) - 1n;
     }
 
     registerType(primitiveType, {
-        name: name,
-        'fromWireType': function (value) {
-            return value;
-        },
-        'toWireType': function (destructors, value) {
-            if (typeof value != "bigint" && typeof value != "number") {
-                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
-            }
-            if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-            }
-            return value;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
-        destructorFunction: null, // This type does not need a destructor
+      name: name,
+      'fromWireType': function (value) {
+        return value;
+      },
+      'toWireType': function (destructors, value) {
+        if (typeof value != "bigint" && typeof value != "number") {
+          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+        }
+        if (value < minRange || value > maxRange) {
+          throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        }
+        return value;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 #else
@@ -652,23 +652,23 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
     registerType(rawType, {
-        name: name,
-        'fromWireType': function(value) {
-             return value;
-        },
-        'toWireType': function(destructors, value) {
+      name: name,
+      'fromWireType': function(value) {
+         return value;
+      },
+      'toWireType': function(destructors, value) {
 #if ASSERTIONS
-            if (typeof value != "number" && typeof value != "boolean") {
-                throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
-            }
+        if (typeof value != "number" && typeof value != "boolean") {
+          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+        }
 #endif
-            // The VM will perform JS to Wasm value conversion, according to the spec:
-            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
-            return value;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': floatReadValueFromPointer(name, shift),
-        destructorFunction: null, // This type does not need a destructor
+        // The VM will perform JS to Wasm value conversion, according to the spec:
+        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+        return value;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': floatReadValueFromPointer(name, shift),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -692,102 +692,100 @@ var LibraryEmbind = {
 #endif
 
     registerType(rawType, {
-        name: name,
-        'fromWireType': function(value) {
-            var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
-            var payload = value + {{{ POINTER_SIZE }}};
+      name: name,
+      'fromWireType': function(value) {
+        var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
+        var payload = value + {{{ POINTER_SIZE }}};
 
-            var str;
-            if (stdStringIsUTF8) {
-                var decodeStartPtr = payload;
-                // Looping here to support possible embedded '0' bytes
-                for (var i = 0; i <= length; ++i) {
-                    var currentBytePtr = payload + i;
-                    if (i == length || HEAPU8[currentBytePtr] == 0) {
-                        var maxRead = currentBytePtr - decodeStartPtr;
-                        var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
-                        if (str === undefined) {
-                            str = stringSegment;
-                        } else {
-                            str += String.fromCharCode(0);
-                            str += stringSegment;
-                        }
-                        decodeStartPtr = currentBytePtr + 1;
-                    }
-                }
-            } else {
-                var a = new Array(length);
-                for (var i = 0; i < length; ++i) {
-                    a[i] = String.fromCharCode(HEAPU8[payload + i]);
-                }
-                str = a.join('');
+        var str;
+        if (stdStringIsUTF8) {
+          var decodeStartPtr = payload;
+          // Looping here to support possible embedded '0' bytes
+          for (var i = 0; i <= length; ++i) {
+            var currentBytePtr = payload + i;
+            if (i == length || HEAPU8[currentBytePtr] == 0) {
+              var maxRead = currentBytePtr - decodeStartPtr;
+              var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
+              if (str === undefined) {
+                str = stringSegment;
+              } else {
+                str += String.fromCharCode(0);
+                str += stringSegment;
+              }
+              decodeStartPtr = currentBytePtr + 1;
             }
+          }
+        } else {
+          var a = new Array(length);
+          for (var i = 0; i < length; ++i) {
+            a[i] = String.fromCharCode(HEAPU8[payload + i]);
+          }
+          str = a.join('');
+        }
 
-            _free(value);
+        _free(value);
 
-            return str;
-        },
-        'toWireType': function(destructors, value) {
-            if (value instanceof ArrayBuffer) {
-                value = new Uint8Array(value);
-            }
+        return str;
+      },
+      'toWireType': function(destructors, value) {
+        if (value instanceof ArrayBuffer) {
+          value = new Uint8Array(value);
+        }
 
-            var length;
-            var valueIsOfTypeString = (typeof value == 'string');
+        var length;
+        var valueIsOfTypeString = (typeof value == 'string');
 
-            if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
-                throwBindingError('Cannot pass non-string to std::string');
-            }
-            if (stdStringIsUTF8 && valueIsOfTypeString) {
-                length = lengthBytesUTF8(value);
-            } else {
-                length = value.length;
-            }
+        if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+          throwBindingError('Cannot pass non-string to std::string');
+        }
+        if (stdStringIsUTF8 && valueIsOfTypeString) {
+          length = lengthBytesUTF8(value);
+        } else {
+          length = value.length;
+        }
 
-            // assumes 4-byte alignment
-            var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
-            var ptr = base + {{{ POINTER_SIZE }}};
+        // assumes 4-byte alignment
+        var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
+        var ptr = base + {{{ POINTER_SIZE }}};
 #if CAN_ADDRESS_2GB
-            ptr >>>= 0;
+        ptr >>>= 0;
 #endif
-            {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
-            if (stdStringIsUTF8 && valueIsOfTypeString) {
-                stringToUTF8(value, ptr, length + 1);
-            } else {
-                if (valueIsOfTypeString) {
-                    for (var i = 0; i < length; ++i) {
-                        var charCode = value.charCodeAt(i);
-                        if (charCode > 255) {
-                            _free(ptr);
-                            throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
-                        }
-                        HEAPU8[ptr + i] = charCode;
-                    }
-                } else {
-                    for (var i = 0; i < length; ++i) {
-                        HEAPU8[ptr + i] = value[i];
-                    }
-                }
+        {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
+        if (stdStringIsUTF8 && valueIsOfTypeString) {
+          stringToUTF8(value, ptr, length + 1);
+        } else {
+          if (valueIsOfTypeString) {
+            for (var i = 0; i < length; ++i) {
+              var charCode = value.charCodeAt(i);
+              if (charCode > 255) {
+                _free(ptr);
+                throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+              }
+              HEAPU8[ptr + i] = charCode;
             }
+          } else {
+            for (var i = 0; i < length; ++i) {
+              HEAPU8[ptr + i] = value[i];
+            }
+          }
+        }
 
-            if (destructors !== null) {
-                destructors.push(_free, base);
-            }
-            return base;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': simpleReadValueFromPointer,
-        destructorFunction: function(ptr) { _free(ptr); },
+        if (destructors !== null) {
+          destructors.push(_free, base);
+        }
+        return base;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': simpleReadValueFromPointer,
+      destructorFunction: function(ptr) { _free(ptr); },
     });
   },
 
   _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
-#if MINIMAL_RUNTIME
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
     '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
-#endif
     ],
   _embind_register_std_wstring: function(rawType, charSize, name) {
     name = readLatin1String(name);
@@ -1205,13 +1203,13 @@ var LibraryEmbind = {
     rawInvoker = embind__requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
-        throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
+      throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
     }, argCount - 1);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
-        var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-        replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
-        return [];
+      var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
+      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
+      return [];
     });
   },
 
@@ -1298,21 +1296,21 @@ var LibraryEmbind = {
         'fromWireType': function(ptr) {
           var rv = new Array(elementsLength);
           for (var i = 0; i < elementsLength; ++i) {
-              rv[i] = elements[i].read(ptr);
+            rv[i] = elements[i].read(ptr);
           }
           rawDestructor(ptr);
           return rv;
         },
         'toWireType': function(destructors, o) {
           if (elementsLength !== o.length) {
-              throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
+            throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
           }
           var ptr = rawConstructor();
           for (var i = 0; i < elementsLength; ++i) {
-              elements[i].write(ptr, o[i]);
+            elements[i].write(ptr, o[i]);
           }
           if (destructors !== null) {
-              destructors.push(rawDestructor, ptr);
+            destructors.push(rawDestructor, ptr);
           }
           return ptr;
         },
@@ -1726,7 +1724,7 @@ var LibraryEmbind = {
         this.registeredClass,
         toType.registeredClass);
     if (dp === null) {
-        return makeDefaultHandle.call(this);
+      return makeDefaultHandle.call(this);
     }
     if (this.isSmartPointer) {
       return makeClassHandle(toType.registeredClass.instancePrototype, {
@@ -1745,9 +1743,9 @@ var LibraryEmbind = {
 
   $runDestructor: function($$) {
     if ($$.smartPtr) {
-        $$.smartPtrType.rawDestructor($$.smartPtr);
+      $$.smartPtrType.rawDestructor($$.smartPtr);
     } else {
-        $$.ptrType.registeredClass.rawDestructor($$.ptr);
+      $$.ptrType.registeredClass.rawDestructor($$.ptr);
     }
   },
 
@@ -1769,8 +1767,8 @@ var LibraryEmbind = {
                            '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationRegistry) {
-        attachFinalizer = (handle) => handle;
-        return handle;
+      attachFinalizer = (handle) => handle;
+      return handle;
     }
     // If the running environment has a FinalizationRegistry (see
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
@@ -1778,9 +1776,9 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry((info) => {
 #if ASSERTIONS
-        console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
 #endif
-        releaseClassHandle(info.$$);
+      releaseClassHandle(info.$$);
     });
     attachFinalizer = (handle) => {
       var $$ = handle.$$;
@@ -1799,7 +1797,7 @@ var LibraryEmbind = {
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
         if ('captureStackTrace' in Error) {
-            Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+          Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
         }
 #endif
         finalizationRegistry.register(handle, info, handle);
@@ -1985,13 +1983,13 @@ var LibraryEmbind = {
 
   $shallowCopyInternalPointer: function(o) {
     return {
-        count: o.count,
-        deleteScheduled: o.deleteScheduled,
-        preservePointerOnDelete: o.preservePointerOnDelete,
-        ptr: o.ptr,
-        ptrType: o.ptrType,
-        smartPtr: o.smartPtr,
-        smartPtrType: o.smartPtrType,
+      count: o.count,
+      deleteScheduled: o.deleteScheduled,
+      preservePointerOnDelete: o.preservePointerOnDelete,
+      ptr: o.ptr,
+      ptrType: o.ptrType,
+      smartPtr: o.smartPtr,
+      smartPtrType: o.smartPtrType,
     };
   },
 
@@ -2159,7 +2157,7 @@ var LibraryEmbind = {
 
     var rv = downcastPointer(ptr, ptrClass, desiredClass.baseClass);
     if (rv === null) {
-        return null;
+      return null;
     }
     return desiredClass.downcast(rv);
   },

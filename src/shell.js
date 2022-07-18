@@ -477,7 +477,6 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 #if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
-{{{ makeRemovedRuntimeFunction('alignMemory') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');

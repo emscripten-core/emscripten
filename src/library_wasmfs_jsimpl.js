@@ -59,7 +59,6 @@ mergeInto(LibraryManager.library, {
   //       (however, dyncalls might also just work, given in MEMORY64 we assume
   //       WASM_BIGINT so the pointer is just a single argument, just like in
   //       wasm32).
-  _wasmfs_jsimpl_async_alloc_file__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
   _wasmfs_jsimpl_async_alloc_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -68,7 +67,6 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_free_file__deps:  ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
   _wasmfs_jsimpl_async_free_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -77,7 +75,6 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_write__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
   _wasmfs_jsimpl_async_write: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
@@ -88,7 +85,6 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_read__deps: ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
   _wasmfs_jsimpl_async_read: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
     {{{ receiveI64ParamAsDouble('offset') }}}
 #if ASSERTIONS
@@ -99,7 +95,6 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_get_size__deps:  ['$runtimeKeepalivePush', '$runtimeKeepalivePop'],
   _wasmfs_jsimpl_async_get_size: async function(ctx, backend, file, size_p) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);

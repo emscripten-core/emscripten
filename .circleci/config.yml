@@ -499,7 +499,7 @@ jobs:
             other.test_bad_triple
             other.test_closure_externs
             other.test_binaryen_debug
-            other.test_js_optimizer_parse_error
+            other.test_js_optimizer*
             other.test_output_to_nowhere
             other.test_emcc_dev_null
             other.test_cmake*
