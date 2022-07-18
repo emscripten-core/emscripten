@@ -64,11 +64,11 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
@@ -954,6 +954,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_utimensat__sig: 'iippi',
+  __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: function(dirfd, path, times, flags) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -964,11 +965,11 @@ var SyscallsLibrary = {
       var atime = Date.now();
       var mtime = atime;
     } else {
-      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
       atime = (seconds*1000) + (nanoseconds/(1000*1000));
       times += {{{ C_STRUCTS.timespec.__size__ }}};
-      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
       mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     }
