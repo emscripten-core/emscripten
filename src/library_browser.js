@@ -13,21 +13,23 @@ var LibraryBrowser = {
     '$warnOnce',
     'emscripten_set_main_loop_timing',
   ],
-  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
+  $Browser__postset: `
+    // exports
+    Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };
 #if ASSERTIONS
-                     'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
+    Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };
 #endif
-                     'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
-                     'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
-                     'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };\n' +
-                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() };\n' +
-                     'Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) };\n' +
+    Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };
+    Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };
+    Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };
+    Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };
+    Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() };
+    Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) };
 #if MAIN_MODULE
-                     'var preloadedWasm = {};\n' +
+    var preloadedWasm = {};
 #endif
-                     'var preloadedImages = {};\n' +
-                     'var preloadedAudios = {};\n',
+    var preloadedImages = {};
+    var preloadedAudios = {};`,
 
   $Browser: {
     mainLoop: {
