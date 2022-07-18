@@ -11582,7 +11582,7 @@ void foo() {}
     create_file('post.js', 'alignMemory(100, 4);')
     self.run_process([EMCC, test_file('hello_world.c'), '--post-js=post.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Call to `alignMemory` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
+    self.assertContained('`alignMemory` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_override_system_js_lib_symbol(self):
@@ -12037,7 +12037,7 @@ Module['postRun'] = function() {{
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     self.do_runf(test_file('other/test_legacy_runtime.c'),
-                 'Aborted(Call to `allocate` which is a library function and not included by default',
+                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
     # Adding it to EXPORTED_RUNTIME_METHODS makes it available.

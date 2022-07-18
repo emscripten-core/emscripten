@@ -7034,23 +7034,34 @@ void* operator new(size_t size) {
 
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=None, assert_returncode=0):
-      src = test_file('core/legacy_exported_runtime_numbers.cpp')
-      expected = test_file('core/legacy_exported_runtime_numbers%s.out' % output_prefix)
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
+    def test(expected, args=None, assert_returncode=0):
+      self.do_runf(test_file('core/legacy_exported_runtime_numbers.cpp'), expected,
+                   assert_returncode=assert_returncode, emcc_args=args)
 
-    # see that direct usage (not on module) works. we don't export, but the use
-    # keeps it alive through JSDCE
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
-    test(args=['-DDIRECT'])
-    # see that with assertions, we get a nice error message
-    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
-    self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    # Without assertion indirect usages (via Module) result in `undefined` and direct usage
+    # generates a builtin (not very helpful) JS error.
     self.set_setting('ASSERTIONS', 0)
-    # see that when we export them, things work on the module
+    self.set_setting('LEGACY_RUNTIME', 0)
+    test('|undefined|')
+    test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
+
+    # When assertions are enabled direct and indirect usage both abort with a useful error message.
+    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ))"
+    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line"
+    self.set_setting('ASSERTIONS')
+    test(not_exported, assert_returncode=NON_ZERO)
+    test(not_included, args=['-DDIRECT'])
+
+    # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
+    # Module usage should continue to fail.
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
+    test(not_exported, assert_returncode=NON_ZERO)
+    test('1', args=['-DDIRECT'])
+
+    # Adding the symbols to EXPORTED_RUNTIME_METHODS should make both usage patterns work.
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
-    test()
+    test('|1|')
+    test('|1|', args=['-DDIRECT'])
 
   def test_response_file(self):
     response_data = '-o %s/response_file.js %s' % (self.get_dir(), test_file('hello_world.cpp'))
