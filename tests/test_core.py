@@ -7892,6 +7892,37 @@ void* operator new(size_t size) {
   def test_vswprintf_utf8(self):
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
+  def test_async_call(self):
+    # Tests that the runtime is kept alive while the async call
+    # is pending.
+    self.set_setting('EXIT_RUNTIME', 1)
+
+    create_file('main.c',  r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <emscripten.h>
+
+      void f(void *arg) {
+        printf("callback: %d\n", *(int*)arg);
+      }
+
+      void g() {
+        printf("atexit\n");
+      }
+
+      int i = 42;
+
+      int main() {
+        atexit(g);
+        printf("in main\n");
+        emscripten_async_call(f, &i, 10);
+        printf("done main\n");
+        return 0;
+      }
+      ''')
+
+    self.do_runf('main.c', 'in main\ndone main\ncallback: 42\natexit\n')
+
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_hello(self):
