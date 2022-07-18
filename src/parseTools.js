@@ -408,6 +408,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   }
 
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  if (type === 'i53' || type === 'u53') {
+    return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
+  }
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';

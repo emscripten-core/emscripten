@@ -11865,6 +11865,12 @@ Module['postRun'] = function() {{
   def test_wasmfs_readfile(self):
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
+  @wasmfs_all_backends
+  def test_wasmfs_readfile_bigint(self):
+    self.set_setting('WASM_BIGINT')
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
+
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
