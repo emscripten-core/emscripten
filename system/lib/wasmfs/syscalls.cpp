@@ -582,7 +582,7 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
-int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+int __syscall_mknodat(int dirfd, intptr_t path, mode_t mode, dev_t dev) {
   assert(dev == 0); // TODO: support special devices
   if (mode & S_IFDIR) {
     return -EINVAL;
@@ -598,7 +598,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
 }
 
 static int
-doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -655,14 +655,14 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char* path, int mode, backend_t backend) {
+int wasmfs_create_directory(char* path, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
   return doMkdir(path::parseParent(path), mode, backend);
 }
 
 // TODO: Test this.
-int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
 }
 
@@ -1165,7 +1165,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
+int __syscall_fchmodat2(int dirfd, intptr_t path, mode_t mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1181,11 +1181,11 @@ int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
   return 0;
 }
 
-int __syscall_chmod(intptr_t path, int mode) {
+int __syscall_chmod(intptr_t path, mode_t mode) {
   return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
-int __syscall_fchmod(int fd, int mode) {
+int __syscall_fchmod(int fd, mode_t mode) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1197,7 +1197,7 @@ int __syscall_fchmod(int fd, int mode) {
 }
 
 int __syscall_fchownat(
-  int dirfd, intptr_t path, int owner, int group, int flags) {
+  int dirfd, intptr_t path, uid_t owner, gid_t group, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -1213,7 +1213,7 @@ int __syscall_fchownat(
   return 0;
 }
 
-int __syscall_fchown32(int fd, int owner, int group) {
+int __syscall_fchown32(int fd, uid_t owner, gid_t group) {
   return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
 }
 
@@ -1354,7 +1354,7 @@ int __syscall_pipe(intptr_t fd) {
 }
 
 // int poll(struct pollfd* fds, nfds_t nfds, int timeout);
-int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
+int __syscall_poll(intptr_t fds_, nfds_t nfds, int timeout) {
   struct pollfd* fds = (struct pollfd*)fds_;
   auto fileTable = wasmFS.getFileTable().locked();
 
@@ -1701,12 +1701,12 @@ int __syscall_accept4(int sockfd,
 }
 
 int __syscall_bind(
-  int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3) {
+  int sockfd, intptr_t addr, socklen_t alen, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
 
 int __syscall_connect(
-  int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3) {
+  int sockfd, intptr_t addr, socklen_t len, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
 
@@ -1739,26 +1739,26 @@ int __syscall_getpeername(
   return -ENOSYS;
 }
 
-int __syscall_sendto(
-  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, size_t alen) {
+ssize_t __syscall_sendto(
+  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen) {
   return -ENOSYS;
 }
 
-int __syscall_sendmsg(
+ssize_t __syscall_sendmsg(
   int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
   return -ENOSYS;
 }
 
-int __syscall_recvfrom(int sockfd,
-                       intptr_t msg,
-                       size_t len,
-                       int flags,
-                       intptr_t addr,
-                       intptr_t alen) {
+ssize_t __syscall_recvfrom(int sockfd,
+                           intptr_t msg,
+                           size_t len,
+                           int flags,
+                           intptr_t addr,
+                           intptr_t alen) {
   return -ENOSYS;
 }
 
-int __syscall_recvmsg(
+ssize_t __syscall_recvmsg(
   int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
