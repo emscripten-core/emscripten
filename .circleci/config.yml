@@ -23,7 +23,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "12.2.0"
+      xcode: "13.4.1"
 
 commands:
   download-chrome:
