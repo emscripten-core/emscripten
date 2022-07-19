@@ -75,13 +75,13 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr);
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 struct dso;
 

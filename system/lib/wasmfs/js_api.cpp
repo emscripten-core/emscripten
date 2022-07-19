@@ -129,8 +129,8 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
   return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
 }
 
-int _wasmfs_allocate(int fd, int64_t off, int64_t len) {
-  return __syscall_fallocate(fd, 0, off, len);
+int _wasmfs_allocate(int fd, off_t offset, off_t len) {
+  return __syscall_fallocate(fd, 0, offset, len);
 }
 
 int _wasmfs_mknod(char* path, mode_t mode, dev_t dev) {
