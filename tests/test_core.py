@@ -3979,7 +3979,6 @@ ok
   @no_wasm64('TODO: asyncify for wasm64')
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
-    self.set_setting('EXIT_RUNTIME', 1)
 
     create_file('liblib.c', r'''
       #include <stdio.h>
@@ -8140,7 +8139,6 @@ Module['onRuntimeInitialized'] = function() {
   @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
-    self.set_setting('EXIT_RUNTIME', 1)
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
     self.dylink_test(r'''
       #include <stdio.h>
