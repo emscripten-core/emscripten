@@ -28,4 +28,4 @@ EMSCRIPTEN_BINDINGS(test_abort_on_exception) {
 
 int main() {
   return 0;
-} 
+}
