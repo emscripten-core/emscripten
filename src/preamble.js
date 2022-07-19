@@ -829,6 +829,9 @@ function instantiateSync(file, info) {
 // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
 // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
+  if (attrs === undefined || attrs === null) {
+    return attrs;
+  }
   var object = Object.create(constructor.prototype);
   return Object.assign(object, attrs);
 }
