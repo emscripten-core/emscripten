@@ -14,9 +14,7 @@
 
 double before_it_all;
 
-extern "C" {
-
-void EMSCRIPTEN_KEEPALIVE finish() {
+extern "C" void EMSCRIPTEN_KEEPALIVE finish() {
   // load some file data, SYNCHRONOUSLY :)
   char buffer[100];
   int num;
@@ -123,9 +121,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 #else
   result = 2;
 #endif
-  REPORT_RESULT(result);
-}
-
+  emscripten_force_exit(result);
 }
 
 int main() {

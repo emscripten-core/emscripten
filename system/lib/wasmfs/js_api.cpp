@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 
@@ -21,6 +22,8 @@ __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 // The buffer will also contain the file length.
 // Caller must free the returned pointer.
 void* _wasmfs_read_file(char* path) {
+  static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
+
   struct stat file;
   int err = 0;
   err = stat(path, &file);
@@ -33,8 +36,8 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
-  *(uint32_t*)result = size;
+  uint8_t* result = (uint8_t*)malloc(size + sizeof(size));
+  *(off_t*)result = size;
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
@@ -121,4 +124,43 @@ int _wasmfs_identify(char* path) {
   }
   return EEXIST;
 }
+
+struct wasmfs_readdir_state {
+  int i;
+  int nentries;
+  struct dirent** entries;
+};
+
+struct wasmfs_readdir_state* _wasmfs_readdir_start(char* path) {
+  struct dirent** entries;
+  int nentries = scandir(path, &entries, NULL, alphasort);
+  if (nentries == -1) {
+    return NULL;
+  }
+  struct wasmfs_readdir_state* state =
+    (struct wasmfs_readdir_state*)malloc(sizeof(*state));
+  if (state == NULL) {
+    return NULL;
+  }
+  state->i = 0;
+  state->nentries = nentries;
+  state->entries = entries;
+  return state;
 }
+
+const char* _wasmfs_readdir_get(struct wasmfs_readdir_state* state) {
+  if (state->i < state->nentries) {
+    return state->entries[state->i++]->d_name;
+  }
+  return NULL;
+}
+
+void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
+  for (int i = 0; i < state->nentries; i++) {
+    free(state->entries[i]);
+  }
+  free(state->entries);
+  free(state);
+}
+
+} // extern "C"

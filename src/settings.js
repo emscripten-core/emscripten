@@ -49,13 +49,10 @@
 
 // Tuning
 
-// Whether we should add runtime assertions, for example to
-// check that each allocation to the stack does not
-// exceed its size, whether all allocations (stack and static) are
-// of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
-// if code flow runs into a fault
+// Whether we should add runtime assertions. This affects both JS and how
+// system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
-// includes internal dlmalloc assertions.
+// includes internal dlmalloc assertions, for example.
 // [link]
 var ASSERTIONS = 1;
 
@@ -863,10 +860,7 @@ var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
-// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
-// that methods on this list are only exported if they are included (either
-// automatically from linking, or due to being in
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
 // having "FS" in this list.
@@ -1097,6 +1091,7 @@ var LINKABLE = false;
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
+//   * LEGACY_RUNTIME is disabled.
 // [compile+link]
 var STRICT = false;
 
@@ -1498,6 +1493,10 @@ var SDL2_IMAGE_FORMATS = [];
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
+// 1 = use sqlite3 from emscripten-ports
+// [link]
+var USE_SQLITE3 = false;
+
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
 var IN_TEST_HARNESS = false;
@@ -1731,6 +1730,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
 // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_FIREFOX_VERSION = 65;
 
@@ -1741,13 +1741,14 @@ var MIN_FIREFOX_VERSION = 65;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
 // Specifies the oldest version of Internet Explorer to target. E.g. pass -s
 // MIN_IE_VERSION = 11 to drop support for IE 10 and older.
 // Internet Explorer is at end of life and does not support WebAssembly.
-// MAX_INT (0x7FFFFFFF) specifies that target is not supported.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_IE_VERSION = 0x7FFFFFFF;
 
@@ -1755,12 +1756,14 @@ var MIN_IE_VERSION = 0x7FFFFFFF;
 // flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
 // EdgeHTML 39 and older.
 // Edge 44.17763 was released on November 13, 2018
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_EDGE_VERSION = 44;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 75.0.3770 was released on 2019-06-04
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_CHROME_VERSION = 75;
 
@@ -2038,6 +2041,12 @@ var POLYFILL = true;
 // - GL_DEBUG
 // [link]
 var RUNTIME_DEBUG = false;
+
+// Include JS library symbols that were previously part of the default runtime.
+// Without this, such symbols can be made available by adding them to
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
+// library symbol.
+var LEGACY_RUNTIME = true;
 
 //===========================================
 // Internal, used for testing only, from here

@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -95,6 +96,16 @@ int main() {
   // Try opening the dev directory and read its contents.
   printf("------------- Reading from /dev Directory -------------\n");
   print("/dev");
+
+  // The same, but via the JS API.
+  printf("------------- Reading from /dev Directory via JS -------------\n");
+  EM_ASM({
+    var entries = FS.readdir("/dev");
+    for (var i = 0; i < entries.length; i++) {
+      console.log(entries[i]);
+    }
+    console.log();
+  });
 
   // Try to advance the offset of the directory.
   // Expect that '.' will be skipped.

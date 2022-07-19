@@ -78,7 +78,7 @@ typedef long double double_t;
 #endif
 
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
-typedef int time_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
+typedef _Int64 time_t;
 #define __DEFINED_time_t
 #endif
 

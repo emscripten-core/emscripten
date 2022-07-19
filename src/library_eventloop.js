@@ -16,7 +16,7 @@ LibraryJSEventLoop = {
   $setImmediateWrapped: function(func) {
     if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
     var id = setImmediateWrapped.mapping.length;
-    setImmediateWrapped.mapping[id] = setImmediate(function() {
+    setImmediateWrapped.mapping[id] = setImmediate(() => {
       setImmediateWrapped.mapping[id] = undefined;
       func();
     });
@@ -44,7 +44,8 @@ LibraryJSEventLoop = {
       'var __setImmediate_id_counter = 0;\n' +
       'var __setImmediate_queue = [];\n' +
       'var __setImmediate_message_id = "_si";\n' +
-      'function __setImmediate_cb(/** @type {Event} */e) {\n' +
+      '/** @param {Event} e */\n' +
+      'var __setImmediate_cb = (e) => {\n' +
         'if (e.data === __setImmediate_message_id) {\n' +
           'e.stopPropagation();\n' +
           '__setImmediate_queue.shift()();\n' +
@@ -52,11 +53,11 @@ LibraryJSEventLoop = {
         '}\n' +
       '}\n' +
       'addEventListener("message", __setImmediate_cb, true);\n' +
-      'emSetImmediate = function(func) {\n' +
+      'emSetImmediate = (func) => {\n' +
         'postMessage(__setImmediate_message_id, "*");\n' +
         'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
       '}\n' +
-      'emClearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
+      'emClearImmediate = /**@type{function(number=)}*/((id) => {\n' +
         'var index = id - __setImmediate_id_counter;\n' +
         'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function() {};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
       '})\n' +
@@ -68,11 +69,7 @@ LibraryJSEventLoop = {
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
-  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
@@ -84,21 +81,13 @@ LibraryJSEventLoop = {
     });
   },
 
-  emscripten_clear_immediate__deps: ['$polyfillSetImmediate',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
   emscripten_clear_immediate: function(id) {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
@@ -114,11 +103,7 @@ LibraryJSEventLoop = {
     return emSetImmediate(tick);
   },
 
-  emscripten_set_timeout__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_timeout__deps: ['$callUserCallback'],
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -133,11 +118,7 @@ LibraryJSEventLoop = {
     clearTimeout(id);
   },
 
-  emscripten_set_timeout_loop__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_timeout_loop__deps: ['$callUserCallback'],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
@@ -157,11 +138,7 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
-  emscripten_set_interval__deps: ['$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
@@ -171,9 +148,6 @@ LibraryJSEventLoop = {
     }, msecs);
   },
 
-#if !MINIMAL_RUNTIME
-  emscripten_clear_interval__deps: ['$runtimeKeepalivePop'],
-#endif
   emscripten_clear_interval: function(id) {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);

@@ -81,6 +81,7 @@ var LibraryGLFW = {
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
     '$callUserCallback',
+    '$allocateUTF8',
 #if FILESYSTEM
     '$FS',
 #endif
@@ -1673,9 +1674,8 @@ var LibraryGLFW = {
   glfwGetJoystickName: function(joy) {
     if (GLFW.joys[joy]) {
       return GLFW.joys[joy].id;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   glfwSetJoystickCallback__sig: 'ii',

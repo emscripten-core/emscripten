@@ -56,7 +56,11 @@ void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
                               int file_id,
                               int* access_id);
 
+void _wasmfs_opfs_open_blob(em_proxying_ctx* ctx, int file_id, int* blob_id);
+
 void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id);
+
+void _wasmfs_opfs_close_blob(int blob_id);
 
 void _wasmfs_opfs_free_file(int file_id);
 
@@ -68,6 +72,13 @@ int _wasmfs_opfs_read_access(int access_id,
                              uint32_t len,
                              uint32_t pos);
 
+int _wasmfs_opfs_read_blob(em_proxying_ctx* ctx,
+                           int blob_id,
+                           uint8_t* buf,
+                           uint32_t len,
+                           uint32_t pos,
+                           uint32_t* nread);
+
 // Synchronous write. Return the number of bytes written.
 int _wasmfs_opfs_write_access(int access_id,
                               const uint8_t* buf,
@@ -78,6 +89,8 @@ int _wasmfs_opfs_write_access(int access_id,
 void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   uint32_t* size);
+
+uint32_t _wasmfs_opfs_get_size_blob(int blob_id);
 
 // Get the size of a file handle via a File Blob.
 void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
@@ -101,92 +114,218 @@ namespace {
 
 using ProxyWorker = emscripten::ProxyWorker;
 
+class OpenState {
+public:
+  enum Kind { None, Access, Blob };
+
+private:
+  Kind kind = None;
+  int id = -1;
+  oflags_t openFlags;
+  size_t openCount = 0;
+
+public:
+  Kind getKind() { return kind; }
+
+  int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
+    int result;
+    if (kind == None) {
+      assert(openCount == 0);
+      switch (flags) {
+        case O_RDWR:
+        case O_WRONLY:
+          // If we need write access, try to open an AccessHandle.
+          proxy(
+            [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &id); });
+          // TODO: Fall back to open as a blob instead.
+          if (id < 0) {
+            return -EACCES;
+          }
+          kind = Access;
+          break;
+        case O_RDONLY:
+          // We only need read access, so open as a Blob
+          proxy(
+            [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
+          if (id < 0) {
+            return -EACCES;
+          }
+          kind = Blob;
+          break;
+        default:
+          WASMFS_UNREACHABLE("Unexpected open access mode");
+      }
+    } else if (kind == Blob && (flags == O_WRONLY || flags == O_RDWR)) {
+      // Try to upgrade to an AccessHandle.
+      int newID;
+      proxy(
+        [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &newID); });
+      if (newID < 0) {
+        return -EACCES;
+      }
+      // We have an AccessHandle, so close the blob.
+      proxy([&]() { _wasmfs_opfs_close_blob(getBlobID()); });
+      id = newID;
+      kind = Access;
+    }
+    ++openCount;
+    return 0;
+  }
+
+  void close(ProxyWorker& proxy) {
+    // TODO: Downgrade to Blob access once the last writable file descriptor has
+    // been closed.
+    if (--openCount == 0) {
+      switch (kind) {
+        case Access:
+          proxy([&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, id); });
+          break;
+        case Blob:
+          proxy([&]() { _wasmfs_opfs_close_blob(id); });
+          break;
+        case None:
+          WASMFS_UNREACHABLE("Open file should have kind");
+      }
+      kind = None;
+      id = -1;
+    }
+  }
+
+  int getAccessID() {
+    assert(openCount > 0);
+    assert(id >= 0);
+    assert(kind == Access);
+    return id;
+  }
+
+  int getBlobID() {
+    assert(openCount > 0);
+    assert(id >= 0);
+    assert(kind == Blob);
+    return id;
+  }
+};
+
 class OPFSFile : public DataFile {
 public:
   ProxyWorker& proxy;
-
-  // The IDs of the corresponding file handle and, if the file is open, the
-  // corresponding access handle.
   int fileID;
-  int accessID = -1;
-
-  // The number of times this file has been opened. We only close its
-  // AccessHandle when this falls to zero.
-  size_t openCount = 0;
+  OpenState state;
 
   OPFSFile(mode_t mode, backend_t backend, int fileID, ProxyWorker& proxy)
     : DataFile(mode, backend), fileID(fileID), proxy(proxy) {}
 
   ~OPFSFile() override {
-    assert(openCount == 0);
-    assert(accessID == -1);
+    assert(state.getKind() == OpenState::None);
     proxy([&]() { _wasmfs_opfs_free_file(fileID); });
   }
 
 private:
   size_t getSize() override {
+    // TODO: 64-bit sizes.
     uint32_t size;
-    if (accessID == -1) {
-      proxy(
-        [&](auto ctx) { _wasmfs_opfs_get_size_file(ctx.ctx, fileID, &size); });
-    } else {
-      proxy([&](auto ctx) {
-        _wasmfs_opfs_get_size_access(ctx.ctx, accessID, &size);
-      });
+    switch (state.getKind()) {
+      case OpenState::None:
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_get_size_file(ctx.ctx, fileID, &size);
+        });
+        break;
+      case OpenState::Access:
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_get_size_access(ctx.ctx, state.getAccessID(), &size);
+        });
+        break;
+      case OpenState::Blob:
+        proxy([&]() { size = _wasmfs_opfs_get_size_blob(state.getBlobID()); });
+        break;
+      default:
+        WASMFS_UNREACHABLE("Unexpected open state");
     }
     return size_t(size);
   }
 
   void setSize(size_t size) override {
-    if (accessID == -1) {
-      int err;
-      proxy([&](auto ctx) {
-        _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
-      });
-      assert(err == 0 && "TODO: better error handling");
-    } else {
-      proxy([&](auto ctx) {
-        _wasmfs_opfs_set_size_access(ctx.ctx, accessID, size);
-      });
+    switch (state.getKind()) {
+      case OpenState::Access:
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_set_size_access(ctx.ctx, state.getAccessID(), size);
+        });
+        break;
+      case OpenState::Blob:
+        // We don't support `truncate` in blob mode because the blob would
+        // become invalidated and refreshing it while ensuring other in-flight
+        // operations on the same file do not observe the invalidated blob would
+        // be extermely complicated.
+        WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+      case OpenState::None: {
+        int err = 1;
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
+        });
+        if (err) {
+          WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+        }
+        break;
+      }
+      default:
+        WASMFS_UNREACHABLE("Unexpected open state");
     }
   }
 
   void open(oflags_t flags) override {
-    if (openCount == 0) {
-      proxy([&](auto ctx) {
-        _wasmfs_opfs_open_access(ctx.ctx, fileID, &accessID);
-      });
-      ++openCount;
+    if (auto err = state.open(proxy, fileID, flags); err < 0) {
+      // TODO: Proper error reporting.
+      assert(false && "error during open");
     }
-    // TODO: proper error handling.
-    assert(accessID >= 0);
   }
 
-  void close() override {
-    assert(openCount >= 1);
-    if (--openCount == 0) {
-      proxy([&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, accessID); });
-      accessID = -1;
-    }
-  }
+  void close() override { state.close(proxy); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;
-    proxy(
-      [&]() { nread = _wasmfs_opfs_read_access(accessID, buf, len, offset); });
+    switch (state.getKind()) {
+      case OpenState::Access:
+        proxy([&]() {
+          nread =
+            _wasmfs_opfs_read_access(state.getAccessID(), buf, len, offset);
+        });
+        break;
+      case OpenState::Blob:
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_read_blob(
+            ctx.ctx, state.getBlobID(), buf, len, offset, &nread);
+        });
+        break;
+      case OpenState::None:
+      default:
+        WASMFS_UNREACHABLE("Unexpected open state");
+    }
+    // TODO: Proper error reporting.
     return nread;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    assert(state.getKind() == OpenState::Access);
     uint32_t nwritten;
     proxy([&]() {
-      nwritten = _wasmfs_opfs_write_access(accessID, buf, len, offset);
+      nwritten =
+        _wasmfs_opfs_write_access(state.getAccessID(), buf, len, offset);
     });
     return nwritten;
   }
 
   void flush() override {
-    proxy([&](auto ctx) { _wasmfs_opfs_flush_access(ctx.ctx, accessID); });
+    switch (state.getKind()) {
+      case OpenState::Access:
+        proxy([&](auto ctx) {
+          _wasmfs_opfs_flush_access(ctx.ctx, state.getAccessID());
+        });
+        break;
+      case OpenState::Blob:
+      case OpenState::None:
+      default:
+        break;
+    }
   }
 };
 

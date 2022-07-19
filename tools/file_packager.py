@@ -682,12 +682,13 @@ def generate_js(data_target, data_files, metadata):
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
     if file_.mode == 'embed':
-      # Embed
-      data = base64_encode(utils.read_binary(file_.srcpath))
-      code += "      var fileData%d = '%s';\n" % (counter, data)
-      # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-      code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
-               % (dirname, basename, counter))
+      if not options.obj_output:
+        # Embed (only needed when not generating object file output)
+        data = base64_encode(utils.read_binary(file_.srcpath))
+        code += "      var fileData%d = '%s';\n" % (counter, data)
+        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
+        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+                 % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
       metadata_el = {

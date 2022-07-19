@@ -39,16 +39,10 @@ function dump(item) {
   }
 }
 
-function assert(a, msg) {
-  if (!a) {
-    msg = 'Assertion failed' + (msg ? ': ' + msg : '');
-    print(msg);
-    printErr('Stack: ' + new Error().stack);
-    throw msg;
-  }
-}
+global.warnings = false;
 
 function warn(a, msg) {
+  global.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -67,7 +61,7 @@ function warnOnce(a, msg) {
     if (!warnOnce.msgs) warnOnce.msgs = {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
-    printErr('warning: ' + msg);
+    warn(msg);
   }
 }
 
@@ -110,7 +104,6 @@ function isJsLibraryConfigIdentifier(ident) {
     '__deps',
     '__postset',
     '__docs',
-    '__import',
     '__nothrow',
     '__noleakcheck',
     '__internal',
