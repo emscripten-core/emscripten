@@ -69,6 +69,7 @@ def get(ports, settings, shared):
       o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
       command = [shared.EMCC,
+                 '-sUSE_SDL=0',
                  '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
                  '-o', o, '-I' + ports.get_include_dir('SDL2'),
                  '-O2', '-w']
@@ -91,8 +92,7 @@ def linker_setup(ports, settings):
 
 
 def process_args(ports):
-  # TODO(sbc): remove this
-  return ['-Xclang', '-isystem' + ports.get_include_dir('SDL2')]
+  return ['-I' + ports.get_include_dir('SDL2')]
 
 
 def show():

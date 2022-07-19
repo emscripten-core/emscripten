@@ -355,7 +355,7 @@ def add_cflags(args, settings): # noqa: U100
 
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
-    args += ['-Xclang', '-iwithsysroot/include/SDL']
+    args += ['-I' + Ports.get_include_dir('SDL')]
 
   needed = get_needed_ports(settings)
 
