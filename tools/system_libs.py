@@ -43,7 +43,7 @@ def glob_in_path(path, glob_pattern, excludes=()):
 def get_base_cflags(force_object_files=False):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g']
+  flags = ['-g', '-sSTRICT']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
