@@ -66,7 +66,7 @@ weak int _munmap_js(
   return -ENOSYS;
 }
 
-weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
+weak int __syscall_poll(intptr_t fds, nfds_t nfds, int timeout) {
   return -ENOSYS;
 }
 
@@ -107,7 +107,7 @@ weak int __syscall_dup(int fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+weak int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
   return -ENOSYS;
 }
 
