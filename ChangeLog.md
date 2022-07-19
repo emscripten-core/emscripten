@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   removed (and replaced with an assert) as it had no uses internally and was
   removed (and replaced with an assert) as it had now uses internally and was
   untested.
+- Removed unused `calledMain` global variable from the JS runtime.  Folks who
+  want to know when main is done can use `Module[postRun]`.
 
 3.1.16 - 07/14/2022
 -------------------

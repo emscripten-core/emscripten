@@ -92,8 +92,6 @@ function runMemoryInitializer() {
 
 var calledRun;
 
-var calledMain = false;
-
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
 #endif
@@ -189,8 +187,6 @@ function callMain(args) {
     return handleException(e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
-    calledMain = true;
-
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth -= 2;
