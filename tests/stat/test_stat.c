@@ -30,8 +30,9 @@ void create_file(const char *path, const char *buffer, int mode) {
   close(fd);
 }
 
+#define TEST_TIME (1ll << 34)
 void setup() {
-  struct utimbuf t = {1200000000, 1200000000};
+  struct utimbuf t = {TEST_TIME, TEST_TIME};
 
   mkdir("folder", 0777);
   create_file("folder/file", "abcdef", 0777);
@@ -51,7 +52,7 @@ void cleanup() {
 void test() {
   int err;
   struct stat s;
-  struct utimbuf t = {1200000000, 1200000000};
+  struct utimbuf t = {TEST_TIME, TEST_TIME};
 
   // non-existent
   err = stat("does_not_exist", &s);
@@ -70,8 +71,11 @@ void test() {
   assert(s.st_rdev == 0);
 #endif
   assert(s.st_size);
-  assert(s.st_atime == 1200000000);
-  assert(s.st_mtime == 1200000000);
+  printf("TEST_TIME: %llx\n", TEST_TIME);
+  printf("s.st_atime: %llx\n", s.st_atime);
+  printf("s.st_mtime: %llx\n", s.st_mtime);
+  assert(s.st_atime == TEST_TIME);
+  assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
@@ -92,8 +96,8 @@ void test() {
   assert(s.st_nlink);
   assert(s.st_rdev == 0);
   assert(s.st_size == 6);
-  assert(s.st_atime == 1200000000);
-  assert(s.st_mtime == 1200000000);
+  assert(s.st_atime == TEST_TIME);
+  assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
@@ -110,8 +114,8 @@ void test() {
   assert(s.st_nlink);
   assert(s.st_rdev == 0);
   assert(s.st_size == 6);
-  assert(s.st_atime == 1200000000);
-  assert(s.st_mtime == 1200000000);
+  assert(s.st_atime == TEST_TIME);
+  assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
@@ -152,8 +156,8 @@ void test() {
   assert(s.st_nlink);
   assert(s.st_rdev == 0);
   assert(s.st_size == 6);
-  assert(s.st_atime == 1200000000);
-  assert(s.st_mtime == 1200000000);
+  assert(s.st_atime == TEST_TIME);
+  assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
@@ -170,8 +174,8 @@ void test() {
   assert(s.st_nlink);
   assert(s.st_rdev == 0);
   assert(s.st_size == 4);  // strlen("file")
-  assert(s.st_atime != 1200000000);  // should NOT match the utime call we did for dir/file
-  assert(s.st_mtime != 1200000000);
+  assert(s.st_atime != TEST_TIME);  // should NOT match the utime call we did for dir/file
+  assert(s.st_mtime != TEST_TIME);
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
@@ -183,11 +187,11 @@ void test() {
   utime("folder/subdir", &t);
   create_file("folder/subdir/file", "abcdef", 0777);
   err = stat("folder/subdir", &s);
-  assert(s.st_mtime != 1200000000);
+  assert(s.st_mtime != TEST_TIME);
   utime("folder/subdir", &t);
   unlink("folder/subdir/file");
   err = stat("folder/subdir", &s);
-  assert(s.st_mtime != 1200000000);
+  assert(s.st_mtime != TEST_TIME);
 
   puts("success");
 }
