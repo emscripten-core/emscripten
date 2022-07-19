@@ -3502,6 +3502,12 @@ mergeInto(LibraryManager.library, {
       return;
     }
     try {
+#if ASSERTIONS
+      if (userCodeEntriesOnStack != 0) {
+        warnOnce('nested call to callUserCallback detected (This should only be used to enter from the event loop)');
+      }
+      userCodeEntriesOnStack += 1;
+#endif
       func();
 #if EXIT_RUNTIME || USE_PTHREADS
 #if USE_PTHREADS && !EXIT_RUNTIME
@@ -3512,6 +3518,11 @@ mergeInto(LibraryManager.library, {
     } catch (e) {
       handleException(e);
     }
+#if ASSERTIONS
+    finally {
+      userCodeEntriesOnStack -= 1;
+    }
+#endif
   },
 
   $maybeExit__deps: ['exit', '$handleException',

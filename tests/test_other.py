@@ -11299,10 +11299,15 @@ exec "$@"
     self.do_runf(test_file('hello_world.c'), 'hello, world!')
 
   def test_runtime_keepalive(self):
-    self.uses_es6 = True
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$runtimeKeepalivePush', '$runtimeKeepalivePop', '$callUserCallback'])
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
+
+  def test_nested_user_callback(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$runtimeKeepalivePush', '$runtimeKeepalivePop', '$callUserCallback'])
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('ASSERTIONS')
+    self.do_other_test('test_nested_user_callback.c')
 
   def test_em_asm_side_module(self):
     err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('hello_world_em_asm.c')])

@@ -161,6 +161,11 @@ function callMain(args) {
     abortWrapperDepth += 2;
 #endif
 
+#if ASSERTIONS
+    // TODO(sbc): Have `callMain` use `callUserCallback` to avoid duplicating
+    // this tracking.
+    userCodeEntriesOnStack += 1;
+#endif
 #if STANDALONE_WASM
     entryFunction();
     // _start (in crt1.c) will call exit() if main return non-zero.  So we know
@@ -189,6 +194,9 @@ function callMain(args) {
     return handleException(e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
+#if ASSERTIONS
+    userCodeEntriesOnStack -= 1;
+#endif
     calledMain = true;
 
 #if ABORT_ON_WASM_EXCEPTIONS
