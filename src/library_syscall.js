@@ -252,7 +252,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         return 0;
       }
-      default: abort('bad ioctl syscall ' + op);
+      default: return -{{{ cDefine('EINVAL') }}}; // not supported
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
