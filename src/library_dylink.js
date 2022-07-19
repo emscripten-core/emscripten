@@ -964,7 +964,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callFromEventLoop', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     /** @param {Object=} e */
@@ -972,11 +972,11 @@ var LibraryDylink = {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
+      callFromEventLoop(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
+      callFromEventLoop(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
     }
 
     {{{ runtimeKeepalivePush() }}}

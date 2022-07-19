@@ -70,13 +70,13 @@ LibraryJSEventLoop = {
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
-  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
+  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callFromEventLoop'],
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(function() {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         {{{ makeDynCall('vi', 'cb') }}}(userData);
       });
     });
@@ -88,12 +88,12 @@ LibraryJSEventLoop = {
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
+  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callFromEventLoop'],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         if ({{{ makeDynCall('ii', 'cb') }}}(userData)) {
           {{{ runtimeKeepalivePush(); }}}
           emSetImmediate(tick);
@@ -104,12 +104,12 @@ LibraryJSEventLoop = {
     return emSetImmediate(tick);
   },
 
-  emscripten_set_timeout__deps: ['$callUserCallback'],
+  emscripten_set_timeout__deps: ['$callFromEventLoop'],
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         {{{ makeDynCall('vi', 'cb') }}}(userData);
       });
     }, msecs);
@@ -119,13 +119,13 @@ LibraryJSEventLoop = {
     clearTimeout(id);
   },
 
-  emscripten_set_timeout_loop__deps: ['$callUserCallback'],
+  emscripten_set_timeout_loop__deps: ['$callFromEventLoop'],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
       var n = t + msecs;
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
@@ -139,11 +139,11 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
-  emscripten_set_interval__deps: ['$callUserCallback'],
+  emscripten_set_interval__deps: ['$callFromEventLoop'],
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         {{{ makeDynCall('vi', 'cb') }}}(userData)
       });
     }, msecs);

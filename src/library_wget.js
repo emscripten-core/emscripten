@@ -16,7 +16,7 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave'],
+  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callFromEventLoop', '$Browser', '$withStackSave'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -28,7 +28,7 @@ var LibraryWget = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(function() {
+        callFromEventLoop(function() {
           withStackSave(function() {
             {{{ makeDynCall('vi', 'callback') }}}(allocateUTF8OnStack(_file));
           });
@@ -59,14 +59,14 @@ var LibraryWget = {
     );
   },
 
-  emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
+  emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callFromEventLoop'],
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
     asyncLoad(UTF8ToString(url), function(byteArray) {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
@@ -75,7 +75,7 @@ var LibraryWget = {
     }, function() {
       if (onerror) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(function() {
+        callFromEventLoop(function() {
           {{{ makeDynCall('vi', 'onerror') }}}(arg);
         });
       }

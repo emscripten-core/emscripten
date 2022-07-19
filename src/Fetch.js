@@ -458,7 +458,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     if (fetchAttrSynchronous) {
       f();
     } else {
-      callUserCallback(f);
+      callFromEventLoop(f);
     }
   }
 

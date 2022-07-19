@@ -31,7 +31,7 @@ var LibraryFetch = {
   emscripten_start_fetch__deps: [
     '$Fetch',
     '$fetchXHR',
-    '$callUserCallback',
+    '$callFromEventLoop',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',

@@ -2275,10 +2275,10 @@ mergeInto(LibraryManager.library, {
   },
 
   // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-  alarm__deps: ['raise', '$callUserCallback'],
+  alarm__deps: ['raise', '$callFromEventLoop'],
   alarm: function(seconds) {
     setTimeout(function() {
-      callUserCallback(function() {
+      callFromEventLoop(function() {
         _raise({{{ cDefine('SIGALRM') }}});
       });
     }, seconds*1000);
@@ -3488,12 +3488,12 @@ mergeInto(LibraryManager.library, {
   // The job of this wrapper is the handle emscripten-specfic exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
-  $callUserCallback__deps: ['$handleException',
+  $callFromEventLoop__deps: ['$handleException',
 #if EXIT_RUNTIME || USE_PTHREADS
     '$maybeExit',
 #endif
   ],
-  $callUserCallback: function(func) {
+  $callFromEventLoop: function(func) {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
 #else
@@ -3545,18 +3545,18 @@ mergeInto(LibraryManager.library, {
   },
 #else
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: function(func) {
+  $callFromEventLoop: function(func) {
     func();
   },
 #endif
 
-  $safeSetTimeout__deps: ['$callUserCallback'],
+  $safeSetTimeout__deps: ['$callFromEventLoop'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
+      callFromEventLoop(func);
     }, timeout);
   },
 
@@ -3664,6 +3664,11 @@ mergeInto(LibraryManager.library, {
     err('done preloading data files');
 #endif
   },
+
+#if LEGACY_RUNTIME
+  // Legacy name for callFromEventLoop
+  $callUserCallback: '$callFromEventLoop',
+#endif
 });
 
 function autoAddDeps(object, name) {
