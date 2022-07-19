@@ -3488,8 +3488,7 @@ mergeInto(LibraryManager.library, {
     '$maybeExit',
 #endif
   ],
-  $callUserCallback__docs: '/** @param {boolean=} synchronous */',
-  $callUserCallback: function(func, synchronous) {
+  $callUserCallback: function(func) {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
 #else
@@ -3498,11 +3497,6 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
-      return;
-    }
-    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
-    if (synchronous) {
-      func();
       return;
     }
     try {
