@@ -122,7 +122,7 @@ weak int __syscall_dup(int fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+weak int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
   return -ENOSYS;
 }
 
