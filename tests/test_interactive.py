@@ -142,7 +142,7 @@ class interactive(BrowserCore):
 
     for args in [[], ['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD']]:
       self.compile_btest(['-O2', test_file('openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
-      self.run_browser('page.html', '', '/report_result?1')
+      self.run_browser('page.html', '/report_result?1')
 
   def test_openal_buffers(self):
     self.btest('openal_buffers.c', '0', args=['--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/'],)
@@ -194,7 +194,7 @@ class interactive(BrowserCore):
     src = test_file('third_party', 'freealut', 'examples', 'hello_world.c')
     inc = test_file('third_party', 'freealut', 'include')
     self.compile_btest([src, '-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
-    self.run_browser('page.html', 'You should hear "Hello World!"')
+    self.run_browser('page.html', message='You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
     self.btest_exit('interactive/test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
