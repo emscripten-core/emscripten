@@ -2863,11 +2863,6 @@ The current type of b is: 9
   def test_gmtime(self):
     self.do_core_test('test_gmtime.c')
 
-  def test_gmtime_localtime(self):
-    tz = 'EST+05'
-    with env_modify({'TZ': tz}):
-      self.do_core_test('test_gmtime_localtime.c')
-
   def test_strptime_tm(self):
     self.do_core_test('test_strptime_tm.c')
 
