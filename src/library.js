@@ -510,9 +510,10 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
+  _gmtime_js__deps: ['$readI53FromI64'],
   _gmtime_js__sig: 'ipp',
   _gmtime_js: function(time, tmPtr) {
-    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
@@ -544,9 +545,10 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
+  _localtime_js__deps: ['$readI53FromI64'],
   _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
-    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
