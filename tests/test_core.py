@@ -3975,6 +3975,40 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
+  @needs_dylink
+  @no_wasm64('TODO: asyncify for wasm64')
+  def test_dlfcn_asyncify(self):
+    self.set_setting('ASYNCIFY')
+
+    create_file('liblib.c', r'''
+      #include <stdio.h>
+      #include <emscripten/emscripten.h>
+
+      int side_module_run() {
+        printf("before sleep\n");
+        emscripten_sleep(1000);
+        printf("after sleep\n");
+        return 42;
+      }
+      ''')
+    self.build_dlfcn_lib('liblib.c')
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef int (*func_t)();
+
+      int main(int argc, char **argv) {
+        void *_dlHandle = dlopen("liblib.so", RTLD_NOW | RTLD_LOCAL);
+        func_t my_func = (func_t)dlsym(_dlHandle, "side_module_run");
+        printf("%d\n", my_func());
+        return 0;
+      }
+      '''
+    self.do_run(src, 'before sleep\nafter sleep\n42\n')
+
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
     # Same as dylink_testf but take source code in string form
@@ -8100,6 +8134,36 @@ Module['onRuntimeInitialized'] = function() {
     except Exception:
       if should_pass:
         raise
+
+  @needs_dylink
+  @no_wasm64('TODO: asyncify for wasm64')
+  def test_asyncify_side_module(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        printf("before sleep\n");
+        my_sleep(1);
+        printf("after sleep\n");
+        return 0;
+      }
+    ''', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include "header.h"
+
+      void my_sleep(int milli_seconds) {
+        // put variable onto stack
+        volatile int value = 42;
+        printf("%d\n", value);
+        emscripten_sleep(milli_seconds);
+        // variable on stack in side module function should be restored.
+        printf("%d\n", value);
+      }
+    ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')

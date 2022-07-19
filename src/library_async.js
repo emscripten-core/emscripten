@@ -187,6 +187,9 @@ mergeInto(LibraryManager.library, {
                 }
               }
             };
+#if MAIN_MODULE
+            ret[x].orig = original;
+#endif
           } else {
             ret[x] = original;
           }
@@ -260,10 +263,20 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
+#if RELOCATABLE
+    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
+#endif
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
+#if RELOCATABLE
+      // Exported functions in side modules are not listed in `Module["asm"]`,
+      // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
+      if (!func) {
+        func = resolveGlobalSymbol(name, false);
+      }
+#endif
       return func;
     },
 

@@ -567,6 +567,8 @@ def get_binaryen_passes():
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+      passes += ['--pass-arg=asyncify-relocatable']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
     if settings.ASYNCIFY_ADVISE:
@@ -1906,6 +1908,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '__heap_base',
         '__stack_pointer',
     ]
+
+    if settings.ASYNCIFY:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '__asyncify_state',
+        '__asyncify_data'
+      ]
+
     # Unconditional dependency in library_dylink.js
     settings.REQUIRED_EXPORTS += ['setThrew']
 

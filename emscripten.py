@@ -350,6 +350,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+    if settings.ASYNCIFY:
+      metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
+
   invoke_funcs = metadata['invokeFuncs']
   if invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
