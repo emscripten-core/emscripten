@@ -395,6 +395,12 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 
 var messageBuffer = null;
 var messageResenderTimeout = null;
+var calledMain = false;
+
+// Set calledMain to true during postRun which happens onces main returns
+if (!Module['postRun']) Module['postRun'] = [];
+if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+Module['postRun'].push(() => { calledMain = true; });
 
 function messageResender() {
   if (calledMain) {
