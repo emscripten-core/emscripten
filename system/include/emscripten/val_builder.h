@@ -222,9 +222,9 @@ class ValBuilder {
     advance_and_may_finalize();
   }
   void add(val&& v) {
-    if (!cached_vals_.capacity()) cached_vals_.reserve(4);
-    cached_vals_.push_back(std::move(v));  // efficient op
-    add(cached_vals_.back());
+    auto& slot = cached_vals_[cached_vals_count_++];
+    slot = std::move(v);  // efficient op
+    add(slot);
   }
 
   // accept |ValBuilder| but only lvalue reference
@@ -330,7 +330,7 @@ class ValBuilder {
 
   void reset() {
     cursor_ = items_.data();
-    cached_vals_.clear();
+    cached_vals_count_ = 0;
     cached_strings_.clear();
   }
 
@@ -378,10 +378,12 @@ class ValBuilder {
   // Binding val
   val val_ = val::null();
 
-  // Transient storage for passed temporary/rvalue arguments.
-  std::vector<val> cached_vals_;
+  // Transient storage for passing temporary/rvalue arguments.
+  // We make sufficient space for val as it's cheap to cache.
+  std::array<val, N> cached_vals_;
+  size_t cached_vals_count_ = 0;
 
-  // In most case we don't use cached buffer, so std::array seems not worthy.
+  // Strings are expensive to cache, avoid using it when possible.
   std::vector<std::unique_ptr<std::string>> cached_strings_;
 };
 
