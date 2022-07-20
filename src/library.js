@@ -2416,6 +2416,9 @@ mergeInto(LibraryManager.library, {
     if (!warnOnce.shown) warnOnce.shown = {};
     if (!warnOnce.shown[text]) {
       warnOnce.shown[text] = 1;
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
+#endif
       err(text);
     }
   },

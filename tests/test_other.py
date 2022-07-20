@@ -3773,7 +3773,7 @@ int main() {
 #endif
 }
 ''')
-    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+    warning = 'warning: stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
 
     def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
       if cxx:
@@ -12298,3 +12298,20 @@ Module['postRun'] = function() {{
 
     for m, [v1, v2] in output['assertEquals']:
       self.assertEqual(v1, v2, msg=m)
+
+  def test_warn_once(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$warnOnce'])
+    create_file('main.c', r'''\
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          warnOnce("foo");
+          // Second call should not output anything
+          warnOnce("foo");
+        });
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'warning: foo\ndone\n')
