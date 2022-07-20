@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
+  $Asyncify__deps: ['$runAndAbortIfError', '$callFromEventLoop', '$sigToWasmTypes',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop'
 #endif
@@ -420,7 +420,7 @@ mergeInto(LibraryManager.library, {
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
+        Asyncify.sleepCallbacks.forEach((func) => callFromEventLoop(func));
       } else {
         abort('invalid state: ' + Asyncify.state);
       }

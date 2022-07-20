@@ -80,7 +80,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
-    '$callUserCallback',
+    '$callFromEventLoop',
     '$allocateUTF8',
 #if FILESYSTEM
     '$FS',
@@ -591,7 +591,7 @@ var LibraryGLFW = {
 
       if (!GLFW.active.windowSizeFunc) return;
 
-      callUserCallback(function() {
+      callFromEventLoop(function() {
 #if USE_GLFW == 2
         {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
 #endif
@@ -607,7 +607,7 @@ var LibraryGLFW = {
 
       if (!GLFW.active.framebufferSizeFunc) return;
 
-      callUserCallback(function() {
+      callFromEventLoop(function() {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif

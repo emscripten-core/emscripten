@@ -16,7 +16,7 @@ int main() {
         out("runtimeKeepalivePop done");
       }
       counter += 1;
-      callUserCallback(() => {
+      callFromEventLoop(() => {
         out("in user callback: " + counter);
       }, 0);
       setTimeout(timerCallback, 0);

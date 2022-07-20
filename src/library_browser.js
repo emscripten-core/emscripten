@@ -8,7 +8,7 @@
 var LibraryBrowser = {
   $Browser__deps: [
     '$setMainLoop',
-    '$callUserCallback',
+    '$callFromEventLoop',
     '$safeSetTimeout',
     '$warnOnce',
     'emscripten_set_main_loop_timing',
@@ -91,7 +91,7 @@ var LibraryBrowser = {
             return; // |return false| skips a frame
           }
         }
-        callUserCallback(func);
+        callFromEventLoop(func);
         if (Module['postMainLoop']) Module['postMainLoop']();
       }
     },
@@ -516,7 +516,7 @@ var LibraryBrowser = {
       {{{ runtimeKeepalivePush() }}}
       return Browser.requestAnimationFrame(function() {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(func);
+        callFromEventLoop(func);
       });
     },
 

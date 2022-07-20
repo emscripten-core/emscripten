@@ -998,7 +998,7 @@ var LibraryPThread = {
     Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
     // Only execute the queue if we have a live pthread runtime. We
     // implement pthread_self to return 0 if there is no live runtime.
-    // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
+    // TODO: Use `callFromEventLoop` to correctly handle unwinds, etc. once
     //       `runtimeExited` is correctly unset on workers.
     if (_pthread_self()) {
       __emscripten_proxy_execute_task_queue(queue);
