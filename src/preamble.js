@@ -368,6 +368,11 @@ var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
 #if ASSERTIONS
 var runDependencyTracking = {};
+// Keeps track of how many times we have entered user code in the current stack.
+// For example, this starts of at 0, and is set to 1 when we enter main.  This
+// enables callUserCallback to issue a warning when it is called from within
+// user code (its designed to be used to enter user code from the event loop).
+var userCodeEntriesOnStack = 0;
 #endif
 
 function getUniqueRunDependency(id) {
