@@ -818,9 +818,8 @@ If manually bisecting:
     self.clear()
     self.btest_exit('sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O2', '-sSAFE_HEAP', '-lSDL', '-lGL'])
 
-  def post_manual_reftest(self, reference=None):
-    self.reftest(test_file(self.reference if reference is None else reference))
-
+  def post_manual_reftest(self):
+    assert os.path.exists('reftest.js')
     html = read_file('test.html')
     html = html.replace('</body>', '''
 <script>
@@ -848,7 +847,8 @@ window.close = function() {
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     self.compile_btest([test_file('hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-sGL_TESTING', '-lGL', '-lglut'])
     shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
-    self.post_manual_reftest('gears.png')
+    self.reftest(test_file('gears.png'))
+    self.post_manual_reftest()
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
@@ -3140,29 +3140,8 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
-    def post():
-      html = read_file('test.html')
-      html = html.replace('</body>', '''
-<script>
-function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-
-%s
-
-var windowClose = window.close;
-window.close = function() {
-  // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(function() {
-    doReftest();
-    setTimeout(windowClose, 5000);
-  }, 1000);
-};
-</script>
-</body>''' % read_file('reftest.js'))
-      create_file('test.html', html)
-
     create_file('data.txt', 'datum')
-
-    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=post)
+    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3253,8 +3232,8 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
-    def post_build(*args):
-      self.post_manual_reftest(*args)
+    def post_build():
+      self.post_manual_reftest()
       html = read_file('test.html')
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
