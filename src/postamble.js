@@ -149,7 +149,9 @@ function callMain(args) {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
+#if ABORT_ON_WASM_EXCEPTIONS || !PROXY_TO_PTHREAD
   try {
+#endif
 #if BENCHMARK
     var start = Date.now();
 #endif
@@ -185,13 +187,14 @@ function callMain(args) {
   }
   catch (e) {
     return handleException(e);
+  }
 #endif // !PROXY_TO_PTHREAD
-  } finally {
 #if ABORT_ON_WASM_EXCEPTIONS
+  finally {
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth -= 2;
-#endif
   }
+#endif
 }
 #endif // HAS_MAIN
 
