@@ -86,7 +86,23 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-function mergeInto(obj, other) {
+// options is optional input object containing mergeInto params
+// currently, it can contain
+//
+// key: noOverride, value: true
+// if it is set, it prevents symbol redefinition and shows error
+// in case of redefinition
+function mergeInto(obj, other, options = null) {
+  // check for unintended symbol redefinition
+  if (options && options.noOverride) {
+    for (const key of Object.keys(other)) {
+      if (obj.hasOwnProperty(key)) {
+        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use noOverride if this is intended');
+        return;
+      }
+    }
+  }
+
   return Object.assign(obj, other);
 }
 
