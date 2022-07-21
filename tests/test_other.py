@@ -3434,7 +3434,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
-    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use DisallowOverride if this is intended', err)
+    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''

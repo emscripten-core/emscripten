@@ -97,7 +97,7 @@ function mergeInto(obj, other, options = null) {
   if (options && options.noOverride) {
     for (const key of Object.keys(other)) {
       if (obj.hasOwnProperty(key)) {
-        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use DisallowOverride if this is intended');
+        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use noOverride if this is intended');
         return;
       }
     }
