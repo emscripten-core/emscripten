@@ -1,5 +1,5 @@
 crashing
-true
+exception caught; runtime should be dead
 again
 program has already aborted!
 ccall

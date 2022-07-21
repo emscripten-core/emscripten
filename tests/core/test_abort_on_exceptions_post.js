@@ -5,7 +5,7 @@ addOnPostRun(function() {
   }
   catch(e) {
     // Catch the abort
-    out(true);
+    out("exception caught; runtime should be dead");
   }
   out("again");
   try {

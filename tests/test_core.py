@@ -9341,8 +9341,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
-    self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
-    self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
+    self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
+    self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
+
+  def test_abort_on_exceptions_main(self):
+    # The unhandled exception wrappers should not kick in for exceptions thrown during main
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.emcc_args.append('--minify=0')
+    output = self.do_runf(test_file('core/test_abort_on_exceptions_main.c'), assert_returncode=NON_ZERO)
+    # The exception should make it all the way out
+    self.assertContained('Error: crash', output)
+    # And not be translated into abort by makeAbortWrapper
+    self.assertNotContained('unhandled exception', output)
+    self.assertNotContained('Aborted', output)
 
   @needs_dylink
   def test_gl_main_module(self):
