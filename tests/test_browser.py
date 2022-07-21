@@ -5092,7 +5092,7 @@ Module["preRun"].push(function () {
       self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
   def test_system(self):
-    self.btest_exit(test_file('system.c'))
+    self.btest_exit(test_file('test_system.c'))
 
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime

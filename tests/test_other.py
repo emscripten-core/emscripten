@@ -8846,10 +8846,9 @@ test_module().then((test_module_instance) => {
     self.assertContained('hello, world!', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
-  def test_node_js_system(self):
-    self.run_process([EMCC, '-DENV_NODE', test_file('system.c'), '-o', 'a.js', '-O3'])
-    ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-    self.assertContained('OK', ret)
+  @requires_node
+  def test_system_node_js(self):
+    self.do_runf(test_file('test_system.c'), 'Hello from echo', emcc_args=['-DENV_NODE'])
 
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
