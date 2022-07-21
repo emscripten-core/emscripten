@@ -3177,6 +3177,8 @@ def parse_args(newargs):
         else:
           # for 3+, report -g3 to clang as -g4 etc. are not accepted
           newargs[i] = '-g3'
+          if settings.DEBUG_LEVEL == 3:
+            settings.GENERATE_DWARF = 1
           if settings.DEBUG_LEVEL == 4:
             settings.GENERATE_SOURCE_MAP = 1
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
