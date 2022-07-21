@@ -3,17 +3,19 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include<emscripten.h>
+#include <emscripten.h>
+#include <stdio.h>
 
 int main() {
+  int rtn = EM_ASM_INT({
 #ifdef DIRECT
-  EM_ASM({
-    out('|' + ALLOC_STACK + '|');
-  });
+    out('|' +  ALLOC_STACK + '|');
+    return ALLOC_STACK;
 #else
-  EM_ASM({
     out('|' + Module['ALLOC_STACK'] + '|');
-  });
+    return Module['ALLOC_STACK'];
 #endif
+  });
+  printf("|%d|\n", rtn);
+  return 0;
 }
-

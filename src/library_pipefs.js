@@ -67,13 +67,12 @@ mergeInto(LibraryManager.library, {
 
         if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY') }}}) {
           return ({{{ cDefine('POLLWRNORM') }}} | {{{ cDefine('POLLOUT') }}});
-        } else {
-          if (pipe.buckets.length > 0) {
-            for (var i = 0; i < pipe.buckets.length; i++) {
-              var bucket = pipe.buckets[i];
-              if (bucket.offset - bucket.roffset > 0) {
-                return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
-              }
+        }
+        if (pipe.buckets.length > 0) {
+          for (var i = 0; i < pipe.buckets.length; i++) {
+            var bucket = pipe.buckets[i];
+            if (bucket.offset - bucket.roffset > 0) {
+              return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
             }
           }
         }

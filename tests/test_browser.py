@@ -106,6 +106,21 @@ def also_with_wasm2js(f):
   return metafunc
 
 
+def also_with_wasm64(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm64):
+    if with_wasm64:
+      self.set_setting('MEMORY64', 2)
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm64': (True,)}
+  return metafunc
+
+
 def shell_with_script(shell_file, output_file, replacement):
   shell = read_file(path_from_root('src', shell_file))
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
@@ -803,9 +818,8 @@ If manually bisecting:
     self.clear()
     self.btest_exit('sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O2', '-sSAFE_HEAP', '-lSDL', '-lGL'])
 
-  def post_manual_reftest(self, reference=None):
-    self.reftest(test_file(self.reference if reference is None else reference))
-
+  def post_manual_reftest(self):
+    assert os.path.exists('reftest.js')
     html = read_file('test.html')
     html = html.replace('</body>', '''
 <script>
@@ -833,7 +847,8 @@ window.close = function() {
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     self.compile_btest([test_file('hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-sGL_TESTING', '-lGL', '-lglut'])
     shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
-    self.post_manual_reftest('gears.png')
+    self.reftest(test_file('gears.png'))
+    self.post_manual_reftest()
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
@@ -914,7 +929,7 @@ keydown(100);keyup(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], manual_reference=True, post_build=post)
+    self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
@@ -964,7 +979,7 @@ keydown(100);keyup(100); // trigger the end
 
       create_file('test.html', html)
 
-    self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], manual_reference=True, post_build=post)
+    self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], post_build=post)
 
   def test_sdl_text(self):
     create_file('pre.js', '''
@@ -1226,7 +1241,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.btest_exit(test_file('test_glfw_joystick.c'), args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
+    self.btest_exit(test_file('browser/test_glfw_joystick.c'), args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
   def test_webgl_context_attributes(self):
@@ -1565,15 +1580,15 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glfw(self):
-    self.btest_exit('glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
-    self.btest_exit('glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_minimal(self):
-    self.btest_exit('glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_minimal.c', args=['-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_time(self):
-    self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('browser/test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def _test_egl_base(self, *args):
     self.btest_exit(test_file('test_egl.c'), args=['-O2', '-lEGL', '-lGL'] + list(args))
@@ -2501,7 +2516,7 @@ void *getBindBuffer() {
     self.btest_exit('browser_main.c', args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
-    'non-lz4': ([],),
+    '': ([],),
     'lz4': (['-sLZ4'],)
   })
   def test_preload_module(self, args):
@@ -2513,6 +2528,7 @@ void *getBindBuffer() {
     ''')
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
     create_file('main.c', r'''
+      #include <assert.h>
       #include <dlfcn.h>
       #include <stdio.h>
       #include <emscripten.h>
@@ -2520,18 +2536,13 @@ void *getBindBuffer() {
         int found = EM_ASM_INT(
           return preloadedWasm['/library.so'] !== undefined;
         );
-        if (!found) {
-          return 1;
-        }
+        assert(found);
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
-        if (!lib_handle) {
-          return 2;
-        }
+        assert(lib_handle);
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        if (!x || x() != 42) {
-          return 3;
-        }
+        assert(x);
+        assert(x() == 42);
         return 0;
       }
     ''')
@@ -2866,12 +2877,12 @@ Module["preRun"].push(function () {
   def test_glfw3(self, args):
     for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
       print(opts)
-      self.btest(test_file('glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+      self.btest(test_file('browser/test_glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
-    self.btest(test_file('glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
-    self.btest(test_file('glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
   def test_sdl2_image(self):
@@ -3125,29 +3136,8 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
-    def post():
-      html = read_file('test.html')
-      html = html.replace('</body>', '''
-<script>
-function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-
-%s
-
-var windowClose = window.close;
-window.close = function() {
-  // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(function() {
-    doReftest();
-    setTimeout(windowClose, 5000);
-  }, 1000);
-};
-</script>
-</body>''' % read_file('reftest.js'))
-      create_file('test.html', html)
-
     create_file('data.txt', 'datum')
-
-    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=post)
+    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3238,8 +3228,8 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
-    def post_build(*args):
-      self.post_manual_reftest(*args)
+    def post_build():
+      self.post_manual_reftest()
       html = read_file('test.html')
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
@@ -4626,6 +4616,7 @@ window.close = function() {
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
 
+  @also_with_wasm64
   def test_fetch_headers_received(self):
     self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 

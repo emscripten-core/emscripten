@@ -309,9 +309,8 @@ mergeInto(LibraryManager.library, {
               // as recv/recvmsg will return zero which indicates that a socket
               // has performed a shutdown although the connection has not been disconnected yet.
               return;
-            } else {
-              data = new Uint8Array(data); // make a typed array view on the array buffer
             }
+            data = new Uint8Array(data); // make a typed array view on the array buffer
           }
 
 #if SOCKET_DEBUG
@@ -676,17 +675,14 @@ mergeInto(LibraryManager.library, {
               // if we have a destination address but are not connected, error out
               throw new FS.ErrnoError({{{ cDefine('ENOTCONN') }}});
             }
-            else if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
+            if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               // return null if the socket has closed
               return null;
             }
-            else {
-              // else, our socket is in a valid state but truly has nothing available
-              throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
-            }
-          } else {
+            // else, our socket is in a valid state but truly has nothing available
             throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
           }
+          throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
         }
 
         // queued.data will be an ArrayBuffer if it's unadulterated, but if it's
@@ -744,9 +740,7 @@ mergeInto(LibraryManager.library, {
           {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
       } catch (e) {
-        if (e instanceof ExitStatus) {
-          return;
-        } else {
+        if (!(e instanceof ExitStatus)) {
           if (e && typeof e == 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
           throw e;
         }

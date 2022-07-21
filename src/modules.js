@@ -38,6 +38,7 @@ global.LibraryManager = {
     let libraries = [
       'library.js',
       'library_int53.js',
+      'library_ccall.js',
       'library_addfunction.js',
       'library_formatString.js',
       'library_getvalue.js',
@@ -265,23 +266,6 @@ function isFSPrefixed(name) {
   return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
 }
 
-// forcing the filesystem exports a few things by default
-function isExportedByForceFilesystem(name) {
-  if (!WASMFS) {
-    // The old FS has some functionality that WasmFS lacks.
-    if (name === 'FS_createLazyFile' ||
-        name === 'FS_createDevice') {
-      return true;
-    }
-  }
-  return name === 'FS_createPath' ||
-         name === 'FS_createDataFile' ||
-         name === 'FS_createPreloadedFile' ||
-         name === 'FS_unlink' ||
-         name === 'addRunDependency' ||
-         name === 'removeRunDependency';
-}
-
 function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
 }
@@ -296,15 +280,24 @@ function addMissingLibraryStubs() {
   if (!ASSERTIONS) return '';
   let rtn = '';
   const librarySymbolSet = new Set(librarySymbols);
+  const missingSyms = [];
   for (const ident in LibraryManager.library) {
-    if (typeof LibraryManager.library[ident] === 'function') {
+    if (typeof LibraryManager.library[ident] === 'function' || typeof LibraryManager.library[ident] === 'number') {
       if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
         const name = ident.substr(1);
         if (!librarySymbolSet.has(name)) {
-          rtn += `var ${name} = missingLibraryFunc('${name}');\n`;
+          missingSyms.push(name);
         }
       }
     }
+  }
+  if (missingSyms.length) {
+    rtn += 'var missingLibrarySymbols = [\n';
+    for (const sym of missingSyms) {
+      rtn += `  '${sym}',\n`;
+    }
+    rtn += '];\n';
+    rtn += 'missingLibrarySymbols.forEach(missingLibrarySymbol)\n';
   }
   return rtn;
 }
@@ -332,21 +325,11 @@ function exportRuntime() {
       }
       return `Module["${name}"] = ${exported};`;
     }
-    // do not export it. but if ASSERTIONS, emit a
-    // stub with an error, so the user gets a message
-    // if it is used, that they should export it
-    if (ASSERTIONS) {
-      // check if it already exists, to support EXPORT_ALL and other cases
-      const fssymbol = isExportedByForceFilesystem(name);
-      return `unexportedRuntimeSymbol('${name}', ${fssymbol});`;
-    }
   }
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'ccall',
-    'cwrap',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
@@ -408,11 +391,6 @@ function exportRuntime() {
     runtimeElements.push('WasmSourceMap');
   }
 
-  if (!MINIMAL_RUNTIME) {
-    // Symbols that only exist in the regular runtime.
-    runtimeElements.push('ExitStatus');
-  }
-
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
@@ -445,6 +423,7 @@ function exportRuntime() {
     }
   }
 
+  let unexportedStubs = '';
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     const runtimeElementsSet = new Set(runtimeElements);
@@ -453,8 +432,25 @@ function exportRuntime() {
         warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
+
+    const unexported = [];
+    for (const name of runtimeElements) {
+      if (!EXPORTED_RUNTIME_METHODS_SET.has(name)) {
+        unexported.push(name);
+      }
+    }
+
+    if (unexported.length) {
+      unexportedStubs += 'var unexportedRuntimeSymbols = [\n';
+      for (const sym of unexported) {
+        unexportedStubs += `  '${sym}',\n`;
+      }
+      unexportedStubs += '];\n';
+      unexportedStubs += 'unexportedRuntimeSymbols.forEach(unexportedRuntimeSymbol);\n';
+    }
   }
+
   let exports = runtimeElements.map((name) => maybeExport(name));
   exports = exports.filter((name) => name);
-  return exports.join('\n') + '\n' + addMissingLibraryStubs();
+  return exports.join('\n') + '\n' + unexportedStubs + addMissingLibraryStubs();
 }

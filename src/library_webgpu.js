@@ -2551,15 +2551,25 @@ var LibraryWebGPU = {
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
 #endif
 
+    var canvasSize = [
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+        context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+        context["canvas"]["height"] = canvasSize[1];
+    }
+
     var configuration = {
       "device": device,
       "format": WebGPU.TextureFormat[
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.format) }}}],
       "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.usage) }}},
-      "size": [
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}},
-      ],
+      "alphaMode": "opaque",
     };
     context["configure"](configuration);
 

@@ -1554,11 +1554,13 @@ int f() {
 
   @parameterized({
     'embed': (['--embed-file', 'somefile.txt'],),
-    'embed-twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
-    'preload': (['--preload-file', 'somefile.txt'],)
+    'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt'],),
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
+    create_file('hello.txt', 'hello world')
     create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -3810,7 +3812,7 @@ int main() {
 #endif
 }
 ''')
-    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+    warning = 'warning: stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
 
     def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
       if cxx:
@@ -7398,19 +7400,28 @@ int main() {
     # changes to the size of the unoptimized and unminified code size.
     # Run with `--rebase` when this test fails.
     self.build(test_file('hello_world.c'), emcc_args=['-O0'])
-    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size.wasm.size'),
                                      os.path.getsize('hello_world.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size.js.size'),
+                                     os.path.getsize('hello_world.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
                                      os.path.getsize('no_asserts.wasm'))
     self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size.js.size'),
-                                     os.path.getsize('hello_world.js'))
-    self.check_expected_size_in_file('js',
                                      test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
                                      os.path.getsize('no_asserts.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sSTRICT'], output_basename='strict')
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size_strict.wasm.size'),
+                                     os.path.getsize('strict.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size_strict.js.size'),
+                                     os.path.getsize('strict.js'))
 
   def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
@@ -11610,7 +11621,7 @@ void foo() {}
     create_file('post.js', 'alignMemory(100, 4);')
     self.run_process([EMCC, test_file('hello_world.c'), '--post-js=post.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Call to `alignMemory` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
+    self.assertContained('`alignMemory` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_override_system_js_lib_symbol(self):
@@ -11895,6 +11906,12 @@ Module['postRun'] = function() {{
   def test_wasmfs_readfile(self):
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
+  @wasmfs_all_backends
+  def test_wasmfs_readfile_bigint(self):
+    self.set_setting('WASM_BIGINT')
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
+
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
@@ -12059,7 +12076,7 @@ Module['postRun'] = function() {{
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     self.do_runf(test_file('other/test_legacy_runtime.c'),
-                 'Aborted(Call to `allocate` which is a library function and not included by default',
+                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
     # Adding it to EXPORTED_RUNTIME_METHODS makes it available.
@@ -12320,3 +12337,20 @@ Module['postRun'] = function() {{
 
     for m, [v1, v2] in output['assertEquals']:
       self.assertEqual(v1, v2, msg=m)
+
+  def test_warn_once(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$warnOnce'])
+    create_file('main.c', r'''\
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          warnOnce("foo");
+          // Second call should not output anything
+          warnOnce("foo");
+        });
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'warning: foo\ndone\n')

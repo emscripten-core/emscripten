@@ -15,8 +15,20 @@ assert(Object.keys(LibraryManager.library).length === 0);
 mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks: function() {},
 
+  $ExitStatus__docs: '/** @constructor */',
+  $ExitStatus: function(status) {
+    this.name = 'ExitStatus';
+    this.message = 'Program terminated with exit(' + status + ')';
+    this.status = status;
+  },
+
+  $exitJS__deps: ['$ExitStatus'],
+  $exitJS: function(code) {
+    quit_(code, new ExitStatus(code));
+  },
+
   $handleException: function(e) {
-    if (!(e instanceof ExitStatus) && e !== 'unwind') {
+    if (e !== 'unwind') {
       throw e;
     }
   },

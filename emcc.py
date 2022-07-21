@@ -567,6 +567,8 @@ def get_binaryen_passes():
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+      passes += ['--pass-arg=asyncify-relocatable']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
     if settings.ASYNCIFY_ADVISE:
@@ -1848,8 +1850,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
     exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-  if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    if not settings.MINIMAL_RUNTIME:
+  if not settings.MINIMAL_RUNTIME:
+    if not settings.BOOTSTRAPPING_STRUCT_INFO:
       if settings.DYNCALLS:
         # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
@@ -1860,8 +1862,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
-    if settings.SAFE_HEAP:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+  if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -1904,6 +1908,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
         '__heap_base',
         '__stack_pointer',
     ]
+
+    if settings.ASYNCIFY:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '__asyncify_state',
+        '__asyncify_data'
+      ]
+
     # Unconditional dependency in library_dylink.js
     settings.REQUIRED_EXPORTS += ['setThrew']
 

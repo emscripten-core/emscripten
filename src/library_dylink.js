@@ -1,7 +1,10 @@
-// ==========================================================================
-// Dynamic library loading
-//
-// ==========================================================================
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ *
+ * Dynamic library loading
+ */
 
 var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
 
@@ -621,6 +624,9 @@ var LibraryDylink = {
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
+#if ASYNCIFY
+        moduleExports = Asyncify.instrumentWasmExports(moduleExports);
+#endif
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }
@@ -797,7 +803,7 @@ var LibraryDylink = {
 
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          readAsync(libFile, function(data) { resolve(new Uint8Array(data)); }, reject);
+          readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
         });
       }
 
@@ -1016,6 +1022,13 @@ var LibraryDylink = {
     if (typeof result == 'function') {
 #if DYLINK_DEBUG
       err('dlsym: ' + symbol + ' getting table slot for: ' + result);
+#endif
+
+#if ASYNCIFY
+      // Asyncify wraps exports, and we need to look through those wrappers.
+      if ('orig' in result) {
+        result = result.orig;
+      }
 #endif
       // Insert the function into the wasm table.  If its a direct wasm function
       // the second argument will not be needed.  If its a JS function we rely

@@ -1674,9 +1674,8 @@ var LibraryGLFW = {
   glfwGetJoystickName: function(joy) {
     if (GLFW.joys[joy]) {
       return GLFW.joys[joy].id;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   glfwSetJoystickCallback__sig: 'ii',
