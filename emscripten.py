@@ -18,7 +18,6 @@ import time
 import logging
 import pprint
 import shutil
-from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
@@ -148,13 +147,17 @@ def update_settings_glue(wasm_file, metadata):
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS']
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on this library function
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$allocateUTF8OnStack']
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
-    settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata['exports']
@@ -347,6 +350,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+    if settings.ASYNCIFY:
+      metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
+
   invoke_funcs = metadata['invokeFuncs']
   if invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -375,7 +381,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(forwarded_json['libraryFunctions'])
+  report_missing_symbols(forwarded_json['librarySymbols'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
@@ -768,7 +774,7 @@ def add_standard_wasm_imports(send_items_map):
 
 def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
-  send_items_map = OrderedDict()
+  send_items_map = {}
 
   def add_send_items(name, mangled_name, ignore_dups=False):
     # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap

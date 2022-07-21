@@ -16,7 +16,7 @@ LibraryJSEventLoop = {
   $setImmediateWrapped: function(func) {
     if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
     var id = setImmediateWrapped.mapping.length;
-    setImmediateWrapped.mapping[id] = setImmediate(function() {
+    setImmediateWrapped.mapping[id] = setImmediate(() => {
       setImmediateWrapped.mapping[id] = undefined;
       func();
     });
@@ -34,33 +34,35 @@ LibraryJSEventLoop = {
   },
 
   $polyfillSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped'],
-  $polyfillSetImmediate__postset:
-    'var emSetImmediate;\n' +
-    'var emClearImmediate;\n' +
-    'if (typeof setImmediate != "undefined") {\n' +
-      'emSetImmediate = setImmediateWrapped;\n' +
-      'emClearImmediate = clearImmediateWrapped;\n' +
-    '} else if (typeof addEventListener == "function") {\n' +
-      'var __setImmediate_id_counter = 0;\n' +
-      'var __setImmediate_queue = [];\n' +
-      'var __setImmediate_message_id = "_si";\n' +
-      'function __setImmediate_cb(/** @type {Event} */e) {\n' +
-        'if (e.data === __setImmediate_message_id) {\n' +
-          'e.stopPropagation();\n' +
-          '__setImmediate_queue.shift()();\n' +
-          '++__setImmediate_id_counter;\n' +
-        '}\n' +
-      '}\n' +
-      'addEventListener("message", __setImmediate_cb, true);\n' +
-      'emSetImmediate = function(func) {\n' +
-        'postMessage(__setImmediate_message_id, "*");\n' +
-        'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
-      '}\n' +
-      'emClearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
-        'var index = id - __setImmediate_id_counter;\n' +
-        'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function() {};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-      '})\n' +
-    '}',
+  $polyfillSetImmediate__postset: `
+    var emSetImmediate;
+    var emClearImmediate;
+    if (typeof setImmediate != "undefined") {
+      emSetImmediate = setImmediateWrapped;
+      emClearImmediate = clearImmediateWrapped;
+    } else if (typeof addEventListener == "function") {
+      var __setImmediate_id_counter = 0;
+      var __setImmediate_queue = [];
+      var __setImmediate_message_id = "_si";
+      /** @param {Event} e */
+      var __setImmediate_cb = (e) => {
+        if (e.data === __setImmediate_message_id) {
+          e.stopPropagation();
+          __setImmediate_queue.shift()();
+          ++__setImmediate_id_counter;
+        }
+      }
+      addEventListener("message", __setImmediate_cb, true);
+      emSetImmediate = (func) => {
+        postMessage(__setImmediate_message_id, "*");
+        return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;
+      }
+      emClearImmediate = /**@type{function(number=)}*/((id) => {
+        var index = id - __setImmediate_id_counter;
+        // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
+        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = () => {};
+      })
+    }`,
 
   $polyfillSetImmediate: function() {
     // nop, used for its postset to ensure setImmediate() polyfill is

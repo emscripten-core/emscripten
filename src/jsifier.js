@@ -47,9 +47,8 @@ function stringifyWithFunctions(obj) {
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
-  } else {
-    return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
+  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
 }
 
 function isDefined(symName) {
@@ -290,7 +289,6 @@ function ${name}(${args}) {
 
       const original = LibraryManager.library[ident];
       let snippet = original;
-      let redirectedIdent = null;
       const deps = LibraryManager.library[ident + '__deps'] || [];
       if (!Array.isArray(deps)) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
@@ -313,14 +311,9 @@ function ${name}(${args}) {
           if (target) {
             // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
             // This avoid having duplicate functions with identical content.
-            redirectedIdent = snippet;
-            deps.push(snippet);
-            snippet = mangleCSymbolName(snippet);
-          }
-          // In asm, we need to know about library functions. If there is a target, though, then no
-          // need to consider this a library function - we will call directly to it anyhow
-          if (!redirectedIdent && (typeof target == 'function')) {
-            libraryFunctions.push(finalName);
+            const redirectedTarget = snippet;
+            deps.push(redirectedTarget);
+            snippet = mangleCSymbolName(redirectedTarget);
           }
         }
       } else if (typeof snippet == 'object') {
@@ -330,14 +323,9 @@ function ${name}(${args}) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName, deps);
         addImplicitDeps(snippet, deps);
-        libraryFunctions.push(finalName);
       }
 
-      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
-      // to wasm module.
-      if (LibraryManager.library[ident + '__import']) {
-        libraryFunctions.push(finalName);
-      }
+      librarySymbols.push(finalName);
 
       if (ONLY_CALC_JS_SYMBOLS) {
         return '';
@@ -359,9 +347,6 @@ function ${name}(${args}) {
         }
       }
 
-      if (redirectedIdent) {
-        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
-      }
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
@@ -516,8 +501,6 @@ function ${name}(${args}) {
 
     if (!MINIMAL_RUNTIME) {
       print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
-
-      print(preprocess(read('arrayUtils.js')));
     }
 
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
@@ -555,7 +538,7 @@ function ${name}(${args}) {
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
-      libraryFunctions: libraryFunctions,
+      librarySymbols: librarySymbols,
       warnings: warnings,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),

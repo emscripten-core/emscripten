@@ -454,22 +454,30 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
 
+  function doCallback(f) {
+    if (fetchAttrSynchronous) {
+      f();
+    } else {
+      callUserCallback(f);
+    }
+  }
+
   var reportSuccess = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(() => {
-      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+    doCallback(() => {
+      if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportProgress = (fetch, xhr, e) => {
-    callUserCallback(() => {
-      if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
+    doCallback(() => {
+      if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportError = (fetch, xhr, e) => {
@@ -477,20 +485,20 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     console.error('fetch: operation failed: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(() => {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
+    doCallback(() => {
+      if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(fetch);
       else if (errorcb) errorcb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportReadyStateChange = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
-    callUserCallback(() => {
-      if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
+    doCallback(() => {
+      if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetch);
       else if (readystatechangecb) readystatechangecb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var performUncachedXhr = (fetch, xhr, e) => {
@@ -510,20 +518,20 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       console.log('fetch: IndexedDB store succeeded.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+      doCallback(() => {
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      }, fetchAttrSynchronous);
+      });
     };
     var storeError = (fetch, xhr, e) => {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+      doCallback(() => {
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      }, fetchAttrSynchronous);
+      });
     };
     fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };

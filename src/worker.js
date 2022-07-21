@@ -22,9 +22,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   var parentPort = nodeWorkerThreads.parentPort;
 
-  parentPort.on('message', function(data) {
-    onmessage({ data: data });
-  });
+  parentPort.on('message', (data) => onmessage({ data: data }));
 
   var fs = require('fs');
 
