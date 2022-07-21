@@ -21,7 +21,7 @@ int main(void) {
   assert(system("false") == _W_EXITCODE(1, 0));
   assert(system("true") == _W_EXITCODE(0, 0));
   assert(system("kill $$") == _W_EXITCODE(0, 15));
-  system("echo OK");
+  system("echo Hello from echo");
 #else
   assert(system(NULL) == 0);
   assert(system("") == -1);
