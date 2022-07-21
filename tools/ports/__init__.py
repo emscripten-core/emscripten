@@ -85,6 +85,7 @@ class Ports:
   def install_headers(src_dir, pattern='*.h', target=None):
     logger.debug('install_headers')
     dest = Ports.get_include_dir()
+    assert os.path.exists(dest)
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
