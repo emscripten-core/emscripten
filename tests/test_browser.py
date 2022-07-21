@@ -3272,7 +3272,7 @@ Module["preRun"].push(function () {
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
-    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-sINITIAL_MEMORY=33554432'] + flags)
+    self.btest_exit('sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav', '-sINITIAL_MEMORY=33554432'] + flags)
 
   @parameterized({
     'wav': ([],         '0',            'the_entertainer.wav'),
