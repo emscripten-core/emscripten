@@ -16,9 +16,8 @@ Uint32 SDLCALL report_result(Uint32 interval, void *param) {
   reported = 1;
   SDL_Quit();
   int result = *(int *)param;
-  printf("%p %d\n", param, result);
-  REPORT_RESULT(result);
-  return 0;
+  printf("report_result: %p %d\n", param, result);
+  emscripten_force_exit(0);
 }
 
 void nop(void) {}
@@ -29,11 +28,8 @@ int main(int argc, char** argv) {
   Uint32 ticks1 = SDL_GetTicks();
   SDL_Delay(5); // busy-wait
   Uint32 ticks2 = SDL_GetTicks();
-  if (ticks2 < ticks1 + 4) {
-    printf("not enough ticks from busy-wait\n");
-    REPORT_RESULT(9);
-    return 0;
-  }
+  // not enough ticks from busy-wait
+  assert(ticks2 >= ticks1 + 4);
 
   int badret = 4;
   int goodret = 5;
@@ -43,6 +39,5 @@ int main(int argc, char** argv) {
   SDL_RemoveTimer(badtimer);
 
   emscripten_set_main_loop(nop, 0, 0);
-
-  return 0;
+  return 99;
 }

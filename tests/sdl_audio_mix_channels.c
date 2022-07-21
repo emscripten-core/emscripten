@@ -20,8 +20,7 @@ static int noiseLoopChannel = 0;
 
 static const int kNumChannels = 40;
 
-static int loadAndPlay()
-{
+static int loadAndPlay() {
   return Mix_PlayChannel(-1, sound, -1);
 }
 
@@ -37,23 +36,12 @@ int main(int argc, char **argv) {
   sound = Mix_LoadWAV("sound.ogg");
 
   // allocate all the channels
-  for ( int i = 0; i < kNumChannels; i++ )
-  {
+  for (int i = 0; i < kNumChannels; i++) {
     assert(loadAndPlay() != -1);
   }
 
-    // This point, we should have exhausted our channels
-
-
-
-
+  // This point, we should have exhausted our channels
   int lastChannel = loadAndPlay();
-
-#ifdef __EMSCRIPTEN__
-  int result = (lastChannel == -1);
-  REPORT_RESULT(result);
-#endif
-
   assert(lastChannel == -1);
 
   // force a quit

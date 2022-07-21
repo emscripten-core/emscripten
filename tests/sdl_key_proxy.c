@@ -8,10 +8,11 @@
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
 
 int result = 1;
 
-void one() {
+EMSCRIPTEN_KEEPALIVE void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     printf("got event %d\n", event.type);
@@ -45,8 +46,7 @@ void one() {
               printf("b scancode\n"); result *= 23; break;
             }
             printf("unknown key: sym %d scancode %d\n", event.key.keysym.sym, event.key.keysym.scancode);
-            REPORT_RESULT(result);
-            emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
+            emscripten_force_exit(result); // comment this out to leave event handling active. Use the following to log DOM keys:
                                                    // addEventListener('keyup', function(event) { console.log(event.keyCode) }, true)
           }
         }
@@ -61,9 +61,7 @@ int main(int argc, char **argv) {
   printf("main\n");
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
-
-  if (argc == 1337) one(); // keep it alive
-
+  emscripten_runtime_keepalive_push();
   return 0;
 }
 

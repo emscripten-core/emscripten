@@ -888,8 +888,7 @@ window.close = function() {
              %s
             }
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-          self.compile_btest([test_file('sdl_key.c'), '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main', '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
-          self.run_browser('page.html', '', '/report_result?exit:223092870')
+          self.btest_exit(test_file('sdl_key.c'), 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
@@ -929,7 +928,7 @@ keydown(100);keyup(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
@@ -997,8 +996,7 @@ keydown(100);keyup(100); // trigger the end
       }
     ''')
 
-    self.compile_btest([test_file('sdl_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit('sdl_text.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_mouse(self):
     create_file('pre.js', '''
@@ -1029,8 +1027,7 @@ keydown(100);keyup(100); // trigger the end
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.compile_btest([test_file('sdl_mouse.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl_mouse.c'), args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_mouse_offsets(self):
     create_file('pre.js', '''
@@ -1106,8 +1103,8 @@ keydown(100);keyup(100); // trigger the end
       </html>
     ''')
 
-    self.compile_btest([test_file('sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.compile_btest([test_file('sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
+    self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_glut_touchevents(self):
     self.btest_exit('glut_touchevents.c', args=['-lglut'])
@@ -1500,13 +1497,12 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
-    self.compile_btest([test_file('sdl_gl_read.c'), '-o', 'something.html', '-lSDL', '-lGL'])
-    self.run_browser('something.html', '.', '/report_result?1')
+    self.btest_exit('sdl_gl_read.c', args=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_gl_mapbuffers(self):
-    self.btest('sdl_gl_mapbuffers.c', expected='1', args=['-sFULL_ES3=1', '-lSDL', '-lGL'],
-               message='You should see a blue triangle.')
+    self.btest_exit('sdl_gl_mapbuffers.c', args=['-sFULL_ES3=1', '-lSDL', '-lGL'],
+                    message='You should see a blue triangle.')
 
   @requires_graphics_hardware
   def test_sdl_ogl(self):
@@ -1932,7 +1928,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_resize(self):
     # FIXME(https://github.com/emscripten-core/emscripten/issues/12978)
     self.emcc_args.append('-Wno-deprecated-declarations')
-    self.btest('sdl_resize.c', '1', args=['-lSDL', '-lGL'])
+    self.btest_exit('sdl_resize.c', args=['-lSDL', '-lGL'])
 
   def test_glshaderinfo(self):
     self.btest('glshaderinfo.cpp', '1', args=['-lGL', '-lglut'])
@@ -2215,10 +2211,10 @@ void *getBindBuffer() {
     self.btest('sdl_ttf_render_text_solid.c', reference='sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest('sdl_alloctext.c', expected='1', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest_exit('sdl_alloctext.c', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
-    self.btest('sdl_surface_refcount.c', args=['-lSDL'], expected='1')
+    self.btest_exit('sdl_surface_refcount.c', args=['-lSDL'])
 
   def test_sdl_free_screen(self):
     self.btest('sdl_free_screen.cpp', args=['-lSDL', '-lGL'], reference='htmltest.png')
@@ -2769,7 +2765,7 @@ Module["preRun"].push(function () {
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure=1']]:
       print(opts)
-      self.btest(test_file('sdl_touch.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
+      self.btest_exit('sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
   def test_html5_mouse(self):
     for opts in [[], ['-O2', '-g1', '--closure=1']]:
@@ -2892,29 +2888,37 @@ Module["preRun"].push(function () {
     for mem in [0, 1]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.compile_btest([
-          test_file('sdl2_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
-          '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+        self.btest_exit('sdl2_image.c', 600, args=[
+          '-O2', '--memory-init-file', str(mem),
+          '--preload-file', dest,
+          '-DSCREENSHOT_DIRNAME="' + dirname + '"',
+          '-DSCREENSHOT_BASENAME="' + basename + '"',
+          '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
         ])
-        self.run_browser('page.html', '', '/report_result?600')
 
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
-    self.compile_btest([
-      test_file('sdl2_image.c'), '-o', 'page.html',
-      '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+    self.btest_exit('sdl2_image.c', 600, args=[
+      '--preload-file', 'screenshot.jpeg',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
-    self.run_browser('page.html', '', '/report_result?600')
 
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
-    self.btest('sdl2_image.c', expected='512', args=['--preload-file', 'screenshot.png', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"',
-                                                     '-DNO_PRELOADED', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["png"]'])
-    self.btest('sdl2_image.c', expected='600', args=['--preload-file', 'screenshot.jpg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"',
-                                                     '-DBITSPERPIXEL=24', '-DNO_PRELOADED', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'])
+    self.btest_exit('sdl2_image.c', 512, args=[
+      '--preload-file', 'screenshot.png',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["png"]'
+    ])
+    self.btest_exit('sdl2_image.c', 600, args=[
+      '--preload-file', 'screenshot.jpg',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'
+    ])
 
   def test_sdl2_key(self):
     create_file('pre.js', '''
@@ -2943,8 +2947,7 @@ Module["preRun"].push(function () {
       }
     ''')
 
-    self.compile_btest([test_file('sdl2_key.c'), '-o', 'page.html', '-sUSE_SDL=2', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one'])
-    self.run_browser('page.html', '', '/report_result?37182145')
+    self.btest_exit('sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one'])
 
   def test_sdl2_text(self):
     create_file('pre.js', '''
@@ -2962,8 +2965,7 @@ Module["preRun"].push(function () {
       }
     ''')
 
-    self.compile_btest([test_file('sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl2_text.c'), args=['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -2995,8 +2997,7 @@ Module["preRun"].push(function () {
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.compile_btest([test_file('sdl2_mouse.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl2_mouse.c'), args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
@@ -3073,12 +3074,12 @@ Module["preRun"].push(function () {
       </html>
     ''')
 
-    self.compile_btest([test_file('sdl2_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.compile_btest([test_file('sdl2_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
+    self.run_browser('page.html', '', '/report_result?exit:0')
 
   @requires_threads
   def test_sdl2_threads(self):
-      self.btest('sdl2_threads.c', expected='4', args=['-sUSE_PTHREADS', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
+      self.btest_exit('sdl2_threads.c', args=['-sUSE_PTHREADS', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
   def test_sdl2glshader(self):
@@ -3120,7 +3121,7 @@ Module["preRun"].push(function () {
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-sUSE_SDL=2', '--pre-js', 'args-b.js'])
 
   def test_sdl2_swsurface(self):
-    self.btest('sdl2_swsurface.c', expected='1', args=['-sUSE_SDL=2', '-sINITIAL_MEMORY=64MB'])
+    self.btest_exit('sdl2_swsurface.c', args=['-sUSE_SDL=2', '-sINITIAL_MEMORY=64MB'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
@@ -3147,19 +3148,18 @@ Module["preRun"].push(function () {
         document.dispatchEvent(event);
       }
     ''')
-    self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('sdl2_pumpevents.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   def test_sdl2_timer(self):
-    self.btest('sdl2_timer.c', expected='5', args=['-sUSE_SDL=2'])
+    self.btest_exit('sdl2_timer.c', args=['-sUSE_SDL=2'])
 
   def test_sdl2_canvas_size(self):
-    self.btest('sdl2_canvas_size.c', expected='1', args=['-sUSE_SDL=2'])
+    self.btest_exit('sdl2_canvas_size.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gl_read(self):
     # SDL, OpenGL, readPixels
-    self.compile_btest([test_file('sdl2_gl_read.c'), '-o', 'something.html', '-sUSE_SDL=2'])
-    self.run_browser('something.html', '.', '/report_result?1')
+    self.btest_exit(test_file('sdl2_gl_read.c'), args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
@@ -3221,10 +3221,10 @@ Module["preRun"].push(function () {
                message='You should see an image with fog.')
 
   def test_sdl2_unwasteful(self):
-    self.btest('sdl2_unwasteful.cpp', expected='1', args=['-sUSE_SDL=2', '-O1'])
+    self.btest_exit('sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
 
   def test_sdl2_canvas_write(self):
-    self.btest('sdl2_canvas_write.cpp', expected='0', args=['-sUSE_SDL=2'])
+    self.btest_exit('sdl2_canvas_write.cpp', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
@@ -3252,7 +3252,7 @@ Module["preRun"].push(function () {
 
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
-    self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
+    self.btest_exit('sdl2_custom_cursor.c', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
 
   def test_sdl2_misc(self):
     self.btest_exit('sdl2_misc.c', args=['-sUSE_SDL=2'])
@@ -3285,7 +3285,7 @@ Module["preRun"].push(function () {
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copyfile(test_file('sounds', music_name), music_name)
-    self.btest('sdl2_mixer_music.c', expected='1', args=[
+    self.btest_exit('sdl2_mixer_music.c', args=[
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
       '-DFLAGS=' + flags,
@@ -3352,7 +3352,7 @@ Module["preRun"].push(function () {
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
+    self.btest_exit('sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-sASYNCIFY'])

@@ -30,8 +30,5 @@ int main()
         SDL_FreeSurface(text);
     }
 
-#ifdef __EMSCRIPTEN__
-    REPORT_RESULT(1);
-#endif
+    return 0;
 }
-

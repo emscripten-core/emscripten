@@ -10,7 +10,6 @@
 #include <assert.h>
 #include <emscripten.h>
 
-int result = 1;
 int mouse_motions = 0;
 
 #define abs(x) ((x) < 0 ? -(x) : (x))
@@ -45,8 +44,7 @@ void one() {
       case SDL_MOUSEBUTTONDOWN: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         if (m->button == 2) {
-          REPORT_RESULT(result);
-          emscripten_run_script("throw 'done'");
+          emscripten_force_exit(0);
         }
         printf("button down : %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
 #ifdef TEST_SDL_MOUSE_OFFSETS
@@ -88,7 +86,7 @@ int main() {
 
   emscripten_async_call(main_2, NULL, 3000); // avoid startup delays and intermittent errors
 
-  return 0;
+  return 99;
 }
 
 void main_2(void* arg) {

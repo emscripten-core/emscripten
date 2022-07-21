@@ -13,7 +13,7 @@
 
 int result = 0;
 
-void one() {
+EMSCRIPTEN_KEEPALIVE void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
@@ -23,8 +23,8 @@ void one() {
         if (!strcmp("a", event.text.text)) {
           result = 1;
         } else if (!strcmp("A", event.text.text)) {
-          REPORT_RESULT(result);
-          emscripten_run_script("throw 'done'");
+          assert(result);
+          emscripten_force_exit(0);
         }
         break;
       default: /* Report an unhandled event */
@@ -40,8 +40,6 @@ int main() {
 
   emscripten_run_script("simulateKeyEvent('a'.charCodeAt(0))"); // a
   emscripten_run_script("simulateKeyEvent('A'.charCodeAt(0))"); // A
-
-  one();
-
-  return 0;
+                                                                //
+  emscripten_exit_with_live_runtime();
 }

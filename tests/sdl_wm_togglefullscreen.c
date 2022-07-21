@@ -20,8 +20,6 @@ int inFullscreen = 0;
 
 int wasFullscreen = 0;
 
-int finished = 0;
-
 void render() {
   int width, height;
   emscripten_get_canvas_element_size("#canvas", &width, &height);
@@ -32,22 +30,16 @@ void render() {
 void mainloop() {
   render();
 
-  if (finished) return;
-
   SDL_Event event;
   int isInFullscreen = EM_ASM_INT(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
   if (isInFullscreen && !wasFullscreen) {
     printf("Successfully transitioned to fullscreen mode!\n");
     wasFullscreen = isInFullscreen;
   }
-  
+
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    wasFullscreen = isInFullscreen;
-    finished = 1;
+    emscripten_force_exit(0);
     return;
   }
 
@@ -64,11 +56,8 @@ void mainloop() {
           } else {
             printf("Exited fullscreen. Test failed, fullscreen transition did not happen!\n");
           }
-#ifdef REPORT_RESULT
-          REPORT_RESULT(result);
-#endif
-          finished = 1;
-          return;
+          assert(result);
+          emscripten_force_exit(result ? 0 : 1);
         } else {
           printf("Entering fullscreen...\n");
         }

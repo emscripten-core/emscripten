@@ -10,52 +10,74 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 #include <assert.h>
-#include <emscripten.h>
 #include <sys/stat.h>
 
-Mix_Chunk *sound, *sound2, *sound3;
+#include <emscripten/emscripten.h>
+#include <emscripten/eventloop.h>
+
+Mix_Chunk *sound1, *sound2, *sound3;
 Mix_Music * music;
-int play2();
+void play2(void*);
 
-int play() {
-  int channel = Mix_PlayChannel(-1, sound, 0);
-  assert(channel == 0);
+EMSCRIPTEN_KEEPALIVE int play() {
+  int channel = Mix_PlayChannel(-1, sound1, 0);
+  printf("playing sound1 -> %d\n", channel);
+  assert(channel >= 0);
 
-  emscripten_run_script("setTimeout(Module['_play2'], 500)");
+  emscripten_set_timeout(play2, 500, NULL);
   return channel;
 }
 
 void done(int channel) {
-  assert(channel == 1);
-
-  REPORT_RESULT(1);
+  printf("done channel: %d\n", channel);
 }
 
-int play2() {
-  Mix_ChannelFinished(done);
+EMSCRIPTEN_KEEPALIVE void success(int channel) {
+  emscripten_force_exit(0);
+}
 
+EMSCRIPTEN_KEEPALIVE void play2(void* arg) {
   int channel2 = Mix_PlayChannel(-1, sound2, 0);
-  assert(channel2 == 1);
+  printf("playing sound2 -> %d\n", channel2);
+  assert(channel2 >= 0);
+
   int channel3 = Mix_PlayChannel(-1, sound3, 0);
-  assert(channel3 == 2);
-  assert(Mix_PlayMusic(music, 1) == 0);
-  return channel2;
+  printf("playing sound3 -> %d\n", channel3);
+  assert(channel2 >= 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void play_music() {
+  int channel = Mix_PlayMusic(music, 1);
+  printf("playing music -> %d\n", channel);
+  assert(channel >= 0);
 }
 
 int main(int argc, char **argv) {
+  printf("in main\n");
   SDL_Init(SDL_INIT_AUDIO);
 
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
+
   assert(ret == 0);
 
+  Mix_ChannelFinished(done);
+
   {
+      printf("loading sound.ogg (sound1)\n");
       SDL_RWops * ops = SDL_RWFromFile("sound.ogg", "r");
-      sound = Mix_LoadWAV_RW(ops, 0);
+      sound1 = Mix_LoadWAV_RW(ops, 0);
       SDL_FreeRW(ops);
-      assert(sound);
+      assert(sound1);
   }
 
   {
+    printf("loading sound2.wav (sound2)\n");
+    sound2 = Mix_LoadWAV("sound2.wav");
+    assert(sound2);
+  }
+
+  {
+      printf("loading noise.ogg (sound3)\n");
       struct stat info;
       int result = stat("noise.ogg", &info);
       char * bytes = malloc( info.st_size );
@@ -72,31 +94,40 @@ int main(int argc, char **argv) {
   {
       music = Mix_LoadMUS("the_entertainer.ogg");
   }
-  
-  
-  sound2 = Mix_LoadWAV("sound2.wav");
-  assert(sound2);
 
   int channel = play();
-  printf( "Pausing Channel %d", channel );
+  printf("Pausing Channel %d\n", channel);
   Mix_Pause(channel);
   int paused = Mix_Paused(channel);
-  printf( "Channel %d %s", channel, paused ? "is paused" : "is NOT paused" );
+  printf("Channel %d %s\n", channel, paused ? "is paused" : "is NOT paused");
   assert(paused);
   Mix_Resume(channel);
   paused = Mix_Paused(channel);
-  printf( "Channel %d %s", channel, paused ? "is paused" : "is NOT paused" );
+  printf("Channel %d %s\n", channel, paused ? "is paused" : "is NOT paused");
   assert(paused == 0);
 
-  if (argc == 12121) play2(); // keep it alive
+  EM_ASM(
+      var element = document.createElement('input');
+      element.setAttribute('type', 'button');
+      element.setAttribute('value', 'replay!');
+      element.setAttribute('onclick', '_play()');
+      document.body.appendChild(element);
 
-  emscripten_run_script("element = document.createElement('input');"
-                        "element.setAttribute('type', 'button');"
-                        "element.setAttribute('value', 'replay!');"
-                        "element.setAttribute('onclick', 'Module[\"_play\"]()');"
-                        "document.body.appendChild(element);");
+      var element = document.createElement('input');
+      element.setAttribute('type', 'button');
+      element.setAttribute('value', 'Play music');
+      element.setAttribute('onclick', '_play_music()');
+      document.body.appendChild(element);
+
+      var element = document.createElement('input');
+      element.setAttribute('type', 'button');
+      element.setAttribute('value', 'Success');
+      element.setAttribute('onclick', '_success()');
+      document.body.appendChild(element);
+  );
 
   printf("you should hear two sounds. press the button to replay!\n");
+  emscripten_runtime_keepalive_push();
 
   return 0;
 }

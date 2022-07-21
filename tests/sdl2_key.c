@@ -13,7 +13,7 @@ int result = 1;
 
 int EventHandler(void *userdata, SDL_Event *event) {
   int mod;
-  
+
   switch(event->type) {
     case SDL_KEYUP:
       break;
@@ -29,9 +29,8 @@ int EventHandler(void *userdata, SDL_Event *event) {
             printf("b scancode\n"); result *= 23; break;
           }
           printf("unknown key: sym %d scancode %d\n", event->key.keysym.sym, event->key.keysym.scancode);
-          REPORT_RESULT(result);
-          emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
-                                                 // addEventListener('keyup', function(event) { console.log(event->keyCode) }, true)
+          emscripten_force_exit(result); // comment this out to leave event handling active. Use the following to log DOM keys:
+                                         // addEventListener('keyup', function(event) { console.log(event->keyCode) }, true)
         }
       }
       break;
@@ -78,6 +77,7 @@ int main(int argc, char **argv) {
   emscripten_run_script("keydown(66);keyup(66);"); // b
   emscripten_run_script("keydown(100);keyup(100);"); // trigger the end
 
-  return 0;
+  emscripten_exit_with_live_runtime();
+  return 99;
 }
 
