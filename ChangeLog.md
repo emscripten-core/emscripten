@@ -23,9 +23,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.17 - 07/22/2022
 ------
-- Add support for dynamic linking with Asyncify (#15893).
+- Add support for dynamic linking with Asyncify. (#15893)
 - A source map file and DWARF info in the wasm can now be emitted at the same if
-  the user gives the both options: `-g -gsource-map`.
+  the user gives the both options: `-g -gsource-map`. (#17484)
 - The `align` argument to the makeGetValue/makeSetValue JS library macros was
   removed (and replaced with an assert) as it had no uses internally and was
   removed (and replaced with an assert) as it had now uses internally and was
