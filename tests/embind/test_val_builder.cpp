@@ -119,7 +119,7 @@ void test_cases() {
   EM_ASM(
     a = [];
   );
-  va.attach(val::global("a"));
+  va.reset_val(val::global("a"));
   std::vector<int> vec{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   va.add(vec);
   va.add(std::vector<int>{5, 6, 7, 8, 9});
@@ -145,7 +145,7 @@ void test_cases() {
   EM_ASM(
     a = [];
   );
-  va.attach(val::global("a"));
+  va.reset_val(val::global("a"));
   va.add(0);
   va.concat(vec);
   va.finalize();

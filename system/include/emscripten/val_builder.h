@@ -19,8 +19,8 @@
 //
 // Why is fast?
 //  1) saving context switches
-//  2) good locality
-//  3) no extra copies
+//  2) minimized copies
+//  3) good locality
 //
 // Usage:
 //          ValBuilder vb(OBJECT);
@@ -28,7 +28,6 @@
 //          vb.set("k3", "hello");
 //          vb.set("k2", std::vector<float>{1,2,3,4,5,6,7,8,9});
 //          vb.finalize();
-//
 // Caveats:
 //  1) For sub-scoped objects set/added, preferring finalize inside, or use
 //     std::move if only few ones(1 or 2).
@@ -89,7 +88,9 @@ MAP_FUNDAMENTAL_TYPE(bool, TYPE::BOOL)
 
 namespace internal {
 
-extern "C" void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
+extern "C" {
+void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
+}
 
 template<typename>
 struct is_std_vector : std::false_type {};
@@ -111,8 +112,6 @@ constexpr bool is_supported_rvalue_type() {
          is_std_array<T>::value;
 }
 
-// We expect lvalue reference or literals.  For rvalues other than explicitly
-// supported (which is cached or commited instantly), it fails the compiling.
 template <typename V>
 static constexpr bool check_arg_pointer_wont_dangle() {
   static_assert(
@@ -209,7 +208,6 @@ class ValBuilder {
     add_u8(v.c_str());
   }
   void add(std::string&& v) {
-    // This is not efficient, hoping seldom used.
     auto cached = std::make_unique<std::string>(std::move(v));
     add_u8(cached->data());
     if (!cached_strings_.capacity()) cached_strings_.reserve(4);
@@ -269,6 +267,7 @@ class ValBuilder {
     internal::AddArraySpan(a, SIZE, this, false);
   }
 
+  // Use only for ARRAY type
   void concat_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
     cursor_->type = TYPE::ARRAY;
     cursor_->value.w[0].addr = a;
@@ -278,7 +277,6 @@ class ValBuilder {
     advance_and_may_finalize();
   }
 
-  // Use only for ARRAY type
   template <typename T>
   void concat(const std::vector<T>& v) {
     internal::ConcatArraySpan(v.data(), v.size(), this, false);
@@ -308,21 +306,14 @@ class ValBuilder {
   size_t size() const { return cursor_ - items_.data(); }
   bool empty() const { return cursor_ == items_.data(); }
 
-  const val& get_val() const { return val_; }
-
   val toval() {
     if (!empty()) finalize();
     return val_;
   }
 
-  void reset_val() {
+  void reset_val(const val& v = val::null()) {
     assert(empty());
-    val_ = val_.isArray() ? val::array() : val::object();
-  }
-
-  void attach(const val& v) {
-    assert(empty());
-    val_ = v;
+    val_ = !v.isNull() ? v : val_.isArray() ? val::array() : val::object();
   }
 
  private:
@@ -336,9 +327,8 @@ class ValBuilder {
 
   void advance_and_may_finalize() {
     cursor_++;
-    if (size() >= N) {
+    if (size() >= N)
       finalize();
-    }
   }
 
   enum { FLAG_NONE = 0, FLAG_CONCAT = 1, FLAG_VAL_KEY = 2 };
