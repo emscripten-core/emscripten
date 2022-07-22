@@ -1457,7 +1457,7 @@ var LibraryWebGPU = {
     return querySet.count;
   },
 
-  wgpuQuerySetSetGetType: function(querySetId, labelPtr) {
+  wgpuQuerySetGetType: function(querySetId, labelPtr) {
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     return querySet.type;
   },
