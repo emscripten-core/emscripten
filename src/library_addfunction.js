@@ -50,11 +50,11 @@ mergeInto(LibraryManager.library, {
     var sigParam = sig.slice(1);
     var typeCodes = {
       'i': 0x7f, // i32
-  #if MEMORY64
+#if MEMORY64
       'p': 0x7e, // i64
-  #else
+#else
       'p': 0x7f, // i32
-  #endif
+#endif
       'j': 0x7e, // i64
       'f': 0x7d, // f32
       'd': 0x7c, // f64
@@ -64,9 +64,9 @@ mergeInto(LibraryManager.library, {
     target.push(0x60 /* form: func */);
     uleb128Encode(sigParam.length, target);
     for (var i = 0; i < sigParam.length; ++i) {
-  #if ASSERTIONS
+#if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
-  #endif
+#endif
   target.push(typeCodes[sigParam[i]]);
     }
   
@@ -75,7 +75,7 @@ mergeInto(LibraryManager.library, {
     if (sigRet == 'v') {
       target.push(0x00);
     } else {
-      target = target.concat([0x01, typeCodes[sigRet]]);
+      target.push(0x01, typeCodes[sigRet]);
     }
   },
   // Wraps a JS function as a wasm function with a given signature.
