@@ -753,14 +753,7 @@ var LibraryWebGPU = {
     device["pushErrorScope"](WebGPU.ErrorFilter[filter]);
   },
 
-  wgpuDevicePopErrorScope__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuDevicePopErrorScope__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
@@ -800,12 +793,7 @@ var LibraryWebGPU = {
     device.label = UTF8ToString(labelPtr);
   },
 
-  wgpuDeviceSetDeviceLostCallback__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
     var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
@@ -825,12 +813,7 @@ var LibraryWebGPU = {
     };
   },
 
-  wgpuDeviceSetUncapturedErrorCallback__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#endif
-  ],
+  wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     device["onuncapturederror"] = function(ev) {
@@ -1489,12 +1472,7 @@ var LibraryWebGPU = {
     queue["submit"](cmds);
   },
 
-  wgpuQueueOnSubmittedWorkDone__deps: [
-    '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
   wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
 #if ASSERTIONS
@@ -1911,12 +1889,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferMapAsync__deps: [
-    '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuBufferMapAsync__deps: ['$callUserCallback'],
   wgpuBufferMapAsync: function(bufferId, mode, offset, size, callback, userdata) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -2376,14 +2349,7 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceRequestAdapter__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
 
@@ -2462,14 +2428,7 @@ var LibraryWebGPU = {
     return adapter.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
-  wgpuAdapterRequestDevice__deps: [
-    '$callUserCallback',
-#if MINIMAL_RUNTIME
-    '$allocateUTF8',
-#else
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$allocateUTF8'],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
 
@@ -2592,15 +2551,25 @@ var LibraryWebGPU = {
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
 #endif
 
+    var canvasSize = [
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+        context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+        context["canvas"]["height"] = canvasSize[1];
+    }
+
     var configuration = {
       "device": device,
       "format": WebGPU.TextureFormat[
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.format) }}}],
       "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.usage) }}},
-      "size": [
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}},
-      ],
+      "alphaMode": "opaque",
     };
     context["configure"](configuration);
 

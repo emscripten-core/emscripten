@@ -289,18 +289,18 @@ extern int webglAlphaSupported(void);
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = true;
-    EM_ASM(out('warning: no antialiasing\n'));
+    EM_ASM(err('warning: no antialiasing\n'));
   }
   if (!webglDepthSupported()) {
     resultDepth = true;
-    EM_ASM(out('warning: no depth\n'));
+    EM_ASM(err('warning: no depth\n'));
   }
   if (!webglStencilSupported()) {
     resultStencil = true;
-    EM_ASM(out('warning: no stencil\n'));
+    EM_ASM(err('warning: no stencil\n'));
   }
   if (!webglAlphaSupported()) {
     resultAlpha = true;
-    EM_ASM(out('warning: no alpha\n'));
+    EM_ASM(err('warning: no alpha\n'));
   }
 }

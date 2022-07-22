@@ -3975,6 +3975,40 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
+  @needs_dylink
+  @no_wasm64('TODO: asyncify for wasm64')
+  def test_dlfcn_asyncify(self):
+    self.set_setting('ASYNCIFY')
+
+    create_file('liblib.c', r'''
+      #include <stdio.h>
+      #include <emscripten/emscripten.h>
+
+      int side_module_run() {
+        printf("before sleep\n");
+        emscripten_sleep(1000);
+        printf("after sleep\n");
+        return 42;
+      }
+      ''')
+    self.build_dlfcn_lib('liblib.c')
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef int (*func_t)();
+
+      int main(int argc, char **argv) {
+        void *_dlHandle = dlopen("liblib.so", RTLD_NOW | RTLD_LOCAL);
+        func_t my_func = (func_t)dlsym(_dlHandle, "side_module_run");
+        printf("%d\n", my_func());
+        return 0;
+      }
+      '''
+    self.do_run(src, 'before sleep\nafter sleep\n42\n')
+
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
     # Same as dylink_testf but take source code in string form
@@ -7034,22 +7068,34 @@ void* operator new(size_t size) {
 
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=None, assert_returncode=0):
-      src = test_file('core/legacy_exported_runtime_numbers.cpp')
-      expected = test_file('core/legacy_exported_runtime_numbers%s.out' % output_prefix)
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
+    def test(expected, args=None, assert_returncode=0):
+      self.do_runf(test_file('core/legacy_exported_runtime_numbers.cpp'), expected,
+                   assert_returncode=assert_returncode, emcc_args=args)
 
-    # see that direct usage (not on module) works. we don't export, but the use
-    # keeps it alive through JSDCE
-    test(args=['-DDIRECT'])
-    # see that with assertions, we get a nice error message
-    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
-    self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    # Without assertion indirect usages (via Module) result in `undefined` and direct usage
+    # generates a builtin (not very helpful) JS error.
     self.set_setting('ASSERTIONS', 0)
-    # see that when we export them, things work on the module
+    self.set_setting('LEGACY_RUNTIME', 0)
+    test('|undefined|')
+    test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
+
+    # When assertions are enabled direct and indirect usage both abort with a useful error message.
+    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ))"
+    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line"
+    self.set_setting('ASSERTIONS')
+    test(not_exported, assert_returncode=NON_ZERO)
+    test(not_included, args=['-DDIRECT'])
+
+    # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
+    # Module usage should continue to fail.
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
+    test(not_exported, assert_returncode=NON_ZERO)
+    test('1', args=['-DDIRECT'])
+
+    # Adding the symbols to EXPORTED_RUNTIME_METHODS should make both usage patterns work.
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
-    test()
+    test('|1|')
+    test('|1|', args=['-DDIRECT'])
 
   def test_response_file(self):
     response_data = '-o %s/response_file.js %s' % (self.get_dir(), test_file('hello_world.cpp'))
@@ -7799,8 +7845,7 @@ void* operator new(size_t size) {
       '--extern-post-js=post.js',
       '--closure=1',
       '-g1',
-      '-s',
-      'MODULARIZE=1',
+      '-sMODULARIZE',
     ]
     self.do_core_test('modularize_closure_pre.c')
 
@@ -8094,6 +8139,36 @@ Module['onRuntimeInitialized'] = function() {
     except Exception:
       if should_pass:
         raise
+
+  @needs_dylink
+  @no_wasm64('TODO: asyncify for wasm64')
+  def test_asyncify_side_module(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        printf("before sleep\n");
+        my_sleep(1);
+        printf("after sleep\n");
+        return 0;
+      }
+    ''', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include "header.h"
+
+      void my_sleep(int milli_seconds) {
+        // put variable onto stack
+        volatile int value = 42;
+        printf("%d\n", value);
+        emscripten_sleep(milli_seconds);
+        // variable on stack in side module function should be restored.
+        printf("%d\n", value);
+      }
+    ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
@@ -9271,8 +9346,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
-    self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
-    self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
+    self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
+    self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
+
+  def test_abort_on_exceptions_main(self):
+    # The unhandled exception wrappers should not kick in for exceptions thrown during main
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.emcc_args.append('--minify=0')
+    output = self.do_runf(test_file('core/test_abort_on_exceptions_main.c'), assert_returncode=NON_ZERO)
+    # The exception should make it all the way out
+    self.assertContained('Error: crash', output)
+    # And not be translated into abort by makeAbortWrapper
+    self.assertNotContained('unhandled exception', output)
+    self.assertNotContained('Aborted', output)
 
   @needs_dylink
   def test_gl_main_module(self):

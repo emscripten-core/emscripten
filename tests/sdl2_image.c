@@ -63,7 +63,7 @@ int main() {
 
   int result = 0;
 
-  result |= testImage(renderer, SCREENSHOT_DIRNAME "/" SCREENSHOT_BASENAME); // absolute path
+  result = testImage(renderer, SCREENSHOT_DIRNAME "/" SCREENSHOT_BASENAME); // absolute path
   assert(result != 0);
 
   chdir(SCREENSHOT_DIRNAME);
@@ -76,8 +76,6 @@ int main() {
 
   SDL_Quit();
 
-  REPORT_RESULT(result);
-
-  return 0;
+  return result;
 }
 

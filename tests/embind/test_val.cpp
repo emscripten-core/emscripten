@@ -74,6 +74,31 @@ int main() {
   ensure_js("a[2] == 3");
   ensure_js_not("a[2] == 2");
 
+  test("template<typename Iter> val array(Iter begin, Iter end)");
+  val::global().set("a", val::array(vec1.begin(), vec1.end()));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Boolean");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 11");
+  ensure_js_not("a[0] == 12");
+  ensure_js("a[1] == 'a'");
+  ensure_js("a[2] instanceof Array");
+  val::global().set("a", val::array(vec2.begin(), vec2.end()));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 0");
+  ensure_js_not("a[0] == 1");
+  ensure_js("a[1] == 1");
+  ensure_js("a[2] == 3");
+  ensure_js_not("a[2] == 2");
+  int arr[] = {1, 2, 3};
+  val::global().set("a", val::array(arr, arr + 3));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 1");
+  ensure_js("a[1] == 2");
+  ensure_js("a[2] == 3");
+
   test("val object()");
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
@@ -115,6 +140,22 @@ int main() {
   test("val(const char* v)");
   val::global().set("a", val("1"));
   ensure_js("a == '1'");
+
+  test("val()");
+  val a;
+  val::global().set("a", a);
+  ensure_js("a === undefined");
+  a = val(1);
+  val::global().set("a", a);
+  ensure_js("a == 1");
+  val ar[2];
+  ar[0] = val(1);
+  ar[1] = val(2);
+  val::global().set("a", val::array(ar, ar + 2));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 1");
+  ensure_js("a[1] == 2");
 
   test("bool isNull()");
   EM_ASM(

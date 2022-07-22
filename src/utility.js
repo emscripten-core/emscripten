@@ -39,16 +39,10 @@ function dump(item) {
   }
 }
 
-function assert(a, msg) {
-  if (!a) {
-    msg = 'Assertion failed' + (msg ? ': ' + msg : '');
-    print(msg);
-    printErr('Stack: ' + new Error().stack);
-    throw msg;
-  }
-}
+global.warnings = false;
 
 function warn(a, msg) {
+  global.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -67,7 +61,7 @@ function warnOnce(a, msg) {
     if (!warnOnce.msgs) warnOnce.msgs = {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
-    printErr('warning: ' + msg);
+    warn(msg);
   }
 }
 
@@ -92,7 +86,23 @@ function sum(x) {
   return x.reduce((a, b) => a + b, 0);
 }
 
-function mergeInto(obj, other) {
+// options is optional input object containing mergeInto params
+// currently, it can contain
+//
+// key: noOverride, value: true
+// if it is set, it prevents symbol redefinition and shows error
+// in case of redefinition
+function mergeInto(obj, other, options = null) {
+  // check for unintended symbol redefinition
+  if (options && options.noOverride) {
+    for (const key of Object.keys(other)) {
+      if (obj.hasOwnProperty(key)) {
+        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use noOverride if this is intended');
+        return;
+      }
+    }
+  }
+
   return Object.assign(obj, other);
 }
 
@@ -110,7 +120,6 @@ function isJsLibraryConfigIdentifier(ident) {
     '__deps',
     '__postset',
     '__docs',
-    '__import',
     '__nothrow',
     '__noleakcheck',
     '__internal',

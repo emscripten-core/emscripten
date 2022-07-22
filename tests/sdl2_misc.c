@@ -13,8 +13,6 @@
 
 #include <emscripten.h>
 
-#include "report_result.h"
-
 int main(int argc, char *argv[])
 {
     SDL_Window *window;

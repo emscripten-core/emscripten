@@ -202,6 +202,8 @@ var MEMORYPROFILER = false;
 
 var GENERATE_SOURCE_MAP = false;
 
+var GENERATE_DWARF = false;
+
 // Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
 // memory layout is fixed in the wasm binary at link time.
 var STACK_BASE = 0;

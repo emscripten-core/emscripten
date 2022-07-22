@@ -19,8 +19,12 @@ __attribute__((__weak__)) int   daylight = 0;
 __attribute__((__weak__)) char *tzname[2] = { 0, 0 };
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
-time_t _timegm_js(struct tm *tm);
-time_t _mktime_js(struct tm *tm);
+// Declare these functions `int` rather than time_t to avoid int64 at the wasm
+// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
+// missing).
+// TODO(sbc): Covert back to `time_t` before 2038 ...
+int _timegm_js(struct tm *tm);
+int _mktime_js(struct tm *tm);
 void _localtime_js(const time_t *restrict t, struct tm *restrict tm);
 void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
 double _emscripten_date_now();

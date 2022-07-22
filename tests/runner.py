@@ -238,21 +238,16 @@ def print_random_test_statistics(num_tests):
   atexit.register(show)
 
 
-def replace_legacy_suite_names(args):
-  newargs = []
-
+def error_on_legacy_suite_names(args):
   for a in args:
     if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
-      print('warning: test suites in test_core.py have been renamed from `wasm` to `core`. Please use the new names')
-      a = a.replace('wasm', 'core', 1)
-    newargs.append(a)
-
-  return newargs
+      new = a.replace('wasm', 'core', 1)
+      utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
 def load_test_suites(args, modules):
   loader = unittest.TestLoader()
-  args = replace_legacy_suite_names(args)
+  error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
   for m in modules:

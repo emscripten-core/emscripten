@@ -33,9 +33,10 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, read_file, read_binary, EMBUILDER, requires_v8, requires_node
+from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file
+from tools.utils import read_file, write_file, read_binary
 import common
 import jsrun
 import clang_native
@@ -1553,11 +1554,13 @@ int f() {
 
   @parameterized({
     'embed': (['--embed-file', 'somefile.txt'],),
-    'embed-twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
-    'preload': (['--preload-file', 'somefile.txt'],)
+    'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt'],),
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
+    create_file('hello.txt', 'hello world')
     create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -2074,7 +2077,7 @@ int f() {
     self.run_process(cmd)
 
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
-    cmd += ['-s', "EXPORTED_FUNCTIONS=foobar"]
+    cmd += ['-sEXPORTED_FUNCTIONS=foobar']
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
 
@@ -2278,104 +2281,42 @@ int f() {
     # make sure the slack is tiny compared to the whole program
     self.assertGreater(len(js), 100 * SLACK)
 
-  def test_js_optimizer(self):
-    for input, expected, passes in [
-      (test_file('optimizer/test-js-optimizer-minifyGlobals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyGlobals-output.js')),
-       ['minifyGlobals']),
-      (test_file('optimizer/test-js-optimizer-minifyLocals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyLocals-output.js')),
-       ['minifyLocals']),
-      (test_file('optimizer/JSDCE.js'), read_file(test_file('optimizer/JSDCE-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/JSDCE-hasOwnProperty.js'), read_file(test_file('optimizer/JSDCE-hasOwnProperty-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/JSDCE-fors.js'), read_file(test_file('optimizer/JSDCE-fors-output.js')),
-       ['JSDCE']),
-      (test_file('optimizer/AJSDCE.js'), read_file(test_file('optimizer/AJSDCE-output.js')),
-       ['AJSDCE']),
-      (test_file('optimizer/emitDCEGraph.js'), read_file(test_file('optimizer/emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph2.js'), read_file(test_file('optimizer/emitDCEGraph2-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph3.js'), read_file(test_file('optimizer/emitDCEGraph3-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph4.js'), read_file(test_file('optimizer/emitDCEGraph4-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emitDCEGraph5.js'), read_file(test_file('optimizer/emitDCEGraph5-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/minimal-runtime-applyDCEGraphRemovals.js'), read_file(test_file('optimizer/minimal-runtime-applyDCEGraphRemovals-output.js')),
-       ['applyDCEGraphRemovals']),
-      (test_file('optimizer/applyDCEGraphRemovals.js'), read_file(test_file('optimizer/applyDCEGraphRemovals-output.js')),
-       ['applyDCEGraphRemovals']),
-      (test_file('optimizer/applyImportAndExportNameChanges.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges-output.js')),
-       ['applyImportAndExportNameChanges']),
-      (test_file('optimizer/applyImportAndExportNameChanges2.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges2-output.js')),
-       ['applyImportAndExportNameChanges']),
-      (test_file('optimizer/minimal-runtime-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/minimal-runtime-2-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-2-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/standalone-emitDCEGraph.js'), read_file(test_file('optimizer/standalone-emitDCEGraph-output.js')),
-       ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer/emittedJSPreservesParens.js'), read_file(test_file('optimizer/emittedJSPreservesParens-output.js')),
-       []),
-      (test_file('optimizer/test-growableHeap.js'), read_file(test_file('optimizer/test-growableHeap-output.js')),
-       ['growableHeap']),
-      (test_file('optimizer/test-unsignPointers.js'), read_file(test_file('optimizer/test-unsignPointers-output.js')),
-       ['unsignPointers']),
-      (test_file('optimizer/test-asanify.js'), read_file(test_file('optimizer/test-asanify-output.js')),
-       ['asanify']),
-      (test_file('optimizer/test-safeHeap.js'), read_file(test_file('optimizer/test-safeHeap-output.js')),
-       ['safeHeap']),
-      (test_file('optimizer/test-LittleEndianHeap.js'), read_file(test_file('optimizer/test-LittleEndianHeap-output.js')),
-       ['littleEndianHeap']),
-    ]:
-      print(input, passes)
-
-      if not isinstance(expected, list):
-        expected = [expected]
-      expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
-
-      # test calling optimizer
-      output = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
-
-      def check_js(js, expected):
-        # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
-        if 'registerizeHarder' in passes:
-          # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
-          def fix(src):
-            if type(src) is list:
-              return list(map(fix, src))
-            src = '\n'.join([line for line in src.split('\n') if 'var ' not in line]) # ignore vars
-
-            def reorder(func):
-              def swap(func, stuff):
-                # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
-                for i in stuff:
-                  if i not in func:
-                    return func
-                indexes = [[i, func.index(i)] for i in stuff]
-                indexes.sort(key=lambda x: x[1])
-                for j in range(len(indexes)):
-                  func = func.replace(indexes[j][0], 'STD_' + str(j))
-                return func
-              func = swap(func, ['i1', 'i2', 'i3'])
-              func = swap(func, ['i1', 'i2'])
-              func = swap(func, ['i4', 'i5'])
-              return func
-
-            src = 'function '.join(map(reorder, src.split('function ')))
-            return src
-          js = fix(js)
-          expected = fix(expected)
-        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
-
-      if input not in [ # tests that are native-optimizer only
-        test_file('optimizer/asmLastOpts.js'),
-        test_file('optimizer/3154.js')
-      ]:
-        check_js(output, expected)
-      else:
-        print('(skip non-native)')
+  @parameterized({
+    'minifyGlobals': ('optimizer/test-js-optimizer-minifyGlobals.js', ['minifyGlobals']),
+    'minifyLocals': ('optimizer/test-js-optimizer-minifyLocals.js', ['minifyLocals']),
+    'JSDCE': ('optimizer/JSDCE.js', ['JSDCE']),
+    'JSDCE-hasOwnProperty': ('optimizer/JSDCE-hasOwnProperty.js', ['JSDCE']),
+    'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
+    'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
+    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph1': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-applyDCEGraphRemovals': ('optimizer/minimal-runtime-applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
+    'applyDCEGraphRemovals': ('optimizer/applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
+    'applyImportAndExportNameChanges': ('optimizer/applyImportAndExportNameChanges.js', ['applyImportAndExportNameChanges']),
+    'applyImportAndExportNameChanges2': ('optimizer/applyImportAndExportNameChanges2.js', ['applyImportAndExportNameChanges']),
+    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'emittedJSPreservesParens': ('optimizer/emittedJSPreservesParens.js', []),
+    'growableHeap': ('optimizer/test-growableHeap.js', ['growableHeap']),
+    'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers']),
+    'asanify': ('optimizer/test-asanify.js', ['asanify']),
+    'safeHeap': ('optimizer/test-safeHeap.js', ['safeHeap']),
+    'LittleEndianHeap': ('optimizer/test-LittleEndianHeap.js', ['littleEndianHeap']),
+  })
+  def test_js_optimizer(self, input, passes):
+    input = test_file(input)
+    expected_file = os.path.splitext(input)[0] + '-output.js'
+    # test calling optimizer
+    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+    if common.EMTEST_REBASELINE:
+      write_file(expected_file, js)
+    else:
+      expected = read_file(expected_file)
+      self.assertIdentical(expected, js)
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
@@ -2484,20 +2425,59 @@ int f() {
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
+  # Verify the existence (or lack thereof) of DWARF info in the given wasm file
+  def verify_dwarf(self, wasm_file, verify_func):
+    self.assertExists(wasm_file)
+    info = self.run_process([LLVM_DWARFDUMP, '--all', wasm_file], stdout=PIPE).stdout
+    verify_func('DW_TAG_subprogram', info) # Subprogram entry in .debug_info
+    verify_func('debug_line[0x', info) # Line table
+
+  def verify_dwarf_exists(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertIn)
+
+  def verify_dwarf_does_not_exist(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertNotIn)
+
+  # Verify if the given file name contains a source map
+  def verify_source_map_exists(self, map_file):
+    self.assertExists(map_file)
+    data = json.load(open(map_file))
+    # Simply check the existence of required sections
+    self.assertIn('version', data)
+    self.assertIn('sources', data)
+    self.assertIn('mappings', data)
+
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
       # Test that -g enables dwarf info in object files and linked wasm
       self.run_process([EMXX, test_file('hello_world.cpp'), '-o', output, '-g'] + args)
-
-    def verify(output):
-      info = self.run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
-      self.assertIn('DW_TAG_subprogram', info) # Ensure there's a subprogram entry in .debug_info
-      self.assertIn('debug_line[0x', info) # Ensure there's a line table
-
     compile_with_dwarf(['-c'], 'a.o')
-    verify('a.o')
+    self.verify_dwarf_exists('a.o')
     compile_with_dwarf([], 'a.js')
-    verify('a.wasm')
+    self.verify_dwarf_exists('a.wasm')
+
+  def test_dwarf_with_source_map(self):
+    source_file = 'hello_world.cpp'
+    js_file = 'a.out.js'
+    wasm_file = 'a.out.wasm'
+    map_file = 'a.out.wasm.map'
+
+    # Generate only DWARF
+    self.emcc(test_file(source_file), ['-g'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.assertFalse(os.path.isfile(map_file))
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate only source map
+    self.emcc(test_file(source_file), ['-gsource-map'], js_file)
+    self.verify_dwarf_does_not_exist(wasm_file)
+    self.verify_source_map_exists(map_file)
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate DWARF with source map
+    self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.verify_source_map_exists(map_file)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -3463,6 +3443,38 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
+  def test_duplicate_js_functions(self):
+    create_file('duplicated_func.c', '''
+      #include <stdio.h>
+      extern int duplicatedFunc();
+
+      int main() {
+        int res = duplicatedFunc();
+        printf("*%d*\\n", res);
+        return 0;
+      }
+    ''')
+    create_file('duplicated_func_1.js', '''
+      mergeInto(LibraryManager.library, {
+        duplicatedFunc : function() {
+            return 1;
+          }
+        }, { noOverride: true }
+      );
+    ''')
+    create_file('duplicated_func_2.js', '''
+      mergeInto(LibraryManager.library, {
+        duplicatedFunc : function() {
+            return 2;
+          }
+        }, { noOverride: true }
+      );
+    ''')
+
+    self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
+    err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
+    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
+
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
@@ -3832,7 +3844,7 @@ int main() {
 #endif
 }
 ''')
-    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+    warning = 'warning: stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
 
     def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
       if cxx:
@@ -7420,19 +7432,28 @@ int main() {
     # changes to the size of the unoptimized and unminified code size.
     # Run with `--rebase` when this test fails.
     self.build(test_file('hello_world.c'), emcc_args=['-O0'])
-    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size.wasm.size'),
                                      os.path.getsize('hello_world.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size.js.size'),
+                                     os.path.getsize('hello_world.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
                                      os.path.getsize('no_asserts.wasm'))
     self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size.js.size'),
-                                     os.path.getsize('hello_world.js'))
-    self.check_expected_size_in_file('js',
                                      test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
                                      os.path.getsize('no_asserts.js'))
+
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sSTRICT'], output_basename='strict')
+    self.check_expected_size_in_file('wasm',
+                                     test_file('other/test_unoptimized_code_size_strict.wasm.size'),
+                                     os.path.getsize('strict.wasm'))
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_unoptimized_code_size_strict.js.size'),
+                                     os.path.getsize('strict.js'))
 
   def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
@@ -8864,10 +8885,9 @@ test_module().then((test_module_instance) => {
     self.assertContained('hello, world!', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
-  def test_node_js_system(self):
-    self.run_process([EMCC, '-DENV_NODE', test_file('system.c'), '-o', 'a.js', '-O3'])
-    ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-    self.assertContained('OK', ret)
+  @requires_node
+  def test_system_node_js(self):
+    self.do_runf(test_file('test_system.c'), 'Hello from echo', emcc_args=['-DENV_NODE'])
 
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
@@ -11632,7 +11652,7 @@ void foo() {}
     create_file('post.js', 'alignMemory(100, 4);')
     self.run_process([EMCC, test_file('hello_world.c'), '--post-js=post.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Call to `alignMemory` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
+    self.assertContained('`alignMemory` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_override_system_js_lib_symbol(self):
@@ -11917,6 +11937,12 @@ Module['postRun'] = function() {{
   def test_wasmfs_readfile(self):
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
+  @wasmfs_all_backends
+  def test_wasmfs_readfile_bigint(self):
+    self.set_setting('WASM_BIGINT')
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
+
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
@@ -12072,9 +12098,26 @@ Module['postRun'] = function() {{
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
+
+    # By default `LEGACY_RUNTIME` is enabled and `allocate` is available to call.
+    self.do_runf(test_file('other/test_legacy_runtime.c'))
+
+    # When we disable `LEGACY_RUNTIME`, `allocate` should not be available implicitly.
+    self.set_setting('LEGACY_RUNTIME', 0)
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
+    self.do_runf(test_file('other/test_legacy_runtime.c'),
+                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
+                 assert_returncode=NON_ZERO)
+
+    # Adding it to EXPORTED_RUNTIME_METHODS makes it available.
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate', 'ALLOC_NORMAL'])
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
+
+    # In strict mode the library function is not even available, so we get a build time error
     self.set_setting('STRICT')
-    self.do_runf(test_file('other/test_legacy_runtime.c'), 'ReferenceError: allocate is not defined', assert_returncode=NON_ZERO)
+    err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c')] + self.get_emcc_args())
+    self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''
@@ -12325,3 +12368,20 @@ Module['postRun'] = function() {{
 
     for m, [v1, v2] in output['assertEquals']:
       self.assertEqual(v1, v2, msg=m)
+
+  def test_warn_once(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$warnOnce'])
+    create_file('main.c', r'''\
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          warnOnce("foo");
+          // Second call should not output anything
+          warnOnce("foo");
+        });
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'warning: foo\ndone\n')

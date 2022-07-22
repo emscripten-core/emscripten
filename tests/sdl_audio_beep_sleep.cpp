@@ -180,10 +180,7 @@ void nextTest(void *unused = 0) {
       if (s >= NUM_ELEMS(sdlAudioFormats)) {
         printf("All tests done. Quit.\n");
 #ifdef __EMSCRIPTEN__
-        emscripten_cancel_main_loop();
-#ifdef REPORT_RESULT
-        REPORT_RESULT(1);
-#endif
+        emscripten_force_exit(0);
 #endif
         return;
       }
@@ -241,7 +238,7 @@ int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_AUDIO);
 
   nextTest();
-   
+
 #ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(update, 60, 0);
 #else

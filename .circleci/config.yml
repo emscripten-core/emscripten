@@ -23,7 +23,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "12.2.0"
+      xcode: "13.4.1"
 
 commands:
   download-chrome:
@@ -400,6 +400,7 @@ jobs:
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
+            core2s.test_dylink_syslibs_missing_assertions
             wasm2js3.test_memorygrowth_2
             other.test_unistd_fstatfs_wasmfs
             wasmfs.test_hello_world
@@ -499,7 +500,7 @@ jobs:
             other.test_bad_triple
             other.test_closure_externs
             other.test_binaryen_debug
-            other.test_js_optimizer_parse_error
+            other.test_js_optimizer*
             other.test_output_to_nowhere
             other.test_emcc_dev_null
             other.test_cmake*

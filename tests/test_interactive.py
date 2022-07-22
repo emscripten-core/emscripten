@@ -47,13 +47,13 @@ class interactive(BrowserCore):
     self.btest(test_file('sdl_touch.c'), args=['-O2', '-g1', '--closure=1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
-    self.btest('sdl_wm_togglefullscreen.c', expected='1')
+    self.btest_exit('sdl_wm_togglefullscreen.c')
 
   def test_sdl_fullscreen_samecanvassize(self):
     self.btest_exit('sdl_fullscreen_samecanvassize.c')
 
   def test_sdl2_togglefullscreen(self):
-    self.btest('sdl_togglefullscreen.c', expected='1', args=['-sUSE_SDL=2'])
+    self.btest_exit('sdl_togglefullscreen.c', args=['-sUSE_SDL=2'])
 
   def test_sdl_audio(self):
     shutil.copyfile(test_file('sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -63,8 +63,7 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=_main,_play,_play2'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl_audio.c'), args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
 
     # print('SDL2')
     # check sdl2 as well
@@ -82,8 +81,7 @@ class interactive(BrowserCore):
   def test_sdl_audio_mix_channels(self, args):
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'] + args)
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit('sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
 
   @parameterized({
     '': ([],),
@@ -94,20 +92,17 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'] + args)
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit('sdl_audio_mix.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg'] + args)
 
   def test_sdl_audio_panning(self):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-sEXPORTED_FUNCTIONS=_main,_play'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit('sdl_audio_panning.c', args=['-O2', '--closure=1', '--minify=0', '--preload-file', 'the_entertainer.wav', '-sEXPORTED_FUNCTIONS=_main,_play'])
 
   def test_sdl_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest([test_file('sdl_audio_beep.cpp'), '-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl_audio_beep.cpp'), args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
 
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), 'sound.wav')
@@ -138,10 +133,9 @@ class interactive(BrowserCore):
       '-sINITIAL_MEMORY=33554432'
     ])
 
-  def zzztest_sdl2_audio_beeps(self):
+  def test_sdl2_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl2_audio_beep.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2', '-o', 'page.html'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest_exit(test_file('sdl2_audio_beep.cpp'), args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
   def test_openal_playback(self):
     shutil.copyfile(test_file('sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
@@ -203,22 +197,22 @@ class interactive(BrowserCore):
     self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
-    self.btest_exit('test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('interactive/test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_dropfile(self):
-    self.btest_exit('test_glfw_dropfile.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('interactive/test_glfw_dropfile.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_fullscreen(self):
-    self.btest_exit('test_glfw_fullscreen.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_fullscreen.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_get_key_stuck(self):
-    self.btest_exit('test_glfw_get_key_stuck.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_get_key_stuck.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_joystick(self):
-    self.btest_exit('glfw_joystick.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_joystick.c', args=['-sUSE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
-    self.btest_exit('test_glfw_pointerlock.c', args=['-sUSE_GLFW=3'])
+    self.btest_exit('interactive/test_glfw_pointerlock.c', args=['-sUSE_GLFW=3'])
 
   def test_glut_fullscreen(self):
     self.skipTest('looks broken')

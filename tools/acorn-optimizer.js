@@ -49,15 +49,12 @@ function visitChildren(node, c) {
     }
     return false;
   }
-  for (const key in node) {
+  for (const child of Object.values(node)) {
     // Check for a child.
-    if (Object.prototype.hasOwnProperty.call(node, key)) {
-      const child = node[key];
-      if (!maybeChild(child)) {
-        // Check for an array of children.
-        if (Array.isArray(child)) {
-          child.forEach(maybeChild);
-        }
+    if (!maybeChild(child)) {
+      // Check for an array of children.
+      if (Array.isArray(child)) {
+        child.forEach(maybeChild);
       }
     }
   }
@@ -429,14 +426,11 @@ function runJSDCE(ast, aggressive) {
     assert(scopes.length === 0);
 
     const names = {};
-    for (const name in scope) {
-      if (Object.prototype.hasOwnProperty.call(scope, name)) {
-        const data = scope[name];
-        if (data.def && !data.use) {
-          assert(!data.param); // can't be
-          // this is eliminateable!
-          names[name] = 0;
-        }
+    for (const [name, data] of Object.entries(scope)) {
+      if (data.def && !data.use) {
+        assert(!data.param); // can't be
+        // this is eliminateable!
+        names[name] = 0;
       }
     }
     cleanUp(ast, names);
@@ -797,26 +791,24 @@ function emitDCEGraph(ast) {
     return 'emcc$' + what + '$' + name;
   }
   const infos = {}; // the graph name of the item => info for it
-  imports.forEach((import_) =>{
+  for (const import_ of imports) {
     const name = getGraphName(import_, 'import');
     const info = infos[name] = {
       name: name,
       import: ['env', import_],
       reaches: {},
     };
-    if (Object.prototype.hasOwnProperty.call(nameToGraphName, import_)) {
+    if (nameToGraphName.hasOwnProperty(import_)) {
       info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
-  });
-  for (const e in exportNameToGraphName) {
-    if (Object.prototype.hasOwnProperty.call(exportNameToGraphName, e)) {
-      const name = exportNameToGraphName[e];
-      infos[name] = {
-        name: name,
-        export: e,
-        reaches: {},
-      };
-    }
+  }
+  for (const [e, name] of Object.entries(exportNameToGraphName)) {
+    const name = exportNameToGraphName[e];
+    infos[name] = {
+      name: name,
+      export: e,
+      reaches: {},
+    };
   }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
@@ -826,12 +818,12 @@ function emitDCEGraph(ast) {
     let reached;
     if (node.type === 'Identifier') {
       const name = node.name;
-      if (Object.prototype.hasOwnProperty.call(nameToGraphName, name)) {
+      if (nameToGraphName.hasOwnProperty(name)) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       const name = getAsmOrModuleUseName(node);
-      if (Object.prototype.hasOwnProperty.call(modulePropertyToGraphName, name)) {
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
         reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
@@ -842,7 +834,7 @@ function emitDCEGraph(ast) {
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       const name = getAsmOrModuleUseName(node);
-      if (Object.prototype.hasOwnProperty.call(exportNameToGraphName, name)) {
+      if (exportNameToGraphName.hasOwnProperty(name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
@@ -885,10 +877,8 @@ function emitDCEGraph(ast) {
   // sort for determinism
   function sortedNamesFromMap(map) {
     const names = [];
-    for (const name in map) {
-      if (Object.prototype.hasOwnProperty.call(map, name)) {
-        names.push(name);
-      }
+    for (const name of Object.keys(map)) {
+      names.push(name);
     }
     names.sort();
     return names;

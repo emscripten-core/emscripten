@@ -17,7 +17,7 @@
 Mix_Chunk *sound;
 
 void done() {
-  REPORT_RESULT(1);
+  emscripten_force_exit(0);
 }
 
 void pan() {
@@ -85,5 +85,5 @@ int main(int argc, char **argv) {
 
   printf("you should hear the sound moving from left to right. press the button to replay!\n");
 
-  return 0;
+  return 99;
 }

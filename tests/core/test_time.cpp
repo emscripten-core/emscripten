@@ -10,6 +10,30 @@
 #include <assert.h>
 #include <math.h>
 
+void
+check_gmtime_localtime(time_t time)
+{
+  char gmbuf[32], locbuf[32];
+  const char fmt[] = "%Y-%m-%d %H:%M:%S";
+  struct tm *gm;
+  struct tm *loc;
+
+  gm = gmtime(&time);
+  assert(gm);
+  assert(strftime(gmbuf, sizeof(gmbuf) - 1, fmt, gm) > 0);
+  loc = localtime(&time);
+  assert(loc);
+  assert(strftime(locbuf, sizeof(locbuf) - 1, fmt, loc) > 0);
+
+  // gmtime and localtime are only equal when timezone is UTC
+  if ((timezone == 0) && (strcmp(gmbuf, locbuf) != 0)) {
+    printf("time: %lld, gmtime: %s != localtime: %s\n", time, gmbuf, locbuf);
+    puts("failed");
+  } else {
+    printf("time: %lld, gmtime: %s\n", time, gmbuf);
+  }
+}
+
 int main() {
   time_t xmas2002 = 1040786563ll;
   time_t summer2002 = 1025528525ll;
@@ -216,5 +240,15 @@ int main() {
   clock_gettime(CLOCK_REALTIME, &ts_clock_gettime);
   printf("timespec_get test 6: %d\n", abs(ts_timespec_get.tv_sec - ts_clock_gettime.tv_sec) <= 2);
 
+  // verify gmtime() and localtime()
+  check_gmtime_localtime(0);
+  check_gmtime_localtime(2147483647); // int8_t max, Y2K38
+  check_gmtime_localtime(2147483648);
+  check_gmtime_localtime(-2147483648); // int8_t min
+  check_gmtime_localtime(-2147483649);
+  check_gmtime_localtime(253402300799); // end of year 9999
+  check_gmtime_localtime(-62135596800); // beginning of year 1
+
+  puts("success");
   return 0;
 }
