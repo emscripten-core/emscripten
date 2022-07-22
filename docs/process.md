@@ -80,9 +80,9 @@ How:
    script will update [emscripten-releases-tags.json][emscripten_releases_tags],
    adding a new version. The script will create a new git branch that can be
    uploaded as a PR. An example of this PR can be emscripten-core/emsdk#1071.
-1. [Tag](emsdk_tags) the `emsdk` repo with the new version number, on the commit
+1. [Tag][emsdk_tags] the `emsdk` repo with the new version number, on the commit
    that does the update, after it lands on main.
-1. [Tag](emscripten_tags) the `emscripten` repo with the new version number, on
+1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
    the commit referred to in the [DEPS][DEPS] file above.
 1. Update [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
@@ -155,5 +155,5 @@ See notes above on installing sphinx.
 [emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json
 [DEPS]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/DEPS
 [DEPS.tagged-release]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/DEPS.tagged-release
-[emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
+[emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
