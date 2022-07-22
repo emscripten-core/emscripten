@@ -72,7 +72,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
 
-TEST_ROOT = path_from_root('tests')
+TEST_ROOT = path_from_root('test')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 

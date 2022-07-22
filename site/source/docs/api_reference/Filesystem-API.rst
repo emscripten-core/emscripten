@@ -16,7 +16,7 @@ Emscripten predominantly compiles code that uses synchronous file I/O, so the ma
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. The subdirectories `/home/web_user` and `/tmp` are also created automatically, in addition to several other special devices and streams (e.g. `/dev/null`, `/dev/random`, `/dev/stdin`, `/proc/self/fd`); see `FS.staticInit()` in the FS library for full details. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
-The automatic tests in `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
+The automatic tests in `test/test_core.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`.
 
@@ -75,7 +75,7 @@ NODEFS
 
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
-See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/main/test/fs/test_nodefs_rw.c>`_ for an example.
 
 .. _filesystem-api-noderawfs:
 
@@ -260,7 +260,7 @@ File system API
        });
      }
 
-  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
+  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/test/fs/test_idbfs_sync.c>`_.
 
   :param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
   :param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.

@@ -708,7 +708,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // depending on the kind of EH you use
 // (https://github.com/emscripten-core/emscripten/issues/17115).
 //
-// See test_EXPORT_EXCEPTION_HANDLING_HELPERS in tests/test_core.py for an
+// See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 

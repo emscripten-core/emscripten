@@ -4,7 +4,7 @@ exclude =
  ./third_party/, # third-party code
  ./tools/filelock.py, # third-party code
  ./tools/scons/, # third-party code
- ./tests/third_party/, # third-party code
+ ./test/third_party/, # third-party code
  ./site/source/conf.py,
  ./tools/debug/,
  ./system/lib/, # system libraries
@@ -14,5 +14,5 @@ exclude =
 # they need to implement the specific plugin APIs
 per-file-ignores =
   ./tools/ports/*.py: U100
-  ./tests/*.py: U100
+  ./test/*.py: U100
   ./tools/toolchain_profiler.py: U100

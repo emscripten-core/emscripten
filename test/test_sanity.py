@@ -25,7 +25,7 @@ from tools import response_file
 from tools import ports
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
+commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
 
 
 def restore():

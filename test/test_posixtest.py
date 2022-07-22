@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 """Runs the pthreads test from the upstream posixtest suite in:
-   ./tests/third_party/posixtestsuite
+   ./test/third_party/posixtestsuite
 See
    https://github.com/emscripten-core/posixtestsuite
 """
@@ -16,7 +16,7 @@ import unittest
 from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
 
-testsuite_root = path_from_root('tests/third_party/posixtestsuite')
+testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
 
 class posixtest(RunnerCore):

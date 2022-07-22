@@ -15,7 +15,7 @@ To try out the toolchain profiler, run the following set of commands:
 
     cd path/to/emscripten
     export EMPROFILE=1
-    emcc tests/hello_world.c -O3 -o a.html
+    emcc test/hello_world.c -O3 -o a.html
     emprofile
 
 On Windows, replace the ``export`` keyword with ``set`` instead. The last command should generate a HTML file of form ``toolchain_profiler.results_yyyymmdd_hhmm.html`` that can be opened in the web browser to view the results.

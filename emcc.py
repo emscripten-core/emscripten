@@ -1118,7 +1118,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       compiler = shared.EMCC
       if run_via_emxx:
         compiler = shared.EMXX
-      cmd = [compiler, utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      cmd = [compiler, utils.path_from_root('test', input_file), '-v', '-c', '-o', temp_target] + args
       proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)

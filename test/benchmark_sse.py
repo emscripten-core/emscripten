@@ -18,7 +18,7 @@ sys.path.append(__rootpath__)
 from tools.shared import WINDOWS, CLANG_CXX, EMCC, PIPE
 from tools.shared import run_process
 from tools.config import V8_ENGINE
-from tests.common import EMRUN, test_file
+from test.common import EMRUN, test_file
 import clang_native
 
 temp_dir = tempfile.mkdtemp()
@@ -302,4 +302,4 @@ if __name__ == '__main__':
     elif suite == 'ssse3':
         run_benchmark(test_file('sse', 'benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
     else:
-        raise Exception('Usage: python tests/benchmark_sse.py sse1|sse2|sse3')
+        raise Exception('Usage: python test/benchmark_sse.py sse1|sse2|sse3')

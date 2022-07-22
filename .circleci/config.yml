@@ -108,12 +108,12 @@ commands:
           name: embuilder build ALL
           command: |
             ./embuilder build ALL
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
             ./embuilder build MINIMAL --lto
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (WASM64)
           command: |
@@ -122,12 +122,12 @@ commands:
           name: embuilder (PIC)
           command: |
             ./embuilder build MINIMAL_PIC --pic
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
             ./embuilder build MINIMAL --pic --lto
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: freeze cache
           command: |
@@ -169,7 +169,7 @@ commands:
       - run:
           name: run tests
           command: |
-            ./tests/runner << parameters.test_targets >>
+            ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
   run-tests-linux:
     description: "Runs emscripten tests"
@@ -229,7 +229,7 @@ commands:
             echo "-----"
             echo "Running browser tests"
             echo "-----"
-            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
@@ -256,8 +256,8 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
-            tests/runner emrun
+            test/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            test/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -276,7 +276,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            tests/runner sockets
+            test/runner sockets
 
 jobs:
   build-docs:

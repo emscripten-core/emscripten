@@ -57,7 +57,7 @@ The sequence to clean up at de-initialization is as follows:
 Sample code
 -----------
 
-Example code for using EGL to initialize a WebGL context can be found in the sample applications in the `emscripten/tests/third_party/glbook <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/glbook>`_ directory, more specifically in the file `esUtil.c <https://github.com/emscripten-core/emscripten/blob/main/tests/third_party/glbook/Common/esUtil.c>`_.
+Example code for using EGL to initialize a WebGL context can be found in the sample applications in the `emscripten/test/third_party/glbook <https://github.com/emscripten-core/emscripten/tree/main/test/third_party/glbook>`_ directory, more specifically in the file `esUtil.c <https://github.com/emscripten-core/emscripten/blob/main/test/third_party/glbook/Common/esUtil.c>`_.
 
 Implementation status and notes
 ===============================

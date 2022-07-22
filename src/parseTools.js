@@ -5,7 +5,7 @@
  *
  * Helpers and tools for use at compile time by JavaScript library files.
  *
- * Tests live in tests/other/test_parseTools.js.
+ * Tests live in test/other/test_parseTools.js.
  */
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;

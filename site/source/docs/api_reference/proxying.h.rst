@@ -135,5 +135,5 @@ defined within namespace ``emscripten``.
     ``emscripten_proxying_finish`` or ``ProxyingCtx::finish`` and ``false`` otherwise.
 
 .. _proxying.h: https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/proxying.h
-.. _test_pthread_proxying.c: https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying.c
-.. _test_pthread_proxying_cpp.cpp: https://github.com/emscripten-core/emscripten/blob/main/tests/pthread/test_pthread_proxying_cpp.cpp
+.. _test_pthread_proxying.c: https://github.com/emscripten-core/emscripten/blob/main/test/pthread/test_pthread_proxying.c
+.. _test_pthread_proxying_cpp.cpp: https://github.com/emscripten-core/emscripten/blob/main/test/pthread/test_pthread_proxying_cpp.cpp
