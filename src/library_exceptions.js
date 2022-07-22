@@ -399,8 +399,8 @@ var LibraryExceptions = {
       var type_addr_addr = stackAlloc(4);
       var message_addr_addr = stackAlloc(4);
       ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
-      var type_addr = HEAP32[type_addr_addr/4];
-      var message_addr = HEAP32[message_addr_addr/4];
+      var type_addr = HEAP32[type_addr_addr >> 2];
+      var message_addr = HEAP32[message_addr_addr >> 2];
       var type = UTF8ToString(type_addr);
       _free(type_addr);
       var message;
