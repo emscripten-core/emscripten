@@ -27,7 +27,7 @@ from subprocess import PIPE, STDOUT
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
-from tools.shared import try_delete, config
+from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
@@ -36,7 +36,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file
-from tools.utils import read_file, write_file, read_binary
+from tools.utils import read_file, write_file, delete_file, read_binary
 import common
 import jsrun
 import clang_native
@@ -393,7 +393,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       os.chdir(os.path.dirname(path))
       self.assertContained('hello, world!', self.run_js(os.path.basename(path)))
       os.chdir(last)
-      try_delete(path)
+      delete_file(path)
 
   @is_slow_test
   @parameterized({
@@ -1303,7 +1303,7 @@ int f() {
         print(engine, file=sys.stderr)
         # work around a bug in python's subprocess module
         # (we'd use self.run_js() normally)
-        try_delete('out.txt')
+        delete_file('out.txt')
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
         cmd = shared.shlex_join(cmd)
         if WINDOWS:
@@ -1409,7 +1409,7 @@ int f() {
     self.assertContained('hello there', self.run_js('a.out.js'))
 
     # ditto with first creating .o files
-    try_delete('a.out.js')
+    delete_file('a.out.js')
     self.run_process([EMXX, '-c', Path('foo/main.cpp'), '-o', Path('foo/main.o')])
     self.run_process([EMXX, '-c', Path('bar/main.cpp'), '-o', Path('bar/main.o')])
     self.run_process([EMCC, Path('foo/main.o'), Path('bar/main.o')])
@@ -1448,7 +1448,7 @@ int f() {
       }
     ''')
     self.run_process([EMCC, 'common.c', '-c', '-o', 'common.o'])
-    try_delete('liba.a')
+    delete_file('liba.a')
     self.run_process([EMAR, 'rc', 'liba.a', 'common.o'])
 
     create_file('common.c', r'''
@@ -1458,7 +1458,7 @@ int f() {
       }
     ''')
     self.run_process([EMCC, 'common.c', '-c', '-o', 'common.o'])
-    try_delete('libb.a')
+    delete_file('libb.a')
     self.run_process([EMAR, 'rc', 'libb.a', 'common.o'])
 
     create_file('main.c', r'''
@@ -1492,7 +1492,7 @@ int f() {
     ''')
     self.run_process([EMCC, Path('b/common.c'), '-c', '-o', Path('b/common.o')])
 
-    try_delete('liba.a')
+    delete_file('liba.a')
     self.run_process([EMAR, 'rc', 'liba.a', Path('a/common.o'), Path('b/common.o')])
 
     # Verify that archive contains basenames with hashes to avoid duplication
@@ -1515,7 +1515,7 @@ int f() {
     self.assertContained('a\nb...\n', self.run_js('a.out.js'))
 
     # Using llvm-ar directly should cause duplicate basenames
-    try_delete('libdup.a')
+    delete_file('libdup.a')
     self.run_process([LLVM_AR, 'rc', 'libdup.a', Path('a/common.o'), Path('b/common.o')])
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
@@ -2113,7 +2113,7 @@ int f() {
 
     for args in ([], ['-O1'], ['-sMAX_WEBGL_VERSION=2']):
       for value in ([0, 1]):
-        try_delete('a.out.js')
+        delete_file('a.out.js')
         print('checking "%s" %s' % (args, value))
         extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
         proc = self.run_process([EMXX, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
@@ -2467,13 +2467,13 @@ int f() {
     self.emcc(test_file(source_file), ['-g'], js_file)
     self.verify_dwarf_exists(wasm_file)
     self.assertFalse(os.path.isfile(map_file))
-    try_delete([wasm_file, map_file, js_file])
+    self.clear()
 
     # Generate only source map
     self.emcc(test_file(source_file), ['-gsource-map'], js_file)
     self.verify_dwarf_does_not_exist(wasm_file)
     self.verify_source_map_exists(map_file)
-    try_delete([wasm_file, map_file, js_file])
+    self.clear()
 
     # Generate DWARF with source map
     self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
@@ -2993,7 +2993,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
-    try_delete('test.js')
+    delete_file('test.js')
     self.assertNotExists('test.js')
 
     # compile with -O2 --closure 1
@@ -3664,12 +3664,12 @@ return 0;
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
     self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
     # and sanity check it is not mentioned when not
-    try_delete('header.h.' + suffix)
+    delete_file('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
     self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
     # with specified target via -o
-    try_delete('header.h.' + suffix)
+    delete_file('header.h.' + suffix)
     self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
     self.assertExists('my.' + suffix)
 
@@ -4008,7 +4008,7 @@ int main()
       (['-Wno-implicit-function-declaration'], ['hello '], []),
     ]:
       print(opts, expected)
-      try_delete('a.out.js')
+      delete_file('a.out.js')
       stderr = self.run_process([EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
       for ce in compile_expected + [INCOMPATIBLE_WARNINGS]:
         self.assertContained(ce, stderr)
@@ -4264,7 +4264,7 @@ int main() {
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
-    try_delete('a.out.js')
+    delete_file('a.out.js')
 
     # Test that --preload-file doesn't add an use of eval().
     create_file('temp.txt', "foo\n")
@@ -4274,12 +4274,12 @@ int main() {
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
-    try_delete('a.out.js')
+    delete_file('a.out.js')
 
     # Test that -sDYNAMIC_EXECUTION and -sRELOCATABLE are not allowed together.
     self.expect_fail([EMCC, test_file('hello_world.c'), '-O1',
                       '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
-    try_delete('a.out.js')
+    delete_file('a.out.js')
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -4292,13 +4292,13 @@ int main() {
     # Test that emscripten_run_script() aborts when -sDYNAMIC_EXECUTION=0
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=0'])
     self.assertContained('DYNAMIC_EXECUTION=0 was set, cannot eval', self.run_js('a.out.js', assert_returncode=NON_ZERO))
-    try_delete('a.out.js')
+    delete_file('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -sDYNAMIC_EXECUTION=2
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', self.run_js('a.out.js'))
     self.assertContained('hello from script', self.run_js('a.out.js'))
-    try_delete('a.out.js')
+    delete_file('a.out.js')
 
   def test_init_file_at_offset(self):
     create_file('src.cpp', r'''
@@ -5557,7 +5557,7 @@ int main(void) {
     self.run_process([EMCC, '-c', 'x.c', '-o', 'x.o'])
     self.run_process([EMCC, '-c', 'y.c', '-o', 'y.o'])
     self.run_process([EMCC, '-c', 'z.c', '-o', 'z.o'])
-    try_delete('libtest.a')
+    delete_file('libtest.a')
     self.run_process([EMAR, 'rc', 'libtest.a', 'y.o'])
     self.run_process([EMAR, 'rc', 'libtest.a', 'x.o'])
     self.run_process([EMRANLIB, 'libtest.a'])
@@ -7230,7 +7230,7 @@ int main() {
             assert ret == 0
 
           for f in files:
-            try_delete(f)
+            delete_file(f)
 
   def test_binaryen_names(self):
     sizes = {}
@@ -7246,7 +7246,7 @@ int main() {
         (['-O2', '--profiling-funcs'], True),
       ]:
       print(args, expect_names)
-      try_delete('a.out.js')
+      delete_file('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
       # them, which makes counting harder
       self.run_process([EMXX, test_file('hello_world.cpp')] + args + ['-sMALLOC="dlmalloc"', '-sEXPORTED_FUNCTIONS=_main,_malloc'])
@@ -7376,7 +7376,7 @@ int main() {
         (['-O2', '--closure=1', '-g1'],  False, False, True, True,  True),
       ]:
       print(args, expect_dash_g, expect_emit_text)
-      try_delete('a.out.wat')
+      delete_file('a.out.wat')
       cmd = [EMXX, test_file('hello_world.cpp')] + args
       print(' '.join(cmd))
       self.run_process(cmd)
@@ -7661,7 +7661,7 @@ int main() {
       if '-sSIDE_MODULE' in args:
         continue
       print(args)
-      try_delete('a.out.wasm')
+      delete_file('a.out.wasm')
       cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
@@ -7701,7 +7701,7 @@ int main() {
   def test_no_legalize_js_ffi(self):
     # test minimal JS FFI legalization for invoke and dyncalls
     args = ['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0']
-    try_delete('a.out.wasm')
+    delete_file('a.out.wasm')
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
       cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
     print(' '.join(cmd))
@@ -9307,7 +9307,7 @@ int main () {
         return # Nonexistent file passes in this check
       obtained_size = os.path.getsize(f)
       print('size of generated ' + f + ': ' + str(obtained_size))
-      try_delete(f)
+      delete_file(f)
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
@@ -9377,7 +9377,7 @@ int main () {
       self.run_process(args)
 
       output = read_file('a.js')
-      try_delete('a.js')
+      delete_file('a.js')
       self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
@@ -9490,7 +9490,7 @@ int main () {
       with gzip.open(f_gz, 'wb') as gzf:
         gzf.write(read_binary(f))
       size = os.path.getsize(f_gz)
-      try_delete(f_gz)
+      delete_file(f_gz)
       return size
 
     # For certain tests, don't just check the output size but check

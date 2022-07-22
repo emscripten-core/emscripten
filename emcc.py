@@ -51,7 +51,7 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary
+from tools.utils import read_file, write_file, read_binary, delete_file
 
 logger = logging.getLogger('emcc')
 
@@ -3044,7 +3044,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     generate_worker_js(target, js_target, target_basename)
 
   if embed_memfile() and memfile:
-    shared.try_delete(memfile)
+    delete_file(memfile)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
@@ -3532,7 +3532,7 @@ def phase_binaryen(target, options, wasm_target):
     if settings.WASM != 2:
       final_js = wasm2js
       # if we only target JS, we don't need the wasm any more
-      shared.try_delete(wasm_target)
+      delete_file(wasm_target)
 
     save_intermediate('wasm2js')
 
@@ -3570,7 +3570,7 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
-    shared.try_delete(wasm_target)
+    delete_file(wasm_target)
     write_file(final_js, js)
 
 
@@ -3768,7 +3768,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     js_contents = script.inline or ''
     if script.src:
       js_contents += read_file(js_target)
-    shared.try_delete(js_target)
+    delete_file(js_target)
     script.src = None
     script.inline = js_contents
 

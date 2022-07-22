@@ -14,7 +14,7 @@ from enum import IntEnum, auto
 from glob import iglob
 
 from . import shared, building, utils
-from . import deps_info, tempfiles
+from . import deps_info
 from . import diagnostics
 from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
@@ -334,7 +334,7 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
     create_lib(out_filename, self.build_objects(build_dir))
     if not shared.DEBUG:
-      tempfiles.try_delete(build_dir)
+      utils.delete_dir(build_dir)
 
   @classmethod
   def _inherit_list(cls, attr):

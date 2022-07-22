@@ -26,7 +26,7 @@ from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
-from tools.shared import try_delete
+from tools.utils import delete_file, delete_dir
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -245,8 +245,8 @@ class browser(BrowserCore):
       ''')
     # use relative paths when calling emcc, because file:// URIs can only load
     # sourceContent when the maps are relative paths
-    try_delete(html_file)
-    try_delete(html_file + '.map')
+    delete_file(html_file)
+    delete_file(html_file + '.map')
     self.compile_btest(['src.cpp', '-o', 'src.html', '-gsource-map'])
     self.assertExists(html_file)
     self.assertExists('src.wasm.map')
@@ -339,7 +339,7 @@ If manually bisecting:
     self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path])
 
     # Test subdirectory handling with asset packaging.
-    try_delete('assets')
+    delete_dir('assets')
     ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
     ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
     ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
@@ -2560,8 +2560,8 @@ void *getBindBuffer() {
     print(out)
 
     # Tidy up files that might have been created by this test.
-    try_delete(test_file('uuid/test.js'))
-    try_delete(test_file('uuid/test.js.map'))
+    delete_file(test_file('uuid/test.js'))
+    delete_file(test_file('uuid/test.js.map'))
 
     # Now run test in browser
     self.btest_exit(test_file('uuid/test.c'), args=['-luuid'])
@@ -4040,7 +4040,7 @@ Module["preRun"].push(function () {
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-sWASM=0', '-sIN_TEST_HARNESS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
-    try_delete('test.worker.js')
+    delete_file('test.worker.js')
     self.run_browser('test2.html', '/report_result?exit:0')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
@@ -5295,7 +5295,7 @@ Module["preRun"].push(function () {
       return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
     create_file('test.txt', 'fetch 2')
-    try_delete('subdir')
+    delete_dir('subdir')
     ensure_dir('subdir')
     create_file('subdir/backendfile', 'file 1')
     create_file('subdir/backendfile2', 'file 2')
