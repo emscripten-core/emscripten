@@ -8,7 +8,7 @@ import logging
 import os
 from pathlib import Path
 
-from . import tempfiles, filelock, config, utils
+from . import filelock, config, utils
 from .settings import settings
 
 logger = logging.getLogger('cache')
@@ -83,9 +83,8 @@ class Cache:
 
   def erase(self):
     with self.lock():
-      if self.dirname.exists():
-        for f in os.listdir(self.dirname):
-          tempfiles.try_delete(Path(self.dirname, f))
+      # Delete everything except the lockfile itself
+      utils.delete_contents(self.dirname, exclude=[os.path.basename(self.filelock_name)])
 
   def get_path(self, name):
     return Path(self.dirname, name)
@@ -133,7 +132,7 @@ class Cache:
       name = Path(self.dirname, shortname)
       if name.exists():
         logger.info(f'deleting cached file: {name}')
-        tempfiles.try_delete(name)
+        utils.delete_file(name)
 
   def get_lib(self, libname, *args, **kwargs):
     name = self.get_lib_name(libname)

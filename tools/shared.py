@@ -34,7 +34,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 
-from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles
 from . import diagnostics
@@ -482,7 +481,7 @@ def get_emscripten_temp_dir():
     if not DEBUG_SAVE:
       def prepare_to_clean_temp(d):
         def clean_temp():
-          try_delete(d)
+          utils.delete_dir(d)
 
         atexit.register(clean_temp)
       # this global var might change later

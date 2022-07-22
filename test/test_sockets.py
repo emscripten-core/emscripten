@@ -18,7 +18,7 @@ import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
 from common import parameterized, requires_native_clang, PYTHON
-from tools import shared, config, utils
+from tools import config, utils
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
@@ -267,7 +267,6 @@ class sockets(BrowserCore):
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
-    shared.try_delete('enet')
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
     with utils.chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
