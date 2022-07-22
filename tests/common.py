@@ -1488,7 +1488,7 @@ class BrowserCore(RunnerCore):
   #                     synchronously, so we have a timeout, which can be hit if the VM
   #                     we run on stalls temporarily), so we let each test try more than
   #                     once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1):
+  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1496,7 +1496,8 @@ class BrowserCore(RunnerCore):
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
-    if expectedResult is not None:
+    assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
+    if expected is not None:
       try:
         self.harness_in_queue.put((
           'http://localhost:%s/%s' % (self.port, html_file),
@@ -1526,12 +1527,12 @@ class BrowserCore(RunnerCore):
           # verify the result, and try again if we should do so
           output = unquote(output)
           try:
-            self.assertContained(expectedResult, output)
+            self.assertContained(expected, output)
           except Exception as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1)
+              return self.run_browser(html_file, message, expected, timeout, extra_tries - 1)
             else:
               raise e
       finally:
@@ -1693,7 +1694,7 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=None, post_build=None,
-            args=None, message='.', also_proxied=False,
+            args=None, also_proxied=False,
             url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
             reporting=Reporting.FULL):
@@ -1729,13 +1730,13 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['-sWASM=0'], message, also_proxied=False, timeout=timeout)
+                 original_args + ['-sWASM=0'], also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1746,7 +1747,7 @@ class BrowserCore(RunnerCore):
         post_build = self.post_manual_reftest
       # run proxied
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-sGL_TESTING'], message, timeout=timeout)
+                 original_args + ['--proxy-to-worker', '-sGL_TESTING'], timeout=timeout)
 
 
 ###################################################################################################

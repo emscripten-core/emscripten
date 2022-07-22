@@ -396,7 +396,7 @@ If manually bisecting:
     make_main('somefile.txt') # absolute becomes relative
     ensure_dir('dirrey')
     self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'dirrey/page.html'], reporting=Reporting.JS_ONLY)
-    self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?exit:0')
+    self.run_browser('dirrey/page.html', '/report_result?exit:0')
 
     # With FS.preloadFile
 
@@ -426,7 +426,7 @@ If manually bisecting:
     os.mkdir('test')
     shutil.move('manual_download_data.data', 'test/manual_download_data.data')
 
-    self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
+    self.run_browser('manual_download_data.html', '/report_result?1')
 
   # Tests that if the output files have single or double quotes in them, that it will be handled by
   # correctly escaping the names.
@@ -465,7 +465,7 @@ If manually bisecting:
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.abspath(page_file)
     self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
-    self.run_browser(page_file, '|load me right before|.', '/report_result?exit:0')
+    self.run_browser(page_file, '/report_result?exit:0')
 
   @parameterized({
     '0': (0,),
@@ -520,8 +520,8 @@ If manually bisecting:
     create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
     print('size:', os.path.getsize('somefile.txt'))
     self.compile_btest(['main.c', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-sALLOW_MEMORY_GROWTH'], reporting=Reporting.JS_ONLY)
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:0')
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:1')
+    self.run_browser('page.html', '/report_result?exit:0')
+    self.run_browser('page.html', '/report_result?exit:1')
 
   def test_preload_caching_indexeddb_name(self):
     self.set_setting('EXIT_RUNTIME')
@@ -570,8 +570,8 @@ If manually bisecting:
     make_main('somefile.txt')
     self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
     self.compile_btest(['main.c', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:0')
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:1')
+    self.run_browser('page.html', '/report_result?exit:0')
+    self.run_browser('page.html', '/report_result?exit:1')
 
   def test_multifile(self):
     # a few files inside a directory
@@ -611,7 +611,7 @@ If manually bisecting:
     self.set_setting('EXIT_RUNTIME')
     self.compile_btest(['main.c', '--preload-file', 'subdirr', '-o', 'page.html'], reporting=Reporting.JS_ONLY)
     shutil.rmtree('subdirr')
-    self.run_browser('page.html', 'You should see two cool numbers', '/report_result?exit:0')
+    self.run_browser('page.html', '/report_result?exit:0')
 
   def test_custom_file_package_url(self):
     # a few files inside a directory
@@ -654,7 +654,7 @@ If manually bisecting:
     self.set_setting('EXIT_RUNTIME')
     self.compile_btest(['main.c', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.data', Path('cdn/test.data'))
-    self.run_browser('test.html', '', '/report_result?exit:0')
+    self.run_browser('test.html', '/report_result?exit:0')
 
   def test_missing_data_throws_error(self):
     def setup(assetLocalization):
@@ -701,17 +701,17 @@ If manually bisecting:
       setup("")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
       shutil.move('test.data', 'missing.data')
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '/report_result?1')
 
       # test unknown protocol should go through xhr.onerror
       setup("unknown_protocol://")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '/report_result?1')
 
       # test wrong protocol and port
       setup("https://localhost:8800/")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '/report_result?1')
 
     test()
 
@@ -728,7 +728,7 @@ If manually bisecting:
 
   def test_sdl_surface_lock_opts(self):
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
-    self.btest('hello_world_sdl.cpp', reference='htmltest.png', message='You should see "hello, world!" and a colored cube.', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
@@ -850,7 +850,7 @@ window.close = function() {
     shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
     self.reftest(test_file('gears.png'))
     self.post_manual_reftest()
-    self.run_browser('test.html', None, '/report_result?0')
+    self.run_browser('test.html', '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
@@ -1430,7 +1430,7 @@ keydown(100);keyup(100); // trigger the end
         Module()
       </script>
     ''')
-    self.run_browser('a.html', '.', '/report_result?exit:2')
+    self.run_browser('a.html', '/report_result?exit:2')
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
@@ -1502,37 +1502,32 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_sdl_gl_mapbuffers(self):
-    self.btest_exit('browser/test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3=1', '-lSDL', '-lGL'],
-                    message='You should see a blue triangle.')
+    self.btest_exit('browser/test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3=1', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
+               args=['--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
-               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
+               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
@@ -1544,36 +1539,31 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with fog.')
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_fog_negative.c', reference='screenshot-fog-negative.png',
-               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with fog.')
+               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_fog_density.c', reference='screenshot-fog-density.png',
-               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with fog.')
+               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
-               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with fog.')
+               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
-               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with fog.')
+               args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glfw(self):
@@ -1638,7 +1628,7 @@ keydown(100);keyup(100); // trigger the end
       print(cmd)
       self.run_process(cmd)
       self.assertExists('worker.js')
-      self.run_browser('main.html', '', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
+      self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
@@ -1723,7 +1713,7 @@ keydown(100);keyup(100); // trigger the end
           raise e
 
     try:
-      self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
+      self.run_browser(main, '/report_result?' + str(checksum))
     finally:
       server.terminate()
     # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
@@ -1765,7 +1755,7 @@ keydown(100);keyup(100); // trigger the end
       if 'full' in filename:
         cmd += ['-sFULL_ES2=1']
       self.compile_btest(cmd)
-      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+      self.run_browser('something.html', '/report_gl_result?true')
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
@@ -1774,8 +1764,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glgears_deriv(self):
     self.btest('hello_world_gles_deriv.c', reference='gears.png', reference_slack=2,
-               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'],
-               message='You should see animating gears.')
+               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'])
     assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
@@ -2820,7 +2809,7 @@ Module["preRun"].push(function () {
       else:
         shutil.move('page.html.mem', Path('sub/page.html.mem'))
       shutil.move('test.data', Path('sub/test.data'))
-      self.run_browser('page.html', None, '/report_result?exit:0')
+      self.run_browser('page.html', '/report_result?exit:0')
 
       # alternatively, put locateFile in the HTML
       print('in html')
@@ -2843,7 +2832,7 @@ Module["preRun"].push(function () {
           shutil.move('page.wasm', Path('sub/page.wasm'))
         else:
           shutil.move('page.html.mem', Path('sub/page.html.mem'))
-        self.run_browser('page.html', None, '/report_result?exit:' + expected)
+        self.run_browser('page.html', '/report_result?exit:' + expected)
 
       in_html('0')
 
@@ -3163,61 +3152,52 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.btest('browser/test_sdl2_glmatrixmode_texture.c', reference='browser/test_sdl2_glmatrixmode_texture.png',
-               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'],
-               message='You should see a (top) red-white and (bottom) white-red image.')
+               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gldrawelements(self):
     self.btest('browser/test_sdl2_gldrawelements.c', reference='browser/test_sdl2_gldrawelements.png',
-               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'],
-               message='GL drawing modes. Bottom: points, lines, line loop, line strip. Top: triangles, triangle strip, triangle fan, quad.')
+               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glclipplane_gllighting(self):
     self.btest('browser/test_sdl2_glclipplane_gllighting.c', reference='browser/test_sdl2_glclipplane_gllighting.png',
-               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'],
-               message='glClipPlane and GL_LIGHTING emulation. You should see a torus cut open on one side with lighting from one lightsource applied.')
+               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glalphatest(self):
     self.btest('browser/test_sdl2_glalphatest.c', reference='browser/test_sdl2_glalphatest.png',
-               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'],
-               message='GL_ALPHA_TEST emulation. You should see gradients with different alpha testing modes and reference values.')
+               args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'],
-               message='You should see an image with fog.')
+               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
-               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'],
-               message='You should see an image with fog.')
+               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl2_fog_density.c', reference='screenshot-fog-density.png',
-               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'],
-               message='You should see an image with fog.')
+               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
-               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'],
-               message='You should see an image with fog.')
+               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('browser/test_sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
-               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'],
-               message='You should see an image with fog.')
+               args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   def test_sdl2_unwasteful(self):
     self.btest_exit('browser/test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
@@ -3239,15 +3219,13 @@ Module["preRun"].push(function () {
   def test_sdl2_ttf(self):
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.btest('browser/test_sdl2_ttf.c', reference='browser/test_sdl2_ttf.png',
-               args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'],
-               message='You should see colorful "hello" and "world" in the window')
+               args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
     shutil.copy2(test_file('third_party/notofont/NotoNaskhArabic-Regular.ttf'), self.get_dir())
     self.btest('browser/test_sdl2_ttf_rtl.c', reference='browser/test_sdl2_ttf_rtl.png',
-               args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'],
-               message='You should see colorful "سلام" and "جهان" with shaped Arabic script in the window')
+               args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
 
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
@@ -3262,7 +3240,7 @@ Module["preRun"].push(function () {
   def test_sdl2_misc_via_object(self):
     self.run_process([EMCC, '-c', test_file('browser/test_sdl2_misc.c'), '-sUSE_SDL=2', '-o', 'test.o'])
     self.compile_btest(['test.o', '-sEXIT_RUNTIME', '-sUSE_SDL=2', '-o', 'test.html'])
-    self.run_browser('test.html', '...', '/report_result?exit:0')
+    self.run_browser('test.html', '/report_result?exit:0')
 
   @parameterized({
     'dash_s': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
@@ -3304,8 +3282,7 @@ Module["preRun"].push(function () {
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                      '-Wno-js-compiler',
                      '--preload-file', preload_file, '--use-preload-plugins',
-                     '-Wno-inconsistent-missing-override'],
-               message='You should see Cocos2d logo')
+                     '-Wno-inconsistent-missing-override'])
 
   def test_async(self):
     for opts in [0, 1, 2, 3]:
@@ -3387,12 +3364,12 @@ Module["preRun"].push(function () {
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sMODULARIZE', '-sMINIMAL_RUNTIME'])
-    self.run_browser('test.html', None, '/report_result?0')
+    self.run_browser('test.html', '/report_result?0')
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sEXPORT_NAME=Foo as well.
   def test_minimal_runtime_export_name(self):
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
-    self.run_browser('test.html', None, '/report_result?0')
+    self.run_browser('test.html', '/report_result?0')
 
   @requires_sync_compilation
   def test_modularize(self):
@@ -3438,7 +3415,7 @@ Module["preRun"].push(function () {
             %s
           </script>
         ''' % code)
-        self.run_browser('a.html', '...', '/report_result?0')
+        self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
     test_c_path = test_file('browser_test_hello_world.c')
@@ -3458,7 +3435,7 @@ Module["preRun"].push(function () {
     ''')
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
-    self.run_browser('a.html', '...', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
+    self.run_browser('a.html', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
 
   def test_modularize_init_error(self):
     test_cpp_path = test_file('browser/test_modularize_init_error.cpp')
@@ -3481,7 +3458,7 @@ Module["preRun"].push(function () {
           });
       </script>
     ''')
-    self.run_browser('a.html', '...', '/report_result?intentional error to test rejection')
+    self.run_browser('a.html', '/report_result?intentional error to test rejection')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
@@ -3517,7 +3494,7 @@ Module["preRun"].push(function () {
           var foo = Foo({ INITIAL_MEMORY: %d });
         </script>
       ''' % totalMemory)
-      self.run_browser('a.html', '...', '/report_result?exit:0')
+      self.run_browser('a.html', '/report_result?exit:0')
 
   def test_webidl(self):
     # see original in test_core.py
@@ -3883,7 +3860,7 @@ Module["preRun"].push(function () {
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
   @requires_threads
   def test_pthread_large_pthread_allocation(self):
-    self.btest_exit(test_file('pthread/test_large_pthread_allocation.cpp'), args=['-sINITIAL_MEMORY=128MB', '-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
+    self.btest_exit(test_file('pthread/test_large_pthread_allocation.cpp'), args=['-sINITIAL_MEMORY=128MB', '-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=50'])
 
   # Tests the -sPROXY_TO_PTHREAD option.
   @requires_threads
@@ -4057,13 +4034,13 @@ Module["preRun"].push(function () {
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
     if os.path.exists('test.html.mem'):
       shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
-    self.run_browser('test.html', '', '/report_result?exit:0')
+    self.run_browser('test.html', '/report_result?exit:0')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-sWASM=0', '-sIN_TEST_HARNESS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
     try_delete('test.worker.js')
-    self.run_browser('test2.html', '', '/report_result?exit:0')
+    self.run_browser('test2.html', '/report_result?exit:0')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
   @requires_threads
@@ -4241,10 +4218,10 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_main_thread_em_asm_blocking(self):
-    create_file('page.html', read_file(test_file('browser/test_em_asm_blocking.html')))
+    shutil.copyfile(test_file('browser/test_em_asm_blocking.html'), 'page.html')
 
     self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
-    self.run_browser('page.html', '', '/report_result?exit:8')
+    self.run_browser('page.html', '/report_result?exit:8')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
@@ -4264,7 +4241,7 @@ Module["preRun"].push(function () {
       print(opts)
       self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.js', '-O' + str(opts), '--proxy-to-worker'])
       create_file('test.html', '<script src="test.js"></script>')
-      self.run_browser('test.html', None, '/report_result?0')
+      self.run_browser('test.html', '/report_result?0')
 
   def test_in_flight_memfile_request(self):
     # test the XHR for an asm.js mem init file being in flight already
@@ -4275,7 +4252,7 @@ Module["preRun"].push(function () {
       print('plain html')
       self.compile_btest([test_file('in_flight_memfile_request.c'), '-o', 'test.js'] + opts)
       create_file('test.html', '<script src="test.js"></script>')
-      self.run_browser('test.html', None, '/report_result?0') # never when we provide our own HTML like this.
+      self.run_browser('test.html', '/report_result?0') # never when we provide our own HTML like this.
 
       print('default html')
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
@@ -4332,7 +4309,7 @@ Module["preRun"].push(function () {
   def test_manual_wasm_instantiate(self, args):
     self.compile_btest([test_file('manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(test_file('manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
-    self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
+    self.run_browser('manual_wasm_instantiate.html', '/report_result?1')
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
@@ -4340,7 +4317,7 @@ Module["preRun"].push(function () {
     create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     self.compile_btest([test_file('browser_test_hello_world.c'), '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', Path('cdn/test.wasm'))
-    self.run_browser('test.html', '', '/report_result?0')
+    self.run_browser('test.html', '/report_result?0')
 
   @also_with_threads
   def test_utf8_textdecoder(self):
@@ -4772,7 +4749,7 @@ Module["preRun"].push(function () {
     self.set_setting('EXIT_RUNTIME')
     self.compile_btest([test_file('pthread/hello_thread.c'), '-sUSE_PTHREADS', '-o', 'hello_thread_with_blob_url.js'], reporting=Reporting.JS_ONLY)
     shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
-    self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?exit:0')
+    self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
@@ -4797,7 +4774,7 @@ Module["preRun"].push(function () {
         var foo = Foo();
       </script>
     ''')
-    self.run_browser('a.html', '...', '/report_result?exit:0')
+    self.run_browser('a.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
@@ -4850,13 +4827,13 @@ Module["preRun"].push(function () {
         <script src="test.js"></script>
       ''')
 
-      self.run_browser('test.html', None, '/report_result?0')
+      self.run_browser('test.html', '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.js', '--proxy-to-worker', '-sSINGLE_FILE'])
     create_file('test.html', '<script src="test.js"></script>')
-    self.run_browser('test.html', None, '/report_result?0')
+    self.run_browser('test.html', '/report_result?0')
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')
 
@@ -4873,7 +4850,7 @@ Module["preRun"].push(function () {
         new Worker('test.js');
       </script>
     ''')
-    self.run_browser('test.html', None, '/report_result?exit:0')
+    self.run_browser('test.html', '/report_result?exit:0')
 
   def test_access_file_after_heap_resize(self):
     create_file('test.txt', 'hello from file')
@@ -4907,7 +4884,7 @@ Module["preRun"].push(function () {
     src = read_file('test.html')
     # Make sure JS is loaded from subdirectory
     create_file('test-subdir.html', src.replace('test.js', 'subdir/test.js'))
-    self.run_browser('test-subdir.html', None, '/report_result?0')
+    self.run_browser('test-subdir.html', '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-sMODULARIZE`
   def test_browser_run_from_different_directory_async(self):
@@ -4932,7 +4909,7 @@ Module["preRun"].push(function () {
             %s
           </script>
         ''' % creation)
-        self.run_browser('test-subdir.html', None, '/report_result?0')
+        self.run_browser('test-subdir.html', '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but
   # also also we eval the initial code, so currentScript is not present. That prevents us
@@ -4963,7 +4940,7 @@ Module["preRun"].push(function () {
           }, 1);
         </script>
       ''' % creation)
-      self.run_browser('/'.join(path + ['test.html']), None, '/report_result?0')
+      self.run_browser('/'.join(path + ['test.html']), '/report_result?0')
 
   def test_emscripten_request_animation_frame(self):
     self.btest_exit(test_file('emscripten_request_animation_frame.c'))
@@ -5066,7 +5043,7 @@ Module["preRun"].push(function () {
       # First run with WebAssembly support enabled
       # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
       os.rename('test.wasm.js', 'test.wasm.js.unused')
-      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
+      self.run_browser('test.html', '/report_result?exit:0')
       os.rename('test.wasm.js.unused', 'test.wasm.js')
 
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
@@ -5074,7 +5051,7 @@ Module["preRun"].push(function () {
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
       create_file('test.html', html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
-      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
+      self.run_browser('test.html', '/report_result?exit:0')
 
   def test_wasm2js_fallback_on_wasm_compilation_failure(self):
     self.set_setting('EXIT_RUNTIME')
@@ -5083,12 +5060,12 @@ Module["preRun"].push(function () {
 
       # Run without the .wasm.js file present: with Wasm support, the page should still run
       os.rename('test.wasm.js', 'test.wasm.js.unused')
-      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
+      self.run_browser('test.html', '/report_result?exit:0')
 
       # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
       os.rename('test.wasm.js.unused', 'test.wasm.js')
       shutil.copyfile('test.js', 'test.wasm')
-      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
+      self.run_browser('test.html', '/report_result?exit:0')
 
   def test_system(self):
     self.btest_exit(test_file('test_system.c'))
@@ -5370,13 +5347,13 @@ Module["preRun"].push(function () {
     src = open('test.html').read()
     # Slash in query
     create_file('test-query.html', src.replace('test.js', 'test.js?type=pass/fail'))
-    self.run_browser('test-query.html', None, '/report_result?0')
+    self.run_browser('test-query.html', '/report_result?0')
     # Slash in fragment
     create_file('test-hash.html', src.replace('test.js', 'test.js#pass/fail'))
-    self.run_browser('test-hash.html', None, '/report_result?0')
+    self.run_browser('test-hash.html', '/report_result?0')
     # Slash in query and fragment
     create_file('test-query-hash.html', src.replace('test.js', 'test.js?type=pass/fail#pass/fail'))
-    self.run_browser('test-query-hash.html', None, '/report_result?0')
+    self.run_browser('test-query-hash.html', '/report_result?0')
 
   @disabled("only run this manually, to test for race conditions")
   @parameterized({
