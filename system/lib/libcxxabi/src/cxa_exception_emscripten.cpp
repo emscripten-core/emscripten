@@ -72,6 +72,12 @@ void* __thrown_object_from_unwind_exception(
   return thrown_object_from_unwind_exception(unwind_exception);
 }
 
+// Puts information about thrown_object into type and message
+// `type` is the string representation of the type of the exception
+// `message` is the `exception->what()` method if one is found,
+// otherwise `message` will be `NULL`
+// `type` is malloc'd and should be freed after use.
+// `message` is either `NULL` or a malloc'd string which should be freed.
 void __get_exception_message(void* thrown_object, char** type, char** message) {
   __cxa_exception* exception_header =
     cxa_exception_from_thrown_object(thrown_object);
