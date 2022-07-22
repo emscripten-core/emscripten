@@ -18,7 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.17
+3.1.18
+------
+
+3.1.17 - 07/22/2022
 ------
 - A source map file and DWARF info in the wasm can now be emitted at the same if
   the user gives the both options: `-g -gsource-map`.
