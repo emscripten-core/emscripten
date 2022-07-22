@@ -109,6 +109,8 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
   }
 }
 
+// Returns a message saying that execution was terminated due to an exception.
+// This message is freshly malloc'd and should be freed.
 char* __get_exception_terminate_message(void *thrown_object) {
   char* type;
   char* message;
