@@ -7363,8 +7363,13 @@ void* operator new(size_t size) {
       ''')
       self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  def test_embind_2(self):
-    self.emcc_args += ['-lembind', '--post-js', 'post.js']
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  @node_pthreads
+  def test_embind_2(self, args):
+    self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
     create_file('post.js', '''
       function printLerp() {
         out('lerp ' + Module.lerp(100, 200, 66) + '.');
@@ -7374,11 +7379,13 @@ void* operator new(size_t size) {
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
+      #include <emscripten/console.h>
       using namespace emscripten;
       int lerp(int a, int b, int t) {
         return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
+        _emscripten_err("test bindings");
         function("lerp", &lerp);
       }
       int main(int argc, char **argv) {

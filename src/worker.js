@@ -213,9 +213,12 @@ self.onmessage = (e) => {
 
       if (!initializedJS) {
 #if EMBIND
+#if ASSERTIONS
+        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+#endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused
-        Module['___embind_register_native_and_builtin_types']();
+        Module['__embind_initialize_bindings']();
 #endif // EMBIND
 
         // Execute any proxied work that came in before the thread was
