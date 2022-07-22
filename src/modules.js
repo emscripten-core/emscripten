@@ -50,6 +50,7 @@ global.LibraryManager = {
       'library_stack_trace.js',
       'library_wasi.js',
       'library_dylink.js',
+      'library_makeDynCall.js',
       'library_eventloop.js',
     ];
 
