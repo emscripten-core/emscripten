@@ -3313,28 +3313,28 @@ mergeInto(LibraryManager.library, {
       convert_code.push(0x00); // no local variables (except the arguments)
     }
 
+    function localGet(j){
+      convert_code.push(0x20); // local.get
+      uleb128Encode(j, convert_code);
+    }
+
     var j = 1;
     for (var i = 1; i < sig.length; i++) {
       if (sig[i] == "j") {
-        convert_code.push(
-          0x20 // local.get j + 1
-        );
-        uleb128Encode(j + 1, convert_code);
+        localGet(j + 1);
         convert_code.push(
             0xad, // i64.extend_i32_unsigned
             0x42, 0x20, // i64.const 32
             0x86, // i64.shl,
-            0x20, // local.get j
         )
-        uleb128Encode(j, convert_code);
+        localGet(j);
         convert_code.push(
               0xac, // i64.extend_i32_signed
               0x84, // i64.or
         );
         j+=2;
       } else {
-        convert_code.push(0x20); // local.get j
-        uleb128Encode(j, convert_code);
+        localGet(j);
         j++;
       }
     }
@@ -3356,9 +3356,8 @@ mergeInto(LibraryManager.library, {
         0x88, // i64.shr_u
         0xa7, // i32.wrap_i64
         0x10, 0x00, // Call function 0
-        0x20
       );
-      uleb128Encode(j, convert_code); // local.get j
+      localGet(j);
       convert_code.push(
         0xa7, // i32.wrap_i64
       );
