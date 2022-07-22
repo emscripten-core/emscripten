@@ -86,7 +86,8 @@ How:
    the commit referred to in the [DEPS][DEPS] file above.
 1. Update [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
-   upcoming, version. An example of this PR can be #17439.
+   upcoming, version. An example of this PR can be
+   emscripten-core/emscripten#17439.
 
 Major version update (1.X.Y to 1.(X+1).0)
 -----------------------------------------
