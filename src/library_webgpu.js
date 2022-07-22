@@ -141,6 +141,8 @@
       SurfaceDescriptorFromCanvasHTMLSelector: 4,
       ShaderModuleSPIRVDescriptor: 5,
       ShaderModuleWGSLDescriptor: 6,
+      PrimitiveDepthClipControl: 7,
+      RenderPassDescriptorMaxDrawCount: 15,
     },
     QueueWorkDoneStatus: {
       Success: 0,
@@ -380,19 +382,17 @@ var LibraryWebGPU = {
       'validation',
       'out-of-memory',
     ],
-    FeatureName: {
-      0: undefined,
-      1: 'depth-clip-control',
-      2: 'depth24unorm-stencil8',
-      3: 'depth32float-stencil8',
-      4: 'timestamp-query',
-      5: 'pipeline-statistics-query',
-      6: 'texture-compression-bc',
-      7: 'texture-compression-etc2',
-      8: 'texture-compression-astc',
-      9: 'indirect-first-instance',
-      1000: 'depth-clamping',
-    },
+    FeatureName: [
+      undefined,
+      'depth-clip-control',
+      'depth32float-stencil8',
+      'timestamp-query',
+      'pipeline-statistics-query',
+      'texture-compression-bc',
+      'texture-compression-etc2',
+      'texture-compression-astc',
+      'indirect-first-instance',
+    ],
     FilterMode: [
       'nearest',
       'linear',
@@ -422,10 +422,6 @@ var LibraryWebGPU = {
       undefined,
       'low-power',
       'high-performance',
-    ],
-    PredefinedColorSpace: [
-      undefined,
-      'srgb',
     ],
     PrimitiveTopology: [
       'point-list',
@@ -526,7 +522,6 @@ var LibraryWebGPU = {
       'depth16unorm',
       'depth24plus',
       'depth24plus-stencil8',
-      'depth24unorm-stencil8',
       'depth32float',
       'depth32float-stencil8',
       'bc1-rgba-unorm',
@@ -635,6 +630,7 @@ var LibraryWebGPU = {
     VertexStepMode: [
       'vertex',
       'instance',
+      'vertex-buffer-not-used',
     ],
   },
 
@@ -725,6 +721,8 @@ var LibraryWebGPU = {
     setLimitValueU32('maxVertexAttributes', {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
     setLimitValueU32('maxVertexBufferArrayStride', {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
     setLimitValueU32('maxInterStageShaderComponents', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
+    setLimitValueU32('maxInterStageShaderVariables', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
+    setLimitValueU32('maxColorAttachments', {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
     setLimitValueU32('maxComputeWorkgroupStorageSize', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
     setLimitValueU32('maxComputeInvocationsPerWorkgroup', {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
     setLimitValueU32('maxComputeWorkgroupSizeX', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
@@ -1450,6 +1448,16 @@ var LibraryWebGPU = {
 
   // wgpuQuerySet
 
+  wgpuQuerySetGetCount: function(querySetId) {
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    return querySet.count;
+  },
+
+  wgpuQuerySetSetGetType: function(querySetId, labelPtr) {
+    var querySet = WebGPU.mgrQuerySet.get(querySetId);
+    return querySet.type;
+  },
+
   wgpuQuerySetSetLabel: function(querySetId, labelPtr) {
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     querySet.label = UTF8ToString(labelPtr);
@@ -1620,6 +1628,10 @@ var LibraryWebGPU = {
       };
     }
 
+    function makeRenderPassDescriptorMaxDrawCount(mdcPtr) {
+        return  {{{ gpu.makeGetU64('mdcPtr', C_STRUCTS.WGPURenderPassDescriptorMaxDrawCount.maxDrawCount) }}};
+    }
+
     function makeRenderPassTimestampWrite(twPtr) {
       return {
         "querySet": WebGPU.mgrQuerySet.get(
@@ -1639,7 +1651,21 @@ var LibraryWebGPU = {
     }
 
     function makeRenderPassDescriptor(descriptor) {
-      {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      {{{ gpu.makeCheck('descriptor') }}}
+      var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.nextInChain, '*') }}};
+      
+      var maxDrawCount = undefined;
+      if (nextInChainPtr !== 0) {
+        var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
+#if ASSERTIONS
+        assert(sType === {{{ gpu.SType.RenderPassDescriptorMaxDrawCount }}});
+#endif
+        var renderPassDescriptorMaxDrawCount = nextInChainPtr;
+        {{{ gpu.makeCheckDescriptor('renderPassDescriptorMaxDrawCount') }}}
+        maxDrawCount = makeRenderPassDescriptorMaxDrawCount(
+          {{{ makeGetValue('renderPassDescriptorMaxDrawCount', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}});
+      }
+
       var desc = {
         "label": undefined,
         "colorAttachments": makeColorAttachments(
@@ -1658,6 +1684,10 @@ var LibraryWebGPU = {
         desc["timestampWrites"] = makeRenderPassTimestampWrites(
           timestampWriteCount,
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}});
+      }
+
+      if (maxDrawCount) {
+        desc["maxDrawCount"] = maxDrawCount;
       }
       return desc;
     }
@@ -1917,6 +1947,17 @@ var LibraryWebGPU = {
     });
   },
 
+  wgpuBufferGetSize: function(bufferId) {
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    // 64-bit
+    return buffer.size;
+  },
+
+  wgpuBufferGetUsage: function(bufferId) {
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    return buffer.usage;
+  },
+
   wgpuBufferSetLabel: function(bufferId, labelPtr) {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     buffer.label = UTF8ToString(labelPtr);
@@ -1940,6 +1981,46 @@ var LibraryWebGPU = {
   },
 
   // wgpuTexture
+
+  wgpuTextureGetDepthOrArrayLayers: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.depthOrArrayLayers;
+  },
+
+  wgpuTextureGetDimension: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.dimension;
+  },
+
+  wgpuTextureGetFormat: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.format;
+  },
+
+  wgpuTextureGetHeight: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.height;
+  },
+
+  wgpuTextureGetMipLevelCount: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.mipLevelCount;
+  },
+
+  wgpuTextureGetSampleCount: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.sampleCount;
+  },
+
+  wgpuTextureGetUsage: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.usage;
+  },
+
+  wgpuTextureGetWidth: function(textureId) {
+    var texture = WebGPU.mgrTexture.get(textureId);
+    return texture.width;
+  },
 
   wgpuTextureSetLabel: function(textureId, labelPtr) {
     var texture = WebGPU.mgrTexture.get(textureId);
@@ -2412,6 +2493,8 @@ var LibraryWebGPU = {
   wgpuAdapterGetProperties: function(adapterId, properties) {
     {{{ gpu.makeCheckDescriptor('properties') }}}
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorName, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.architecture, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.deviceID, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.name, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.driverDescription, '0', 'i32') }}};
@@ -2483,6 +2566,8 @@ var LibraryWebGPU = {
         setLimitU32IfDefined("maxVertexAttributes", {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
         setLimitU32IfDefined("maxVertexBufferArrayStride", {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
         setLimitU32IfDefined("maxInterStageShaderComponents", {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
+        setLimitU32IfDefined("maxInterStageShaderVariables", {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
+        setLimitU32IfDefined("maxColorAttachments", {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
         setLimitU32IfDefined("maxComputeWorkgroupStorageSize", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
         setLimitU32IfDefined("maxComputeInvocationsPerWorkgroup", {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
         setLimitU32IfDefined("maxComputeWorkgroupSizeX", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});

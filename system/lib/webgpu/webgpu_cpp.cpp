@@ -183,7 +183,6 @@ namespace wgpu {
 
     static_assert(static_cast<uint32_t>(FeatureName::Undefined) == WGPUFeatureName_Undefined, "value mismatch for FeatureName::Undefined");
     static_assert(static_cast<uint32_t>(FeatureName::DepthClipControl) == WGPUFeatureName_DepthClipControl, "value mismatch for FeatureName::DepthClipControl");
-    static_assert(static_cast<uint32_t>(FeatureName::Depth24UnormStencil8) == WGPUFeatureName_Depth24UnormStencil8, "value mismatch for FeatureName::Depth24UnormStencil8");
     static_assert(static_cast<uint32_t>(FeatureName::Depth32FloatStencil8) == WGPUFeatureName_Depth32FloatStencil8, "value mismatch for FeatureName::Depth32FloatStencil8");
     static_assert(static_cast<uint32_t>(FeatureName::TimestampQuery) == WGPUFeatureName_TimestampQuery, "value mismatch for FeatureName::TimestampQuery");
     static_assert(static_cast<uint32_t>(FeatureName::PipelineStatisticsQuery) == WGPUFeatureName_PipelineStatisticsQuery, "value mismatch for FeatureName::PipelineStatisticsQuery");
@@ -191,7 +190,6 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(FeatureName::TextureCompressionETC2) == WGPUFeatureName_TextureCompressionETC2, "value mismatch for FeatureName::TextureCompressionETC2");
     static_assert(static_cast<uint32_t>(FeatureName::TextureCompressionASTC) == WGPUFeatureName_TextureCompressionASTC, "value mismatch for FeatureName::TextureCompressionASTC");
     static_assert(static_cast<uint32_t>(FeatureName::IndirectFirstInstance) == WGPUFeatureName_IndirectFirstInstance, "value mismatch for FeatureName::IndirectFirstInstance");
-    static_assert(static_cast<uint32_t>(FeatureName::DepthClamping) == WGPUFeatureName_DepthClamping, "value mismatch for FeatureName::DepthClamping");
 
     // FilterMode
 
@@ -246,14 +244,6 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(PowerPreference::Undefined) == WGPUPowerPreference_Undefined, "value mismatch for PowerPreference::Undefined");
     static_assert(static_cast<uint32_t>(PowerPreference::LowPower) == WGPUPowerPreference_LowPower, "value mismatch for PowerPreference::LowPower");
     static_assert(static_cast<uint32_t>(PowerPreference::HighPerformance) == WGPUPowerPreference_HighPerformance, "value mismatch for PowerPreference::HighPerformance");
-
-    // PredefinedColorSpace
-
-    static_assert(sizeof(PredefinedColorSpace) == sizeof(WGPUPredefinedColorSpace), "sizeof mismatch for PredefinedColorSpace");
-    static_assert(alignof(PredefinedColorSpace) == alignof(WGPUPredefinedColorSpace), "alignof mismatch for PredefinedColorSpace");
-
-    static_assert(static_cast<uint32_t>(PredefinedColorSpace::Undefined) == WGPUPredefinedColorSpace_Undefined, "value mismatch for PredefinedColorSpace::Undefined");
-    static_assert(static_cast<uint32_t>(PredefinedColorSpace::Srgb) == WGPUPredefinedColorSpace_Srgb, "value mismatch for PredefinedColorSpace::Srgb");
 
     // PresentMode
 
@@ -331,7 +321,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(SType::ShaderModuleSPIRVDescriptor) == WGPUSType_ShaderModuleSPIRVDescriptor, "value mismatch for SType::ShaderModuleSPIRVDescriptor");
     static_assert(static_cast<uint32_t>(SType::ShaderModuleWGSLDescriptor) == WGPUSType_ShaderModuleWGSLDescriptor, "value mismatch for SType::ShaderModuleWGSLDescriptor");
     static_assert(static_cast<uint32_t>(SType::PrimitiveDepthClipControl) == WGPUSType_PrimitiveDepthClipControl, "value mismatch for SType::PrimitiveDepthClipControl");
-    static_assert(static_cast<uint32_t>(SType::PrimitiveDepthClampingState) == WGPUSType_PrimitiveDepthClampingState, "value mismatch for SType::PrimitiveDepthClampingState");
+    static_assert(static_cast<uint32_t>(SType::RenderPassDescriptorMaxDrawCount) == WGPUSType_RenderPassDescriptorMaxDrawCount, "value mismatch for SType::RenderPassDescriptorMaxDrawCount");
 
     // SamplerBindingType
 
@@ -448,7 +438,6 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(TextureFormat::Depth16Unorm) == WGPUTextureFormat_Depth16Unorm, "value mismatch for TextureFormat::Depth16Unorm");
     static_assert(static_cast<uint32_t>(TextureFormat::Depth24Plus) == WGPUTextureFormat_Depth24Plus, "value mismatch for TextureFormat::Depth24Plus");
     static_assert(static_cast<uint32_t>(TextureFormat::Depth24PlusStencil8) == WGPUTextureFormat_Depth24PlusStencil8, "value mismatch for TextureFormat::Depth24PlusStencil8");
-    static_assert(static_cast<uint32_t>(TextureFormat::Depth24UnormStencil8) == WGPUTextureFormat_Depth24UnormStencil8, "value mismatch for TextureFormat::Depth24UnormStencil8");
     static_assert(static_cast<uint32_t>(TextureFormat::Depth32Float) == WGPUTextureFormat_Depth32Float, "value mismatch for TextureFormat::Depth32Float");
     static_assert(static_cast<uint32_t>(TextureFormat::Depth32FloatStencil8) == WGPUTextureFormat_Depth32FloatStencil8, "value mismatch for TextureFormat::Depth32FloatStencil8");
     static_assert(static_cast<uint32_t>(TextureFormat::BC1RGBAUnorm) == WGPUTextureFormat_BC1RGBAUnorm, "value mismatch for TextureFormat::BC1RGBAUnorm");
@@ -573,6 +562,7 @@ namespace wgpu {
 
     static_assert(static_cast<uint32_t>(VertexStepMode::Vertex) == WGPUVertexStepMode_Vertex, "value mismatch for VertexStepMode::Vertex");
     static_assert(static_cast<uint32_t>(VertexStepMode::Instance) == WGPUVertexStepMode_Instance, "value mismatch for VertexStepMode::Instance");
+    static_assert(static_cast<uint32_t>(VertexStepMode::VertexBufferNotUsed) == WGPUVertexStepMode_VertexBufferNotUsed, "value mismatch for VertexStepMode::VertexBufferNotUsed");
 
     // BufferUsage
 
@@ -654,6 +644,10 @@ namespace wgpu {
             "offsetof mismatch for AdapterProperties::nextInChain");
     static_assert(offsetof(AdapterProperties, vendorID) == offsetof(WGPUAdapterProperties, vendorID),
             "offsetof mismatch for AdapterProperties::vendorID");
+    static_assert(offsetof(AdapterProperties, vendorName) == offsetof(WGPUAdapterProperties, vendorName),
+            "offsetof mismatch for AdapterProperties::vendorName");
+    static_assert(offsetof(AdapterProperties, architecture) == offsetof(WGPUAdapterProperties, architecture),
+            "offsetof mismatch for AdapterProperties::architecture");
     static_assert(offsetof(AdapterProperties, deviceID) == offsetof(WGPUAdapterProperties, deviceID),
             "offsetof mismatch for AdapterProperties::deviceID");
     static_assert(offsetof(AdapterProperties, name) == offsetof(WGPUAdapterProperties, name),
@@ -870,6 +864,10 @@ namespace wgpu {
             "offsetof mismatch for Limits::maxVertexBufferArrayStride");
     static_assert(offsetof(Limits, maxInterStageShaderComponents) == offsetof(WGPULimits, maxInterStageShaderComponents),
             "offsetof mismatch for Limits::maxInterStageShaderComponents");
+    static_assert(offsetof(Limits, maxInterStageShaderVariables) == offsetof(WGPULimits, maxInterStageShaderVariables),
+            "offsetof mismatch for Limits::maxInterStageShaderVariables");
+    static_assert(offsetof(Limits, maxColorAttachments) == offsetof(WGPULimits, maxColorAttachments),
+            "offsetof mismatch for Limits::maxColorAttachments");
     static_assert(offsetof(Limits, maxComputeWorkgroupStorageSize) == offsetof(WGPULimits, maxComputeWorkgroupStorageSize),
             "offsetof mismatch for Limits::maxComputeWorkgroupStorageSize");
     static_assert(offsetof(Limits, maxComputeInvocationsPerWorkgroup) == offsetof(WGPULimits, maxComputeInvocationsPerWorkgroup),
@@ -922,14 +920,6 @@ namespace wgpu {
             "offsetof mismatch for PipelineLayoutDescriptor::bindGroupLayoutCount");
     static_assert(offsetof(PipelineLayoutDescriptor, bindGroupLayouts) == offsetof(WGPUPipelineLayoutDescriptor, bindGroupLayouts),
             "offsetof mismatch for PipelineLayoutDescriptor::bindGroupLayouts");
-
-    // PrimitiveDepthClampingState
-
-    static_assert(sizeof(PrimitiveDepthClampingState) == sizeof(WGPUPrimitiveDepthClampingState), "sizeof mismatch for PrimitiveDepthClampingState");
-    static_assert(alignof(PrimitiveDepthClampingState) == alignof(WGPUPrimitiveDepthClampingState), "alignof mismatch for PrimitiveDepthClampingState");
-
-    static_assert(offsetof(PrimitiveDepthClampingState, clampDepth) == offsetof(WGPUPrimitiveDepthClampingState, clampDepth),
-            "offsetof mismatch for PrimitiveDepthClampingState::clampDepth");
 
     // PrimitiveDepthClipControl
 
@@ -1038,6 +1028,14 @@ namespace wgpu {
             "offsetof mismatch for RenderPassDepthStencilAttachment::stencilClearValue");
     static_assert(offsetof(RenderPassDepthStencilAttachment, stencilReadOnly) == offsetof(WGPURenderPassDepthStencilAttachment, stencilReadOnly),
             "offsetof mismatch for RenderPassDepthStencilAttachment::stencilReadOnly");
+
+    // RenderPassDescriptorMaxDrawCount
+
+    static_assert(sizeof(RenderPassDescriptorMaxDrawCount) == sizeof(WGPURenderPassDescriptorMaxDrawCount), "sizeof mismatch for RenderPassDescriptorMaxDrawCount");
+    static_assert(alignof(RenderPassDescriptorMaxDrawCount) == alignof(WGPURenderPassDescriptorMaxDrawCount), "alignof mismatch for RenderPassDescriptorMaxDrawCount");
+
+    static_assert(offsetof(RenderPassDescriptorMaxDrawCount, maxDrawCount) == offsetof(WGPURenderPassDescriptorMaxDrawCount, maxDrawCount),
+            "offsetof mismatch for RenderPassDescriptorMaxDrawCount::maxDrawCount");
 
     // RenderPassTimestampWrite
 
@@ -1715,6 +1713,14 @@ namespace wgpu {
         auto result = wgpuBufferGetMappedRange(Get(), offset, size);
         return result;
     }
+    uint64_t Buffer::GetSize() const {
+        auto result = wgpuBufferGetSize(Get());
+        return result;
+    }
+    BufferUsage Buffer::GetUsage() const {
+        auto result = wgpuBufferGetUsage(Get());
+        return static_cast<BufferUsage>(result);
+    }
     void Buffer::MapAsync(MapMode mode, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const {
         wgpuBufferMapAsync(Get(), static_cast<WGPUMapMode>(mode), offset, size, callback, reinterpret_cast<void * >(userdata));
     }
@@ -2052,6 +2058,14 @@ namespace wgpu {
     void QuerySet::Destroy() const {
         wgpuQuerySetDestroy(Get());
     }
+    uint32_t QuerySet::GetCount() const {
+        auto result = wgpuQuerySetGetCount(Get());
+        return result;
+    }
+    QueryType QuerySet::GetType() const {
+        auto result = wgpuQuerySetGetType(Get());
+        return static_cast<QueryType>(result);
+    }
     void QuerySet::SetLabel(char const * label) const {
         wgpuQuerySetSetLabel(Get(), reinterpret_cast<char const * >(label));
     }
@@ -2372,6 +2386,38 @@ namespace wgpu {
     }
     void Texture::Destroy() const {
         wgpuTextureDestroy(Get());
+    }
+    uint32_t Texture::GetDepthOrArrayLayers() const {
+        auto result = wgpuTextureGetDepthOrArrayLayers(Get());
+        return result;
+    }
+    TextureDimension Texture::GetDimension() const {
+        auto result = wgpuTextureGetDimension(Get());
+        return static_cast<TextureDimension>(result);
+    }
+    TextureFormat Texture::GetFormat() const {
+        auto result = wgpuTextureGetFormat(Get());
+        return static_cast<TextureFormat>(result);
+    }
+    uint32_t Texture::GetHeight() const {
+        auto result = wgpuTextureGetHeight(Get());
+        return result;
+    }
+    uint32_t Texture::GetMipLevelCount() const {
+        auto result = wgpuTextureGetMipLevelCount(Get());
+        return result;
+    }
+    uint32_t Texture::GetSampleCount() const {
+        auto result = wgpuTextureGetSampleCount(Get());
+        return result;
+    }
+    TextureUsage Texture::GetUsage() const {
+        auto result = wgpuTextureGetUsage(Get());
+        return static_cast<TextureUsage>(result);
+    }
+    uint32_t Texture::GetWidth() const {
+        auto result = wgpuTextureGetWidth(Get());
+        return result;
     }
     void Texture::SetLabel(char const * label) const {
         wgpuTextureSetLabel(Get(), reinterpret_cast<char const * >(label));
