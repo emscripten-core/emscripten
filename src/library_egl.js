@@ -112,21 +112,19 @@ var LibraryEGL = {
   eglInitialize__proxy: 'sync',
   eglInitialize__sig: 'iiii',
   eglInitialize: function(display, majorVersion, minorVersion) {
-    if (display == 62000 /* Magic ID for Emscripten 'default display' */) {
-      if (majorVersion) {
-        {{{ makeSetValue('majorVersion', '0', '1', 'i32') }}}; // Advertise EGL Major version: '1'
-      }
-      if (minorVersion) {
-        {{{ makeSetValue('minorVersion', '0', '4', 'i32') }}}; // Advertise EGL Minor version: '4'
-      }
-      EGL.defaultDisplayInitialized = true;
-      EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-      return 1;
-    }
-    else {
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
+    if (majorVersion) {
+      {{{ makeSetValue('majorVersion', '0', '1', 'i32') }}}; // Advertise EGL Major version: '1'
+    }
+    if (minorVersion) {
+      {{{ makeSetValue('minorVersion', '0', '4', 'i32') }}}; // Advertise EGL Minor version: '4'
+    }
+    EGL.defaultDisplayInitialized = true;
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1;
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy);
@@ -554,10 +552,10 @@ var LibraryEGL = {
     if (api == 0x30A0 /* EGL_OPENGL_ES_API */) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       return 1;
-    } else { // if (api == 0x30A1 /* EGL_OPENVG_API */ || api == 0x30A2 /* EGL_OPENGL_API */) {
-      EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
-      return 0;
     }
+    // if (api == 0x30A1 /* EGL_OPENVG_API */ || api == 0x30A2 /* EGL_OPENGL_API */) {
+    EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
+    return 0;
   },
 
   // EGLAPI EGLenum EGLAPIENTRY eglQueryAPI(void);

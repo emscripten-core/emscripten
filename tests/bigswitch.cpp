@@ -7930,9 +7930,9 @@ case 0x80EC /* GL_FOG_SPECULAR_TEXTURE_WIN */: return "GL_FOG_SPECULAR_TEXTURE_W
 
 
 default:
-	{
-		return "what?";
-	}
+  {
+    return "what?";
+  }
 } // ~switch
 
 } // ~WWWGLEnumToString

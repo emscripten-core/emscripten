@@ -440,8 +440,8 @@ mergeInto(LibraryManager.library, {
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
   emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
-    '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
-    '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
+    '  ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)\n' +
+    '  : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)\n',
 #else
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
@@ -510,9 +510,10 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
+  _gmtime_js__deps: ['$readI53FromI64'],
   _gmtime_js__sig: 'ipp',
   _gmtime_js: function(time, tmPtr) {
-    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
@@ -544,9 +545,10 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
+  _localtime_js__deps: ['$readI53FromI64'],
   _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
-    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
+    var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
@@ -827,12 +829,10 @@ mergeInto(LibraryManager.library, {
           // this date is after the start of the first week of this year
           if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
             return thisDate.getFullYear()+1;
-          } else {
-            return thisDate.getFullYear();
           }
-        } else {
-          return thisDate.getFullYear()-1;
+          return thisDate.getFullYear();
         }
+        return thisDate.getFullYear()-1;
     }
 
     var EXPANSION_RULES_2 = {
@@ -899,9 +899,8 @@ mergeInto(LibraryManager.library, {
       '%p': function(date) {
         if (date.tm_hour >= 0 && date.tm_hour < 12) {
           return 'AM';
-        } else {
-          return 'PM';
         }
+        return 'PM';
       },
       '%S': function(date) {
         return leadingNulls(date.tm_sec, 2);
@@ -2181,10 +2180,9 @@ mergeInto(LibraryManager.library, {
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
     if (_setprotoent.index === Protocols.list.length) {
       return 0;
-    } else {
-      var result = Protocols.list[_setprotoent.index++];
-      return result;
     }
+    var result = Protocols.list[_setprotoent.index++];
+    return result;
   },
 
   getprotobyname__deps: ['setprotoent', '$Protocols'],
@@ -2210,8 +2208,8 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
+    () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
+    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
@@ -2242,7 +2240,7 @@ mergeInto(LibraryManager.library, {
     if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
       var randomBuffer = new Uint8Array(1);
-      return function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+      return () => { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
     } else
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -2250,7 +2248,7 @@ mergeInto(LibraryManager.library, {
       try {
         var crypto_module = require('crypto');
         // nodejs has crypto support
-        return function() { return crypto_module['randomBytes'](1)[0]; };
+        return () => crypto_module['randomBytes'](1)[0];
       } catch (e) {
         // nodejs doesn't have crypto support
       }
@@ -2258,9 +2256,9 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    return function() { abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+    return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
 #else
-    return function() { abort("randomDevice"); };
+    return () => abort("randomDevice");
 #endif
   },
 
@@ -2418,6 +2416,9 @@ mergeInto(LibraryManager.library, {
     if (!warnOnce.shown) warnOnce.shown = {};
     if (!warnOnce.shown[text]) {
       warnOnce.shown[text] = 1;
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
+#endif
       err(text);
     }
   },
@@ -3198,7 +3199,7 @@ mergeInto(LibraryManager.library, {
     ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
       elements.forEach(function(element) {
         if (element) {
-          listenOnce(element, event, function() {
+          listenOnce(element, event, () => {
             if (ctx.state === 'suspended') ctx.resume();
           });
         }
@@ -3648,8 +3649,7 @@ mergeInto(LibraryManager.library, {
     '$maybeExit',
 #endif
   ],
-  $callUserCallback__docs: '/** @param {boolean=} synchronous */',
-  $callUserCallback: function(func, synchronous) {
+  $callUserCallback: function(func) {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
 #else
@@ -3658,11 +3658,6 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
-      return;
-    }
-    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
-    if (synchronous) {
-      func();
       return;
     }
     try {
@@ -3729,11 +3724,11 @@ mergeInto(LibraryManager.library, {
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
-    readAsync(url, function(arrayBuffer) {
+    readAsync(url, (arrayBuffer) => {
       assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
-    }, function(event) {
+    }, (event) => {
       if (onerror) {
         onerror();
       } else {
@@ -3792,6 +3787,12 @@ mergeInto(LibraryManager.library, {
   __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
   __c_longjmp_import: true,
 #endif
+#if ASYNCIFY
+  __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
+  __asyncify_state__import: true,
+  __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
+  __asyncify_data__import: true,
+#endif
 #endif
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
@@ -3840,6 +3841,8 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$addFunction',
   '$removeFunction',
   '$allocate',
+  '$ALLOC_NORMAL',
+  '$ALLOC_STACK',
   '$AsciiToString',
   '$stringToAscii',
   '$UTF16ToString',

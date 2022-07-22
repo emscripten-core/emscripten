@@ -96,11 +96,10 @@ mergeInto(LibraryManager.library, {
           flags ^= k;
         }
       }
-      if (!flags) {
-        return newFlags;
-      } else {
+      if (flags) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
+      return newFlags;
     },
     node_ops: {
       getattr: (node) => {

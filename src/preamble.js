@@ -564,7 +564,6 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When exception catching is enabled (!DISABLE_EXCEPTION_CATCHING)
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
 // that we only handle exceptions at the top level letting the exception
 // mechanics work uninterrupted at the inner level.  Additionally,
@@ -580,13 +579,10 @@ function makeAbortWrapper(original) {
       throw "program has already aborted!";
     }
 
-#if !DISABLE_EXCEPTION_CATCHING
     abortWrapperDepth += 1;
-#endif
     try {
       return original.apply(null, arguments);
-    }
-    catch (e) {
+    } catch (e) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
@@ -599,12 +595,10 @@ function makeAbortWrapper(original) {
 
       abort("unhandled exception: " + [e, e.stack]);
     }
-#if !DISABLE_EXCEPTION_CATCHING
     finally {
       abortWrapperDepth -= 1;
     }
-#endif
-    }
+  }
 }
 
 // Instrument all the exported functions to:
@@ -672,13 +666,12 @@ function getBinary(file) {
 #endif
     if (readBinary) {
       return readBinary(file);
-    } else {
-#if WASM_ASYNC_COMPILATION
-      throw "both async and sync fetching of the wasm failed";
-#else
-      throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
-#endif
     }
+#if WASM_ASYNC_COMPILATION
+    throw "both async and sync fetching of the wasm failed";
+#else
+    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
   }
   catch (err) {
     abort(err);

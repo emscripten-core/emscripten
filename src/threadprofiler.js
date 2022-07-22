@@ -35,7 +35,7 @@ var emscriptenThreadProfiler = {
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].threadInfoStruct);
+      threads.push(PThread.pthreads[i].pthread_ptr);
     }
     for (var i = 0; i < threads.length; ++i) {
       var threadPtr = threads[i];
@@ -62,7 +62,7 @@ var emscriptenThreadProfiler = {
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].threadInfoStruct);
+      threads.push(PThread.pthreads[i].pthread_ptr);
     }
 
     for (var i = 0; i < threads.length; ++i) {

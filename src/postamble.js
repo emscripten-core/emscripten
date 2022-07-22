@@ -92,8 +92,6 @@ function runMemoryInitializer() {
 
 var calledRun;
 
-var calledMain = false;
-
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
 #endif
@@ -151,14 +149,16 @@ function callMain(args) {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
+#if ABORT_ON_WASM_EXCEPTIONS || !PROXY_TO_PTHREAD
   try {
+#endif
 #if BENCHMARK
     var start = Date.now();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 2;
+    abortWrapperDepth += 1;
 #endif
 
 #if STANDALONE_WASM
@@ -187,15 +187,14 @@ function callMain(args) {
   }
   catch (e) {
     return handleException(e);
-#endif // !PROXY_TO_PTHREAD
-  } finally {
-    calledMain = true;
-
-#if ABORT_ON_WASM_EXCEPTIONS
-    // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 2;
-#endif
   }
+#endif // !PROXY_TO_PTHREAD
+#if ABORT_ON_WASM_EXCEPTIONS
+  finally {
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth -= 1;
+  }
+#endif
 }
 #endif // HAS_MAIN
 

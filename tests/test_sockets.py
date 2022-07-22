@@ -192,8 +192,8 @@ class sockets(BrowserCore):
       self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sdl2_sockets_echo(self):
-    with CompiledServerHarness('sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
-      self.btest_exit('sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+    with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
+      self.btest_exit('sockets/sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   @parameterized({
     'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
@@ -335,9 +335,9 @@ class sockets(BrowserCore):
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
     self.run_process(['cmake', '--build', '.'])
     if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
-      proxy_server = os.path.join(self.get_dir(), 'Debug', 'websocket_to_posix_proxy.exe')
+      proxy_server = self.in_dir('Debug', 'websocket_to_posix_proxy.exe')
     else:
-      proxy_server = os.path.join(self.get_dir(), 'websocket_to_posix_proxy')
+      proxy_server = self.in_dir('websocket_to_posix_proxy')
 
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):

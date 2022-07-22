@@ -1554,11 +1554,13 @@ int f() {
 
   @parameterized({
     'embed': (['--embed-file', 'somefile.txt'],),
-    'embed-twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
-    'preload': (['--preload-file', 'somefile.txt'],)
+    'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt'],),
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
+    create_file('hello.txt', 'hello world')
     create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -1941,16 +1943,16 @@ int f() {
     self.assertContained('1234, 1234, 4321\n', self.run_js('a.out.js'))
 
   def test_sdl2_mixer_wav(self):
-    self.emcc(test_file('sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
-    self.emcc(test_file('sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
 
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
-    self.emcc(test_file('sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
@@ -2026,7 +2028,7 @@ int f() {
 
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
-    self.emcc(test_file('sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -2423,20 +2425,59 @@ int f() {
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
+  # Verify the existence (or lack thereof) of DWARF info in the given wasm file
+  def verify_dwarf(self, wasm_file, verify_func):
+    self.assertExists(wasm_file)
+    info = self.run_process([LLVM_DWARFDUMP, '--all', wasm_file], stdout=PIPE).stdout
+    verify_func('DW_TAG_subprogram', info) # Subprogram entry in .debug_info
+    verify_func('debug_line[0x', info) # Line table
+
+  def verify_dwarf_exists(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertIn)
+
+  def verify_dwarf_does_not_exist(self, wasm_file):
+    self.verify_dwarf(wasm_file, self.assertNotIn)
+
+  # Verify if the given file name contains a source map
+  def verify_source_map_exists(self, map_file):
+    self.assertExists(map_file)
+    data = json.load(open(map_file))
+    # Simply check the existence of required sections
+    self.assertIn('version', data)
+    self.assertIn('sources', data)
+    self.assertIn('mappings', data)
+
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
       # Test that -g enables dwarf info in object files and linked wasm
       self.run_process([EMXX, test_file('hello_world.cpp'), '-o', output, '-g'] + args)
-
-    def verify(output):
-      info = self.run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
-      self.assertIn('DW_TAG_subprogram', info) # Ensure there's a subprogram entry in .debug_info
-      self.assertIn('debug_line[0x', info) # Ensure there's a line table
-
     compile_with_dwarf(['-c'], 'a.o')
-    verify('a.o')
+    self.verify_dwarf_exists('a.o')
     compile_with_dwarf([], 'a.js')
-    verify('a.wasm')
+    self.verify_dwarf_exists('a.wasm')
+
+  def test_dwarf_with_source_map(self):
+    source_file = 'hello_world.cpp'
+    js_file = 'a.out.js'
+    wasm_file = 'a.out.wasm'
+    map_file = 'a.out.wasm.map'
+
+    # Generate only DWARF
+    self.emcc(test_file(source_file), ['-g'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.assertFalse(os.path.isfile(map_file))
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate only source map
+    self.emcc(test_file(source_file), ['-gsource-map'], js_file)
+    self.verify_dwarf_does_not_exist(wasm_file)
+    self.verify_source_map_exists(map_file)
+    try_delete([wasm_file, map_file, js_file])
+
+    # Generate DWARF with source map
+    self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
+    self.verify_dwarf_exists(wasm_file)
+    self.verify_source_map_exists(map_file)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -2794,17 +2835,16 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
-  def test_headless(self):
+  def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
-    self.run_process([EMCC, test_file('sdl_headless.c'), '-sHEADLESS'])
-    output = self.run_js('a.out.js')
-    assert '''Init: 0
+    expected = '''Init: 0
 Font: 0x1
 Sum: 0
 you should see two lines of text in different colors and a blue rectangle
 SDL_Quit called (and ignored)
 done.
-''' in output, output
+'''
+    self.do_runf(test_file('other/test_sdl_headless.c'), expected,  emcc_args=['-sHEADLESS'])
 
   def test_preprocess(self):
     # Pass -Werror to prevent regressions such as https://github.com/emscripten-core/emscripten/pull/9661
@@ -3402,6 +3442,38 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
+  def test_duplicate_js_functions(self):
+    create_file('duplicated_func.c', '''
+      #include <stdio.h>
+      extern int duplicatedFunc();
+
+      int main() {
+        int res = duplicatedFunc();
+        printf("*%d*\\n", res);
+        return 0;
+      }
+    ''')
+    create_file('duplicated_func_1.js', '''
+      mergeInto(LibraryManager.library, {
+        duplicatedFunc : function() {
+            return 1;
+          }
+        }, { noOverride: true }
+      );
+    ''')
+    create_file('duplicated_func_2.js', '''
+      mergeInto(LibraryManager.library, {
+        duplicatedFunc : function() {
+            return 2;
+          }
+        }, { noOverride: true }
+      );
+    ''')
+
+    self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
+    err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
+    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
+
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
@@ -3771,7 +3843,7 @@ int main() {
 #endif
 }
 ''')
-    warning = 'stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
+    warning = 'warning: stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1'
 
     def test(cxx, no_exit, assertions, flush=0, keepalive=0, filesystem=1):
       if cxx:
@@ -8812,10 +8884,9 @@ test_module().then((test_module_instance) => {
     self.assertContained('hello, world!', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
-  def test_node_js_system(self):
-    self.run_process([EMCC, '-DENV_NODE', test_file('system.c'), '-o', 'a.js', '-O3'])
-    ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
-    self.assertContained('OK', ret)
+  @requires_node
+  def test_system_node_js(self):
+    self.do_runf(test_file('test_system.c'), 'Hello from echo', emcc_args=['-DENV_NODE'])
 
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
@@ -11580,7 +11651,7 @@ void foo() {}
     create_file('post.js', 'alignMemory(100, 4);')
     self.run_process([EMCC, test_file('hello_world.c'), '--post-js=post.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Call to `alignMemory` which is a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
+    self.assertContained('`alignMemory` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_override_system_js_lib_symbol(self):
@@ -11865,6 +11936,12 @@ Module['postRun'] = function() {{
   def test_wasmfs_readfile(self):
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
+  @wasmfs_all_backends
+  def test_wasmfs_readfile_bigint(self):
+    self.set_setting('WASM_BIGINT')
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
+
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
@@ -12029,7 +12106,7 @@ Module['postRun'] = function() {{
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     self.do_runf(test_file('other/test_legacy_runtime.c'),
-                 'Aborted(Call to `allocate` which is a library function and not included by default',
+                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
     # Adding it to EXPORTED_RUNTIME_METHODS makes it available.
@@ -12290,3 +12367,20 @@ Module['postRun'] = function() {{
 
     for m, [v1, v2] in output['assertEquals']:
       self.assertEqual(v1, v2, msg=m)
+
+  def test_warn_once(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$warnOnce'])
+    create_file('main.c', r'''\
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          warnOnce("foo");
+          // Second call should not output anything
+          warnOnce("foo");
+        });
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'warning: foo\ndone\n')

@@ -319,19 +319,17 @@ function asmCoercion(value, type) {
   assert(arguments.length == 2, 'asmCoercion takes exactly two arguments');
   if (type == 'void') {
     return value;
-  } else if (FLOAT_TYPES.has(type)) {
+  }
+  if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
-    } else {
-      if (type === 'float') {
-        return 'Math.fround(' + value + ')';
-      } else {
-        return '(+(' + value + '))';
-      }
     }
-  } else {
-    return '((' + value + ')|0)';
+    if (type === 'float') {
+      return 'Math.fround(' + value + ')';
+    }
+    return '(+(' + value + '))';
   }
+  return '((' + value + ')|0)';
 }
 
 function asmFloatToInt(x) {
@@ -360,6 +358,7 @@ function makeSetTempDouble(i, type, value) {
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
+  assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -371,43 +370,10 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     unsigned = true;
   }
 
-  if (type == 'double' && (align < 8)) {
-    const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align));
-    const setdouble2 = makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align));
-    return '(' + setdouble1 + ',' + setdouble2 + ',' + makeGetTempDouble(0, 'double') + ')';
-  }
-
-  if (align) {
-    // Alignment is important here. May need to split this up
-    const bytes = Runtime.getNativeTypeSize(type);
-    if (bytes > align) {
-      let ret = '(';
-      if (isIntImplemented(type)) {
-        if (bytes == 4 && align == 2) {
-          // Special case that we can optimize
-          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore, 2) + '|' +
-                 '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore, 2) + '<<16)';
-        } else { // XXX we cannot truly handle > 4... (in x86)
-          ret = '';
-          for (let i = 0; i < bytes; i++) {
-            ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore, 1) + (i > 0 ? '<<' + (8 * i) : '') + ')';
-            if (i < bytes - 1) ret += '|';
-          }
-          ret = '(' + makeSignOp(ret, type, unsigned ? 'un' : 're', true);
-        }
-      } else {
-        if (type == 'float') {
-          ret += 'copyTempFloat(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'float');
-        } else {
-          ret += 'copyTempDouble(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'double');
-        }
-      }
-      ret += ')';
-      return ret;
-    }
-  }
-
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  if (type === 'i53' || type === 'u53') {
+    return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
+  }
 
   const slab = getHeapForType(type);
   let ret = slab + '[' + getHeapOffset(offset, type) + ']';
@@ -428,11 +394,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
  * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
  * @param {bool} ignore: legacy, ignored.
- * @param {number} align: TODO
+ * @param {number} align: legacy, ignored.
  * @param {string} sep: TODO
  * @return {TODO}
  */
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
+  assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
@@ -445,23 +412,16 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
 
   const bits = getBits(type);
   const needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
-  if (align || needSplitting) {
+  if (needSplitting) {
     // Alignment is important here, or we need to split this up for other reasons.
     const bytes = Runtime.getNativeTypeSize(type);
-    if (bytes > align || needSplitting) {
+    if (needSplitting) {
       let ret = '';
       if (isIntImplemented(type)) {
-        if (bytes == 4 && align == 2) {
-          // Special case that we can optimize
-          ret += 'tempBigInt=' + value + sep;
-          ret += makeSetValue(ptr, pos, 'tempBigInt&0xffff', 'i16', noNeedFirst, ignore, 2) + sep;
-          ret += makeSetValue(ptr, getFastValue(pos, '+', 2), 'tempBigInt>>16', 'i16', noNeedFirst, ignore, 2);
-        } else {
-          ret += 'tempBigInt=' + value + sep;
-          for (let i = 0; i < bytes; i++) {
-            ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-            if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-          }
+        ret += 'tempBigInt=' + value + sep;
+        for (let i = 0; i < bytes; i++) {
+          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
+          if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
         }
       } else {
         ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
@@ -483,6 +443,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
 const UNROLL_LOOP_MAX = 8;
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
+  assert(typeof align === 'undefined');
   function unroll(type, num, jump) {
     jump = jump || 1;
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
@@ -556,9 +517,8 @@ function getFastValue(a, op, b, type) {
       case '/': {
         if (type[0] === 'i') {
           return ((aNumber / bNumber) | 0).toString();
-        } else {
-          return (aNumber / bNumber).toString();
         }
+        return (aNumber / bNumber).toString();
       }
       case '%': return (aNumber % bNumber).toString();
       case '|': return (aNumber | bNumber).toString();
@@ -682,54 +642,6 @@ function makeThrow(what) {
     }
   }
   return `throw ${what};`;
-}
-
-function makeSignOp(value, type, op, force, ignore) {
-  if (isPointerType(type)) type = POINTER_TYPE;
-  if (!value) return value;
-  let bits;
-  let full;
-  if (type[0] === 'i' || type[0] === 'u') {
-    bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore) + ')';
-    // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
-    if (isNumber(value)) {
-      return eval(full).toString();
-    }
-  }
-  if ((ignore) && !force) return value;
-  if (type[0] === 'i' || type[0] === 'u') {
-    // this is an integer, but not a number (or we would have already handled it)
-    // shortcuts
-    if (ignore) {
-      if (value === 'true') {
-        value = '1';
-      } else if (value === 'false') {
-        value = '0';
-      } else if (needsQuoting(value)) value = '(' + value + ')';
-      if (bits === 32) {
-        if (op === 're') {
-          return '(' + value + '|0)';
-        } else {
-          return '(' + value + '>>>0)';
-        }
-      } else if (bits < 32) {
-        if (op === 're') {
-          return '((' + value + '<<' + (32 - bits) + ')>>' + (32 - bits) + ')';
-        } else {
-          return '(' + value + '&' + (Math.pow(2, bits) - 1) + ')';
-        }
-      } else { // bits > 32
-        if (op === 're') {
-          return makeInlineCalculation('VALUE >= ' + Math.pow(2, bits - 1) + ' ? VALUE-' + Math.pow(2, bits) + ' : VALUE', value, 'tempBigIntS');
-        } else {
-          return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + '+VALUE', value, 'tempBigIntS');
-        }
-      }
-    }
-    return full;
-  }
-  return value;
 }
 
 function stripCorrections(param) {
@@ -1134,9 +1046,8 @@ function from64(x) {
     let ret = '';
     for (e of x) ret += from64(e);
     return ret;
-  } else {
-    return `${x} = Number(${x});`;
   }
+  return `${x} = Number(${x});`;
 }
 
 function to64(x) {
