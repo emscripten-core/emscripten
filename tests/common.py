@@ -898,7 +898,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   library_cache = {}
 
   def get_build_dir(self):
-    ret = os.path.join(self.get_dir(), 'building')
+    ret = self.in_dir('building')
     ensure_dir(ret)
     return ret
 
@@ -1551,7 +1551,7 @@ class BrowserCore(RunnerCore):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
-    shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
+    shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
     write_file('reftest.js', '''
       function doReftest() {

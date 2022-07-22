@@ -335,9 +335,9 @@ class sockets(BrowserCore):
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
     self.run_process(['cmake', '--build', '.'])
     if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
-      proxy_server = os.path.join(self.get_dir(), 'Debug', 'websocket_to_posix_proxy.exe')
+      proxy_server = self.in_dir('Debug', 'websocket_to_posix_proxy.exe')
     else:
-      proxy_server = os.path.join(self.get_dir(), 'websocket_to_posix_proxy')
+      proxy_server = self.in_dir('websocket_to_posix_proxy')
 
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
