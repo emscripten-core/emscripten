@@ -55,10 +55,10 @@ How:
 
 1. Pick a version for a release and make sure it meets the requirements above.
    Let this version SHA be <non-LTO-sha>.
-1. If we want to do an LTO release as well, create a CL that copies [DEPS][DEPS] from <non-lto-sha>
-   to [DEPS.tagged-release][DEPS.tagged-release] in
-   [emscripten-releases][releases_repo] repo. When this CL is committed, let the resulting SHA be
-   <LTO-sha>. An example of this CL can be
+1. If we want to do an LTO release as well, create a CL that copies [DEPS][DEPS]
+   from <non-lto-sha> to [DEPS.tagged-release][DEPS.tagged-release] in
+   [emscripten-releases][releases_repo] repo. When this CL is committed, let the
+   resulting SHA be <LTO-sha>. An example of this CL can be
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
 1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
    When we do both an LTO and a non-LTO release, run:
@@ -83,11 +83,11 @@ How:
 1. [Tag][emsdk_tags] the `emsdk` repo with the new version number, on the commit
    that does the update, after it lands on main.
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
-   the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file above.
+   the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file
+   above.
 1. Update [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
-   upcoming, version. An example of this PR is
-   emscripten-core/emscripten#17439.
+   upcoming, version. An example of this PR is emscripten-core/emscripten#17439.
 
 Major version update (1.X.Y to 1.(X+1).0)
 -----------------------------------------
