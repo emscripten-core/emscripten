@@ -72,12 +72,13 @@ void* __thrown_object_from_unwind_exception(
   return thrown_object_from_unwind_exception(unwind_exception);
 }
 
-// Puts information about thrown_object into type and message
-// `type` is the string representation of the type of the exception
-// `message` is the `exception->what()` method if one is found,
-// otherwise `message` will be `NULL`
-// `type` is malloc'd and should be freed after use.
-// `message` is either `NULL` or a malloc'd string which should be freed.
+// Given a thrown_object, puts the information about its type and message into  
+// 'type' and 'message' output parameters. 'type' will contain the string        
+// representation of the type of the exception, e.g., 'int'. 'message' will      
+// contain the result of 'std::exception::what()' method if the type of the      
+// exception is a subclass of std::exception; otherwise it will be NULL. The     
+// caller is responsible for freeing 'type' buffer and also 'message' buffer, if 
+// it is not NULL.
 void __get_exception_message(void* thrown_object, char** type, char** message) {
   __cxa_exception* exception_header =
     cxa_exception_from_thrown_object(thrown_object);
