@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
     generateFuncType(sig, typeSectionBody); // the signature of the function pointer we will call
     generateFuncType("vi", typeSectionBody); // the signature of setTempRet0
 
-    typeSection = [0x01 /* Type section code */];
+    var typeSection = [0x01 /* Type section code */];
     uleb128Encode(typeSection.length, typeSection); // length of section in bytes
     typeSection.push.apply(typeSection, typeSectionBody);
     sections.push(typeSection);
