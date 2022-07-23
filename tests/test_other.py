@@ -12387,4 +12387,5 @@ Module['postRun'] = function() {{
 
   def test_dyncallwrapper(self):
     self.set_setting('MAIN_MODULE', 1)
-    self.do_runf(test_file('test_runtime_dyncall_wrapper.c'),"2 7\ni: 2 j: 8589934599 f: 3.120000 d: 77.120000")
+    expected = "2 7\ni: 2 j: 8589934599 f: 3.120000 d: 77.120000"
+    self.do_runf(test_file('test_runtime_dyncall_wrapper.c'), expected)
