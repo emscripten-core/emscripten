@@ -393,6 +393,7 @@ var LibraryExceptions = {
   },
 
 #endif
+#if !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
@@ -411,8 +412,7 @@ var LibraryExceptions = {
       return [type, message];
     });
   },
-
-
+#endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
     return Module['asm']['__cpp_exception'];
