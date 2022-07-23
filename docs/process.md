@@ -58,7 +58,7 @@ How:
 1. If we want to do an LTO release as well, create a CL that copies [DEPS][DEPS] from <non-lto-sha>
    to [DEPS.tagged-release][DEPS.tagged-release] in
    [emscripten-releases][releases_repo] repo. When this CL is committed, let the resulting SHA be
-   <LTO-sha>. An example of this PR can be
+   <LTO-sha>. An example of this CL can be
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
 1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
    When we do both an LTO and a non-LTO release, run:
