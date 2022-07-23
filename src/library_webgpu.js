@@ -1632,10 +1632,6 @@ var LibraryWebGPU = {
       };
     }
 
-    function makeRenderPassDescriptorMaxDrawCount(mdcPtr) {
-        return  {{{ gpu.makeGetU64('mdcPtr', C_STRUCTS.WGPURenderPassDescriptorMaxDrawCount.maxDrawCount) }}};
-    }
-
     function makeRenderPassTimestampWrite(twPtr) {
       return {
         "querySet": WebGPU.mgrQuerySet.get(
@@ -1666,8 +1662,7 @@ var LibraryWebGPU = {
 #endif
         var renderPassDescriptorMaxDrawCount = nextInChainPtr;
         {{{ gpu.makeCheckDescriptor('renderPassDescriptorMaxDrawCount') }}}
-        maxDrawCount = makeRenderPassDescriptorMaxDrawCount(
-          {{{ makeGetValue('renderPassDescriptorMaxDrawCount', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}});
+        maxDrawCount = {{{ gpu.makeGetU64('renderPassDescriptorMaxDrawCount', C_STRUCTS.WGPURenderPassDescriptorMaxDrawCount.maxDrawCount) }}};
       }
 
       var desc = {
