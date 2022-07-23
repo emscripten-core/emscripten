@@ -111,26 +111,21 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
 
 // Returns a message saying that execution was terminated due to an exception.
 // This message is freshly malloc'd and should be freed.
-char* __get_exception_terminate_message(void *thrown_object) {
+char* __get_exception_terminate_message(void* thrown_object) {
   char* type;
   char* message;
   __get_exception_message(thrown_object, &type, &message);
   char* result;
   if (message != NULL) {
-    asprintf(&result,
-            "terminating with uncaught exception %s: %s",
-              type,
-              message);
+    asprintf(
+      &result, "terminating with uncaught exception %s: %s", type, message);
     free(message);
   } else {
-    asprintf(&result,
-            "terminating with uncaught exception of type %s",
-            type);
+    asprintf(&result, "terminating with uncaught exception of type %s", type);
   }
   free(type);
   return result;
 }
-
 }
 
 #endif // __USING_EMSCRIPTEN_EXCEPTIONS__ || __USING_WASM_EXCEPTIONS__
