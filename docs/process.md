@@ -55,9 +55,9 @@ How:
 
 1. Pick a version for a release and make sure it meets the requirements above.
    Let this version SHA be <non-LTO-sha>.
-1. If we want to do a LTO release as well, create a PR that copies [DEPS][DEPS]
+1. If we want to do an LTO release as well, create a CL that copies [DEPS][DEPS] from <non-lto-sha>
    to [DEPS.tagged-release][DEPS.tagged-release] in
-   [emscripten-releases][releases_repo] repo. Let this LTO version SHA be
+   [emscripten-releases][releases_repo] repo. When this CL is committed, let the resulting SHA be
    <LTO-sha>. An example of this PR can be
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
 1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
@@ -67,7 +67,7 @@ How:
    ```
    This will make the <LTO-sha> point to the versioned name release (e.g.
    `3.1.7`) and the <non-LTO-sha> point to the assert build release (e.g.
-   `3.1.7-assert`). When we do only a non-LTO release, run:
+   `3.1.7-asserts`). When we do only a non-LTO release, run:
    ```
    ./scripts/create_release.py <non-LTO-sha>
    ```
@@ -79,14 +79,14 @@ How:
    name release. Running this [`./scripts/create_release.py`][create_release]
    script will update [emscripten-releases-tags.json][emscripten_releases_tags],
    adding a new version. The script will create a new git branch that can be
-   uploaded as a PR. An example of this PR can be emscripten-core/emsdk#1071.
+   uploaded as a PR. An example of this PR is emscripten-core/emsdk#1071.
 1. [Tag][emsdk_tags] the `emsdk` repo with the new version number, on the commit
    that does the update, after it lands on main.
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
-   the commit referred to in the [DEPS][DEPS] file above.
+   the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file above.
 1. Update [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
-   upcoming, version. An example of this PR can be
+   upcoming, version. An example of this PR is
    emscripten-core/emscripten#17439.
 
 Major version update (1.X.Y to 1.(X+1).0)
