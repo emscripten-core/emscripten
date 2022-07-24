@@ -213,7 +213,7 @@ self.onmessage = (e) => {
 
       if (!initializedJS) {
 #if EMBIND
-#if ASSERTIONS
+#if PTHREADS_DEBUG
         err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
 #endif
         // Embind must initialize itself on all threads, as it generates support JS.
