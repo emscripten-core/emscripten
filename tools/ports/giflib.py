@@ -22,9 +22,7 @@ def get(ports, settings, shared):
     logging.info('building port: giflib')
 
     source_path = os.path.join(ports.get_dir(), 'giflib', f'giflib-{VERSION}')
-    dest_path = os.path.join(ports.get_build_dir(), 'giflib')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('giflib')
     shutil.copytree(source_path, dest_path)
 
     ports.install_headers(dest_path)

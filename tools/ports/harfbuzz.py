@@ -86,10 +86,9 @@ def get(ports, settings, shared):
 
   def create(final):
     logging.info('building port: harfbuzz')
-    ports.clear_project_build('harfbuzz')
+    build_path = ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
-    build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
     freetype_include = ports.get_include_dir('freetype2/freetype')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 

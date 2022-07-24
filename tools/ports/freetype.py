@@ -19,13 +19,8 @@ def get(ports, settings, shared):
   ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
 
   def create(final):
-    ports.clear_project_build('freetype')
-
+    dest_path = ports.clear_project_build('freetype')
     source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'freetype')
-    shared.try_delete(dest_path)
-    os.makedirs(dest_path)
-    shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
     Path(dest_path, 'include/ftconfig.h').write_text(ftconf_h)
 
@@ -85,7 +80,7 @@ def get(ports, settings, shared):
     commands = []
     o_s = []
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
+      o = os.path.join(dest_path, shared.replace_suffix(src, '.o'))
       shared.safe_ensure_dirs(os.path.dirname(o))
       commands.append([shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
                        '-DFT2_BUILD_LIBRARY', '-O2',
@@ -103,8 +98,7 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    shared.try_delete(final)
-    shared.run_process([shared.LLVM_AR, 'rc', final] + o_s)
+    ports.create_lib(final, o_s)
 
     ports.install_header_dir(os.path.join(dest_path, 'include'),
                              target=os.path.join('freetype2', 'freetype'))

@@ -26,9 +26,8 @@ def get(ports, settings, shared):
     logging.info('building port: sdl2_gfx')
 
     source_path = os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'sdl2_gfx')
+    dest_path = ports.clear_project_build('sdl2_gfx')
 
-    shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
     ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
 

@@ -28,12 +28,13 @@ def get(ports, settings, shared):
     srcs = 'SDLnet.c SDLnetselect.c SDLnetTCP.c SDLnetUDP.c'.split()
     commands = []
     o_s = []
+    build_dir = ports.clear_project_build('sdl2_net')
+    shared.safe_ensure_dirs(build_dir)
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2_net', src + '.o')
+      o = os.path.join(build_dir, shared.replace_suffix(src, '.o'))
       commands.append([shared.EMCC, '-c', os.path.join(src_dir, src),
                        '-O2', '-sUSE_SDL=2', '-o', o, '-w'])
       o_s.append(o)
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
     ports.create_lib(final, o_s)
 

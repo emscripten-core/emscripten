@@ -21,20 +21,14 @@ def get(ports, settings, shared):
 
   def create(final):
     logging.info('building port: ogg')
-    ports.clear_project_build('vorbis')
 
     source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'ogg')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('ogg')
     shutil.copytree(source_path, dest_path)
 
     Path(dest_path, 'include', 'ogg', 'config_types.h').write_text(config_types_h)
 
-    header_dir = ports.get_include_dir('ogg')
-    shutil.rmtree(header_dir, ignore_errors=True)
-    shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
-
+    ports.install_header_dir(os.path.join(dest_path, 'include', 'ogg'), 'ogg')
     ports.build_port(os.path.join(dest_path, 'src'), final)
 
   return [shared.Cache.get_lib('libogg.a', create)]
