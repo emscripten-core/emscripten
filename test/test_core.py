@@ -6974,6 +6974,8 @@ void* operator new(size_t size) {
       var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
       out(multi(2, 1.4, 3, 'atr'));
       out(multi(8, 5.4, 4, 'bret'));
+      var printBool = Module['cwrap']('print_bool', null, ['boolean']);
+      out(Module['_print_bool'] === printBool); // the function should be the exact raw function in the module rather than a wrapped one
       out('*');
       // part 3: avoid stack explosion and check it's restored correctly
       for (var i = 0; i < TOTAL_STACK/60; i++) {

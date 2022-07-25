@@ -129,7 +129,6 @@ mergeInto(LibraryManager.library, {
    */`,
   $cwrap__deps: ['$getCFunc', '$ccall'],
   $cwrap: function(ident, returnType, argTypes, opts) {
-#if !ASSERTIONS
     argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return
     // the original function
@@ -138,7 +137,6 @@ mergeInto(LibraryManager.library, {
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);
     }
-#endif
     return function() {
       return ccall(ident, returnType, argTypes, arguments, opts);
     }
