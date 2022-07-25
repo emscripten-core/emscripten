@@ -183,28 +183,28 @@ def symbolize_address_sourcemap(module, address, force_file):
 
 
 def main(args):
-  module = webassembly.Module(args.wasm_file)
-  base = 16 if args.address.lower().startswith('0x') else 10
-  address = int(args.address, base)
-  symbolized = 0
+  with webassembly.Module(args.wasm_file) as module:
+    base = 16 if args.address.lower().startswith('0x') else 10
+    address = int(args.address, base)
+    symbolized = 0
 
-  if args.addrtype == 'code':
-    address += get_codesec_offset(module)
+    if args.addrtype == 'code':
+      address += get_codesec_offset(module)
 
-  if ((has_debug_line_section(module) and not args.source) or
-     'dwarf' in args.source):
-    symbolize_address_dwarf(module, address)
-    symbolized += 1
+    if ((has_debug_line_section(module) and not args.source) or
+       'dwarf' in args.source):
+      symbolize_address_dwarf(module, address)
+      symbolized += 1
 
-  if ((get_sourceMappingURL_section(module) and not args.source) or
-     'sourcemap' in args.source):
-    symbolize_address_sourcemap(module, address, args.file)
-    symbolized += 1
+    if ((get_sourceMappingURL_section(module) and not args.source) or
+       'sourcemap' in args.source):
+      symbolize_address_sourcemap(module, address, args.file)
+      symbolized += 1
 
-  if not symbolized:
-    raise Error('No .debug_line or sourceMappingURL section found in '
-                f'{module.filename}.'
-                " I don't know how to symbolize this file yet")
+    if not symbolized:
+      raise Error('No .debug_line or sourceMappingURL section found in '
+                  f'{module.filename}.'
+                  " I don't know how to symbolize this file yet")
 
 
 def get_args():

@@ -1354,12 +1354,12 @@ def is_wasm_dylib(filename):
   """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
   if not is_wasm(filename):
     return False
-  module = webassembly.Module(filename)
-  section = next(module.sections())
-  if section.type == webassembly.SecType.CUSTOM:
-    module.seek(section.offset)
-    if module.read_string() in ('dylink', 'dylink.0'):
-      return True
+  with webassembly.Module(filename) as module:
+    section = next(module.sections())
+    if section.type == webassembly.SecType.CUSTOM:
+      module.seek(section.offset)
+      if module.read_string() in ('dylink', 'dylink.0'):
+        return True
   return False
 
 

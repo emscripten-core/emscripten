@@ -8680,14 +8680,14 @@ int main() {
     self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
 
     # Check that the dwarf file has only dwarf, name, and non-code sections
-    debug_wasm = webassembly.Module('subdir/output.wasm.debug.wasm')
-    if not debug_wasm.has_name_section():
-      self.fail('name section not found in separate dwarf file')
-    for sec in debug_wasm.sections():
-      if sec.type == webassembly.SecType.CODE:
-        self.fail(f'section of type "{sec.type}" found in separate dwarf file')
-      if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
-        self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
+    with webassembly.Module('subdir/output.wasm.debug.wasm') as debug_wasm:
+      if not debug_wasm.has_name_section():
+        self.fail('name section not found in separate dwarf file')
+      for sec in debug_wasm.sections():
+        if sec.type == webassembly.SecType.CODE:
+          self.fail(f'section of type "{sec.type}" found in separate dwarf file')
+        if sec.name and sec.name != 'name' and not sec.name.startswith('.debug'):
+          self.fail(f'non-debug section "{sec.name}" found in separate dwarf file')
 
     # Check that dwarfdump can dump the debug info
     dwdump = self.run_process(
