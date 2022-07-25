@@ -9256,6 +9256,83 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ''',
       'result is 42')
 
+  @node_pthreads
+  def test_pthread_in_side(self):
+    self.emcc_args += ['-flto']
+
+    create_file('main.cpp', r'''
+        #include <iostream>
+        #include <dlfcn.h>
+        #include <thread>
+
+        void main_thread_fn(std::string str)
+        {
+            std::cout << "call thread fn in main:" << str << std::endl;
+        }
+
+        int main() {
+        puts("hello from main");
+        void *lib_handle = dlopen("./side.wasm", RTLD_NOW);
+        if (!lib_handle) {
+            puts("cannot load side module");
+            puts(dlerror());
+            return 1;
+        }
+            typedef int (*func)();
+            func fn = (func)dlsym(lib_handle, "sidey");
+            if (!fn)
+                puts("cannot find side function");
+            else
+            {
+                printf("value from side = %d\n", fn());
+                std::thread th(main_thread_fn, "success");
+                th.join();
+            }
+        return 0;
+        }
+    ''')
+    create_file('side.cpp', r'''
+        #include <iostream>
+        #include <emscripten.h>
+        #include <thread>
+
+        void side_thread_fn(std::string str)
+        {
+            std::cout << "call thread fn in side:" << str << std::endl;
+        }
+
+        extern "C" {
+
+            int EMSCRIPTEN_KEEPALIVE sidey() {
+                printf("hello from side\n");
+
+                std::thread th(side_thread_fn, "success");
+                th.join();
+                return 123;
+            }
+        }
+    ''')
+    create_file('expected.txt', r'''hello from main
+hello from side
+call thread fn in side:success
+value from side = 123
+call thread fn in main:success
+''')
+
+    self.emcc_args += ['-pthread', '-sPTHREAD_POOL_SIZE=1', '-Wno-pthreads-mem-growth', '-Wno-experimental']
+
+    build_side_cmd = [EMCC, 'side.cpp', '-o', 'side.wasm', '-sSIDE_MODULE=2'] + self.get_emcc_args()
+    print(build_side_cmd)
+    self.run_process(build_side_cmd, True)
+    build_main_cmd = [EMCC, 'main.cpp', '-sMAIN_MODULE=2', 'side.wasm', '-sEXIT_RUNTIME'] + self.get_emcc_args()
+    print(build_main_cmd)
+    self.run_process(build_main_cmd, True)
+
+    out = self.run_js('a.out.js')
+    create_file('actual.txt', out)
+    expected_output = read_file('expected.txt')
+    self.assertTextDataContained(expected_output, out)
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -sALLOW_TABLE_GROWTH
