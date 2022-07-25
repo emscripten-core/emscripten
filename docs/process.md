@@ -54,25 +54,25 @@ Requirements:
 How:
 
 1. Pick a version for a release and make sure it meets the requirements above.
-   Let this version SHA be <non-LTO-sha>.
+   Let this version SHA be `<non-LTO-sha>`.
 1. If we want to do an LTO release as well, create a CL that copies [DEPS][DEPS]
    from <non-lto-sha> to [DEPS.tagged-release][DEPS.tagged-release] in
    [emscripten-releases][releases_repo] repo. When this CL is committed, let the
-   resulting SHA be <LTO-sha>. An example of this CL can be
+   resulting SHA be `<LTO-sha>`. An example of this CL is
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
 1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
    When we do both an LTO and a non-LTO release, run:
    ```
    ./scripts/create_release.py <LTO-sha> <non-LTO-sha>
    ```
-   This will make the <LTO-sha> point to the versioned name release (e.g.
-   `3.1.7`) and the <non-LTO-sha> point to the assert build release (e.g.
+   This will make the `<LTO-sha>` point to the versioned name release (e.g.
+   `3.1.7`) and the `<non-LTO-sha>` point to the assert build release (e.g.
    `3.1.7-asserts`). When we do only a non-LTO release, run:
    ```
    ./scripts/create_release.py <non-LTO-sha>
    ```
-   This will make the <non-LTO-sha> point directly to the versioned name release
-   (e.g. `3.1.7`) and there will be no assert build release. If we run
+   This will make the `<non-LTO-sha>` point directly to the versioned name
+   release (e.g. `3.1.7`) and there will be no assert build release. If we run
    [`./scripts/create_release.py`][create_release] without any arguments, it
    will automatically pick a tot version from
    [emscripten-releases][releases_repo] repo and make it point to the versioned
