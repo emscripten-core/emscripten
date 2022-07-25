@@ -1239,7 +1239,7 @@ int __syscall_ioctl(int fd, int request, ...) {
       return -EINVAL;
     }
     default: {
-      abort();
+      return -EINVAL; // not supported
     }
   }
 }
