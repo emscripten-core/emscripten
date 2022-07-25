@@ -37,24 +37,24 @@ clean:
 	find . -name "CH??_*" | xargs rm -f
 
 Chapter_2/Hello_Triangle/CH02_HelloTriangle.o: ${COMMONSRC} ${COMMONHDR} ${CH02SRC}
-	$(CC) ${COMMONSRC} ${CH02SRC} -r -o $@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH02SRC} -r -o $@ ${INCDIR} ${LIBS}
 Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o: ${COMMONSRC} ${COMMONHDR} ${CH08SRC}
-	$(CC) ${COMMONSRC} ${CH08SRC} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH08SRC} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o: ${COMMONSRC} ${COMMONHDR} ${CH09SRC1}
-	$(CC) ${COMMONSRC} ${CH09SRC1} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH09SRC1} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_9/MipMap2D/CH09_MipMap2D.o: ${COMMONSRC} ${COMMONHDR} ${CH09SRC2}
-	$(CC) ${COMMONSRC} ${CH09SRC2} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH09SRC2} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.o: ${COMMONSRC} ${COMMONHDR} ${CH09SRC3}
-	$(CC) ${COMMONSRC} ${CH09SRC3} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH09SRC3} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_9/TextureWrap/CH09_TextureWrap.o: ${COMMONSRC} ${COMMONHDR} ${CH09SRC4}
-	$(CC) ${COMMONSRC} ${CH09SRC4} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH09SRC4} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_10/MultiTexture/CH10_MultiTexture.o: ${COMMONSRC} ${COMMONHDR} ${CH10SRC}
-	$(CC) ${COMMONSRC} ${CH10SRC} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH10SRC} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_11/Multisample/CH11_Multisample.o: ${COMMONSRC} ${COMMONHDR} ${CH11SRC}
-	$(CC) ${COMMONSRC} ${CH11SRC} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH11SRC} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_11/Stencil_Test/CH11_Stencil_Test.o: ${COMMONSRC} ${COMMONHDR} ${CH11SRC2}
-	$(CC) ${COMMONSRC} ${CH11SRC2} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH11SRC2} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_13/Noise3D/CH13_Noise3D.o: ${COMMONSRC} ${COMMONHDR} ${CH13SRC1}
-	$(CC) ${COMMONSRC} ${CH13SRC1} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH13SRC1} -r -o ./$@ ${INCDIR} ${LIBS}
 Chapter_13/ParticleSystem/CH13_ParticleSystem.o: ${COMMONSRC} ${COMMONHDR} ${CH13SRC2}
-	$(CC) ${COMMONSRC} ${CH13SRC2} -r -o ./$@ ${INCDIR} ${LIBS}
+	$(CC) ${CFLAGS} ${COMMONSRC} ${CH13SRC2} -r -o ./$@ ${INCDIR} ${LIBS}

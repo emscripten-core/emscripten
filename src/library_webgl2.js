@@ -706,9 +706,8 @@ var LibraryWebGL2 = {
       sync.name = id;
       GL.syncs[id] = sync;
       return id;
-    } else {
-      return 0; // Failed to create a sync object
     }
+    return 0; // Failed to create a sync object
   },
 
   glDeleteSync__sig: 'vi',

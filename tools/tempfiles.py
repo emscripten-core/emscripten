@@ -11,9 +11,17 @@ import stat
 import sys
 
 
+def try_delete(pathnames):
+  if isinstance(pathnames, list):
+    for pathname in pathnames:
+      try_delete_one(pathname)
+  else:
+    try_delete_one(pathnames)
+
+
 # Attempts to delete given possibly nonexisting or read-only directory tree or filename.
 # If any failures occur, the function silently returns without throwing an error.
-def try_delete(pathname):
+def try_delete_one(pathname):
   try:
     os.unlink(pathname)
   except OSError:

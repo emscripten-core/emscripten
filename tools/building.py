@@ -1533,10 +1533,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
 
 
 def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
-  if outfile and (settings.DEBUG_LEVEL < 3 or settings.GENERATE_SOURCE_MAP):
-    # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we use source maps (which are
-    # implemented separately from dwarf).
+  if outfile and not settings.GENERATE_DWARF:
+    # remove any dwarf debug info sections if dwarf is not requested.
     # note that we add this pass first, so that it doesn't interfere with
     # the final set of passes (which may generate stack IR, and nothing
     # should be run after that)

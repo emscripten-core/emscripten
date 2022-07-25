@@ -15,15 +15,27 @@ assert(Object.keys(LibraryManager.library).length === 0);
 mergeInto(LibraryManager.library, {
   $callRuntimeCallbacks: function() {},
 
+  $ExitStatus__docs: '/** @constructor */',
+  $ExitStatus: function(status) {
+    this.name = 'ExitStatus';
+    this.message = 'Program terminated with exit(' + status + ')';
+    this.status = status;
+  },
+
+  $exitJS__deps: ['$ExitStatus'],
+  $exitJS: function(code) {
+    quit_(code, new ExitStatus(code));
+  },
+
   $handleException: function(e) {
-    if (!(e instanceof ExitStatus) && e !== 'unwind') {
+    if (e !== 'unwind') {
       throw e;
     }
   },
 
   // printf/puts implementations for when musl is not pulled in - very
   // partial, but enough for bootstrapping structInfo
-  printf__deps: ['$formatString'],
+  printf__deps: ['$formatString', '$intArrayToString'],
   printf__sig: 'ipp',
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);

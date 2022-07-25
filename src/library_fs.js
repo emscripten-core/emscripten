@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1524,11 +1524,10 @@ FS.staticInit();` +
     },
     findObject: (path, dontResolveLastLink) => {
       var ret = FS.analyzePath(path, dontResolveLastLink);
-      if (ret.exists) {
-        return ret.object;
-      } else {
+      if (!ret.exists) {
         return null;
       }
+      return ret.object;
     },
     analyzePath: (path, dontResolveLastLink) => {
       // operate from within the context of the symlink's target
@@ -1736,9 +1735,8 @@ FS.staticInit();` +
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
           if (xhr.response !== undefined) {
             return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
-          } else {
-            return intArrayFromString(xhr.responseText || '', true);
           }
+          return intArrayFromString(xhr.responseText || '', true);
         };
         var lazyArray = this;
         lazyArray.setDataGetter((chunkNum) => {

@@ -210,6 +210,49 @@ the list of imports to the wasm module that the Asyncify instrumentation must be
 aware of. Giving it that list tells it that all other JS calls will **not** do
 an async operation, which lets it not add overhead where it isn't needed.
 
+Asyncify with Dynamic Linking
+#############################
+
+If you want to use Asyncify in dynamic libraries, those methods which are imported
+from other linked modules (and that will be on the stack in an async operation)
+should be listed in ``ASYNCIFY_IMPORTS``.
+
+.. code-block:: cpp
+
+    // sleep.cpp
+    #include <emscripten.h>
+
+    extern "C" void sleep_for_seconds() {
+      emscripten_sleep(100);
+    }
+
+In the side module, you can compile sleep.cpp in the ordinal emscripten dynamic
+linking manner:
+
+::
+
+    emcc sleep.cpp -O3 -o libsleep.wasm -sASYNCIFY -sSIDE_MODULE
+
+.. code-block:: cpp
+
+    // main.cpp
+    #include <emscripten.h>
+
+    extern "C" void sleep_for_seconds();
+
+    int main() {
+      sleep_for_seconds();
+      return 0;
+    }
+
+In the main module, the compiler doesn’t statically know that ``sleep_for_seconds`` is
+asynchronous. Therefore, you must add ``sleep_for_seconds`` to the ``ASYNCIFY_IMPORTS``
+list.
+
+::
+
+    emcc main.cpp libsleep.wasm -O3 -sASYNCIFY -sASYNCIFY_IMPORTS=sleep_for_seconds -sMAIN_MODULE
+
 Usage with Embind
 #################
 

@@ -17,6 +17,7 @@
 #include <vector>
 
 using namespace emscripten;
+using namespace internal;
 
 extern "C" {
 const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
@@ -47,6 +48,20 @@ const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
     return strdup(str);
   }
 }
+
+static InitFunc* init_funcs = nullptr;
+
+EMSCRIPTEN_KEEPALIVE void _embind_initialize_bindings() {
+  for (auto* f = init_funcs; f; f = f->next) {
+    f->init_func();
+  }
+}
+
+void _embind_register_bindings(InitFunc* f) {
+  f->next = init_funcs;
+  init_funcs = f;
+}
+
 }
 
 namespace {
@@ -99,13 +114,7 @@ template <typename T> static void register_memory_view(const char* name) {
 }
 } // namespace
 
-extern "C" {
-
-// Normal initialization, executed through a global constructor. This
-// happens on the main thread; pthreads will call it manually, so make
-// sure we also export it (via EMSCRIPTEN_KEEPALIVE).
-EMSCRIPTEN_KEEPALIVE __attribute__((constructor))
-void __embind_register_native_and_builtin_types() {
+EMSCRIPTEN_BINDINGS(builtin) {
   using namespace emscripten::internal;
 
   _embind_register_void(TypeID<void>::get(), "void");
@@ -171,5 +180,3 @@ void __embind_register_native_and_builtin_types() {
   register_memory_view<long double>("emscripten::memory_view<long double>");
 #endif
 }
-
-} // extern "C"
