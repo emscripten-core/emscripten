@@ -18,13 +18,8 @@ def get(ports, settings, shared):
   ports.fetch_project('bzip2', 'https://github.com/emscripten-ports/bzip2/archive/' + VERSION + '.zip', 'bzip2-' + VERSION, sha512hash=HASH)
 
   def create(final):
-    ports.clear_project_build('bzip2')
-
+    dest_path = ports.clear_project_build('bzip2')
     source_path = os.path.join(ports.get_dir(), 'bzip2', 'bzip2-' + VERSION)
-    dest_path = os.path.join(ports.get_build_dir(), 'bzip2')
-    shared.try_delete(dest_path)
-    os.makedirs(dest_path)
-    shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
     # build
@@ -35,7 +30,7 @@ def get(ports, settings, shared):
     commands = []
     o_s = []
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'bzip2', src + '.o')
+      o = os.path.join(dest_path, shared.replace_suffix(src, '.o'))
       shared.safe_ensure_dirs(os.path.dirname(o))
       commands.append([shared.EMCC, '-c', os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w', ])
       o_s.append(o)

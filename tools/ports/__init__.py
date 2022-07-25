@@ -266,7 +266,9 @@ class Ports:
   def clear_project_build(name):
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
-    shared.try_delete(os.path.join(Ports.get_build_dir(), name))
+    build_dir = os.path.join(Ports.get_build_dir(), name)
+    shared.try_delete(build_dir)
+    return build_dir
 
 
 def dependency_order(port_list):

@@ -31,8 +31,7 @@ def get(ports, settings, shared):
     cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
     cocos2dx_includes = make_includes(cocos2d_root)
 
-    cocos2d_build = os.path.join(ports.get_build_dir(), 'cocos2d')
-    shared.try_delete(os.path.join(cocos2d_build, 'samples'))
+    cocos2d_build = ports.clear_project_build('cocos2d')
     shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
                     os.path.join(cocos2d_build, 'samples'))
 

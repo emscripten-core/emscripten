@@ -19,13 +19,8 @@ def get(ports, settings, shared):
   ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.zip', 'zlib-' + VERSION, sha512hash=HASH)
 
   def create(final):
-    ports.clear_project_build('zlib')
-
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
-    dest_path = os.path.join(ports.get_build_dir(), 'zlib')
-    shared.try_delete(dest_path)
-    os.makedirs(dest_path)
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('zlib')
     shutil.copytree(source_path, dest_path)
     Path(dest_path, 'zconf.h').write_text(zconf_h)
     ports.install_headers(dest_path)

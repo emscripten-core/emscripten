@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 from pathlib import Path
 
@@ -21,14 +20,12 @@ def get(ports, settings, shared):
 
   def create(output_path):
     logging.info('building port: libmodplug')
-    ports.clear_project_build('libmodplug')
 
     source_path = os.path.join(ports.get_dir(), 'libmodplug', 'libmodplug-' + TAG)
     src_dir = os.path.join(source_path, 'src')
     libmodplug_path = os.path.join(src_dir, 'libmodplug')
 
-    build_dir = os.path.join(ports.get_build_dir(), 'libmodplug')
-    shutil.rmtree(build_dir, ignore_errors=True)
+    build_dir = ports.clear_project_build('libmodplug')
     shared.safe_ensure_dirs(build_dir)
     Path(build_dir, 'config.h').write_text(config_h)
 

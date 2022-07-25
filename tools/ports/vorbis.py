@@ -24,9 +24,7 @@ def get(ports, settings, shared):
     logging.info('building port: vorbis')
 
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'vorbis')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('vorbis')
     shutil.copytree(source_path, dest_path)
 
     ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],

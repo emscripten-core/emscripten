@@ -31,9 +31,8 @@ def get(ports, settings, shared):
 
   def prepare_build():
     source_path = os.path.join(ports.get_dir(), 'icu', 'icu') # downloaded icu4c path
-    dest_path = os.path.join(ports.get_build_dir(), 'icu') # icu build path
+    dest_path = ports.clear_project_build('icu') # icu build path
     logging.debug(f'preparing for icu build: {source_path} -> {dest_path}')
-    shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
