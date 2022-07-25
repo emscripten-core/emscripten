@@ -6843,7 +6843,7 @@ void* operator new(size_t size) {
                               Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
                               Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
                               Path('bin/libopenjpeg.a')],
-                             configure=['cmake', '.'],
+                             configure=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
                              # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                              make_args=[]) # no -j 2, since parallel builds can fail
 

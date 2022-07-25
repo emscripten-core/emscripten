@@ -669,7 +669,7 @@ f.close()
     'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
     'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
     'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
-    'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
+    'shared_cpp':  ('target_library', 'libtest_cmake.so',      ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DBUILD_SHARED_LIBS=ON', '-DCPP_LIBRARY_TYPE=SHARED']),
     'stdproperty': ('stdproperty',    'helloworld.js',         []),
     'post_build':  ('post_build',     'hello.js',              []),
   })
