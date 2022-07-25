@@ -17,6 +17,7 @@ JavaScript and compiled C or C++:
   created with:
 
   - :ref:`Embind or WebIDL-Binder<interacting-with-code-binding-cpp>`
+  - :ref:`Emnapi (Node-API)<interacting-with-code-emnapi>`
 
 - Call JavaScript functions from **C/C++**:
 
@@ -798,6 +799,16 @@ for defining the binding:
    of one tool over the other will usually be based on which is the most
    natural fit for the project and its build system.
 
+.. _interacting-with-code-emnapi:
+
+Binding C/C++ and JavaScript — Emnapi (Node-API for Emscripten)
+===============================================================
+
+`Emnapi`_ is an unofficial `Node-API`_ implementation for Emscripten.
+If you prefer Node-API, or you would like to port your Node.js addon
+written in Node-API to WebAssembly, you can give it a try. See
+`Emnapi documentation`_ for more details.
+
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
 .. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
@@ -808,3 +819,6 @@ for defining the binding:
 .. _tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _Emnapi: https://github.com/toyobayashi/emnapi
+.. _Node-API: https://nodejs.org/dist/latest-v16.x/docs/api/n-api.html
+.. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html
