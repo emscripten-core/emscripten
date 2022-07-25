@@ -2466,13 +2466,13 @@ int f() {
     self.emcc(test_file(source_file), ['-g'], js_file)
     self.verify_dwarf_exists(wasm_file)
     self.assertFalse(os.path.isfile(map_file))
-    try_delete([wasm_file, map_file, js_file])
+    self.clear()
 
     # Generate only source map
     self.emcc(test_file(source_file), ['-gsource-map'], js_file)
     self.verify_dwarf_does_not_exist(wasm_file)
     self.verify_source_map_exists(map_file)
-    try_delete([wasm_file, map_file, js_file])
+    self.clear()
 
     # Generate DWARF with source map
     self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
