@@ -393,7 +393,7 @@ var LibraryExceptions = {
   },
 
 #endif
-#if !DISABLE_EXCEPTION_CATCHING
+#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
