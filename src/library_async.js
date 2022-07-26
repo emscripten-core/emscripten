@@ -108,12 +108,12 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
               err('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-              imports[x] = original = Asyncify.suspender.suspendOnReturnedPromise(
+              imports[x] = original = WebAssembly.suspendOnReturnedPromise(
                 new WebAssembly.Function(type, original)
               );
             }
 #endif
-#if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
+#if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from WebAssembly.suspendOnReturnedPromise TODO find a way
             imports[x] = function() {
               var originalAsyncifyState = Asyncify.state;
               try {
