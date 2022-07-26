@@ -7002,7 +7002,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['--post-js', 'post.js']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
-    self.do_core_test('test_ccall.cpp', out_suffix= '_cwrap_fast_path')
+    self.do_core_test('test_ccall.cpp', out_suffix='_cwrap_fast_path')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
