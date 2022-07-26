@@ -1,0 +1,380 @@
+/*
+ * Copyright 2022 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+#pragma once
+
+#include <emscripten/val.h>
+
+#include <array>
+#include <assert.h>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+// ValBuilder caches changes and commit them bulkly to the binding val.
+//
+// Why is fast?
+//  1) saving context switches
+//  2) minimized copies
+//  3) good locality
+//
+// Usage:
+//          ValBuilder vb(OBJECT);
+//          vb.set("k1", 1);
+//          vb.set("k3", "hello");
+//          vb.set("k2", std::vector<float>{1,2,3,4,5,6,7,8,9});
+//          vb.finalize();
+// Caveats:
+//  1) For sub-scoped objects set/added, preferring finalize inside, or use
+//     std::move if only few ones(1 or 2).
+//          ValBuilder vb(ARRAY);
+//          if (condition) {
+//              val a = val(1);
+//              vb.add(std::move(a));
+//          }
+//  2) When you passed ValBuilder as argument, always do finalize() before
+//     leaving the scope as cached pointers may be stale immediately.
+//
+namespace emscripten {
+
+enum EmValType {
+    OBJECT = 0,  // Default
+    ARRAY,
+};
+
+enum class TYPE : uint8_t {
+    NONE = 0,
+    INT8,
+    UINT8,
+    INT16,
+    UINT16,
+    INT32,
+    UINT32,
+    FLOAT32,
+    FLOAT64,
+    INT64,
+    UINT64,
+    BOOL,
+    STRING,
+    U8STRING,
+    EMVAL,
+    ARRAY,
+};
+
+template<typename T>
+struct map { static constexpr TYPE type = TYPE::NONE; };
+
+#define MAP_FUNDAMENTAL_TYPE(F, T)      \
+template<> struct map<F> { static constexpr TYPE type = T; };
+
+MAP_FUNDAMENTAL_TYPE(char, TYPE::INT8)
+MAP_FUNDAMENTAL_TYPE(unsigned char, TYPE::UINT8)
+MAP_FUNDAMENTAL_TYPE(short, TYPE::INT16)
+MAP_FUNDAMENTAL_TYPE(unsigned short, TYPE::UINT16)
+MAP_FUNDAMENTAL_TYPE(int, TYPE::INT32)
+MAP_FUNDAMENTAL_TYPE(unsigned int, TYPE::UINT32)
+MAP_FUNDAMENTAL_TYPE(long, TYPE::INT32)
+MAP_FUNDAMENTAL_TYPE(unsigned long, TYPE::UINT32)
+MAP_FUNDAMENTAL_TYPE(float, TYPE::FLOAT32)
+MAP_FUNDAMENTAL_TYPE(double, TYPE::FLOAT64)
+MAP_FUNDAMENTAL_TYPE(int64_t, TYPE::INT64)
+MAP_FUNDAMENTAL_TYPE(uint64_t, TYPE::UINT64)
+MAP_FUNDAMENTAL_TYPE(bool, TYPE::BOOL)
+#undef MAP_FUNDAMENTAL_TYPE
+
+namespace internal {
+
+extern "C" {
+void _emvalbuilder_finalize(emscripten::EM_VAL h, const void* ptr, int size);
+}
+
+template<typename>
+struct is_std_vector : std::false_type {};
+
+template<typename T, typename... TS>
+struct is_std_vector<std::vector<T, TS...>> : std::true_type {};
+
+template<typename>
+struct is_std_array : std::false_type {};
+
+template<typename T, size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_supported_rvalue_type() {
+  return std::is_same<T, std::string>::value ||
+         std::is_same<T, emscripten::val>::value ||
+         is_std_vector<T>::value ||
+         is_std_array<T>::value;
+}
+
+template <typename V>
+static constexpr bool check_arg_pointer_wont_dangle() {
+  static_assert(
+      (is_supported_rvalue_type<typename std::remove_cv<
+           typename std::remove_reference<V>::type>::type>() ||
+       std::is_lvalue_reference<V>::value || !std::is_class<V>::value),
+      "Expect lvalue or literal, but NO rvalue.");
+  return true;
+}
+
+template<typename T>
+constexpr bool is_mapped_fundamental_type() {
+  return (map<T>::type != TYPE::NONE);
+}
+
+template<typename T, typename VB>
+void AddArraySpan(const T* start, size_t n, VB* h, bool commit_now) {
+  if constexpr (is_mapped_fundamental_type<T>()) {
+    h->add_array(start, n, map<T>::type);
+    if (commit_now) h->finalize();
+  } else {
+    VB tp(ARRAY);
+    tp.add(start, start + n);
+    h->add(tp);  // always committed
+  }
+}
+
+template<typename T, typename VB>
+void ConcatArraySpan(const T* start, size_t n, VB* h, bool commit_now) {
+  if constexpr (is_mapped_fundamental_type<T>()) {
+    h->concat_array(start, n, map<T>::type);
+  } else {
+    h->add(start, start + n);
+  }
+  if (commit_now) h->finalize();
+}
+
+}  // namespace internal
+
+
+using emscripten::val;
+
+template <size_t N = 16 /*BUFF_SIZE*/ >
+class ValBuilder {
+ public:
+  ValBuilder() : ValBuilder(OBJECT) {}
+  ~ValBuilder() = default;
+
+  // disallow copy & move operations.
+  ValBuilder(const ValBuilder&) = delete;
+  ValBuilder& operator=(const ValBuilder&) = delete;
+
+  explicit ValBuilder(const val& v) : val_(v) {}
+  explicit ValBuilder(EmValType t)
+    : val_(t == ARRAY ? val::array() : val::object()) {}
+
+  template <typename V>
+  void set(const val& k, V&& v) {
+    if constexpr (internal::check_arg_pointer_wont_dangle<V>()) {}
+
+    cursor_->key = (const char*)k.as_handle();
+    cursor_->key_flag = FLAG_VAL_KEY;
+    add(std::forward<V>(v));
+  }
+
+  template <typename V>
+  void set(const char* k, V&& v) {
+    if constexpr (internal::check_arg_pointer_wont_dangle<V>()) {}
+
+    cursor_->key = k;
+    cursor_->key_flag = FLAG_NONE;
+    add(std::forward<V>(v));
+  }
+
+  template<typename V,
+        typename = std::enable_if_t<internal::is_mapped_fundamental_type<V>()>>
+  void add(const V& v) {
+    cursor_->type = map<V>::type;
+    memcpy(cursor_->value.w, &v, sizeof(V));
+    advance_and_may_finalize();
+  }
+
+  void add(const char* v) {
+    cursor_->type = TYPE::STRING;
+    cursor_->value.w[0].s = v;
+    advance_and_may_finalize();
+  }
+  void add_u8(const char* v) {
+    cursor_->type = TYPE::U8STRING;
+    cursor_->value.w[0].s = v;
+    advance_and_may_finalize();
+  }
+  void add(const std::string& v) {
+    add_u8(v.c_str());
+  }
+  void add(std::string&& v) {
+    auto cached = std::make_unique<std::string>(std::move(v));
+    add_u8(cached->data());
+    if (!cached_strings_.capacity()) cached_strings_.reserve(4);
+    cached_strings_.push_back(std::move(cached));
+  }
+
+  void add(const val& v) {
+    cursor_->type = TYPE::EMVAL;
+    cursor_->value.w[0].v = v.as_handle();
+    advance_and_may_finalize();
+  }
+  void add(val&& v) {
+    auto& slot = cached_vals_[cached_vals_count_++];
+    slot = std::move(v);  // efficient op
+    add(slot);
+  }
+
+  // accept |ValBuilder| but only lvalue reference
+  template<size_t SZ>
+  void add(ValBuilder<SZ>& vb) {
+    add(vb.toval());
+  }
+
+  template <typename Iter>
+  void add(Iter begin, Iter end) {
+    for (auto it = begin; it != end; ++it)
+      add(*it);
+  }
+
+  void add_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
+    cursor_->type = TYPE::ARRAY;
+    cursor_->value.w[0].addr = a;
+    cursor_->value.w[1].item.t = (uint8_t)t;
+    cursor_->value.w[1].item.f = FLAG_NONE;
+    cursor_->value.w[1].item.n = n;
+    advance_and_may_finalize();
+  }
+
+  template <typename T>
+  void add(const std::vector<T>& v) {
+    internal::AddArraySpan(v.data(), v.size(), this, false);
+  }
+  template <typename T>
+  void add(std::vector<T>&& v) {
+    internal::AddArraySpan(v.data(), v.size(), this, true);
+  }
+  template <typename T, size_t SIZE>
+  void add(const std::array<T, SIZE>& a) {
+    internal::AddArraySpan(a.data(), SIZE, this, false);
+  }
+  template <typename T, size_t SIZE>
+  void add(std::array<T, SIZE>&& a) {
+    internal::AddArraySpan(a.data(), SIZE, this, true);
+  }
+  template <typename T, size_t SIZE>
+  void add(const T(&a)[SIZE]) {
+    internal::AddArraySpan(a, SIZE, this, false);
+  }
+
+  // Use only for ARRAY type
+  void concat_array(const void* a, uint16_t n, TYPE t = TYPE::INT32) {
+    cursor_->type = TYPE::ARRAY;
+    cursor_->value.w[0].addr = a;
+    cursor_->value.w[1].item.t = (uint8_t)t;
+    cursor_->value.w[1].item.f = FLAG_CONCAT;
+    cursor_->value.w[1].item.n = n;
+    advance_and_may_finalize();
+  }
+
+  template <typename T>
+  void concat(const std::vector<T>& v) {
+    internal::ConcatArraySpan(v.data(), v.size(), this, false);
+  }
+  template <typename T>
+  void concat(std::vector<T>&& v) {
+    internal::ConcatArraySpan(v.data(), v.size(), this, true);
+  }
+  template <typename T, size_t SIZE>
+  void concat(const std::array<T, SIZE>& a) {
+    internal::ConcatArraySpan(a.data(), SIZE, this, false);
+  }
+  template <typename T, size_t SIZE>
+  void concat(std::array<T, SIZE>&& a) {
+    internal::ConcatArraySpan(a.data(), SIZE, this, true);
+  }
+  template <typename T, size_t SIZE>
+  void concat(const T(&a)[SIZE]) {
+    internal::ConcatArraySpan(a, SIZE, this, false);
+  }
+
+  void finalize() {
+    internal::_emvalbuilder_finalize(val_.as_handle(), buffer(), size());
+    reset();
+  }
+
+  size_t size() const { return cursor_ - items_.data(); }
+  bool empty() const { return cursor_ == items_.data(); }
+
+  val toval() {
+    if (!empty()) finalize();
+    return val_;
+  }
+
+  void reset_val(const val& v = val::null()) {
+    assert(empty());
+    val_ = !v.isNull() ? v : val_.isArray() ? val::array() : val::object();
+  }
+
+ private:
+  const void* buffer() const { return items_.data(); }
+
+  void reset() {
+    cursor_ = items_.data();
+    cached_vals_count_ = 0;
+    cached_strings_.clear();
+  }
+
+  void advance_and_may_finalize() {
+    cursor_++;
+    if (size() >= N)
+      finalize();
+  }
+
+  enum { FLAG_NONE = 0, FLAG_CONCAT = 1, FLAG_VAL_KEY = 2 };
+
+  // |Entry| is 16B in length(Wasm32), keep it a POD.
+  struct Entry {
+    TYPE type;  // uint8_t
+    uint8_t key_flag;  // optional FLAG_VAL_KEY
+    const char* key;   // optional key(ASCII string)
+    union {
+      union {
+        int32_t i;
+        const char* s;
+        emscripten::EM_VAL v;
+        const void* addr;
+        struct {
+          uint8_t t;  // TYPE of array
+          uint8_t f;  // FLAG_CONCAT
+          uint16_t n; // size
+        } item;
+      } w[2];
+      double d;
+      uint64_t u;  // BIGINT
+      bool b;
+    } value;
+  };
+
+  static_assert(alignof(Entry) == 8, "Entry must be 8B aligned");
+
+  // Use fixed-length array instead of vector, as it's used as a buffer.
+  // We will `flush` the buffer on the fly when it got full.
+  std::array<Entry, N> items_;
+
+  // Current slot to use
+  Entry* cursor_ = items_.data();
+
+  // Binding val
+  val val_ = val::null();
+
+  // Transient storage for passing temporary/rvalue arguments.
+  // We make sufficient space for val as it's cheap to cache.
+  std::array<val, N> cached_vals_;
+  size_t cached_vals_count_ = 0;
+
+  // Strings are expensive to cache, avoid using it when possible.
+  std::vector<std::unique_ptr<std::string>> cached_strings_;
+};
+
+}  // namespace emscripten
