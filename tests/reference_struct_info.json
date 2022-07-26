@@ -558,17 +558,13 @@
             "channels": 6,
             "format": 4,
             "freq": 0,
-            "padding": 10,
             "samples": 8,
             "silence": 7,
-            "size": 12,
             "userdata": 20
         },
         "SDL_JoyAxisEvent": {
             "__size__": 12,
             "axis": 5,
-            "padding1": 6,
-            "padding2": 7,
             "type": 0,
             "value": 8,
             "which": 4
@@ -576,7 +572,6 @@
         "SDL_JoyButtonEvent": {
             "__size__": 8,
             "button": 5,
-            "padding1": 7,
             "state": 6,
             "type": 0,
             "which": 4
@@ -584,12 +579,9 @@
         "SDL_KeyboardEvent": {
             "__size__": 28,
             "keysym": 12,
-            "padding2": 10,
-            "padding3": 11,
             "repeat": 9,
             "state": 8,
-            "type": 0,
-            "windowID": 4
+            "type": 0
         },
         "SDL_Keysym": {
             "__size__": 16,
@@ -601,8 +593,6 @@
         "SDL_MouseButtonEvent": {
             "__size__": 28,
             "button": 16,
-            "padding1": 18,
-            "padding2": 19,
             "state": 17,
             "timestamp": 4,
             "type": 0,
@@ -625,34 +615,20 @@
         },
         "SDL_MouseWheelEvent": {
             "__size__": 24,
-            "timestamp": 4,
             "type": 0,
-            "which": 12,
-            "windowID": 8,
             "x": 16,
             "y": 20
         },
         "SDL_PixelFormat": {
-            "Aloss": 31,
             "Amask": 24,
-            "Ashift": 35,
             "BitsPerPixel": 8,
-            "Bloss": 30,
             "Bmask": 20,
-            "Bshift": 34,
             "BytesPerPixel": 9,
-            "Gloss": 29,
             "Gmask": 16,
-            "Gshift": 33,
-            "Rloss": 28,
             "Rmask": 12,
-            "Rshift": 32,
             "__size__": 44,
             "format": 0,
-            "next": 40,
-            "padding": 10,
-            "palette": 4,
-            "refcount": 36
+            "palette": 4
         },
         "SDL_Rect": {
             "__size__": 16,
@@ -664,7 +640,6 @@
         "SDL_ResizeEvent": {
             "__size__": 12,
             "h": 8,
-            "type": 0,
             "w": 4
         },
         "SDL_Surface": {
@@ -673,20 +648,15 @@
             "flags": 0,
             "format": 4,
             "h": 12,
-            "lock_data": 32,
-            "locked": 28,
-            "map": 52,
             "pitch": 16,
             "pixels": 20,
             "refcount": 56,
-            "userdata": 24,
             "w": 8
         },
         "SDL_TextInputEvent": {
             "__size__": 40,
             "text": 8,
-            "type": 0,
-            "windowID": 4
+            "type": 0
         },
         "SDL_TouchFingerEvent": {
             "__size__": 48,
@@ -707,12 +677,7 @@
         },
         "SDL_WindowEvent": {
             "__size__": 20,
-            "data1": 12,
-            "data2": 16,
             "event": 8,
-            "padding1": 9,
-            "padding2": 10,
-            "padding3": 11,
             "type": 0,
             "windowID": 4
         },
@@ -1319,11 +1284,7 @@
         },
         "flock": {
             "__size__": 32,
-            "l_len": 16,
-            "l_pid": 24,
-            "l_start": 8,
-            "l_type": 0,
-            "l_whence": 2
+            "l_type": 0
         },
         "hostent": {
             "__size__": 20,
@@ -1340,9 +1301,6 @@
         },
         "msghdr": {
             "__size__": 28,
-            "msg_control": 16,
-            "msg_controllen": 20,
-            "msg_flags": 24,
             "msg_iov": 8,
             "msg_iovlen": 12,
             "msg_name": 0,
@@ -1362,26 +1320,13 @@
         },
         "pthread": {
             "__size__": 112,
-            "cancel": 28,
-            "cancelasync": 33,
-            "canceldisable": 32,
-            "locale": 88,
             "profilerBlock": 104,
-            "result": 56,
-            "robust_list": 68,
             "stack": 44,
-            "stack_size": 48,
-            "tid": 16,
-            "tsd": 64
+            "stack_size": 48
         },
         "pthread_attr_t": {
             "__size__": 44,
             "_a_transferredcanvases": 40
-        },
-        "sockaddr": {
-            "__size__": 16,
-            "sa_data": 2,
-            "sa_family": 0
         },
         "sockaddr_in": {
             "__size__": 16,
@@ -1390,8 +1335,7 @@
                 "s_addr": 4
             },
             "sin_family": 0,
-            "sin_port": 2,
-            "sin_zero": 8
+            "sin_port": 2
         },
         "sockaddr_in6": {
             "__size__": 28,
@@ -1405,15 +1349,11 @@
                 "__size__": 16
             },
             "sin6_family": 0,
-            "sin6_flowinfo": 4,
-            "sin6_port": 2,
-            "sin6_scope_id": 24
+            "sin6_port": 2
         },
         "stat": {
             "__size__": 112,
-            "__st_dev_padding": 4,
             "__st_ino_truncated": 8,
-            "__st_rdev_padding": 32,
             "st_atim": {
                 "__size__": 16,
                 "tv_nsec": 64,
@@ -1455,7 +1395,6 @@
         },
         "thread_profiler_block": {
             "__size__": 104,
-            "currentStatusStartTime": 8,
             "name": 72,
             "threadStatus": 0,
             "timeSpentInStatus": 16
