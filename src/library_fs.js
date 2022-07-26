@@ -21,6 +21,9 @@ mergeInto(LibraryManager.library, {
 #if LibraryManager.has('library_proxyfs.js')
     '$PROXYFS',
 #endif
+#if LibraryManager.has('library_xtermpty.js')
+    '$XTERMPTY',
+#endif
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
@@ -1337,11 +1340,17 @@ FS.staticInit();` +
         write: (stream, buffer, offset, length, pos) => length,
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
+#if !XTERMPTY
       // setup /dev/tty and /dev/tty1
       // stderr needs to print output using err() rather than out()
       // so we register a second tty just for it.
       TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
       TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
+#else
+      // Still create a /dev/tty1 to match previous behavior
+      TTY.register(FS.makedev(5, 0), XTERMPTY.tty_ops);
+      TTY.register(FS.makedev(6, 0), XTERMPTY.tty_ops);
+#endif
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random

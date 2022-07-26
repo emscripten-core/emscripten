@@ -10,6 +10,10 @@ mergeInto(LibraryManager.library, {
   $TTY__postset: function() {
     addAtInit('TTY.init();');
     addAtExit('TTY.shutdown();');
+    return `
+TTY.default_tty_ops.ioctl = TTY.default_tty_op_ioctl;
+TTY.default_tty_ops.ioctl = TTY.default_tty_op_ioctl;
+`;
   },
 #endif
   $TTY: {
@@ -94,6 +98,53 @@ mergeInto(LibraryManager.library, {
           stream.node.timestamp = Date.now();
         }
         return i;
+      },
+      ioctl: function(stream, op, argp) {
+        if (!stream.tty) {
+          return -{{{ cDefine('ENOTTY') }}};
+        }
+
+        if (!stream.tty.ops || !stream.tty.ops.ioctl) {
+          return -{{{ cDefine('EINVAL') }}};
+        }
+
+        return stream.tty.ops.ioctl(stream.tty, op, argp);
+      }
+    },
+    default_tty_op_ioctl: function(tty, op, argp) {
+      switch (op) {
+        case {{{ cDefine('TCGETA') }}}:
+        case {{{ cDefine('TCGETS') }}}:
+        case {{{ cDefine('TCSETA') }}}:
+        case {{{ cDefine('TCSETAW') }}}:
+        case {{{ cDefine('TCSETAF') }}}:
+        case {{{ cDefine('TCSETS') }}}:
+        case {{{ cDefine('TCSETSW') }}}:
+        case {{{ cDefine('TCSETSF') }}}:
+        case {{{ cDefine('TIOCGWINSZ') }}}:
+        case {{{ cDefine('TIOCSWINSZ') }}}: {
+          return 0;
+        }
+        case {{{ cDefine('TIOCGPGRP') }}}: {
+          {{{ makeSetValue('argp', 0, 0, 'i32') }}};
+          return 0;
+        }
+        case {{{ cDefine('FIONREAD') }}}: {
+          {{{ makeSetValue('argp', 0, 'tty.input.length', 'i32') }}}
+          return 0;
+        }
+        case {{{ cDefine('TIOCSPGRP') }}}: {
+          return -{{{ cDefine('ENOTTY') }}}; // not supported
+        }
+        default: {
+    #if ASSERTIONS
+          abort('bad ioctl syscall ' + op);
+    #endif
+          // Per https://lkml.org/lkml/2012/5/25/142 and
+          // https://lore.kernel.org/lkml/20110709164226.519a81fe@stein/,
+          // unrecognized ioctls should result in ENOTTY, not EINVAL
+          return -{{{ cDefine('ENOTTY') }}};
+        }
       }
     },
     default_tty_ops: {
