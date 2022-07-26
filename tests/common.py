@@ -1553,7 +1553,6 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, self.in_dir(basename))
-    reporting = read_file(test_file('browser_reporting.js'))
     write_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
@@ -1599,15 +1598,8 @@ class BrowserCore(RunnerCore):
               }
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
-            if (typeof reportResultToServer === 'undefined') {
-              (function() {
-                %s
-                reportResultToServer(wrong);
-              })();
-            } else {
-              reportResultToServer(wrong);
-            }
+            assert(reportResultToServer);
+            reportResultToServer(wrong);
           };
           actualImage.src = actualUrl;
         }
@@ -1656,7 +1648,7 @@ class BrowserCore(RunnerCore):
       }
 
       setupRefTest();
-''' % (reporting, basename, int(manually_trigger)))
+''' % (basename, int(manually_trigger)))
 
   def compile_btest(self, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
