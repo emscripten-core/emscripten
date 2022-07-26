@@ -14,7 +14,7 @@ import zlib
 from pathlib import Path
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py benchmark')
+  raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
 
 import clang_native
 import jsrun

@@ -8,7 +8,7 @@ import os
 import shutil
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
+  raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
 from common import parameterized
 from common import BrowserCore, test_file

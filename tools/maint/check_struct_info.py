@@ -18,11 +18,18 @@ from tools.settings import settings
 
 
 def check_structs(info):
-  for struct in info['structs'].keys():
-    key = 'C_STRUCTS.' + struct + '.'
+  for struct, values in info['structs'].items():
+    key = 'C_STRUCTS\\.' + struct + '\\.'
     # grep --quiet ruturns 0 when there is a match
     if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
-      print(struct)
+      print(key)
+    else:
+      for value in values:
+        if value != '__size__':
+          key = 'C_STRUCTS\\.' + struct + '\\.' + value
+          # grep --quiet ruturns 0 when there is a match
+          if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
+            print(key)
 
 
 def check_defines(info):

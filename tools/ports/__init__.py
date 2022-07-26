@@ -169,7 +169,7 @@ class Ports:
     # e.g.
     #     sdl2=/home/username/dev/ports/SDL2
     # so you could run
-    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
+    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./test/runner.py browser.test_sdl2_mouse
     # this will simply copy that directory into the ports directory for sdl2, and use that. It also
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')

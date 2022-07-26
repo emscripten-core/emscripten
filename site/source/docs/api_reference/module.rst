@@ -159,7 +159,7 @@ Other methods
 
 .. js:function:: Module.getPreloadedPackage
 
-  If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``tests/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
+  If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``test/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
 
 .. js:function:: Module.instantiateWasm
 
@@ -167,7 +167,7 @@ Other methods
 
   The instantiation can be performed either synchronously or asynchronously. The return value of this function should contain the ``exports`` object of the instantiated WebAssembly Module, or an empty dictionary object ``{}`` if the instantiation is performed asynchronously, or ``false`` if instantiation failed.
 
-  Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``tests/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
+  Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``test/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
 
   .. note:: Sanitizers or source map is currently not supported if overriding WebAssembly instantiation with Module.instantiateWasm. Providing Module.instantiateWasm when source map or sanitizer is enabled can prevent WebAssembly instantiation from finishing.
 

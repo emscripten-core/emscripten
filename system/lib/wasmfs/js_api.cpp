@@ -100,8 +100,8 @@ int _wasmfs_mkdir(char* path, int mode) {
 
 int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
-void _wasmfs_symlink(char* old_path, char* new_path) {
-  __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
+int _wasmfs_symlink(char* old_path, char* new_path) {
+  return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
 int _wasmfs_chmod(char* path, mode_t mode) {
