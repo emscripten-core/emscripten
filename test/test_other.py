@@ -8650,8 +8650,8 @@ int main() {
     # as described by the DWARF.
     # TODO: consider also checking the function names once the output format
     # stabilizes more
-    self.assertRegex(get_addr('0x124').replace('\n', ''),
-                     'test_dwarf.c:15:3.*test_dwarf.c:20:3')
+    self.assertRegex(get_addr('0x118').replace('\n', ''),
+                     'test_dwarf.c:13:3.*test_dwarf.c:18:3')
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
