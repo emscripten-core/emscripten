@@ -51,7 +51,7 @@ exclude_filenames = [
     'system/lib/html5/dom_pk_codes.c',
     'system/lib/dlmalloc.c',
     'third_party/',
-    'tests/optimizer/',
+    'test/optimizer/',
     'site/source/_themes/',
 ]
 

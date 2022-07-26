@@ -6,7 +6,7 @@ linux distributions, or other downstream SDKs.
 
 Firstly, we provide an install script in `tools/install.py`.  This allows
 just the end-user parts of emscripten to be installed.  For example this avoids
-including the `tests/third_party` directory which is of that biggest parts 
+including the `test/third_party` directory which is of that biggest parts 
 of the source tree.
 
 If you prefer, you can use `make install` or `make dist` which invokes

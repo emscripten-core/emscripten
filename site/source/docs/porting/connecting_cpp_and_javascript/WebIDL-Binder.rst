@@ -486,6 +486,6 @@ The type names in WebIDL are not identical to those in C++. This section shows t
 Test and example code
 =====================
 
-For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/main/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
+For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/main/test/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/main/test/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
 
 Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the `Bullet Physics engine <http://bulletphysics.org/wordpress/>`_ to the Web.

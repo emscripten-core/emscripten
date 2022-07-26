@@ -12,7 +12,7 @@ import time
 from subprocess import Popen
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner sockets')
+  raise Exception('do not run this file directly; do something like: test/runner sockets')
 
 import clang_native
 import common

@@ -41,7 +41,7 @@ emstrip
 emsymbolizer
 tools/file_packager
 tools/webidl_binder
-tests/runner
+test/runner
 '''.split()
 
 
