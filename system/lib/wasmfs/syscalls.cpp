@@ -1233,11 +1233,6 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return -0;
     }
-    case TIOCGPGRP:
-    case TIOCSPGRP: {
-      // TODO We should get/set the group number here.
-      return -EINVAL;
-    }
     default: {
       return -EINVAL; // not supported
     }
