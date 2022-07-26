@@ -233,8 +233,40 @@ commands:
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
-  test-chrome:
-    description: "Runs emscripten browser tests under chrome"
+  test-chrome-first:
+    description: "Runs emscripten browser tests under chrome (first half)"
+    steps:
+      - prepare-for-tests
+      - download-chrome
+      - run:
+          name: run tests
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            # There are a tests in the browser test suite that using library
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
+            # Tests are split between this job and test-chrome-second to avoid
+            # a single very long job (which is a problem because unlike almost
+            # all other tests, the browser tests are run sequentially, and not
+            # in parallel). The split is basically that test_a*-test_o* are all
+            # done here, plus z*, a posixtest test, and emrun, while
+            # test-chrome-second does all the rest. That ends up with similar
+            # amounts of time in each.
+            tests/runner browser.test_a* browser.test_b* browser.test_c* browser.test_d* browser.test_e* browser.test_f* browser.test_g* browser.test_h* browser.test_i* browser.test_j* browser.test_k* browser.test_l* browser.test_m* browser.test_n* browser.test_o* browser.test_z*
+            tests/runner posixtest_browser.test_pthread_create_1_1
+            tests/runner emrun
+  test-chrome-second:
+    description: "Runs emscripten browser tests under chrome (second half)"
     steps:
       - prepare-for-tests
       - download-chrome
@@ -256,8 +288,12 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
-            tests/runner emrun
+            # see comment on test-chrome-first for how the tests are split
+            # between here and there (in particular, z* is intentionally not
+            # here)
+            # note that we should have no test names starting with an uppercase
+            # letter or a number, but for safety we write those out here too
+            tests/runner browser.test_p* browser.test_q* browser.test_r* browser.test_s* browser.test_t* browser.test_u* browser.test_v* browser.test_w* browser.test_x* browser.test_y* browser.test_A* browser.test_B* browser.test_C* browser.test_D* browser.test_E* browser.test_F* browser.test_G* browser.test_H* browser.test_I* browser.test_J* browser.test_K* browser.test_L* browser.test_M* browser.test_N* browser.test_O* browser.test_P* browser.test_Q* browser.test_R* browser.test_S* browser.test_T* browser.test_U* browser.test_V* browser.test_W* browser.test_X* browser.test_Y* browser.test_Z* browser.test_0* browser.test_1* browser.test_2* browser.test_3* browser.test_4* browser.test_5* browser.test_6* browser.test_7* browser.test_8* browser.test_9* skip:browser.test_zzz_zzz_4gb_fail
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -444,10 +480,14 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
-  test-browser-chrome:
+  test-browser-chrome-first:
     executor: bionic
     steps:
-      - test-chrome
+      - test-chrome-first
+  test-browser-chrome-second:
+    executor: bionic
+    steps:
+      - test-chrome-second
   test-browser-firefox:
     executor: bionic
     steps:
@@ -583,7 +623,10 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
+      - test-browser-chrome-first:
+          requires:
+            - build-linux
+      - test-browser-chrome-second:
           requires:
             - build-linux
       - test-browser-firefox:
