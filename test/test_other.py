@@ -214,6 +214,7 @@ class other(RunnerCore):
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
+  @unittest.skip('let LLVM 16 roll in')
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
