@@ -12237,6 +12237,7 @@ Module['postRun'] = function() {{
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
+  @disabled('https://github.com/emscripten-core/emscripten/issues/17532')
   def test_stack_switching_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
