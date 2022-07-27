@@ -214,6 +214,7 @@ class other(RunnerCore):
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
+  @unittest.skip('let LLVM 16 roll in')
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
@@ -8413,6 +8414,11 @@ end
   def test_ioctl_window_size(self):
       self.do_other_test('test_ioctl_window_size.cpp')
 
+  @also_with_wasmfs
+  def test_sys_ioctl(self):
+    # ioctl requires filesystem
+    self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
+
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')
 
@@ -8650,8 +8656,8 @@ int main() {
     # as described by the DWARF.
     # TODO: consider also checking the function names once the output format
     # stabilizes more
-    self.assertRegex(get_addr('0x124').replace('\n', ''),
-                     'test_dwarf.c:15:3.*test_dwarf.c:20:3')
+    self.assertRegex(get_addr('0x118').replace('\n', ''),
+                     'test_dwarf.c:13:3.*test_dwarf.c:18:3')
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])

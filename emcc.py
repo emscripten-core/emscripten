@@ -1478,6 +1478,14 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.EXCEPTION_CATCHING_ALLOWED:
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
+  if settings.WASM_EXCEPTIONS:
+    if 'DISABLE_EXCEPTION_CATCHING' in user_settings:
+      exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
+    if 'DISABLE_EXCEPTION_THROWING' in user_settings:
+      exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
+    settings.DISABLE_EXCEPTION_CATCHING = 1
+    settings.DISABLE_EXCEPTION_THROWING = 1
+
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
@@ -3069,8 +3077,6 @@ def parse_args(newargs):
   settings_changes = []
   user_js_defines = []
   should_exit = False
-  eh_enabled = False
-  wasm_eh_enabled = False
   skip = False
 
   for i in range(len(newargs)):
@@ -3311,9 +3317,13 @@ def parse_args(newargs):
       settings.DISABLE_EXCEPTION_THROWING = 1
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-fexceptions':
-      eh_enabled = True
+      # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+      # exception handling by default when -fexceptions is given when wasm
+      # exception handling becomes stable.
+      settings.DISABLE_EXCEPTION_THROWING = 0
+      settings.DISABLE_EXCEPTION_CATCHING = 0
     elif arg == '-fwasm-exceptions':
-      wasm_eh_enabled = True
+      settings.WASM_EXCEPTIONS = 1
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif check_arg('--default-obj-ext'):
@@ -3367,18 +3377,6 @@ def parse_args(newargs):
 
   if should_exit:
     sys.exit(0)
-
-  # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
-  # exception handling by default when -fexceptions is given when wasm
-  # exception handling becomes stable.
-  if wasm_eh_enabled:
-    settings.WASM_EXCEPTIONS = 1
-    settings.DISABLE_EXCEPTION_THROWING = 1
-    settings.DISABLE_EXCEPTION_CATCHING = 1
-  elif eh_enabled:
-    settings.WASM_EXCEPTIONS = 0
-    settings.DISABLE_EXCEPTION_THROWING = 0
-    settings.DISABLE_EXCEPTION_CATCHING = 0
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, user_js_defines, newargs
