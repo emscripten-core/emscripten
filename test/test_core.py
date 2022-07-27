@@ -1114,6 +1114,7 @@ base align: 0, 0, 0, 0'''])
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_catching)
       self.do_core_test('test_longjmp.c')
     # Wasm SjLj with and without Wasm EH support
+    self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
     if not self.is_wasm():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
@@ -1252,7 +1253,7 @@ int main()
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
     # Wasm EH with and without Wasm SjLj support
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     if not self.is_wasm():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_v8()
