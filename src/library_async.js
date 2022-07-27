@@ -57,6 +57,9 @@ mergeInto(LibraryManager.library, {
     //       malloc() asyncify does (we could ifdef it out, but it's even more
     //       ifdefing).
 
+    // The global suspender object used with the VM's stack switching Promise
+    // API.
+    suspender: null,
     // The promise that is being suspended on in the VM atm, or null.
     promise: null,
     // The function we should call to resolve the promise at the right time.
@@ -76,6 +79,11 @@ mergeInto(LibraryManager.library, {
     instrumentWasmImports: function(imports) {
 #if ASYNCIFY_DEBUG
       err('asyncify instrumenting imports');
+#endif
+#if ASYNCIFY == 2
+      // TODO we could perhaps add an init function and put this there, but
+      //      this should work for now.
+      Asyncify.suspender = new WebAssembly.Suspender();
 #endif
       var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
       for (var x in imports) {
@@ -157,7 +165,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
             err('asyncify: returnPromiseOnSuspend for', x, original);
 #endif
-            ret[x] = original = WebAssembly.returnPromiseOnSuspend(original);
+            ret[x] = original = Asyncify.suspender.returnPromiseOnSuspend(original);
           }
 #endif
           if (typeof original == 'function') {
