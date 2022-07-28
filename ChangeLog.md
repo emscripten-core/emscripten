@@ -23,6 +23,7 @@ See docs/process.md for more on how version tagging works.
 - The tests/ directory was renamed to just test/ to match other project close
   emscripten (llvm, wabt, binaryen).  This should not effect any users of
   emscripten, only developers. (#17502)
+- The llvm version that emscripten uses was updated to 16.0.0 (#17534)
 
 3.1.17 - 07/22/2022
 ------
