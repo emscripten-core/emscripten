@@ -111,6 +111,7 @@ self.onunhandledrejection = (e) => {
   if (typeof e.reason !== 'undefined') {
     throw e.reason;
   }
+  throw e;
 };
 
 self.onmessage = (e) => {
