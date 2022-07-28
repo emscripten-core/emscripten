@@ -108,7 +108,7 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 // Turn unhandled rejected promises into errors so that the main thread will be
 // notified about them.
 self.onunhandledrejection = (e) => {
-  if (typeof(e.reason) !== 'undefined') {
+  if (typeof e.reason !== 'undefined') {
     throw e.reason;
   }
 };
