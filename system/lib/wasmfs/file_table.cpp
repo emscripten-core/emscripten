@@ -12,12 +12,15 @@
 namespace wasmfs {
 
 FileTable::FileTable() {
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDONLY, SpecialFiles::getStdin()));
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStdout()));
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStderr()));
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStdin(), O_RDONLY, entries.back());
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStdout(), O_WRONLY, entries.back());
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStderr(), O_WRONLY, entries.back());
 }
 
 std::shared_ptr<OpenFileState> FileTable::Handle::getEntry(__wasi_fd_t fd) {

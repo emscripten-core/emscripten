@@ -5310,6 +5310,14 @@ Module["preRun"].push(function () {
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
+  @requires_threads
+  @no_firefox('no OPFS support yet')
+  def test_wasmfs_opfs_errors(self):
+    test = test_file('wasmfs/wasmfs_opfs_errors.c')
+    postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
+    self.btest(test, args=args, expected="0")
+
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])

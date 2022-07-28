@@ -272,12 +272,7 @@ private:
     }
   }
 
-  void open(oflags_t flags) override {
-    if (auto err = state.open(proxy, fileID, flags); err < 0) {
-      // TODO: Proper error reporting.
-      assert(false && "error during open");
-    }
-  }
+  int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
 
   void close() override { state.close(proxy); }
 

@@ -156,10 +156,7 @@ private:
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 
-  void open(oflags_t flags) override {
-    // TODO: Properly report errors.
-    state.open(flags);
-  }
+  int open(oflags_t flags) override { return state.open(flags); }
 
   void close() override { state.close(); }
 
