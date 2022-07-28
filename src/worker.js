@@ -105,6 +105,14 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 }
 #endif
 
+// Turn unhandled rejected promises into errors so that the main thread will be
+// notified about them.
+self.onunhandledrejection = (e) => {
+  if (typeof(e.reason) !== 'undefined') {
+    throw e.reason;
+  }
+};
+
 self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.

@@ -9066,6 +9066,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
 
   @node_pthreads
+  def test_pthread_unhandledrejection(self):
+    # Check that an unhandled promise rejection is propagated to the main thread
+    # as an error.
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.emcc_args += ['--post-js', test_file('pthread/test_pthread_unhandledrejection.post.js')]
+    self.do_runf(test_file('pthread/test_pthread_unhandledrejection.c'), 'passed')
+
+  @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')

@@ -5377,6 +5377,14 @@ Module["preRun"].push(function () {
   def test_assert_failure(self):
     self.btest(test_file('browser/test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
 
+  def test_pthread_unhandledrejection(self):
+    # Check that an unhandled promise rejection is propagated to the main thread
+    # as an error. This test is failing if it hangs!
+    self.btest(test_file('pthread/test_pthread_unhandledrejection.c'),
+               args=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
+                     test_file('pthread/test_pthread_unhandledrejection.post.js')],
+               expected='exception:Uncaught [object ErrorEvent] / undefined')
+
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
