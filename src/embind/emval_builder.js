@@ -56,10 +56,13 @@ mergeInto(LibraryManager.library, {
             case 14:  // EMVAL
                 v = Emval.toValue(HEAP32[(ptr >> 2)]); break;
             case 15: {  // ARRAY
+                // -----------------------------------------
+                // |    ad(4)    | ty(1) | con(1) |  n(2)  |
+                // -----------------------------------------
                 var ad = HEAP32[(ptr >> 2)];
                 var ty = HEAPU8[(ptr + 4)];
                 var con = !!HEAPU8[(ptr + 5)];
-                var n = HEAPU16[(ptr >> 1) + 3];
+                var n = HEAPU16[(ptr + 6) >> 1];
                 var heap;
                 switch (ty) {
                     case 1:           heap = HEAP8;  break;   // INT8

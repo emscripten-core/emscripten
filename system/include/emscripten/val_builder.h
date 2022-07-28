@@ -156,13 +156,13 @@ using emscripten::val;
 
 template <size_t N = 16 /*BUFF_SIZE*/ >
 class ValBuilder {
- public:
-  ValBuilder() : ValBuilder(OBJECT) {}
-  ~ValBuilder() = default;
-
+public:
   // disallow copy & move operations.
   ValBuilder(const ValBuilder&) = delete;
   ValBuilder& operator=(const ValBuilder&) = delete;
+
+  ValBuilder() : ValBuilder(OBJECT) {}
+  ~ValBuilder() = default;
 
   explicit ValBuilder(const val& v) : val_(v) {}
   explicit ValBuilder(EmValType t)
@@ -311,12 +311,15 @@ class ValBuilder {
     return val_;
   }
 
+  val& val_ref() { return val_; }
+  const val& val_ref() const { return val_; }
+
   void reset_val(const val& v = val::null()) {
     assert(empty());
     val_ = !v.isNull() ? v : val_.isArray() ? val::array() : val::object();
   }
 
- private:
+private:
   const void* buffer() const { return items_.data(); }
 
   void reset() {
@@ -368,8 +371,8 @@ class ValBuilder {
   // Binding val
   val val_ = val::null();
 
-  // Transient storage for passing temporary/rvalue arguments.
-  // We make sufficient space for val as it's cheap to cache.
+  // Transient storage for temporary/rvalue arguments passed in.
+  // We make sufficient space reserved for val as it's cheap to cache.
   std::array<val, N> cached_vals_;
   size_t cached_vals_count_ = 0;
 
