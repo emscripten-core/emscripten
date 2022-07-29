@@ -287,6 +287,9 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
+#if ASSERTIONS
+  assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
+#endif
   xhr.responseType = 'arraybuffer';
 
   if (overriddenMimeType) {
@@ -320,11 +323,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   // and on error (despite an error, there may be a response, like a 404 page).
   // This receives a condition, which determines whether to save the xhr's
   // response, or just 0.
-  function saveResponse(condition) {
+  function saveResponseAndStatus() {
     var ptr = 0;
     var ptrLen = 0;
-    if (condition) {
-      ptrLen = xhr.response ? xhr.response.byteLength : 0;
+    if (xhr.response && fetchAttrLoadToMemory && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
+      ptrLen = xhr.response.byteLength;
+    }
+    if (ptrLen > 0) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
@@ -335,16 +340,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     }
     HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
-  }
-
-  xhr.onload = (e) => {
-    // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
-      return;
-    }
-    saveResponse(fetchAttrLoadToMemory && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0);
-    var len = xhr.response ? xhr.response.byteLength : 0;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
+    var len = xhr.response ? xhr.response.byteLength : 0;
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
@@ -354,9 +351,17 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+  }
+
+  xhr.onload = (e) => {
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) { 
+      return;
+    }
+    saveResponseAndStatus();
     if (xhr.status >= 200 && xhr.status < 300) {
 #if FETCH_DEBUG
-      console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
+      console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status ' + xhr.status);
 #endif
       if (onsuccess) onsuccess(fetch, xhr, e);
     } else {
@@ -371,15 +376,11 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!(id in Fetch.xhrs)) { 
       return;
     }
-    saveResponse(fetchAttrLoadToMemory);
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, xhr.response ? xhr.response.byteLength : 0);
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = status;
+    saveResponseAndStatus();
     if (onerror) onerror(fetch, xhr, e);
   };
   xhr.ontimeout = (e) => {
