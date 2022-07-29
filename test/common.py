@@ -768,6 +768,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       stderr_file = self.in_dir('stderr')
       stderr = open(stderr_file, 'w')
+    stdout = open(stdout_file, 'w')
     error = None
     timeout_error = None
     if not engine:
@@ -778,13 +779,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = engine + self.v8_args
     try:
       jsrun.run_js(filename, engine, args,
-                   stdout=open(stdout_file, 'w'),
+                   stdout=stdout,
                    stderr=stderr,
                    assert_returncode=assert_returncode)
     except subprocess.TimeoutExpired as e:
       timeout_error = e
     except subprocess.CalledProcessError as e:
       error = e
+    finally:
+      stdout.close()
+      if stderr != STDOUT:
+        stderr.close()
 
     # Make sure that we produced proper line endings to the .js file we are about to run.
     if not filename.endswith('.wasm'):
