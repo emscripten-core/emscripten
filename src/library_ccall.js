@@ -133,7 +133,7 @@ mergeInto(LibraryManager.library, {
     argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return
     // the original function
-    var numericArgs = argTypes.every((type) => type === 'number');
+    var numericArgs = argTypes.every((type) => type === 'number' || type === 'boolean');
     var numericRet = returnType !== 'string';
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);

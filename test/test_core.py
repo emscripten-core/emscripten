@@ -19,9 +19,9 @@ from functools import wraps
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
-from tools.shared import try_delete, PIPE
+from tools.shared import PIPE
 from tools.shared import EMCC, EMAR
-from tools.utils import WINDOWS, MACOS, write_file
+from tools.utils import WINDOWS, MACOS, write_file, delete_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -4064,7 +4064,7 @@ ok
 
     if isinstance(main, list):
       # main is just a library
-      try_delete('main.js')
+      delete_file('main.js')
       self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'main.js'])
       self.do_run('main.js', expected, no_build=True, **kwargs)
     else:
@@ -6380,7 +6380,7 @@ int main(void) {
     if self.emcc_args == []:
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
-      try_delete('src.js')
+      delete_file('src.js')
       self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
       self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
@@ -6989,6 +6989,20 @@ void* operator new(size_t size) {
 
     if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
+
+  def test_ccall_cwrap_fast_path(self):
+    self.emcc_args.append('-Wno-return-stack-address')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('ASSERTIONS', 0)
+    create_file('post.js', '''
+      var printBool = Module['cwrap']('print_bool', null, ['boolean']);
+      out(Module['_print_bool'] === printBool); // the function should be the exact raw function in the module rather than a wrapped one
+      ''')
+    self.emcc_args += ['--post-js', 'post.js']
+
+    self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
+    self.do_runf(test_file('core/test_ccall.cpp'), 'true')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
