@@ -31,9 +31,9 @@ import clang_native
 import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
+from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
-from tools import shared, line_endings, building, config
+from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -82,13 +82,6 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
-
-
-def delete_contents(pathname):
-  for entry in os.listdir(pathname):
-    try_delete(os.path.join(pathname, entry))
-    # TODO(sbc): Should we make try_delete have a stronger guarantee?
-    assert not os.path.exists(os.path.join(pathname, entry))
 
 
 def test_file(*path_components):
@@ -308,6 +301,35 @@ def make_executable(name):
   Path(name).chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
+def make_dir_writeable(dirname):
+  # Ensure all files are readable and writable by the current user.
+  permission_bits = stat.S_IWRITE | stat.S_IREAD
+
+  def is_writable(path):
+    return (os.stat(path).st_mode & permission_bits) != permission_bits
+
+  def make_writable(path):
+    new_mode = os.stat(path).st_mode | permission_bits
+    os.chmod(path, new_mode)
+
+  # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
+  # them. Force-make everything writable in the subdirectory to make it
+  # removable and re-attempt.
+  if not is_writable(dirname):
+    make_writable(dirname)
+
+  for directory, subdirs, files in os.walk(dirname):
+    for item in files + subdirs:
+      i = os.path.join(directory, item)
+      if not os.path.islink(i):
+        make_writable(i)
+
+
+def force_delete_dir(dirname):
+  make_dir_writeable(dirname)
+  utils.delete_dir(dirname)
+
+
 def parameterized(parameters):
   """
   Mark a test as parameterized.
@@ -509,7 +531,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
-          delete_contents(self.working_dir)
+          utils.delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
@@ -527,7 +549,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
-      try_delete(self.get_dir())
+      force_delete_dir(self.get_dir())
 
       if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
@@ -949,9 +971,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native)
 
   def clear(self):
-    delete_contents(self.get_dir())
+    utils.delete_contents(self.get_dir())
     if EMSCRIPTEN_TEMP_DIR:
-      delete_contents(EMSCRIPTEN_TEMP_DIR)
+      utils.delete_contents(EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -1717,7 +1739,7 @@ class BrowserCore(RunnerCore):
     outfile = 'test.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
-    try_delete(outfile)
+    utils.delete_file(outfile)
     self.compile_btest(args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
