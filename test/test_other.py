@@ -6720,13 +6720,8 @@ Resolved: "/" => "/"
     self.assertContained('double-freed', self.run_js('a.out.js'))
     # in debug mode, the double-free is caught
     self.run_process([EMXX, 'src.cpp', '-sASSERTIONS=2'])
-    seen_error = False
-    out = '?'
-    try:
-      out = self.run_js('a.out.js')
-    except Exception:
-      seen_error = True
-    self.assertTrue(seen_error, out)
+    out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('native code called abort()', out)
 
   def test_mallocs(self):
     def run(opts):
