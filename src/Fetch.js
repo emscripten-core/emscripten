@@ -427,7 +427,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
+    if (!(id in Fetch.xhrs)) {
+      {{{ runtimeKeepalivePop() }}}
       return;
     }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
@@ -603,8 +604,8 @@ function fetchFree(id) {
     if (xhr !== undefined) {
         delete Fetch.xhrs[id];
         // check if fetch is still in progress and should be aborted
-        if (xhr.readyState > 0 && xhr.readyState < 4) { 
-            xhr.abort(); 
+        if (xhr.readyState > 0 && xhr.readyState < 4) {
+            xhr.abort();
         }
     }
 }
