@@ -19,7 +19,7 @@ namespace wasmfs {
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
-  void open(oflags_t) override {}
+  int open(oflags_t) override { return 0; }
   void close() override {}
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override;
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override;

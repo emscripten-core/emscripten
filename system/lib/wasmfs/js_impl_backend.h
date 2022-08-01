@@ -77,7 +77,7 @@ class JSImplFile : public DataFile {
   }
 
   // TODO: Notify the JS about open and close events?
-  void open(oflags_t) override {}
+  int open(oflags_t) override { return 0; }
   void close() override {}
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {

@@ -129,9 +129,8 @@ class DataFile : public File {
 protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
-  // they are unlinked.
-  // TODO: Report errors.
-  virtual void open(oflags_t flags) = 0;
+  // they are unlinked. Returns 0 on success or a negative error code.
+  virtual int open(oflags_t flags) = 0;
   virtual void close() = 0;
 
   // Return the accessed length or a negative error code. It is not an error to
@@ -289,7 +288,7 @@ public:
   Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
   Handle(Handle&&) = default;
 
-  void open(oflags_t flags) { getFile()->open(flags); }
+  [[nodiscard]] int open(oflags_t flags) { return getFile()->open(flags); }
   void close() { getFile()->close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) {
