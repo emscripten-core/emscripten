@@ -1903,8 +1903,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.MAIN_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$getDylinkMetadata',
-        '$mergeLibSymbols',
+      '$getDylinkMetadata',
+      '$mergeLibSymbols',
     ]
 
   if settings.USE_PTHREADS:
@@ -1914,11 +1914,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$reportUndefinedSymbols',
-        '$relocateExports',
-        '$GOTHandler',
-        '__heap_base',
-        '__stack_pointer',
+      '$reportUndefinedSymbols',
+      '$relocateExports',
+      '$GOTHandler',
+      '__heap_base',
+      '__stack_pointer',
     ]
 
     if settings.ASYNCIFY:
@@ -2372,6 +2372,12 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # wasm2js, which behaves more like js.
     options.memory_init_file = True
     settings.MEM_INIT_IN_WASM = True
+
+  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+      '$getTempRet0',
+      '$setTempRet0',
+    ]
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
