@@ -18,7 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.18
+3.1.19
+------
+
+3.1.18 - 08/01/2022
 ------
 - The tests/ directory was renamed to just test/ to match other project close
   emscripten (llvm, wabt, binaryen).  This should not effect any users of
