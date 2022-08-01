@@ -635,7 +635,7 @@ var LibraryWebGPU = {
     VertexStepMode: [
       'vertex',
       'instance',
-      'vertex-buffer-not-used',
+      undefined,
     ],
   },
 
@@ -1317,10 +1317,9 @@ var LibraryWebGPU = {
 
     function makeVertexBuffer(vbPtr) {
       if (!vbPtr) return undefined;
-      var stepModeInt = {{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.stepMode) }}};
       return {
         "arrayStride": {{{ gpu.makeGetU64('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.arrayStride) }}},
-        "stepMode": stepModeInt === {{{ gpu.VertexStepMode.VertexBufferNotUsed }}} ? undefined : WebGPU.VertexStepMode[stepModeInt],
+        "stepMode": WebGPU.VertexStepMode[{{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.stepMode) }}}],
         "attributes": makeVertexAttributes(
           {{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.attributeCount) }}},
           {{{ makeGetValue('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.attributes, '*') }}}),
@@ -1659,6 +1658,7 @@ var LibraryWebGPU = {
         var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
 #if ASSERTIONS
         assert(sType === {{{ gpu.SType.RenderPassDescriptorMaxDrawCount }}});
+        assert(0 === {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.next, '*') }}});
 #endif
         var renderPassDescriptorMaxDrawCount = nextInChainPtr;
         {{{ gpu.makeCheckDescriptor('renderPassDescriptorMaxDrawCount') }}}
