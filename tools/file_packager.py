@@ -520,6 +520,10 @@ def main():
     seen.add(name)
     return False
 
+  # The files are sorted by the dstpath to make the order of files reproducible
+  # across file systems / operating systems (os.walk does not produce the same
+  # file order on different file systems / operating systems)
+  data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
   if AV_WORKAROUND:
