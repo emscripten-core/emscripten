@@ -7581,7 +7581,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
-    '': (None, False),
+    '': ('DEFAULT', False),
     'all': ('ALL', False),
     'fast': ('FAST', False),
     'default': ('DEFAULT', False),
@@ -7626,10 +7626,8 @@ void* operator new(size_t size) {
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    if not mode:
-      mode = 'DEFAULT'
     expected = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), expected)
+    self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
 
   ### Tests for tools
 
