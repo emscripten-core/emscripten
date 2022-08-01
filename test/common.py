@@ -1559,7 +1559,7 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expected, timeout, extra_tries - 1)
+              return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
       finally:
