@@ -28,15 +28,21 @@ mergeInto(LibraryManager.library, {
   // available to native code.
   // ==========================================================================
 
-  getTempRet0__sig: 'i',
-  getTempRet0: function() {
-    return getTempRet0();
+  $tempRet0: 0,
+  $getTempRet0__sig: 'i',
+  $getTempRet0__deps: ['$tempRet0'],
+  $getTempRet0: function() {
+    return tempRet0;
   },
 
-  setTempRet0__sig: 'vi',
-  setTempRet0: function(val) {
-    setTempRet0(val);
+  $setTempRet0__sig: 'vi',
+  $setTempRet0__deps: ['$tempRet0'],
+  $setTempRet0: function(val) {
+    tempRet0 = val;
   },
+
+  getTempRet0: '$getTempRet0',
+  setTempRet0: '$setTempRet0',
 
   $ptrToString: function(ptr) {
     return '0x' + ptr.toString(16).padStart(8, '0');
@@ -3706,5 +3712,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
+  '$getTempRet0',
+  '$setTempRet0',
 );
 #endif
