@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.18
+3.1.19
 ------
+
+3.1.18 - 08/01/2022
+-------------------
 - The tests/ directory was renamed to just test/ to match other project close
   emscripten (llvm, wabt, binaryen).  This should not effect any users of
   emscripten, only developers. (#17502)
@@ -28,7 +31,7 @@ See docs/process.md for more on how version tagging works.
   same way it propagates uncaught exceptions.
 
 3.1.17 - 07/22/2022
-------
+-------------------
 - Add support for dynamic linking with Asyncify. (#15893)
 - A source map file and DWARF info in the wasm can now be emitted at the same if
   the user gives the both options: `-g -gsource-map`. (#17484)
