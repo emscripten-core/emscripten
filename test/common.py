@@ -688,11 +688,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       cmd += emcc_args
     if libraries:
       cmd += libraries
-    if shared.suffix(filename) not in ('.i', '.ii'):
-      # Add the location of the test file to include path.
-      cmd += ['-I.']
-      if includes:
-        cmd += ['-I' + str(include) for include in includes]
+    if includes:
+      cmd += ['-I' + str(include) for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
