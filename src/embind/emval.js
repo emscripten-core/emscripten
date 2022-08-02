@@ -201,8 +201,15 @@ var LibraryEmVal = {
       argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
     }
 
+    // The body of the generated function does not have access to enclosing
+    // scope where HEAPU64/HEAPU32/etc are defined, and we cannot pass them
+    // directly as arguments (like we do the Module object) since memory
+    // growth can cause them to be re-bound.
+    var getMemory = () => {{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}};
+
     var functionBody =
-        "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n";
+        "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n" +
+        "  var {{{ MEMORY64 ? 'HEAPU64' : 'HEAPU32' }}} = getMemory();\n";
 
     for (var i = 0; i < argCount; ++i) {
         functionBody +=
@@ -217,8 +224,8 @@ var LibraryEmVal = {
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "valueToHandle", "{{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}}" , functionBody))(
-        requireRegisteredType, Module, Emval.toHandle, {{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}});
+    return (new Function("requireRegisteredType", "Module", "valueToHandle", "getMemory" , functionBody))(
+        requireRegisteredType, Module, Emval.toHandle, getMemory);
 #endif
   },
 
