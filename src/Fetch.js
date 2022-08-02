@@ -376,9 +376,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!(id in Fetch.xhrs)) { 
       return;
     }
-    var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
 #if FETCH_DEBUG
-    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
+    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     saveResponseAndStatus();
     if (onerror) onerror(fetch, xhr, e);
@@ -601,7 +600,7 @@ function fetchFree(id) {
     console.log("fetch: Deleting id:" + id + " of " + Fetch.xhrs);
 #endif
     var xhr = Fetch.xhrs[id];
-    if (xhr !== undefined) {
+    if (xhr) {
         delete Fetch.xhrs[id];
         // check if fetch is still in progress and should be aborted
         if (xhr.readyState > 0 && xhr.readyState < 4) {
