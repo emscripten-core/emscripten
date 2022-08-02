@@ -572,7 +572,7 @@ var LibraryDylink = {
         return resolved;
       }
 
-      // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
+      // TODO kill (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
       //

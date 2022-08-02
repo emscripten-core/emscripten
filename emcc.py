@@ -3635,7 +3635,7 @@ var %(EXPORT_NAME)s = (() => {
     }
 
   final_js += '.modular.js'
-  with open(final_js, 'w') as f:
+  with open(final_js, 'w', encoding='utf-8') as f:
     f.write(src)
 
     # Export using a UMD style export, or ES6 exports if selected
