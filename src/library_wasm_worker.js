@@ -55,24 +55,8 @@ mergeInto(LibraryManager.library, {
     assert(m['sz'] % 16 == 0);
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-    // _emscripten_wasm_worker_initialize() initializes the stack for this Worker,
-    // but it cannot call to extern __set_stack_limits() function, or Binaryen breaks
-    // with "Fatal: Module::addFunction: __set_stack_limits already exists".
-    // So for now, invoke this function from JS side. TODO: remove this in the future.
-    // Note that this call is not exactly correct, since this limit will include
-    // the TLS slot, that will be part of the region between m['sb'] and m['sz'],
-    // so we need to fix up the call below.
-    ___set_stack_limits(m['sb'] + m['sz'], m['sb']);
-#endif
     // Run the C side Worker initialization for stack and TLS.
     _emscripten_wasm_worker_initialize(m['sb'], m['sz']);
-#if STACK_OVERFLOW_CHECK >= 2
-    // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
-    // See https://github.com/emscripten-core/emscripten/issues/16496
-    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
-
     // The Wasm Worker runtime is now up, so we can start processing
     // any postMessage function calls that have been received. Drop the temp
     // message handler that queued any pending incoming postMessage function calls ...

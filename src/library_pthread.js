@@ -908,9 +908,6 @@ var LibraryPThread = {
     return {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
   },
 
-#if STACK_OVERFLOW_CHECK >= 2 && MAIN_MODULE
-  $establishStackSpace__deps: ['$setDylinkStackLimits'],
-#endif
   $establishStackSpace__internal: true,
   $establishStackSpace: function() {
     var pthread_ptr = _pthread_self();
@@ -928,16 +925,6 @@ var LibraryPThread = {
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.
     _emscripten_stack_set_limits(stackTop, stackMax);
-#if STACK_OVERFLOW_CHECK >= 2
-    // Set stack limits used by binaryen's `StackCheck` pass.
-    // TODO(sbc): Can this be combined with the above.
-    ___set_stack_limits(stackTop, stackMax);
-#if MAIN_MODULE
-    // With dynamic linking we could have any number of pre-loaded libraries
-    // that each need to have their stack limits set.
-    setDylinkStackLimits(stackTop, stackMax);
-#endif
-#endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
     stackRestore(stackTop);

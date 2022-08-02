@@ -546,10 +546,6 @@ mergeInto(LibraryManager.library, {
       var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
       _emscripten_stack_set_limits(stack_base, stack_max);
 
-#if STACK_OVERFLOW_CHECK >= 2
-      ___set_stack_limits(stack_base, stack_max);
-#endif
-
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};

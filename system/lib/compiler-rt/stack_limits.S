@@ -107,14 +107,6 @@ emscripten_wasm_worker_initialize:
   PTR.add
   global.set __stack_base
 
-// TODO: We'd like to do this here to avoid JS side calls to __set_stack_limits.
-//       (or even better, we'd like to avoid duplicate versions of the stack variables)
-// See https://github.com/emscripten-core/emscripten/issues/16496
-//  global.get __stack_base
-//  global.get __stack_end
-//  .functype __set_stack_limits (PTR, PTR) -> ()
-//  call __set_stack_limits
-
   // __wasm_init_tls(stackLowestAddress);
   local.get 0
   .functype __wasm_init_tls (PTR) -> ()

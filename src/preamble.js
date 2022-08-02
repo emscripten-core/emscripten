@@ -257,12 +257,6 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-#if RUNTIME_LOGGING
-  err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
-#endif
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
