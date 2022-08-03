@@ -153,6 +153,7 @@ class WasmSourceMap(object):
       if len(data) >= 4:
         col += data[3]
         info.append(col)
+      # TODO: see if we need the name, which is the next field (data[4])
 
       self.mappings[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
