@@ -139,7 +139,6 @@ class WasmSourceMap(object):
     src = 0
     line = 1
     col = 1
-    name = 0
     for segment in source_map_json['mappings'].split(','):
       data = decodeVLQ(segment)
       info = []
