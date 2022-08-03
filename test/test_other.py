@@ -8633,8 +8633,8 @@ int main() {
   def test_emsymbolizer(self):
     def check_loc_info(address, source, funcs, locs):
       out = self.run_process(
-                [emsymbolizer, '-s', source, 'test_dwarf.wasm', address],
-                stdout=PIPE).stdout
+            [emsymbolizer, '-s', source, 'test_dwarf.wasm', address],
+            stdout=PIPE).stdout
       for func in funcs:
         self.assertIn(func, out)
       for loc in locs:
