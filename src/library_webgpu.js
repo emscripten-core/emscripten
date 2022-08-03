@@ -1675,6 +1675,7 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.depthStencilAttachment, '*') }}}),
         "occlusionQuerySet": WebGPU.mgrQuerySet.get(
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.occlusionQuerySet, '*') }}}),
+        "maxDrawCount": maxDrawCount,
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -1686,9 +1687,6 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}});
       }
 
-      if (maxDrawCount) {
-        desc["maxDrawCount"] = maxDrawCount;
-      }
       return desc;
     }
 
