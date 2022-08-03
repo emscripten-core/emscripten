@@ -93,8 +93,7 @@ def get_sourceMappingURL_section(module):
 
 class WasmSourceMap(object):
   # This implementation is derived from emscripten's sourcemap-support.js
-  Location = namedtuple('Location', ['source', 'line', 'column'],
-                        defaults=[None, 0, 0])
+  Location = namedtuple('Location', ['source', 'line', 'column'])
 
   def __init__(self):
     self.version = None
