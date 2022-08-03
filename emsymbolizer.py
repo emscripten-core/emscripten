@@ -64,7 +64,7 @@ def symbolize_address_dwarf(module, address):
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
   # Source location regex, e.g., /abc/def.c:3:5
-  SOURCE_LOC_RE = re.compile('(.+):(\d+):(\d+)$')
+  SOURCE_LOC_RE = re.compile(r'(.+):(\d+):(\d+)$')
   loc_infos = []
   # llvm-dwarfdump prints two lines per location. The first line contains a
   # function name, and the second contains a source location like
