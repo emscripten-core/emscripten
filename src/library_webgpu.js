@@ -151,6 +151,11 @@
     TextureFormat: {
       Undefined: 0,
     },
+    VertexStepMode: {
+      Vertex: 0,
+      Instance: 1,
+      VertexBufferNotUsed: 2,
+    },
   };
   return null;
 })(); }}}
@@ -1312,10 +1317,10 @@ var LibraryWebGPU = {
 
     function makeVertexBuffer(vbPtr) {
       if (!vbPtr) return undefined;
-      var stepModeValue = WebGPU.VertexStepMode[{{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.stepMode) }}}];
-      return stepModeValue === undefined ? undefined :{
+      var stepModeInt = {{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.stepMode) }}};
+      return stepModeInt === {{{ gpu.VertexStepMode.VertexBufferNotUsed }}} ? null : {
         "arrayStride": {{{ gpu.makeGetU64('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.arrayStride) }}},
-        "stepMode": stepModeValue,
+        "stepMode": WebGPU.VertexStepMode[stepModeInt],
         "attributes": makeVertexAttributes(
           {{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.attributeCount) }}},
           {{{ makeGetValue('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.attributes, '*') }}}),
