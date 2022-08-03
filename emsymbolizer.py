@@ -15,10 +15,11 @@ import argparse
 from collections import namedtuple
 import json
 import os
+import re
+import subprocess
 import sys
 from tools import shared
 from tools import webassembly
-from tools.shared import check_call
 
 LLVM_SYMBOLIZER = os.path.expanduser(
     shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
@@ -26,6 +27,20 @@ LLVM_SYMBOLIZER = os.path.expanduser(
 
 class Error(BaseException):
   pass
+
+
+# Class to treat location info in a uniform way across information sources.
+class LocationInfo(object):
+  def __init__(self, source=None, line=0, column=0, func=None):
+    self.source = source
+    self.line = line
+    self.column = column
+    self.func = func
+
+  def print(self):
+    source = self.source if self.source else '??'
+    func = self.func if self.func else '??'
+    print(f'{func}\n{source}:{self.line}:{self.column}')
 
 
 def get_codesec_offset(module):
@@ -46,7 +61,27 @@ def symbolize_address_dwarf(module, address):
   vma_adjust = get_codesec_offset(module)
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
-  check_call(cmd)
+  out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
+  out_lines = out.splitlines()
+  # Source location regex, e.g., /abc/def.c:3:5
+  SOURCE_LOC_RE = re.compile('(.+):(\d+):(\d+)$')
+  loc_infos = []
+  # llvm-dwarfdump prints two lines per location. The first line contains a
+  # function name, and the second contains a source location like
+  # '/abc/def.c:3:5'. If the function or source info is not available, it will
+  # be printed as '??', in which case we store None. If the line and column info
+  # is not available, they will be printed as 0, which we store as is.
+  for i in range(0, len(out_lines), 2):
+    func, loc_str = out_lines[i], out_lines[i + 1]
+    m = SOURCE_LOC_RE.match(loc_str)
+    source, line, column = m.group(1), m.group(2), m.group(3)
+    if func == '??':
+      func = None
+    if source == '??':
+      source = None
+    loc_infos.append(LocationInfo(source, line, column, func))
+  for loc_info in loc_infos:
+    loc_info.print()
 
 
 def get_sourceMappingURL_section(module):
@@ -58,14 +93,13 @@ def get_sourceMappingURL_section(module):
 
 class WasmSourceMap(object):
   # This implementation is derived from emscripten's sourcemap-support.js
-  Location = namedtuple('Location',
-                        ['source', 'line', 'column', 'name'])
+  Location = namedtuple('Location', ['source', 'line', 'column'],
+                        defaults=[None, 0, 0])
 
   def __init__(self):
     self.version = None
     self.sources = []
-    self.names = []
-    self.mapping = {}
+    self.mappings = {}
     self.offsets = []
 
   def parse(self, filename):
@@ -76,7 +110,6 @@ class WasmSourceMap(object):
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
-    self.names = source_map_json['names']
 
     vlq_map = {}
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
@@ -121,11 +154,8 @@ class WasmSourceMap(object):
       if len(data) >= 4:
         col += data[3]
         info.append(col)
-      if len(data) >= 5:
-        name += data[4]
-        info.append(name)
 
-      self.mapping[offset] = WasmSourceMap.Location(*info)
+      self.mappings[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
     self.offsets.sort()
 
@@ -144,18 +174,13 @@ class WasmSourceMap(object):
 
   def lookup(self, offset):
     nearest = self.find_offset(offset)
-    assert nearest in self.mapping, 'Sourcemap has an offset with no mapping'
-    info = self.mapping[nearest]
-
-    # TODO: it's kind of icky to use Location for both the internal indexed
-    # location and external string version. Once we have more uniform output
-    # format and API for the various backends (e.g SM vs DWARF vs others), this
-    # could be improved.
-    return WasmSourceMap.Location(
+    assert nearest in self.mappings, 'Sourcemap has an offset with no mapping'
+    info = self.mappings[nearest]
+    return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
-        info.column,
-        self.names[info.name] if info.name is not None else None)
+        info.column
+      )
 
 
 def symbolize_address_sourcemap(module, address, force_file):
@@ -175,11 +200,11 @@ def symbolize_address_sourcemap(module, address, force_file):
   sm.parse(URL)
   if shared.DEBUG:
     csoff = get_codesec_offset(module)
-    print(sm.mapping)
+    print(sm.mappings)
     # Print with section offsets to easily compare against dwarf
-    for k, v in sm.mapping.items():
+    for k, v in sm.mappings.items():
       print(f'{k-csoff:x}: {v}')
-  print(sm.lookup(address))
+  sm.lookup(address).print()
 
 
 def main(args):
@@ -228,8 +253,6 @@ def get_args():
 
 
 if __name__ == '__main__':
-  print('Warning: the command-line and output format of this tool are not '
-        'finalized yet', file=sys.stderr)
   try:
     rv = main(get_args())
   except (Error, webassembly.InvalidWasmError, OSError) as e:

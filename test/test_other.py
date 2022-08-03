@@ -8633,25 +8633,34 @@ int main() {
   def test_emsymbolizer(self):
     # Test DWARF output
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-g', '-O1', '-o', 'test_dwarf.js'])
+                      '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
 
     # Use hard-coded addresses. This is potentially brittle, but LLVM's
     # O1 output is pretty minimal so hopefully it won't break too much?
     # Another option would be to disassemble the binary to look for certain
     # instructions or code sequences.
 
-    def get_addr(address):
+    def get_addr_info(address, source):
       return self.run_process(
-          [emsymbolizer, 'test_dwarf.wasm', address], stdout=PIPE).stdout
+          [emsymbolizer, '-s', source, 'test_dwarf.wasm', address],
+          stdout=PIPE).stdout
 
-    # Check a location in foo(), not inlined.
-    self.assertIn('test_dwarf.c:6:3', get_addr('0x101'))
-    # Check that both bar (inlined) and main (inlinee) are in the output,
-    # as described by the DWARF.
-    # TODO: consider also checking the function names once the output format
-    # stabilizes more
-    self.assertRegex(get_addr('0x118').replace('\n', ''),
-                     'test_dwarf.c:13:3.*test_dwarf.c:18:3')
+    for source in ['dwarf', 'sourcemap']:
+      # Check a location in foo(), not inlined.
+      addr_info = get_addr_info('0xe1', source)
+      self.assertIn('test_dwarf.c:6:3', addr_info)
+      if source == 'dwarf': # DWARF contains function names too
+        self.assertIn('foo', addr_info)
+      # Check a location in bar(), inlined
+      addr_info = get_addr_info('0xf8', source)
+      self.assertIn('test_dwarf.c:13:3', addr_info) # Location in the main()
+      if source == 'dwarf':
+        # DWARF contains function names w/ inlined locations. Check that both
+        # bar (inlined) and main (inlinee) are in the output, as described by
+        # the DWARF.
+        self.assertIn('test_dwarf.c:18:3', addr_info) # Location in bar()
+        self.assertIn('main', addr_info) # 'main' function
+        self.assertIn('bar', addr_info) # Inlined 'bar' function
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
