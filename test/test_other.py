@@ -8649,7 +8649,7 @@ int main() {
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
     # 0xe1 corresponds to out_to_js(0) within foo(), uninlined
-    # DWARF info provides function names, but soure maps don't
+    # DWARF info provides function names, but source maps don't
     check_loc_info('0xe1', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
     check_loc_info('0xe1', 'sourcemap', [], ['test_dwarf.c:6:3'])
     # 0xf8 corresponds to __builtin_trap() within bar(), inlined into main()
