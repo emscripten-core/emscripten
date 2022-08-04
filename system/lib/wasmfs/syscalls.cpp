@@ -230,7 +230,6 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
       // The read was short, so stop here.
       break;
     }
-
   }
   *nread = bytesRead;
   if (setOffset == OffsetHandling::OpenFileState &&
