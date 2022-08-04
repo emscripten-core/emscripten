@@ -4,8 +4,7 @@
 Release Notes
 =============
 
-Changes between tagged Emscripten versions are recorded in the :ref:`ChangeLog`
-(``ChangeLog.md`` in the source repo).
+Changes between tagged Emscripten versions are recorded in the :ref:`ChangeLog`.
 This log includes high-level information about new features, user-oriented
 fixes, options, command-line parameters, usage changes, deprecations,
 significant internal modifications, optimizations, etc. The log for each version
@@ -17,7 +16,6 @@ the previous release.
 ChangeLog
 =========
 
-The ChangeLog for Emscripten |release| (|today|) is listed below.
+You can find the ChangeLog at
+`Changelog.md in the source repo <https://github.com/emscripten-core/emscripten/blob/main/ChangeLog.md>`_.
 
-.. include::   ../../../../ChangeLog.md
-   :literal:
