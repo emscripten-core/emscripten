@@ -219,12 +219,18 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
       }
       return -result;
     }
+
     // The read was successful.
+
+    // Backends must only return len or less.
+    assert(result <= len);
+
     bytesRead += result;
     if (result < len) {
       // The read was short, so stop here.
       break;
     }
+
   }
   *nread = bytesRead;
   if (setOffset == OffsetHandling::OpenFileState &&

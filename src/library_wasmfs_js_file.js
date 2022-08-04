@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
       },
       read: (file, buffer, length, offset) => {
         var fileData = wasmFS$JSMemoryFiles[file];
-        length = Math.max(0, fileData.length - offset);
+        length = Math.min(length, fileData.length - offset);
         HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
         return length;
       },
