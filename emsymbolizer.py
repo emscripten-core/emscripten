@@ -65,7 +65,6 @@ def symbolize_address_dwarf(module, address):
   out_lines = out.splitlines()
   # Source location regex, e.g., /abc/def.c:3:5
   SOURCE_LOC_RE = re.compile(r'(.+):(\d+):(\d+)$')
-  loc_infos = []
   # llvm-dwarfdump prints two lines per location. The first line contains a
   # function name, and the second contains a source location like
   # '/abc/def.c:3:5'. If the function or source info is not available, it will
@@ -79,9 +78,7 @@ def symbolize_address_dwarf(module, address):
       func = None
     if source == '??':
       source = None
-    loc_infos.append(LocationInfo(source, line, column, func))
-  for loc_info in loc_infos:
-    loc_info.print()
+    LocationInfo(source, line, column, func).print()
 
 
 def get_sourceMappingURL_section(module):
