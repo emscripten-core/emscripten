@@ -208,7 +208,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 // operation is not allowed in the main browser thread, in which case it will
 // return EMSCRIPTEN_RESULT_NOT_SUPPORTED. Pass timeoutMSecs=infinite to wait
 // indefinitely. If the wait times out, the return value will be
-// EMSCRIPTEN_RESULT_TIMEOUT.
+// EMSCRIPTEN_RESULT_TIMED_OUT.
 // The onsuccess()/onerror()/onprogress() handlers will be called in the calling
 // thread from within this function before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMSecs);
