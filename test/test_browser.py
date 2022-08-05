@@ -5285,7 +5285,9 @@ Module["preRun"].push(function () {
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
-    'main_thread': (['-sPTHREAD_POOL_SIZE=4'],),
+    # this test requires one thread per fetch backend, so updates to the test
+    # will require bumping this
+    'main_thread': (['-sPTHREAD_POOL_SIZE=5'],),
     # using proxy_to_pthread also works, of course
     'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
   })
@@ -5294,6 +5296,7 @@ Module["preRun"].push(function () {
     if is_firefox() and '-sPROXY_TO_PTHREAD' not in args:
       return self.skipTest('ff hangs on the main_thread version. browser bug?')
     create_file('data.dat', 'hello, fetch')
+    create_file('small.dat', 'hello')
     create_file('test.txt', 'fetch 2')
     delete_dir('subdir')
     ensure_dir('subdir')

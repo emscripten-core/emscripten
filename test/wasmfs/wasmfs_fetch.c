@@ -16,7 +16,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// NOTE: Each fetch backend runs in a separate thread.
+// NOTE: Each fetch backend runs in a separate thread. When not using
+//       PROXY_TO_PTHREAD, that means we need a pool of at least one thread per
+//       backend, so updating test_browser.py may be needed when adding more
+//       here.
 
 void getUrlOrigin(char* ptr, int len);
 char url_orig[256] = {};
@@ -126,12 +129,34 @@ void test_default() {
   assert(close(fd2) == 0);
 }
 
+void test_small_reads() {
+  // Read the file in small amounts.
+  printf("Running %s...\n", __FUNCTION__);
+
+  char expected[] = "hello";
+  size_t size = 5;
+
+  backend_t backend = wasmfs_create_fetch_backend("small.dat");
+  int fd = wasmfs_create_file("/testfile3", 0777, backend);
+  char buf[size + 1];
+  for (size_t i = 0; i < size; i++) {
+    int read_now = read(fd, buf + i, 1);
+    assert(read_now == 1);
+    printf("read one byte\n");
+  }
+  buf[size] = 0;
+  assert(strcmp(buf, "hello") == 0);
+
+  assert(close(fd) == 0);
+}
+
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
   test_url_relative();
   test_url_absolute();
   test_directory_abs();
+  test_small_reads();
 
   return 0;
 }
