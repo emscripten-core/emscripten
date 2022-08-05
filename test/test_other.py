@@ -8631,29 +8631,45 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   def test_emsymbolizer(self):
-    # Test DWARF output
-    self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-g', '-O1', '-o', 'test_dwarf.js'])
+    def check_loc_info(address, source, funcs, locs):
+      out = self.run_process(
+          [emsymbolizer, '-tcode', '-s', source, 'test_dwarf.wasm', address],
+          stdout=PIPE).stdout
+      for func in funcs:
+        self.assertIn(func, out)
+      for loc in locs:
+        self.assertIn(loc, out)
 
     # Use hard-coded addresses. This is potentially brittle, but LLVM's
     # O1 output is pretty minimal so hopefully it won't break too much?
     # Another option would be to disassemble the binary to look for certain
     # instructions or code sequences.
 
-    def get_addr(address):
-      return self.run_process(
-          [emsymbolizer, 'test_dwarf.wasm', '-tcode', address], stdout=PIPE).stdout
+    # 1. Test DWARF + source map together
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
+    # 0x8 corresponds to out_to_js(0) within foo(), uninlined
+    # DWARF info provides function names, but source maps don't
+    check_loc_info('0x8', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
+    check_loc_info('0x8', 'sourcemap', [], ['test_dwarf.c:6:3'])
+    # 0x1f corresponds to __builtin_trap() within bar(), inlined into main()
+    # DWARF info provides inlined info, but source maps don't
+    check_loc_info('0x1f', 'dwarf', ['bar', 'main'],
+                   ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
+    check_loc_info('0x1f', 'sourcemap', [], ['test_dwarf.c:13:3'])
 
-    # Check a location in foo(), not inlined.
-    # If the output binary size changes use `wasm-objdump -d` on the binary
-    # look for the offset of the first call to `out_to_js`.
-    self.assertIn('test_dwarf.c:6:3', get_addr('0x8'))
-    # Check that both bar (inlined) and main (inlinee) are in the output,
-    # as described by the DWARF.
-    # TODO: consider also checking the function names once the output format
-    # stabilizes more
-    self.assertRegex(get_addr('0x1f').replace('\n', ''),
-                     'test_dwarf.c:13:3.*test_dwarf.c:18:3')
+    # 2. Test source map only
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
+    check_loc_info('0x8', 'sourcemap', [], ['test_dwarf.c:6:3'])
+    check_loc_info('0x1f', 'sourcemap', [], ['test_dwarf.c:13:3'])
+
+    # 3. Test DWARF only
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-g', '-O1', '-o', 'test_dwarf.js'])
+    check_loc_info('0x8', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
+    check_loc_info('0x1f', 'dwarf', ['bar', 'main'],
+                   ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
