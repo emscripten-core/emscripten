@@ -8632,6 +8632,7 @@ int main() {
 
   def test_emsymbolizer(self):
     self.run_process([CLANG_CC, '--version'])
+
     def check_loc_info(address, source, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', source, 'test_dwarf.wasm', address],
