@@ -8631,8 +8631,6 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   def test_emsymbolizer(self):
-    self.run_process([CLANG_CC, '--version'])
-
     def check_loc_info(address, source, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', source, 'test_dwarf.wasm', address],
@@ -8652,31 +8650,31 @@ int main() {
     # 1. Test DWARF + source map together
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    # 0x128 corresponds to out_to_js(0) within foo(), uninlined
+    # 0xed corresponds to out_to_js(0) within foo(), uninlined
     # DWARF info provides function names, but source maps don't
-    check_loc_info('0x128', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
-    check_loc_info('0x128', 'sourcemap', [], ['test_dwarf.c:6:3'])
-    # 0x13f corresponds to __builtin_trap() within bar(), inlined into main()
+    check_loc_info('0xed', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
+    check_loc_info('0xed', 'sourcemap', [], ['test_dwarf.c:6:3'])
+    # 0x104 corresponds to __builtin_trap() within bar(), inlined into main()
     # DWARF info provides inlined info, but source maps don't
-    check_loc_info('0x13f', 'dwarf', ['bar', 'main'],
+    check_loc_info('0x104', 'dwarf', ['bar', 'main'],
                    ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
-    check_loc_info('0x13f', 'sourcemap', [], ['test_dwarf.c:13:3'])
+    check_loc_info('0x104', 'sourcemap', [], ['test_dwarf.c:13:3'])
 
     # 2. Test source map only
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    # 0x128 corresponds to out_to_js(0) within foo(), uninlined
-    check_loc_info('0x128', 'sourcemap', [], ['test_dwarf.c:6:3'])
-    # 0x13f corresponds to __builtin_trap() within bar(), inlined into main()
-    check_loc_info('0x13f', 'sourcemap', [], ['test_dwarf.c:13:3'])
+    # 0xed corresponds to out_to_js(0) within foo(), uninlined
+    check_loc_info('0xed', 'sourcemap', [], ['test_dwarf.c:6:3'])
+    # 0x104 corresponds to __builtin_trap() within bar(), inlined into main()
+    check_loc_info('0x104', 'sourcemap', [], ['test_dwarf.c:13:3'])
 
     # 3. Test DWARF only
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-O1', '-o', 'test_dwarf.js'])
-    # 0x147 corresponds to out_to_js(0) within foo(), uninlined
-    check_loc_info('0x147', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
-    # 0x15e corresponds to __builtin_trap() within bar(), inlined into main()
-    check_loc_info('0x15e', 'dwarf', ['bar', 'main'],
+    # 0x10d corresponds to out_to_js(0) within foo(), uninlined
+    check_loc_info('0x10d', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
+    # 0x124 corresponds to __builtin_trap() within bar(), inlined into main()
+    check_loc_info('0x124', 'dwarf', ['bar', 'main'],
                    ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
 
   def test_separate_dwarf(self):
