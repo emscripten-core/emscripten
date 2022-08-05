@@ -12,6 +12,8 @@ $emscripten_stack_get_end
 $emscripten_stack_get_free
 $emscripten_stack_init
 $fflush
+$getTempRet0
+$setTempRet0
 $stackAlloc
 $stackRestore
 $stackSave
