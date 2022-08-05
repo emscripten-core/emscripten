@@ -16,7 +16,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// NOTE: Each fetch backend runs in a separate thread.
+// NOTE: Each fetch backend runs in a separate thread. When not using
+//       PROXY_TO_PTHREAD, that means we need a pool of at least one thread per
+//       backend, so updating test_browser.py may be needed when adding more
+//       here.
 
 void getUrlOrigin(char* ptr, int len);
 char url_orig[256] = {};

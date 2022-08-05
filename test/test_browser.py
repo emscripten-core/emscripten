@@ -5285,7 +5285,9 @@ Module["preRun"].push(function () {
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
-    'main_thread': (['-sPTHREAD_POOL_SIZE=4'],),
+    # this test requires one thread per fetch backend, so updates to the test
+    # will require bumping this
+    'main_thread': (['-sPTHREAD_POOL_SIZE=5'],),
     # using proxy_to_pthread also works, of course
     'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
   })
