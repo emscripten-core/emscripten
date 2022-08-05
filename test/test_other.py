@@ -8642,17 +8642,17 @@ int main() {
 
     def get_addr(address):
       return self.run_process(
-          [emsymbolizer, 'test_dwarf.wasm', address], stdout=PIPE).stdout
+          [emsymbolizer, 'test_dwarf.wasm', '-tcode', address], stdout=PIPE).stdout
 
     # Check a location in foo(), not inlined.
     # If the output binary size changes use `wasm-objdump -d` on the binary
     # look for the offset of the first call to `out_to_js`.
-    self.assertIn('test_dwarf.c:6:3', get_addr('0x10d'))
+    self.assertIn('test_dwarf.c:6:3', get_addr('0x8'))
     # Check that both bar (inlined) and main (inlinee) are in the output,
     # as described by the DWARF.
     # TODO: consider also checking the function names once the output format
     # stabilizes more
-    self.assertRegex(get_addr('0x124').replace('\n', ''),
+    self.assertRegex(get_addr('0x1f').replace('\n', ''),
                      'test_dwarf.c:13:3.*test_dwarf.c:18:3')
 
   def test_separate_dwarf(self):
