@@ -8644,6 +8644,8 @@ int main() {
     # O1 output is pretty minimal so hopefully it won't break too much?
     # Another option would be to disassemble the binary to look for certain
     # instructions or code sequences.
+    # If the output binary size changes use `wasm-objdump -d` on the binary
+    # look for the offset of the first call to `out_to_js`.
 
     # 1. Test DWARF + source map together
     self.run_process([EMCC, test_file('core/test_dwarf.c'),

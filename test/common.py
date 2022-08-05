@@ -688,11 +688,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       cmd += emcc_args
     if libraries:
       cmd += libraries
-    if shared.suffix(filename) not in ('.i', '.ii'):
-      # Add the location of the test file to include path.
-      cmd += ['-I.']
-      if includes:
-        cmd += ['-I' + str(include) for include in includes]
+    if includes:
+      cmd += ['-I' + str(include) for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -1559,7 +1556,7 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expected, timeout, extra_tries - 1)
+              return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
       finally:

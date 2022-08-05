@@ -358,8 +358,6 @@ function exportRuntime() {
     'getCompilerSetting',
     'print',
     'printErr',
-    'getTempRet0',
-    'setTempRet0',
     'callMain',
     'abort',
     'keepRuntimeAlive',

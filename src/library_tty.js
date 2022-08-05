@@ -50,10 +50,10 @@ mergeInto(LibraryManager.library, {
       },
       close: function(stream) {
         // flush any pending line data
-        stream.tty.ops.flush(stream.tty);
+        stream.tty.ops.fsync(stream.tty);
       },
-      flush: function(stream) {
-        stream.tty.ops.flush(stream.tty);
+      fsync: function(stream) {
+        stream.tty.ops.fsync(stream.tty);
       },
       read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
@@ -156,7 +156,7 @@ mergeInto(LibraryManager.library, {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
         }
       },
-      flush: function(tty) {
+      fsync: function(tty) {
         if (tty.output && tty.output.length > 0) {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
@@ -172,7 +172,7 @@ mergeInto(LibraryManager.library, {
           if (val != 0) tty.output.push(val);
         }
       },
-      flush: function(tty) {
+      fsync: function(tty) {
         if (tty.output && tty.output.length > 0) {
           err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];

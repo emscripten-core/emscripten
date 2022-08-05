@@ -22,8 +22,10 @@ class ProxiedFile : public DataFile {
   emscripten::ProxyWorker& proxy;
   std::shared_ptr<DataFile> baseFile;
 
-  void open(oflags_t flags) override {
-    proxy([&]() { baseFile->locked().open(flags); });
+  int open(oflags_t flags) override {
+    int err;
+    proxy([&]() { err = baseFile->locked().open(flags); });
+    return err;
   }
 
   void close() override {

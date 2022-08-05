@@ -1041,6 +1041,8 @@
             "WGPUAdapterProperties": [
                 "nextInChain",
                 "vendorID",
+                "vendorName",
+                "architecture",
                 "deviceID",
                 "name",
                 "driverDescription",
@@ -1136,6 +1138,8 @@
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
+                "maxInterStageShaderVariables",
+                "maxColorAttachments",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1159,10 +1163,6 @@
                 "label",
                 "bindGroupLayoutCount",
                 "bindGroupLayouts"
-            ],
-            "WGPUPrimitiveDepthClampingState": [
-                "chain",
-                "clampDepth"
             ],
             "WGPUPrimitiveDepthClipControl": [
                 "chain",
@@ -1211,6 +1211,10 @@
                 "stencilStoreOp",
                 "stencilClearValue",
                 "stencilReadOnly"
+            ],
+            "WGPURenderPassDescriptorMaxDrawCount": [
+                "chain",
+                "maxDrawCount"
             ],
             "WGPURenderPassTimestampWrite": [
                 "querySet",

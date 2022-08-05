@@ -5962,6 +5962,9 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_close(self):
     self.do_run_in_out_file_test('unistd/close.c')
 
+  def test_unistd_fsync_stdout(self):
+    self.do_run_in_out_file_test(test_file('unistd/fsync_stdout.c'))
+
   @also_with_noderawfs
   def test_unistd_pipe(self):
     self.do_runf(test_file('unistd/pipe.c'), 'success')
@@ -7581,7 +7584,7 @@ void* operator new(size_t size) {
 
   @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
-    '': (None, False),
+    '': ('DEFAULT', False),
     'all': ('ALL', False),
     'fast': ('FAST', False),
     'default': ('DEFAULT', False),
@@ -7626,10 +7629,8 @@ void* operator new(size_t size) {
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    if not mode:
-      mode = 'DEFAULT'
     expected = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), expected)
+    self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
 
   ### Tests for tools
 
@@ -9080,6 +9081,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_exit_main_stub(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
+
+  @node_pthreads
+  def test_pthread_unhandledrejection(self):
+    # Check that an unhandled promise rejection is propagated to the main thread
+    # as an error.
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.emcc_args += ['--post-js', test_file('pthread/test_pthread_unhandledrejection.post.js')]
+    self.do_runf(test_file('pthread/test_pthread_unhandledrejection.c'), 'passed')
 
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')

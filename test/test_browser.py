@@ -5310,6 +5310,14 @@ Module["preRun"].push(function () {
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
+  @requires_threads
+  @no_firefox('no OPFS support yet')
+  def test_wasmfs_opfs_errors(self):
+    test = test_file('wasmfs/wasmfs_opfs_errors.c')
+    postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
+    self.btest(test, args=args, expected="0")
+
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
@@ -5376,6 +5384,15 @@ Module["preRun"].push(function () {
 
   def test_assert_failure(self):
     self.btest(test_file('browser/test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
+
+  @no_firefox('output slightly different in FireFox')
+  def test_pthread_unhandledrejection(self):
+    # Check that an unhandled promise rejection is propagated to the main thread
+    # as an error. This test is failing if it hangs!
+    self.btest(test_file('pthread/test_pthread_unhandledrejection.c'),
+               args=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
+                     test_file('pthread/test_pthread_unhandledrejection.post.js')],
+               expected='exception:Uncaught [object ErrorEvent] / undefined')
 
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
