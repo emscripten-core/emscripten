@@ -12406,3 +12406,20 @@ Module['postRun'] = function() {{
       }
     ''')
     self.do_runf('main.c', 'warning: foo\ndone\n')
+
+  def test_compile_with_cache_lock(self):
+    # Verify that, after warming the cache, running emcc does not require the cache lock.
+    # Previously we would acquire the lock during sanity checking (even when the check
+    # passed) which meant the second process here would deadlock.
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    with shared.Cache.lock('testing'):
+      self.run_process([EMCC, '-c', test_file('hello_world.c')])
+
+  def test_recursive_cache_lock(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    with shared.Cache.lock('testing'):
+      err = self.run_process([EMBUILDER, 'build', 'libc', '--force'], stderr=PIPE, check=False).stderr
+    self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)

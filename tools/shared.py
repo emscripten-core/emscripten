@@ -389,6 +389,8 @@ def check_sanity(force=False):
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
 
+  # In DEBUG mode we perform the sanity checks even when
+  # early return due to the file being up-to-date.
   if DEBUG:
     force = True
 
@@ -404,31 +406,39 @@ def check_sanity(force=False):
   expected = generate_sanity()
 
   sanity_file = Cache.get_path('sanity.txt')
-  with Cache.lock():
+
+  def sanity_is_correct():
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        logger.info('(Emscripten: config changed, clearing cache)')
-        Cache.erase()
-        # the check actually failed, so definitely write out the sanity file, to
-        # avoid others later seeing failures too
-        force = False
-      else:
+      if sanity_data == expected:
+        logger.debug(f'sanity file up-to-date: {sanity_file}')
         if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-        else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
+          perform_sanity_checks()
+        return True # all is well
+    return False
+
+  if sanity_is_correct():
+    # Early return without taking the cache lock
+    return
+
+  with Cache.lock('sanity'):
+    # Check again once the cache lock as aquired
+    if sanity_is_correct():
+      return
+
+    if os.path.exists(sanity_file):
+      sanity_data = utils.read_file(sanity_file)
+      logger.info('old sanity: %s' % sanity_data)
+      logger.info('new sanity: %s' % expected)
+      logger.info('(Emscripten: config changed, clearing cache)')
+      Cache.erase()
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
     perform_sanity_checks()
 
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      utils.write_file(sanity_file, expected)
+    # Only create/update this file if the sanity check succeeded, i.e., we got here
+    utils.write_file(sanity_file, expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
