@@ -460,28 +460,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-# Test function for comparing binaryen vs python metadata.
-# Remove this once we go back to having just one method.
-def compare_metadata(metadata, pymetadata):
-  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
-    print(sorted(metadata.keys()))
-    print(sorted(pymetadata.keys()))
-    exit_with_error('metadata keys mismatch')
-  for key in metadata:
-    old = metadata[key]
-    new = pymetadata[key]
-    if key == 'features':
-      old = sorted(old)
-      new = sorted(new)
-    if old != new:
-      print(key)
-      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
-      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
-      print(pprint.pformat(old))
-      print(pprint.pformat(new))
-      exit_with_error('metadata mismatch')
-
-
 def finalize_wasm(infile, outfile, memfile):
   building.save_intermediate(infile, 'base.wasm')
   args = []
