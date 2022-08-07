@@ -46,7 +46,7 @@ var LibraryOpenAL = {
     },
     set alcErr(val) {
       // Errors should not be overwritten by later errors until they are cleared by a query.
-      if (this._alcErr === 0 /* ALC_NO_ERROR */ || val === 0 /* ALC_NO_ERROR */) {
+      if (this._alcErr === {{{ cDefine('ALC_NO_ERROR') }}} || val === {{{ cDefine('ALC_NO_ERROR') }}}) {
         this._alcErr = val;
       }
     },
@@ -407,7 +407,7 @@ var LibraryOpenAL = {
         }
       }
       // Create a panner if AL_SOURCE_SPATIALIZE_SOFT is set to true, or alternatively if it's set to auto and the source is mono
-      if (src.spatialize === 1 /* AL_TRUE */ || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
+      if (src.spatialize === {{{ cDefine('AL_TRUE') }}} || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
         if (src.panner) {
           return;
         }
@@ -452,7 +452,7 @@ var LibraryOpenAL = {
       // Use the source's distance model if AL_SOURCE_DISTANCE_MODEL is enabled
       var distanceModel = src.context.sourceDistanceModel ? src.distanceModel : src.context.distanceModel;
       switch (distanceModel) {
-      case 0 /* AL_NONE */:
+      case {{{ cDefine('AL_NONE') }}}:
         panner.distanceModel = 'inverse';
         panner.refDistance = 3.40282e38 /* FLT_MAX */;
         break;
@@ -753,17 +753,17 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0xC000 /* AL_DOPPLER_FACTOR */:
+      case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
         return AL.currentCtx.dopplerFactor;
-      case 0xC003 /* AL_SPEED_OF_SOUND */:
+      case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
         return AL.currentCtx.speedOfSound;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
       }
     },
@@ -777,33 +777,33 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0xC000 /* AL_DOPPLER_FACTOR */:
+      case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
         if (!Number.isFinite(value) || value < 0.0) { // Strictly negative values are disallowed
 #if OPENAL_DEBUG
           err(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
         AL.currentCtx.dopplerFactor = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0xC003 /* AL_SPEED_OF_SOUND */:
+      case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
         if (!Number.isFinite(value) || value <= 0.0) { // Negative or zero values are disallowed
 #if OPENAL_DEBUG
           err(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
         AL.currentCtx.speedOfSound = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
         switch (value) {
-        case 0 /* AL_NONE */:
+        case {{{ cDefine('AL_NONE') }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -817,7 +817,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         break;
@@ -825,7 +825,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
     },
@@ -839,19 +839,19 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefine('AL_POSITION') }}}:
         return AL.currentCtx.listener.position;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefine('AL_VELOCITY') }}}:
         return AL.currentCtx.listener.velocity;
-      case 0x100F /* AL_ORIENTATION */:
+      case {{{ cDefine('AL_ORIENTATION') }}}:
         return AL.currentCtx.listener.direction.concat(AL.currentCtx.listener.up);
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefine('AL_GAIN') }}}:
         return AL.currentCtx.gain.gain.value;
       default:
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
       }
     },
@@ -867,18 +867,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
 
       var listener = AL.currentCtx.listener;
       switch (param) {
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefine('AL_POSITION') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_POSITION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -887,12 +887,12 @@ var LibraryOpenAL = {
         listener.position[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefine('AL_VELOCITY') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -901,25 +901,25 @@ var LibraryOpenAL = {
         listener.velocity[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefine('AL_GAIN') }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
         AL.currentCtx.gain.gain.value = value;
         break;
-      case 0x100F /* AL_ORIENTATION */:
+      case {{{ cDefine('AL_ORIENTATION') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])
           || !Number.isFinite(value[3]) || !Number.isFinite(value[4]) || !Number.isFinite(value[5])
         ) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_ORIENTATION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -935,7 +935,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
     },
@@ -952,7 +952,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
 
@@ -977,7 +977,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
       }
     },
@@ -994,14 +994,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
         err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
 
@@ -1011,7 +1011,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_SIZE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1022,14 +1022,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_LOOP_POINTS_SOFT value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         if (buf.refCount > 0) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_LOOP_POINTS_SOFT set on bound buffer');
 #endif
-          AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
           return;
         }
 
@@ -1042,7 +1042,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
     },
@@ -1059,7 +1059,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return null;
       }
 
@@ -1072,11 +1072,11 @@ var LibraryOpenAL = {
         return src.coneOuterAngle;
       case 0x1003 /* AL_PITCH */:
         return src.pitch;
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefine('AL_POSITION') }}}:
         return src.position;
-      case 0x1005 /* AL_DIRECTION */:
+      case {{{ cDefine('AL_DIRECTION') }}}:
         return src.direction;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefine('AL_VELOCITY') }}}:
         return src.velocity;
       case 0x1007 /* AL_LOOPING */:
         return src.looping;
@@ -1085,7 +1085,7 @@ var LibraryOpenAL = {
           return src.bufQueue[0].id;
         }
         return 0;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefine('AL_GAIN') }}}:
         return src.gain.gain.value;
        case 0x100D /* AL_MIN_GAIN */:
         return src.minGain;
@@ -1147,13 +1147,13 @@ var LibraryOpenAL = {
         return length;
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
         return AL.sourceDuration(src);
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
         return src.distanceModel;
       default:
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
       }
     },
@@ -1170,30 +1170,30 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alSourcef() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
         err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
 
       switch (param) {
       case 0x202 /* AL_SOURCE_RELATIVE */:
-        if (value === 1 /* AL_TRUE */) {
+        if (value === {{{ cDefine('AL_TRUE') }}}) {
           src.relative = true;
           AL.updateSourceSpace(src);
-        } else if (value === 0 /* AL_FALSE */) {
+        } else if (value === {{{ cDefine('AL_FALSE') }}}) {
           src.relative = false;
           AL.updateSourceSpace(src);
         } else {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_SOURCE_RELATIVE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         break;
@@ -1202,7 +1202,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_CONE_INNER_ANGLE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1216,7 +1216,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_CONE_OUTER_ANGLE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1230,7 +1230,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_PITCH value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1241,12 +1241,12 @@ var LibraryOpenAL = {
         src.pitch = value;
         AL.updateSourceRate(src);
         break;
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefine('AL_POSITION') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_POSITION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1255,12 +1255,12 @@ var LibraryOpenAL = {
         src.position[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case 0x1005 /* AL_DIRECTION */:
+      case {{{ cDefine('AL_DIRECTION') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_DIRECTION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1269,12 +1269,12 @@ var LibraryOpenAL = {
         src.direction[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefine('AL_VELOCITY') }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1284,7 +1284,7 @@ var LibraryOpenAL = {
         AL.updateSourceSpace(src);
         break;
       case 0x1007 /* AL_LOOPING */:
-        if (value === 1 /* AL_TRUE */) {
+        if (value === {{{ cDefine('AL_TRUE') }}}) {
           src.looping = true;
           AL.updateSourceTime(src);
           if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
@@ -1292,7 +1292,7 @@ var LibraryOpenAL = {
             audioSrc.loop = true;
             audioSrc._duration = Number.POSITIVE_INFINITY;
           }
-        } else if (value === 0 /* AL_FALSE */) {
+        } else if (value === {{{ cDefine('AL_FALSE') }}}) {
           src.looping = false;
           var currentTime = AL.updateSourceTime(src);
           if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
@@ -1305,7 +1305,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_LOOPING value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         break;
@@ -1314,7 +1314,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '(AL_BUFFER) called while source is playing or paused');
 #endif
-          AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
           return;
         }
 
@@ -1333,7 +1333,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
             err('alSourcei(AL_BUFFER) called with an invalid buffer');
 #endif
-            AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+            AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
             return;
           }
 
@@ -1351,12 +1351,12 @@ var LibraryOpenAL = {
         AL.initSourcePanner(src);
         AL.scheduleSourceAudio(src);
         break;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefine('AL_GAIN') }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         src.gain.gain.value = value;
@@ -1366,7 +1366,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_MIN_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1379,7 +1379,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_MAX_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1392,7 +1392,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_REFERENCE_DISTANCE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         src.refDistance = value;
@@ -1405,7 +1405,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_ROLLOFF_FACTOR value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         src.rolloffFactor = value;
@@ -1418,7 +1418,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_CORE_OUTER_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         src.coneOuterGain = value;
@@ -1431,7 +1431,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_MAX_DISTANCE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         src.maxDistance = value;
@@ -1444,7 +1444,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_SEC_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1466,7 +1466,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_SAMPLE_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1489,18 +1489,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_BYTE_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
         AL.sourceSeek(src, value);
         break;
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-        if (value !== 0 /* AL_FALSE */ && value !== 1 /* AL_TRUE */ && value !== 2 /* AL_AUTO_SOFT */) {
+        if (value !== {{{ cDefine('AL_FALSE') }}} && value !== {{{ cDefine('AL_TRUE') }}} && value !== 2 /* AL_AUTO_SOFT */) {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_SOURCE_SPATIALIZE_SOFT value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
 
@@ -1513,11 +1513,11 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param AL_*_LENGTH_SOFT is read only');
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
         break;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
         switch (value) {
-        case 0 /* AL_NONE */:
+        case {{{ cDefine('AL_NONE') }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -1533,7 +1533,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           err(funcname + '() param AL_DISTANCE_MODEL value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
           return;
         }
         break;
@@ -1541,7 +1541,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
       }
     },
@@ -1567,7 +1567,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname+'() on a NULL device is an error');
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return null;
       }
       var c = AL.captures[deviceId];
@@ -1575,7 +1575,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err(funcname+'() on an invalid device');
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return null;
       }
       var err = c.mediaStreamError;
@@ -1593,7 +1593,7 @@ var LibraryOpenAL = {
           break;
         }
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return null;
       }
       return c;
@@ -1640,7 +1640,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alcCaptureOpenDevice() with negative bufferSize');
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
       return 0;
     }
 
@@ -1695,7 +1695,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alcCaptureOpenDevice() with unsupported format ' + format);
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
       return 0;
     }
 
@@ -1999,7 +1999,7 @@ var LibraryOpenAL = {
   // if OPENAL_DEBUG
       err('alcCaptureSamples() with invalid bufferSize');
   // endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
       return;
     }
     
@@ -2087,12 +2087,12 @@ var LibraryOpenAL = {
   alcCloseDevice__sig: 'ii',
   alcCloseDevice: function(deviceId) {
     if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
-      return 0 /* ALC_FALSE */;
+      return {{{ cDefine('ALC_FALSE') }}};
     }
 
     delete AL.deviceRefCounts[deviceId];
     AL.freeIds.push(deviceId);
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefine('ALC_TRUE') }}};
   },
 
   alcCreateContext__deps: ['$autoResumeAudioContext'],
@@ -2137,10 +2137,10 @@ var LibraryOpenAL = {
           break
         case 0x1992 /* ALC_HRTF_SOFT */:
           switch (val) {
-            case 0 /* ALC_FALSE */:
+            case {{{ cDefine('ALC_FALSE') }}}:
               hrtf = false;
               break;
-            case 1 /* ALC_TRUE */:
+            case {{{ cDefine('ALC_TRUE') }}}:
               hrtf = true;
               break;
             case 2 /* ALC_DONT_CARE_SOFT */:
@@ -2149,7 +2149,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
               out('Unsupported ALC_HRTF_SOFT mode ' + val);
 #endif
-              AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+              AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
               return 0;
           }
           break;
@@ -2158,7 +2158,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
             out('Invalid ALC_HRTF_ID_SOFT index ' + val);
 #endif
-            AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+            AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
             return 0;
           }
           break;
@@ -2229,7 +2229,7 @@ var LibraryOpenAL = {
       },
       set err(val) {
         // Errors should not be overwritten by later errors until they are cleared by a query.
-        if (this._err === 0 /* AL_NO_ERROR */ || val === 0 /* AL_NO_ERROR */) {
+        if (this._err === {{{ cDefine('AL_NO_ERROR') }}} || val === {{{ cDefine('AL_NO_ERROR') }}}) {
           this._err = val;
         }
       }
@@ -2280,7 +2280,7 @@ var LibraryOpenAL = {
   alcGetError__sig: 'ii',
   alcGetError: function(deviceId) {
     var err = AL.alcErr;
-    AL.alcErr = 0 /* ALC_NO_ERROR */;
+    AL.alcErr = {{{ cDefine('ALC_NO_ERROR') }}};
     return err;
   },
 
@@ -2301,7 +2301,7 @@ var LibraryOpenAL = {
     } else {
       AL.currentCtx = AL.contexts[contextId];
     }
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefine('ALC_TRUE') }}};
   },
 
   alcGetContextsDevice__proxy: 'sync',
@@ -2339,10 +2339,10 @@ var LibraryOpenAL = {
 #endif
       // ALC_INVALID_DEVICE is not listed as a possible error state for
       // this function, sadly.
-      return 0 /* ALC_NONE */;
+      return 0;
     } else if (!pEnumName) {
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
+      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      return 0;
     }
     var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
@@ -2387,8 +2387,8 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('No value for `' + pEnumName + '` is known by alcGetEnumValue()');
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0 /* AL_NONE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      return {{{ cDefine('AL_NONE') }}};
     }
   },
 
@@ -2402,19 +2402,19 @@ var LibraryOpenAL = {
 
     var ret;
     switch (param) {
-    case 0 /* ALC_NO_ERROR */:
+    case {{{ cDefine('ALC_NO_ERROR') }}}:
       ret = 'No Error';
       break;
-    case 0xA001 /* ALC_INVALID_DEVICE */:
+    case {{{ cDefine('ALC_INVALID_DEVICE') }}}:
       ret = 'Invalid Device';
       break;
     case 0xA002 /* ALC_INVALID_CONTEXT */:
       ret = 'Invalid Context';
       break;
-    case 0xA003 /* ALC_INVALID_ENUM */:
+    case {{{ cDefine('ALC_INVALID_ENUM') }}}:
       ret = 'Invalid Enum';
       break;
-    case 0xA004 /* ALC_INVALID_VALUE */:
+    case {{{ cDefine('ALC_INVALID_VALUE') }}}:
       ret = 'Invalid Value';
       break;
     case 0xA005 /* ALC_OUT_OF_MEMORY */:
@@ -2452,7 +2452,7 @@ var LibraryOpenAL = {
       break;
     case 0x1006 /* ALC_EXTENSIONS */:
       if (!deviceId) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return 0;
       }
 
@@ -2464,7 +2464,7 @@ var LibraryOpenAL = {
       ret = ret.trim();
       break;
     default:
-      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
       return 0;
     }
 
@@ -2490,7 +2490,7 @@ var LibraryOpenAL = {
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2502,7 +2502,7 @@ var LibraryOpenAL = {
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2516,7 +2516,7 @@ var LibraryOpenAL = {
       break;
     case 0x1007 /* ALC_FREQUENCY */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2529,7 +2529,7 @@ var LibraryOpenAL = {
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2542,7 +2542,7 @@ var LibraryOpenAL = {
     case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
 
@@ -2557,14 +2557,14 @@ var LibraryOpenAL = {
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2588,7 +2588,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       out('alcGetIntegerv() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
-      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
       return;
     }
   },
@@ -2600,7 +2600,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       out('alcDevicePauseSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
       return;
     }
 
@@ -2628,7 +2628,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       out('alcDeviceResumeSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
       return;
     }
 
@@ -2656,7 +2656,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       out('alcGetStringiSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
       return 0;
     }
 
@@ -2673,7 +2673,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         out('alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ' + index + ' is out of range');
 #endif
-        AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
         return 0;
       }
       break;
@@ -2682,7 +2682,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         out('alcGetStringiSOFT() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
-        AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+        AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
         return 0;
       }
       return _alcGetString(deviceId, param);
@@ -2700,8 +2700,8 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       out('alcResetDeviceSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
-      return 0 /* ALC_FALSE */;
+      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+      return {{{ cDefine('ALC_FALSE') }}};
     }
 
     var hrtf = null;
@@ -2718,9 +2718,9 @@ var LibraryOpenAL = {
 
         switch (attr) {
         case 0x1992 /* ALC_HRTF_SOFT */:
-          if (val === 1 /* ALC_TRUE */) {
+          if (val === {{{ cDefine('ALC_TRUE') }}}) {
             hrtf = true;
-          } else if (val === 0 /* ALC_FALSE */) {
+          } else if (val === {{{ cDefine('ALC_FALSE') }}}) {
             hrtf = false;
           }
           break;
@@ -2739,7 +2739,7 @@ var LibraryOpenAL = {
       }
     }
 
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefine('ALC_TRUE') }}};
   },
 
   // ***************************************************************************
@@ -2799,7 +2799,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alDeleteBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
 
@@ -2808,7 +2808,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alDeleteBuffers() called with a used buffer');
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
         return;
       }
     }
@@ -2893,7 +2893,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alDeleteSources() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
     }
@@ -2915,11 +2915,11 @@ var LibraryOpenAL = {
   alGetError__sig: 'i',
   alGetError: function() {
     if (!AL.currentCtx) {
-      return 0xA004 /* AL_INVALID_OPERATION */;
+      return {{{ cDefine('AL_INVALID_OPERATION') }}};
     }
     // Reset error on get.
     var err = AL.currentCtx.err;
-    AL.currentCtx.err = 0 /* AL_NO_ERROR */;
+    AL.currentCtx.err = {{{ cDefine('AL_NO_ERROR') }}};
     return err;
   },
 
@@ -2945,8 +2945,8 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetEnumValue() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
-      return 0 /* AL_NONE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      return {{{ cDefine('AL_NONE') }}};
     }
     var name = UTF8ToString(pEnumName);
 
@@ -3038,7 +3038,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('No value for `' + name + '` is known by alGetEnumValue()');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return 0;
     }
   },
@@ -3053,19 +3053,19 @@ var LibraryOpenAL = {
 
     var ret;
     switch (param) {
-    case 0 /* AL_NO_ERROR */:
+    case {{{ cDefine('AL_NO_ERROR') }}}:
       ret = 'No Error';
       break;
-    case 0xA001 /* AL_INVALID_NAME */:
+    case {{{ cDefine('AL_INVALID_NAME') }}}:
       ret = 'Invalid Name';
       break;
-    case 0xA002 /* AL_INVALID_ENUM */:
+    case {{{ cDefine('AL_INVALID_ENUM') }}}:
       ret = 'Invalid Enum';
       break;
-    case 0xA003 /* AL_INVALID_VALUE */:
+    case {{{ cDefine('AL_INVALID_VALUE') }}}:
       ret = 'Invalid Value';
       break;
-    case 0xA004 /* AL_INVALID_OPERATION */:
+    case {{{ cDefine('AL_INVALID_OPERATION') }}}:
       ret = 'Invalid Operation';
       break;
     case 0xA005 /* AL_OUT_OF_MEMORY */:
@@ -3090,7 +3090,7 @@ var LibraryOpenAL = {
       break;
     default:
       if (AL.currentCtx) {
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       } else {
   #if OPENAL_DEBUG
         err('alGetString() called without a valid context');
@@ -3122,7 +3122,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alEnable() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3145,7 +3145,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alDisable() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3161,12 +3161,12 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
-      return AL.currentCtx.sourceDistanceModel ? 0 /* AL_FALSE */ : 1 /* AL_TRUE */;
+      return AL.currentCtx.sourceDistanceModel ? {{{ cDefine('AL_FALSE') }}} : {{{ cDefine('AL_TRUE') }}};
     default:
 #if OPENAL_DEBUG
       err('alIsEnabled() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0;
     }
   },
@@ -3180,15 +3180,15 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       return val;
     default:
 #if OPENAL_DEBUG
       err('alGetDouble(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0.0;
     }
   },
@@ -3203,16 +3203,16 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'double') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetDoublev(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3226,9 +3226,9 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       return val;
     default:
 #if OPENAL_DEBUG
@@ -3248,16 +3248,16 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetFloatv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3271,15 +3271,15 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       return val;
     default:
 #if OPENAL_DEBUG
       err('alGetInteger(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0;
     }
   },
@@ -3294,16 +3294,16 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetIntegerv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3313,20 +3313,20 @@ var LibraryOpenAL = {
   alGetBoolean: function(param) {
     var val = AL.getGlobalParam('alGetBoolean', param);
     if (val === null) {
-      return 0 /* AL_FALSE */;
+      return {{{ cDefine('AL_FALSE') }}};
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
-      return val !== 0 ? 1 /* AL_TRUE */ : 0 /* AL_FALSE */;
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+      return val !== 0 ? {{{ cDefine('AL_TRUE') }}} : {{{ cDefine('AL_FALSE') }}};
     default:
 #if OPENAL_DEBUG
       err('alGetBoolean(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
-      return 0 /* AL_FALSE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      return {{{ cDefine('AL_FALSE') }}};
     }
   },
 
@@ -3340,16 +3340,16 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i8') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetBooleanv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3357,19 +3357,19 @@ var LibraryOpenAL = {
   alDistanceModel__proxy: 'sync',
   alDistanceModel__sig: 'vi',
   alDistanceModel: function(model) {
-    AL.setGlobalParam('alDistanceModel', 0xD000 /* AL_DISTANCE_MODEL */, model);
+    AL.setGlobalParam('alDistanceModel', {{{ cDefine('AL_DISTANCE_MODEL') }}}, model);
   },
 
   alSpeedOfSound__proxy: 'sync',
   alSpeedOfSound__sig: 'vi',
   alSpeedOfSound: function(value) {
-    AL.setGlobalParam('alSpeedOfSound', 0xC003 /* AL_SPEED_OF_SOUND */, value);
+    AL.setGlobalParam('alSpeedOfSound', {{{ cDefine('AL_SPEED_OF_SOUND') }}}, value);
   },
 
   alDopplerFactor__proxy: 'sync',
   alDopplerFactor__sig: 'vi',
   alDopplerFactor: function(value) {
-    AL.setGlobalParam('alDopplerFactor', 0xC000 /* AL_DOPPLER_FACTOR */, value);
+    AL.setGlobalParam('alDopplerFactor', {{{ cDefine('AL_DOPPLER_FACTOR') }}}, value);
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
@@ -3387,7 +3387,7 @@ var LibraryOpenAL = {
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
   },
@@ -3407,19 +3407,19 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListenerf() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetListenerf(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3435,13 +3435,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListener3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
@@ -3450,7 +3450,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListener3f(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3466,18 +3466,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefine('AL_ORIENTATION') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
@@ -3489,7 +3489,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListenerfv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3505,14 +3505,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListeneri() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
 #if OPENAL_DEBUG
     err('alGetListeneri(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
 
   alGetListener3i__proxy: 'sync',
@@ -3526,13 +3526,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListener3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
@@ -3541,7 +3541,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListener3i(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3557,18 +3557,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefine('AL_ORIENTATION') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
@@ -3580,7 +3580,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetListeneriv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3589,7 +3589,7 @@ var LibraryOpenAL = {
   alListenerf__sig: 'vif',
   alListenerf: function(param, value) {
     switch (param) {
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
       AL.setListenerParam('alListenerf', param, value);
       break;
     default:
@@ -3602,8 +3602,8 @@ var LibraryOpenAL = {
   alListener3f__sig: 'vifff',
   alListener3f: function(param, value0, value1, value2) {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3628,19 +3628,19 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
       AL.setListenerParam('alListenerfv', param, AL.paramArray);
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefine('AL_ORIENTATION') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -3665,8 +3665,8 @@ var LibraryOpenAL = {
   alListener3i__sig: 'viiii',
   alListener3i: function(param, value0, value1, value2) {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3691,19 +3691,19 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
       AL.setListenerParam('alListeneriv', param, AL.paramArray);
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefine('AL_ORIENTATION') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
@@ -3752,14 +3752,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alBufferData() called with an invalid buffer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
     if (freq <= 0) {
 #if OPENAL_DEBUG
       err('alBufferData() called with an invalid frequency');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -3852,7 +3852,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alBufferData() called with invalid format ' + format);
 #endif
-        AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
         return;
       }
       buf.frequency = freq;
@@ -3861,7 +3861,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alBufferData() upload failed with an exception ' + e);
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
   },
@@ -3877,14 +3877,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferf() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
 #if OPENAL_DEBUG
     err('alGetBufferf(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
 
   alGetBuffer3f__proxy: 'sync',
@@ -3898,14 +3898,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBuffer3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
 #if OPENAL_DEBUG
     err('alGetBuffer3f(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
 
   alGetBufferfv__proxy: 'sync',
@@ -3919,14 +3919,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
 #if OPENAL_DEBUG
     err('alGetBufferfv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
 
   alGetBufferi__proxy: 'sync',
@@ -3940,7 +3940,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferi() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -3955,7 +3955,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferi(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -3971,14 +3971,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBuffer3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
 #if OPENAL_DEBUG
     err('alGetBuffer3i(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
 
   alGetBufferiv__proxy: 'sync',
@@ -3992,7 +3992,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4011,7 +4011,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetBufferiv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4045,7 +4045,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4077,7 +4077,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4124,14 +4124,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceQueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     if (src.type === 0x1028 /* AL_STATIC */) {
 #if OPENAL_DEBUG
       err('alSourceQueueBuffers() called while a static buffer is bound');
 #endif
-      AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
       return;
     }
 
@@ -4155,7 +4155,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alSourceQueueBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
 
@@ -4168,7 +4168,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         err('alSourceQueueBuffers() called with a buffer of different format');
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
       }
     }
 
@@ -4208,11 +4208,11 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceUnqueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     if (count > (src.bufQueue.length === 1 && src.bufQueue[0].id === 0 ? 0 : src.bufsProcessed)) {
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4251,7 +4251,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourcePlay() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
@@ -4270,14 +4270,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourcePlayv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourcePlayv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
     }
@@ -4302,7 +4302,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceStop() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
@@ -4321,14 +4321,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceStopv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourceStopv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
     }
@@ -4353,7 +4353,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceRewind() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     // Stop the source first to clear the source queue
@@ -4375,14 +4375,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceRewindv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourceRewindv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
     }
@@ -4407,7 +4407,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourcePause() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
       return;
     }
     AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
@@ -4426,14 +4426,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourcePausev() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         err('alSourcePausev() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
         return;
       }
     }
@@ -4455,7 +4455,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourcef() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4463,7 +4463,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4480,7 +4480,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourcef(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4496,14 +4496,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSource3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
@@ -4512,7 +4512,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSource3f(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4528,7 +4528,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4536,7 +4536,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4549,9 +4549,9 @@ var LibraryOpenAL = {
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
@@ -4560,7 +4560,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourcefv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4576,7 +4576,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourcei() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4599,14 +4599,14 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
       err('alGetSourcei(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4622,14 +4622,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSource3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
@@ -4638,7 +4638,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSource3i(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4654,7 +4654,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4677,12 +4677,12 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
@@ -4691,7 +4691,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alGetSourceiv(): param 0x' + param.toString(16) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
     }
   },
@@ -4703,7 +4703,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4726,9 +4726,9 @@ var LibraryOpenAL = {
   alSource3f__sig: 'viifff',
   alSource3f: function(sourceId, param, value0, value1, value2) {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4753,7 +4753,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4761,7 +4761,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefine('AL_GAIN') }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4775,9 +4775,9 @@ var LibraryOpenAL = {
       var val = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.setSourceParam('alSourcefv', sourceId, param, val);
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -4807,7 +4807,7 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       AL.setSourceParam('alSourcei', sourceId, param, value);
       break;
     default:
@@ -4820,9 +4820,9 @@ var LibraryOpenAL = {
   alSource3i__sig: 'viiiii',
   alSource3i: function(sourceId, param, value0, value1, value2) {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4847,7 +4847,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       err('alSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
       return;
     }
 
@@ -4866,13 +4866,13 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
       var val = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.setSourceParam('alSourceiv', sourceId, param, val);
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefine('AL_POSITION') }}}:
+    case {{{ cDefine('AL_DIRECTION') }}}:
+    case {{{ cDefine('AL_VELOCITY') }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
