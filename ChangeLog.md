@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 ------
 - Old method of metadata extraction via wasm-emscripten-finalize removed
   in favor of local python code. (#16529)
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
 
 3.1.18 - 08/01/2022
 -------------------
@@ -128,8 +130,6 @@ See docs/process.md for more on how version tagging works.
   `emscripten_exit_with_live_runtime()` does). (#17160)
 - The file packager option `--use-preload-cache` now only invalidates the
   cache if the data contents has changed. (#16807)
-- Added support for Wasm-based AudioWorklets for realtime audio processing
-  (#16449)
 
 3.1.13 - 06/02/2022
 -------------------
