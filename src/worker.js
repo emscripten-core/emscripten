@@ -22,9 +22,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   var parentPort = nodeWorkerThreads.parentPort;
 
-  parentPort.on('message', function(data) {
-    onmessage({ data: data });
-  });
+  parentPort.on('message', (data) => onmessage({ data: data }));
 
   var fs = require('fs');
 
@@ -106,6 +104,12 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
   return instance.exports;
 }
 #endif
+
+// Turn unhandled rejected promises into errors so that the main thread will be
+// notified about them.
+self.onunhandledrejection = (e) => {
+  throw e.reason ?? e;
+};
 
 self.onmessage = (e) => {
   try {
@@ -202,11 +206,11 @@ self.onmessage = (e) => {
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
 
-      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
+      // Pass the thread address to wasm to store it for fast access.
+      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
 #if ASSERTIONS
-      assert(e.data.threadInfoStruct);
+      assert(e.data.pthread_ptr);
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace']();
@@ -215,9 +219,12 @@ self.onmessage = (e) => {
 
       if (!initializedJS) {
 #if EMBIND
+#if PTHREADS_DEBUG
+        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+#endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused
-        Module['___embind_register_native_and_builtin_types']();
+        Module['__embind_initialize_bindings']();
 #endif // EMBIND
 
         // Execute any proxied work that came in before the thread was

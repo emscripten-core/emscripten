@@ -23,7 +23,6 @@ def get(ports, settings, shared):
     'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: cocos2d v3')
     logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')
 
     cocos2d_src = os.path.join(ports.get_dir(), 'cocos2d')
@@ -32,8 +31,7 @@ def get(ports, settings, shared):
     cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
     cocos2dx_includes = make_includes(cocos2d_root)
 
-    cocos2d_build = os.path.join(ports.get_build_dir(), 'cocos2d')
-    shared.try_delete(os.path.join(cocos2d_build, 'samples'))
+    cocos2d_build = ports.clear_project_build('cocos2d')
     shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
                     os.path.join(cocos2d_build, 'samples'))
 
@@ -51,6 +49,9 @@ def get(ports, settings, shared):
                  '-DCC_KEYBOARD_SUPPORT',
                  '-DGL_ES=1',
                  '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
+                 # Cocos2d source code hasn't switched to __EMSCRIPTEN__.
+                 # See https://github.com/emscripten-ports/Cocos2d/pull/3
+                 '-DEMSCRIPTEN',
                  '-DCP_USE_DOUBLES=0',
                  '-O2',
                  '-sUSE_ZLIB=1',

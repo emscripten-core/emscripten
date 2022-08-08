@@ -192,8 +192,15 @@ class Module:
     self._cache = {}
 
   def __del__(self):
+    assert not self.buf, '`__exit__` should have already been called, please use context manager'
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb): # noqa
     if self.buf:
       self.buf.close()
+      self.buf = None
 
   def read_at(self, offset, count):
     self.buf.seek(offset)
@@ -532,15 +539,15 @@ class Module:
 
 
 def parse_dylink_section(wasm_file):
-  module = Module(wasm_file)
-  return module.parse_dylink_section()
+  with Module(wasm_file) as module:
+    return module.parse_dylink_section()
 
 
 def get_exports(wasm_file):
-  module = Module(wasm_file)
-  return module.get_exports()
+  with Module(wasm_file) as module:
+    return module.get_exports()
 
 
 def get_imports(wasm_file):
-  module = Module(wasm_file)
-  return module.get_imports()
+  with Module(wasm_file) as module:
+    return module.get_imports()

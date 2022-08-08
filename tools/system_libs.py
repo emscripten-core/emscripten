@@ -14,7 +14,7 @@ from enum import IntEnum, auto
 from glob import iglob
 
 from . import shared, building, utils
-from . import deps_info, tempfiles
+from . import deps_info
 from . import diagnostics
 from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
@@ -43,7 +43,7 @@ def glob_in_path(path, glob_pattern, excludes=()):
 def get_base_cflags(force_object_files=False):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g']
+  flags = ['-g', '-sSTRICT']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
@@ -334,7 +334,7 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
     create_lib(out_filename, self.build_objects(build_dir))
     if not shared.DEBUG:
-      tempfiles.try_delete(build_dir)
+      utils.delete_dir(build_dir)
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -1538,7 +1538,7 @@ class libstb_image(Library):
     return [utils.path_from_root('system/lib/stb_image.c')]
 
 
-class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
+class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libwasmfs'
 
   cflags = ['-fno-exceptions', '-std=c++17']

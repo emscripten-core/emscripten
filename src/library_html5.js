@@ -1093,11 +1093,10 @@ var LibraryHTML5 = {
     }
     if (succeeded) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-    } else {
-      return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
     }
+    return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
   },
-  
+
   emscripten_unlock_orientation__proxy: 'sync',
   emscripten_unlock_orientation__sig: 'i',
   emscripten_unlock_orientation: function() {
@@ -1565,9 +1564,8 @@ var LibraryHTML5 = {
       if (strategy.deferUntilInEventHandler) {
         JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
-      } else {
-        return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
+      return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
     }
 #endif
 
@@ -1878,9 +1876,8 @@ var LibraryHTML5 = {
 #endif
         ) {
         return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-      } else {
-        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
       }
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1916,9 +1913,8 @@ var LibraryHTML5 = {
       if (deferUntilInEventHandler) {
         JSEvents.deferCall(requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
-      } else {
-        return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
+      return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
     }
 #endif
 
@@ -2531,10 +2527,9 @@ var LibraryHTML5 = {
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
       return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
-    } else {
-      return _emscripten_set_canvas_element_size_main_thread(target, width, height);
     }
-  }, 
+    return _emscripten_set_canvas_element_size_main_thread(target, width, height);
+  },
 #else
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size__sig: 'iiii',
@@ -2614,10 +2609,9 @@ var LibraryHTML5 = {
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
       return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
-    } else {
-      return _emscripten_get_canvas_element_size_main_thread(target, width, height);
     }
-  }, 
+    return _emscripten_get_canvas_element_size_main_thread(target, width, height);
+  },
 #else
   emscripten_get_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
   emscripten_get_canvas_element_size__sig: 'ippp',

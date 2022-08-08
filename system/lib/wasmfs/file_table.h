@@ -32,25 +32,40 @@ template<typename T> bool addWillOverFlow(T a, T b) {
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
-  off_t position;
+  off_t position = 0;
   oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
+
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
   std::recursive_mutex mutex;
 
+  // We can't make the constructor private because std::make_shared needs to be
+  // able to call it, but we can make it unusable publicly.
+  struct private_key {
+    explicit private_key(int) {}
+  };
+
 public:
-  OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
-    : position(position), flags(flags), file(file) {
-    if (auto f = file->dynCast<DataFile>()) {
-      f->locked().open(flags & O_ACCMODE);
-    }
-  }
+  OpenFileState(private_key, oflags_t flags, std::shared_ptr<File> file)
+    : flags(flags), file(file) {}
 
   ~OpenFileState() {
     if (auto f = file->dynCast<DataFile>()) {
       f->locked().close();
     }
+  }
+
+  [[nodiscard]] static int create(std::shared_ptr<File> file,
+                                  oflags_t flags,
+                                  std::shared_ptr<OpenFileState>& out) {
+    if (auto f = file->dynCast<DataFile>()) {
+      if (int err = f->locked().open(flags & O_ACCMODE)) {
+        return err;
+      }
+    }
+    out = std::make_shared<OpenFileState>(private_key{0}, flags, file);
+    return 0;
   }
 
   class Handle {

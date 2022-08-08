@@ -34,7 +34,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 
-from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles
 from . import diagnostics
@@ -46,7 +45,7 @@ from .settings import settings
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (4, 1, 1)
-EXPECTED_LLVM_VERSION = "15.0"
+EXPECTED_LLVM_VERSION = "16.0"
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
@@ -73,6 +72,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
+diagnostics.add_warning('js-compiler')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -389,6 +389,8 @@ def check_sanity(force=False):
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
 
+  # In DEBUG mode we perform the sanity checks even when
+  # early return due to the file being up-to-date.
   if DEBUG:
     force = True
 
@@ -404,31 +406,39 @@ def check_sanity(force=False):
   expected = generate_sanity()
 
   sanity_file = Cache.get_path('sanity.txt')
-  with Cache.lock():
+
+  def sanity_is_correct():
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        logger.info('(Emscripten: config changed, clearing cache)')
-        Cache.erase()
-        # the check actually failed, so definitely write out the sanity file, to
-        # avoid others later seeing failures too
-        force = False
-      else:
+      if sanity_data == expected:
+        logger.debug(f'sanity file up-to-date: {sanity_file}')
         if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-        else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
+          perform_sanity_checks()
+        return True # all is well
+    return False
+
+  if sanity_is_correct():
+    # Early return without taking the cache lock
+    return
+
+  with Cache.lock('sanity'):
+    # Check again once the cache lock as aquired
+    if sanity_is_correct():
+      return
+
+    if os.path.exists(sanity_file):
+      sanity_data = utils.read_file(sanity_file)
+      logger.info('old sanity: %s' % sanity_data)
+      logger.info('new sanity: %s' % expected)
+      logger.info('(Emscripten: config changed, clearing cache)')
+      Cache.erase()
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
     perform_sanity_checks()
 
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      utils.write_file(sanity_file, expected)
+    # Only create/update this file if the sanity check succeeded, i.e., we got here
+    utils.write_file(sanity_file, expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -481,7 +491,7 @@ def get_emscripten_temp_dir():
     if not DEBUG_SAVE:
       def prepare_to_clean_temp(d):
         def clean_temp():
-          try_delete(d)
+          utils.delete_dir(d)
 
         atexit.register(clean_temp)
       # this global var might change later

@@ -22,9 +22,7 @@ def get(ports, settings, shared):
     logging.info('building port: bullet')
 
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'bullet')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('bullet')
     shutil.copytree(source_path, dest_path)
     src_path = os.path.join(dest_path, 'bullet', 'src')
     src_path = os.path.join(dest_path, 'bullet', 'src')

@@ -46,8 +46,9 @@ def get(ports, settings, shared):
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-sUSE_LIBJPEG=1']
 
+    build_dir = ports.clear_project_build('sdl2_image')
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
+      o = os.path.join(build_dir, shared.replace_suffix(src, '.o'))
       commands.append([shared.EMCC, '-c', os.path.join(src_dir, src),
                        '-O2', '-sUSE_SDL=2', '-o', o, '-w'] + defs)
       o_s.append(o)

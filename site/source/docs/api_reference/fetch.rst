@@ -87,7 +87,7 @@ attributes:
   }
 
 For a full example, see the file
-tests/fetch/example_async_xhr_to_memory_via_indexeddb.c.
+``test/fetch/example_async_xhr_to_memory_via_indexeddb.c``.
 
 Persisting data bytes from memory
 ---------------------------------

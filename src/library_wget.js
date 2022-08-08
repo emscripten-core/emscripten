@@ -16,11 +16,7 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -63,11 +59,7 @@ var LibraryWget = {
     );
   },
 
-  emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
@@ -90,11 +82,7 @@ var LibraryWget = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
+  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {

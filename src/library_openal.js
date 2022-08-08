@@ -968,12 +968,11 @@ var LibraryOpenAL = {
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
         if (buf.length === 0) {
           return [0, 0];
-        } else {
-          return [
-            (buf.audioBuf._loopStart || 0.0) * buf.frequency,
-            (buf.audioBuf._loopEnd || buf.length) * buf.frequency
-          ];
         }
+        return [
+          (buf.audioBuf._loopStart || 0.0) * buf.frequency,
+          (buf.audioBuf._loopEnd || buf.length) * buf.frequency
+        ];
       default:
 #if OPENAL_DEBUG
         err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
@@ -1084,9 +1083,8 @@ var LibraryOpenAL = {
       case 0x1009 /* AL_BUFFER */:
         if (src.type === 0x1028 /* AL_STATIC */) {
           return src.bufQueue[0].id;
-        } else {
-          return 0;
         }
+        return 0;
       case 0x100A /* AL_GAIN */:
         return src.gain.gain.value;
        case 0x100D /* AL_MIN_GAIN */:
@@ -1098,15 +1096,13 @@ var LibraryOpenAL = {
       case 0x1015 /* AL_BUFFERS_QUEUED */:
         if (src.bufQueue.length === 1 && src.bufQueue[0].id === 0) {
           return 0;
-        } else {
-          return src.bufQueue.length;
         }
+        return src.bufQueue.length;
       case 0x1016 /* AL_BUFFERS_PROCESSED */:
         if ((src.bufQueue.length === 1 && src.bufQueue[0].id === 0) || src.looping) {
           return 0;
-        } else {
-          return src.bufsProcessed;
         }
+        return src.bufsProcessed;
       case 0x1020 /* AL_REFERENCE_DISTANCE */:
         return src.refDistance;
       case 0x1021 /* AL_ROLLOFF_FACTOR */:
@@ -2083,9 +2079,8 @@ var LibraryOpenAL = {
       var deviceId = AL.newId();
       AL.deviceRefCounts[deviceId] = 0;
       return deviceId;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   alcCloseDevice__proxy: 'sync',
@@ -2294,9 +2289,8 @@ var LibraryOpenAL = {
   alcGetCurrentContext: function() {
     if (AL.currentCtx !== null) {
       return AL.currentCtx.id;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   alcMakeContextCurrent__proxy: 'sync',
@@ -2305,10 +2299,9 @@ var LibraryOpenAL = {
     if (contextId === 0) {
       AL.currentCtx = null;
       return 0;
-    } else {
-      AL.currentCtx = AL.contexts[contextId];
-      return 1;
     }
+    AL.currentCtx = AL.contexts[contextId];
+    return 1;
   },
 
   alcGetContextsDevice__proxy: 'sync',
@@ -2316,9 +2309,8 @@ var LibraryOpenAL = {
   alcGetContextsDevice: function(contextId) {
     if (contextId in AL.contexts) {
       return AL.contexts[contextId].deviceId;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
@@ -2402,6 +2394,7 @@ var LibraryOpenAL = {
 
   alcGetString__proxy: 'sync',
   alcGetString__sig: 'iii',
+  alcGetString__deps: ['$allocateUTF8'],
   alcGetString: function(deviceId, param) {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
@@ -2657,7 +2650,7 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString'],
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$allocateUTF8'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2685,15 +2678,14 @@ var LibraryOpenAL = {
       }
       break;
     default:
-      if (index === 0) {
-        return _alcGetString(deviceId, param);
-      } else {
+      if (index !== 0) {
 #if OPENAL_DEBUG
         out('alcGetStringiSOFT() with param 0x' + param.toString(16) + ' not implemented yet');
 #endif
         AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
         return 0;
       }
+      return _alcGetString(deviceId, param);
     }
 
     ret = allocateUTF8(ret);
@@ -2924,12 +2916,11 @@ var LibraryOpenAL = {
   alGetError: function() {
     if (!AL.currentCtx) {
       return 0xA004 /* AL_INVALID_OPERATION */;
-    } else {
-      // Reset error on get.
-      var err = AL.currentCtx.err;
-      AL.currentCtx.err = 0 /* AL_NO_ERROR */;
-      return err;
     }
+    // Reset error on get.
+    var err = AL.currentCtx.err;
+    AL.currentCtx.err = 0 /* AL_NO_ERROR */;
+    return err;
   },
 
   alIsExtensionPresent__proxy: 'sync',
@@ -3054,6 +3045,7 @@ var LibraryOpenAL = {
 
   alGetString__proxy: 'sync',
   alGetString__sig: 'ii',
+  alGetString__deps: ['$allocateUTF8'],
   alGetString: function(param) {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
@@ -3742,9 +3734,8 @@ var LibraryOpenAL = {
 
     if (!AL.buffers[bufferId]) {
       return false;
-    } else {
-      return true;
     }
+    return true;
   },
 
   alBufferData__proxy: 'sync',
@@ -4115,9 +4106,8 @@ var LibraryOpenAL = {
 
     if (!AL.currentCtx.sources[sourceId]) {
       return false;
-    } else {
-      return true;
     }
+    return true;
   },
 
   alSourceQueueBuffers__proxy: 'sync',

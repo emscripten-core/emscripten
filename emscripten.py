@@ -18,7 +18,6 @@ import time
 import logging
 import pprint
 import shutil
-from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
@@ -148,13 +147,17 @@ def update_settings_glue(wasm_file, metadata):
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS']
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on this library function
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$allocateUTF8OnStack']
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
-    settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata['exports']
@@ -303,11 +306,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
-    module = webassembly.Module(in_wasm)
-    types = module.get_types()
     import_map = {}
-    for imp in module.get_imports():
-      import_map[imp.field] = imp
+
+    with webassembly.Module(in_wasm) as module:
+      types = module.get_types()
+      for imp in module.get_imports():
+        import_map[imp.field] = imp
+
     for em_js_func, raw in metadata.get('emJsFuncs', {}).items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
@@ -347,12 +352,22 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+    if settings.ASYNCIFY:
+      metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
+
+  invoke_funcs = metadata['invokeFuncs']
+  if invoke_funcs:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
+
   glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+
+  if forwarded_json['warnings']:
+    diagnostics.warning('js-compiler', 'warnings in JS library compilation')
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -368,7 +383,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(forwarded_json['libraryFunctions'])
+  report_missing_symbols(forwarded_json['librarySymbols'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
@@ -394,7 +409,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     out.write(normalize_line_endings(pre))
     pre = None
 
-    invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
@@ -420,18 +434,7 @@ def remove_trailing_zeros(memfile):
 
 
 @ToolchainProfiler.profile()
-def get_metadata_binaryen(infile, outfile, modify_wasm, args):
-  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=infile,
-                                         outfile=outfile if modify_wasm else None,
-                                         args=args,
-                                         stdout=subprocess.PIPE)
-  metadata = load_metadata_json(stdout)
-  return metadata
-
-
-@ToolchainProfiler.profile()
-def get_metadata_python(infile, outfile, modify_wasm, args):
+def get_metadata(infile, outfile, modify_wasm, args):
   metadata = extract_metadata.extract_metadata(infile)
   if modify_wasm:
     # In some cases we still need to modify the wasm file
@@ -452,29 +455,9 @@ def get_metadata_python(infile, outfile, modify_wasm, args):
     # TODO(sbc): Remove this once we make the switch away from
     # binaryen metadata.
     metadata['mainReadsParams'] = 1
+  if DEBUG:
+    logger.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
-
-
-# Test function for comparing binaryen vs python metadata.
-# Remove this once we go back to having just one method.
-def compare_metadata(metadata, pymetadata):
-  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
-    print(sorted(metadata.keys()))
-    print(sorted(pymetadata.keys()))
-    exit_with_error('metadata keys mismatch')
-  for key in metadata:
-    old = metadata[key]
-    new = pymetadata[key]
-    if key == 'features':
-      old = sorted(old)
-      new = sorted(new)
-    if old != new:
-      print(key)
-      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
-      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
-      print(pprint.pformat(old))
-      print(pprint.pformat(new))
-      exit_with_error('metadata mismatch')
 
 
 def finalize_wasm(infile, outfile, memfile):
@@ -538,30 +521,7 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
 
-  # Currently we have two different ways to extract the metadata from the
-  # wasm binary:
-  # 1. via wasm-emscripten-finalize (binaryen)
-  # 2. via local python code
-  # We also have a 'compare' mode that runs both extraction methods and
-  # checks that they produce identical results.
-  read_metadata = os.environ.get('EMCC_READ_METADATA', 'binaryen')
-  if read_metadata == 'binaryen':
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'python':
-    metadata = get_metadata_python(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'compare':
-    shutil.copy2(infile, infile + '.bak')
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.copy2(infile + '.map', infile + '.map.bak')
-    pymetadata = get_metadata_python(infile, outfile, modify_wasm, args)
-    shutil.move(infile + '.bak', infile)
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.move(infile + '.map.bak', infile + '.map')
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-    compare_metadata(metadata, pymetadata)
-  else:
-    assert False
-
+  metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
@@ -575,6 +535,18 @@ def finalize_wasm(infile, outfile, memfile):
     # we can do so here, since we make sure to zero out that memory (even in
     # the dynamic linking case, our loader zeros it out)
     remove_trailing_zeros(memfile)
+
+  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+
+  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # These are any exports that were not requested on the command line and are
+  # not known auto-generated system functions.
+  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
+  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
+  building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
@@ -748,7 +720,7 @@ def add_standard_wasm_imports(send_items_map):
 
 def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
-  send_items_map = OrderedDict()
+  send_items_map = {}
 
   def add_send_items(name, mangled_name, ignore_dups=False):
     # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
@@ -869,48 +841,6 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   if settings.MEMORY64:
     module.append(create_wasm64_wrappers(metadata))
   return module
-
-
-def load_metadata_json(metadata_raw):
-  try:
-    metadata_json = json.loads(metadata_raw)
-  except Exception:
-    logger.error('emscript: failure to parse metadata output from wasm-emscripten-finalize. raw output is: \n' + metadata_raw)
-    raise
-
-  metadata = {
-    'declares': [],
-    'globalImports': [],
-    'exports': [],
-    'namedGlobals': {},
-    'emJsFuncs': {},
-    'asmConsts': {},
-    'invokeFuncs': [],
-    'features': [],
-    'mainReadsParams': 1,
-  }
-
-  for key, value in metadata_json.items():
-    if key not in metadata:
-      exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
-    metadata[key] = value
-
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
-
-  expected_exports = set(settings.EXPORTED_FUNCTIONS)
-  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
-
-  # Calculate the subset of exports that were explicitly marked with llvm.used.
-  # These are any exports that were not requested on the command line and are
-  # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
-  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
-  building.user_requested_exports.update(unexpected_exports)
-  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
-
-  return metadata
 
 
 def create_invoke_wrappers(invoke_funcs):

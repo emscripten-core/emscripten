@@ -1,0 +1,82 @@
+------------- Reading from /root/working Directory -------------
+d.d_name = .
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = test
+d.d_reclen = 280
+d.d_type = directory
+
+Errno: Bad file descriptor
+Errno: Invalid argument
+Errno: Not a directory
+
+------------- Reading from /dev Directory -------------
+d.d_name = .
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = null
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = random
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = stderr
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = stdin
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = stdout
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = urandom
+d.d_reclen = 280
+d.d_type = regular
+
+------------- Reading from /dev Directory via JS -------------
+.
+..
+null
+random
+stderr
+stdin
+stdout
+urandom
+
+/root/working file position is: 1
+------------- Reading one from /root/working Directory -------------
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = directory
+
+------------- Reading from /root/working Directory -------------
+d.d_name = .
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = directory
+
+d.d_name = foobar
+d.d_reclen = 280
+d.d_type = regular
+
+d.d_name = test
+d.d_reclen = 280
+d.d_type = directory

@@ -25,12 +25,12 @@ def get(ports, settings, shared):
 
   def create(final):
     logging.info('building port: regal')
-    ports.clear_project_build('regal')
+    dest_path = ports.clear_project_build('regal')
 
     # copy sources
     # only what is needed is copied: regal, boost, lookup3
     source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
-    dest_path_src = os.path.join(ports.get_build_dir(), 'regal', 'src')
+    dest_path_src = os.path.join(dest_path, 'src')
 
     source_path_regal = os.path.join(source_path_src, 'regal')
     source_path_boost = os.path.join(source_path_src, 'boost')
@@ -39,7 +39,6 @@ def get(ports, settings, shared):
     dest_path_boost = os.path.join(dest_path_src, 'boost')
     dest_path_lookup3 = os.path.join(dest_path_src, 'lookup3')
 
-    shutil.rmtree(dest_path_src, ignore_errors=True)
     shutil.copytree(source_path_regal, dest_path_regal)
     shutil.copytree(source_path_boost, dest_path_boost)
     shutil.copytree(source_path_lookup3, dest_path_lookup3)

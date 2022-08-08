@@ -41,6 +41,8 @@
 #include "SDL_config_android.h"
 #elif defined(__NINTENDODS__)
 #include "SDL_config_nintendods.h"
+#elif defined(__EMSCRIPTEN__)
+#include "SDL_config_emscripten.h"
 #else
 #include "SDL_config_minimal.h"
 #endif /* platform config */

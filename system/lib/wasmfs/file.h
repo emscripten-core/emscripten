@@ -100,6 +100,7 @@ protected:
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
+  // May be called on files that have not been opened.
   virtual size_t getSize() = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
@@ -128,21 +129,20 @@ class DataFile : public File {
 protected:
   // Notify the backend when this file is opened or closed. The backend is
   // responsible for keeping files accessible as long as they are open, even if
-  // they are unlinked.
-  // TODO: Report errors.
-  virtual void open(oflags_t flags) = 0;
+  // they are unlinked. Returns 0 on success or a negative error code.
+  virtual int open(oflags_t flags) = 0;
   virtual void close() = 0;
 
   // Return the accessed length or a negative error code. It is not an error to
-  // access fewer bytes than requested.
+  // access fewer bytes than requested. Will only be called on opened files.
   // TODO: Allow backends to override the version of read with
   // multiple iovecs to make it possible to implement pipes. See #16269.
   virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
   // Sets the size of the file to a specific size. If new space is allocated, it
-  // should be zero-initialized (often backends have an efficient way to do this
-  // while doing the resizing).
+  // should be zero-initialized. May be called on files that have not been
+  // opened.
   virtual void setSize(size_t size) = 0;
 
   // TODO: Design a proper API for flushing files.
@@ -288,7 +288,7 @@ public:
   Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
   Handle(Handle&&) = default;
 
-  void open(oflags_t flags) { getFile()->open(flags); }
+  [[nodiscard]] int open(oflags_t flags) { return getFile()->open(flags); }
   void close() { getFile()->close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) {

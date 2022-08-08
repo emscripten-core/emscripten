@@ -6,8 +6,8 @@
 
 //"use strict";
 
-// See browser tests for examples (tests/runner.py, search for sdl_). Run with
-//    tests/runner browser
+// See browser tests for examples (test/runner.py, search for sdl_). Run with
+//    test/runner browser
 
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
@@ -892,10 +892,9 @@ var LibrarySDL = {
           if (SDL.makeCEvent(SDL.events.shift(), ptr) !== false) return 1;
         }
         return 0;
-      } else {
-        // XXX: somewhat risky in that we do not check if the event is real or not (makeCEvent returns false) if no pointer supplied
-        return SDL.events.length > 0;
       }
+      // XXX: somewhat risky in that we do not check if the event is real or not (makeCEvent returns false) if no pointer supplied
+      return SDL.events.length > 0;
     },
 
     // returns false if the event was determined to be irrelevant
@@ -1260,11 +1259,10 @@ var LibrarySDL = {
         // Current gamepad API editor's draft (Firefox Nightly)
         // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
         return button['pressed'];
-      } else {
-        // Current gamepad API working draft (Firefox / Chrome Stable)
-        // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
-        return button > 0;
       }
+      // Current gamepad API working draft (Firefox / Chrome Stable)
+      // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
+      return button > 0;
     },
     // Queries for and inserts controller events into the SDL queue.
     queryJoysticks: function() {
@@ -1325,9 +1323,8 @@ var LibrarySDL = {
       if (fcn !== undefined) {
         // The function must be applied on the navigator object.
         return fcn.apply(navigator);
-      } else {
-        return [];
       }
+      return [];
     },
 
     // Helper function: Returns the gamepad if available, or null if not.
@@ -1779,6 +1776,7 @@ var LibrarySDL = {
 
   SDL_GetKeyName__proxy: 'sync',
   SDL_GetKeyName__sig: 'ii',
+  SDL_GetKeyName__deps: ['$allocateUTF8'],
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
       SDL.keyName = allocateUTF8('unknown key');
@@ -1822,17 +1820,14 @@ var LibrarySDL = {
         if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
           Module['canvas'].requestPointerLock();
           return 0;
-        } else { // else return SDL_ENABLE to indicate the failure
-          return 1;
         }
-        break;
+        // else return SDL_ENABLE to indicate the failure
+        return 1;
       case 1: // SDL_ENABLE
         Module['canvas'].exitPointerLock();
         return 1;
-        break;
       case -1: // SDL_QUERY
         return !Browser.pointerLock;
-        break;
       default:
         out( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
         break;
@@ -1841,6 +1836,7 @@ var LibrarySDL = {
 
   SDL_GetError__proxy: 'sync',
   SDL_GetError__sig: 'i',
+  SDL_GetError__deps: ['$allocateUTF8'],
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
       SDL.errorMessage = allocateUTF8("unknown SDL-emscripten error");
@@ -2236,13 +2232,12 @@ var LibrarySDL = {
   SDL_WM_ToggleFullScreen: function(surf) {
     if (Browser.exitFullscreen()) {
       return 1;
-    } else {
-      if (!SDL.canRequestFullscreen) {
-        return 0;
-      }
-      SDL.isRequestingFullscreen = true;
-      return 1;
     }
+    if (!SDL.canRequestFullscreen) {
+      return 0;
+    }
+    SDL.isRequestingFullscreen = true;
+    return 1;
   },
 
   // SDL_Image
@@ -2584,7 +2579,7 @@ var LibrarySDL = {
           var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-            out('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+            err('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
           }
 #endif
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
@@ -3538,9 +3533,8 @@ var LibrarySDL = {
     if (Browser.isFullscreen) {
       Module['canvas'].exitFullscreen();
       return 1;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   SDL_GetWindowFlags: function() {},
@@ -3573,6 +3567,7 @@ var LibrarySDL = {
 
   SDL_JoystickName__proxy: 'sync',
   SDL_JoystickName__sig: 'ii',
+  SDL_JoystickName__deps: ['$allocateUTF8'],
   SDL_JoystickName: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
@@ -3712,6 +3707,7 @@ var LibrarySDL = {
   },
 
   SDL_GetNumAudioDrivers: function() { return 1 },
+  SDL_GetCurrentAudioDriver__deps: ['$allocateUTF8'],
   SDL_GetCurrentAudioDriver: function() {
     return allocateUTF8('Emscripten Audio');
   },

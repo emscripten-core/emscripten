@@ -1,7 +1,10 @@
-// ==========================================================================
-// Dynamic library loading
-//
-// ==========================================================================
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ *
+ * Dynamic library loading
+ */
 
 var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
 
@@ -95,7 +98,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
     err("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -249,11 +252,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr',
-#if MINIMAL_RUNTIME
-   '$intArrayFromString'
-#endif
-  ],
+  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack'],
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
@@ -479,7 +478,7 @@ var LibraryDylink = {
       if (!Module.hasOwnProperty(module_sym)) {
         Module[module_sym] = exports[sym];
       }
-#if !hasExportedFunction('_main')
+#if !hasExportedSymbol('main')
       // If the main module doesn't define main it could be defined in one of
       // the side modules, and we need to handle the mangled named.
       if (sym == '__main_argc_argv') {
@@ -505,6 +504,7 @@ var LibraryDylink = {
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$alignMemory', '$zeroMemory',
     '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$updateTableMap',
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
@@ -624,6 +624,9 @@ var LibraryDylink = {
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
+#if ASYNCIFY
+        moduleExports = Asyncify.instrumentWasmExports(moduleExports);
+#endif
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
         }
@@ -652,6 +655,14 @@ var LibraryDylink = {
             } else {
               // we aren't ready to run compiled code yet
               __ATINIT__.push(init);
+            }
+          }
+          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+          if (applyRelocs) {
+            if (runtimeInitialized) {
+              applyRelocs();
+            } else {
+              __RELOC_FUNCS__.push(applyRelocs);
             }
           }
 #if USE_PTHREADS
@@ -792,7 +803,7 @@ var LibraryDylink = {
 
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          readAsync(libFile, function(data) { resolve(new Uint8Array(data)); }, reject);
+          readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
         });
       }
 
@@ -953,12 +964,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush',
-    '$runtimeKeepalivePop',
-#endif
-  ],
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'viiiii',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     /** @param {Object=} e */
@@ -1016,6 +1022,13 @@ var LibraryDylink = {
     if (typeof result == 'function') {
 #if DYLINK_DEBUG
       err('dlsym: ' + symbol + ' getting table slot for: ' + result);
+#endif
+
+#if ASYNCIFY
+      // Asyncify wraps exports, and we need to look through those wrappers.
+      if ('orig' in result) {
+        result = result.orig;
+      }
 #endif
       // Insert the function into the wasm table.  If its a direct wasm function
       // the second argument will not be needed.  If its a JS function we rely

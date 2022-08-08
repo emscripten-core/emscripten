@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop'
 #endif
@@ -187,6 +187,9 @@ mergeInto(LibraryManager.library, {
                 }
               }
             };
+#if MAIN_MODULE
+            ret[x].orig = original;
+#endif
           } else {
             ret[x] = original;
           }
@@ -210,7 +213,7 @@ mergeInto(LibraryManager.library, {
         Asyncify.state = Asyncify.State.Normal;
         // Keep the runtime alive so that a re-wind can be done later.
 #if ASYNCIFY == 1
-        runAndAbortIfError(Module['_asyncify_stop_unwind']);
+        runAndAbortIfError(_asyncify_stop_unwind);
 #endif
         if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
@@ -260,10 +263,20 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
+#if RELOCATABLE
+    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
+#endif
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
+#if RELOCATABLE
+      // Exported functions in side modules are not listed in `Module["asm"]`,
+      // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
+      if (!func) {
+        func = resolveGlobalSymbol(name, false);
+      }
+#endif
       return func;
     },
 
@@ -331,7 +344,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
 #if ASYNCIFY == 1
-          runAndAbortIfError(() => Module['_asyncify_start_rewind'](Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
 #endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
@@ -392,7 +405,7 @@ mergeInto(LibraryManager.library, {
             // TODO: handle rejection
           });
 #else
-          runAndAbortIfError(() => Module['_asyncify_start_unwind'](Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
 #endif
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
@@ -402,7 +415,7 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Normal;
 #if ASYNCIFY == 1
-        runAndAbortIfError(Module['_asyncify_stop_rewind']);
+        runAndAbortIfError(_asyncify_stop_rewind);
 #endif
         _free(Asyncify.currData);
         Asyncify.currData = null;
@@ -534,7 +547,7 @@ mergeInto(LibraryManager.library, {
       _emscripten_stack_set_limits(stack_base, stack_max);
 
 #if STACK_OVERFLOW_CHECK >= 2
-      Module['___set_stack_limits'](stack_base, stack_max);
+      ___set_stack_limits(stack_base, stack_max);
 #endif
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
@@ -561,7 +574,7 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        Module['_asyncify_start_rewind'](asyncifyData);
+        _asyncify_start_rewind(asyncifyData);
         Asyncify.doRewind(asyncifyData);
       }
     },
@@ -610,7 +623,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY/FIBER: start unwind', asyncifyData);
 #endif
-      Module['_asyncify_start_unwind'](asyncifyData);
+      _asyncify_start_unwind(asyncifyData);
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
@@ -624,7 +637,7 @@ mergeInto(LibraryManager.library, {
       err('ASYNCIFY/FIBER: stop rewind');
 #endif
       Asyncify.state = Asyncify.State.Normal;
-      Module['_asyncify_stop_rewind']();
+      _asyncify_stop_rewind();
       Asyncify.currData = null;
     }
   },

@@ -32,7 +32,7 @@ function run() {
 
 #endif
 
-#if IN_TEST_HARNESS && hasExportedFunction('_flush')
+#if IN_TEST_HARNESS && hasExportedSymbol('flush')
   // flush any stdio streams for test harness, since there are existing
   // tests that depend on this behavior.
   // For production use, instead print full lines to avoid this kind of lazy
@@ -88,7 +88,7 @@ function initRuntime(asm) {
   PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
-#if hasExportedFunction('___wasm_call_ctors')
+#if hasExportedSymbol('__wasm_call_ctors')
   asm['__wasm_call_ctors']();
 #endif
 

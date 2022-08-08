@@ -53,22 +53,20 @@ var SyscallsLibrary = {
         throw e;
       }
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
@@ -254,7 +252,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         return 0;
       }
-      default: abort('bad ioctl syscall ' + op);
+      default: return -{{{ cDefine('EINVAL') }}}; // not supported
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
@@ -385,10 +383,9 @@ var SyscallsLibrary = {
     if (!dest) {
       // send, no address provided
       return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
-    } else {
-      // sendto an address
-      return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
     }
+    // sendto an address
+    return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: function(fd, level, optname, optval, optlen) {
@@ -955,6 +952,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_utimensat__sig: 'iippi',
+  __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: function(dirfd, path, times, flags) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -965,11 +963,11 @@ var SyscallsLibrary = {
       var atime = Date.now();
       var mtime = atime;
     } else {
-      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
       atime = (seconds*1000) + (nanoseconds/(1000*1000));
       times += {{{ C_STRUCTS.timespec.__size__ }}};
-      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
       mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     }
@@ -1043,7 +1041,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
-  post += "if (ret < 0 && canWarn) {\n";
+  post += "if (ret && ret < 0 && canWarn) {\n";
   post += "  err('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
   post += "}\n";
   post += "err('syscall return: ' + ret);\n";

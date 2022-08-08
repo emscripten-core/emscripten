@@ -17,4 +17,4 @@ Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 - `webgpu_struct_info.json`, which is pasted into [`struct_info.json`](../../../src/struct_info.json).
 
 Once that's done, the following file also needs to be rebaselined:
-- [`reference_struct_info.json`](../../../tests/reference_struct_info.json): can be updated by running `tests/runner other.test_gen_struct_info --rebaseline`
+- [`reference_struct_info.json`](../../../test/reference_struct_info.json): can be updated by running `test/runner other.test_gen_struct_info --rebaseline`

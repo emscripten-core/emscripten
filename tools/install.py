@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 EXCLUDES = [os.path.normpath(x) for x in '''
-tests/third_party
+test/third_party
 site
 node_modules
 Makefile

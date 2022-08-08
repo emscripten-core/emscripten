@@ -100,13 +100,11 @@ mergeInto(LibraryManager.library, {
 
       if (i < 16) {
         return -1;
-      } else {
-        writeArrayToMemory(uuid, uu);
-        return 0;
       }
-    } else {
-      return -1;
+      writeArrayToMemory(uuid, uu);
+      return 0;
     }
+    return -1;
   },
 
   // Convert a 'compact' form UUID to a string, if the upper parameter is supplied make the string upper case.

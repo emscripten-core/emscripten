@@ -70,9 +70,8 @@
         var result = event.target.result;
         if (!result) {
           return callback('file ' + id + ' not found');
-        } else {
-          return callback(null, result);
         }
+        return callback(null, result);
       };
       req.onerror = function(error) {
         callback(error);

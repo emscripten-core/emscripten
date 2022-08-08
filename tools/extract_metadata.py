@@ -158,7 +158,7 @@ def find_segment_with_address(module, address):
 
 def data_to_string(data):
   data = data.decode('utf8')
-  # We have at least one test (tests/utf8.cpp) that uses a double
+  # We have at least one test (test/utf8.cpp) that uses a double
   # backslash in the C++ source code, in order to represent a single backslash.
   # This is because these strings historically were written and read back via
   # JSON and a single slash is interpreted as an escape char there.
@@ -227,15 +227,15 @@ def update_metadata(filename, metadata):
   declares = []
   invoke_funcs = []
   em_js_funcs = set(metadata['emJsFuncs'])
-  module = webassembly.Module(filename)
-  for i in module.get_imports():
-    if i.kind == webassembly.ExternType.FUNC:
-      if i.field.startswith('invoke_'):
-        invoke_funcs.append(i.field)
-      elif i.field not in em_js_funcs:
-        declares.append(i.field)
+  with webassembly.Module(filename) as module:
+    for i in module.get_imports():
+      if i.kind == webassembly.ExternType.FUNC:
+        if i.field.startswith('invoke_'):
+          invoke_funcs.append(i.field)
+        elif i.field not in em_js_funcs:
+          declares.append(i.field)
 
-  exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+    exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
   metadata['declares'] = declares
   metadata['exports'] = exports
   metadata['invokeFuncs'] = invoke_funcs
@@ -249,53 +249,54 @@ def get_string_at(module, address):
 
 
 def extract_metadata(filename):
-  module = webassembly.Module(filename)
   export_names = []
   declares = []
   invoke_funcs = []
   global_imports = []
   em_js_funcs = {}
-  exports = module.get_exports()
-  imports = module.get_imports()
 
-  for i in imports:
-    if i.kind == webassembly.ExternType.GLOBAL:
-      global_imports.append(i.field)
+  with webassembly.Module(filename) as module:
+    exports = module.get_exports()
+    imports = module.get_imports()
 
-  export_map = {e.name: e for e in exports}
-  for e in exports:
-    if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
-      name = e.name[len('__em_js__'):]
-      globl = module.get_global(e.index)
-      string_address = get_global_value(globl)
-      em_js_funcs[name] = get_string_at(module, string_address)
+    for i in imports:
+      if i.kind == webassembly.ExternType.GLOBAL:
+        global_imports.append(i.field)
 
-  for i in imports:
-    if i.kind == webassembly.ExternType.FUNC:
-      if i.field.startswith('invoke_'):
-        invoke_funcs.append(i.field)
-      elif i.field not in em_js_funcs:
-        declares.append(i.field)
+    export_map = {e.name: e for e in exports}
+    for e in exports:
+      if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
+        name = e.name[len('__em_js__'):]
+        globl = module.get_global(e.index)
+        string_address = get_global_value(globl)
+        em_js_funcs[name] = get_string_at(module, string_address)
 
-  export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+    for i in imports:
+      if i.kind == webassembly.ExternType.FUNC:
+        if i.field.startswith('invoke_'):
+          invoke_funcs.append(i.field)
+        elif i.field not in em_js_funcs:
+          declares.append(i.field)
 
-  features = module.parse_features_section()
-  features = ['--enable-' + f[1] for f in features if f[0] == '+']
-  features = [f.replace('--enable-atomics', '--enable-threads') for f in features]
-  features = [f.replace('--enable-simd128', '--enable-simd') for f in features]
-  features = [f.replace('--enable-nontrapping-fptoint', '--enable-nontrapping-float-to-int') for f in features]
+    export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
 
-  # If main does not read its parameters, it will just be a stub that
-  # calls __original_main (which has no parameters).
-  metadata = {}
-  metadata['asmConsts'] = get_asm_strings(module, export_map)
-  metadata['declares'] = declares
-  metadata['emJsFuncs'] = em_js_funcs
-  metadata['exports'] = export_names
-  metadata['features'] = features
-  metadata['globalImports'] = global_imports
-  metadata['invokeFuncs'] = invoke_funcs
-  metadata['mainReadsParams'] = get_main_reads_params(module, export_map)
-  metadata['namedGlobals'] = get_named_globals(module, exports)
-  # print("Metadata parsed: " + pprint.pformat(metadata))
-  return metadata
+    features = module.parse_features_section()
+    features = ['--enable-' + f[1] for f in features if f[0] == '+']
+    features = [f.replace('--enable-atomics', '--enable-threads') for f in features]
+    features = [f.replace('--enable-simd128', '--enable-simd') for f in features]
+    features = [f.replace('--enable-nontrapping-fptoint', '--enable-nontrapping-float-to-int') for f in features]
+
+    # If main does not read its parameters, it will just be a stub that
+    # calls __original_main (which has no parameters).
+    metadata = {}
+    metadata['asmConsts'] = get_asm_strings(module, export_map)
+    metadata['declares'] = declares
+    metadata['emJsFuncs'] = em_js_funcs
+    metadata['exports'] = export_names
+    metadata['features'] = features
+    metadata['globalImports'] = global_imports
+    metadata['invokeFuncs'] = invoke_funcs
+    metadata['mainReadsParams'] = get_main_reads_params(module, export_map)
+    metadata['namedGlobals'] = get_named_globals(module, exports)
+    # print("Metadata parsed: " + pprint.pformat(metadata))
+    return metadata

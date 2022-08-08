@@ -5,13 +5,36 @@
  */
 
 var WasiLibrary = {
+#if !MINIMAL_RUNTIME
+  $ExitStatus__docs: '/** @constructor */',
+  $ExitStatus: function(status) {
+    this.name = 'ExitStatus';
+    this.message = 'Program terminated with exit(' + status + ')';
+    this.status = status;
+  },
+  proc_exit__deps: ['$ExitStatus'],
+#endif
+
   proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {
 #if MINIMAL_RUNTIME
     throw 'exit(' + code + ')';
 #else
-    procExit(code);
+#if RUNTIME_DEBUG
+    err('proc_exit: ' + code);
+#endif
+    EXITSTATUS = code;
+    if (!keepRuntimeAlive()) {
+#if USE_PTHREADS
+      PThread.terminateAllThreads();
+#endif
+#if expectToReceiveOnModule('onExit')
+      if (Module['onExit']) Module['onExit'](code);
+#endif
+      ABORT = true;
+    }
+    quit_(code, new ExitStatus(code));
 #endif
   },
 
@@ -66,11 +89,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['$getEnvStrings'
-#if MINIMAL_RUNTIME
-    , '$writeAsciiToMemory'
-#endif
-  ],
+  environ_get__deps: ['$getEnvStrings', '$writeAsciiToMemory'],
   environ_get__nothrow: true,
   environ_get__sig: 'ipp',
   environ_get: function(__environ, environ_buf) {
@@ -105,9 +124,7 @@ var WasiLibrary = {
 
   args_get__nothrow: true,
   args_get__sig: 'ipp',
-#if MINIMAL_RUNTIME && MAIN_READS_PARAMS
   args_get__deps: ['$writeAsciiToMemory'],
-#endif
   args_get: function(argv, argv_buf) {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
@@ -231,7 +248,7 @@ var WasiLibrary = {
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-#if hasExportedFunction('_fflush')
+#if hasExportedSymbol('fflush')
     _fflush(0);
 #endif
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
@@ -400,7 +417,7 @@ var WasiLibrary = {
     });
 #else
     if (stream.stream_ops && stream.stream_ops.fsync) {
-      return -stream.stream_ops.fsync(stream);
+      return stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // ASYNCIFY

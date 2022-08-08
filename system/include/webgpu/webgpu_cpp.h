@@ -128,6 +128,12 @@ namespace wgpu {
         return (static_cast<Integral>(value) & (static_cast<Integral>(value) - 1)) == 0;
     }
 
+    namespace detail {
+        constexpr size_t ConstexprMax(size_t a, size_t b) {
+            return a > b ? a : b;
+        }
+    }  // namespace detail
+
     static constexpr uint32_t kArrayLayerCountUndefined = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
     static constexpr uint32_t kCopyStrideUndefined = WGPU_COPY_STRIDE_UNDEFINED;
     static constexpr uint32_t kLimitU32Undefined = WGPU_LIMIT_U32_UNDEFINED;
@@ -265,15 +271,13 @@ namespace wgpu {
     enum class FeatureName : uint32_t {
         Undefined = 0x00000000,
         DepthClipControl = 0x00000001,
-        Depth24UnormStencil8 = 0x00000002,
-        Depth32FloatStencil8 = 0x00000003,
-        TimestampQuery = 0x00000004,
-        PipelineStatisticsQuery = 0x00000005,
-        TextureCompressionBC = 0x00000006,
-        TextureCompressionETC2 = 0x00000007,
-        TextureCompressionASTC = 0x00000008,
-        IndirectFirstInstance = 0x00000009,
-        DepthClamping = 0x000003E8,
+        Depth32FloatStencil8 = 0x00000002,
+        TimestampQuery = 0x00000003,
+        PipelineStatisticsQuery = 0x00000004,
+        TextureCompressionBC = 0x00000005,
+        TextureCompressionETC2 = 0x00000006,
+        TextureCompressionASTC = 0x00000007,
+        IndirectFirstInstance = 0x00000008,
     };
 
     enum class FilterMode : uint32_t {
@@ -310,11 +314,6 @@ namespace wgpu {
         Undefined = 0x00000000,
         LowPower = 0x00000001,
         HighPerformance = 0x00000002,
-    };
-
-    enum class PredefinedColorSpace : uint32_t {
-        Undefined = 0x00000000,
-        Srgb = 0x00000001,
     };
 
     enum class PresentMode : uint32_t {
@@ -368,7 +367,7 @@ namespace wgpu {
         ShaderModuleSPIRVDescriptor = 0x00000005,
         ShaderModuleWGSLDescriptor = 0x00000006,
         PrimitiveDepthClipControl = 0x00000007,
-        PrimitiveDepthClampingState = 0x000003E9,
+        RenderPassDescriptorMaxDrawCount = 0x0000000F,
     };
 
     enum class SamplerBindingType : uint32_t {
@@ -461,61 +460,60 @@ namespace wgpu {
         Depth16Unorm = 0x00000026,
         Depth24Plus = 0x00000027,
         Depth24PlusStencil8 = 0x00000028,
-        Depth24UnormStencil8 = 0x00000029,
-        Depth32Float = 0x0000002A,
-        Depth32FloatStencil8 = 0x0000002B,
-        BC1RGBAUnorm = 0x0000002C,
-        BC1RGBAUnormSrgb = 0x0000002D,
-        BC2RGBAUnorm = 0x0000002E,
-        BC2RGBAUnormSrgb = 0x0000002F,
-        BC3RGBAUnorm = 0x00000030,
-        BC3RGBAUnormSrgb = 0x00000031,
-        BC4RUnorm = 0x00000032,
-        BC4RSnorm = 0x00000033,
-        BC5RGUnorm = 0x00000034,
-        BC5RGSnorm = 0x00000035,
-        BC6HRGBUfloat = 0x00000036,
-        BC6HRGBFloat = 0x00000037,
-        BC7RGBAUnorm = 0x00000038,
-        BC7RGBAUnormSrgb = 0x00000039,
-        ETC2RGB8Unorm = 0x0000003A,
-        ETC2RGB8UnormSrgb = 0x0000003B,
-        ETC2RGB8A1Unorm = 0x0000003C,
-        ETC2RGB8A1UnormSrgb = 0x0000003D,
-        ETC2RGBA8Unorm = 0x0000003E,
-        ETC2RGBA8UnormSrgb = 0x0000003F,
-        EACR11Unorm = 0x00000040,
-        EACR11Snorm = 0x00000041,
-        EACRG11Unorm = 0x00000042,
-        EACRG11Snorm = 0x00000043,
-        ASTC4x4Unorm = 0x00000044,
-        ASTC4x4UnormSrgb = 0x00000045,
-        ASTC5x4Unorm = 0x00000046,
-        ASTC5x4UnormSrgb = 0x00000047,
-        ASTC5x5Unorm = 0x00000048,
-        ASTC5x5UnormSrgb = 0x00000049,
-        ASTC6x5Unorm = 0x0000004A,
-        ASTC6x5UnormSrgb = 0x0000004B,
-        ASTC6x6Unorm = 0x0000004C,
-        ASTC6x6UnormSrgb = 0x0000004D,
-        ASTC8x5Unorm = 0x0000004E,
-        ASTC8x5UnormSrgb = 0x0000004F,
-        ASTC8x6Unorm = 0x00000050,
-        ASTC8x6UnormSrgb = 0x00000051,
-        ASTC8x8Unorm = 0x00000052,
-        ASTC8x8UnormSrgb = 0x00000053,
-        ASTC10x5Unorm = 0x00000054,
-        ASTC10x5UnormSrgb = 0x00000055,
-        ASTC10x6Unorm = 0x00000056,
-        ASTC10x6UnormSrgb = 0x00000057,
-        ASTC10x8Unorm = 0x00000058,
-        ASTC10x8UnormSrgb = 0x00000059,
-        ASTC10x10Unorm = 0x0000005A,
-        ASTC10x10UnormSrgb = 0x0000005B,
-        ASTC12x10Unorm = 0x0000005C,
-        ASTC12x10UnormSrgb = 0x0000005D,
-        ASTC12x12Unorm = 0x0000005E,
-        ASTC12x12UnormSrgb = 0x0000005F,
+        Depth32Float = 0x00000029,
+        Depth32FloatStencil8 = 0x0000002A,
+        BC1RGBAUnorm = 0x0000002B,
+        BC1RGBAUnormSrgb = 0x0000002C,
+        BC2RGBAUnorm = 0x0000002D,
+        BC2RGBAUnormSrgb = 0x0000002E,
+        BC3RGBAUnorm = 0x0000002F,
+        BC3RGBAUnormSrgb = 0x00000030,
+        BC4RUnorm = 0x00000031,
+        BC4RSnorm = 0x00000032,
+        BC5RGUnorm = 0x00000033,
+        BC5RGSnorm = 0x00000034,
+        BC6HRGBUfloat = 0x00000035,
+        BC6HRGBFloat = 0x00000036,
+        BC7RGBAUnorm = 0x00000037,
+        BC7RGBAUnormSrgb = 0x00000038,
+        ETC2RGB8Unorm = 0x00000039,
+        ETC2RGB8UnormSrgb = 0x0000003A,
+        ETC2RGB8A1Unorm = 0x0000003B,
+        ETC2RGB8A1UnormSrgb = 0x0000003C,
+        ETC2RGBA8Unorm = 0x0000003D,
+        ETC2RGBA8UnormSrgb = 0x0000003E,
+        EACR11Unorm = 0x0000003F,
+        EACR11Snorm = 0x00000040,
+        EACRG11Unorm = 0x00000041,
+        EACRG11Snorm = 0x00000042,
+        ASTC4x4Unorm = 0x00000043,
+        ASTC4x4UnormSrgb = 0x00000044,
+        ASTC5x4Unorm = 0x00000045,
+        ASTC5x4UnormSrgb = 0x00000046,
+        ASTC5x5Unorm = 0x00000047,
+        ASTC5x5UnormSrgb = 0x00000048,
+        ASTC6x5Unorm = 0x00000049,
+        ASTC6x5UnormSrgb = 0x0000004A,
+        ASTC6x6Unorm = 0x0000004B,
+        ASTC6x6UnormSrgb = 0x0000004C,
+        ASTC8x5Unorm = 0x0000004D,
+        ASTC8x5UnormSrgb = 0x0000004E,
+        ASTC8x6Unorm = 0x0000004F,
+        ASTC8x6UnormSrgb = 0x00000050,
+        ASTC8x8Unorm = 0x00000051,
+        ASTC8x8UnormSrgb = 0x00000052,
+        ASTC10x5Unorm = 0x00000053,
+        ASTC10x5UnormSrgb = 0x00000054,
+        ASTC10x6Unorm = 0x00000055,
+        ASTC10x6UnormSrgb = 0x00000056,
+        ASTC10x8Unorm = 0x00000057,
+        ASTC10x8UnormSrgb = 0x00000058,
+        ASTC10x10Unorm = 0x00000059,
+        ASTC10x10UnormSrgb = 0x0000005A,
+        ASTC12x10Unorm = 0x0000005B,
+        ASTC12x10UnormSrgb = 0x0000005C,
+        ASTC12x12Unorm = 0x0000005D,
+        ASTC12x12UnormSrgb = 0x0000005E,
     };
 
     enum class TextureSampleType : uint32_t {
@@ -574,6 +572,7 @@ namespace wgpu {
     enum class VertexStepMode : uint32_t {
         Vertex = 0x00000000,
         Instance = 0x00000001,
+        VertexBufferNotUsed = 0x00000002,
     };
 
 
@@ -675,7 +674,6 @@ namespace wgpu {
     struct MultisampleState;
     struct Origin3D;
     struct PipelineLayoutDescriptor;
-    struct PrimitiveDepthClampingState;
     struct PrimitiveDepthClipControl;
     struct PrimitiveState;
     struct QuerySetDescriptor;
@@ -683,6 +681,7 @@ namespace wgpu {
     struct RenderBundleDescriptor;
     struct RenderBundleEncoderDescriptor;
     struct RenderPassDepthStencilAttachment;
+    struct RenderPassDescriptorMaxDrawCount;
     struct RenderPassTimestampWrite;
     struct RequestAdapterOptions;
     struct SamplerBindingLayout;
@@ -850,6 +849,8 @@ namespace wgpu {
         void Destroy() const;
         void const * GetConstMappedRange(size_t offset = 0, size_t size = WGPU_WHOLE_MAP_SIZE) const;
         void * GetMappedRange(size_t offset = 0, size_t size = WGPU_WHOLE_MAP_SIZE) const;
+        uint64_t GetSize() const;
+        BufferUsage GetUsage() const;
         void MapAsync(MapMode mode, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const;
         void SetLabel(char const * label) const;
         void Unmap() const;
@@ -1008,6 +1009,8 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void Destroy() const;
+        uint32_t GetCount() const;
+        QueryType GetType() const;
         void SetLabel(char const * label) const;
 
       private:
@@ -1180,6 +1183,14 @@ namespace wgpu {
 
         TextureView CreateView(TextureViewDescriptor const * descriptor = nullptr) const;
         void Destroy() const;
+        uint32_t GetDepthOrArrayLayers() const;
+        TextureDimension GetDimension() const;
+        TextureFormat GetFormat() const;
+        uint32_t GetHeight() const;
+        uint32_t GetMipLevelCount() const;
+        uint32_t GetSampleCount() const;
+        TextureUsage GetUsage() const;
+        uint32_t GetWidth() const;
         void SetLabel(char const * label) const;
 
       private:
@@ -1218,6 +1229,8 @@ namespace wgpu {
     struct AdapterProperties {
         ChainedStructOut  * nextInChain = nullptr;
         uint32_t vendorID;
+        char const * vendorName;
+        char const * architecture;
         uint32_t deviceID;
         char const * name;
         char const * driverDescription;
@@ -1326,6 +1339,8 @@ namespace wgpu {
         uint32_t maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED;
+        uint32_t maxInterStageShaderVariables = WGPU_LIMIT_U32_UNDEFINED;
+        uint32_t maxColorAttachments = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED;
@@ -1354,18 +1369,13 @@ namespace wgpu {
         BindGroupLayout const * bindGroupLayouts;
     };
 
-    struct PrimitiveDepthClampingState : ChainedStruct {
-        PrimitiveDepthClampingState() {
-            sType = SType::PrimitiveDepthClampingState;
-        }
-        alignas(ChainedStruct) bool clampDepth = false;
-    };
-
+    // Can be chained in PrimitiveState
     struct PrimitiveDepthClipControl : ChainedStruct {
         PrimitiveDepthClipControl() {
             sType = SType::PrimitiveDepthClipControl;
         }
-        alignas(ChainedStruct) bool unclippedDepth = false;
+        static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(bool ));
+        alignas(kFirstMemberAlignment) bool unclippedDepth = false;
     };
 
     struct PrimitiveState {
@@ -1418,6 +1428,15 @@ namespace wgpu {
         bool stencilReadOnly = false;
     };
 
+    // Can be chained in RenderPassDescriptor
+    struct RenderPassDescriptorMaxDrawCount : ChainedStruct {
+        RenderPassDescriptorMaxDrawCount() {
+            sType = SType::RenderPassDescriptorMaxDrawCount;
+        }
+        static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(uint64_t ));
+        alignas(kFirstMemberAlignment) uint64_t maxDrawCount = 50000000;
+    };
+
     struct RenderPassTimestampWrite {
         QuerySet querySet;
         uint32_t queryIndex;
@@ -1456,19 +1475,23 @@ namespace wgpu {
         char const * label = nullptr;
     };
 
+    // Can be chained in ShaderModuleDescriptor
     struct ShaderModuleSPIRVDescriptor : ChainedStruct {
         ShaderModuleSPIRVDescriptor() {
             sType = SType::ShaderModuleSPIRVDescriptor;
         }
-        alignas(ChainedStruct) uint32_t codeSize;
+        static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(uint32_t ));
+        alignas(kFirstMemberAlignment) uint32_t codeSize;
         uint32_t const * code;
     };
 
+    // Can be chained in ShaderModuleDescriptor
     struct ShaderModuleWGSLDescriptor : ChainedStruct {
         ShaderModuleWGSLDescriptor() {
             sType = SType::ShaderModuleWGSLDescriptor;
         }
-        alignas(ChainedStruct) char const * source;
+        static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(char const * ));
+        alignas(kFirstMemberAlignment) char const * source;
     };
 
     struct StencilFaceState {
@@ -1490,11 +1513,13 @@ namespace wgpu {
         char const * label = nullptr;
     };
 
+    // Can be chained in SurfaceDescriptor
     struct SurfaceDescriptorFromCanvasHTMLSelector : ChainedStruct {
         SurfaceDescriptorFromCanvasHTMLSelector() {
             sType = SType::SurfaceDescriptorFromCanvasHTMLSelector;
         }
-        alignas(ChainedStruct) char const * selector;
+        static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(char const * ));
+        alignas(kFirstMemberAlignment) char const * selector;
     };
 
     struct SwapChainDescriptor {

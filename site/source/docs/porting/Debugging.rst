@@ -42,11 +42,11 @@ The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug 
 .. code-block:: bash
 
   # Linux or macOS
-  EMCC_DEBUG=1 emcc tests/hello_world.cpp -o hello.html
+  EMCC_DEBUG=1 emcc test/hello_world.cpp -o hello.html
 
   # Windows
   set EMCC_DEBUG=1
-  emcc tests/hello_world.cpp -o hello.html
+  emcc test/hello_world.cpp -o hello.html
   set EMCC_DEBUG=0
 
 With ``EMCC_DEBUG=1`` set, :ref:`emcc <emccdoc>` emits debug output and generates intermediate files for the compiler's various stages. ``EMCC_DEBUG=2`` additionally generates intermediate files for each JavaScript optimizer pass.
@@ -69,7 +69,7 @@ Emscripten has a number of compiler settings that can be useful for debugging. T
 
 .. code-block:: bash
 
-  emcc -O1 -sASSERTIONS tests/hello_world
+  emcc -O1 -sASSERTIONS test/hello_world
 
 Some important settings are:
 
@@ -287,7 +287,7 @@ it, you can do something like
 
 .. code-block:: bash
 
-  emcc tests/hello_world.c --memoryprofiler -o page.html
+  emcc test/hello_world.c --memoryprofiler -o page.html
 
 Note that you need to emit HTML as in that example, as the memory profiler
 output is rendered onto the page. To view it, load ``page.html`` in your
@@ -319,11 +319,11 @@ To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBU
 .. code-block:: bash
 
   # Linux or macOS
-  EMCC_AUTODEBUG=1 emcc tests/hello_world.cpp -o hello.html
+  EMCC_AUTODEBUG=1 emcc test/hello_world.cpp -o hello.html
 
   # Windows
   set EMCC_AUTODEBUG=1
-  emcc tests/hello_world.cpp -o hello.html
+  emcc test/hello_world.cpp -o hello.html
   set EMCC_AUTODEBUG=0
 
 

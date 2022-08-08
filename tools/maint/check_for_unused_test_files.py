@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Find files in the tests/ that are not referenced and can
+"""Find files in the test/ that are not referenced and can
 be deleted.  This is a work in progress and still contains
 false positives in the output."""
 
@@ -36,7 +36,7 @@ ignore_root_files = {
 
 
 def grep(string, subdir=''):
-  cmd = subprocess.run(['git', 'grep', '--quiet', string, 'tests/' + subdir], check=False)
+  cmd = subprocess.run(['git', 'grep', '--quiet', string, 'test/' + subdir], check=False)
   return not cmd.returncode
 
 

@@ -10,7 +10,7 @@ ignorePatterns:
   - "site/"
   - "cache/"
   - "third_party/"
-  - "tests/"
+  - "test/"
   - "src/polyfill/"
   - "src/library*.js"
   - "src/runtime_*.js"

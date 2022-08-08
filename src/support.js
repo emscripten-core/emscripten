@@ -9,21 +9,7 @@ var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
 
 {{{ getNativeTypeSize }}}
 
-function warnOnce(text) {
-  if (!warnOnce.shown) warnOnce.shown = {};
-  if (!warnOnce.shown[text]) {
-    warnOnce.shown[text] = 1;
-    err(text);
-  }
-}
-
-#include "runtime_functions.js"
-
 #include "runtime_debug.js"
-
-var tempRet0 = 0;
-var setTempRet0 = (value) => { tempRet0 = value; };
-var getTempRet0 = () => tempRet0;
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
