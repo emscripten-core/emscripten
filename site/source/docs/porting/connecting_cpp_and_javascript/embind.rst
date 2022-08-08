@@ -199,6 +199,63 @@ For other code, that is not optimized by closure compiler, you do not need to
 make such changes. You also do not need it if you build without ``--closure 1``
 to enable the closure compiler.
 
+Class Fields
+================
+
+Exposing C++ fields to JavaScript as properties can be done either directly or
+through getters and setters. The various ways are shown below:
+
+.. code:: cpp
+
+    class Foo {
+    public:
+      int i;
+    };
+
+    class MyClass {
+    public:
+      int x;
+      Foo foo;
+      int getY() const { return y; }
+      void setY(int y_) { y = y_; }
+    private:
+      int y;
+    };
+
+    EMSCRIPTEN_BINDINGS(test) {
+      class_<MyClass>("MyClass")
+        .constructor()
+        .property("x", &MyClass::x) // Expose a field directly.
+        .property("y", &MyClass::getY, &MyClass::setY) // Expose through a getter and setter.
+        .property("readOnlyY", &MyClass::getY) // Expose a read only property.
+        .property("foo", &MyClass::foo); // Expose a class field.
+      class_<Foo>("Foo")
+        .constructor()
+        .property("i", &Foo::i);
+    }
+
+.. code:: javascript
+
+    var myClass = new Module.MyClass();
+    myClass.x = 10;
+    myClass.x; // 10
+    myClass.y = 20;
+    myClass.y; // 20
+    myClass.readOnlyY; // 20
+
+    // Assign directly to the inner class.
+    myClass.foo.i = 30;
+    myClass.foo.i; // 30
+    // Or use Foo object to assign to foo.
+    var foo = new Module.Foo();
+    foo.i = 40;
+    // Note: this will copy values from the foo but the objects will remain separate.
+    myClass.foo = foo;
+    myClass.foo.i; // 40
+
+    myClass.delete();
+    foo.delete();
+
 Memory management
 =================
 

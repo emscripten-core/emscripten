@@ -7491,6 +7491,10 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
 
+  def test_embind_field_access(self):
+    self.emcc_args += ['-lembind']
+    self.do_run_in_out_file_test('embind/test_field_access.cpp')
+
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
     self.emcc_args += ['-lembind']

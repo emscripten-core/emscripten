@@ -629,6 +629,30 @@ struct MemberAccess {
     }
 };
 
+template<typename InstanceType, typename MemberType>
+struct RefMemberAccess {
+    typedef MemberType InstanceType::*MemberPointer;
+    typedef internal::BindingType<MemberType*> MemberBinding;
+    typedef typename MemberBinding::WireType WireType;
+
+    template<typename ClassType>
+    static WireType getWire(
+        const MemberPointer& field,
+        ClassType& ptr
+    ) {
+        return MemberBinding::toWireType(&(ptr.*field));
+    }
+
+    template<typename ClassType>
+    static void setWire(
+        const MemberPointer& field,
+        ClassType& ptr,
+        WireType value
+    ) {
+        ptr.*field = *MemberBinding::fromWireType(value);
+    }
+};
+
 template<typename FieldType>
 struct GlobalAccess {
     typedef internal::BindingType<FieldType> MemberBinding;
@@ -1295,6 +1319,16 @@ struct isPureVirtual<> {
 
 struct DeduceArgumentsTag {};
 
+template<class T>
+struct is_basic_string {
+    static constexpr bool value = false;
+};
+
+template<class CharT, class Traits, class Allocator>
+struct is_basic_string<std::basic_string<CharT, Traits, Allocator>> {
+    static constexpr bool value = true;
+};
+
 ////////////////////////////////////////////////////////////////////////////
 // RegisterClassConstructor
 ////////////////////////////////////////////////////////////////////////////
@@ -1667,12 +1701,40 @@ public:
         return *this;
     }
 
-    template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
+    template<typename FieldType, typename std::enable_if<!std::is_function<FieldType>::value &&
+                                                         !std::is_class<FieldType>::value ||
+                                                         internal::is_basic_string<FieldType>::value, bool>::type = 0>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
         using namespace internal;
 
         auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
         auto setter = &MemberAccess<ClassType, FieldType>::template setWire<ClassType>;
+        _embind_register_class_property(
+            TypeID<ClassType>::get(),
+            fieldName,
+            TypeID<FieldType>::get(),
+            getSignature(getter),
+            reinterpret_cast<GenericFunction>(getter),
+            getContext(field),
+            TypeID<FieldType>::get(),
+            getSignature(setter),
+            reinterpret_cast<GenericFunction>(setter),
+            getContext(field));
+        return *this;
+    }
+
+    // Specialization for fields that are classes. Allows idiomatic property
+    // access in JS e.g. `classOne.classTwo.field = 123;`. std::basic_strings
+    // do not use this specialization because they have their own special wire
+    // type handling.
+    template<typename FieldType, typename std::enable_if<!std::is_function<FieldType>::value &&
+                                                         std::is_class<FieldType>::value &&
+                                                         !internal::is_basic_string<FieldType>::value, bool>::type = 0>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
+        using namespace internal;
+
+        auto getter = &RefMemberAccess<ClassType, FieldType>::template getWire<ClassType>;
+        auto setter = &RefMemberAccess<ClassType, FieldType>::template setWire<ClassType>;
         _embind_register_class_property(
             TypeID<ClassType>::get(),
             fieldName,
