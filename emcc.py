@@ -1997,6 +1997,17 @@ def phase_linker_setup(options, state, newargs, user_settings):
       'emscripten_stack_get_base'
     ]
 
+    if settings.STACK_OVERFLOW_CHECK >= 2 and not settings.SIDE_MODULE:
+      # STACK_OVERFLOW_CHECK=2 runs a binaryen pass that uses __stack_base
+      # and __stack_end, so we export them from to ensure the binaryen pass
+      # can find them.
+      # For SIDE_MODULES, we don't add the exports. This is because the
+      # binaryen pass will add these as imports if it needs them.
+      settings.REQUIRED_EXPORTS += [
+        '__stack_base',
+        '__stack_end'
+      ]
+
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
     # See compiler-rt/stack_limits.S.
