@@ -324,6 +324,9 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
+    if settings.STACK_OVERFLOW_CHECK >= 2:
+      cmd += [ '-Wl,--no-check-features' ]
+    
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
