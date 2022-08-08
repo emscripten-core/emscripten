@@ -2256,7 +2256,7 @@ void *getBindBuffer() {
       ['--closure=1']
     ]:
       print(args)
-      self.btest('openal_error.c', expected='1', args=args)
+      self.btest_exit('openal_error.c', args=args)
 
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')

@@ -8,19 +8,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
 #include <AL/al.h>
 #include <AL/alc.h>
-#else
-#include "../system/include/AL/al.h"
-#include "../system/include/AL/alc.h"
-#endif
 
 ALCdevice* device = NULL;
 ALCcontext* context = NULL;
 
 int main(int argc, char* argv[]) {
+  ALCboolean ret;
+
   //
   // Setup the AL context.
   //
@@ -34,7 +30,8 @@ int main(int argc, char* argv[]) {
   assert(alcGetError(device) == ALC_NO_ERROR);
 
   context = alcCreateContext(device, NULL);
-  alcMakeContextCurrent(context);
+  ret = alcMakeContextCurrent(context);
+  assert(ret == ALC_TRUE);
 
   // Request an invalid enum to generate an AL error
   alGetFloat(0);
@@ -42,12 +39,11 @@ int main(int argc, char* argv[]) {
   // Check that the error is reset after reading it.
   assert(alGetError() == AL_NO_ERROR);
 
-  alcMakeContextCurrent(NULL);
+  ret = alcMakeContextCurrent(NULL);
+  assert(ret == ALC_TRUE);
+
   alcDestroyContext(context);
   alcCloseDevice(device);
-
-#ifdef __EMSCRIPTEN__
-    REPORT_RESULT(1);
-#endif
+  return 0;
 }
 
