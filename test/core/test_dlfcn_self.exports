@@ -8,6 +8,8 @@ __progname_full
 __sig_actions
 __sig_pending
 __signgam
+__stack_base
+__stack_end
 __threwValue
 _environ
 _ns_flagdata
