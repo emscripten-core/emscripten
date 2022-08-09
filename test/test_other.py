@@ -2362,6 +2362,7 @@ int f() {
         (['-O0', '-g'], True),
         (['-O0', '-gsource-map'], True),
         (['-O1'], False),
+        (['-O1', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False),
         (['-O1', '-g'], True),
         (['-O2'], False),
         (['-O2', '-g'], True),
@@ -2369,11 +2370,22 @@ int f() {
       print(args, expect_debug)
       err = self.run_process([EMXX, '-v', test_file('hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
       lines = err.splitlines()
-      finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
+      finalize = [l for l in lines if 'wasm-emscripten-finalize' in l]
       if expect_debug:
-        self.assertIn(' -g ', finalize)
-      else:
-        self.assertNotIn(' -g ', finalize)
+        self.assertIn(' -g ', finalize[0])
+      elif len(finalize) > 0:
+        self.assertNotIn(' -g ', finalize[0])
+
+      # Also check that expected .debug and name sections are found
+      with webassembly.Module('a.out.wasm') as module:
+        sections = [s.name for s in module.sections() if s.name]
+        if expect_debug:
+          self.assertIn('name', sections)
+          if '-gsource-map' not in args:
+            self.assertIn('.debug_info', sections)
+        else:
+          self.assertNotIn('name', sections)
+          self.assertNotIn('.debug_info', sections)
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
