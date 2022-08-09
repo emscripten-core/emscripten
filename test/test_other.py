@@ -2723,13 +2723,13 @@ int f() {
           if empty_lines > 1:
             self.fail('output contains more then one empty line in row')
 
-    # relative path to below the current dir is invalid
+    # relative path must be within/below the current dir
     stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
-    self.assertContained('below the current directory', stderr)
+    self.assertContained('which is not contained within the current directory', stderr)
 
     # relative path that ends up under us is cool
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertNotContained('below the current directory', proc.stderr)
+    self.assertNotContained('which is not contained within the current directory', proc.stderr)
     check(proc.stdout)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
