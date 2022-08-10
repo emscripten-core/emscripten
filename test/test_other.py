@@ -2370,7 +2370,7 @@ int f() {
         (['-O2', '-g'], True, True),
       ]:
       print(args, expect_dwarf, expect_name)
-      err = self.run_process([EMXX, '-v', test_file('hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+      self.run_process([EMXX, '-v', test_file('hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
 
       # Check that expected .debug and name sections are found
       with webassembly.Module('a.out.wasm') as module:
