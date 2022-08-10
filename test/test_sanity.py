@@ -18,9 +18,8 @@ from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
-from tools.shared import config
+from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
-from tools.utils import delete_file, delete_dir
 from tools import shared, utils
 from tools import response_file
 from tools import ports
@@ -45,8 +44,8 @@ def restore_and_set_up():
 
 # wipe the config and sanity files, creating a blank slate
 def wipe():
-  delete_file(EM_CONFIG)
-  delete_file(SANITY_FILE)
+  try_delete(EM_CONFIG)
+  try_delete(SANITY_FILE)
 
 
 def add_to_config(content):
@@ -213,7 +212,7 @@ class sanity(RunnerCore):
 
     # The guessed config should be ok
     # XXX This depends on your local system! it is possible `which` guesses wrong
-    # delete_file('a.out.js')
+    # try_delete('a.out.js')
     # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
     # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
 
@@ -230,7 +229,7 @@ class sanity(RunnerCore):
           elif 'runner' not in ' '.join(command):
             self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
         finally:
-          delete_file(default_config)
+          try_delete(default_config)
 
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version for clang executable'
@@ -253,7 +252,7 @@ class sanity(RunnerCore):
 
     for inc_x in range(-2, 3):
       for inc_y in range(-2, 3):
-        delete_file(SANITY_FILE)
+        try_delete(SANITY_FILE)
         expected_x = real_version_x + inc_x
         expected_y = real_version_y + inc_y
         if expected_x < 0 or expected_y < 0:
@@ -304,7 +303,7 @@ class sanity(RunnerCore):
                              ('v4.2.3-pre', True),
                              ('cheez', False)]:
       print(version, succeed)
-      delete_file(SANITY_FILE)
+      try_delete(SANITY_FILE)
       f = open(self.in_dir('fake', 'nodejs'), 'w')
       f.write('#!/bin/sh\n')
       f.write('''if [ $1 = "--version" ]; then
@@ -355,7 +354,7 @@ fi
     # but with EMCC_DEBUG=1 we should check
     with env_modify({'EMCC_DEBUG': '1'}):
       output = self.check_working(EMCC)
-    delete_dir(CANONICAL_TEMP_DIR)
+    try_delete(CANONICAL_TEMP_DIR)
 
     self.assertContained(SANITY_MESSAGE, output)
     output = self.check_working(EMCC)
@@ -569,7 +568,7 @@ fi
       self.do([EMCC, '--clear-cache'])
       print(i)
       if i == 0:
-        delete_dir(PORTS_DIR)
+        try_delete(PORTS_DIR)
       else:
         self.do([EMCC, '--clear-ports'])
       self.assertNotExists(PORTS_DIR)
@@ -620,7 +619,7 @@ fi
                  ('node',   config.NODE_JS),
                  ('nodejs', config.NODE_JS)]
     for filename, engine in jsengines:
-      delete_file(SANITY_FILE)
+      try_delete(SANITY_FILE)
       if type(engine) is list:
         engine = engine[0]
       if not engine:
@@ -683,7 +682,7 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
 
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
-    delete_dir(CANONICAL_TEMP_DIR)
+    try_delete(CANONICAL_TEMP_DIR)
 
   def test_required_config_settings(self):
     # with no binaryen root, an error is shown
