@@ -133,7 +133,7 @@ var LibraryEmVal = {
     view = Emval.toValue(view);
     // using for..loop is faster than Array.from
     var a = new Array(view.length);
-    for (i = 0; i < view.length; i++) a[i] = view[i];
+    for (var i = 0; i < view.length; i++) a[i] = view[i];
     return Emval.toHandle(a);
   },
 
