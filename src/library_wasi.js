@@ -211,6 +211,7 @@ var WasiLibrary = {
   },
   $doWritev__docs: '/** @param {number=} offset */',
   $doWritev: function(stream, iov, iovcnt, offset) {
+    {{{ from64('iov') }}}
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
@@ -290,6 +291,7 @@ var WasiLibrary = {
   ].concat(i53ConversionDeps),
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
+    {{{ from64('pnum') }}}
     {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
