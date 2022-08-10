@@ -19,10 +19,10 @@
 # TODO(sbc): It would be nice if these we initialized directly
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
-.hidden __stack_end
+.globl __stack_end
 __stack_end:
 .globaltype __stack_base, PTR
-.hidden __stack_base
+.globl __stack_base
 __stack_base:
 
 emscripten_stack_get_base:

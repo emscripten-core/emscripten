@@ -383,7 +383,6 @@ def link_lld(args, target, external_symbols=None):
   if settings.MEMORY64:
     cmd.append('-mwasm64')
 
-
   if not settings.SIDE_MODULE:
     if settings.STACK_OVERFLOW_CHECK >= 2:
       cmd.append('--no-check-features')

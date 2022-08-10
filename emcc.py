@@ -1458,6 +1458,8 @@ def phase_setup(options, state, newargs, user_settings):
   if settings.USE_PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
+  newargs += ['-mmutable-globals']
+
   if settings.USE_PTHREADS and '-pthread' not in newargs:
     newargs += ['-pthread']
   elif settings.SHARED_MEMORY:
