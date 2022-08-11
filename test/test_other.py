@@ -3987,7 +3987,7 @@ Waste<3> *getMore() {
     try_delete('implicit_func.o')
     result = self.run_process(
         [EMCC, path_from_root('test/other/test_implicit_func.c'), '-c', '-o', 'implicit_func.o', '-std=gnu89'],
-          stderr=PIPE, check=False)
+        stderr=PIPE, check=False)
     self.assertContained(IMPLICIT_C89, result.stderr)
     self.assertContained(INCOMPATIBLE, result.stderr)
     self.assertTrue(result.returncode != 0, 'Expected compile to fail')
