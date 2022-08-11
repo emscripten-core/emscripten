@@ -3977,6 +3977,7 @@ Waste<3> *getMore() {
       self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
       self.assertContainedIf('globalCtors', src, has_global)
 
+  @disabled('Re-enable when LLVM 16.0 rolls into emsdk')
   def test_implicit_func(self):
     IMPLICIT_C89 = "implicit declaration of function 'strnlen'"
     IMPLICIT_C99 = "call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
