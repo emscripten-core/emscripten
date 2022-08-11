@@ -50,6 +50,12 @@ multiple audio node instances (maybe from multiple different audio processors),
 these will all share the same dedicated audio thread on the AudioContext,
 and will not run in a separate thread of their own each.
 
+Note: the audio worklet node processing is pull-mode callback based. Audio
+Worklets do not allow the creation of general purpose real-time prioritized
+threads. The audio callback code should execute as quickly as possible and
+be non-blocking. In other words, spinning a custom `for(;;)` loop is not
+possible.
+
 Programming Example
 ===================
 
