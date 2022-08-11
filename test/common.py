@@ -1199,13 +1199,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
+        if type(expected_output) not in [list, tuple]:
+          expected_output = [expected_output]
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
           elif assert_all or len(expected_output) == 1:
             for o in expected_output:
               if regex:
-                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (regex, js_output))
+                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (o, js_output))
               else:
                 self.assertContained(o, js_output)
           else:
