@@ -1135,7 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
   if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args), check=False).returncode
+    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
