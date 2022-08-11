@@ -3977,42 +3977,20 @@ Waste<3> *getMore() {
       self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
       self.assertContainedIf('globalCtors', src, has_global)
 
-  @disabled('Re-enable when LLVM 16.0 rolls into emsdk')
   def test_implicit_func(self):
-    IMPLICIT_C89 = "implicit declaration of function 'strnlen'"
-    IMPLICIT_C99 = "call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
+    # EMCC makes -Wimplict-function-declaration an error by default in all modes. Upstream LLVM
+    # emits a warning in gnu89 mode, but otherwise emcc's behavior is identical to upstream.
+    IMPLICIT_C89 = "error: implicit declaration of function 'strnlen'"
+    # Also ensure that -Wincompatible-function-pointer-types is an error
+    INCOMPATIBLE = 'error: incompatible function pointer types'
 
-    INCOMPATIBLE = 'incompatible function pointer types'
-
-    def warning(text):
-      return 'warning: ' + text
-
-    def error(text):
-      return 'error: ' + text
-
-    for opts, expect_success, compile_expected in [
-      # IMPLICIT is an error even in gnu89 (this is not the default for other platforms)
-      (['-std=gnu89'], False, [error(IMPLICIT_C89), error(INCOMPATIBLE)]),
-      ([], False, [error(IMPLICIT_C99), error(INCOMPATIBLE)]), # Default behavior of clang for all platforms
-      # turn errors into warnings
-      (['-Wno-error=incompatible-function-pointer-types'], False, [error(IMPLICIT_C99), warning(INCOMPATIBLE)]),
-      (['-Wno-error=implicit-function-declaration'], False, [warning(IMPLICIT_C99), error(INCOMPATIBLE)]),
-      (['-Wno-error=implicit-function-declaration', '-Wno-error=incompatible-function-pointer-types'], True,
-       [warning(IMPLICIT_C99), warning(INCOMPATIBLE)]),
-      # suppress warnings completely
-      (['-Wno-implicit-function-declaration', '-Wno-incompatible-function-pointer-types'], True, []),
-    ]:
-      print(opts)
-      try_delete('implicit_func.o')
-      result = self.run_process(
-          [EMCC, path_from_root('test/implicit_func.c'), '-c', '-o', 'implicit_func.o'] + opts,
+    try_delete('implicit_func.o')
+    result = self.run_process(
+        [EMCC, path_from_root('test/other/test_implicit_func.c'), '-c', '-o', 'implicit_func.o', '-std=gnu89'],
           stderr=PIPE, check=False)
-      for ce in compile_expected:
-        self.assertContained(ce, result.stderr)
-      if expect_success:
-        self.assertTrue(result.returncode == 0, 'Expected compile to succeed')
-      else:
-        self.assertTrue(result.returncode != 0, 'Expected compile to fail')
+    self.assertContained(IMPLICIT_C89, result.stderr)
+    self.assertContained(INCOMPATIBLE, result.stderr)
+    self.assertTrue(result.returncode != 0, 'Expected compile to fail')
 
   @requires_native_clang
   def test_bad_triple(self):
