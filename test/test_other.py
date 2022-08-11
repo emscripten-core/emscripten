@@ -3986,6 +3986,7 @@ Waste<3> *getMore() {
 
     def warning(text):
       return 'warning: ' + text
+
     def error(text):
       return 'error: ' + text
 
@@ -4012,7 +4013,6 @@ Waste<3> *getMore() {
         self.assertTrue(result.returncode == 0, 'Expected compile to succeed')
       else:
         self.assertTrue(result.returncode != 0, 'Expected compile to fail')
-
 
   @requires_native_clang
   def test_bad_triple(self):
