@@ -81,5 +81,9 @@ mergeInto(LibraryManager.library, {
     val = {{{ makeGetValue('ptr', '0', 'i32*') }}};
     out('ptr: ' + val.toString(16))
     assert(val == 0xedcba988);
-  }
+  },
+
+  test_makeSetValue_i64: function(ptr) {
+    {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
+  },
 });

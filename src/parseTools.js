@@ -404,7 +404,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
-  } else if (!WASM_BIGINT && type == 'i64') {
+  } else if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
+    // If we lack either BigInt support or Memory64 then we must fall back to an
+    // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
+    // and without Memory64 i64 fields are not guaranteed to be aligned to 64
+    // bits, so HEAP64[ptr>>3] might be broken.
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
