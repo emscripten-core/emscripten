@@ -870,7 +870,7 @@ def get_clang_flags(user_args):
 cflags = None
 
 
-def get_cflags(user_args):
+def get_cflags(user_args, is_cxx):
   global cflags
   if cflags:
     return cflags
@@ -906,7 +906,9 @@ def get_cflags(user_args):
   #   -Wno-error=implicit-function-declaration
   # or disable even a warning about it with
   #   -Wno-implicit-function-declaration
-  cflags += ['-Werror=implicit-function-declaration']
+  # This is already an error in C++ so we don't need to inject extra flags.
+  if not is_cxx:
+    cflags += ['-Werror=implicit-function-declaration']
 
   ports.add_cflags(cflags, settings)
 
@@ -2728,7 +2730,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(src_file) + get_cflags(state.orig_args) + compile_args + [src_file]
+    return get_compiler(src_file) + get_cflags(state.orig_args, use_cxx(src_file)) + compile_args + [src_file]
 
   def get_clang_command_preprocessed(src_file):
     return get_compiler(src_file) + get_clang_flags(state.orig_args) + compile_args + [src_file]
