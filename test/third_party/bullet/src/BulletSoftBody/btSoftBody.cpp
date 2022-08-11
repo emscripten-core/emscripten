@@ -1,5 +1,3 @@
-// There are several bitfield conversion warnings in this file.
-#pragma clang diagnostic ignored "-Wbitfield-constant-conversion"
 /*
 Bullet Continuous Collision Detection and Physics Library
 Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
