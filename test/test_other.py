@@ -3981,16 +3981,14 @@ Waste<3> *getMore() {
     # EMCC makes -Wimplict-function-declaration an error by default in all modes. Upstream LLVM
     # emits a warning in gnu89 mode, but otherwise emcc's behavior is identical to upstream.
     IMPLICIT_C89 = "error: implicit declaration of function 'strnlen'"
-    # Also ensure that -Wincompatible-function-pointer-types is an error
-    INCOMPATIBLE = 'error: incompatible function pointer types'
+    # Also check for -Wincompatible-function-pointer-types (it became an error in LLVM 16)
+    INCOMPATIBLE = ': incompatible function pointer types'
 
     try_delete('implicit_func.o')
-    result = self.run_process(
-        [EMCC, path_from_root('test/other/test_implicit_func.c'), '-c', '-o', 'implicit_func.o', '-std=gnu89'],
-        stderr=PIPE, check=False)
-    self.assertContained(IMPLICIT_C89, result.stderr)
-    self.assertContained(INCOMPATIBLE, result.stderr)
-    self.assertTrue(result.returncode != 0, 'Expected compile to fail')
+    stderr = self.expect_fail(
+        [EMCC, path_from_root('test/other/test_implicit_func.c'), '-c', '-o', 'implicit_func.o', '-std=gnu89'])
+    self.assertContained(IMPLICIT_C89, stderr)
+    self.assertContained(INCOMPATIBLE, stderr)
 
   @requires_native_clang
   def test_bad_triple(self):
