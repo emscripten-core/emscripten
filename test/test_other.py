@@ -3978,45 +3978,40 @@ Waste<3> *getMore() {
       self.assertContainedIf('globalCtors', src, has_global)
 
   def test_implicit_func(self):
-    create_file('src.c', r'''
-#include <stdio.h>
-int main()
-{
-    printf("hello %d\n", strnlen("waka", 2)); // Implicit declaration, no header, for strnlen
-    int (*my_strnlen)(char*, ...) = strnlen;
-    printf("hello %d\n", my_strnlen("shaka", 2));
-    return 0;
-}
-''')
+    IMPLICIT_C89 = "implicit declaration of function 'strnlen'"
+    IMPLICIT_C99 = "call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
 
-    IMPLICIT_WARNING = "warning: implicit declaration of function 'strnlen' is invalid in C99"
-    IMPLICIT_WARNING_NEW = "warning: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
+    INCOMPATIBLE = 'incompatible function pointer types'
 
-    IMPLICIT_ERROR = "error: implicit declaration of function 'strnlen' is invalid in C99"
-    IMPLICIT_ERROR_NEW = "error: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
+    def warning(text):
+      return 'warning: ' + text
+    def error(text):
+      return 'error: ' + text
 
-    INCOMPATIBLE_WARNINGS = ('warning: incompatible pointer types', 'warning: incompatible function pointer types')
-    IMPLICIT_WARNINGS = (IMPLICIT_WARNING, IMPLICIT_WARNING_NEW)
-    IMPLICIT_ERRORS = (IMPLICIT_ERROR, IMPLICIT_ERROR_NEW)
-
-    for opts, expected, compile_expected in [
-      ([], None, [IMPLICIT_ERRORS]),
-      # turn error into warning
-      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNINGS]),
-      # turn error into nothing at all (runtime output is incorrect)
-      (['-Wno-implicit-function-declaration'], ['hello '], []),
+    for opts, expect_success, compile_expected in [
+      # IMPLICIT is an error even in gnu89 (this is not the default for other platforms)
+      (['-std=gnu89'], False, [error(IMPLICIT_C89), error(INCOMPATIBLE)]),
+      ([], False, [error(IMPLICIT_C99), error(INCOMPATIBLE)]), # Default behavior of clang for all platforms
+      # turn errors into warnings
+      (['-Wno-error=incompatible-function-pointer-types'], False, [error(IMPLICIT_C99), warning(INCOMPATIBLE)]),
+      (['-Wno-error=implicit-function-declaration'], False, [warning(IMPLICIT_C99), error(INCOMPATIBLE)]),
+      (['-Wno-error=implicit-function-declaration', '-Wno-error=incompatible-function-pointer-types'], True,
+       [warning(IMPLICIT_C99), warning(INCOMPATIBLE)]),
+      # suppress warnings completely
+      (['-Wno-implicit-function-declaration', '-Wno-incompatible-function-pointer-types'], True, []),
     ]:
-      print(opts, expected)
-      try_delete('a.out.js')
-      stderr = self.run_process([EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
-      for ce in compile_expected + [INCOMPATIBLE_WARNINGS]:
-        self.assertContained(ce, stderr)
-      if expected is None:
-        self.assertNotExists('a.out.js')
+      print(opts)
+      try_delete('implicit_func.o')
+      result = self.run_process(
+          [EMCC, path_from_root('test/implicit_func.c'), '-c', '-o', 'implicit_func.o'] + opts,
+          stderr=PIPE, check=False)
+      for ce in compile_expected:
+        self.assertContained(ce, result.stderr)
+      if expect_success:
+        self.assertTrue(result.returncode == 0, 'Expected compile to succeed')
       else:
-        output = self.run_js('a.out.js')
-        for e in expected:
-          self.assertContained(e, output)
+        self.assertTrue(result.returncode != 0, 'Expected compile to fail')
+
 
   @requires_native_clang
   def test_bad_triple(self):
