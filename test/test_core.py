@@ -6760,7 +6760,8 @@ void* operator new(size_t size) {
         '-Wno-deprecated-register',
         '-Wno-writable-strings',
         '-Wno-shift-negative-value',
-        '-Wno-format'
+        '-Wno-format',
+        '-Wno-bitfield-constant-conversion',
     ]
 
     # extra testing for ASSERTIONS == 2
