@@ -49,4 +49,9 @@ test_receiveI64ParamAsDouble:
 arg1: -9007199254740992
 arg2: 0
 rtn = 0
+
+test_makeSetValue_i64
+i64 = 0x12345678ab
+i64 = 0x12345678ab
+
 done

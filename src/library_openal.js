@@ -2298,10 +2298,10 @@ var LibraryOpenAL = {
   alcMakeContextCurrent: function(contextId) {
     if (contextId === 0) {
       AL.currentCtx = null;
-      return 0;
+    } else {
+      AL.currentCtx = AL.contexts[contextId];
     }
-    AL.currentCtx = AL.contexts[contextId];
-    return 1;
+    return 1 /* ALC_TRUE */;
   },
 
   alcGetContextsDevice__proxy: 'sync',

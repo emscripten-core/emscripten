@@ -51,7 +51,7 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary, delete_file
+from tools.utils import read_file, write_file, read_binary
 
 logger = logging.getLogger('emcc')
 
@@ -870,7 +870,7 @@ def get_clang_flags(user_args):
 cflags = None
 
 
-def get_cflags(user_args):
+def get_cflags(user_args, is_cxx):
   global cflags
   if cflags:
     return cflags
@@ -906,7 +906,9 @@ def get_cflags(user_args):
   #   -Wno-error=implicit-function-declaration
   # or disable even a warning about it with
   #   -Wno-implicit-function-declaration
-  cflags += ['-Werror=implicit-function-declaration']
+  # This is already an error in C++ so we don't need to inject extra flags.
+  if not is_cxx:
+    cflags += ['-Werror=implicit-function-declaration']
 
   ports.add_cflags(cflags, settings)
 
@@ -1133,7 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
   if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args), check=False).returncode
+    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -2733,7 +2735,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(src_file) + get_cflags(state.orig_args) + compile_args + [src_file]
+    return get_compiler(src_file) + get_cflags(state.orig_args, use_cxx(src_file)) + compile_args + [src_file]
 
   def get_clang_command_preprocessed(src_file):
     return get_compiler(src_file) + get_clang_flags(state.orig_args) + compile_args + [src_file]
@@ -3066,7 +3068,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     generate_worker_js(target, js_target, target_basename)
 
   if embed_memfile() and memfile:
-    delete_file(memfile)
+    shared.try_delete(memfile)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
@@ -3557,7 +3559,7 @@ def phase_binaryen(target, options, wasm_target):
     if settings.WASM != 2:
       final_js = wasm2js
       # if we only target JS, we don't need the wasm any more
-      delete_file(wasm_target)
+      shared.try_delete(wasm_target)
 
     save_intermediate('wasm2js')
 
@@ -3595,7 +3597,7 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
-    delete_file(wasm_target)
+    shared.try_delete(wasm_target)
     write_file(final_js, js)
 
 
@@ -3798,7 +3800,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     js_contents = script.inline or ''
     if script.src:
       js_contents += read_file(js_target)
-    delete_file(js_target)
+    shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
 

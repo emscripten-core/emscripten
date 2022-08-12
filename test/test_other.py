@@ -27,7 +27,7 @@ from subprocess import PIPE, STDOUT
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
-from tools.shared import config
+from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
@@ -36,7 +36,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file
-from tools.utils import read_file, write_file, delete_file, read_binary
+from tools.utils import read_file, write_file, read_binary
 import common
 import jsrun
 import clang_native
@@ -392,7 +392,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       os.chdir(os.path.dirname(path))
       self.assertContained('hello, world!', self.run_js(os.path.basename(path)))
       os.chdir(last)
-      delete_file(path)
+      try_delete(path)
 
   @is_slow_test
   @parameterized({
@@ -1302,7 +1302,7 @@ int f() {
         print(engine, file=sys.stderr)
         # work around a bug in python's subprocess module
         # (we'd use self.run_js() normally)
-        delete_file('out.txt')
+        try_delete('out.txt')
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
         cmd = shared.shlex_join(cmd)
         if WINDOWS:
@@ -1408,7 +1408,7 @@ int f() {
     self.assertContained('hello there', self.run_js('a.out.js'))
 
     # ditto with first creating .o files
-    delete_file('a.out.js')
+    try_delete('a.out.js')
     self.run_process([EMXX, '-c', Path('foo/main.cpp'), '-o', Path('foo/main.o')])
     self.run_process([EMXX, '-c', Path('bar/main.cpp'), '-o', Path('bar/main.o')])
     self.run_process([EMCC, Path('foo/main.o'), Path('bar/main.o')])
@@ -1447,7 +1447,7 @@ int f() {
       }
     ''')
     self.run_process([EMCC, 'common.c', '-c', '-o', 'common.o'])
-    delete_file('liba.a')
+    try_delete('liba.a')
     self.run_process([EMAR, 'rc', 'liba.a', 'common.o'])
 
     create_file('common.c', r'''
@@ -1457,7 +1457,7 @@ int f() {
       }
     ''')
     self.run_process([EMCC, 'common.c', '-c', '-o', 'common.o'])
-    delete_file('libb.a')
+    try_delete('libb.a')
     self.run_process([EMAR, 'rc', 'libb.a', 'common.o'])
 
     create_file('main.c', r'''
@@ -1491,7 +1491,7 @@ int f() {
     ''')
     self.run_process([EMCC, Path('b/common.c'), '-c', '-o', Path('b/common.o')])
 
-    delete_file('liba.a')
+    try_delete('liba.a')
     self.run_process([EMAR, 'rc', 'liba.a', Path('a/common.o'), Path('b/common.o')])
 
     # Verify that archive contains basenames with hashes to avoid duplication
@@ -1514,7 +1514,7 @@ int f() {
     self.assertContained('a\nb...\n', self.run_js('a.out.js'))
 
     # Using llvm-ar directly should cause duplicate basenames
-    delete_file('libdup.a')
+    try_delete('libdup.a')
     self.run_process([LLVM_AR, 'rc', 'libdup.a', Path('a/common.o'), Path('b/common.o')])
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
@@ -2112,7 +2112,7 @@ int f() {
 
     for args in ([], ['-O1'], ['-sMAX_WEBGL_VERSION=2']):
       for value in ([0, 1]):
-        delete_file('a.out.js')
+        try_delete('a.out.js')
         print('checking "%s" %s' % (args, value))
         extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
         proc = self.run_process([EMXX, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
@@ -2466,13 +2466,13 @@ int f() {
     self.emcc(test_file(source_file), ['-g'], js_file)
     self.verify_dwarf_exists(wasm_file)
     self.assertFalse(os.path.isfile(map_file))
-    self.clear()
+    try_delete([wasm_file, map_file, js_file])
 
     # Generate only source map
     self.emcc(test_file(source_file), ['-gsource-map'], js_file)
     self.verify_dwarf_does_not_exist(wasm_file)
     self.verify_source_map_exists(map_file)
-    self.clear()
+    try_delete([wasm_file, map_file, js_file])
 
     # Generate DWARF with source map
     self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
@@ -2723,13 +2723,13 @@ int f() {
           if empty_lines > 1:
             self.fail('output contains more then one empty line in row')
 
-    # relative path to below the current dir is invalid
+    # relative path must be within/below the current dir
     stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
-    self.assertContained('below the current directory', stderr)
+    self.assertContained('which is not contained within the current directory', stderr)
 
     # relative path that ends up under us is cool
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertNotContained('below the current directory', proc.stderr)
+    self.assertNotContained('which is not contained within the current directory', proc.stderr)
     check(proc.stdout)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
@@ -2992,7 +2992,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
-    delete_file('test.js')
+    try_delete('test.js')
     self.assertNotExists('test.js')
 
     # compile with -O2 --closure 1
@@ -3663,12 +3663,12 @@ return 0;
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
     self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
     # and sanity check it is not mentioned when not
-    delete_file('header.h.' + suffix)
+    try_delete('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
     self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
     # with specified target via -o
-    delete_file('header.h.' + suffix)
+    try_delete('header.h.' + suffix)
     self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
     self.assertExists('my.' + suffix)
 
@@ -3978,45 +3978,17 @@ Waste<3> *getMore() {
       self.assertContainedIf('globalCtors', src, has_global)
 
   def test_implicit_func(self):
-    create_file('src.c', r'''
-#include <stdio.h>
-int main()
-{
-    printf("hello %d\n", strnlen("waka", 2)); // Implicit declaration, no header, for strnlen
-    int (*my_strnlen)(char*, ...) = strnlen;
-    printf("hello %d\n", my_strnlen("shaka", 2));
-    return 0;
-}
-''')
+    # EMCC makes -Wimplict-function-declaration an error by default in all modes. Upstream LLVM
+    # emits a warning in gnu89 mode, but otherwise emcc's behavior is identical to upstream.
+    IMPLICIT_C89 = "error: implicit declaration of function 'strnlen'"
+    # Also check for -Wincompatible-function-pointer-types (it became an error in LLVM 16)
+    INCOMPATIBLE = ': incompatible function pointer types'
 
-    IMPLICIT_WARNING = "warning: implicit declaration of function 'strnlen' is invalid in C99"
-    IMPLICIT_WARNING_NEW = "warning: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
-
-    IMPLICIT_ERROR = "error: implicit declaration of function 'strnlen' is invalid in C99"
-    IMPLICIT_ERROR_NEW = "error: call to undeclared function 'strnlen'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]"
-
-    INCOMPATIBLE_WARNINGS = ('warning: incompatible pointer types', 'warning: incompatible function pointer types')
-    IMPLICIT_WARNINGS = (IMPLICIT_WARNING, IMPLICIT_WARNING_NEW)
-    IMPLICIT_ERRORS = (IMPLICIT_ERROR, IMPLICIT_ERROR_NEW)
-
-    for opts, expected, compile_expected in [
-      ([], None, [IMPLICIT_ERRORS]),
-      # turn error into warning
-      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNINGS]),
-      # turn error into nothing at all (runtime output is incorrect)
-      (['-Wno-implicit-function-declaration'], ['hello '], []),
-    ]:
-      print(opts, expected)
-      delete_file('a.out.js')
-      stderr = self.run_process([EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
-      for ce in compile_expected + [INCOMPATIBLE_WARNINGS]:
-        self.assertContained(ce, stderr)
-      if expected is None:
-        self.assertNotExists('a.out.js')
-      else:
-        output = self.run_js('a.out.js')
-        for e in expected:
-          self.assertContained(e, output)
+    try_delete('implicit_func.o')
+    stderr = self.expect_fail(
+        [EMCC, path_from_root('test/other/test_implicit_func.c'), '-c', '-o', 'implicit_func.o', '-std=gnu89'])
+    self.assertContained(IMPLICIT_C89, stderr)
+    self.assertContained(INCOMPATIBLE, stderr)
 
   @requires_native_clang
   def test_bad_triple(self):
@@ -4263,7 +4235,7 @@ int main() {
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
-    delete_file('a.out.js')
+    try_delete('a.out.js')
 
     # Test that --preload-file doesn't add an use of eval().
     create_file('temp.txt', "foo\n")
@@ -4273,12 +4245,12 @@ int main() {
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
-    delete_file('a.out.js')
+    try_delete('a.out.js')
 
     # Test that -sDYNAMIC_EXECUTION and -sRELOCATABLE are not allowed together.
     self.expect_fail([EMCC, test_file('hello_world.c'), '-O1',
                       '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
-    delete_file('a.out.js')
+    try_delete('a.out.js')
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -4291,13 +4263,13 @@ int main() {
     # Test that emscripten_run_script() aborts when -sDYNAMIC_EXECUTION=0
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=0'])
     self.assertContained('DYNAMIC_EXECUTION=0 was set, cannot eval', self.run_js('a.out.js', assert_returncode=NON_ZERO))
-    delete_file('a.out.js')
+    try_delete('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -sDYNAMIC_EXECUTION=2
     self.run_process([EMCC, 'test.c', '-O1', '-sDYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', self.run_js('a.out.js'))
     self.assertContained('hello from script', self.run_js('a.out.js'))
-    delete_file('a.out.js')
+    try_delete('a.out.js')
 
   def test_init_file_at_offset(self):
     create_file('src.cpp', r'''
@@ -5556,7 +5528,7 @@ int main(void) {
     self.run_process([EMCC, '-c', 'x.c', '-o', 'x.o'])
     self.run_process([EMCC, '-c', 'y.c', '-o', 'y.o'])
     self.run_process([EMCC, '-c', 'z.c', '-o', 'z.o'])
-    delete_file('libtest.a')
+    try_delete('libtest.a')
     self.run_process([EMAR, 'rc', 'libtest.a', 'y.o'])
     self.run_process([EMAR, 'rc', 'libtest.a', 'x.o'])
     self.run_process([EMRANLIB, 'libtest.a'])
@@ -6134,6 +6106,48 @@ int main() {
     self.run_process([EMCC, 'main.c', '-sMAIN_MODULE=2'])
     out = self.run_js('a.out.js')
     self.assertContained('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required', out)
+
+  def test_dlopen_contructors(self):
+    create_file('side.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+
+      static int foo;
+      static int* ptr = &foo;
+
+      void check_relocations(void) {
+        assert(ptr == &foo);
+      }
+
+      __attribute__((constructor)) void ctor(void) {
+        printf("foo address: %p\n", ptr);
+        // Check that relocations have already been applied by the time
+        // contructor functions run.
+        check_relocations();
+        printf("done ctor\n");
+      }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      int main() {
+        void (*check) (void);
+        void* h = dlopen("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        assert(h);
+        check = dlsym(h, "check_relocations");
+        assert(check);
+        check();
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, '-g', '-o', 'libside.wasm', 'side.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    self.assertContained('done', self.run_js('a.out.js'))
+    # Repeat the test without NO_AUTOLOAD_DYLIBS
+    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    self.assertContained('done', self.run_js('a.out.js'))
 
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
@@ -7224,7 +7238,7 @@ int main() {
             assert ret == 0
 
           for f in files:
-            delete_file(f)
+            try_delete(f)
 
   def test_binaryen_names(self):
     sizes = {}
@@ -7240,7 +7254,7 @@ int main() {
         (['-O2', '--profiling-funcs'], True),
       ]:
       print(args, expect_names)
-      delete_file('a.out.js')
+      try_delete('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
       # them, which makes counting harder
       self.run_process([EMXX, test_file('hello_world.cpp')] + args + ['-sMALLOC="dlmalloc"', '-sEXPORTED_FUNCTIONS=_main,_malloc'])
@@ -7370,7 +7384,7 @@ int main() {
         (['-O2', '--closure=1', '-g1'],  False, False, True, True,  True),
       ]:
       print(args, expect_dash_g, expect_emit_text)
-      delete_file('a.out.wat')
+      try_delete('a.out.wat')
       cmd = [EMXX, test_file('hello_world.cpp')] + args
       print(' '.join(cmd))
       self.run_process(cmd)
@@ -7655,7 +7669,7 @@ int main() {
       if '-sSIDE_MODULE' in args:
         continue
       print(args)
-      delete_file('a.out.wasm')
+      try_delete('a.out.wasm')
       cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
@@ -7695,7 +7709,7 @@ int main() {
   def test_no_legalize_js_ffi(self):
     # test minimal JS FFI legalization for invoke and dyncalls
     args = ['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0']
-    delete_file('a.out.wasm')
+    try_delete('a.out.wasm')
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
       cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
     print(' '.join(cmd))
@@ -8631,45 +8645,93 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   def test_emsymbolizer(self):
-    def check_loc_info(address, source, funcs, locs):
+    def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
-          [emsymbolizer, '-tcode', '-s', source, 'test_dwarf.wasm', address],
+          [emsymbolizer, '-tcode', '-s', 'dwarf', 'test_dwarf.wasm', address],
           stdout=PIPE).stdout
       for func in funcs:
         self.assertIn(func, out)
       for loc in locs:
         self.assertIn(loc, out)
 
-    # Use hard-coded addresses. This is potentially brittle, but LLVM's
-    # O1 output is pretty minimal so hopefully it won't break too much?
-    # Another option would be to disassemble the binary to look for certain
-    # instructions or code sequences.
+    def check_source_map_loc_info(address, loc):
+      out = self.run_process(
+          [emsymbolizer, '-tcode', '-s', 'sourcemap', 'test_dwarf.wasm',
+           address],
+          stdout=PIPE).stdout
+      self.assertIn(loc, out)
+
+    # Runs llvm-objdump to get the address of the first occurrence of the
+    # specified line within the given function. llvm-objdump's output format
+    # example is as follows:
+    # ...
+    # 00000004 <foo>:
+    #        ...
+    #        6: 41 00         i32.const       0
+    #        ...
+    # The addresses here are the offsets to start of the code section. Returns
+    # the address string in hexadecimal.
+    def get_addr(text):
+      out = self.run_process([common.LLVM_OBJDUMP, '-d', 'test_dwarf.wasm'],
+                             stdout=PIPE).stdout.strip()
+      out_lines = out.splitlines()
+      found = False
+      for line in out_lines:
+        if text in line:
+          offset = line.strip().split(':')[0]
+          found = True
+          break
+      assert found
+      return '0x' + offset
+
+    # We test two locations within test_dwarf.c:
+    # out_to_js(0);     // line 6
+    # __builtin_trap(); // line 13
 
     # 1. Test DWARF + source map together
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    # 0x8 corresponds to out_to_js(0) within foo(), uninlined
-    # DWARF info provides function names, but source maps don't
-    check_loc_info('0x8', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
-    check_loc_info('0x8', 'sourcemap', [], ['test_dwarf.c:6:3'])
-    # 0x1f corresponds to __builtin_trap() within bar(), inlined into main()
-    # DWARF info provides inlined info, but source maps don't
-    check_loc_info('0x1f', 'dwarf', ['bar', 'main'],
-                   ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
-    check_loc_info('0x1f', 'sourcemap', [], ['test_dwarf.c:13:3'])
+    # Address of out_to_js(0) within foo(), uninlined
+    out_to_js_call_addr = get_addr('call\t0')
+    # Address of __builtin_trap() within bar(), inlined into main()
+    unreachable_addr = get_addr('unreachable')
+
+    # Function name of out_to_js(0) within foo(), uninlined
+    out_to_js_call_func = ['foo']
+    # Function names of __builtin_trap() within bar(), inlined into main(). The
+    # first one corresponds to the innermost inlined function.
+    unreachable_func = ['bar', 'main']
+
+    # Source location of out_to_js(0) within foo(), uninlined
+    out_to_js_call_loc = ['test_dwarf.c:6:3']
+    # Source locations of __builtin_trap() within bar(), inlined into main().
+    # The first one corresponds to the innermost inlined location.
+    unreachable_loc = ['test_dwarf.c:13:3', 'test_dwarf.c:18:3']
+
+    # For DWARF, we check for the full inlined info for both function names and
+    # source locations. Source maps provide neither function names nor inlined
+    # info. So we only check for the source location of the outermost function.
+    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                         out_to_js_call_loc)
+    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
+    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
 
     # 2. Test source map only
+    # The addresses, function names, and source locations are the same across
+    # the builds because they are relative offsets from the code section, so we
+    # don't need to recompute them
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    check_loc_info('0x8', 'sourcemap', [], ['test_dwarf.c:6:3'])
-    check_loc_info('0x1f', 'sourcemap', [], ['test_dwarf.c:13:3'])
+    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
+    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
 
     # 3. Test DWARF only
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-O1', '-o', 'test_dwarf.js'])
-    check_loc_info('0x8', 'dwarf', ['foo'], ['test_dwarf.c:6:3'])
-    check_loc_info('0x1f', 'dwarf', ['bar', 'main'],
-                   ['test_dwarf.c:13:3', 'test_dwarf.c:18:3'])
+    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                         out_to_js_call_loc)
+    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
@@ -9322,7 +9384,7 @@ int main () {
         return # Nonexistent file passes in this check
       obtained_size = os.path.getsize(f)
       print('size of generated ' + f + ': ' + str(obtained_size))
-      delete_file(f)
+      try_delete(f)
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
@@ -9392,7 +9454,7 @@ int main () {
       self.run_process(args)
 
       output = read_file('a.js')
-      delete_file('a.js')
+      try_delete('a.js')
       self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
@@ -9505,7 +9567,7 @@ int main () {
       with gzip.open(f_gz, 'wb') as gzf:
         gzf.write(read_binary(f))
       size = os.path.getsize(f_gz)
-      delete_file(f_gz)
+      try_delete(f_gz)
       return size
 
     # For certain tests, don't just check the output size but check
