@@ -5405,6 +5405,8 @@ Module["preRun"].push(function () {
   def test_audio_worklet(self):
     self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
     self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--closure', '1', '-Oz'])
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS'])
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS', '--closure', '1', '-Oz'])
 
 
 class emrun(RunnerCore):
