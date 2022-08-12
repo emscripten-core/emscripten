@@ -2079,7 +2079,7 @@ mergeInto(LibraryManager.library, {
   },
 
   getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
-  getnameinfo_sig: 'ipipipii',
+  getnameinfo__sig: 'ipipipii',
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
