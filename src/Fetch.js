@@ -5,6 +5,7 @@
  */
 
 var Fetch = {
+  // Map of integer fetch id to XHR request object
   xhrs: {},
 
   // The web worker that runs proxied file I/O requests. (this field is populated on demand, start as undefined to save code size)
