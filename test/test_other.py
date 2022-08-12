@@ -6107,6 +6107,48 @@ int main() {
     out = self.run_js('a.out.js')
     self.assertContained('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required', out)
 
+  def test_dlopen_contructors(self):
+    create_file('side.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+
+      static int foo;
+      static int* ptr = &foo;
+
+      void check_relocations(void) {
+        assert(ptr == &foo);
+      }
+
+      __attribute__((constructor)) void ctor(void) {
+        printf("foo address: %p\n", ptr);
+        // Check that relocations have already been applied by the time
+        // contructor functions run.
+        check_relocations();
+        printf("done ctor\n");
+      }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      int main() {
+        void (*check) (void);
+        void* h = dlopen("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        assert(h);
+        check = dlsym(h, "check_relocations");
+        assert(check);
+        check();
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, '-g', '-o', 'libside.wasm', 'side.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    self.assertContained('done', self.run_js('a.out.js'))
+    # Repeat the test without NO_AUTOLOAD_DYLIBS
+    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    self.assertContained('done', self.run_js('a.out.js'))
+
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
     # before the module providing a global it needs is. in asm.js we use JS
