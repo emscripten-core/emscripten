@@ -1131,14 +1131,3 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // or can use .subarray() otherwise.
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
 }
-
-function getPossibleEnvironments() {
-  let environments = [];
-  if (ENVIRONMENT_MAY_BE_WEB) environments.push('ENVIRONMENT_IS_WEB');
-  if (ENVIRONMENT_MAY_BE_SHELL) environments.push('ENVIRONMENT_IS_SHELL');
-  if (ENVIRONMENT_MAY_BE_WORKER) environments.push('ENVIRONMENT_IS_WORKER');
-  if (ENVIRONMENT_MAY_BE_NODE) environments.push('ENVIRONMENT_IS_NODE');
-  if (AUDIO_WORKLET) environments.push('ENVIRONMENT_IS_AUDIO_WORKLET');
-  if (WASM_WORKERS) environments.push('ENVIRONMENT_IS_WASM_WORKER');
-  return environments;
-}
