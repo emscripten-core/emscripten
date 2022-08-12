@@ -486,10 +486,13 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
-#if USE_PTHREADS && AUDIO_WORKLET
-assert(ENVIRONMENT_IS_AUDIO_WORKLET || ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
+#if USE_PTHREADS
+assert(
+#if AUDIO_WORKLET
+  ENVIRONMENT_IS_AUDIO_WORKLET ||
+#endif
+  ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #else
-assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
