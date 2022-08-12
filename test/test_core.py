@@ -6940,6 +6940,12 @@ void* operator new(size_t size) {
     'none': ('none',),
   })
   def test_wasm2c_sandboxing(self, mode):
+    if self.get_setting('WASMFS'):
+      # wasm2c disables JS legalization since we are building in standalone
+      # mode. this happens to work without wasmfs, but with wasmfs we get the
+      # time when we create/update a file, which uses clock_time_get that has an
+      # i64 param. For such an import to work we need wasm-bigint support.
+      self.node_args.append('--experimental-wasm-bigint')
     if not can_do_standalone(self):
       return self.skipTest('standalone mode not supported')
     self.set_setting('STANDALONE_WASM')
