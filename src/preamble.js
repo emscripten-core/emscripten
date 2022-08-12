@@ -919,7 +919,7 @@ function createWasm() {
     Module['wasmTable'] = wasmTable;
 #endif
 
-#if hasExportedSymbol('___wasm_call_ctors')
+#if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
 #endif
 
