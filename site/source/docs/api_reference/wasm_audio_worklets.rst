@@ -162,6 +162,19 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
 
 And that's it! Compile the code with the linker flags ``-sAUDIO_WORKLET=1 -sWASM_WORKERS=1`` to enable targeting AudioWorklets.
 
+Synchronizing audio thread with the main thread
+===============================================
+
+Wasm Audio Worklets API builds on top of the Emscripten Wasm Workers feature. This means that the Wasm Audio Worklet thread is modeled as if it was a Wasm Worker thread.
+
+To synchronize information between an Audio Worklet Node and other threads in the application, there are two options:
+
+1. Leverage the Web Audio "AudioParams" model. Each Audio Worklet Processor type is instantiated with a custom defined set of audio parameters that can affect the audio computation at sample precise accuracy. These parameters are passed in the ``params`` array into the audio processing function.
+
+The main browser thread that created the Web Audio context can adjust the values of these parameters whenever desired. See `MDN function: setValueAtTime <https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/setValueAtTime>`_ .
+
+2. Data can be shared with the Audio Worklet thread using GCC/Clang lock-free atomics operations, Emscripten atomics operations and the Wasm Worker API thread synchronization primitives. See :ref:`wasm_workers` for more information.
+
 More Examples
 =============
 

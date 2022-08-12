@@ -60,13 +60,13 @@ void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.
-void emscripten_start_wasm_audio_worklet_thread_async(EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, void *userData);
 // audioContext: The Web Audio context object to initialize the Wasm AudioWorklet thread on. Each AudioContext can have only one AudioWorklet
 //               thread running, so do not call this function a multiple times on the same AudioContext.
 // stackLowestAddress: The base address for the thread's stack. Must be aligned to 16 bytes. Use e.g. memalign(16, 1024) to allocate a 1KB stack for the thread.
 // stackSize: The size of the thread's stack. Must be a multiple of 16 bytes.
 // callback: The callback function that will be run when thread creation either succeeds or fails.
 // userData: A custom userdata pointer to pass to the callback function.
+void emscripten_start_wasm_audio_worklet_thread_async(EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, void *userData);
 
 typedef int WEBAUDIO_PARAM_AUTOMATION_RATE;
 #define WEBAUDIO_PARAM_A_RATE 0
