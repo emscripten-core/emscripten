@@ -408,16 +408,18 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   setWindowTitle = (title) => document.title = title;
-} else
+}
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+
+#if ASSERTIONS
+else
 #if AUDIO_WORKLET
 if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif
 {
-#if ASSERTIONS
   throw new Error('environment detection error');
-#endif // ASSERTIONS
 }
+#endif // ASSERTIONS
 
 #if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
 if (ENVIRONMENT_IS_NODE) {

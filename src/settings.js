@@ -1516,7 +1516,8 @@ var USE_PTHREADS = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
-// If true, enables targeting Wasm Web Audio AudioWorklets.
+// If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
+// full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 // [link]
 var AUDIO_WORKLET = 0;
 

@@ -5400,6 +5400,12 @@ Module["preRun"].push(function () {
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
+  # Tests the AudioWorklet demo
+  @also_with_minimal_runtime
+  def test_audio_worklet(self):
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--closure', '1', '-Oz'])
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):

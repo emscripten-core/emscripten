@@ -12423,9 +12423,3 @@ Module['postRun'] = function() {{
     with shared.Cache.lock('testing'):
       err = self.run_process([EMBUILDER, 'build', 'libc', '--force'], stderr=PIPE, check=False).stderr
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
-
-  # Tests building the AudioWorklet demo (does not run.. see test interactive.test_audio_worklet for the running version)
-  @also_with_minimal_runtime
-  def test_audio_worklet(self):
-    self.run_process([EMCC, test_file('webaudio/audioworklet.c'), '-sAUDIO_WORKLET', '-sWASM_WORKERS'])
-    self.run_process([EMCC, test_file('webaudio/audioworklet.c'), '-sAUDIO_WORKLET', '-sWASM_WORKERS', '--closure', '1', '-Oz'])
