@@ -412,11 +412,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 
 #if ASSERTIONS
-else
-#if AUDIO_WORKLET
-if (!ENVIRONMENT_IS_AUDIO_WORKLET)
-#endif
-{
+if (!({{{ getPossibleEnvironments().join(' || ')}}})) {
   throw new Error('environment detection error');
 }
 #endif // ASSERTIONS
