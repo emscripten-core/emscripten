@@ -195,11 +195,13 @@ let LibraryWebAudio = {
 
       // AudioWorklets do not have a importScripts() function like Web Workers do (and AudioWorkletGlobalScope does not allow dynamic import() either),
       // but instead, the main thread must load all JS code into the worklet scope. Send the application main JS script to the audio worklet.
+      return audioWorklet.addModule(
 #if MINIMAL_RUNTIME
-      return audioWorklet.addModule(Module['js']);
+        Module['js']
 #else
-      return audioWorklet.addModule(Module['mainScriptUrlOrBlob'] || _scriptDir);
+        Module['mainScriptUrlOrBlob'] || _scriptDir
 #endif
+      );
     }).then(() => {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
