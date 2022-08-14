@@ -80,6 +80,16 @@ set(UNIX   )
 set(CYGWIN )
 set(WIN32  )
 
+function(_cmake_record_install_prefix )
+  set(_CMAKE_SYSTEM_PREFIX_PATH_INSTALL_PREFIX_VALUE "${CMAKE_INSTALL_PREFIX}" PARENT_SCOPE)
+  set(count 0)
+  foreach(value IN LISTS CMAKE_SYSTEM_PREFIX_PATH)
+    if(value STREQUAL CMAKE_INSTALL_PREFIX)
+      math(EXPR count "${count}+1")
+    endif()
+  endforeach()
+  set(_CMAKE_SYSTEM_PREFIX_PATH_INSTALL_PREFIX_COUNT "${count}" PARENT_SCOPE)
+endfunction()
 
 # include Generic system information
 include(CMakeGenericSystem)
