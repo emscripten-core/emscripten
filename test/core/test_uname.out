@@ -3,4 +3,4 @@ sysname: Emscripten
 nodename: emscripten
 release: \d+.\d+.\d+
 version: #1
-machine: wasm32
+machine: wasm(32|64)
