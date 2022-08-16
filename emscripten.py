@@ -447,14 +447,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
     # When we do this we can generate new imports, so
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
-  elif 'main' in metadata['exports']:
-    # Mimic a bug in wasm-emscripten-finalize where we don't correctly
-    # detect the presense of the main wrapper function unless we are
-    # modifying the binary.  This is because binaryen doesn't reaad
-    # the function bodies in this mode.
-    # TODO(sbc): Remove this once we make the switch away from
-    # binaryen metadata.
-    metadata['mainReadsParams'] = 1
   if DEBUG:
     logger.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
