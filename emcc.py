@@ -1855,8 +1855,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.emrun:
     if settings.MINIMAL_RUNTIME:
       exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
-    if options.oformat != OFormat.HTML:
-      exit_with_error('--emrun is only compatible with html output')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
