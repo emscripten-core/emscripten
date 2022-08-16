@@ -73,9 +73,9 @@ class TempFiles:
   def note(self, filename):
     self.to_clean.append(filename)
 
-  def get(self, suffix):
+  def get(self, suffix, prefix=None):
     """Returns a named temp file with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=self.tmpdir, suffix=suffix, delete=False)
+    named_file = tempfile.NamedTemporaryFile(dir=self.tmpdir, suffix=suffix, prefix=prefix, delete=False)
     self.note(named_file.name)
     return named_file
 
