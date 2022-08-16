@@ -630,7 +630,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   original_filename = filename
   if extra_info is not None:
     temp_files = shared.get_temp_files()
-    temp = temp_files.get('.js').name
+    temp = temp_files.get('.js', prefix='emcc_acorn_info_').name
     shutil.copyfile(filename, temp)
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
@@ -809,7 +809,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-    exports_file = shared.get_temp_files().get('_module_exports.js')
+    exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
 
@@ -1065,8 +1065,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   for item in graph:
     if 'import' in item:
       import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
-  temp = temp_files.get('.txt').name
-  utils.write_file(temp, json.dumps(graph))
+  temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
+  utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
