@@ -232,7 +232,9 @@ mergeInto(LibraryManager.library, {
       }
       accessID = wasmfsOPFSAllocate(wasmfsOPFSAccessHandles, accessHandle);
     } catch (e) {
-      if (e.name === "InvalidStateError") {
+      // TODO: Presumably only one of these will appear in the final API?
+      if (e.name === "InvalidStateError" ||
+          e.name === "NoModificationAllowedError") {
         accessID = -1;
       } else {
         throw e;

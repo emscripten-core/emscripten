@@ -146,4 +146,4 @@ The following formats are supported:
 Test code
 =========
 
-The `test suite <https://github.com/emscripten-core/emscripten/blob/main/tests/>`_ contains many file packaging examples, and is a good place to search for working code.
+The `test suite <https://github.com/emscripten-core/emscripten/blob/main/test/>`_ contains many file packaging examples, and is a good place to search for working code.

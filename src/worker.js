@@ -105,6 +105,12 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 }
 #endif
 
+// Turn unhandled rejected promises into errors so that the main thread will be
+// notified about them.
+self.onunhandledrejection = (e) => {
+  throw e.reason ?? e;
+};
+
 self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -213,9 +219,12 @@ self.onmessage = (e) => {
 
       if (!initializedJS) {
 #if EMBIND
+#if PTHREADS_DEBUG
+        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+#endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused
-        Module['___embind_register_native_and_builtin_types']();
+        Module['__embind_initialize_bindings']();
 #endif // EMBIND
 
         // Execute any proxied work that came in before the thread was

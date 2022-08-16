@@ -29,14 +29,12 @@
         "structs": {
             "stat": [
                 "st_dev",
-                "__st_dev_padding",
                 "__st_ino_truncated",
                 "st_mode",
                 "st_nlink",
                 "st_uid",
                 "st_gid",
                 "st_rdev",
-                "__st_rdev_padding",
                 "st_size",
                 "st_blksize",
                 "st_blocks",
@@ -103,11 +101,7 @@
         ],
         "structs": {
             "flock": [
-                "l_type",
-                "l_whence",
-                "l_start",
-                "l_len",
-                "l_pid"
+                "l_type"
             ]
         }
     },
@@ -180,10 +174,6 @@
             "EAI_BADFLAGS"
         ],
         "structs": {
-            "sockaddr": [
-                "sa_family",
-                "sa_data"
-            ],
             "hostent": [
                 "h_name",
                 "h_aliases",
@@ -213,8 +203,7 @@
                     "sin_addr": [
                         "s_addr"
                     ]
-                },
-                "sin_zero"
+                }
             ],
             "iovec": [
                 "iov_base",
@@ -223,7 +212,6 @@
             "sockaddr_in6": [
                 "sin6_family",
                 "sin6_port",
-                "sin6_flowinfo",
                 {
                     "sin6_addr": [
                         {
@@ -234,17 +222,13 @@
                             ]
                         }
                     ]
-                },
-                "sin6_scope_id"
+                }
             ],
             "msghdr": [
                 "msg_name",
                 "msg_namelen",
                 "msg_iov",
-                "msg_iovlen",
-                "msg_control",
-                "msg_controllen",
-                "msg_flags"
+                "msg_iovlen"
             ]
         }
     },
@@ -532,21 +516,10 @@
                 "palette",
                 "BitsPerPixel",
                 "BytesPerPixel",
-                "padding",
                 "Rmask",
                 "Gmask",
                 "Bmask",
-                "Amask",
-                "Rloss",
-                "Gloss",
-                "Bloss",
-                "Aloss",
-                "Rshift",
-                "Gshift",
-                "Bshift",
-                "Ashift",
-                "refcount",
-                "next"
+                "Amask"
             ]
         }
     },
@@ -560,11 +533,7 @@
                 "h",
                 "pitch",
                 "pixels",
-                "userdata",
-                "locked",
-                "lock_data",
                 "clip_rect",
-                "map",
                 "refcount"
             ]
         }
@@ -575,25 +544,16 @@
             "SDL_WindowEvent": [
                 "type",
                 "windowID",
-                "event",
-                "padding1",
-                "padding2",
-                "padding3",
-                "data1",
-                "data2"
+                "event"
             ],
             "SDL_KeyboardEvent": [
                 "type",
-                "windowID",
                 "state",
                 "repeat",
-                "padding2",
-                "padding3",
                 "keysym"
             ],
             "SDL_TextInputEvent": [
                 "type",
-                "windowID",
                 "text"
             ],
             "SDL_MouseMotionEvent": [
@@ -614,16 +574,11 @@
                 "which",
                 "button",
                 "state",
-                "padding1",
-                "padding2",
                 "x",
                 "y"
             ],
             "SDL_MouseWheelEvent": [
                 "type",
-                "timestamp",
-                "windowID",
-                "which",
                 "x",
                 "y"
             ],
@@ -631,16 +586,13 @@
                 "type",
                 "which",
                 "axis",
-                "padding1",
-                "padding2",
                 "value"
             ],
             "SDL_JoyButtonEvent": [
                 "type",
                 "which",
                 "button",
-                "state",
-                "padding1"
+                "state"
             ],
             "SDL_TouchFingerEvent": [
                 "type",
@@ -654,7 +606,6 @@
                 "pressure"
             ],
             "SDL_ResizeEvent": [
-                "type",
                 "w",
                 "h"
             ]
@@ -678,8 +629,6 @@
                 "channels",
                 "silence",
                 "samples",
-                "padding",
-                "size",
                 "callback",
                 "userdata"
             ]
@@ -1092,6 +1041,8 @@
             "WGPUAdapterProperties": [
                 "nextInChain",
                 "vendorID",
+                "vendorName",
+                "architecture",
                 "deviceID",
                 "name",
                 "driverDescription",
@@ -1187,6 +1138,8 @@
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
+                "maxInterStageShaderVariables",
+                "maxColorAttachments",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1210,10 +1163,6 @@
                 "label",
                 "bindGroupLayoutCount",
                 "bindGroupLayouts"
-            ],
-            "WGPUPrimitiveDepthClampingState": [
-                "chain",
-                "clampDepth"
             ],
             "WGPUPrimitiveDepthClipControl": [
                 "chain",
@@ -1262,6 +1211,10 @@
                 "stencilStoreOp",
                 "stencilClearValue",
                 "stencilReadOnly"
+            ],
+            "WGPURenderPassDescriptorMaxDrawCount": [
+                "chain",
+                "maxDrawCount"
             ],
             "WGPURenderPassTimestampWrite": [
                 "querySet",

@@ -11,10 +11,6 @@ var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
 
 #include "runtime_debug.js"
 
-var tempRet0 = 0;
-var setTempRet0 = (value) => { tempRet0 = value; };
-var getTempRet0 = () => tempRet0;
-
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
 

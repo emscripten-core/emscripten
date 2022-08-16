@@ -52,7 +52,7 @@ Patches should be submitted as *pull requests* in the normal way on GitHub.
 When submitting patches, please:
 
 - Add an automatic test if you add any new functionality or fix a bug. Search
-  in ``tests/*.py`` for related tests, as often the simplest thing is to add to
+  in ``test/*.py`` for related tests, as often the simplest thing is to add to
   an existing one. If you're not sure how to test your code, feel free to ask
   for help.
 - Pay attention to our coding style specified in

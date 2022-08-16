@@ -246,6 +246,23 @@ void _embind_register_constant(
     TYPEID constantType,
     double value);
 
+// Register an InitFunc in the global linked list of init functions.
+void _embind_register_bindings(struct InitFunc* f);
+
+// Binding initialization functions registerd by EMSCRIPTEN_BINDINGS macro
+// below.  Stored as linked list of static data object avoiding std containers
+// to avoid static contructor ordering issues.
+struct InitFunc {
+  InitFunc(void (*init_func)()) : init_func(init_func) {
+    // This the function immediately upon constructions, and also register
+    // it so that it can be called again on each worker that starts.
+    init_func();
+    _embind_register_bindings(this);
+  }
+  void (*init_func)();
+  InitFunc* next = nullptr;
+};
+
 } // end extern "C"
 
 } // end namespace internal
@@ -1920,15 +1937,15 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace internal {
-    template<typename T>
-    double asGenericValue(T t) {
-        return static_cast<double>(t);
-    }
 
-    template<typename T>
-    uintptr_t asGenericValue(T* p) {
-        return reinterpret_cast<uintptr_t>(p);
-    }
+template<typename T> double asGenericValue(T t) {
+    return static_cast<double>(t);
+}
+
+template<typename T> uintptr_t asGenericValue(T* p) {
+    return reinterpret_cast<uintptr_t>(p);
+}
+
 }
 
 template<typename ConstantType>
@@ -1941,9 +1958,6 @@ void constant(const char* name, const ConstantType& v) {
         static_cast<double>(asGenericValue(BT::toWireType(v))));
 }
 
-
-
-
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which
 // will get included in the program if the translation unit in which it is
 // defined gets linked into the program. Using a C++ constructor here ensures it
@@ -1951,9 +1965,10 @@ void constant(const char* name, const ConstantType& v) {
 // __attribute__((constructor)) (they run before C++ constructors in the same
 // file).
 #define EMSCRIPTEN_BINDINGS(name)                                              \
-  static struct EmBindInit_##name {                                            \
-    EmBindInit_##name();                                                       \
+  static void embind_init_##name();                                            \
+  static struct EmBindInit_##name : emscripten::internal::InitFunc {           \
+    EmBindInit_##name() : InitFunc(embind_init_##name) {}                      \
   } EmBindInit_##name##_instance;                                              \
-  EmBindInit_##name::EmBindInit_##name()
+  static void embind_init_##name()
 
 } // end namespace emscripten

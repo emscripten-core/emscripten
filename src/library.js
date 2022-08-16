@@ -28,15 +28,21 @@ mergeInto(LibraryManager.library, {
   // available to native code.
   // ==========================================================================
 
-  getTempRet0__sig: 'i',
-  getTempRet0: function() {
-    return getTempRet0();
+  $tempRet0: 0,
+  $getTempRet0__sig: 'i',
+  $getTempRet0__deps: ['$tempRet0'],
+  $getTempRet0: function() {
+    return tempRet0;
   },
 
-  setTempRet0__sig: 'vi',
-  setTempRet0: function(val) {
-    setTempRet0(val);
+  $setTempRet0__sig: 'vi',
+  $setTempRet0__deps: ['$tempRet0'],
+  $setTempRet0: function(val) {
+    tempRet0 = val;
   },
+
+  getTempRet0: '$getTempRet0',
+  setTempRet0: '$setTempRet0',
 
   $ptrToString: function(ptr) {
     return '0x' + ptr.toString(16).padStart(8, '0');
@@ -341,6 +347,7 @@ mergeInto(LibraryManager.library, {
   },
 
   system__deps: ['$setErrNo'],
+  system__sig: 'ip',
   system: function(command) {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -1843,7 +1850,7 @@ mergeInto(LibraryManager.library, {
   // note: lots of leaking here!
   gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
-  gethostbyaddr__sig: 'iiii',
+  gethostbyaddr__sig: 'ipii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
@@ -1861,7 +1868,7 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
-  gethostbyname__sig: 'ii',
+  gethostbyname__sig: 'pp',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
@@ -1889,7 +1896,7 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
-  gethostbyname_r__sig: 'iiiiiii',
+  gethostbyname_r__sig: 'ipppipp',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
     var data = _gethostbyname(name);
     _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
@@ -1901,7 +1908,7 @@ mergeInto(LibraryManager.library, {
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
-  getaddrinfo__sig: 'iiiii',
+  getaddrinfo__sig: 'ipppp',
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -2072,6 +2079,7 @@ mergeInto(LibraryManager.library, {
   },
 
   getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
+  getnameinfo__sig: 'ipipipii',
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -3713,5 +3721,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
+  '$getTempRet0',
+  '$setTempRet0',
 );
 #endif

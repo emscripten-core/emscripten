@@ -16,7 +16,7 @@
 #endif // __cplusplus
 
 // EM_JS declares JS functions in C code.
-// Example uses can be found in tests/core/test_em_js.cpp
+// Example uses can be found in test/core/test_em_js.cpp
 
 // Implementation details:
 

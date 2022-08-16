@@ -870,7 +870,7 @@ def get_clang_flags(user_args):
 cflags = None
 
 
-def get_cflags(user_args):
+def get_cflags(user_args, is_cxx):
   global cflags
   if cflags:
     return cflags
@@ -906,7 +906,9 @@ def get_cflags(user_args):
   #   -Wno-error=implicit-function-declaration
   # or disable even a warning about it with
   #   -Wno-implicit-function-declaration
-  cflags += ['-Werror=implicit-function-declaration']
+  # This is already an error in C++ so we don't need to inject extra flags.
+  if not is_cxx:
+    cflags += ['-Werror=implicit-function-declaration']
 
   ports.add_cflags(cflags, settings)
 
@@ -1118,7 +1120,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       compiler = shared.EMCC
       if run_via_emxx:
         compiler = shared.EMXX
-      cmd = [compiler, utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      cmd = [compiler, utils.path_from_root('test', input_file), '-v', '-c', '-o', temp_target] + args
       proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)
@@ -1133,7 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
   if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args), check=False).returncode
+    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
 
   ## Process argument and setup the compiler
   state = EmccState(args)
@@ -1477,6 +1479,14 @@ def phase_setup(options, state, newargs, user_settings):
 
   if settings.EXCEPTION_CATCHING_ALLOWED:
     settings.DISABLE_EXCEPTION_CATCHING = 0
+
+  if settings.WASM_EXCEPTIONS:
+    if 'DISABLE_EXCEPTION_CATCHING' in user_settings:
+      exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
+    if 'DISABLE_EXCEPTION_THROWING' in user_settings:
+      exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
+    settings.DISABLE_EXCEPTION_CATCHING = 1
+    settings.DISABLE_EXCEPTION_THROWING = 1
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1895,8 +1905,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.MAIN_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$getDylinkMetadata',
-        '$mergeLibSymbols',
+      '$getDylinkMetadata',
+      '$mergeLibSymbols',
     ]
 
   if settings.USE_PTHREADS:
@@ -1906,11 +1916,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$reportUndefinedSymbols',
-        '$relocateExports',
-        '$GOTHandler',
-        '__heap_base',
-        '__stack_pointer',
+      '$reportUndefinedSymbols',
+      '$relocateExports',
+      '$GOTHandler',
+      '__heap_base',
+      '__stack_pointer',
     ]
 
     if settings.ASYNCIFY:
@@ -2365,6 +2375,12 @@ def phase_linker_setup(options, state, newargs, user_settings):
     options.memory_init_file = True
     settings.MEM_INIT_IN_WASM = True
 
+  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+      '$getTempRet0',
+      '$setTempRet0',
+    ]
+
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
@@ -2714,7 +2730,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(src_file) + get_cflags(state.orig_args) + compile_args + [src_file]
+    return get_compiler(src_file) + get_cflags(state.orig_args, use_cxx(src_file)) + compile_args + [src_file]
 
   def get_clang_command_preprocessed(src_file):
     return get_compiler(src_file) + get_clang_flags(state.orig_args) + compile_args + [src_file]
@@ -3069,8 +3085,6 @@ def parse_args(newargs):
   settings_changes = []
   user_js_defines = []
   should_exit = False
-  eh_enabled = False
-  wasm_eh_enabled = False
   skip = False
 
   for i in range(len(newargs)):
@@ -3262,16 +3276,19 @@ def parse_args(newargs):
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
       shared.reconfigure_cache()
+      # Ensure child processes share the same cache (e.g. when using emcc to compiler system
+      # libraries)
+      os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
       shared.Cache.erase()
-      shared.check_sanity(force=True) # this is a good time for a sanity check
+      shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       ports.clear()
       shared.Cache.erase()
-      shared.check_sanity(force=True) # this is a good time for a sanity check
+      shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--check'):
       print(version_string(), file=sys.stderr)
@@ -3311,9 +3328,13 @@ def parse_args(newargs):
       settings.DISABLE_EXCEPTION_THROWING = 1
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-fexceptions':
-      eh_enabled = True
+      # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+      # exception handling by default when -fexceptions is given when wasm
+      # exception handling becomes stable.
+      settings.DISABLE_EXCEPTION_THROWING = 0
+      settings.DISABLE_EXCEPTION_CATCHING = 0
     elif arg == '-fwasm-exceptions':
-      wasm_eh_enabled = True
+      settings.WASM_EXCEPTIONS = 1
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif check_arg('--default-obj-ext'):
@@ -3367,18 +3388,6 @@ def parse_args(newargs):
 
   if should_exit:
     sys.exit(0)
-
-  # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
-  # exception handling by default when -fexceptions is given when wasm
-  # exception handling becomes stable.
-  if wasm_eh_enabled:
-    settings.WASM_EXCEPTIONS = 1
-    settings.DISABLE_EXCEPTION_THROWING = 1
-    settings.DISABLE_EXCEPTION_CATCHING = 1
-  elif eh_enabled:
-    settings.WASM_EXCEPTIONS = 0
-    settings.DISABLE_EXCEPTION_THROWING = 0
-    settings.DISABLE_EXCEPTION_CATCHING = 0
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, user_js_defines, newargs

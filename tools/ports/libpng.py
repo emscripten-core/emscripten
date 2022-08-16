@@ -30,9 +30,7 @@ def get(ports, settings, shared):
     logging.info('building port: libpng')
 
     source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'libpng')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('libpng')
     shutil.copytree(source_path, dest_path)
 
     Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)

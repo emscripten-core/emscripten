@@ -33,9 +33,8 @@ def get(ports, settings, shared):
     logging.info('building port: libsqlite3')
 
     source_path = os.path.join(ports.get_dir(), 'sqlite3', release)
-    dest_path = os.path.join(ports.get_build_dir(), 'sqlite3')
+    dest_path = ports.clear_project_build('sqlite3')
 
-    shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
     ports.install_headers(dest_path)

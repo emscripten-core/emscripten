@@ -1251,7 +1251,10 @@ def emit_debug_on_side(wasm_file):
   # TODO(dschuff): Also strip the DATA section? To make this work we'd need to
   # either allow "invalid" data segment name entries, or maybe convert the DATA
   # to a DATACOUNT section.
-  strip(wasm_file_with_dwarf, wasm_file_with_dwarf, sections=['CODE'])
+  # TODO(https://github.com/emscripten-core/emscripten/issues/13084): Re-enable
+  # this code once the debugger extension can handle wasm files with name
+  # sections but no code sections.
+  # strip(wasm_file_with_dwarf, wasm_file_with_dwarf, sections=['CODE'])
 
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
@@ -1354,12 +1357,12 @@ def is_wasm_dylib(filename):
   """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
   if not is_wasm(filename):
     return False
-  module = webassembly.Module(filename)
-  section = next(module.sections())
-  if section.type == webassembly.SecType.CUSTOM:
-    module.seek(section.offset)
-    if module.read_string() in ('dylink', 'dylink.0'):
-      return True
+  with webassembly.Module(filename) as module:
+    section = next(module.sections())
+    if section.type == webassembly.SecType.CUSTOM:
+      module.seek(section.offset)
+      if module.read_string() in ('dylink', 'dylink.0'):
+        return True
   return False
 
 

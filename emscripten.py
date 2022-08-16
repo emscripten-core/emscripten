@@ -306,11 +306,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
-    module = webassembly.Module(in_wasm)
-    types = module.get_types()
     import_map = {}
-    for imp in module.get_imports():
-      import_map[imp.field] = imp
+
+    with webassembly.Module(in_wasm) as module:
+      types = module.get_types()
+      for imp in module.get_imports():
+        import_map[imp.field] = imp
+
     for em_js_func, raw in metadata.get('emJsFuncs', {}).items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
@@ -432,18 +434,7 @@ def remove_trailing_zeros(memfile):
 
 
 @ToolchainProfiler.profile()
-def get_metadata_binaryen(infile, outfile, modify_wasm, args):
-  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=infile,
-                                         outfile=outfile if modify_wasm else None,
-                                         args=args,
-                                         stdout=subprocess.PIPE)
-  metadata = load_metadata_json(stdout)
-  return metadata
-
-
-@ToolchainProfiler.profile()
-def get_metadata_python(infile, outfile, modify_wasm, args):
+def get_metadata(infile, outfile, modify_wasm, args):
   metadata = extract_metadata.extract_metadata(infile)
   if modify_wasm:
     # In some cases we still need to modify the wasm file
@@ -456,39 +447,9 @@ def get_metadata_python(infile, outfile, modify_wasm, args):
     # When we do this we can generate new imports, so
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
-  elif 'main' in metadata['exports']:
-    # Mimic a bug in wasm-emscripten-finalize where we don't correctly
-    # detect the presense of the main wrapper function unless we are
-    # modifying the binary.  This is because binaryen doesn't reaad
-    # the function bodies in this mode.
-    # TODO(sbc): Remove this once we make the switch away from
-    # binaryen metadata.
-    metadata['mainReadsParams'] = 1
   if DEBUG:
     logger.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
-
-
-# Test function for comparing binaryen vs python metadata.
-# Remove this once we go back to having just one method.
-def compare_metadata(metadata, pymetadata):
-  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
-    print(sorted(metadata.keys()))
-    print(sorted(pymetadata.keys()))
-    exit_with_error('metadata keys mismatch')
-  for key in metadata:
-    old = metadata[key]
-    new = pymetadata[key]
-    if key == 'features':
-      old = sorted(old)
-      new = sorted(new)
-    if old != new:
-      print(key)
-      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
-      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
-      print(pprint.pformat(old))
-      print(pprint.pformat(new))
-      exit_with_error('metadata mismatch')
 
 
 def finalize_wasm(infile, outfile, memfile):
@@ -552,30 +513,7 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
 
-  # Currently we have two different ways to extract the metadata from the
-  # wasm binary:
-  # 1. via wasm-emscripten-finalize (binaryen)
-  # 2. via local python code
-  # We also have a 'compare' mode that runs both extraction methods and
-  # checks that they produce identical results.
-  read_metadata = os.environ.get('EMCC_READ_METADATA', 'python')
-  if read_metadata == 'binaryen':
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'python':
-    metadata = get_metadata_python(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'compare':
-    shutil.copy2(infile, infile + '.bak')
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.copy2(infile + '.map', infile + '.map.bak')
-    pymetadata = get_metadata_python(infile, outfile, modify_wasm, args)
-    shutil.move(infile + '.bak', infile)
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.move(infile + '.map.bak', infile + '.map')
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-    compare_metadata(metadata, pymetadata)
-  else:
-    assert False
-
+  metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
@@ -895,36 +833,6 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   if settings.MEMORY64:
     module.append(create_wasm64_wrappers(metadata))
   return module
-
-
-def load_metadata_json(metadata_raw):
-  try:
-    metadata_json = json.loads(metadata_raw)
-  except Exception:
-    logger.error('emscript: failure to parse metadata output from wasm-emscripten-finalize. raw output is: \n' + metadata_raw)
-    raise
-
-  metadata = {
-    'declares': [],
-    'globalImports': [],
-    'exports': [],
-    'namedGlobals': {},
-    'emJsFuncs': {},
-    'asmConsts': {},
-    'invokeFuncs': [],
-    'features': [],
-    'mainReadsParams': 1,
-  }
-
-  for key, value in metadata_json.items():
-    if key not in metadata:
-      exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
-    metadata[key] = value
-
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
-
-  return metadata
 
 
 def create_invoke_wrappers(invoke_funcs):

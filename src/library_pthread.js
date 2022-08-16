@@ -2,6 +2,9 @@
  * @license
  * Copyright 2015 The Emscripten Authors
  * SPDX-License-Identifier: MIT
+ *
+ * Because only modern JS engines support SAB we can use modern JS language
+ * features within this file (ES2020).
  */
 
 #if !USE_PTHREADS
@@ -90,7 +93,7 @@ var LibraryPThread = {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for (var i = 0; i < pthreadPoolSize; ++i) {
+      while (pthreadPoolSize--) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -159,11 +162,11 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       err('terminateAllThreads');
 #endif
-      for (var t in PThread.pthreads) {
-        var worker = PThread.pthreads[t];
-        if (worker) {
-          PThread.returnWorkerToPool(worker);
-        }
+      for (var worker of Object.values(PThread.pthreads)) {
+#if ASSERTIONS
+        assert(worker);
+#endif
+        PThread.returnWorkerToPool(worker);
       }
 
 #if ASSERTIONS
@@ -173,8 +176,7 @@ var LibraryPThread = {
       assert(PThread.runningWorkers.length === 0);
 #endif
 
-      for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
-        var worker = PThread.unusedWorkers[i];
+      for (var worker of PThread.unusedWorkers) {
 #if ASSERTIONS
         // This Worker should not be hosting a pthread at this time.
         assert(!worker.pthread_ptr);
@@ -223,9 +225,7 @@ var LibraryPThread = {
 #endif
       // Call thread init functions (these are the _emscripten_tls_init for each
       // module loaded.
-      for (var i in PThread.tlsInitFunctions) {
-        if (PThread.tlsInitFunctions.hasOwnProperty(i)) PThread.tlsInitFunctions[i]();
-      }
+      PThread.tlsInitFunctions.forEach((f) => f());
     },
     // Loads the WebAssembly module into the given list of Workers.
     // onFinishedLoading: A callback function that will be called once all of
@@ -281,10 +281,12 @@ var LibraryPThread = {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
+#if expectToReceiveOnModule('onAbort')
         } else if (cmd === 'onAbort') {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
           }
+#endif
         } else if (cmd) {
           // The received message looks like something that should be handled by this message
           // handler, (since there is a e.data.cmd field present), but is not one of the
@@ -599,8 +601,8 @@ var LibraryPThread = {
   $pthreadCreateProxied__internal: true,
   $pthreadCreateProxied__proxy: 'sync',
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
-  $pthreadCreateProxied: function(pthread_ptr, attr, start_routine, arg) {
-    return ___pthread_create_js(pthread_ptr, attr, start_routine, arg);
+  $pthreadCreateProxied: function(pthread_ptr, attr, startRoutine, arg) {
+    return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
   },
 
   // ASan wraps the emscripten_builtin_pthread_create call in
@@ -613,7 +615,7 @@ var LibraryPThread = {
   __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied'],
-  __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
+  __pthread_create_js: function(pthread_ptr, attr, startRoutine, arg) {
     if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -646,8 +648,8 @@ var LibraryPThread = {
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
-    for (var i in transferredCanvasNames) {
-      var name = transferredCanvasNames[i].trim();
+    for (var name of transferredCanvasNames) {
+      name = name.trim();
       var offscreenCanvasInfo;
       try {
         if (name == '#canvas') {
@@ -727,7 +729,7 @@ var LibraryPThread = {
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
     if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
-      return pthreadCreateProxied(pthread_ptr, attr, start_routine, arg);
+      return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
 
     // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort
@@ -737,21 +739,21 @@ var LibraryPThread = {
 #if OFFSCREENCANVAS_SUPPORT
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
-    for (var i in offscreenCanvases) {
+    for (var canvas of Object.values(offscreenCanvases)) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
+      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
     }
 #endif
 
     var threadParams = {
-      startRoutine: start_routine,
-      pthread_ptr: pthread_ptr,
-      arg: arg,
+      startRoutine,
+      pthread_ptr,
+      arg,
 #if OFFSCREENCANVAS_SUPPORT
-      moduleCanvasId: moduleCanvasId,
-      offscreenCanvases: offscreenCanvases,
+      moduleCanvasId,
+      offscreenCanvases,
 #endif
-      transferList: transferList
+      transferList,
     };
 
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -838,7 +840,7 @@ var LibraryPThread = {
     if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
 #endif
     // Allocate a buffer, which will be copied by the C code.
-    return withStackSave(function() {
+    return withStackSave(() => {
       // First passed parameter specifies the number of arguments to the function.
       // When BigInt support is enabled, we must handle types in a more complex
       // way, detecting at runtime if a value is a BigInt or not (as we have no

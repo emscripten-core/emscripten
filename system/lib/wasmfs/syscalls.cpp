@@ -219,7 +219,12 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
       }
       return -result;
     }
+
     // The read was successful.
+
+    // Backends must only return len or less.
+    assert(result <= len);
+
     bytesRead += result;
     if (result < len) {
       // The read was short, so stop here.
@@ -439,7 +444,10 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
         return 0;
       }
 
-      auto openFile = std::make_shared<OpenFileState>(0, flags, created);
+      std::shared_ptr<OpenFileState> openFile;
+      if (auto err = OpenFileState::create(created, flags, openFile)) {
+        return err;
+      }
       return wasmFS.getFileTable().locked().addEntry(openFile);
     }
   }
@@ -486,7 +494,10 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
-  auto openFile = std::make_shared<OpenFileState>(0, flags, child);
+  std::shared_ptr<OpenFileState> openFile;
+  if (auto err = OpenFileState::create(child, flags, openFile)) {
+    return err;
+  }
 
   // If O_TRUNC, truncate the file if possible.
   if (flags & O_TRUNC) {
@@ -1233,13 +1244,8 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return -0;
     }
-    case TIOCGPGRP:
-    case TIOCSPGRP: {
-      // TODO We should get/set the group number here.
-      return -EINVAL;
-    }
     default: {
-      abort();
+      return -EINVAL; // not supported
     }
   }
 }
@@ -1256,10 +1262,12 @@ int __syscall_pipe(intptr_t fd) {
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
   auto fileTable = wasmFS.getFileTable().locked();
-  fds[0] =
-    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_RDONLY, reader));
-  fds[1] =
-    fileTable.addEntry(std::make_shared<OpenFileState>(0, O_WRONLY, writer));
+
+  std::shared_ptr<OpenFileState> openReader, openWriter;
+  (void)OpenFileState::create(reader, O_RDONLY, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  fds[0] = fileTable.addEntry(openReader);
+  fds[1] = fileTable.addEntry(openWriter);
 
   return 0;
 }

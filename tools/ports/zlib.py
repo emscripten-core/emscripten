@@ -7,8 +7,8 @@ import os
 import shutil
 from pathlib import Path
 
-VERSION = '1.2.11'
-HASH = 'a42b8359e76cf7b3ae70bf31f0f8a8caa407ac80e8fe08b838076cd5e45ac2e685dae45eb59db2d25543fb3b5bd13b843a02bb8373cda704d7238be50d5e9c68'
+VERSION = '1.2.12'
+HASH = 'cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14'
 
 
 def needed(settings):
@@ -16,16 +16,11 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.zip', 'zlib-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.tar.gz', 'zlib-' + VERSION, sha512hash=HASH)
 
   def create(final):
-    ports.clear_project_build('zlib')
-
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
-    dest_path = os.path.join(ports.get_build_dir(), 'zlib')
-    shared.try_delete(dest_path)
-    os.makedirs(dest_path)
-    shutil.rmtree(dest_path, ignore_errors=True)
+    dest_path = ports.clear_project_build('zlib')
     shutil.copytree(source_path, dest_path)
     Path(dest_path, 'zconf.h').write_text(zconf_h)
     ports.install_headers(dest_path)

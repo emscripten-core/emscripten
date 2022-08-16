@@ -89,7 +89,7 @@ Pthreads and Wasm Workers share several similarities:
  * Both types of threads have thread-local storage (TLS) support via ``thread_local`` (C++11),
    ``_Thread_local`` (C11) and ``__thread`` (GNU11) keywords.
  * Both types of threads support TLS via explicitly linked in Wasm globals (see
-   ``tests/wasm_worker/wasm_worker_tls_wasm_assembly.c/.S`` for example code)
+   ``test/wasm_worker/wasm_worker_tls_wasm_assembly.c/.S`` for example code)
  * Both types of threads have a concept of a thread ID (``pthread_self()`` for pthreads,
    ``emscripten_wasm_worker_self_id()`` for Wasm Workers)
  * Both types of threads can perform an event-based and an infinite loop programming model.
@@ -352,4 +352,4 @@ The following build options are not supported at the moment with Wasm Workers:
 Example Code
 ============
 
-See the directory tests/wasm_workers/ for code examples on different Wasm Workers API functionality.
+See the directory ``test/wasm_workers/`` for code examples on different Wasm Workers API functionality.

@@ -113,9 +113,11 @@ mergeInto(LibraryManager.library, {
 #if FORCE_FILESYSTEM
     // Full JS API support
     mkdir: (path, mode) => {
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
-      var buffer = allocateUTF8OnStack(path);
-      __wasmfs_mkdir(buffer, mode);
+      return withStackSave(() => {
+        mode = mode !== undefined ? mode : 511 /* 0777 */;
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_mkdir(buffer, mode);
+      });
     },
     // TODO: mkdirTree
     // TDOO: rmdir
@@ -124,8 +126,10 @@ mergeInto(LibraryManager.library, {
     // TODO: close
     // TODO: unlink
     chdir: (path) => {
-      var buffer = allocateUTF8OnStack(path);
-      return __wasmfs_chdir(buffer);
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_chdir(buffer);
+      });
     },
     // TODO: read
     // TODO: write
@@ -134,22 +138,29 @@ mergeInto(LibraryManager.library, {
     // TODO: msync
     // TODO: munmap
     writeFile: (path, data) => {
-      var pathBuffer = allocateUTF8OnStack(path);
-      var dataBuffer = _malloc(data);
-      __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
-      _free(dataBuffer);
+      return withStackSave(() => {
+        var pathBuffer = allocateUTF8OnStack(path);
+        var dataBuffer = _malloc(data);
+        var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+        _free(dataBuffer);
+        return ret;
+      });
     },
     symlink: (target, linkpath) => {
-      var targetBuffer = allocateUTF8OnStack(target);
-      var linkpathBuffer = allocateUTF8OnStack(linkpath);
-      __wasmfs_symlink(targetBuffer, linkpathBuffer);
+      return withStackSave(() => {
+        var targetBuffer = allocateUTF8OnStack(target);
+        var linkpathBuffer = allocateUTF8OnStack(linkpath);
+        return __wasmfs_symlink(targetBuffer, linkpathBuffer);
+      });
     },
     // TODO: readlink
     // TODO: stat
     // TODO: lstat
     chmod: (path, mode) => {
-      var buffer = allocateUTF8OnStack(path);
-      return __wasmfs_chmod(buffer, mode);
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_chmod(buffer, mode);
+      });
     },
     // TODO: lchmod
     // TODO: fchmod
@@ -170,19 +181,21 @@ mergeInto(LibraryManager.library, {
       };
     },
     readdir: (path) => {
-      var pathBuffer = allocateUTF8OnStack(path);
-      var entries = [];
-      var state = __wasmfs_readdir_start(pathBuffer);
-      if (!state) {
-        // TODO: The old FS threw an ErrnoError here.
-        throw new Error("No such directory");
-      }
-      var entry;
-      while (entry = __wasmfs_readdir_get(state)) {
-        entries.push(UTF8ToString(entry));
-      }
-      __wasmfs_readdir_finish(state);
-      return entries;
+      return withStackSave(() => {
+        var pathBuffer = allocateUTF8OnStack(path);
+        var entries = [];
+        var state = __wasmfs_readdir_start(pathBuffer);
+        if (!state) {
+          // TODO: The old FS threw an ErrnoError here.
+          throw new Error("No such directory");
+        }
+        var entry;
+        while (entry = __wasmfs_readdir_get(state)) {
+          entries.push(UTF8ToString(entry));
+        }
+        __wasmfs_readdir_finish(state);
+        return entries;
+      });
     }
     // TODO: mount
     // TODO: unmount

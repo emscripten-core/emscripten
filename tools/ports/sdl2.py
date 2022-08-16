@@ -65,8 +65,9 @@ def get(ports, settings, shared):
 
     commands = []
     o_s = []
+    build_dir = ports.clear_project_build('sdl2')
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
+      o = os.path.join(build_dir, 'src', shared.replace_suffix(src, '.o'))
       shared.safe_ensure_dirs(os.path.dirname(o))
       command = [shared.EMCC,
                  '-sUSE_SDL=0',
