@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
       convert_code.push(0x00); // no local variables (except the arguments)
     }
 
-    function localGet(j){
+    function localGet(j) {
       convert_code.push(0x20); // local.get
       uleb128Encode(j, convert_code);
     }

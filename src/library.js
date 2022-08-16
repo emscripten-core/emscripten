@@ -3217,7 +3217,6 @@ mergeInto(LibraryManager.library, {
 
 #if DYNCALLS || !WASM_BIGINT
 #if MAIN_MODULE == 1
-  // createDyncallWrapper is defined in library_makeDynCall
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: function(sig, ptr, args) {
@@ -3236,11 +3235,11 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-    #if MAIN_MODULE == 1
+#if MAIN_MODULE == 1
     if (!('dynCall_' + sig in Module)) {
       Module['dynCall_' + sig] = createDyncallWrapper(sig);
     }
-    #endif
+#endif
     var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
