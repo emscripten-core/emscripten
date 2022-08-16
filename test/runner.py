@@ -397,6 +397,8 @@ def main(args):
   set_env('EMTEST_CORES', options.cores)
   set_env('EMTEST_FORCE64', options.force64)
 
+  set_env('LC_CTYPE', 'latin-1')
+
   configure()
 
   check_js_engines()
