@@ -596,6 +596,8 @@ def create_em_js(metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
+  extra_sent_items = []
+
   if settings.IMPORTED_MEMORY:
     memory_import = 'wasmMemory'
     if settings.MODULARIZE and settings.USE_PTHREADS:
@@ -605,8 +607,8 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map['memory'] = memory_import
 
   if settings.SAFE_HEAP:
-    send_items_map['segfault'] = 'segfault'
-    send_items_map['alignfault'] = 'alignfault'
+    extra_sent_items.append('segfault')
+    extra_sent_items.append('alignfault')
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
@@ -617,105 +619,38 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
-    send_items_map['setTempRet0'] = 'setTempRet0'
-    send_items_map['getTempRet0'] = 'getTempRet0'
+    extra_sent_items.append('setTempRet0')
+    extra_sent_items.append('getTempRet0')
 
   if settings.AUTODEBUG:
-    send_items_map['log_execution'] = '''function(loc) {
-      console.log('log_execution ' + loc);
-    }'''
-    send_items_map['get_i32'] = '''function(loc, index, value) {
-      console.log('get_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_i64'] = '''function(loc, index, low, high) {
-      console.log('get_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['get_f32'] = '''function(loc, index, value) {
-      console.log('get_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_f64'] = '''function(loc, index, value) {
-      console.log('get_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_anyref'] = '''function(loc, index, value) {
-      console.log('get_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_exnref'] = '''function(loc, index, value) {
-      console.log('get_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i32'] = '''function(loc, index, value) {
-      console.log('set_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i64'] = '''function(loc, index, low, high) {
-      console.log('set_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['set_f32'] = '''function(loc, index, value) {
-      console.log('set_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_f64'] = '''function(loc, index, value) {
-      console.log('set_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_anyref'] = '''function(loc, index, value) {
-      console.log('set_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_exnref'] = '''function(loc, index, value) {
-      console.log('set_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('load_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['load_val_i32'] = '''function(loc, value) {
-      console.log('load_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_i64'] = '''function(loc, low, high) {
-      console.log('load_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['load_val_f32'] = '''function(loc, value) {
-      console.log('load_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_f64'] = '''function(loc, value) {
-      console.log('load_val_f64 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('store_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['store_val_i32'] = '''function(loc, value) {
-      console.log('store_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_i64'] = '''function(loc, low, high) {
-      console.log('store_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['store_val_f32'] = '''function(loc, value) {
-      console.log('store_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_f64'] = '''function(loc, value) {
-      console.log('store_val_f64 ' + [loc, value]);
-      return value;
-    }'''
+    extra_sent_items += [
+      'log_execution',
+      'get_i32',
+      'get_i64',
+      'get_f32',
+      'get_f64',
+      'get_anyref',
+      'get_exnref',
+      'set_i32',
+      'set_i64',
+      'set_f32',
+      'set_f64',
+      'set_anyref',
+      'set_exnref',
+      'load_ptr',
+      'load_val_i32',
+      'load_val_i64',
+      'load_val_f32',
+      'load_val_f64',
+      'store_ptr',
+      'store_val_i32',
+      'store_val_i64',
+      'store_val_f32',
+      'store_val_f64',
+    ]
+
+  for s in extra_sent_items:
+    send_items_map[s] = s
 
 
 def create_sending(invoke_funcs, metadata):
