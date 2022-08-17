@@ -10529,6 +10529,16 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
 
+  @node_pthreads
+  def test_pthread_asyncify(self):
+    # We had a infinite recursion bug when enabling PTHREADS_DEBUG + ASYNCIFY.
+    # This was because PTHREADS_DEBUG calls back into WebAssembly for each call to `err()`.
+    self.set_setting('PTHREADS_DEBUG')
+    self.set_setting('ASYNCIFY')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('other/test_pthread_asyncify.c')
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
