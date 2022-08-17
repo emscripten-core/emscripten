@@ -3085,7 +3085,7 @@ The current type of b is: 9
         }
       };
 
-      Foo global;
+      Foo side_global;
       ''')
     self.build_dlfcn_lib('liblib.cpp')
 

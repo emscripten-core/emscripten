@@ -429,6 +429,7 @@ void AdjustStackSize(void *attr_) {
 }
 #endif // !SANITIZER_GO
 
+#if !SANITIZER_EMSCRIPTEN
 pid_t StartSubprocess(const char *program, const char *const argv[],
                       const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
                       fd_t stderr_fd) {
@@ -503,6 +504,7 @@ int WaitForProcess(pid_t pid) {
   }
   return process_status;
 }
+#endif
 
 bool IsStateDetached(int state) {
   return state == PTHREAD_CREATE_DETACHED;

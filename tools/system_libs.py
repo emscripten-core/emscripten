@@ -1613,6 +1613,7 @@ class libubsan_rt(SanitizerLibrary):
 
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
+  src_glob_exclude = ['ubsan_diag_standalone.cpp']
 
 
 class liblsan_common_rt(SanitizerLibrary):
