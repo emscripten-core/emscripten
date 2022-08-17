@@ -6253,7 +6253,6 @@ PORT: 3979
     self.emcc_args += ['--js-library', 'mylib1.js', '--js-library', 'mylib2.js']
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
-  @with_env_modify({'LC_CTYPE': 'latin-1'})
   def test_unicode_js_library(self):
     create_file('main.cpp', '''
       #include <stdio.h>
