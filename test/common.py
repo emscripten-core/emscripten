@@ -976,7 +976,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Shared test code between main suite and others
 
-  def expect_fail(self, cmd, **args):
+  def expect_fail(self, cmd, expect_traceback=False, **args):
     """Run a subprocess and assert that it returns non-zero.
 
     Return the stderr of the subprocess.
@@ -986,7 +986,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
     # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
-    if not WINDOWS or 'Access is denied' not in proc.stderr:
+    if expect_traceback:
+      self.assertContained('Traceback', proc.stderr)
+    elif not WINDOWS or 'Access is denied' not in proc.stderr:
       self.assertNotContained('Traceback', proc.stderr)
     return proc.stderr
 
