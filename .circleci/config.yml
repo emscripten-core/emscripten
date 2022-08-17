@@ -163,11 +163,15 @@ commands:
       test_targets:
         description: "Test suites to run"
         type: string
+      frozen_cache:
+        description: "Run with cache frozen"
+        type: string
+        default: "1"
     steps:
       - run:
           name: run tests
           command: |
-            ./test/runner << parameters.test_targets >>
+            EM_FROZEN_CACHE=<< parameters.frozen_cache >> ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
   run-tests-linux:
     description: "Runs emscripten tests"
@@ -175,10 +179,15 @@ commands:
       test_targets:
         description: "Test suites to run"
         type: string
+      frozen_cache:
+        description: "Run with cache frozen"
+        type: string
+        default: "1"
     steps:
       - prepare-for-tests
       - run-tests:
           test_targets: << parameters.test_targets >>
+          frozen_cache: << parameters.frozen_cache >>
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -220,7 +229,7 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
@@ -249,7 +258,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
@@ -365,20 +374,10 @@ jobs:
       EMTEST_BROWSER: "node"
     steps:
       - run-tests-linux:
-          # also add a few asan tests and a single test of EMTEST_BROWSER=node
+          # also add and a single test of EMTEST_BROWSER=node
           # also add a corez test of dynamic linking + forced syslibs
           test_targets: "
             core2
-            asan.test_stat
-            asan.test_float_builtins
-            asan.test_embind*
-            asan.test_abort_on_exceptions
-            asan.test_ubsan_full_left_shift_fsanitize_integer
-            asan.test_pthread*
-            asan.test_dyncall_specific_minimal_runtime
-            asan.test_async_hello
-            lsan.test_stdio_locking
-            lsan.test_pthread_create
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
   test-core3:
@@ -420,6 +419,23 @@ jobs:
             wasmfs.test_fstatat
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open"
+  test-sanitizers:
+    executor: bionic
+    environment:
+      EM_FROZEN_CACHE: "0"
+    steps:
+      - run-tests-linux:
+          test_targets: "
+            asan.test_stat
+            asan.test_float_builtins
+            asan.test_embind*
+            asan.test_abort_on_exceptions
+            asan.test_ubsan_full_left_shift_fsanitize_integer
+            asan.test_pthread*
+            asan.test_dyncall_specific_minimal_runtime
+            asan.test_async_hello
+            lsan.test_stdio_locking
+            lsan.test_pthread_create"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -567,6 +583,9 @@ workflows:
           requires:
             - build-linux
       - test-core3:
+          requires:
+            - build-linux
+      - test-sanitizers:
           requires:
             - build-linux
       - test-wasm64:
