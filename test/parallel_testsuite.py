@@ -10,8 +10,7 @@ import tempfile
 import time
 import queue
 
-import common
-
+from tools.tempfiles import try_delete
 
 NUM_CORES = None
 
@@ -96,7 +95,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       else:
         self.clear_finished_processes()
     for temp_dir in self.dedicated_temp_dirs:
-      common.force_delete_dir(temp_dir)
+      try_delete(temp_dir)
     return buffered_results
 
   def clear_finished_processes(self):

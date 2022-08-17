@@ -25,7 +25,7 @@ from . import utils
 from .shared import CLANG_CC, CLANG_CXX
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
-from .shared import run_process, check_call, exit_with_error
+from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import TEMP_DIR
@@ -71,7 +71,7 @@ def extract_archive_contents(archive_files):
   unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
   def clean_at_exit():
-    utils.delete_dir(unpack_temp_dir)
+    try_delete(unpack_temp_dir)
   shared.atexit.register(clean_at_exit)
 
   archive_contents = []
@@ -521,7 +521,7 @@ def link_bitcode(args, target, force_archive_contents=False):
     scan_archive_group(current_archive_group)
     current_archive_group = None
 
-  utils.delete_file(target)
+  try_delete(target)
 
   # Finish link
   # tolerate people trying to link a.so a.so etc.
@@ -595,7 +595,7 @@ def parse_llvm_nm_symbols(output):
 
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  utils.delete_file(output_filename)
+  try_delete(output_filename)
   cmd = [EMAR, action, output_filename] + filenames
   cmd = get_command_with_possible_response_file(cmd)
   run_process(cmd, stdout=stdout, stderr=stderr, env=env)
@@ -630,7 +630,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   original_filename = filename
   if extra_info is not None:
     temp_files = shared.get_temp_files()
-    temp = temp_files.get('.js').name
+    temp = temp_files.get('.js', prefix='emcc_acorn_info_').name
     shutil.copyfile(filename, temp)
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
@@ -809,7 +809,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-    exports_file = shared.get_temp_files().get('_module_exports.js')
+    exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
 
@@ -913,7 +913,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
   # But it looks like it creates such files on Linux(?) even without setting that command line
   # flag (and currently we don't), so delete the produced source map file to not leak files in
   # temp directory.
-  utils.delete_file(outfile + '.map')
+  try_delete(outfile + '.map')
 
   # Print Closure diagnostics result up front.
   if proc.returncode != 0:
@@ -1065,8 +1065,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   for item in graph:
     if 'import' in item:
       import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
-  temp = temp_files.get('.txt').name
-  utils.write_file(temp, json.dumps(graph))
+  temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
+  utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,

@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
       return path.substr(lastSlash+1);
     },
     join: function() {
-      var paths = Array.prototype.slice.call(arguments, 0);
+      var paths = Array.prototype.slice.call(arguments);
       return PATH.normalize(paths.join('/'));
     },
     join2: (l, r) => {

@@ -648,6 +648,14 @@ var LibraryDylink = {
         registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
         if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
+          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+          if (applyRelocs) {
+            if (runtimeInitialized) {
+              applyRelocs();
+            } else {
+              __RELOC_FUNCS__.push(applyRelocs);
+            }
+          }
           var init = moduleExports['__wasm_call_ctors'];
           if (init) {
             if (runtimeInitialized) {
@@ -655,14 +663,6 @@ var LibraryDylink = {
             } else {
               // we aren't ready to run compiled code yet
               __ATINIT__.push(init);
-            }
-          }
-          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
-          if (applyRelocs) {
-            if (runtimeInitialized) {
-              applyRelocs();
-            } else {
-              __RELOC_FUNCS__.push(applyRelocs);
             }
           }
 #if USE_PTHREADS
