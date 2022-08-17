@@ -3026,7 +3026,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     logger.debug('applying extern pre/postjses')
     src = read_file(final_js)
     final_js += '.epp.js'
-    with open(final_js, 'w') as f:
+    with open(final_js, 'w', encoding='utf-8') as f:
       f.write(options.extern_pre_js)
       f.write(src)
       f.write(options.extern_post_js)
