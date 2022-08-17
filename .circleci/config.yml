@@ -356,10 +356,6 @@ jobs:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
-    # Temporarily set EMCC_READ_METADATA to compare to ensure that the python
-    # can marches precisely the output wasm-emscripten-finalize.
-    environment:
-      EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
           test_targets: "core0"

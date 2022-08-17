@@ -688,14 +688,16 @@
             "patch": 2
         },
         "WGPUAdapterProperties": {
-            "__size__": 28,
-            "adapterType": 20,
-            "backendType": 24,
-            "deviceID": 8,
-            "driverDescription": 16,
-            "name": 12,
+            "__size__": 36,
+            "adapterType": 28,
+            "architecture": 12,
+            "backendType": 32,
+            "deviceID": 16,
+            "driverDescription": 24,
+            "name": 20,
             "nextInChain": 0,
-            "vendorID": 4
+            "vendorID": 4,
+            "vendorName": 8
         },
         "WGPUBindGroupDescriptor": {
             "__size__": 20,
@@ -887,17 +889,19 @@
             "nextInChain": 0
         },
         "WGPULimits": {
-            "__size__": 112,
+            "__size__": 120,
             "maxBindGroups": 16,
-            "maxComputeInvocationsPerWorkgroup": 92,
-            "maxComputeWorkgroupSizeX": 96,
-            "maxComputeWorkgroupSizeY": 100,
-            "maxComputeWorkgroupSizeZ": 104,
-            "maxComputeWorkgroupStorageSize": 88,
-            "maxComputeWorkgroupsPerDimension": 108,
+            "maxColorAttachments": 92,
+            "maxComputeInvocationsPerWorkgroup": 100,
+            "maxComputeWorkgroupSizeX": 104,
+            "maxComputeWorkgroupSizeY": 108,
+            "maxComputeWorkgroupSizeZ": 112,
+            "maxComputeWorkgroupStorageSize": 96,
+            "maxComputeWorkgroupsPerDimension": 116,
             "maxDynamicStorageBuffersPerPipelineLayout": 24,
             "maxDynamicUniformBuffersPerPipelineLayout": 20,
             "maxInterStageShaderComponents": 84,
+            "maxInterStageShaderVariables": 88,
             "maxSampledTexturesPerShaderStage": 28,
             "maxSamplersPerShaderStage": 32,
             "maxStorageBufferBindingSize": 56,
@@ -934,11 +938,6 @@
             "bindGroupLayouts": 12,
             "label": 4,
             "nextInChain": 0
-        },
-        "WGPUPrimitiveDepthClampingState": {
-            "__size__": 12,
-            "chain": 0,
-            "clampDepth": 8
         },
         "WGPUPrimitiveDepthClipControl": {
             "__size__": 12,
@@ -1022,6 +1021,11 @@
             "timestampWriteCount": 24,
             "timestampWrites": 28
         },
+        "WGPURenderPassDescriptorMaxDrawCount": {
+            "__size__": 16,
+            "chain": 0,
+            "maxDrawCount": 8
+        },
         "WGPURenderPassTimestampWrite": {
             "__size__": 12,
             "location": 8,
@@ -1047,7 +1051,7 @@
             "powerPreference": 8
         },
         "WGPURequiredLimits": {
-            "__size__": 120,
+            "__size__": 128,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1102,7 +1106,7 @@
             "viewDimension": 12
         },
         "WGPUSupportedLimits": {
-            "__size__": 120,
+            "__size__": 128,
             "limits": 8,
             "nextInChain": 0
         },

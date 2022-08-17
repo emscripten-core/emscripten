@@ -77,7 +77,7 @@ class Ports:
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    utils.delete_dir(dest)
+    shared.try_delete(dest)
     logger.debug(f'installing headers: {dest}')
     shutil.copytree(src_dir, dest)
 
@@ -144,7 +144,9 @@ class Ports:
   @staticmethod
   def erase():
     dirname = Ports.get_dir()
-    utils.delete_dir(dirname)
+    shared.try_delete(dirname)
+    if os.path.exists(dirname):
+      logger.warning('could not delete ports dir %s - try to delete it manually' % dirname)
 
   @staticmethod
   def get_build_dir():
@@ -174,7 +176,7 @@ class Ports:
     if local_ports:
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      with shared.Cache.lock():
+      with shared.Cache.lock('local ports'):
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -190,7 +192,7 @@ class Ports:
               logger.warning(f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)')
             else:
               logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
-              utils.delete_file(fullname)
+              shared.try_delete(fullname)
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
@@ -243,7 +245,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock():
+    with shared.Cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process build the library while we were
         # waiting for the lock
@@ -251,8 +253,8 @@ class Ports:
           return
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
-        utils.delete_dir(fullname)
-        utils.delete_file(fullpath)
+        shared.try_delete(fullname)
+        shared.try_delete(fullpath)
 
       retrieve()
       unpack()
@@ -265,7 +267,7 @@ class Ports:
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
-    utils.delete_dir(build_dir)
+    shared.try_delete(build_dir)
     return build_dir
 
 

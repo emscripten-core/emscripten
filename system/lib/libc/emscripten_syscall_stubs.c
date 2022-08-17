@@ -60,7 +60,7 @@ int __syscall_uname(intptr_t buf) {
   strcpy(utsname->nodename, "emscripten");
   strcpy(utsname->release, full_version);
   strcpy(utsname->version, "#1");
-#ifdef __wams64__
+#ifdef __wasm64__
   strcpy(utsname->machine, "wasm64");
 #else
   strcpy(utsname->machine, "wasm32");
