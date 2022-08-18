@@ -623,10 +623,6 @@ class SjLjLibrary(Library):
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
 
-  def can_build(self):
-    # wasm-sjlj is not yet supported with MEMORY64
-    return not (settings.MEMORY64 and self.is_wasm)
-
 
 class MuslInternalLibrary(Library):
   includes = [
