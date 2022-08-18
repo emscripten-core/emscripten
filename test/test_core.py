@@ -96,8 +96,6 @@ def with_both_eh_sjlj(f):
   assert callable(f)
 
   def metafunc(self, is_native):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('MEMORY64 does not yet support SJLJ')
     if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
@@ -111,6 +109,8 @@ def with_both_eh_sjlj(f):
       self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
+      if self.get_setting('MEMORY64'):
+        self.skipTest('MEMORY64 does not yet support emscripten EH/SjLj')
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and

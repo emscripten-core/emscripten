@@ -3376,7 +3376,7 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out__sig: 'vi',
+  _emscripten_out__sig: 'vp',
   _emscripten_out: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3384,7 +3384,7 @@ mergeInto(LibraryManager.library, {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err__sig: 'vi',
+  _emscripten_err__sig: 'vp',
   _emscripten_err: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3394,7 +3394,7 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname__sig: 'vpp',
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
