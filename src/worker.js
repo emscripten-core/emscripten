@@ -289,8 +289,10 @@ self.onmessage = (e) => {
       err(e.data);
     }
   } catch(ex) {
+#if ASSERTIONS
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex && ex.stack) err(ex.stack);
+#endif
     if (Module['__emscripten_thread_crashed']) {
       Module['__emscripten_thread_crashed']();
     }
