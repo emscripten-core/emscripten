@@ -312,6 +312,7 @@
         "POLLRDNORM": 64,
         "POLLWRNORM": 256,
         "PROT_WRITE": 2,
+        "PTHREAD_CANCELED": -1,
         "RTLD_DEFAULT": 0,
         "RTLD_GLOBAL": 256,
         "RTLD_LAZY": 1,
