@@ -6253,11 +6253,11 @@ PORT: 3979
 
   @with_env_modify({'LC_CTYPE': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   def test_unicode_js_library(self):
-    create_file('main.cpp', '''
+    create_file('main.c', '''
       #include <stdio.h>
-      extern "C" {
-        extern void printey();
-      }
+
+      extern void printey();
+
       int main() {
         printey();
         return 0;
@@ -6274,8 +6274,8 @@ PORT: 3979
     self.assertContained('UnicodeDecodeError', err)
 
     create_file('modularize_post.js', '(async function main(){await Module();})()')
-    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js']
-    self.do_runf('main.cpp', u'Unicode snowman \u2603 says hello! \u00e0\u010c\u0161\u00f1\u00e9\u00e1\u00fa\u00cd\u0173\u00e5\u00ea\u00e2\u0103\u0161\u010d\u1ebf\u1ec7\u00fc\u00e7\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438\u0050\u0443\u0441\u0441\u043a\u0438\u0439\u0421\u0440\u043f\u0441\u043a\u0438\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430\ud55c\uad6d\uc5b4\u4e2d\u6587\u666e\u901a\u8bdd\u0028\u4e2d\u56fd\u5927\u9646\u0029\u666e\u901a\u8bdd\u0028\u9999\u6e2f\u0029\u4e2d\u6587\u0028\u53f0\u7063\u0029\u7cb5\u8a9e\u0028\u9999\u6e2f\u0029\u65e5\u672c\u8a9e\u0939\u093f\u0928\u094d\u0926\u0940\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22')
+    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js', '--post-js', test_file('unicode_postjs.js')]
+    self.do_run_from_file('main.c', test_file('test_unicode_js_library.out'))
 
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', test_file('core/test_funcptr_import_type.js')]
