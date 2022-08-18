@@ -70,6 +70,10 @@ global.LibraryManager = {
       libraries.push('library_memoryprofiler.js');
     }
 
+    if (AUTODEBUG) {
+      libraries.push('library_autodebug.js');
+    }
+
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
       libraries = libraries.concat([

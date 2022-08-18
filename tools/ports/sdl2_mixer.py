@@ -57,6 +57,7 @@ def get(ports, settings, shared):
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
+        '-Wno-incompatible-function-pointer-types',
         '-sUSE_MPG123=1',
         '-DMUSIC_MP3_MPG123',
       ]

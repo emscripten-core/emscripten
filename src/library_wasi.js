@@ -288,6 +288,7 @@ var WasiLibrary = {
     '$doWritev',
 #endif
   ].concat(i53ConversionDeps),
+  fd_pwrite__sig: 'iippjp',
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}

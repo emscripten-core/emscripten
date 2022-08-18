@@ -206,11 +206,15 @@ mergeInto(LibraryManager.library, {
           Asyncify.state === Asyncify.State.Unwinding &&
           Asyncify.exportCallStack.length === 0) {
         // We just finished unwinding.
+        // Be sure to set the state before calling any other functions to avoid
+        // possible infinite recursion here (For example in debug pthread builds
+        // the err() function itself can call back into WebAssembly to get the
+        // current pthread_self() pointer).
+        Asyncify.state = Asyncify.State.Normal;
 #if ASYNCIFY_DEBUG
         err('ASYNCIFY: stop unwind');
 #endif
         {{{ runtimeKeepalivePush(); }}}
-        Asyncify.state = Asyncify.State.Normal;
         // Keep the runtime alive so that a re-wind can be done later.
 #if ASYNCIFY == 1
         runAndAbortIfError(_asyncify_stop_unwind);

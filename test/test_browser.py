@@ -4597,6 +4597,11 @@ Module["preRun"].push(function () {
   def test_fetch_headers_received(self):
     self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
+  @also_with_wasm64
+  def test_fetch_xhr_abort(self):
+    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    self.btest_exit('fetch/xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')

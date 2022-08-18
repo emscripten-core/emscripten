@@ -262,8 +262,7 @@ state of the request.
 The emscripten_fetch_attr_t object has a timeoutMSecs field which allows
 specifying a timeout duration for the transfer. Additionally,
 emscripten_fetch_close() can be called at any time for asynchronous and waitable
-fetches to abort the download (this is currently broken, see `#8234
-<https://github.com/emscripten-core/emscripten/issues/8234>`_).
+fetches to abort the download.
 The following example illustrates these fields
 and the onprogress handler.
 

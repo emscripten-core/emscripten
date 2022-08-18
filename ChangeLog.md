@@ -18,8 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.19 (in development)
+3.1.20 (in development)
 ------
+3.1.19 - 08/17/2022
+-------------------
 - Old method of metadata extraction via wasm-emscripten-finalize removed
   in favor of local python code. (#16529)
 

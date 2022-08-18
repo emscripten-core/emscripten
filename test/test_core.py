@@ -6253,6 +6253,7 @@ PORT: 3979
     self.emcc_args += ['--js-library', 'mylib1.js', '--js-library', 'mylib2.js']
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
+  @with_env_modify({'LC_CTYPE': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   def test_unicode_js_library(self):
     create_file('main.cpp', '''
       #include <stdio.h>
@@ -6264,7 +6265,18 @@ PORT: 3979
         return 0;
       }
     ''')
-    self.emcc_args += ['--js-library', test_file('unicode_library.js')]
+
+    # First verify that we have correct overridden the default python file encoding.
+    # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
+    # are having the desired effect.
+    # This means that files open()'d by emscripten without an explicit encoding will
+    # cause this test to file, hopefully catching any places where we forget to do this.
+    create_file('expect_fail.py', 'print(len(open("%s").read()))' % test_file('unicode_library.js'))
+    err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
+    self.assertContained('UnicodeDecodeError', err)
+
+    create_file('modularize_post.js', '(async function main(){await Module();})()')
+    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js']
     self.do_runf('main.cpp', u'Unicode snowman \u2603 says hello! \u00e0\u010c\u0161\u00f1\u00e9\u00e1\u00fa\u00cd\u0173\u00e5\u00ea\u00e2\u0103\u0161\u010d\u1ebf\u1ec7\u00fc\u00e7\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438\u0050\u0443\u0441\u0441\u043a\u0438\u0439\u0421\u0440\u043f\u0441\u043a\u0438\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430\ud55c\uad6d\uc5b4\u4e2d\u6587\u666e\u901a\u8bdd\u0028\u4e2d\u56fd\u5927\u9646\u0029\u666e\u901a\u8bdd\u0028\u9999\u6e2f\u0029\u4e2d\u6587\u0028\u53f0\u7063\u0029\u7cb5\u8a9e\u0028\u9999\u6e2f\u0029\u65e5\u672c\u8a9e\u0939\u093f\u0928\u094d\u0926\u0940\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22')
 
   def test_funcptr_import_type(self):
@@ -6940,6 +6952,12 @@ void* operator new(size_t size) {
     'none': ('none',),
   })
   def test_wasm2c_sandboxing(self, mode):
+    if self.get_setting('WASMFS'):
+      # wasm2c disables JS legalization since we are building in standalone
+      # mode. this happens to work without wasmfs, but with wasmfs we get the
+      # time when we create/update a file, which uses clock_time_get that has an
+      # i64 param. For such an import to work we need wasm-bigint support.
+      self.node_args.append('--experimental-wasm-bigint')
     if not can_do_standalone(self):
       return self.skipTest('standalone mode not supported')
     self.set_setting('STANDALONE_WASM')
