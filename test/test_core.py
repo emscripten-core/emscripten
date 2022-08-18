@@ -608,10 +608,8 @@ class TestCoreBase(RunnerCore):
   def test_sha1(self):
     self.do_runf(test_file('sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
-  @no_wasm64('tests 32-bit specific sizes')
-  def test_wasm32_unknown_emscripten(self):
-    # No other configuration is supported, so always run this.
-    self.do_runf(test_file('wasm32-unknown-emscripten.c'), '')
+  def test_core_types(self):
+    self.do_runf(test_file('core/test_core_types.c'))
 
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']

@@ -11,8 +11,8 @@
 #ifndef __wasm__
 #error __wasm__ is not defined
 #endif
-#ifndef __wasm32__
-#error __wasm32__ is not defined
+#if !defined(__wasm32__) && !defined(__wasm64__)
+#error __wasm32__/__wasm64__ is not defined
 #endif
 #ifdef __cplusplus
 #ifndef _GNU_SOURCE
@@ -74,9 +74,6 @@
 #ifdef __BIG_ENDIAN__
 #error __BIG_ENDIAN__ is defined
 #endif
-#ifdef __LP64__
-#error __LP64__ is defined
-#endif
 
 // We prefer to use __EMSCRIPTEN__, but for compatibility, we define
 // EMSCRIPTEN too.
@@ -93,15 +90,23 @@
 #define STRINGIZE(x) STRINGIZE_HELPER(x)
 
 int main() {
+#if __wasm64__
+  assert(sizeof(void*) == 8);
+  assert(sizeof(long) == 8);
+  assert(sizeof(intptr_t) == 8);
+  assert(sizeof(size_t) == 8);
+  assert(sizeof(ptrdiff_t) == 8);
+#else
   assert(sizeof(void*) == 4);
   assert(sizeof(long) == 4);
+  assert(sizeof(intptr_t) == 4);
+  assert(sizeof(size_t) == 4);
+  assert(sizeof(ptrdiff_t) == 4);
+#endif
   assert(sizeof(intmax_t) == 8);
   assert(__alignof(double) == 8);
   assert(sizeof(long double) == 16);
   assert(__alignof(long double) == 8);
-  assert(sizeof(intptr_t) == 4);
-  assert(sizeof(size_t) == 4);
-  assert(sizeof(ptrdiff_t) == 4);
   assert(__FLT_EVAL_METHOD__ == 0);
   assert(strcmp(STRINGIZE(__USER_LABEL_PREFIX__), "") == 0);
   return 0;
