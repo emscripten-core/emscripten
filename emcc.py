@@ -613,8 +613,8 @@ def get_binaryen_passes():
   # LLVM output always has immutable initial table contents: the table is
   # fixed and may only be appended to at runtime. if the wasm is relocatable
   # though then the offsets are dynamic anyhow, we can't actually optimize.
-  if optimizing and not settings.RELOCATABLE:
-    passes += ['--pass-arg=directize-initial-contents-immutable']
+  #if optimizing and not settings.RELOCATABLE:
+  #  passes += ['--pass-arg=directize-initial-contents-immutable']
 
   if settings.BINARYEN_EXTRA_PASSES:
     # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
