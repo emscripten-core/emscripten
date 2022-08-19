@@ -1024,12 +1024,13 @@ base align: 0, 0, 0, 0'''])
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
     self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-fno-builtin'] + list(args)
-
-    self.do_run(read_file(path_from_root('system/lib/emmalloc.c')) +
-                read_file(path_from_root('system/lib/sbrk.c')) +
-                read_file(test_file('core/test_emmalloc.c')),
-                read_file(test_file('core/test_emmalloc.out')), force_c=True)
+    self.emcc_args += [
+      '-fno-builtin',
+      path_from_root('system/lib/sbrk.c'),
+      path_from_root('system/lib/emmalloc.c')
+    ]
+    self.emcc_args += args
+    self.do_run_in_out_file_test(test_file('core/test_emmalloc.c'))
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
