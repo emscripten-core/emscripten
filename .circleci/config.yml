@@ -478,6 +478,7 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run-tests:
           test_targets: "
+            core0.test_dylink_basics
             core2.test_sse1
             core2.test_ccall
             core2.test_utf16

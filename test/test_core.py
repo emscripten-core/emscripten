@@ -412,8 +412,7 @@ class TestCoreBase(RunnerCore):
   def verify_in_strict_mode(self, filename):
     js = read_file(filename)
     filename += '.strict.js'
-    with open(filename, 'w') as outfile:
-      outfile.write('"use strict";\n' + js)
+    write_file(filename, '"use strict";\n' + js)
     self.run_js(filename)
 
   def do_core_test(self, testname, **kwargs):
