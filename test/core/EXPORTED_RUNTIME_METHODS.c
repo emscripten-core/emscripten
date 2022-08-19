@@ -30,8 +30,6 @@ int main() {
     if (!ASSERTIONS) {
       assert(!Module['addFunction']);
       assert(!Module['lengthBytesUTF8']);
-      assert(!Module['setTempRet0']);
-      assert(!Module['getTempRet0']);
       assert(!Module['dynCall']);
     }
     dynCall('viii', $0, [1, 4, 9]);

@@ -562,6 +562,7 @@ def get_binaryen_passes():
     if settings.LEGALIZE_JS_FFI:
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
+      passes += building.js_legalization_pass_flags()
   if settings.EMULATE_FUNCTION_POINTER_CASTS:
     # note that this pass must run before asyncify, as if it runs afterwards we only
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
@@ -2119,7 +2120,14 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
 
+  # WASM_SYSTEM_EXPORTS are actually native function but they are allowed to be exported
+  # via EXPORTED_RUNTIME_METHODS for backwards compat.
+  for sym in settings.WASM_SYSTEM_EXPORTS:
+    if sym in settings.EXPORTED_RUNTIME_METHODS:
+      settings.REQUIRED_EXPORTS.append(sym)
+
   settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore', 'stackAlloc']
+
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
@@ -2375,11 +2383,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     options.memory_init_file = True
     settings.MEM_INIT_IN_WASM = True
 
-  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-      '$getTempRet0',
-      '$setTempRet0',
-    ]
+  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE or not settings.DISABLE_EXCEPTION_CATCHING:
+    settings.REQUIRED_EXPORTS += ['getTempRet0', 'setTempRet0']
+
+  if settings.LEGALIZE_JS_FFI:
+    settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':

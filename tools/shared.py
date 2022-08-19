@@ -564,11 +564,13 @@ def mangle_c_symbol_name(name):
 
 
 def demangle_c_symbol_name(name):
-  return name[1:] if name.startswith('_') else '$' + name
+  if not is_c_symbol(name):
+    return '$' + name
+  return name[1:] if name.startswith('_') else name
 
 
 def is_c_symbol(name):
-  return name.startswith('_')
+  return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
 def treat_as_user_function(name):

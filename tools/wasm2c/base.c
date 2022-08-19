@@ -122,16 +122,6 @@ IMPORT_IMPL(void, Z_envZ__emscripten_throw_longjmpZ_vv, (), {
 
 IMPORT_IMPL(void, Z_envZ_emscripten_notify_memory_growthZ_vi, (u32 size), {});
 
-static u32 tempRet0 = 0;
-
-IMPORT_IMPL(u32, Z_envZ_getTempRet0Z_iv, (), {
-  return tempRet0;
-});
-
-IMPORT_IMPL(void, Z_envZ_setTempRet0Z_vi, (u32 x), {
-  tempRet0 = x;
-});
-
 // Shared OS support in both sandboxed and unsandboxed mode
 
 #define WASI_DEFAULT_ERROR 63 /* __WASI_ERRNO_PERM */

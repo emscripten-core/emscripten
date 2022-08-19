@@ -1562,3 +1562,18 @@ def save_intermediate(src, dst):
     dst = os.path.join(CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)
+
+
+def js_legalization_pass_flags():
+  flags = []
+  if settings.RELOCATABLE:
+    # When builing in relocatable mode, we also want access the original
+    # non-legalized wasm functions (since wasm modules can and do link to
+    # the original, non-legalized, functions).
+    flags += ['--pass-arg=legalize-js-interface-export-originals']
+  if not settings.SIDE_MODULE:
+    # Unless we are building a side module the helper functions should be
+    # assumed to be defined and exports within the module, otherwise binaryen
+    # assumes they are imports.
+    flags += ['--pass-arg=legalize-js-interface-exported-helpers']
+  return flags

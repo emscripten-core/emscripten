@@ -6802,7 +6802,7 @@ Resolved: "/" => "/"
   def test_sixtyfour_bit_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
-    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
+    # The MS 32 bits should be available in getTempRet0() even when compiled with -O2 --closure 1
 
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
     self.run_process([EMCC, test_file('return64bit/test.c'),
@@ -6810,6 +6810,7 @@ Resolved: "/" => "/"
                       '--pre-js', test_file('return64bit', bind_js),
                       '--post-js', test_file('return64bit/testbindend.js'),
                       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall',
+                      '-sEXPORTED_RUNTIME_METHODS=getTempRet0',
                       '-sEXPORTED_FUNCTIONS=_test_return64', '-o', 'test.js', '-O2',
                       '--closure=1', '-g1', '-sWASM_ASYNC_COMPILATION=0'] + args)
 
