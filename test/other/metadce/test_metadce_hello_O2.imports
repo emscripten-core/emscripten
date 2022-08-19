@@ -1,3 +1,2 @@
 env.emscripten_memcpy_big
-env.setTempRet0
 wasi_snapshot_preview1.fd_write

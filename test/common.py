@@ -406,10 +406,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
       self.skipTest('no dynamic linking support in wasm2js yet')
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic linking support in ASan yet')
-    if '-fsanitize=leak' in self.emcc_args:
-      self.skipTest('no dynamic linking support in LSan yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
 

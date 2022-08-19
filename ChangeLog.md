@@ -19,7 +19,13 @@ to browse the changes between the tags.
 See docs/process.md for more on how version tagging works.
 
 3.1.20 (in development)
-------
+-----------------------
+- The `getTempRet0`/`setTempRet0` helper functions are now implemented directly
+  in WebAssembly, rather than supplied by the JS host.  This simplifies the
+  wasm/JS interface.  These function are no longer exported in all cases.  If
+  your code directly calls these functions from JS, you can add them to
+  `-sEXPORTED_RUNTIME_METHODS`.
+
 3.1.19 - 08/17/2022
 -------------------
 - Old method of metadata extraction via wasm-emscripten-finalize removed

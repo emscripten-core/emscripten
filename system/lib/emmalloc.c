@@ -97,6 +97,17 @@ typedef struct Region
   uint32_t _at_the_end_of_this_struct_size; // do not dereference, this is present for convenient struct sizeof() computation only
 } Region;
 
+// Each memory block starts with a RootRegion at the beginning.
+// The RootRegion specifies the size of the region block, and forms a linked
+// list of all RootRegions in the program, starting with `listOfAllRegions`
+// below.
+typedef struct RootRegion
+{
+  uint32_t size;
+  struct RootRegion *next;
+  uint8_t* endPtr;
+} RootRegion;
+
 #if defined(__EMSCRIPTEN_PTHREADS__)
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
 static volatile uint8_t multithreadingLock = 0;
@@ -118,8 +129,9 @@ static volatile uint8_t multithreadingLock = 0;
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
 static_assert(MALLOC_ALIGNMENT >= 4, "Smallest possible MALLOC_ALIGNMENT if 4!");
 
-// A region that contains as payload a single forward linked list of pointers to head regions of each disjoint region blocks.
-static Region *listOfAllRegions = 0;
+// A region that contains as payload a single forward linked list of pointers to
+// root regions of each disjoint region blocks.
+static RootRegion *listOfAllRegions = NULL;
 
 // For each of the buckets, maintain a linked list head node. The head node for each
 // free region is a sentinel node that does not actually represent any free space, but
@@ -129,9 +141,9 @@ static Region *listOfAllRegions = 0;
 // start at freeRegionBuckets[i].next each.
 static Region freeRegionBuckets[NUM_FREE_BUCKETS];
 
-// A bitmask that tracks the population status for each of the 32 distinct memory regions:
+// A bitmask that tracks the population status for each of the 64 distinct memory regions:
 // a zero at bit position i means that the free list bucket i is empty. This bitmask is
-// used to avoid redundant scanning of the 32 different free region buckets: instead by
+// used to avoid redundant scanning of the 64 different free region buckets: instead by
 // looking at the bitmask we can find in constant time an index to a free region bucket
 // that contains free memory of desired size.
 static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
@@ -339,13 +351,13 @@ static void link_to_free_list(Region *freeRegion)
 static void dump_memory_regions()
 {
   ASSERT_MALLOC_IS_ACQUIRED();
-  Region *root = listOfAllRegions;
+  RootRegion *root = listOfAllRegions;
   MAIN_THREAD_ASYNC_EM_ASM(console.log('All memory regions:'));
   while(root)
   {
-    Region *r = root;
+    Region *r = (Region*)root;
     assert(debug_region_is_consistent(r));
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->endPtr;
     MAIN_THREAD_ASYNC_EM_ASM(console.log('Region block 0x'+($0>>>0).toString(16)+' - 0x'+($1>>>0).toString(16)+ ' ('+($2>>>0)+' bytes):'),
       r, lastRegionEnd, lastRegionEnd-(uint8_t*)r);
     while((uint8_t*)r < lastRegionEnd)
@@ -361,7 +373,7 @@ static void dump_memory_regions()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->next;
     MAIN_THREAD_ASYNC_EM_ASM(console.log(""));
   }
   MAIN_THREAD_ASYNC_EM_ASM(console.log('Free regions:'));
@@ -396,17 +408,17 @@ void emmalloc_dump_memory_regions()
 static int validate_memory_regions()
 {
   ASSERT_MALLOC_IS_ACQUIRED();
-  Region *root = listOfAllRegions;
+  RootRegion *root = listOfAllRegions;
   while(root)
   {
-    Region *r = root;
+    Region *r = (Region*)root;
     if (!debug_region_is_consistent(r))
     {
       MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
         r, r->size, region_ceiling_size(r) == r->size);
       return 1;
     }
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->endPtr;
     while((uint8_t*)r < lastRegionEnd)
     {
       if (!debug_region_is_consistent(r))
@@ -419,7 +431,7 @@ static int validate_memory_regions()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->next;
   }
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
   {
@@ -430,7 +442,7 @@ static int validate_memory_regions()
       if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
       {
         MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt!'),
-          i, fr, fr->size, size_of_region_from_ceiling((Region*)fr), fr->prev, fr->next);
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
         return 1;
       }
       prev = fr;
@@ -479,7 +491,7 @@ static bool claim_more_memory(size_t numBytes)
 
   // If we are the sole user of sbrk(), it will feed us continuous/consecutive memory addresses - take advantage
   // of that if so: instead of creating two disjoint memory regions blocks, expand the previous one to a larger size.
-  uint8_t *previousSbrkEndAddress = listOfAllRegions ? (uint8_t*)((uint32_t*)listOfAllRegions)[2] : 0;
+  uint8_t *previousSbrkEndAddress = listOfAllRegions ? listOfAllRegions->endPtr : 0;
   if (startPtr == previousSbrkEndAddress)
   {
     Region *prevEndSentinel = prev_region((Region*)startPtr);
@@ -488,7 +500,7 @@ static bool claim_more_memory(size_t numBytes)
     Region *prevRegion = prev_region(prevEndSentinel);
     assert(debug_region_is_consistent(prevRegion));
 
-    ((uint32_t*)listOfAllRegions)[2] = (uint32_t)endPtr;
+    listOfAllRegions->endPtr = endPtr;
 
     // Two scenarios, either the last region of the previous block was in use, in which case we need to create
     // a new free region in the newly allocated space; or it was free, in which case we can extend that region
@@ -507,13 +519,13 @@ static bool claim_more_memory(size_t numBytes)
   }
   else
   {
-    // Create a sentinel region at the start of the heap block
+    // Create a root region at the start of the heap block
     create_used_region(startPtr, sizeof(Region));
 
     // Dynamic heap start region:
-    Region *newRegionBlock = (Region*)startPtr;
-    ((uint32_t*)newRegionBlock)[1] = (uint32_t)listOfAllRegions; // Pointer to next region block head
-    ((uint32_t*)newRegionBlock)[2] = (uint32_t)endPtr; // Pointer to the end address of this region block
+    RootRegion *newRegionBlock = (RootRegion*)startPtr;
+    newRegionBlock->next = listOfAllRegions; // Pointer to next region block head
+    newRegionBlock->endPtr = endPtr; // Pointer to the end address of this region block
     listOfAllRegions = newRegionBlock;
     startPtr += sizeof(Region);
   }
@@ -546,7 +558,7 @@ static void initialize_emmalloc_heap()
 void emmalloc_blank_slate_from_orbit()
 {
   MALLOC_ACQUIRE();
-  listOfAllRegions = 0;
+  listOfAllRegions = NULL;
   freeRegionBucketsUsed = 0;
   initialize_emmalloc_heap();
   MALLOC_RELEASE();
@@ -567,7 +579,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 
   // Do we have enough free space, taking into account alignment?
   if (payloadStartPtrAligned + size > payloadEndPtr)
-    return 0;
+    return NULL;
 
   // We have enough free space, so the memory allocation will be made into this region. Remove this free region
   // from the list of free regions: whatever slop remains will be later added back to the free region pool.
@@ -1228,15 +1240,15 @@ struct mallinfo emmalloc_mallinfo()
   info.fordblks = 0; // The total number of bytes in free blocks.
   // The total amount of releasable free space at the top of the heap.
   // This is the maximum number of bytes that could ideally be released by malloc_trim(3).
-  Region *lastActualRegion = prev_region((Region*)((uint8_t*)((uint32_t*)listOfAllRegions)[2] - sizeof(Region)));
+  Region *lastActualRegion = prev_region((Region*)(listOfAllRegions->endPtr - sizeof(Region)));
   info.keepcost = region_is_free(lastActualRegion) ? lastActualRegion->size : 0;
 
-  Region *root = listOfAllRegions;
+  RootRegion *root = listOfAllRegions;
   while(root)
   {
-    Region *r = root;
+    Region *r = (Region*)root;
     assert(debug_region_is_consistent(r));
-    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    uint8_t *lastRegionEnd = root->endPtr;
     while((uint8_t*)r < lastRegionEnd)
     {
       assert(debug_region_is_consistent(r));
@@ -1259,7 +1271,7 @@ struct mallinfo emmalloc_mallinfo()
         break;
       r = next_region(r);
     }
-    root = ((Region*)((uint32_t*)root)[1]);
+    root = root->next;
   }
 
   MALLOC_RELEASE();
@@ -1279,11 +1291,11 @@ static int trim_dynamic_heap_reservation(size_t pad)
 
   if (!listOfAllRegions)
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
-  uint32_t *previousSbrkEndAddress = (uint32_t*)((uint32_t*)listOfAllRegions)[2];
+  uint8_t *previousSbrkEndAddress = listOfAllRegions->endPtr;
   assert(sbrk(0) == previousSbrkEndAddress);
-  uint32_t lastMemoryRegionSize = previousSbrkEndAddress[-1];
+  uint32_t lastMemoryRegionSize = ((uint32_t*)previousSbrkEndAddress)[-1];
   assert(lastMemoryRegionSize == 16); // // The last memory region should be a sentinel node of exactly 16 bytes in size.
-  Region *endSentinelRegion = (Region*)((uint8_t*)previousSbrkEndAddress - sizeof(Region));
+  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - sizeof(Region));
   Region *lastActualRegion = prev_region(endSentinelRegion);
 
   // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
@@ -1313,7 +1325,7 @@ static int trim_dynamic_heap_reservation(size_t pad)
   create_used_region(endSentinelRegion, sizeof(Region));
 
   // And update the size field of the whole region block.
-  ((uint32_t*)listOfAllRegions)[2] = (uint32_t)endSentinelRegion + sizeof(Region);
+  listOfAllRegions->endPtr = (uint8_t*)endSentinelRegion + sizeof(Region);
 
   // Finally call sbrk() to shrink the memory area.
   void *oldSbrk = sbrk(-(intptr_t)shrinkAmount);
@@ -1342,13 +1354,11 @@ size_t emmalloc_dynamic_heap_size()
   size_t dynamicHeapSize = 0;
 
   MALLOC_ACQUIRE();
-  Region *root = listOfAllRegions;
+  RootRegion *root = listOfAllRegions;
   while(root)
   {
-    Region *r = root;
-    uintptr_t blockEndPtr = ((uint32_t*)r)[2];
-    dynamicHeapSize += blockEndPtr - (uintptr_t)r;
-    root = ((Region*)((uint32_t*)root)[1]);
+    dynamicHeapSize += root->endPtr - (uint8_t*)root;
+    root = root->next;
   }
   MALLOC_RELEASE();
   return dynamicHeapSize;

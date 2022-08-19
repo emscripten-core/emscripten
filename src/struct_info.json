@@ -3,6 +3,12 @@
     // libc
     // ===========================================
     {
+        "file": "pthread.h",
+        "defines": [
+          "PTHREAD_CANCELED"
+        ]
+    },
+    {
         "file": "dirent.h",
         "structs": {
             "dirent": [

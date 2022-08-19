@@ -74,6 +74,7 @@ class SymbolizerTool {
   ~SymbolizerTool() {}
 };
 
+#if !SANITIZER_EMSCRIPTEN
 // SymbolizerProcess encapsulates communication between the tool and
 // external symbolizer program, running in a different subprocess.
 // SymbolizerProcess may not be used from two threads simultaneously.
@@ -145,6 +146,7 @@ class LLVMSymbolizer final : public SymbolizerTool {
   static const uptr kBufferSize = 16 * 1024;
   char buffer_[kBufferSize];
 };
+#endif
 
 // Parses one or more two-line strings in the following format:
 //   <function_name>

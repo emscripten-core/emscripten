@@ -562,6 +562,7 @@ def get_binaryen_passes():
     if settings.LEGALIZE_JS_FFI:
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
+      passes += building.js_legalization_pass_flags()
   if settings.EMULATE_FUNCTION_POINTER_CASTS:
     # note that this pass must run before asyncify, as if it runs afterwards we only
     # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
@@ -1498,8 +1499,8 @@ def phase_setup(options, state, newargs, user_settings):
 
   if settings.MEMORY64:
     default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
-    if settings.SUPPORT_LONGJMP:
-      exit_with_error('MEMORY64 is not compatible with SUPPORT_LONGJMP')
+    if settings.SUPPORT_LONGJMP and settings.SUPPORT_LONGJMP != 'wasm':
+      exit_with_error('MEMORY64 is not compatible with (non-wasm) SUPPORT_LONGJMP')
 
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
@@ -2124,7 +2125,14 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
 
+  # WASM_SYSTEM_EXPORTS are actually native function but they are allowed to be exported
+  # via EXPORTED_RUNTIME_METHODS for backwards compat.
+  for sym in settings.WASM_SYSTEM_EXPORTS:
+    if sym in settings.EXPORTED_RUNTIME_METHODS:
+      settings.REQUIRED_EXPORTS.append(sym)
+
   settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore', 'stackAlloc']
+
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
@@ -2380,11 +2388,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     options.memory_init_file = True
     settings.MEM_INIT_IN_WASM = True
 
-  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-      '$getTempRet0',
-      '$setTempRet0',
-    ]
+  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE or not settings.DISABLE_EXCEPTION_CATCHING:
+    settings.REQUIRED_EXPORTS += ['getTempRet0', 'setTempRet0']
+
+  if settings.LEGALIZE_JS_FFI:
+    settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
@@ -2430,9 +2438,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if 'leak' in sanitize:
     settings.USE_LSAN = 1
     default_setting(user_settings, 'EXIT_RUNTIME', 1)
-
-    if settings.RELOCATABLE:
-      exit_with_error('LSan does not support dynamic linking')
 
   if 'address' in sanitize:
     settings.USE_ASAN = 1
@@ -2512,9 +2517,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
-
-    if settings.RELOCATABLE:
-      exit_with_error('ASan does not support dynamic linking')
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
@@ -2783,6 +2785,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
       # are written directly to their final output locations.
       if options.output_file:
         assert len(input_files) == 1
+        if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+          diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
         return options.output_file
       else:
         return unsuffixed_basename(input_file) + options.default_object_extension

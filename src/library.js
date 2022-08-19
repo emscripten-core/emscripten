@@ -21,29 +21,6 @@
 // new function with an '_', it will not be found.
 
 mergeInto(LibraryManager.library, {
-  // ==========================================================================
-  // getTempRet0/setTempRet0: scratch space handling i64 return
-  //
-  // These are trivial wrappers around runtime functions that make these symbols
-  // available to native code.
-  // ==========================================================================
-
-  $tempRet0: 0,
-  $getTempRet0__sig: 'i',
-  $getTempRet0__deps: ['$tempRet0'],
-  $getTempRet0: function() {
-    return tempRet0;
-  },
-
-  $setTempRet0__sig: 'vi',
-  $setTempRet0__deps: ['$tempRet0'],
-  $setTempRet0: function(val) {
-    tempRet0 = val;
-  },
-
-  getTempRet0: '$getTempRet0',
-  setTempRet0: '$setTempRet0',
-
   $ptrToString: function(ptr) {
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
@@ -58,6 +35,7 @@ mergeInto(LibraryManager.library, {
     }
 #endif
     HEAPU8.fill(0, address, address + size);
+    return address;
   },
 
 #if SAFE_HEAP
@@ -3376,7 +3354,7 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out__sig: 'vi',
+  _emscripten_out__sig: 'vp',
   _emscripten_out: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3384,7 +3362,7 @@ mergeInto(LibraryManager.library, {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err__sig: 'vi',
+  _emscripten_err__sig: 'vp',
   _emscripten_err: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3394,7 +3372,7 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname__sig: 'vpp',
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
@@ -3605,8 +3583,7 @@ mergeInto(LibraryManager.library, {
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;
-    zeroMemory(ptr, size);
-    return ptr;
+    return zeroMemory(ptr, size);
 #elif ASSERTIONS
     abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else
@@ -3631,6 +3608,7 @@ mergeInto(LibraryManager.library, {
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
   __heap_base: '{{{ to64(HEAP_BASE) }}}',
+  __global_base: '{{{ to64(GLOBAL_BASE) }}}',
 #if WASM_EXCEPTIONS
   // In dynamic linking we define tags here and feed them to each module
   __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
@@ -3714,7 +3692,5 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
-  '$getTempRet0',
-  '$setTempRet0',
 );
 #endif

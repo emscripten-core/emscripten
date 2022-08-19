@@ -311,7 +311,13 @@ class Library:
       else:
         cmd = [shared.EMXX]
 
-      cmd += cflags
+      if ext == '.s':
+        # .s files are processed directly by the assembler.  In this case we can't pass
+        # pre-processor flags such as `-I` and `-D` but we still want core flags such as
+        # `-sMEMORY64`.
+        cmd += get_base_cflags()
+      else:
+        cmd += cflags
       if ext in ('.s', '.S'):
         # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
         # assembly files that define wasm globals.
@@ -623,10 +629,6 @@ class SjLjLibrary(Library):
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
 
-  def can_build(self):
-    # wasm-sjlj is not yet supported with MEMORY64
-    return not (settings.MEMORY64 and self.is_wasm)
-
 
 class MuslInternalLibrary(Library):
   includes = [
@@ -686,6 +688,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'stack_limits.S',
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c',
+        'emscripten_tempret.s',
         '__trap.c',
       ])
 
@@ -1617,6 +1620,7 @@ class libubsan_rt(SanitizerLibrary):
 
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
+  src_glob_exclude = ['ubsan_diag_standalone.cpp']
 
 
 class liblsan_common_rt(SanitizerLibrary):

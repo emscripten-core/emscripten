@@ -32,6 +32,7 @@ $fmt_o
 $fmt_u
 $fmt_x
 $frexp
+$getTempRet0
 $getint
 $getpid
 $init_pthread_self
@@ -46,6 +47,7 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
+$setTempRet0
 $stackAlloc
 $stackRestore
 $stackSave

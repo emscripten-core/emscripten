@@ -351,12 +351,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'c': [EMCC, '.c'],
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
-    # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
+    # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|bc|so] ==> should always give an object file
     for args in [[], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
       print('args:', args)
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
+      self.assertIsObjectFile(target)
       syms = building.llvm_nm(target)
       self.assertIn('main', syms['defs'])
       # we also expect to have the '__original_main' wrapper and __main_void alias.
@@ -367,6 +368,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         target += '.bc'
       self.run_process([compiler, target, '-o', target + '.js'])
       self.assertContained('hello, world!', self.run_js(target + '.js'))
+
+  def test_bc_output_warning(self):
+    err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
 
   @parameterized({
     'c': [EMCC, '.c'],
@@ -2805,9 +2810,8 @@ int f() {
 
   def test_file_packager_returns_error_if_target_equal_to_jsoutput(self):
     MESSAGE = 'error: TARGET should not be the same value of --js-output'
-    result = self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.data'], check=False, stdout=PIPE, stderr=PIPE)
-    self.assertEqual(result.returncode, 1)
-    self.assertContained(MESSAGE, result.stderr)
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--js-output=test.data'])
+    self.assertContained(MESSAGE, err)
 
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
@@ -2867,9 +2871,8 @@ done.
 
   def test_syntax_only_invalid(self):
     create_file('src.c', 'int main() {')
-    result = self.run_process([EMCC, 'src.c', '-fsyntax-only'], stdout=PIPE, check=False, stderr=STDOUT)
-    self.assertNotEqual(result.returncode, 0)
-    self.assertContained("src.c:1:13: error: expected '}'", result.stdout)
+    err = self.expect_fail([EMCC, 'src.c', '-fsyntax-only'])
+    self.assertContained("src.c:1:13: error: expected '}'", err)
     self.assertNotExists('a.out.js')
 
   def test_demangle(self):
@@ -3684,11 +3687,8 @@ return 0;
 
     def test(expected, opts):
       print(opts)
-      result = self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
-      if result.returncode == 0:
-        self.assertContained(expected, self.run_js('a.out.js', assert_returncode=0 if opts else NON_ZERO))
-      else:
-        self.assertContained(expected, result.stderr)
+      self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
+      self.assertContained(expected, self.run_js('a.out.js', assert_returncode=0 if opts else NON_ZERO))
 
     # when legacy is needed, we show an error indicating so
     test('build with LEGACY_VM_SUPPORT', [])
@@ -5590,9 +5590,8 @@ int main(void) {
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   def test_EXPORT_NAME_with_html(self):
-    result = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'], stdout=PIPE, check=False, stderr=STDOUT)
-    self.assertNotEqual(result.returncode, 0)
-    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', result.stdout)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'])
+    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
     create_file('post.js', r'''
@@ -6803,7 +6802,7 @@ Resolved: "/" => "/"
   def test_sixtyfour_bit_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
-    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
+    # The MS 32 bits should be available in getTempRet0() even when compiled with -O2 --closure 1
 
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
     self.run_process([EMCC, test_file('return64bit/test.c'),
@@ -6811,6 +6810,7 @@ Resolved: "/" => "/"
                       '--pre-js', test_file('return64bit', bind_js),
                       '--post-js', test_file('return64bit/testbindend.js'),
                       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall',
+                      '-sEXPORTED_RUNTIME_METHODS=getTempRet0',
                       '-sEXPORTED_FUNCTIONS=_test_return64', '-o', 'test.js', '-O2',
                       '--closure=1', '-g1', '-sWASM_ASYNC_COMPILATION=0'] + args)
 
@@ -6869,13 +6869,13 @@ high = 1234
 
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
-    err = self.run_process([EMXX, test_file('hello_world.cpp'), '-s', "TEST_KEY='MISSING_QUOTE"], stderr=PIPE, check=False).stderr
+    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-s', "TEST_KEY='MISSING_QUOTE"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
     self.assertContained('unclosed opened quoted string. expected final character to be "\'"', err)
 
   def test_dash_s_single_quote(self):
     # Only one quote
-    err = self.run_process([EMXX, test_file('hello_world.cpp'), "-sTEST_KEY='"], stderr=PIPE, check=False).stderr
+    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), "-sTEST_KEY='"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
     self.assertContained('unclosed opened quoted string.', err)
 
@@ -10347,9 +10347,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
         EM_ASM({ console.log('Hello, world!'); });
       }
     ''')
-    result = self.run_process([EMCC, '-std=c11', 'src.c'], stderr=PIPE, check=False)
-    self.assertNotEqual(result.returncode, 0)
-    self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
+    err = self.expect_fail([EMCC, '-std=c11', 'src.c'])
+    self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', err)
 
   def test_boost_graph(self):
     self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-sUSE_BOOST_HEADERS'])
@@ -10367,10 +10366,9 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
         });
       }
     ''')
-    result = self.run_process([EMCC, 'src.c'], stderr=PIPE, check=False)
-    self.assertNotEqual(result.returncode, 0)
-    self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
-    self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
+    err = self.expect_fail([EMCC, 'src.c'])
+    self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', err)
+    self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', err)
 
   def test_setjmp_emulated_casts(self):
     # using setjmp causes invokes(), and EMULATE_FUNCTION_POINTER_CASTS changes
@@ -11090,16 +11088,14 @@ exec "$@"
     self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x1')
 
   def test_SUPPORT_LONGJMP_executable(self):
-    stderr = self.run_process([EMCC, test_file('core/test_longjmp.c'), '-sSUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
-    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
-                         stderr)
+    err = self.expect_fail([EMCC, test_file('core/test_longjmp.c'), '-sSUPPORT_LONGJMP=0'])
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)', err)
 
   def test_SUPPORT_LONGJMP_object(self):
     # compile the object *with* support, but link without
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP', '-o', 'a.o'])
-    stderr = self.run_process([EMCC, 'a.o', '-sSUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
-    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
-                         stderr)
+    err = self.expect_fail([EMCC, 'a.o', '-sSUPPORT_LONGJMP=0'])
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)', err)
 
   def test_SUPPORT_LONGJMP_wasm(self):
     # Tests if -sSUPPORT_LONGJMP=wasm alone is enough to use Wasm SjLj, i.e., it
@@ -11108,9 +11104,8 @@ exec "$@"
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
 
   def test_pthread_MODULARIZE(self):
-    stderr = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'], stderr=PIPE, check=False).stderr
-    self.assertContained('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work',
-                         stderr)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'])
+    self.assertContained('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work', err)
 
   def test_jslib_clobber_i(self):
     # Regression check for an issue we have where a library clobbering the global `i` variable could
@@ -11151,12 +11146,6 @@ exec "$@"
       });
       ''')
     self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$__foo'])
-
-  def test_asan_no_dylink(self):
-    for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE', '-sMAIN_MODULE=2', '-sSIDE_MODULE=2']:
-      print(arg)
-      err = self.expect_fail([EMCC, test_file('hello_world.c'), '-fsanitize=address', arg])
-      self.assertContained('ASan does not support dynamic linking', err)
 
   def test_wasm2js_no_dylink(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
@@ -12493,5 +12482,5 @@ Module['postRun'] = function() {{
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
     with shared.Cache.lock('testing'):
-      err = self.run_process([EMBUILDER, 'build', 'libc', '--force'], stderr=PIPE, check=False).stderr
+      err = self.expect_fail([EMBUILDER, 'build', 'libc', '--force'], expect_traceback=True)
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)

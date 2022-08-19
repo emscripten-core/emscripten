@@ -96,8 +96,6 @@ def with_both_eh_sjlj(f):
   assert callable(f)
 
   def metafunc(self, is_native):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('MEMORY64 does not yet support SJLJ')
     if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
@@ -111,6 +109,8 @@ def with_both_eh_sjlj(f):
       self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
+      if self.get_setting('MEMORY64'):
+        self.skipTest('MEMORY64 does not yet support emscripten EH/SjLj')
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
@@ -412,8 +412,7 @@ class TestCoreBase(RunnerCore):
   def verify_in_strict_mode(self, filename):
     js = read_file(filename)
     filename += '.strict.js'
-    with open(filename, 'w') as outfile:
-      outfile.write('"use strict";\n' + js)
+    write_file(filename, '"use strict";\n' + js)
     self.run_js(filename)
 
   def do_core_test(self, testname, **kwargs):
@@ -608,10 +607,8 @@ class TestCoreBase(RunnerCore):
   def test_sha1(self):
     self.do_runf(test_file('sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
-  @no_wasm64('tests 32-bit specific sizes')
-  def test_wasm32_unknown_emscripten(self):
-    # No other configuration is supported, so always run this.
-    self.do_runf(test_file('wasm32-unknown-emscripten.c'), '')
+  def test_core_types(self):
+    self.do_runf(test_file('core/test_core_types.c'))
 
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
@@ -1027,12 +1024,13 @@ base align: 0, 0, 0, 0'''])
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
     self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-fno-builtin'] + list(args)
-
-    self.do_run(read_file(path_from_root('system/lib/emmalloc.c')) +
-                read_file(path_from_root('system/lib/sbrk.c')) +
-                read_file(test_file('core/test_emmalloc.c')),
-                read_file(test_file('core/test_emmalloc.out')), force_c=True)
+    self.emcc_args += [
+      '-fno-builtin',
+      path_from_root('system/lib/sbrk.c'),
+      path_from_root('system/lib/emmalloc.c')
+    ]
+    self.emcc_args += args
+    self.do_run_in_out_file_test(test_file('core/test_emmalloc.c'))
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -3087,7 +3085,7 @@ The current type of b is: 9
         }
       };
 
-      Foo global;
+      Foo side_global;
       ''')
     self.build_dlfcn_lib('liblib.cpp')
 
@@ -6255,11 +6253,11 @@ PORT: 3979
 
   @with_env_modify({'LC_CTYPE': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   def test_unicode_js_library(self):
-    create_file('main.cpp', '''
+    create_file('main.c', '''
       #include <stdio.h>
-      extern "C" {
-        extern void printey();
-      }
+
+      extern void printey();
+
       int main() {
         printey();
         return 0;
@@ -6271,13 +6269,13 @@ PORT: 3979
     # are having the desired effect.
     # This means that files open()'d by emscripten without an explicit encoding will
     # cause this test to file, hopefully catching any places where we forget to do this.
-    create_file('expect_fail.py', 'print(len(open("%s").read()))' % test_file('unicode_library.js'))
+    create_file('expect_fail.py', 'print(len(open(r"%s").read()))' % test_file('unicode_library.js'))
     err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
     self.assertContained('UnicodeDecodeError', err)
 
     create_file('modularize_post.js', '(async function main(){await Module();})()')
-    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js']
-    self.do_runf('main.cpp', u'Unicode snowman \u2603 says hello! \u00e0\u010c\u0161\u00f1\u00e9\u00e1\u00fa\u00cd\u0173\u00e5\u00ea\u00e2\u0103\u0161\u010d\u1ebf\u1ec7\u00fc\u00e7\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438\u0050\u0443\u0441\u0441\u043a\u0438\u0439\u0421\u0440\u043f\u0441\u043a\u0438\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430\ud55c\uad6d\uc5b4\u4e2d\u6587\u666e\u901a\u8bdd\u0028\u4e2d\u56fd\u5927\u9646\u0029\u666e\u901a\u8bdd\u0028\u9999\u6e2f\u0029\u4e2d\u6587\u0028\u53f0\u7063\u0029\u7cb5\u8a9e\u0028\u9999\u6e2f\u0029\u65e5\u672c\u8a9e\u0939\u093f\u0928\u094d\u0926\u0940\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22')
+    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js', '--post-js', test_file('unicode_postjs.js')]
+    self.do_run_from_file('main.c', test_file('test_unicode_js_library.out'))
 
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', test_file('core/test_funcptr_import_type.js')]
@@ -9480,6 +9478,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_js_library_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['setTempRet0'])
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')
 
