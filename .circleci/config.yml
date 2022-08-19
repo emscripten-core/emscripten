@@ -448,6 +448,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
+          frozen_cache: false
           test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
   test-other:
     executor: bionic
