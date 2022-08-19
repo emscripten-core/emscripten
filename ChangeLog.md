@@ -20,6 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 3.1.26 (in development)
 -----------------------
+- Inline with the recent changes to llvm and binaryen, emscripten will now, by
+  default, enable the sign-extension and mutable-globals WebAssembly proposals.
+  In order to do so the default minimum safari version (`MIN_SAFARI_VERSION`)
+  was updated from 12.0 to 14.1, and support for the old EdgeHTML engine
+  (`MIN_EDGE_VERSION`) was removed by default.  If you want to continue to
+  support these older engines you can use these settings
+  (`-sMIN_SAFARI_VERSION=120000` and/or `-sMIN_EDGE_VERSION=44`) to revert to
+  the previous defaults, which will result in the new proposals being disabled.
+  (#17690)
 - Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
   environment variable).  This options specifies the name of a tar file into
   which emscripten will copy all of the input files along with a response file
