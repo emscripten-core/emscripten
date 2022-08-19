@@ -2778,6 +2778,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
       # are written directly to their final output locations.
       if options.output_file:
         assert len(input_files) == 1
+        if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+          diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
         return options.output_file
       else:
         return unsuffixed_basename(input_file) + options.default_object_extension

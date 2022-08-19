@@ -351,12 +351,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'c': [EMCC, '.c'],
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
-    # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
+    # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|bc|so] ==> should always give an object file
     for args in [[], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
       print('args:', args)
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
+      self.assertIsObjectFile(target)
       syms = building.llvm_nm(target)
       self.assertIn('main', syms['defs'])
       # we also expect to have the '__original_main' wrapper and __main_void alias.
@@ -367,6 +368,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         target += '.bc'
       self.run_process([compiler, target, '-o', target + '.js'])
       self.assertContained('hello, world!', self.run_js(target + '.js'))
+
+  def test_bc_output_warning(self):
+    err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
 
   @parameterized({
     'c': [EMCC, '.c'],
