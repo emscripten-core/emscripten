@@ -315,6 +315,7 @@ void PrintGlobalLocation(InternalScopedString *str, const __asan_global &g) {
 // ---------------------- Interface ---------------- {{{1
 using namespace __asan;
 
+#if !SANITIZER_EMSCRIPTEN
 // Apply __asan_register_globals to all globals found in the same loaded
 // executable or shared library as `flag'. The flag tracks whether globals have
 // already been registered or not for this image.
@@ -352,6 +353,7 @@ void __asan_unregister_elf_globals(uptr *flag, void *start, void *stop) {
   __asan_unregister_globals(globals_start, globals_stop - globals_start);
   *flag = 0;
 }
+#endif
 
 // Register an array of globals.
 void __asan_register_globals(__asan_global *globals, uptr n) {

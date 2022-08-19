@@ -2426,9 +2426,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.USE_LSAN = 1
     default_setting(user_settings, 'EXIT_RUNTIME', 1)
 
-    if settings.RELOCATABLE:
-      exit_with_error('LSan does not support dynamic linking')
-
   if 'address' in sanitize:
     settings.USE_ASAN = 1
     default_setting(user_settings, 'EXIT_RUNTIME', 1)
@@ -2507,9 +2504,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
-
-    if settings.RELOCATABLE:
-      exit_with_error('ASan does not support dynamic linking')
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1

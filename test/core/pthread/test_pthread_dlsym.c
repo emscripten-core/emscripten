@@ -50,7 +50,7 @@ static void test_order2() {
   assert(three == g_three);
 }
 
-static void* thread_main() {
+static void* thread_main(void* arg) {
   printf("in thread_main\n");
   test_order2();
   printf("thread_main done\n");

@@ -596,7 +596,9 @@ u64 NanoTime() {
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+extern "C" {
 int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
+}
 
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return __clock_gettime(clk_id, tp);
