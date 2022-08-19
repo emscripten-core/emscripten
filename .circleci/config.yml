@@ -165,6 +165,12 @@ commands:
           command: |
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
+  freeze-cache:
+    description: "Freeze emscripten cache"
+    steps:
+      - run:
+          name: Add EM_FROZEN_CACHE to bash env
+          command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
   run-tests-linux:
     description: "Runs emscripten tests"
     parameters:
@@ -173,13 +179,14 @@ commands:
         type: string
       frozen_cache:
         description: "Run with cache frozen"
-        type: string
-        default: "1"
+        type: boolean
+        default: true
     steps:
       - prepare-for-tests
-      - run:
-          name: Add EM_FROZEN_CACHE to bash env
-          command: echo "export EM_FROZEN_CACHE=<< parameters.frozen_cache >>" >> $BASH_ENV
+      - when:
+          condition: << parameters.frozen_cache >>
+          steps:
+            - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
   test-firefox:
@@ -304,7 +311,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          frozen_cache: "0"
+          frozen_cache: false
           test_targets: "sanity"
   build-linux:
     executor: bionic
@@ -369,16 +376,9 @@ jobs:
       EMTEST_BROWSER: "node"
     steps:
       - run-tests-linux:
-          # also run a single test of EMTEST_BROWSER=node.
-          # also run a corez test of dynamic linking + forced syslibs.
-          test_targets: "
-            core2
-            browser.test_pthread_join
-            corez.test_dylink_syslibs_all"
-      - run-tests-linux:
-          # also run a few asan tests.  Do this with frozen_cache disables since
-          # we don't pre-built all the asan libraries.
-          frozen_cache: "0"
+          # also run a few asan tests.  Run these with frozen_cache disabled
+          # since we don't pre-build all the asan libraries.
+          frozen_cache: false
           test_targets: "
             asan.test_stat
             asan.test_float_builtins
@@ -392,6 +392,14 @@ jobs:
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"
+      - freeze-cache
+      - run-tests:
+          # also run a single test of EMTEST_BROWSER=node.
+          # also run a corez test of dynamic linking + forced syslibs.
+          test_targets: "
+            core2
+            browser.test_pthread_join
+            corez.test_dylink_syslibs_all"
   test-core3:
     executor: bionic
     steps:
