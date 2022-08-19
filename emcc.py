@@ -47,6 +47,7 @@ from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
+from tools import feature_matrix
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
@@ -466,21 +467,6 @@ def apply_user_settings():
       settings.LTO = 0 if value else 'full'
 
 
-# apply minimum browser version defaults based on user settings. if
-# a user requests a feature that we know is only supported in browsers
-# from a specific version and above, we can assume that browser version.
-def apply_min_browser_versions():
-
-  def default_min_browser_version(browser, version):
-    default_setting(f'MIN_{browser.upper()}_VERSION', version)
-
-  if settings.WASM_BIGINT:
-    default_min_browser_version('Safari', 150000)
-    default_min_browser_version('Edge', 79)
-    default_min_browser_version('Firefox', 68)
-    # Chrome has BigInt since v67 which is less than default min version.
-
-
 def is_ar_file_with_missing_index(archive_file):
   # We parse the archive header outselves because llvm-nm --print-armap is slower and less
   # reliable.
@@ -614,6 +600,11 @@ def get_binaryen_passes():
     passes += ['--safe-heap']
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
+  # sign-ext is enabled by default by llvm.  If the target browser settings don't support
+  # this we lower it away here using a binaryen pass.
+  if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
+    logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
+    passes += ['--signext-lowering']
   if optimizing:
     passes += ['--post-emscripten']
   if optimizing:
@@ -2748,7 +2739,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.WASM_EXCEPTIONS:
       settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
 
-  apply_min_browser_versions()
+  feature_matrix.apply_min_browser_versions()
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
