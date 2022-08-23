@@ -10055,7 +10055,7 @@ int main(void) {
     no = os.path.getsize('no.js')
     create_file('yes.c', '''
       int main(int argc, char **argv) {
-        return argc;
+        return (long)argv[argc-1];
       }
     ''')
     self.run_process([EMCC, 'yes.c', '-O3', '-o', 'yes.js'])
