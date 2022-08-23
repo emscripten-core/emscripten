@@ -1863,16 +1863,37 @@ def get_libs_to_link(args, forced, only_forced):
   if '-nodefaultlibs' in args:
     return libs_to_link
 
+  sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
+
+  def add_sanitizer_libs():
+    if settings.USE_ASAN:
+      force_include.append('libasan_rt')
+      add_library('libasan_rt')
+      add_library('libasan_js')
+    elif settings.USE_LSAN:
+      force_include.append('liblsan_rt')
+      add_library('liblsan_rt')
+
+    if settings.UBSAN_RUNTIME == 1:
+      add_library('libubsan_minimal_rt')
+    elif settings.UBSAN_RUNTIME == 2:
+      add_library('libubsan_rt')
+
+    if settings.USE_LSAN or settings.USE_ASAN:
+      add_library('liblsan_common_rt')
+
+    if sanitize:
+      add_library('libsanitizer_common_rt')
+
   if only_forced:
     add_library('libcompiler_rt')
+    add_sanitizer_libs()
     return libs_to_link
 
   if settings.AUTO_NATIVE_LIBRARIES:
     add_library('libGL')
     add_library('libal')
     add_library('libhtml5')
-
-  sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
   # JS math must come before anything else, so that it overrides the normal
   # libc math.
@@ -1905,25 +1926,6 @@ def get_libs_to_link(args, forced, only_forced):
     if settings.WASM_EXCEPTIONS:
       add_library('libunwind')
 
-  if settings.USE_ASAN:
-    force_include.append('libasan_rt')
-    add_library('libasan_rt')
-    add_library('libasan_js')
-  elif settings.USE_LSAN:
-    force_include.append('liblsan_rt')
-    add_library('liblsan_rt')
-
-  if settings.UBSAN_RUNTIME == 1:
-    add_library('libubsan_minimal_rt')
-  elif settings.UBSAN_RUNTIME == 2:
-    add_library('libubsan_rt')
-
-  if settings.USE_LSAN or settings.USE_ASAN:
-    add_library('liblsan_common_rt')
-
-  if sanitize:
-    add_library('libsanitizer_common_rt')
-
   if settings.PROXY_POSIX_SOCKETS:
     add_library('libsockets_proxy')
   else:
@@ -1935,6 +1937,7 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
 
+  add_sanitizer_libs()
   return libs_to_link
 
 
