@@ -1852,7 +1852,7 @@ HandleSignalMode GetHandleSignalMode(int signum) {
   return result;
 }
 
-#if !SANITIZER_GO
+#if !SANITIZER_GO && !SANITIZER_EMSCRIPTEN
 void *internal_start_thread(void *(*func)(void *arg), void *arg) {
   if (&real_pthread_create == 0)
     return nullptr;

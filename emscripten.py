@@ -679,7 +679,9 @@ def make_export_wrappers(exports, delay_assignment):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if settings.ASSERTIONS and not name.startswith('emscripten_stack_'):
+    # Likewise `__trap` can occur before the runtime is initialized since it is used in
+    # abort.
+    if settings.ASSERTIONS and not name.startswith('emscripten_stack_') and name != '__trap':
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:

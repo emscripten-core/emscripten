@@ -3390,6 +3390,7 @@ Var: 42
     self.do_run(src, '100\n200\n13\n42\n', force_c=True)
 
   @needs_dylink
+  @no_sanitize('contains ODR violation')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('liblib.c', r'''
@@ -3467,6 +3468,19 @@ Var: 42
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
 
+    self.do_core_test('test_dlfcn_self.c')
+
+    # check that we only export relevant things.
+    # disable this in WasmFS as it adds a bunch of additional exports for its
+    # own purposes internally TODO: when we focus on code size, we'll likely
+    # want to look at this
+    if self.get_setting('WASMFS'):
+      return
+
+    # sanitizers add a lot of extra symbols
+    if is_sanitizing(self.emcc_args):
+      return
+
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
@@ -3475,19 +3489,12 @@ Var: 42
       data_exports = [d.split()[1].strip('"') for d in data_exports]
       return data_exports
 
-    self.do_core_test('test_dlfcn_self.c')
-
-    # check that we only export relevant things.
-    # disable this in WasmFS as it adds a bunch of additional exports for its
-    # own purposes internally TODO: when we focus on code size, we'll likely
-    # want to look at this
-    if not self.get_setting('WASMFS'):
-      data_exports = get_data_exports('test_dlfcn_self.wasm')
-      # Certain exports are removed by wasm-emscripten-finalize, but this
-      # tool is not run in all configurations, so ignore these exports.
-      data_exports = [d for d in data_exports if d not in ('__start_em_asm', '__stop_em_asm')]
-      data_exports = '\n'.join(sorted(data_exports)) + '\n'
-      self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
+    data_exports = get_data_exports('test_dlfcn_self.wasm')
+    # Certain exports are removed by wasm-emscripten-finalize, but this
+    # tool is not run in all configurations, so ignore these exports.
+    data_exports = [d for d in data_exports if d not in ('__start_em_asm', '__stop_em_asm')]
+    data_exports = '\n'.join(sorted(data_exports)) + '\n'
+    self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
   @needs_dylink
   def test_dlfcn_unique_sig(self):
@@ -3741,7 +3748,7 @@ ok
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
-    self.do_runf(test_file('dlmalloc_proxy.c'), '*294,153*')
+    self.do_runf(test_file('dlmalloc_proxy.c'), '*293,153*')
 
   @needs_dylink
   def test_dlfcn_longjmp(self):
@@ -4121,6 +4128,7 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_dylink_safe_heap(self):
     self.set_setting('SAFE_HEAP')
     self.do_basic_dylink_test()
@@ -4543,6 +4551,8 @@ res64 - external 64\n''', header='''\
         temp[1] = 'x';
         puts(ret);
         printf("pow_two: %d.\n", (int)pow_two(5.9));
+        free(ret);
+        free(temp);
         return 0;
       }
     ''', side=r'''
@@ -4744,6 +4754,8 @@ res64 - external 64\n''', header='''\
           cout << "KO" << endl;
         }
 
+        delete base;
+        delete derived;
         return 0;
       }
     ''', side=r'''

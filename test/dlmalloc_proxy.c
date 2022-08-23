@@ -43,9 +43,10 @@ void unget_lib() {
 int main() {
   int n = 0, total = 0, l = 0;
   void *allocs[50];
-  allocs[10] = malloc(10); // pull in real malloc
+  allocs[n++] = malloc(10); // pull in real malloc
   for (int i = 0; i < 1000; i++) {
     //printf("%d: total ever %d MB, current MB %d, total libs %d\n", i, total, n, l);
+    assert(n < 50);
     if (i % 5 == 0) {
       if (handles < 10) {
         get_lib();
@@ -59,10 +60,10 @@ int main() {
       if (handles > 0) {
         if (n < 10) {
           if (i % 2 == 0) {
-            //printf("alloc\n");
+            //printf("%d: alloc\n", i);
             allocs[n++] = mallocproxy(1024*1024);
           } else {
-            //printf("real alloc\n");
+            //printf("%d: real alloc\n", i);
             allocs[n++] = malloc(1024*1024);
           }
           total++;
