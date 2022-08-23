@@ -58,7 +58,7 @@ void* _wasmfs_read_file(char* path) {
 }
 
 // Writes to a file, possibly creating it, and returns the number of bytes
-// written successfully.
+// written successfully. If the file already exists, appends to it.
 int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto parsedParent = path::parseParent(pathname);
   if (parsedParent.getError()) {
@@ -87,7 +87,9 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
     return 0;
   }
 
-  auto result = dataFile->locked().write((uint8_t*)data, data_size, 0);
+  auto lockedFile = dataFile->locked();
+  auto offset = lockedFile.getSize();
+  auto result = lockedFile.write((uint8_t*)data, data_size, offset);
   if (result != __WASI_ERRNO_SUCCESS) {
     return 0;
   }

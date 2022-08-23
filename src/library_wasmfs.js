@@ -140,6 +140,11 @@ mergeInto(LibraryManager.library, {
     writeFile: (path, data) => {
       return withStackSave(() => {
         var pathBuffer = allocateUTF8OnStack(path);
+        if (typeof data == 'string') {
+          var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
+          var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+          data = buf.slice(0, actualNumBytes);
+        }
         var dataBuffer = _malloc(data.length);
 #if ASSERTIONS
         assert(dataBuffer);
