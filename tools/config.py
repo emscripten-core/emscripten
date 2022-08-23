@@ -163,9 +163,6 @@ def parse_config_file():
     if not globals()[key]:
       exit_with_error('%s is set to empty value in %s', key, EM_CONFIG)
 
-  if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', EM_CONFIG)
-
   normalize_config_settings()
 
 
