@@ -650,6 +650,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
+      assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
     if output_basename:
