@@ -5843,6 +5843,7 @@ main( int argv, char ** argc ) {
   def test_fs_writeFile(self):
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
+  @no_wasm64('MEMORY64 does not yet support WasmFS')
   def test_fs_writeFile_wasmfs(self):
     self.emcc_args += ['-sWASMFS']
     self.emcc_args += ['-sFORCE_FILESYSTEM']
