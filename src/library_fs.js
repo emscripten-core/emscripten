@@ -1258,7 +1258,7 @@ FS.staticInit();` +
 #if CAN_ADDRESS_2GB
       offset >>>= 0;
 #endif
-      if (!stream || !stream.stream_ops.msync) {
+      if (!stream.stream_ops.msync) {
         return 0;
       }
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
