@@ -610,6 +610,11 @@ def get_binaryen_passes():
   # previously used.
   if optimizing and not settings.SIDE_MODULE:
     passes += ['--zero-filled-memory']
+  # LLVM output always has immutable initial table contents: the table is
+  # fixed and may only be appended to at runtime (that is true even in
+  # relocatable mode)
+  if optimizing:
+    passes += ['--pass-arg=directize-initial-contents-immutable']
 
   if settings.BINARYEN_EXTRA_PASSES:
     # BINARYEN_EXTRA_PASSES is comma-separated, and we support both '-'-prefixed and
