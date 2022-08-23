@@ -140,7 +140,13 @@ mergeInto(LibraryManager.library, {
     writeFile: (path, data) => {
       return withStackSave(() => {
         var pathBuffer = allocateUTF8OnStack(path);
-        var dataBuffer = _malloc(data);
+        var dataBuffer = _malloc(data.length);
+#if ASSERTIONS
+        assert(dataBuffer);
+#endif
+        for (var i = 0; i < data.length; i++) {
+          {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
+        }
         var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
         _free(dataBuffer);
         return ret;
