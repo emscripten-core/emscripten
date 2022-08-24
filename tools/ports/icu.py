@@ -15,13 +15,16 @@ libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
 libname_libicu_i18n = 'libicu_i18n'
 
-
 def needed(settings):
   return settings.USE_ICU
 
 
 def get_lib_name(base_name, settings):
   return base_name + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+
+
+def get_variants():
+  return {'icu-mt': {'USE_PTHREADS': 1}}
 
 
 def get(ports, settings, shared):

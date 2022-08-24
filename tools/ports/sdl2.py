@@ -18,6 +18,10 @@ def get_lib_name(settings):
   return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
+def get_variants():
+  return {'sdl2-mt': {'USE_PTHREADS': 1}}
+
+
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)

@@ -22,6 +22,10 @@ def get_lib_name(settings):
   return 'libpng' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
+def get_variants():
+  return {'libpng-mt': {'USE_PTHREADS': 1}}
+
+
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
   ports.fetch_project('libpng', 'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)

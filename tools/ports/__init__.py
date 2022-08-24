@@ -6,6 +6,7 @@
 import logging
 import hashlib
 import os
+import re
 import shutil
 import sys
 import glob
@@ -18,6 +19,10 @@ from tools.settings import settings
 ports = []
 
 ports_by_name = {}
+
+# Variant builds that we want to support for certain ports
+# {variant_name: (port_name, extra_settings)}
+port_variants = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -42,6 +47,14 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
+    # port variants (default: no variants)
+    if not hasattr(port, 'get_variants'):
+      port.get_variants = lambda: {}
+
+    for variant, extra_settings in port.get_variants().items():
+      if variant in port_variants:
+        utils.exit_with_error('duplicate port variant: %s' % variant)
+      port_variants[variant] = (port.name, extra_settings)
 
   for dep in port.deps:
     if dep not in ports_by_name:

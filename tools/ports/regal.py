@@ -19,6 +19,10 @@ def get_lib_name(settings):
   return 'libregal' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
+def get_variants():
+  return {'regal-mt': {'USE_PTHREADS': 1}}
+
+
 def get(ports, settings, shared):
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)

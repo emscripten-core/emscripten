@@ -15,6 +15,13 @@ def needed(settings):
   return settings.USE_SDL_IMAGE == 2
 
 
+def get_variants():
+  return {
+    'sdl2_image_jpg':  {'SDL2_IMAGE_FORMATS': ["jpg"]},
+    'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
+  }
+
+
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'

@@ -78,6 +78,10 @@ def get_lib_name(settings):
   return 'libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
+def get_variants():
+  return {'harfbuzz-mt': {'USE_PTHREADS': 1}}
+
+
 def get(ports, settings, shared):
   # Harfbuzz only published `.xz` packages, but not all python builds support
   # unpacking lzma archives, so we mirror a `.gz` version:

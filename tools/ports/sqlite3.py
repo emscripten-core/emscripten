@@ -24,6 +24,10 @@ def get_lib_name(settings):
   return 'libsqlite3' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
+def get_variants():
+  return {'sqlite3-mt': {'USE_PTHREADS': 1}}
+
+
 def get(ports, settings, shared):
   release = f'sqlite-amalgamation-{VERSION[0]}{VERSION[1]:02}{VERSION[2]:02}00'
   # TODO: Fetch the file from an emscripten-hosted mirror.
