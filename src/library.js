@@ -2292,9 +2292,9 @@ mergeInto(LibraryManager.library, {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
-  // We use builtin_malloc and builtin_free here because otherwise lsan will
-  // report the last returned string as a leak.
-  emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
+  // Mark as `noleakcheck` otherwise lsan will report the last returned string
+  // as a leak.
+  emscripten_run_script_string__noleakcheck: true,
   emscripten_run_script_string__sig: 'pp',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
@@ -2305,9 +2305,9 @@ mergeInto(LibraryManager.library, {
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _emscripten_builtin_free(me.buffer);
+      if (me.bufferSize) _free(me.buffer);
       me.bufferSize = len+1;
-      me.buffer = _emscripten_builtin_malloc(me.bufferSize);
+      me.buffer = _malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
@@ -2606,7 +2606,7 @@ mergeInto(LibraryManager.library, {
 
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
-  emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
+  emscripten_get_compiler_setting__noleakcheck: true,
   emscripten_get_compiler_setting__sig: 'pp',
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
@@ -2619,7 +2619,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    cache[name] = _emscripten_builtin_malloc(ret.length + 1);
+    cache[name] = _malloc(ret.length + 1);
     stringToUTF8(ret + '', cache[name], ret.length + 1);
     return cache[name];
 #else
