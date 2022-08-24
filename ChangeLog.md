@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.20 (in development)
+3.1.21 (in development)
 -----------------------
+
+3.1.20 - 08/24/2022
+-------------------
 - The `getTempRet0`/`setTempRet0` helper functions are now implemented directly
   in WebAssembly, rather than supplied by the JS host.  This simplifies the
   wasm/JS interface.  These function are no longer exported in all cases.  If
