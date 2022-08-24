@@ -3806,7 +3806,7 @@ pre 7
 pre 8
 pre 9
 out!
-''', force_c=True)
+''')
 
   # TODO: make this work. need to forward tempRet0 across modules
   # TODO Enable @with_both_eh_sjlj (the test is not working now)
@@ -4025,7 +4025,7 @@ ok
     if header:
       create_file('header.h', header)
 
-    return self.dylink_testf(main, side, expected, force_c, main_module=main_module, **kwargs)
+    return self.dylink_testf(main, side, expected, main_module=main_module, **kwargs)
 
   def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=None,
                    main_module=2,
@@ -6736,11 +6736,7 @@ void* operator new(size_t size) {
       self.set_setting('USE_PTHREADS')
       self.setup_node_pthreads()
     self.emcc_args += ['-sUSE_SQLITE3']
-    self.do_run_from_file(
-      test_file('sqlite/benchmark.c'),
-      test_file('sqlite/benchmark.txt'),
-      force_c=True
-    )
+    self.do_run_in_out_file_test(test_file('sqlite/benchmark.c'))
 
   @needs_make('mingw32-make')
   @is_slow_test
