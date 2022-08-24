@@ -59,7 +59,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/param.h>
-#if !SANITIZER_SOLARIS
+#if !SANITIZER_SOLARIS && !SANITIZER_EMSCRIPTEN
 #include <sys/ptrace.h>
 #endif
 #include <sys/resource.h>

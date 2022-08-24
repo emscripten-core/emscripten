@@ -34,6 +34,30 @@ exclude_dirs = (
   'arm', 'x32', 'sh', 'i386', 'x86_64', 'aarch64', 'riscv64',
   's390x', 'mips', 'mips64', 'mipsn32', 'powerpc', 'powerpc64',
   'm68k', 'microblaze', 'or1k')
+exclude_files = (
+  'sendfile.h',
+  'auxv.h',
+  'personality.h',
+  'klog.h',
+  'fanotify.h',
+  'vt.h',
+  'swap.h',
+  'reboot.h',
+  'quota.h',
+  'kd.h',
+  'io.h',
+  'fsuid.h',
+  'epoll.h',
+  'inotify.h',
+  'timerfd.h',
+  'timex.h',
+  'cachectl.h',
+  'soundcard.h',
+  'eventfd.h',
+  'signalfd.h',
+  'ptrace.h',
+  'prctl.h',
+)
 
 
 if len(sys.argv) > 1:
@@ -43,7 +67,7 @@ else:
 
 
 def should_ignore(name):
-  return name in exclude_dirs or name[0] == '.'
+  return name in exclude_dirs or name[0] == '.' or name in exclude_files
 
 
 def ignore(dirname, contents):

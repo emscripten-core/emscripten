@@ -25,6 +25,9 @@ See docs/process.md for more on how version tagging works.
   wasm/JS interface.  These function are no longer exported in all cases.  If
   your code directly calls these functions from JS, you can add them to
   `-sEXPORTED_RUNTIME_METHODS`.
+- Several linux-specific headers were removed from the emscripten sysroot. None
+  of the functionality in these headers was ever supported by emscripten. For
+  example `sys/soundcard.h` and `sys/ptrace.h`. (#17704)
 
 3.1.19 - 08/17/2022
 -------------------
