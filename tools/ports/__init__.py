@@ -6,7 +6,6 @@
 import logging
 import hashlib
 import os
-import re
 import shutil
 import sys
 import glob
