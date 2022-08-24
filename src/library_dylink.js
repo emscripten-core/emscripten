@@ -286,17 +286,22 @@ var LibraryDylink = {
   // are loaded. That has to happen before the main program can start to run,
   // because the main program needs those linked in before it runs (so we can't
   // use normally malloc from the main program to do these allocations).
-
+  //
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
+  $getMemory__noleakcheck: true,
   $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
     err("getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
 #endif
-    if (runtimeInitialized)
+    if (runtimeInitialized) {
+      // Currently we don't support freeing of static data when modules are
+      // unloaded via dlclose.  This function is tagged as `noleakcheck` to
+      // avoid having this reported as leak.
       return zeroMemory(_malloc(size), size);
+    }
     var ret = ___heap_base;
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
