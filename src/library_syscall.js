@@ -71,6 +71,16 @@ var SyscallsLibrary = {
       return 0;
     },
     doMsync: function(addr, stream, len, flags, offset) {
+      if (!FS.isFile(stream.node.mode)) {
+        throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+      }
+      if (flags & {{{ cDefine('MAP_PRIVATE') }}}) {
+        // MAP_PRIVATE calls need not to be synced back to underlying fs
+        return 0;
+      }
+#if CAN_ADDRESS_2GB
+      addr >>>= 0;
+#endif
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
@@ -139,9 +149,6 @@ var SyscallsLibrary = {
   ],
   _munmap_js__sig: 'vppiiip',
   _munmap_js: function(addr, len, prot, flags, fd, offset) {
-#if CAN_ADDRESS_2GB
-    addr >>>= 0;
-#endif
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefine('PROT_WRITE') }}}) {
@@ -579,9 +586,6 @@ var SyscallsLibrary = {
   },
   _msync_js__sig: 'ippii',
   _msync_js: function(addr, len, flags, fd) {
-#if CAN_ADDRESS_2GB
-    addr >>>= 0;
-#endif
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
     return 0;
   },
