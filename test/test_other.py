@@ -19,7 +19,6 @@ import shutil
 import subprocess
 import sys
 import time
-import tempfile
 import unittest
 from pathlib import Path
 from subprocess import PIPE, STDOUT
@@ -51,21 +50,6 @@ emprofile = shared.bat_suffix(path_from_root('emprofile'))
 emstrip = shared.bat_suffix(path_from_root('emstrip'))
 emsymbolizer = shared.bat_suffix(path_from_root('emsymbolizer'))
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
-
-
-class temp_directory():
-  def __init__(self, dirname):
-    self.dir = dirname
-
-  def __enter__(self):
-    self.directory = tempfile.mkdtemp(prefix='emtest_temp_', dir=self.dir)
-    self.prev_cwd = os.getcwd()
-    os.chdir(self.directory)
-    print('temp_directory: ' + self.directory)
-    return self.directory
-
-  def __exit__(self, type, value, traceback):
-    os.chdir(self.prev_cwd)
 
 
 def uses_canonical_tmp(func):
@@ -701,7 +685,9 @@ f.close()
         continue
 
       cmakelistsdir = test_file('cmake', test_dir)
-      with temp_directory(self.get_dir()) as tempdirname:
+      builddir = 'out_' + generator.replace(' ', '_').lower()
+      os.mkdir(builddir)
+      with utils.chdir(builddir):
         # Run Cmake
         cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -717,11 +703,11 @@ f.close()
         if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
         self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
-        self.assertExists(tempdirname + '/' + output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
+        self.assertExists(output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % output_file)
 
         # Run through node, if CMake produced a .js file.
         if output_file.endswith('.js'):
-          ret = self.run_process(config.NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
+          ret = self.run_process(config.NODE_JS + [os.path.abspath(output_file)], stdout=PIPE).stdout
           self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
 
         if test_dir == 'post_build':
@@ -733,18 +719,18 @@ f.close()
   # and place them to cmake/Modules/Platform/Emscripten.cmake.
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   def test_cmake_compile_features(self):
-    with temp_directory(self.get_dir()):
-      cmd = ['cmake',
-             '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_C_FLAGS=--target=' + clang_native.get_native_triple(),
-             '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, '-DCMAKE_CXX_FLAGS=--target=' + clang_native.get_native_triple(),
-             test_file('cmake/stdproperty')]
-      print(str(cmd))
-      native_features = self.run_process(cmd, stdout=PIPE).stdout
+    os.mkdir('build_native')
+    cmd = ['cmake',
+           '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_C_FLAGS=--target=' + clang_native.get_native_triple(),
+           '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, '-DCMAKE_CXX_FLAGS=--target=' + clang_native.get_native_triple(),
+           test_file('cmake/stdproperty')]
+    print(str(cmd))
+    native_features = self.run_process(cmd, stdout=PIPE, cwd='build_native').stdout
 
-    with temp_directory(self.get_dir()):
-      cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')]
-      print(str(cmd))
-      emscripten_features = self.run_process(cmd, stdout=PIPE).stdout
+    os.mkdir('build_emcc')
+    cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')]
+    print(str(cmd))
+    emscripten_features = self.run_process(cmd, stdout=PIPE, cwd='build_emcc').stdout
 
     native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
