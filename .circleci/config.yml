@@ -98,7 +98,7 @@ commands:
           name: clear cache
           command: |
             ./emcc --clear-cache
-  build-libs-and-freeze:
+  build-libs:
     description: "Build all libraries, and freeze the cache"
     steps:
       - pip-install
@@ -126,10 +126,6 @@ commands:
           command: |
             ./embuilder build MINIMAL --pic --lto
             ./test/runner test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
@@ -169,14 +165,28 @@ commands:
           command: |
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
+  freeze-cache:
+    description: "Freeze emscripten cache"
+    steps:
+      - run:
+          name: Add EM_FROZEN_CACHE to bash env
+          command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
   run-tests-linux:
     description: "Runs emscripten tests"
     parameters:
       test_targets:
         description: "Test suites to run"
         type: string
+      frozen_cache:
+        description: "Run with cache frozen"
+        type: boolean
+        default: true
     steps:
       - prepare-for-tests
+      - when:
+          condition: << parameters.frozen_cache >>
+          steps:
+            - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
   test-firefox:
@@ -220,7 +230,7 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
@@ -249,7 +259,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
@@ -301,6 +311,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
+          frozen_cache: false
           test_targets: "sanity"
   build-linux:
     executor: bionic
@@ -346,7 +357,7 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
-      - build-libs-and-freeze
+      - build-libs
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
@@ -365,10 +376,10 @@ jobs:
       EMTEST_BROWSER: "node"
     steps:
       - run-tests-linux:
-          # also add a few asan tests and a single test of EMTEST_BROWSER=node
-          # also add a corez test of dynamic linking + forced syslibs
+          # also run a few asan tests.  Run these with frozen_cache disabled
+          # since we don't pre-build all the asan libraries.
+          frozen_cache: false
           test_targets: "
-            core2
             asan.test_stat
             asan.test_float_builtins
             asan.test_embind*
@@ -377,8 +388,16 @@ jobs:
             asan.test_pthread*
             asan.test_dyncall_specific_minimal_runtime
             asan.test_async_hello
+            asan.test_dlfcn_basic
             lsan.test_stdio_locking
-            lsan.test_pthread_create
+            lsan.test_dlfcn_basic
+            lsan.test_pthread_create"
+      - freeze-cache
+      - run-tests:
+          # also run a single test of EMTEST_BROWSER=node.
+          # also run a corez test of dynamic linking + forced syslibs.
+          test_targets: "
+            core2
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
   test-core3:
@@ -429,6 +448,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
+          frozen_cache: false
           test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
   test-other:
     executor: bionic
@@ -478,12 +498,14 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run-tests:
           test_targets: "
+            core0.test_dylink_basics
             core2.test_sse1
             core2.test_ccall
             core2.test_utf16
             core2.test_em_asm_unicode
             core2.test_em_js
             core2.test_em_js_pthreads
+            core2.test_unicode_js_library
             other.test_dlmalloc_modes
             other.test_c_preprocessor
             other.test_prejs_unicode

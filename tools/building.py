@@ -630,7 +630,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   original_filename = filename
   if extra_info is not None:
     temp_files = shared.get_temp_files()
-    temp = temp_files.get('.js').name
+    temp = temp_files.get('.js', prefix='emcc_acorn_info_').name
     shutil.copyfile(filename, temp)
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
@@ -809,7 +809,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-    exports_file = shared.get_temp_files().get('_module_exports.js')
+    exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
 
@@ -1065,8 +1065,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   for item in graph:
     if 'import' in item:
       import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
-  temp = temp_files.get('.txt').name
-  utils.write_file(temp, json.dumps(graph))
+  temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
+  utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
@@ -1562,3 +1562,18 @@ def save_intermediate(src, dst):
     dst = os.path.join(CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)
+
+
+def js_legalization_pass_flags():
+  flags = []
+  if settings.RELOCATABLE:
+    # When builing in relocatable mode, we also want access the original
+    # non-legalized wasm functions (since wasm modules can and do link to
+    # the original, non-legalized, functions).
+    flags += ['--pass-arg=legalize-js-interface-export-originals']
+  if not settings.SIDE_MODULE:
+    # Unless we are building a side module the helper functions should be
+    # assumed to be defined and exports within the module, otherwise binaryen
+    # assumes they are imports.
+    flags += ['--pass-arg=legalize-js-interface-exported-helpers']
+  return flags

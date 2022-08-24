@@ -2223,7 +2223,6 @@ void *getBindBuffer() {
     shutil.copyfile(test_file('screenshot.dds'), 'screenshot.dds')
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
-  @no_chrome('see #7117')
   @requires_graphics_hardware
   def test_aniso(self):
     shutil.copyfile(test_file('water.dds'), 'water.dds')

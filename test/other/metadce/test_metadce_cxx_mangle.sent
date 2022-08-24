@@ -17,7 +17,6 @@ fd_close
 fd_read
 fd_seek
 fd_write
-getTempRet0
 invoke_diii
 invoke_fiii
 invoke_i
@@ -40,5 +39,4 @@ invoke_viiii
 invoke_viiiiiii
 invoke_viiiiiiiiii
 invoke_viiiiiiiiiiiiiii
-setTempRet0
 strftime_l

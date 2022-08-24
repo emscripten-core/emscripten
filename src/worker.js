@@ -273,7 +273,7 @@ self.onmessage = (e) => {
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
-        Module['__emscripten_thread_exit'](-1/*PTHREAD_CANCELED*/);
+        Module['__emscripten_thread_exit']({{{ cDefine('PTHREAD_CANCELED') }}});
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
@@ -289,8 +289,10 @@ self.onmessage = (e) => {
       err(e.data);
     }
   } catch(ex) {
+#if ASSERTIONS
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex && ex.stack) err(ex.stack);
+#endif
     if (Module['__emscripten_thread_crashed']) {
       Module['__emscripten_thread_crashed']();
     }

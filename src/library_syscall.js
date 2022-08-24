@@ -29,8 +29,7 @@ var SyscallsLibrary = {
       if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
         dir = FS.cwd();
       } else {
-        var dirstream = FS.getStream(dirfd);
-        if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+        var dirstream = SYSCALLS.getStreamFromFD(dirfd);
         dir = dirstream.path;
       }
       if (path.length == 0) {
@@ -72,6 +71,16 @@ var SyscallsLibrary = {
       return 0;
     },
     doMsync: function(addr, stream, len, flags, offset) {
+      if (!FS.isFile(stream.node.mode)) {
+        throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+      }
+      if (flags & {{{ cDefine('MAP_PRIVATE') }}}) {
+        // MAP_PRIVATE calls need not to be synced back to underlying fs
+        return 0;
+      }
+#if CAN_ADDRESS_2GB
+      addr >>>= 0;
+#endif
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
@@ -100,6 +109,7 @@ var SyscallsLibrary = {
       return ret;
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
+    // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD: function(fd) {
       var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
@@ -119,8 +129,7 @@ var SyscallsLibrary = {
   ],
   _mmap_js: function(len, prot, flags, fd, off, allocated) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = FS.getStream(fd);
-    if (!stream) return -{{{ cDefine('EBADF') }}};
+    var stream = SYSCALLS.getStreamFromFD(fd);
     var res = FS.mmap(stream, len, off, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
@@ -140,17 +149,12 @@ var SyscallsLibrary = {
   ],
   _munmap_js__sig: 'vppiiip',
   _munmap_js: function(addr, len, prot, flags, fd, offset) {
-#if CAN_ADDRESS_2GB
-    addr >>>= 0;
-#endif
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = FS.getStream(fd);
-    if (stream) {
-      if (prot & {{{ cDefine('PROT_WRITE') }}}) {
-        SYSCALLS.doMsync(addr, stream, len, flags, offset);
-      }
-      FS.munmap(stream);
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    if (prot & {{{ cDefine('PROT_WRITE') }}}) {
+      SYSCALLS.doMsync(addr, stream, len, flags, offset);
     }
+    FS.munmap(stream);
 #endif
   },
 
@@ -543,8 +547,7 @@ var SyscallsLibrary = {
         continue;  // index isn't in the set
       }
 
-      var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+      var stream = SYSCALLS.getStreamFromFD(fd);
 
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
@@ -583,10 +586,7 @@ var SyscallsLibrary = {
   },
   _msync_js__sig: 'ippii',
   _msync_js: function(addr, len, flags, fd) {
-#if CAN_ADDRESS_2GB
-    addr >>>= 0;
-#endif
-    SYSCALLS.doMsync(addr, FS.getStream(fd), len, flags, 0);
+    SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
     return 0;
   },
   __syscall_fdatasync: function(fd) {

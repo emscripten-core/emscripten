@@ -11,7 +11,6 @@ env.__resumeException
 env.abort
 env.emscripten_memcpy_big
 env.emscripten_resize_heap
-env.getTempRet0
 env.invoke_diii
 env.invoke_fiii
 env.invoke_i
@@ -32,7 +31,6 @@ env.invoke_viiii
 env.invoke_viiiiiii
 env.invoke_viiiiiiiiii
 env.invoke_viiiiiiiiiiiiiii
-env.setTempRet0
 env.strftime_l
 wasi_snapshot_preview1.environ_get
 wasi_snapshot_preview1.environ_sizes_get

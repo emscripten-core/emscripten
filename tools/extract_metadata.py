@@ -17,7 +17,7 @@ def skip_function_header(module):
     num_local_decls -= 1
 
 
-def is_wrapper_function(module, function):
+def is_orig_main_wrapper(module, function):
   module.seek(function.offset)
   skip_function_header(module)
   end = function.offset + function.size
@@ -29,11 +29,15 @@ def is_wrapper_function(module, function):
       print(e)
       return False
     if opcode == OpCode.CALL:
-      callee = module.read_uleb()  # noqa
-    elif opcode == OpCode.END:
-      break
+      module.read_uleb()  # callee
+    elif opcode in (OpCode.LOCAL_GET, OpCode.LOCAL_SET):
+      module.read_uleb()  # local index
+    elif opcode in (OpCode.END, OpCode.RETURN):
+      pass
     else:
+      # Any other opcodes and we assume this not a simple wrapper
       return False
+
   assert opcode == OpCode.END
   return True
 
@@ -199,17 +203,20 @@ def get_asm_strings(module, export_map):
 
 def get_main_reads_params(module, export_map):
   if settings.STANDALONE_WASM:
-    return 1
+    return True
 
   main = export_map.get('main') or export_map.get('__main_argc_argv')
   if not main or main.kind != webassembly.ExternType.FUNC:
-    return 0
+    return False
 
   main_func = module.get_function(main.index)
-  if is_wrapper_function(module, main_func):
-    return 0
-  else:
-    return 1
+  if is_orig_main_wrapper(module, main_func):
+    # If main is simple wrapper function then we know that __orginial_main
+    # doesn't read arguments.
+    return False
+
+  # By default assume params are read
+  return True
 
 
 def get_named_globals(module, exports):

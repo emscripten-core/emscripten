@@ -236,6 +236,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
+// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
@@ -1697,6 +1698,7 @@ var FETCH = false;
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.
 // [link]
+// [experimental]
 var WASMFS = false;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
@@ -1919,6 +1921,7 @@ var PRINTF_LONG_DOUBLE = false;
 // if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
 // which avoids trampling a C file).
 // [link]
+// [experimental]
 var WASM2C = false;
 
 // Experimental sandboxing mode, see
@@ -1927,6 +1930,7 @@ var WASM2C = false;
 //  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
 //  * mask: Masks loads and stores.
 //  * none: No sandboxing at all.
+// [experimental]
 var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
@@ -1971,6 +1975,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.
 // [link]
+// [experimental]
 var PURE_WASI = false;
 
 // Set to 1 to define the WebAssembly.Memory object outside of the wasm
