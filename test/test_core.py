@@ -7987,8 +7987,6 @@ void* operator new(size_t size) {
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_hello(self):
-    if self.get_setting('ASYNCIFY') == 2:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/17532')
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
 

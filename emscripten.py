@@ -141,6 +141,9 @@ def update_settings_glue(wasm_file, metadata):
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.ASYNCIFY == 2:
+    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+
   if settings.USE_PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
