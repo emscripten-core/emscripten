@@ -174,8 +174,6 @@ def also_with_wasmfs(func):
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
-    if self.get_setting('MEMORY64'):
-      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
     self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
@@ -189,8 +187,6 @@ def also_with_wasmfs_js(func):
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
-    if self.get_setting('MEMORY64'):
-      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
@@ -5855,7 +5851,6 @@ main( int argv, char ** argc ) {
   def test_fs_writeFile(self):
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  @no_wasm64('MEMORY64 does not yet support WasmFS')
   def test_fs_writeFile_wasmfs(self):
     self.emcc_args += ['-sWASMFS']
     self.emcc_args += ['-sFORCE_FILESYSTEM']

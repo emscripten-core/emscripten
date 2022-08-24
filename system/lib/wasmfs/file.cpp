@@ -13,7 +13,7 @@
 extern "C" {
 size_t _wasmfs_get_preloaded_file_size(uint32_t index);
 
-size_t _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
+void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 }
 
 namespace wasmfs {
