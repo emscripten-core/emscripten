@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <atomic>
+
 #include "backend.h"
 #include "memory_backend.h"
 #include "support.h"
@@ -66,34 +68,27 @@ int _wasmfs_jsimpl_get_size(js_index_t backend, js_index_t index);
 namespace wasmfs {
 
 class JSImplFile : public DataFile {
-  js_index_t getBackendIndex() {
-    static_assert(sizeof(backend_t) == sizeof(js_index_t), "TODO: wasm64");
-    return js_index_t(getBackend());
-  }
+  static std::atomic<js_index_t> next_index;
+  js_index_t js_index;
 
-  js_index_t getFileIndex() {
-    static_assert(sizeof(this) == sizeof(js_index_t), "TODO: wasm64");
-    return js_index_t(this);
-  }
+  js_index_t getBackendIndex();
 
   // TODO: Notify the JS about open and close events?
   int open(oflags_t) override { return 0; }
   void close() override {}
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return _wasmfs_jsimpl_write(
-      getBackendIndex(), getFileIndex(), buf, len, offset);
+    return _wasmfs_jsimpl_write(getBackendIndex(), js_index, buf, len, offset);
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    return _wasmfs_jsimpl_read(
-      getBackendIndex(), getFileIndex(), buf, len, offset);
+    return _wasmfs_jsimpl_read(getBackendIndex(), js_index, buf, len, offset);
   }
 
   void flush() override {}
 
   size_t getSize() override {
-    return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());
+    return _wasmfs_jsimpl_get_size(getBackendIndex(), js_index);
   }
 
   void setSize(size_t size) override {
@@ -101,15 +96,23 @@ class JSImplFile : public DataFile {
   }
 
 public:
-  JSImplFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
-    _wasmfs_jsimpl_alloc_file(getBackendIndex(), getFileIndex());
+  JSImplFile(mode_t mode, backend_t backend)
+    : DataFile(mode, backend), js_index(next_index++) {
+    _wasmfs_jsimpl_alloc_file(getBackendIndex(), js_index);
   }
 
-  ~JSImplFile() { _wasmfs_jsimpl_free_file(getBackendIndex(), getFileIndex()); }
+  ~JSImplFile() { _wasmfs_jsimpl_free_file(getBackendIndex(), js_index); }
 };
 
 class JSImplBackend : public Backend {
+  static std::atomic<js_index_t> next_index;
+  js_index_t js_index;
+
 public:
+  JSImplBackend() : js_index(next_index++) {}
+
+  js_index_t getIndex() { return js_index; }
+
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<JSImplFile>(mode, this);
   }

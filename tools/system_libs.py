@@ -1557,6 +1557,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         path='system/lib/wasmfs',
         filenames=['file.cpp',
                    'file_table.cpp',
+                   'js_impl_backend.cpp',
                    'js_api.cpp',
                    'paths.cpp',
                    'special_files.cpp',

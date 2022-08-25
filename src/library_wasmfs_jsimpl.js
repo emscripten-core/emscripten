@@ -12,14 +12,14 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_jsimpl_alloc_file: function(backend, file) {
 #if ASSERTIONS
-    assert(wasmFS$backends[backend]);
+    assert(wasmFS$backends[backend], 'wasmfs backend not found: ' + backend);
 #endif
     return wasmFS$backends[backend].allocFile(file);
   },
 
   _wasmfs_jsimpl_free_file: function(backend, file) {
 #if ASSERTIONS
-    assert(wasmFS$backends[backend]);
+    assert(wasmFS$backends[backend], 'wasmfs backend not found: ' + backend);
 #endif
     return wasmFS$backends[backend].freeFile(file);
   },
