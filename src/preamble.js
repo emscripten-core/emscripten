@@ -1143,7 +1143,12 @@ function createWasm() {
       return exports;
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
-      return false;
+      #if MODULARIZE
+        // If instantiation fails, reject the module ready promise.
+        readyPromiseReject(e);
+      #else
+        return false;
+      #endif
     }
   }
 
