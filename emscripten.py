@@ -812,6 +812,7 @@ def create_wasm64_wrappers(metadata):
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
+    '_wasmfs_write_file': '_ppp',
   }
 
   wasm64_wrappers = '''

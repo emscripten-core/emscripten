@@ -180,7 +180,7 @@ int _wasmfs_get_preloaded_file_size(int index) { return 0; }
 
 int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
 
-size_t _wasmfs_copy_preloaded_file_data(int index, void* buffer) { return 0; }
+void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {}
 
 void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
 

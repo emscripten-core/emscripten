@@ -44,7 +44,7 @@
 // For a simple example, see js_file_backend.cpp and library_wasmfs_js_file.js
 //
 
-using js_index_t = uint32_t;
+using js_index_t = uintptr_t;
 
 extern "C" {
 // JSImpl API (see below for overview).
