@@ -371,7 +371,7 @@ var LibraryGL = {
       var source = '';
       for (var i = 0; i < count; ++i) {
         var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
-        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? undefined : len);
+        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i64') }}}, len < 0 ? undefined : len);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -1213,7 +1213,7 @@ var LibraryGL = {
       }
       GL.stringCache[name_] = ret;
     }
-    return ret;
+    return BigInt(ret);
   },
 
   $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
@@ -1547,7 +1547,8 @@ var LibraryGL = {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        var heapShift = BigInt(heapAccessShiftForWebGLHeap(heap));
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap.subarray(Number(pixels>>heapShift), Number(pixels>>heapShift) + width*height*4), 0);
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1579,7 +1580,8 @@ var LibraryGL = {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        var heapShift = BigInt(heapAccessShiftForWebGLHeap(heap));
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap.subarray(Number(pixels>>heapShift), (Number(pixels>>heapShift)) + width*height*4), 0);
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1604,7 +1606,8 @@ var LibraryGL = {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
         var heap = heapObjectForWebGLType(type);
-        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        var heapShift = BigInt(heapAccessShiftForWebGLHeap(heap));
+        GLctx.readPixels(x, y, width, height, format, type, heap.subarray(Number(pixels>>heapShift), Number(pixels>>heapShift) + width*height*4), 0);
       }
       return;
     }
@@ -1762,6 +1765,8 @@ var LibraryGL = {
 
   glBufferData__sig: 'viiii',
   glBufferData: function(target, size, data, usage) {
+    data = Number(data);
+    size = Number(size);
 #if LEGACY_GL_EMULATION
     switch (usage) { // fix usages, WebGL 1 only has *_DRAW
       case 0x88E1: // GL_STREAM_READ
@@ -1785,7 +1790,7 @@ var LibraryGL = {
       // not make sense in WebAssembly, so avoid uploading if size is zero. However we must still call bufferData to establish a
       // backing storage of zero bytes.
       if (data && size) {
-        GLctx.bufferData(target, HEAPU8, usage, data, size);
+        GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage, 0, size);
       } else {
         GLctx.bufferData(target, size, usage);
       }
@@ -1801,9 +1806,12 @@ var LibraryGL = {
 
   glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
+    data = Number(data);
+    size = Number(size);
+    offset = Number(offset);
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
+      size && GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size), 0, size);
       return;
     }
 #endif
@@ -2368,12 +2376,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, value>>2, count);
+    count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, value>>2, count);
+      count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count);
       return;
     }
 #endif
@@ -2413,12 +2421,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, value>>2, count*2);
+    count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count*2);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, value>>2, count*2);
+      count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count*2);
       return;
     }
 #endif
@@ -2459,12 +2467,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, value>>2, count*3);
+    count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count*3);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, value>>2, count*3);
+      count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, Number(value>>2n), count*3);
       return;
     }
 #endif
@@ -2506,12 +2514,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, value>>2, count*4);
+    count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32.subarray(Number(value>>2n), Number(value>>2n) + count*4), 0, count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, value>>2, count*4);
+      count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32.subarray(Number(value>>2n), Number(value>>2n) + count*4), 0, count*4);
       return;
     }
 #endif
@@ -2554,12 +2562,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, value>>2, count);
+count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count), 0, count);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, value>>2, count);
+      count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count), 0, count);
       return;
     }
 #endif
@@ -2599,12 +2607,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*2);
+    count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*2), 0, count*2);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*2);
+      count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*2), 0, count*2);
       return;
     }
 #endif
@@ -2645,12 +2653,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*3);
+    count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*3), 0, count*3);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*3);
+      count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*3), 0, count*3);
       return;
     }
 #endif
@@ -2692,12 +2700,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*4);
+    count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*4), 0, count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*4);
+      count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*4), 0, count*4);
       return;
     }
 #endif
@@ -2744,12 +2752,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*4);
+    count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, Number(value>>2n), count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*4);
+      count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, Number(value>>2n), count*4);
       return;
     }
 #endif
@@ -2792,12 +2800,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*9);
+    count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*9), 0, count*9);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*9);
+      count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*9), 0, count*9);
       return;
     }
 #endif
@@ -2845,12 +2853,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*16);
+    count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*16), 0, count*16);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*16);
+      count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32.subarray(Number(value>>2n), Number(value>>2n) + count*16), 0, count*16);
       return;
     }
 #endif
@@ -2934,7 +2942,7 @@ var LibraryGL = {
     assert(v != 0, 'Null pointer passed to glVertexAttrib1fv!');
 #endif
 
-    GLctx.vertexAttrib1f(index, HEAPF32[v>>2]);
+    GLctx.vertexAttrib1f(index, HEAPF32[Number(v>>2n)]);
   },
 
   glVertexAttrib2fv__sig: 'vii',
@@ -2944,7 +2952,7 @@ var LibraryGL = {
     assert(v != 0, 'Null pointer passed to glVertexAttrib2fv!');
 #endif
 
-    GLctx.vertexAttrib2f(index, HEAPF32[v>>2], HEAPF32[v+4>>2]);
+    GLctx.vertexAttrib2f(index, HEAPF32[Number(v>>2n)], HEAPF32[Number(v+4n>>2n)]);
   },
 
   glVertexAttrib3fv__sig: 'vii',
@@ -2954,7 +2962,7 @@ var LibraryGL = {
     assert(v != 0, 'Null pointer passed to glVertexAttrib3fv!');
 #endif
 
-    GLctx.vertexAttrib3f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2]);
+    GLctx.vertexAttrib3f(index, HEAPF32[Number(v>>2n)], HEAPF32[Number(v+4n>>2n)], HEAPF32[Number(v+8n>>2n)]);
   },
 
   glVertexAttrib4fv__sig: 'vii',
@@ -2964,7 +2972,7 @@ var LibraryGL = {
     assert(v != 0, 'Null pointer passed to glVertexAttrib4fv!');
 #endif
 
-    GLctx.vertexAttrib4f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2], HEAPF32[v+12>>2]);
+    GLctx.vertexAttrib4f(index, HEAPF32[Number(v>>2n)], HEAPF32[Number(v+4n>>2n)], HEAPF32[Number(v+8n>>2n)], HEAPF32[Number(v+12n>>2n)]);
   },
 
   glGetAttribLocation__sig: 'iii',
@@ -3724,6 +3732,8 @@ var LibraryGL = {
 
   glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
+    ptr = Number(ptr);
+    stride = Number(stride);
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
 #if GL_ASSERTIONS
@@ -3776,6 +3786,7 @@ var LibraryGL = {
 #if !LEGACY_GL_EMULATION
   glDrawArrays__sig: 'viii',
   glDrawArrays: function(mode, first, count) {
+    count = Number(count);
 #if FULL_ES2
     // bind any client-side buffers
     GL.preDrawHandleClientVertexAttribBindings(first + count);
@@ -3790,6 +3801,8 @@ var LibraryGL = {
 
   glDrawElements__sig: 'viiii',
   glDrawElements: function(mode, count, type, indices) {
+    indices = Number(indices);
+    count = Number(count);
 #if FULL_ES2
     var buf;
     if (!GLctx.currentElementArrayBufferBinding) {

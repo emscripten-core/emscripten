@@ -69,7 +69,7 @@ var LibraryEGL = {
           } else if (param == 0x3038 /*EGL_NONE*/) {
               break;
           }
-          attribList += 8;
+          attribList += 8n;
         }
       }
 
@@ -102,7 +102,7 @@ var LibraryEGL = {
     // Therefore, be lax and allow anything to be passed in, and return the magic handle to our default EGLDisplay object.
 
 //    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */) {
-        return 62000; // Magic ID for Emscripten 'default display'
+        return 62000n; // Magic ID for Emscripten 'default display'
 //    }
 //    else
 //      return 0; // EGL_NO_DISPLAY
@@ -292,7 +292,7 @@ var LibraryEGL = {
     // - EGL_VG_COLORSPACE (can't be set)
     // - EGL_VG_ALPHA_FORMAT (can't be set)
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 62006; /* Magic ID for Emscripten 'default surface' */
+    return 62006n; /* Magic ID for Emscripten 'default surface' */
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay display, EGLSurface surface);
@@ -342,7 +342,7 @@ var LibraryEGL = {
         EGL.setErrorCode(0x3004 /*EGL_BAD_ATTRIBUTE*/);
         return 0;
       }
-      contextAttribs += 8;
+      contextAttribs += 8n;
     }
 #if MAX_WEBGL_VERSION >= 2
     if (glesContextVersion < 2 || glesContextVersion > 3) {
@@ -375,7 +375,7 @@ var LibraryEGL = {
 
       // Note: This function only creates a context, but it shall not make it active.
       GL.makeContextCurrent(null);
-      return 62004; // Magic ID for Emscripten EGLContext
+      return 62004n; // Magic ID for Emscripten EGLContext
     } else {
       EGL.setErrorCode(0x3009 /* EGL_BAD_MATCH */); // By the EGL 1.4 spec, an implementation that does not support GLES2 (WebGL in this case), this error code is set.
       return 0; /* EGL_NO_CONTEXT */

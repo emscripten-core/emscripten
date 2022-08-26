@@ -527,7 +527,7 @@ var LibraryHTML5 = {
         JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
       } else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {

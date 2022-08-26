@@ -622,8 +622,8 @@ def get_binaryen_passes():
 def make_js_executable(script):
   src = read_file(script)
   cmd = config.JS_ENGINE
-  if settings.WASM_BIGINT:
-    cmd.append('--experimental-wasm-bigint')
+  #if settings.WASM_BIGINT:
+  #  cmd.append('--experimental-wasm-bigint')
   cmd = shared.shlex_join(cmd)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
@@ -2618,10 +2618,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+  if settings.MEMORY64 == 0 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
      (settings.ALLOW_MEMORY_GROWTH and
       (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
+       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
     settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
@@ -3466,6 +3466,7 @@ def phase_binaryen(target, options, wasm_target):
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
+    # BELOW DOES NOT WORK IN COMBINATION WITH BigInt and wasm64 support
     if settings.CAN_ADDRESS_2GB:
       final_js = building.use_unsigned_pointers_in_js(final_js)
 

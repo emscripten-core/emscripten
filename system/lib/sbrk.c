@@ -52,6 +52,7 @@ void *sbrk(intptr_t increment_) {
   // Enforce preserving a minimal 4-byte alignment for sbrk.
   uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + 3) & ~3;
+  
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
@@ -69,7 +70,7 @@ void *sbrk(intptr_t increment_) {
     uintptr_t new_brk = old_brk + increment;
     // Check for a 32-bit overflow, which would indicate that we are trying to
     // allocate over 4GB, which is never possible in wasm32.
-    if (increment > 0 && (uint32_t)new_brk <= (uint32_t)old_brk) {
+    if (increment > 0 && (uint64_t)new_brk <= (uint64_t)old_brk) {
       goto Error;
     }
     old_size = emscripten_get_heap_size();

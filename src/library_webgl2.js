@@ -10,7 +10,7 @@ var LibraryWebGL2 = {
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
-      return 0;
+      return 0n;
     }
     var stringiCache = GL.stringiCache[name];
     if (stringiCache) {
@@ -19,9 +19,9 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
         err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ')!');
 #endif
-        return 0;
+        return 0n;
       }
-      return stringiCache[index];
+      return BigInt(stringiCache[index]);
     }
     switch (name) {
       case 0x1F03 /* GL_EXTENSIONS */:
@@ -37,15 +37,15 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
           err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ') in a call to GL_EXTENSIONS!');
 #endif
-          return 0;
+          return 0n;
         }
-        return stringiCache[index];
+        return BigInt(stringiCache[index]);
       default:
         GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glGetStringi: Unknown parameter ' + name + '!');
 #endif
-        return 0;
+        return 0n;
     }
   },
 
@@ -167,7 +167,8 @@ var LibraryWebGL2 = {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+      var heapShift = BigInt(heapAccessShiftForWebGLHeap(heap));
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap.subarray(Number(pixels>>heapShift), Number(pixels>>heapShift) + width*height*depth*4), 0);
     } else {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
     }
@@ -180,7 +181,8 @@ var LibraryWebGL2 = {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+      var heapShift = BigInt(heapAccessShiftForWebGLHeap(heap));
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap.subarray(Number(pixels>>heapShift), Number(pixels>>heapShift) + width*height*depth*4), 0);
     } else {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -990,6 +992,8 @@ var LibraryWebGL2 = {
 
   glVertexAttribIPointer__sig: 'viiiii',
   glVertexAttribIPointer: function(index, size, type, stride, ptr) {
+    ptr = Number(ptr);
+    stride = Number(stride);
 #if FULL_ES3
     var cb = GL.currentContext.clientBuffers[index];
 #if GL_ASSERTIONS

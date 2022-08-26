@@ -285,7 +285,7 @@ function getHeapOffset(offset, type) {
 
   const sz = Runtime.getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
-  return `((${offset})>>${shifts})`;
+  return `Number((${offset})>>${shifts}n)`;
 }
 
 function ensureDot(value) {
@@ -596,8 +596,11 @@ function getFastValue(a, op, b, type) {
 
 function calcFastOffset(ptr, pos, noNeedFirst) {
   assert(!noNeedFirst);
-  if (typeof ptr == 'bigint') ptr = Number(ptr);
-  if (typeof pos == 'bigint') pos = Number(pos);
+  if (typeof ptr == 'number') ptr = 'BigInt('+ptr+')';
+  if (typeof pos == 'number') pos = 'BigInt('+pos+')';
+  if (typeof ptr == 'string') ptr = 'BigInt('+ptr+')';
+  if (typeof pos == 'string') pos = 'BigInt('+pos+')';
+
   return getFastValue(ptr, '+', pos, 'i32');
 }
 

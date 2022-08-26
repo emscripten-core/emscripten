@@ -267,7 +267,7 @@ def also_with_wasm_bigint(f):
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
       self.require_node()
-      self.node_args.append('--experimental-wasm-bigint')
+      #self.node_args.append('--experimental-wasm-bigint')
       f(self)
     else:
       f(self)

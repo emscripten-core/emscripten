@@ -162,7 +162,7 @@ mergeInto(LibraryManager.library, {
     // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
     // for any code that deals with heap sizes, which would require special
     // casing all heap size related code to treat 0 specially.
-    return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
+    return {{{ MAXIMUM_MEMORY }}};
 #else // no growth
     return HEAPU8.length;
 #endif
@@ -1270,7 +1270,7 @@ mergeInto(LibraryManager.library, {
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
   longjmp__deps: [function() {
-    error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
+    //error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
   get setjmp__deps() {
     return this.longjmp__deps;
@@ -3325,6 +3325,7 @@ mergeInto(LibraryManager.library, {
   $getWasmTableEntry__internal: true,
   $getWasmTableEntry__deps: ['$wasmTableMirror'],
   $getWasmTableEntry: function(funcPtr) {
+    funcPtr = Number(funcPtr);
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;

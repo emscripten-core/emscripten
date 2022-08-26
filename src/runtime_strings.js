@@ -21,10 +21,11 @@ var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : 
  * @return {string}
  */
 function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
+  idx = Number(idx);
 #if CAN_ADDRESS_2GB
   idx >>>= 0;
 #endif
-  var endIdx = idx + maxBytesToRead;
+  var endIdx = idx + Number(maxBytesToRead);
 #if TEXTDECODER
   var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
