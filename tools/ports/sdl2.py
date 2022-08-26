@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '0fcfaf9e9482953ee425cc15b91160b92de3df7f'
-HASH = '2891b65bbe34ada80de6c83751b01cd259f877123f0eeb31cbacf8f7bac06b2157e17a2183f58911a9849ab57ca8aba165d5b3058ecd2d7191bfb61c0595807e'
+TAG = 'release-2.24.0'
+HASH = '33ea357de1c137b4ce101349b119105d090ef2e05224fd3f05074b65579e53b068fa94aba6a37ac44c21f246e14ed15f0045dcdd1ddf7357a35aa7e8f2db2d3b'
 SUBDIR = 'SDL-' + TAG
 
 
@@ -29,8 +29,8 @@ def get(ports, settings, shared):
 
     # build
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_guid.c SDL_hints.c SDL_list.c SDL_log.c
-    atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
-    audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
+    SDL_utils.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c
+    audio/SDL_audiodev.c audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
