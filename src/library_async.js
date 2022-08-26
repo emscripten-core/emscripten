@@ -470,8 +470,14 @@ mergeInto(LibraryManager.library, {
         wakeUp,
         false, // dontCreateFile
         false, // canOwn
-        // preFinish: if the destination directory does not yet exist, create it
-        () => FS.mkdirTree(destinationDirectory)
+        function() { // preFinish
+          // if a file exists there, we overwrite it
+          try {
+            FS.unlink(_file);
+          } catch (e) {}
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
       );
     });
   },
