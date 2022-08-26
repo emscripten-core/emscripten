@@ -2387,14 +2387,13 @@ def phase_linker_setup(options, state, newargs, user_settings):
     settings.MEM_INIT_IN_WASM = True
 
   if (
-      settings.MAYBE_WASM2JS
-      or settings.AUTODEBUG
-      or settings.LINKABLE
-      or not settings.DISABLE_EXCEPTION_CATCHING
-      or (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
+      settings.MAYBE_WASM2JS or 
+      settings.AUTODEBUG or 
+      settings.LINKABLE or 
+      not settings.DISABLE_EXCEPTION_CATCHING or 
+      (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
   ):
       settings.REQUIRED_EXPORTS += ["getTempRet0", "setTempRet0"]
-
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
