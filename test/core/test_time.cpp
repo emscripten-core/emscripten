@@ -150,8 +150,9 @@ int main() {
   mktimeOk = !(
     tm2.tm_sec != tm_local.tm_sec || tm2.tm_min != tm_local.tm_min ||
     tm2.tm_hour != tm_local.tm_hour || tm2.tm_mday != tm_local.tm_mday ||
-    tm2.tm_mon != tm_local.tm_mon || tm2.tm_wday != tm_local.tm_wday ||
-    tm2.tm_yday != tm_local.tm_yday);
+    tm2.tm_mon != tm_local.tm_mon ||  tm2.tm_year != tm_local.tm_year ||
+    tm2.tm_wday != tm_local.tm_wday || tm2.tm_yday != tm_local.tm_yday);
+    
   printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
 
   // Verify that mktime is able to guess what the dst is. It might get it wrong
