@@ -186,7 +186,7 @@ function logExceptionOnExit(e) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE && WASM
+#if ENVIRONMENT_MAY_BE_NODE && !WASM2JS
 var fs;
 var nodePath;
 var requireNodeFS;
@@ -268,7 +268,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 } else
-#endif // ENVIRONMENT_MAY_BE_NODE && WASM
+#endif // ENVIRONMENT_MAY_BE_NODE && !WASM2JS
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
