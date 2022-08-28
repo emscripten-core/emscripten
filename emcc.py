@@ -2390,6 +2390,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.MAYBE_WASM2JS or
       settings.AUTODEBUG or
       settings.LINKABLE or
+      settings.INCLUDE_FULL_LIBRARY or
       not settings.DISABLE_EXCEPTION_CATCHING or
       (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
   ):
