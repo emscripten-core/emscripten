@@ -14,7 +14,7 @@ void f2(int i, uint64_t j, float f, double d){
 int main(){
     EM_ASM({
         var w = createDyncallWrapper("jj");
-        console.log(w($0, 2, 7), tempRet0);
+        console.log(w($0, 2, 7), getTempRet0());
     }, f1);
 
     EM_ASM({
