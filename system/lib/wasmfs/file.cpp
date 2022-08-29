@@ -43,11 +43,15 @@ void DataFile::Handle::preloadFromJS(int index) {
 void Directory::Handle::cacheChild(const std::string& name,
                                    std::shared_ptr<File> child,
                                    DCacheKind kind) {
-  // Update the dcache and set the child's parent.
-  auto& dcache = getDir()->dcache;
-  auto [_, inserted] = dcache.insert({name, {kind, child}});
-  assert(inserted && "inserted child already existed!");
-  assert(child->locked().getParent() == nullptr);
+  // Update the dcache if the backend hasn't opted out of using the dcache.
+  if (kind == DCacheKind::Mount || !getDir()->maintainsFileIdentity()) {
+    auto& dcache = getDir()->dcache;
+    auto [_, inserted] = dcache.insert({name, {kind, child}});
+    assert(inserted && "inserted child already existed!");
+  }
+  // Set the child's parent.
+  assert(child->locked().getParent() == nullptr ||
+         child->locked().getParent() == getDir());
   child->locked().setParent(getDir());
 }
 
@@ -194,6 +198,9 @@ bool Directory::Handle::removeChild(const std::string& name) {
 }
 
 std::string Directory::Handle::getName(std::shared_ptr<File> file) {
+  if (getDir()->maintainsFileIdentity()) {
+    return getDir()->getName(file);
+  }
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
     if (it->second.file == file) {

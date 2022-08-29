@@ -58,9 +58,7 @@ protected:
     entries.push_back({name, child});
   }
 
-  std::shared_ptr<File> getChild(const std::string& name) override {
-    return nullptr;
-  }
+  std::shared_ptr<File> getChild(const std::string& name) override;
 
   bool removeChild(const std::string& name) override;
 
@@ -89,6 +87,12 @@ protected:
 
   size_t getNumEntries() override { return entries.size(); }
   std::vector<Directory::Entry> getEntries() override;
+
+  std::string getName(std::shared_ptr<File> file) override;
+
+  // Since we internally track files with `File` objects, we don't need the
+  // dcache as well.
+  bool maintainsFileIdentity() override { return true; }
 
 public:
   MemoryDirectory(mode_t mode, backend_t backend) : Directory(mode, backend) {}
