@@ -46,11 +46,11 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
-    # port variants (default: no variants)
-    if not hasattr(port, 'get_variants'):
-      port.get_variants = lambda: {}
+    if not hasattr(port, 'variants'):
+      # port variants (default: no variants)
+      port.variants = {}
 
-    for variant, extra_settings in port.get_variants().items():
+    for variant, extra_settings in port.variants.items():
       if variant in port_variants:
         utils.exit_with_error('duplicate port variant: %s' % variant)
       port_variants[variant] = (port.name, extra_settings)

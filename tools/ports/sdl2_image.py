@@ -9,17 +9,14 @@ TAG = 'version_4'
 HASH = '30a7b04652239bccff3cb1fa7cd8ae602791b5f502a96df39585c13ebc4bb2b64ba1598c0d1f5382028d94e04a5ca02185ea06bf7f4b3520f6df4cc253f9dd24'
 
 deps = ['sdl2']
+variants = {
+  'sdl2_image_jpg':  {'SDL2_IMAGE_FORMATS': ["jpg"]},
+  'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
+}
 
 
 def needed(settings):
   return settings.USE_SDL_IMAGE == 2
-
-
-def get_variants():
-  return {
-    'sdl2_image_jpg':  {'SDL2_IMAGE_FORMATS': ["jpg"]},
-    'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
-  }
 
 
 def get(ports, settings, shared):

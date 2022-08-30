@@ -9,6 +9,7 @@ TAG = '0fcfaf9e9482953ee425cc15b91160b92de3df7f'
 HASH = '2891b65bbe34ada80de6c83751b01cd259f877123f0eeb31cbacf8f7bac06b2157e17a2183f58911a9849ab57ca8aba165d5b3058ecd2d7191bfb61c0595807e'
 SUBDIR = 'SDL-' + TAG
 
+variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
 
 def needed(settings):
   return settings.USE_SDL == 2
@@ -16,10 +17,6 @@ def needed(settings):
 
 def get_lib_name(settings):
   return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
-
-
-def get_variants():
-  return {'sdl2-mt': {'USE_PTHREADS': 1}}
 
 
 def get(ports, settings, shared):
