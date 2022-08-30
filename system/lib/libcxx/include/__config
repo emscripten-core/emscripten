@@ -578,7 +578,7 @@ typedef __char32_t char32_t;
 #define _ALIGNAS(x) __attribute__((__aligned__(x)))
 #define _ALIGNAS_TYPE(x) __attribute__((__aligned__(_LIBCPP_ALIGNOF(x))))
 
-#define _LIBCPP_NORETURN __attribute__((noreturn))
+#define _LIBCPP_NORETURN __attribute__((__noreturn__))
 
 #if !defined(__EXCEPTIONS)
 #  define _LIBCPP_NO_EXCEPTIONS
@@ -622,7 +622,7 @@ typedef __char32_t char32_t;
 #define _ALIGNAS(x) __attribute__((__aligned__(x)))
 #define _ALIGNAS_TYPE(x) __attribute__((__aligned__(_LIBCPP_ALIGNOF(x))))
 #define _ATTRIBUTE(x) __attribute__((x))
-#define _LIBCPP_NORETURN __attribute__((noreturn))
+#define _LIBCPP_NORETURN __attribute__((__noreturn__))
 
 #define _LIBCPP_HAS_NO_UNICODE_CHARS
 

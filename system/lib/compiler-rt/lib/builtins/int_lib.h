@@ -40,7 +40,7 @@
 #else
 #define ALWAYS_INLINE __attribute__((always_inline))
 #define NOINLINE __attribute__((noinline))
-#define NORETURN __attribute__((noreturn))
+#define NORETURN __attribute__((__noreturn__))
 #define UNUSED __attribute__((unused))
 #endif
 

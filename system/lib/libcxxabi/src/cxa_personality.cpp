@@ -1163,7 +1163,7 @@ __gxx_personality_v0(_Unwind_State state,
 #endif
 
 
-__attribute__((noreturn))
+__attribute__((__noreturn__))
 _LIBCXXABI_FUNC_VIS void
 __cxa_call_unexpected(void* arg)
 {

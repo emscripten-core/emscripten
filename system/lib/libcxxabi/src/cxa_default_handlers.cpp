@@ -23,7 +23,7 @@
 _LIBCPP_SAFE_STATIC
 static const char* cause = "uncaught";
 
-__attribute__((noreturn))
+__attribute__((__noreturn__))
 static void demangling_terminate_handler()
 {
 #ifndef _LIBCXXABI_NO_EXCEPTIONS
@@ -82,7 +82,7 @@ static void demangling_terminate_handler()
     abort_message("terminating");
 }
 
-__attribute__((noreturn))
+__attribute__((__noreturn__))
 static void demangling_unexpected_handler()
 {
     cause = "unexpected";
