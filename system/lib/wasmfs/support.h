@@ -12,7 +12,7 @@
 #ifndef NDEBUG
 // In debug builds show a message.
 namespace wasmfs {
-noreturn void
+[[noreturn]] void
 handle_unreachable(const char* msg, const char* file, unsigned line);
 }
 #define WASMFS_UNREACHABLE(msg)                                                \
