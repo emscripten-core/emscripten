@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-void emscripten_unwind_to_js_event_loop(void) __attribute__((noreturn));
+void emscripten_unwind_to_js_event_loop(void) __attribute__((__noreturn__));
 
 long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData);
 void emscripten_clear_timeout(long setTimeoutId);
