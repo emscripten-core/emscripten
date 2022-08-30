@@ -343,9 +343,13 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size) {
+  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
-    await accessHandle.truncate(size);
+    try {
+      await accessHandle.truncate(size);
+    } catch {
+      {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   },
 
@@ -356,7 +360,6 @@ mergeInto(LibraryManager.library, {
       let writable = await fileHandle.createWritable({keepExistingData: true});
       await writable.truncate(size);
       await writable.close();
-      {{{ makeSetValue('errPtr', 0, '0', 'i32') }}};
     } catch {
       {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
     }

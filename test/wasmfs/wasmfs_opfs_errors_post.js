@@ -24,6 +24,10 @@ async function run_test() {
     throw "Unexpected failure opening file for reading only";
   }
 
+  if (Module._try_truncate() != 0) {
+    throw "Did not get expected EIO when resizing file";
+  }
+
   await access.close();
 
   // We can open the file in any mode now that there is no open access

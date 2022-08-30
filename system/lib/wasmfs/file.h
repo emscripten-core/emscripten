@@ -143,8 +143,8 @@ protected:
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized. May be called on files that have not been
-  // opened.
-  virtual void setSize(size_t size) = 0;
+  // opened. Returns 0 on success or a negative error code.
+  virtual int setSize(size_t size) = 0;
 
   // TODO: Design a proper API for flushing files.
   virtual void flush() = 0;
@@ -323,7 +323,7 @@ public:
     return getFile()->write(buf, len, offset);
   }
 
-  void setSize(size_t size) { return getFile()->setSize(size); }
+  [[nodiscard]] int setSize(size_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
   void flush() { getFile()->flush(); }
