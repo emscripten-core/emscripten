@@ -38,9 +38,17 @@ MemoryDirectory::findEntry(const std::string& name) {
   });
 }
 
+std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
+  if (auto entry = findEntry(name); entry != entries.end()) {
+    return entry->child;
+  }
+  return nullptr;
+}
+
 bool MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
   if (entry != entries.end()) {
+    entry->child->locked().setParent(nullptr);
     entries.erase(entry);
   }
   return true;
@@ -69,6 +77,17 @@ bool MemoryDirectory::insertMove(const std::string& name,
   removeChild(name);
   insertChild(name, file);
   return true;
+}
+
+std::string MemoryDirectory::getName(std::shared_ptr<File> file) {
+  auto it =
+    std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.child == file;
+    });
+  if (it != entries.end()) {
+    return it->name;
+  }
+  return "";
 }
 
 class MemoryFileBackend : public Backend {

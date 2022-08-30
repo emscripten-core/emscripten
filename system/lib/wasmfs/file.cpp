@@ -43,11 +43,17 @@ void DataFile::Handle::preloadFromJS(int index) {
 void Directory::Handle::cacheChild(const std::string& name,
                                    std::shared_ptr<File> child,
                                    DCacheKind kind) {
-  // Update the dcache and set the child's parent.
-  auto& dcache = getDir()->dcache;
-  auto [_, inserted] = dcache.insert({name, {kind, child}});
-  assert(inserted && "inserted child already existed!");
-  assert(child->locked().getParent() == nullptr);
+  // Update the dcache if the backend hasn't opted out of using the dcache or if
+  // this is a mount point, in which case it is not under the control of the
+  // backend.
+  if (kind == DCacheKind::Mount || !getDir()->maintainsFileIdentity()) {
+    auto& dcache = getDir()->dcache;
+    auto [_, inserted] = dcache.insert({name, {kind, child}});
+    assert(inserted && "inserted child already existed!");
+  }
+  // Set the child's parent.
+  assert(child->locked().getParent() == nullptr ||
+         child->locked().getParent() == getDir());
   child->locked().setParent(getDir());
 }
 
@@ -143,30 +149,42 @@ bool Directory::Handle::insertMove(const std::string& name,
   if (!getParent()) {
     return false;
   }
+
   // Look up the file in its old parent's cache.
   auto oldParent = file->locked().getParent();
   auto& oldCache = oldParent->dcache;
   auto oldIt = std::find_if(oldCache.begin(), oldCache.end(), [&](auto& kv) {
     return kv.second.file == file;
   });
-  assert(oldIt != oldCache.end());
-  auto [oldName, entry] = *oldIt;
-  assert(oldName.size());
+
+  // TODO: Handle moving mount points correctly by only updating caches without
+  // involving the backend.
+
   // Attempt the move.
   if (!getDir()->insertMove(name, file)) {
     return false;
   }
-  // Update parent pointers and caches to reflect the successful move.
-  oldCache.erase(oldIt);
-  auto& newCache = getDir()->dcache;
-  auto [it, inserted] = newCache.insert({name, entry});
-  if (!inserted) {
-    // Update and overwrite the overwritten file.
-    it->second.file->locked().setParent(nullptr);
-    it->second = entry;
-  }
-  file->locked().setParent(getDir());
 
+  if (oldIt != oldCache.end()) {
+    // Do the move and update the caches.
+    auto [oldName, entry] = *oldIt;
+    assert(oldName.size());
+    // Update parent pointers and caches to reflect the successful move.
+    oldCache.erase(oldIt);
+    auto& newCache = getDir()->dcache;
+    auto [it, inserted] = newCache.insert({name, entry});
+    if (!inserted) {
+      // Update and overwrite the overwritten file.
+      it->second.file->locked().setParent(nullptr);
+      it->second = entry;
+    }
+    file->locked().setParent(getDir());
+  } else {
+    // This backend doesn't use the dcache.
+    assert(getDir()->maintainsFileIdentity());
+  }
+
+  // TODO: Moving mount points probably shouldn't update the mtime.
   auto now = time(NULL);
   oldParent->locked().setMTime(now);
   setMTime(now);
@@ -194,6 +212,9 @@ bool Directory::Handle::removeChild(const std::string& name) {
 }
 
 std::string Directory::Handle::getName(std::shared_ptr<File> file) {
+  if (getDir()->maintainsFileIdentity()) {
+    return getDir()->getName(file);
+  }
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
     if (it->second.file == file) {
