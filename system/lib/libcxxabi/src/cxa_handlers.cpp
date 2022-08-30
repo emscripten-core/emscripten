@@ -36,7 +36,7 @@ __unexpected(unexpected_handler func)
     abort_message("unexpected_handler unexpectedly returned");
 }
 
-__attribute__((__noreturn__))
+__attribute__((noreturn))
 void
 unexpected()
 {
@@ -69,7 +69,7 @@ __terminate(terminate_handler func) noexcept
 #endif // _LIBCXXABI_NO_EXCEPTIONS
 }
 
-__attribute__((__noreturn__))
+__attribute__((noreturn))
 void
 terminate() noexcept
 {

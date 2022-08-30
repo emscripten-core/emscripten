@@ -20,7 +20,7 @@
 #include <__cxxabi_config.h>
 
 #define _LIBCPPABI_VERSION 1002
-#define _LIBCXXABI_NORETURN  __attribute__((__noreturn__))
+#define _LIBCXXABI_NORETURN  __attribute__((noreturn))
 #define _LIBCXXABI_ALWAYS_COLD __attribute__((cold))
 
 #ifdef __cplusplus

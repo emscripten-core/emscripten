@@ -231,7 +231,7 @@ typedef u64 tid_t;
 # define ALIGNED(x) __attribute__((aligned(x)))
 # define FORMAT(f, a)  __attribute__((format(printf, f, a)))
 # define NOINLINE __attribute__((noinline))
-# define NORETURN  __attribute__((__noreturn__))
+# define NORETURN  __attribute__((noreturn))
 # define THREADLOCAL   __thread
 # define LIKELY(x)     __builtin_expect(!!(x), 1)
 # define UNLIKELY(x)   __builtin_expect(!!(x), 0)
