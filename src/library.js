@@ -3194,7 +3194,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if DYNCALLS || !WASM_BIGINT
-#if MAIN_MODULE == 1
+#if MAIN_MODULE
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: function(sig, ptr, args) {
@@ -3202,8 +3202,6 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, 'bad function pointer type - sig is not in dynCalls: \'' + sig + '\'');
-#else
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - dynCall function not found for sig \'' + sig + '\'');
 #endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
@@ -3215,7 +3213,7 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-#if MAIN_MODULE == 1
+#if MAIN_MODULE
     if (!('dynCall_' + sig in Module)) {
       Module['dynCall_' + sig] = createDyncallWrapper(sig);
     }
