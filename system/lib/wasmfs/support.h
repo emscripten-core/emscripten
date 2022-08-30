@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <stdnoreturn.h>
-
 #include <cstdlib>
 
 #ifndef NDEBUG
