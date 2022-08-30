@@ -284,10 +284,10 @@ class sanity(RunnerCore):
     NODE_WARNING_2 = 'cannot check node version'
 
     restore_and_set_up()
+    cmd = [EMCC, test_file('hello_world.c')]
 
     # Clang should report the version number we expect, and emcc should not warn
-    assert shared.check_node_version()
-    output = self.check_working(EMCC)
+    output = self.do(cmd)
     self.assertNotContained(NODE_WARNING, output)
 
     # Fake a different node version
@@ -316,11 +316,11 @@ fi
       make_executable(self.in_dir('fake', 'nodejs'))
       if not succeed:
         if version[0] == 'v':
-          self.check_working(EMCC, NODE_WARNING)
+          self.check_working(cmd, NODE_WARNING)
         else:
-          self.check_working(EMCC, NODE_WARNING_2)
+          self.check_working(cmd, NODE_WARNING_2)
       else:
-        output = self.check_working(EMCC)
+        output = self.do(cmd)
         self.assertNotContained(NODE_WARNING, output)
 
   def test_emcc(self):
