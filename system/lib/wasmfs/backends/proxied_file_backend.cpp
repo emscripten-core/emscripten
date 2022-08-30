@@ -28,8 +28,10 @@ class ProxiedFile : public DataFile {
     return err;
   }
 
-  void close() override {
-    proxy([&]() { baseFile->locked().close(); });
+  int close() override {
+    int err = 0;
+    proxy([&]() { err = baseFile->locked().close(); });
+    return err;
   }
 
   // Read and write operations are forwarded via the proxying mechanism.

@@ -58,7 +58,7 @@ void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_open_blob(em_proxying_ctx* ctx, int file_id, int* blob_id);
 
-void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id);
+void _wasmfs_opfs_close_access(int access_id);
 
 void _wasmfs_opfs_close_blob(int blob_id);
 
@@ -178,7 +178,7 @@ public:
     if (--openCount == 0) {
       switch (kind) {
         case Access:
-          proxy([&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, id); });
+          proxy([&]() { _wasmfs_opfs_close_access(id); });
           break;
         case Blob:
           proxy([&]() { _wasmfs_opfs_close_blob(id); });
@@ -274,7 +274,10 @@ private:
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
 
-  void close() override { state.close(proxy); }
+  int close() override {
+    state.close(proxy);
+    return 0;
+  }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;

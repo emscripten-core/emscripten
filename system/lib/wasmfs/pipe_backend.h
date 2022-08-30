@@ -24,7 +24,7 @@ class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     for (size_t i = 0; i < len; i++) {

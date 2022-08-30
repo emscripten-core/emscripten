@@ -20,7 +20,7 @@ namespace {
 // No-op reads and writes: /dev/null
 class NullFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return len;
@@ -38,7 +38,7 @@ public:
 
 class StdinFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;
@@ -63,7 +63,7 @@ protected:
   std::vector<char> writeBuffer;
 
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;
@@ -135,7 +135,7 @@ public:
 
 class RandomFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;

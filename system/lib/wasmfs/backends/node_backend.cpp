@@ -35,10 +35,10 @@ int _wasmfs_node_unlink(const char* path);
 int _wasmfs_node_rmdir(const char* path);
 
 // Open the file and return the underlying file descriptor.
-int _wasmfs_node_open(const char* path, const char* mode);
+[[nodiscard]] int _wasmfs_node_open(const char* path, const char* mode);
 
 // Close the underlying file descriptor.
-int _wasmfs_node_close(int fd);
+[[nodiscard]] int _wasmfs_node_close(int fd);
 
 // Read up to `size` bytes into `buf` from position `pos` in the file, writing
 // the number of bytes read to `nread`. Return 0 on success or an error code.
@@ -105,7 +105,7 @@ public:
         return result;
       }
       // Success! Close the old fd before updating it.
-      _wasmfs_node_close(fd);
+      (void)_wasmfs_node_close(fd);
       // Fall through to update our state with the new result.
     } else {
       // Reuse the existing file descriptor.
@@ -119,11 +119,13 @@ public:
     return 0;
   }
 
-  void close() {
+  int close() {
+    int ret = 0;
     if (--openCount == 0) {
-      _wasmfs_node_close(fd);
+      ret = _wasmfs_node_close(fd);
       *this = NodeState(path);
     }
+    return ret;
   }
 };
 
@@ -158,7 +160,7 @@ private:
 
   int open(oflags_t flags) override { return state.open(flags); }
 
-  void close() override { state.close(); }
+  int close() override { return state.close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;

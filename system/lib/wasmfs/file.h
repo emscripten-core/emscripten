@@ -132,7 +132,7 @@ protected:
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked. Returns 0 on success or a negative error code.
   virtual int open(oflags_t flags) = 0;
-  virtual void close() = 0;
+  virtual int close() = 0;
 
   // Return the accessed length or a negative error code. It is not an error to
   // access fewer bytes than requested. Will only be called on opened files.
@@ -314,7 +314,7 @@ public:
   Handle(Handle&&) = default;
 
   [[nodiscard]] int open(oflags_t flags) { return getFile()->open(flags); }
-  void close() { getFile()->close(); }
+  [[nodiscard]] int close() { return getFile()->close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);

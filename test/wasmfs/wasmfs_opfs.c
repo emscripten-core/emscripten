@@ -157,13 +157,17 @@ int main(int argc, char* argv[]) {
   assert(strcmp(buf3, msg2) == 0);
   emscripten_console_logf("read message: %s (%d)", buf3, nread);
 
-  close(fd);
-  close(fd2);
+  err = close(fd);
+  assert(err == 0);
+
+  err = close(fd2);
+  assert(err == 0);
 
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
   assert(fd > 0);
   emscripten_console_log("truncated while opening read-only");
-  close(fd);
+  err = close(fd);
+  assert(err == 0);
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
@@ -173,7 +177,8 @@ int main(int argc, char* argv[]) {
   fd = open("/opfs/working/foo.txt", O_WRONLY | O_TRUNC);
   assert(fd > 0);
   emscripten_console_log("truncated while opening write-only");
-  close(fd);
+  err = close(fd);
+  assert(err == 0);
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);

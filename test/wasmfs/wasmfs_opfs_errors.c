@@ -23,7 +23,8 @@ const char* file = "/opfs/data";
 static int try_open(int flags) {
   int fd = open(file, flags);
   if (fd >= 0) {
-    close(fd);
+    int err = close(fd);
+    assert(err == 0);
     return 1;
   }
   if (errno == EACCES) {
