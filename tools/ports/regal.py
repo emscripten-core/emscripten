@@ -12,6 +12,7 @@ HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b33470
 
 variants = {'regal-mt': {'USE_PTHREADS': 1}}
 
+
 def needed(settings):
   return settings.USE_REGAL
 
