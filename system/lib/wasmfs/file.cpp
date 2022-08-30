@@ -43,7 +43,9 @@ void DataFile::Handle::preloadFromJS(int index) {
 void Directory::Handle::cacheChild(const std::string& name,
                                    std::shared_ptr<File> child,
                                    DCacheKind kind) {
-  // Update the dcache if the backend hasn't opted out of using the dcache.
+  // Update the dcache if the backend hasn't opted out of using the dcache or if
+  // this is a mount point, in which case it is not under the control of the
+  // backend.
   if (kind == DCacheKind::Mount || !getDir()->maintainsFileIdentity()) {
     auto& dcache = getDir()->dcache;
     auto [_, inserted] = dcache.insert({name, {kind, child}});
