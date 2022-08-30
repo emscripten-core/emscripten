@@ -92,9 +92,6 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasmfs',
 ]
 
-# Variant builds that we want to support for certain ports
-PORT_VARIANTS = ports.port_variants
-
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
 
 temp_files = shared.get_temp_files()
@@ -163,8 +160,6 @@ def main():
   parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
   parser.add_argument('--pic', action='store_true',
                       help='build relocatable objects for suitable for dynamic linking')
-  parser.add_argument('--pthreads', action='store_true',
-                      help='build multi-threaded objects (USE_PTHREADS)')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
   parser.add_argument('--verbose', action='store_true',
@@ -193,9 +188,6 @@ def main():
 
   if args.pic:
     settings.RELOCATABLE = 1
-
-  if args.pthreads:
-    settings.USE_PTHREADS = 1
 
   if args.wasm64:
     settings.MEMORY64 = 2
