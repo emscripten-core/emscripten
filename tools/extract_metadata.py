@@ -18,6 +18,8 @@ def skip_function_header(module):
 
 
 def is_orig_main_wrapper(module, function):
+  module.get_types()
+  module.get_function_types()
   module.seek(function.offset)
   skip_function_header(module)
   end = function.offset + function.size
@@ -25,11 +27,13 @@ def is_orig_main_wrapper(module, function):
     opcode = module.read_byte()
     try:
       opcode = OpCode(opcode)
-    except ValueError as e:
-      print(e)
+    except ValueError:
       return False
     if opcode == OpCode.CALL:
-      module.read_uleb()  # callee
+      callee = module.read_uleb()
+      callee_type = module.get_function_type(callee)
+      if len(callee_type.params) != 0:
+        return False
     elif opcode in (OpCode.LOCAL_GET, OpCode.LOCAL_SET):
       module.read_uleb()  # local index
     elif opcode in (OpCode.END, OpCode.RETURN):
