@@ -171,8 +171,9 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
   _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
+    let childID;
     try {
-      let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
+      childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
     } catch(e) {
       _emscripten_proxy_finish(ctx);
       // TODO: Return a specific error code depending on the error.
