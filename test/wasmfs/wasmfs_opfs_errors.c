@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
 #include <emscripten/console.h>
