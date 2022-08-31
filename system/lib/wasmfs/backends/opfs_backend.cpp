@@ -259,7 +259,7 @@ private:
         // be extermely complicated.
         WASMFS_UNREACHABLE("TODO: proper setSize error handling");
       case OpenState::None: {
-        int err = 0;
+        int err = 1;
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
         });
