@@ -10,6 +10,8 @@ from pathlib import Path
 TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
 
+settings = {'USE_FREETYPE': False}
+
 
 def needed(settings):
   return settings.USE_FREETYPE

@@ -10,6 +10,7 @@ VERSION = '3.2.0'
 HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
 
 deps = ['freetype']
+settings = {'USE_HARFBUZZ': False}
 variants = {'harfbuzz-mt': {'USE_PTHREADS': 1}}
 
 srcs = '''

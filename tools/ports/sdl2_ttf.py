@@ -9,6 +9,7 @@ TAG = '38fcb695276ed794f879d5d9c5ef4e5286a5200d' # Latest as of 24 November 2020
 HASH = '4c1ac5d27439d28c6d84593dd15dd80c825d68c6bf1020ab4317f2bce1efe16401b5b3280a181047c8317c38a19bbeeae8d52862e6b2c9776d5809758ee7aaa6'
 
 deps = ['freetype', 'sdl2', 'harfbuzz']
+settings = {'USE_SDL_TTF': 1}
 
 
 def needed(settings):

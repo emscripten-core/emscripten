@@ -10,6 +10,8 @@ from pathlib import Path
 VERSION = '1.2.12'
 HASH = 'cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14'
 
+settings = {'USE_ZLIB': False}
+
 
 def needed(settings):
   return settings.USE_ZLIB
