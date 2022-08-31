@@ -28,11 +28,8 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
-                              int parent,
-                              const char* name,
-                              int* child_id,
-                              int* err);
+void _wasmfs_opfs_insert_file(
+  em_proxying_ctx* ctx, int parent, const char* name, int* child_id, int* err);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
 void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
