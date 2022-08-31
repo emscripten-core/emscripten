@@ -5408,12 +5408,16 @@ Module["preRun"].push(function () {
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
   # Tests the AudioWorklet demo
-  @also_with_minimal_runtime
-  def test_audio_worklet(self):
-    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
-    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--closure', '1', '-Oz'])
-    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS'])
-    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS', '--closure', '1', '-Oz'])
+  @parameterized({
+    'default': ([],),
+    'closure': (['--closure', '1', '-Oz'],),
+    'pthreads': (['-sUSE_PTHREADS'],),
+    'pthreads_and_closure': (['-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'minimal_runtime_pthreads_and_closure': (['-sMINIMAL_RUNTIME', '-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet(self, args):
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
 
 class emrun(RunnerCore):

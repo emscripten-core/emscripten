@@ -23,6 +23,10 @@ Wasm Audio Worklets system runtime has been carefully developed to guarantee
 that no temporary JavaScript level VM garbage will be generated, eliminating
 the possibility of GC pauses from impacting audio synthesis performance.
 
+Audio Worklets API is based on the Wasm Workers feature. It is possible to
+also enable the `-pthread` option while targeting Audio Worklets, but the
+audio worklets will always run in a Wasm Worker, and not in a Pthread.
+
 Development Overview
 ====================
 
