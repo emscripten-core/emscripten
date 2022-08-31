@@ -190,6 +190,7 @@ protected:
   // Inserts a file with the given name, kind, and mode. Returns a `File` object
   // corresponding to the newly created file or nullptr if the new file could
   // not be created. Assumes a child with this name does not already exist.
+  // If the operation failed, returns nullptr.
   virtual std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                                    mode_t mode) = 0;
   virtual std::shared_ptr<Directory> insertDirectory(const std::string& name,
@@ -357,6 +358,7 @@ public:
   // Insert a child of the given name, kind, and mode in the underlying backend,
   // which will allocate and return a corresponding `File` on success or return
   // nullptr otherwise. Assumes a child with this name does not already exist.
+  // If the operation failed, returns nullptr.
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode);
   std::shared_ptr<Directory> insertDirectory(const std::string& name,

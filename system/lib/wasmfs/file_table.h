@@ -53,6 +53,7 @@ public:
   [[nodiscard]] static int create(std::shared_ptr<File> file,
                                   oflags_t flags,
                                   std::shared_ptr<OpenFileState>& out) {
+    assert(file);
     if (auto f = file->dynCast<DataFile>()) {
       if (int err = f->locked().open(flags & O_ACCMODE)) {
         return err;

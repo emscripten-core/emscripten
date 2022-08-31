@@ -435,6 +435,11 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       std::shared_ptr<File> created;
       if (backend == parent->getBackend()) {
         created = lockedParent.insertDataFile(std::string(childName), mode);
+        if (!created) {
+          // TODO Receive a specific error code, and report it here. For now,
+          //      report a generic error.
+          return -EIO;
+        }
       } else {
         created = backend->createFile(mode);
         bool mounted = lockedParent.mountChild(std::string(childName), created);
