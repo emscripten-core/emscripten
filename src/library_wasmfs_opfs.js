@@ -175,9 +175,9 @@ mergeInto(LibraryManager.library, {
     try {
       childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
     } catch(e) {
-      _emscripten_proxy_finish(ctx);
       // TODO: Return a specific error code depending on the error.
       {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
+      _emscripten_proxy_finish(ctx);
       return;
     }
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
