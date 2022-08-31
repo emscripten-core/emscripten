@@ -19,6 +19,10 @@ ports = []
 
 ports_by_name = {}
 
+# Variant builds that we want to support for certain ports
+# {variant_name: (port_name, extra_settings)}
+port_variants = {}
+
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
@@ -42,6 +46,14 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
+    if not hasattr(port, 'variants'):
+      # port variants (default: no variants)
+      port.variants = {}
+
+    for variant, extra_settings in port.variants.items():
+      if variant in port_variants:
+        utils.exit_with_error('duplicate port variant: %s' % variant)
+      port_variants[variant] = (port.name, extra_settings)
 
   for dep in port.deps:
     if dep not in ports_by_name:

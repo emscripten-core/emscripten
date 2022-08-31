@@ -9,6 +9,8 @@ TAG = 'release-2.24.0'
 HASH = '33ea357de1c137b4ce101349b119105d090ef2e05224fd3f05074b65579e53b068fa94aba6a37ac44c21f246e14ed15f0045dcdd1ddf7357a35aa7e8f2db2d3b'
 SUBDIR = 'SDL-' + TAG
 
+variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
+
 
 def needed(settings):
   return settings.USE_SDL == 2
