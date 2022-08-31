@@ -53,7 +53,6 @@ int try_open_rdonly(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int try_truncate(void) {
-  emscripten_console_log("in try_truncate");
   int err = truncate(file, 42);
   if (err == 0) {
     return 1;

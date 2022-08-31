@@ -258,8 +258,8 @@ private:
         // We don't support `truncate` in blob mode because the blob would
         // become invalidated and refreshing it while ensuring other in-flight
         // operations on the same file do not observe the invalidated blob would
-        // be extermely complicated.
-        WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+        // be extremely complicated.
+        return -EIO;
       case OpenState::None: {
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);

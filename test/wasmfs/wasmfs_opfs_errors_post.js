@@ -45,5 +45,9 @@ async function run_test() {
     throw "Unexpected failure opening file for reading";
   }
 
+  if (Module._try_truncate() != 1) {
+    throw "Unexpected failure when resizing file";
+  }
+
   Module._report_result(0);
 }
