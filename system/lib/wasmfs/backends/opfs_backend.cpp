@@ -28,11 +28,11 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-// Returns 0 on success, or a negative error code.
-int _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
-                             int parent,
-                             const char* name,
-                             int* child_id);
+void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
+                              int parent,
+                              const char* name,
+                              int* child_id,
+                              int* err);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
 void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
@@ -259,7 +259,7 @@ private:
         // be extermely complicated.
         WASMFS_UNREACHABLE("TODO: proper setSize error handling");
       case OpenState::None: {
-        int err = 1;
+        int err = 0;
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
         });
@@ -368,9 +368,9 @@ private:
     int childID = 0;
     int err = 0;
     proxy([&](auto ctx) {
-      err = _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID);
+      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID, &err);
     });
-    if (err != 0) {
+    if (err) {
       return {};
     }
     assert(childID >= 0);
