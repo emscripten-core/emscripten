@@ -266,12 +266,13 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSFree',
                                     '$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_close_access: function(accessID) {
+  _wasmfs_opfs_close_access: async function(ctx, accessID) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
+    // Wait for the close to finish to ensure that subsequent opens succeed. The
+    // close cannot fail, so we don't need any kind of error handling.
+    await accessHandle.close();
     wasmfsOPFSFree(wasmfsOPFSAccessHandles, accessID);
-    // This is an async API, but we don't actually need to wait for it. It also
-    // cannot fail, so we don't need any kind of error handling.
-    accessHandle.close();
+    _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSFree',
