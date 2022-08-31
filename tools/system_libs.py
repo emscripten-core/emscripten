@@ -1759,7 +1759,7 @@ def warn_on_unexported_main(symbolses):
 
 
 def handle_reverse_deps(input_files):
-  if settings.REVERSE_DEPS == 'none':
+  if settings.REVERSE_DEPS == 'none' or settings.SIDE_MODULE:
     return
   elif settings.REVERSE_DEPS == 'all':
     # When not optimzing we add all possible reverse dependencies rather

@@ -2146,12 +2146,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
-  # When building a side module we currently have to assume that any undefined
-  # symbols that exist at link time will be satisfied by the main module or JS.
-  if settings.SIDE_MODULE:
-    default_setting(user_settings, 'ERROR_ON_UNDEFINED_SYMBOLS', 0)
-    default_setting(user_settings, 'WARN_ON_UNDEFINED_SYMBOLS', 0)
-
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
@@ -2683,6 +2677,16 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   apply_min_browser_versions(user_settings)
 
+  if settings.SIDE_MODULE:
+    # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
+    # They all come from either libc or compiler-rt.  The exception is __wasm_call_ctors
+    # which is a per-module export.
+    settings.REQUIRED_EXPORTS.clear()
+
+  if not settings.STANDALONE_WASM:
+    # in standalone mode, crt1 will call the constructors from inside the wasm
+    settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
+
   return target, wasm_target
 
 
@@ -2876,7 +2880,7 @@ def phase_link(linker_arguments, wasm_target):
   # fastcomp deferred linking opts.
   # TODO: we could check if this is a fastcomp build, and still speed things up here
   js_syms = None
-  if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS:
+  if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS and not settings.SIDE_MODULE:
     js_syms = get_all_js_syms()
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
