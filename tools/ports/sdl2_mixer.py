@@ -11,6 +11,10 @@ TAG = 'release-2.0.4'
 HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
 
 deps = ['sdl2']
+variants = {
+  'sdl2_mixer_mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
+  'sdl2_mixer_none': {'SDL2_MIXER_FORMATS': []},
+}
 
 
 def needed(settings):
@@ -57,6 +61,7 @@ def get(ports, settings, shared):
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
+        '-Wno-incompatible-function-pointer-types',
         '-sUSE_MPG123=1',
         '-DMUSIC_MP3_MPG123',
       ]

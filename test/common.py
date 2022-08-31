@@ -406,10 +406,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
       self.skipTest('no dynamic linking support in wasm2js yet')
-    if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic linking support in ASan yet')
-    if '-fsanitize=leak' in self.emcc_args:
-      self.skipTest('no dynamic linking support in LSan yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
 
@@ -654,6 +650,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
+      assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
     if output_basename:
@@ -731,6 +728,37 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     non_data_lines = [line for line in wat_lines if '(data ' not in line]
     return len(non_data_lines)
 
+  def clean_js_output(self, output):
+    """Cleaup the JS output prior to running verification steps on it.
+
+    Due to minification, when we get a crash report from JS it can sometimes
+    contains the entire program in the output (since the entire program is
+    on a single line).  In this case we can sometimes get false positives
+    when checking for strings in the output.  To avoid these false positives
+    and the make the output easier to read in such cases we attempt to remove
+    such lines from the JS output.
+    """
+    lines = output.splitlines()
+    long_lines = []
+
+    def cleanup(line):
+      if len(line) > 2048:
+        # Sanity check that this is really the emscripten program/module on
+        # a single line.
+        assert line.startswith('var Module=typeof Module!="undefined"')
+        long_lines.append(line)
+        line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
+      return line
+
+    lines = [cleanup(l) for l in lines]
+    if not long_lines:
+      # No long lines found just return the unmodified output
+      return output
+
+    # Sanity check that we only a single long line.
+    assert len(long_lines) == 1
+    return '\n'.join(lines)
+
   def run_js(self, filename, engine=None, args=None,
              output_nicerizer=None,
              assert_returncode=0,
@@ -775,18 +803,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ret += read_file(stderr_file)
     if output_nicerizer:
       ret = output_nicerizer(ret)
+    if assert_returncode != 0:
+      ret = self.clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
-      ret = limit_size(ret)
       print('-- begin program output --')
-      print(read_file(stdout_file), end='')
+      print(limit_size(read_file(stdout_file)), end='')
       print('-- end program output --')
       if not interleaved_output:
         print('-- begin program stderr --')
-        print(read_file(stderr_file), end='')
+        print(limit_size(read_file(stderr_file)), end='')
         print('-- end program stderr --')
     if timeout_error:
       raise timeout_error
     if error:
+      ret = limit_size(ret)
       if assert_returncode == NON_ZERO:
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
@@ -976,7 +1006,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Shared test code between main suite and others
 
-  def expect_fail(self, cmd, **args):
+  def expect_fail(self, cmd, expect_traceback=False, **args):
     """Run a subprocess and assert that it returns non-zero.
 
     Return the stderr of the subprocess.
@@ -986,7 +1016,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
     # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
-    if not WINDOWS or 'Access is denied' not in proc.stderr:
+    if expect_traceback:
+      self.assertContained('Traceback', proc.stderr)
+    elif not WINDOWS or 'Access is denied' not in proc.stderr:
       self.assertNotContained('Traceback', proc.stderr)
     return proc.stderr
 

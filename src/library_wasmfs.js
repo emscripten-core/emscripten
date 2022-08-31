@@ -140,7 +140,18 @@ mergeInto(LibraryManager.library, {
     writeFile: (path, data) => {
       return withStackSave(() => {
         var pathBuffer = allocateUTF8OnStack(path);
-        var dataBuffer = _malloc(data);
+        if (typeof data == 'string') {
+          var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
+          var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+          data = buf.slice(0, actualNumBytes);
+        }
+        var dataBuffer = _malloc(data.length);
+#if ASSERTIONS
+        assert(dataBuffer);
+#endif
+        for (var i = 0; i < data.length; i++) {
+          {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
+        }
         var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
         _free(dataBuffer);
         return ret;
@@ -220,24 +231,29 @@ mergeInto(LibraryManager.library, {
   _wasmfs_get_preloaded_file_mode: function(index) {
     return wasmFSPreloadedFiles[index].mode;
   },
+  _wasmfs_get_preloaded_parent_path__sig: 'vip',
   _wasmfs_get_preloaded_parent_path: function(index, parentPathBuffer) {
     var s = wasmFSPreloadedDirs[index].parentPath;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, parentPathBuffer, len);
   },
+  _wasmfs_get_preloaded_child_path__sig: 'vip',
   _wasmfs_get_preloaded_child_path: function(index, childNameBuffer) {
     var s = wasmFSPreloadedDirs[index].childName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, childNameBuffer, len);
   },
+  _wasmfs_get_preloaded_path_name__sig: 'vip',
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
+  _wasmfs_get_preloaded_file_size__sig: 'pi',
   _wasmfs_get_preloaded_file_size: function(index) {
     return wasmFSPreloadedFiles[index].fileData.length;
   },
+  _wasmfs_copy_preloaded_file_data__sig: 'vip',
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   }

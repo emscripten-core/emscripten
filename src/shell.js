@@ -201,7 +201,7 @@ var requireNodeFS;
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT
 #if ASSERTIONS
-  if (!(typeof process == 'object' && typeof require == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 #endif
   if (ENVIRONMENT_IS_WORKER) {

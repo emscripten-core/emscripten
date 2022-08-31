@@ -59,7 +59,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/param.h>
-#if !SANITIZER_SOLARIS
+#if !SANITIZER_SOLARIS && !SANITIZER_EMSCRIPTEN
 #include <sys/ptrace.h>
 #endif
 #include <sys/resource.h>
@@ -596,7 +596,9 @@ u64 NanoTime() {
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+extern "C" {
 int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
+}
 
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return __clock_gettime(clk_id, tp);
@@ -1850,7 +1852,7 @@ HandleSignalMode GetHandleSignalMode(int signum) {
   return result;
 }
 
-#if !SANITIZER_GO
+#if !SANITIZER_GO && !SANITIZER_EMSCRIPTEN
 void *internal_start_thread(void *(*func)(void *arg), void *arg) {
   if (&real_pthread_create == 0)
     return nullptr;

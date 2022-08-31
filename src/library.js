@@ -21,29 +21,6 @@
 // new function with an '_', it will not be found.
 
 mergeInto(LibraryManager.library, {
-  // ==========================================================================
-  // getTempRet0/setTempRet0: scratch space handling i64 return
-  //
-  // These are trivial wrappers around runtime functions that make these symbols
-  // available to native code.
-  // ==========================================================================
-
-  $tempRet0: 0,
-  $getTempRet0__sig: 'i',
-  $getTempRet0__deps: ['$tempRet0'],
-  $getTempRet0: function() {
-    return tempRet0;
-  },
-
-  $setTempRet0__sig: 'vi',
-  $setTempRet0__deps: ['$tempRet0'],
-  $setTempRet0: function(val) {
-    tempRet0 = val;
-  },
-
-  getTempRet0: '$getTempRet0',
-  setTempRet0: '$setTempRet0',
-
   $ptrToString: function(ptr) {
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
@@ -58,6 +35,7 @@ mergeInto(LibraryManager.library, {
     }
 #endif
     HEAPU8.fill(0, address, address + size);
+    return address;
   },
 
 #if SAFE_HEAP
@@ -347,6 +325,7 @@ mergeInto(LibraryManager.library, {
   },
 
   system__deps: ['$setErrNo'],
+  system__sig: 'ip',
   system: function(command) {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -1849,7 +1828,7 @@ mergeInto(LibraryManager.library, {
   // note: lots of leaking here!
   gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
-  gethostbyaddr__sig: 'iiii',
+  gethostbyaddr__sig: 'ipii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
@@ -1867,7 +1846,7 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
-  gethostbyname__sig: 'ii',
+  gethostbyname__sig: 'pp',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
@@ -1895,7 +1874,7 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
-  gethostbyname_r__sig: 'iiiiiii',
+  gethostbyname_r__sig: 'ipppipp',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
     var data = _gethostbyname(name);
     _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
@@ -1907,7 +1886,7 @@ mergeInto(LibraryManager.library, {
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
-  getaddrinfo__sig: 'iiiii',
+  getaddrinfo__sig: 'ipppp',
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -2078,6 +2057,7 @@ mergeInto(LibraryManager.library, {
   },
 
   getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
+  getnameinfo__sig: 'ipipipii',
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -2312,9 +2292,9 @@ mergeInto(LibraryManager.library, {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
-  // We use builtin_malloc and builtin_free here because otherwise lsan will
-  // report the last returned string as a leak.
-  emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
+  // Mark as `noleakcheck` otherwise lsan will report the last returned string
+  // as a leak.
+  emscripten_run_script_string__noleakcheck: true,
   emscripten_run_script_string__sig: 'pp',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
@@ -2325,9 +2305,9 @@ mergeInto(LibraryManager.library, {
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _emscripten_builtin_free(me.buffer);
+      if (me.bufferSize) _free(me.buffer);
       me.bufferSize = len+1;
-      me.buffer = _emscripten_builtin_malloc(me.bufferSize);
+      me.buffer = _malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
@@ -2626,7 +2606,7 @@ mergeInto(LibraryManager.library, {
 
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
-  emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
+  emscripten_get_compiler_setting__noleakcheck: true,
   emscripten_get_compiler_setting__sig: 'pp',
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
@@ -2639,7 +2619,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    cache[name] = _emscripten_builtin_malloc(ret.length + 1);
+    cache[name] = _malloc(ret.length + 1);
     stringToUTF8(ret + '', cache[name], ret.length + 1);
     return cache[name];
 #else
@@ -3214,13 +3194,16 @@ mergeInto(LibraryManager.library, {
   },
 
 #if DYNCALLS || !WASM_BIGINT
+#if MAIN_MODULE == 1
+  $dynCallLegacy__deps: ['$createDyncallWrapper'],
+#endif
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
-    assert(sig in dynCalls, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    assert(sig in dynCalls, 'bad function pointer type - sig is not in dynCalls: \'' + sig + '\'');
 #else
-    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - dynCall function not found for sig \'' + sig + '\'');
 #endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
@@ -3232,6 +3215,11 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
+#if MAIN_MODULE == 1
+    if (!('dynCall_' + sig in Module)) {
+      Module['dynCall_' + sig] = createDyncallWrapper(sig);
+    }
+#endif
     var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
@@ -3374,7 +3362,7 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out__sig: 'vi',
+  _emscripten_out__sig: 'vp',
   _emscripten_out: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3382,7 +3370,7 @@ mergeInto(LibraryManager.library, {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err__sig: 'vi',
+  _emscripten_err__sig: 'vp',
   _emscripten_err: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3392,7 +3380,7 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-  _emscripten_get_progname__sig: 'vii',
+  _emscripten_get_progname__sig: 'vpp',
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
@@ -3603,8 +3591,7 @@ mergeInto(LibraryManager.library, {
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
     if (!ptr) return 0;
-    zeroMemory(ptr, size);
-    return ptr;
+    return zeroMemory(ptr, size);
 #elif ASSERTIONS
     abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else
@@ -3629,6 +3616,7 @@ mergeInto(LibraryManager.library, {
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
   __heap_base: '{{{ to64(HEAP_BASE) }}}',
+  __global_base: '{{{ to64(GLOBAL_BASE) }}}',
 #if WASM_EXCEPTIONS
   // In dynamic linking we define tags here and feed them to each module
   __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
@@ -3712,7 +3700,5 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
-  '$getTempRet0',
-  '$setTempRet0',
 );
 #endif

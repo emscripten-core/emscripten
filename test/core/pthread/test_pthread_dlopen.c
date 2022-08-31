@@ -18,7 +18,7 @@ static func_t expected_func_addr;
 static atomic_bool started = false;
 static atomic_bool ready = false;
 
-static void* thread_main() {
+static void* thread_main(void* arg) {
   printf("in thread_main\n");
   started = true;
   // Spin until the main thread has loaded the side module

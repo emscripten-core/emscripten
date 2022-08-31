@@ -44,12 +44,45 @@ mergeInto(LibraryManager.library, {
     }
     return type;
   },
-
+  $generateFuncType__deps: ['$uleb128Encode'],
+  $generateFuncType : function(sig, target){
+    var sigRet = sig.slice(0, 1);
+    var sigParam = sig.slice(1);
+    var typeCodes = {
+      'i': 0x7f, // i32
+#if MEMORY64
+      'p': 0x7e, // i64
+#else
+      'p': 0x7f, // i32
+#endif
+      'j': 0x7e, // i64
+      'f': 0x7d, // f32
+      'd': 0x7c, // f64
+    };
+  
+    // Parameters, length + signatures
+    target.push(0x60 /* form: func */);
+    uleb128Encode(sigParam.length, target);
+    for (var i = 0; i < sigParam.length; ++i) {
+#if ASSERTIONS
+      assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
+#endif
+  target.push(typeCodes[sigParam[i]]);
+    }
+  
+    // Return values, length + signatures
+    // With no multi-return in MVP, either 0 (void) or 1 (anything else)
+    if (sigRet == 'v') {
+      target.push(0x00);
+    } else {
+      target.push(0x01, typeCodes[sigRet]);
+    }
+  },
   // Wraps a JS function as a wasm function with a given signature.
-  $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes'],
+  $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
   $convertJsFunctionToWasm: function(func, sig) {
 #if WASM2JS
-    return func;
+    // return func;
 #else // WASM2JS
 
     // If the type reflection proposal is available, use the new
@@ -64,38 +97,8 @@ mergeInto(LibraryManager.library, {
     // generated based on the signature passed in.
     var typeSectionBody = [
       0x01, // count: 1
-      0x60, // form: func
     ];
-    var sigRet = sig.slice(0, 1);
-    var sigParam = sig.slice(1);
-    var typeCodes = {
-      'i': 0x7f, // i32
-#if MEMORY64
-      'p': 0x7e, // i64
-#else
-      'p': 0x7f, // i32
-#endif
-      'j': 0x7e, // i64
-      'f': 0x7d, // f32
-      'd': 0x7c, // f64
-    };
-
-    // Parameters, length + signatures
-    uleb128Encode(sigParam.length, typeSectionBody);
-    for (var i = 0; i < sigParam.length; ++i) {
-#if ASSERTIONS
-      assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
-#endif
-      typeSectionBody.push(typeCodes[sigParam[i]]);
-    }
-
-    // Return values, length + signatures
-    // With no multi-return in MVP, either 0 (void) or 1 (anything else)
-    if (sigRet == 'v') {
-      typeSectionBody.push(0x00);
-    } else {
-      typeSectionBody.push(0x01, typeCodes[sigRet]);
-    }
+    generateFuncType(sig, typeSectionBody);
 
     // Rest of the module is static
     var bytes = [

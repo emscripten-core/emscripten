@@ -880,7 +880,7 @@ function modifyFunction(text, func) {
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
 }
 
-function runOnMainThread(text) {
+function runIfMainThread(text) {
   if (WASM_WORKERS && USE_PTHREADS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else if (WASM_WORKERS) {
@@ -891,6 +891,10 @@ function runOnMainThread(text) {
     return text;
   }
 }
+
+// Legacy name for runIfMainThread.
+// TODO(remove).
+const runOnMainThread = runIfMainThread;
 
 function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);

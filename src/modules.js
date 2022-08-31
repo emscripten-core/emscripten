@@ -50,6 +50,7 @@ global.LibraryManager = {
       'library_stack_trace.js',
       'library_wasi.js',
       'library_dylink.js',
+      'library_makeDynCall.js',
       'library_eventloop.js',
     ];
 
@@ -68,6 +69,10 @@ global.LibraryManager = {
 
     if (EMSCRIPTEN_TRACING) {
       libraries.push('library_memoryprofiler.js');
+    }
+
+    if (AUTODEBUG) {
+      libraries.push('library_autodebug.js');
     }
 
     if (FILESYSTEM) {
@@ -362,12 +367,11 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
-    // These last three are actually native wasm functions these days but we
-    // allow exporting them via EXPORTED_RUNTIME_METHODS for backwards compat.
-    'stackSave',
-    'stackRestore',
-    'stackAlloc',
   ];
+
+  // These are actually native wasm functions these days but we allow exporting
+  // them via EXPORTED_RUNTIME_METHODS for backwards compat.
+  runtimeElements = runtimeElements.concat(WASM_SYSTEM_EXPORTS);
 
   if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements = runtimeElements.concat([

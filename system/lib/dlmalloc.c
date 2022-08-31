@@ -14,6 +14,7 @@
 #define ABORT __builtin_unreachable()
 /* allow malloc stats only in debug builds, which brings in stdio code. */
 #define NO_MALLOC_STATS 1
+#define MALLINFO_FIELD_TYPE int
 #endif
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>

@@ -78,6 +78,7 @@ void *BackgroundThread(void *arg) {
   }
 }
 
+#if !SANITIZER_EMSCRIPTEN
 void MaybeStartBackgroudThread() {
   // Need to implement/test on other platforms.
   // Start the background thread if one of the rss limits is given.
@@ -109,6 +110,7 @@ static struct BackgroudThreadStarted {
 #  endif
 #else
 void MaybeStartBackgroudThread() {}
+#endif
 #endif
 
 void WriteToSyslog(const char *msg) {

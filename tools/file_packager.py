@@ -474,8 +474,8 @@ def main():
   # even if we cd'd into a symbolic link.
   curr_abspath = os.path.abspath(os.getcwd())
 
-  if not file_.explicit_dst_path:
-    for file_ in data_files:
+  for file_ in data_files:
+    if not file_.explicit_dst_path:
       # This file was not defined with src@dst, so we inferred the destination
       # from the source. In that case, we require that the destination be
       # within the current working directory.
@@ -996,7 +996,7 @@ def generate_js(data_target, data_files, metadata):
     code += '''
       function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s

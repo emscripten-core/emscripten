@@ -20,6 +20,10 @@ int main() {
   emscripten_wget(file , file);
   printf("back from wget\n");
 
+  printf("calling wget again to overwrite previous file\n");
+  emscripten_wget(file , file);
+  printf("back from wget\n");
+
   FILE * f = fopen(file, "r");
   assert(f);
 

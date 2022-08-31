@@ -1,3 +1,2 @@
 emscripten_memcpy_big
 fd_write
-setTempRet0

@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "support.h"
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <map>
@@ -214,6 +215,30 @@ protected:
 
   // The list of entries in this directory.
   virtual std::vector<Directory::Entry> getEntries() = 0;
+
+  // Only backends that maintain file identity themselves (see below) need to
+  // implement this.
+  virtual std::string getName(std::shared_ptr<File> file) {
+    WASMFS_UNREACHABLE("getName unimplemented");
+  }
+
+  // Whether this directory implementation always returns the same `File` object
+  // for a given file. Most backends can be much simpler if they don't handle
+  // this themselves. Instead, they rely on the directory cache (dcache) to
+  // maintain file identity for them by ensuring each file is looked up in the
+  // backend only once. Some backends, however, already track file identity, so
+  // the dcache is not necessary (or would even introduce problems).
+  //
+  // When this is `true`, backends are responsible for:
+  //
+  //  1. Ensuring that all insert* and getChild calls returning a particular
+  //     file return the same File object.
+  //
+  //  2. Clearing the File's parent field in `removeChild`.
+  //
+  //  3. Implementing `getName`, since it cannot be implemented in terms of the
+  //     dcache.
+  virtual bool maintainsFileIdentity() { return false; }
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;

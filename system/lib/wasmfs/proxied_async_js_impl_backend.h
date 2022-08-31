@@ -38,7 +38,7 @@
 // For a simple example, see fetch_backend.cpp and library_wasmfs_fetch.js.
 //
 
-using js_index_t = uint32_t;
+using js_index_t = uintptr_t;
 
 extern "C" {
 
@@ -75,12 +75,12 @@ class ProxiedAsyncJSImplFile : public DataFile {
   emscripten::ProxyWorker& proxy;
 
   js_index_t getBackendIndex() {
-    static_assert(sizeof(backend_t) == sizeof(js_index_t), "TODO: wasm64");
+    static_assert(sizeof(backend_t) == sizeof(js_index_t));
     return js_index_t(getBackend());
   }
 
   js_index_t getFileIndex() {
-    static_assert(sizeof(this) == sizeof(js_index_t), "TODO: wasm64");
+    static_assert(sizeof(this) == sizeof(js_index_t));
     return js_index_t(this);
   }
 

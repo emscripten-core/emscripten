@@ -2223,7 +2223,6 @@ void *getBindBuffer() {
     shutil.copyfile(test_file('screenshot.dds'), 'screenshot.dds')
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
-  @no_chrome('see #7117')
   @requires_graphics_hardware
   def test_aniso(self):
     shutil.copyfile(test_file('water.dds'), 'water.dds')
@@ -4596,6 +4595,11 @@ Module["preRun"].push(function () {
   @also_with_wasm64
   def test_fetch_headers_received(self):
     self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+
+  @also_with_wasm64
+  def test_fetch_xhr_abort(self):
+    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    self.btest_exit('fetch/xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.

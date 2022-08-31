@@ -13,6 +13,7 @@
 #include <pwd.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <sys/times.h>
@@ -201,5 +202,10 @@ int setgroups(size_t size, const gid_t *list) {
   }
   // We have just one process/user/group, so it makes no sense to set groups.
   errno = EPERM;
+  return -1;
+}
+
+int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
+  errno = ENOSYS;
   return -1;
 }

@@ -15,18 +15,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/io.h>
 #include <errno.h>
 
 void test_mmap_read() {
   // Use mmap to read in.txt
-  EM_ASM(
-    FS.mkdir('yolo');
-    #if NODEFS
-        FS.mount(NODEFS, { root: '.' }, 'yolo');
-    #endif
-    FS.writeFile('yolo/in.txt', 'mmap ftw!');
-  );
+  EM_ASM(FS.writeFile('yolo/in.txt', 'mmap ftw!'));
 
   int fd = open("yolo/in.txt", O_RDONLY);
   assert(fd >= 0);
@@ -270,6 +263,12 @@ void test_mmap_overallocate() {
 }
 
 int main() {
+  EM_ASM(
+    FS.mkdir('yolo');
+#if NODEFS
+    FS.mount(NODEFS, { root: '.' }, 'yolo');
+#endif
+  );
   test_mmap_read();
   test_mmap_write();
   test_mmap_readonly();

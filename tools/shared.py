@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from functools import wraps
 from subprocess import PIPE
 import atexit
 import binascii
@@ -241,6 +242,7 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable defau
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
+  check_node()
   command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
@@ -255,14 +257,29 @@ def get_npm_cmd(name):
   return cmd
 
 
+# TODO(sbc): Replace with functools.cache, once we update to python 3.7
+def memoize(func):
+  called = False
+  result = None
+
+  @wraps(func)
+  def helper():
+    nonlocal called, result
+    if not called:
+      result = func()
+      called = True
+    return result
+
+  return helper
+
+
+@memoize
 def get_clang_version():
-  if not hasattr(get_clang_version, 'found_version'):
-    if not os.path.exists(CLANG_CC):
-      exit_with_error('clang executable not found at `%s`' % CLANG_CC)
-    proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
-    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
-    get_clang_version.found_version = m and m.group(1)
-  return get_clang_version.found_version
+  if not os.path.exists(CLANG_CC):
+    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+  proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
+  m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
+  return m and m.group(1)
 
 
 def check_llvm_version():
@@ -319,14 +336,20 @@ def check_node_version():
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
-    return False
 
   if version < MINIMUM_NODE_VERSION:
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
-    return False
 
-  return True
+
+@memoize
+@ToolchainProfiler.profile()
+def check_node():
+  check_node_version()
+  try:
+    run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+  except Exception as e:
+    exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
 def set_version_globals():
@@ -347,7 +370,6 @@ def generate_sanity():
 
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-  check_node_version()
   check_llvm_version()
 
   llvm_ok = check_llvm()
@@ -360,12 +382,6 @@ def perform_sanity_checks():
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
-
-  with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    try:
-      run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
-    except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -413,8 +429,14 @@ def check_sanity(force=False):
       sanity_data = utils.read_file(sanity_file)
       if sanity_data == expected:
         logger.debug(f'sanity file up-to-date: {sanity_file}')
+        # Even if the sanity file is up-to-date we still need to at least
+        # check the llvm version. This comes at no extra performance cost
+        # since the version was already extracted and cached by the
+        # generate_sanity() call above.
         if force:
           perform_sanity_checks()
+        else:
+          check_llvm_version()
         return True # all is well
     return False
 
@@ -564,11 +586,13 @@ def mangle_c_symbol_name(name):
 
 
 def demangle_c_symbol_name(name):
-  return name[1:] if name.startswith('_') else '$' + name
+  if not is_c_symbol(name):
+    return '$' + name
+  return name[1:] if name.startswith('_') else name
 
 
 def is_c_symbol(name):
-  return name.startswith('_')
+  return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
 def treat_as_user_function(name):
