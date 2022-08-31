@@ -28,7 +28,7 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-// Returns 0 on success, or an error code.
+// Returns 0 on success, or a negative error code.
 int _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
                              int parent,
                              const char* name,

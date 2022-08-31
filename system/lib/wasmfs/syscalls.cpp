@@ -437,7 +437,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
         if (!created) {
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
-          return -EINVAL;
+          return -EIO;
         }
       } else {
         created = backend->createFile(mode);
