@@ -1,11 +1,12 @@
+#include <assert.h>
+#include <emscripten/console.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
-#include <emscripten/console.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int main() {
   wasmfs_create_directory("/opfs", 0777, wasmfs_create_opfs_backend());
@@ -23,7 +24,8 @@ const char* file = "/opfs/data";
 static int try_open(int flags) {
   int fd = open(file, flags);
   if (fd >= 0) {
-    close(fd);
+    int err = close(fd);
+    assert(err == 0);
     return 1;
   }
   if (errno == EACCES) {

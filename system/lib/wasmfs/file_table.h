@@ -50,12 +50,6 @@ public:
   OpenFileState(private_key, oflags_t flags, std::shared_ptr<File> file)
     : flags(flags), file(file) {}
 
-  ~OpenFileState() {
-    if (auto f = file->dynCast<DataFile>()) {
-      f->locked().close();
-    }
-  }
-
   [[nodiscard]] static int create(std::shared_ptr<File> file,
                                   oflags_t flags,
                                   std::shared_ptr<OpenFileState>& out) {
@@ -108,7 +102,12 @@ public:
       : fileTable(fileTable), lock(fileTable.mutex) {}
 
     std::shared_ptr<OpenFileState> getEntry(__wasi_fd_t fd);
-    void setEntry(__wasi_fd_t fd, std::shared_ptr<OpenFileState> openFile);
+
+    // Set the table slot at `fd` to the given file. Return the result of
+    // closing the file that was previously in that entry or 0 if there was no
+    // previous file.
+    [[nodiscard]] int setEntry(__wasi_fd_t fd,
+                               std::shared_ptr<OpenFileState> openFile);
     __wasi_fd_t addEntry(std::shared_ptr<OpenFileState> openFileState);
   };
 

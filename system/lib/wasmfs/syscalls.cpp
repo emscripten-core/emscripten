@@ -68,7 +68,7 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
 
   // If the file descriptor newfd was previously open, it will just be
   // overwritten silently.
-  fileTable.setEntry(newfd, oldOpenFile);
+  (void)fileTable.setEntry(newfd, oldOpenFile);
   return newfd;
 }
 
@@ -274,11 +274,12 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   auto fileTable = wasmFS.getFileTable().locked();
-  if (!fileTable.getEntry(fd)) {
+  auto entry = fileTable.getEntry(fd);
+  if (!entry) {
     return __WASI_ERRNO_BADF;
   }
-  fileTable.setEntry(fd, nullptr);
-  return __WASI_ERRNO_SUCCESS;
+  // Translate to WASI standard of positive return codes.
+  return -fileTable.setEntry(fd, nullptr);
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
@@ -1382,7 +1383,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // TODO: Should we check for a limit on the max FD number, if we have one?
       while (1) {
         if (!fileTable.getEntry(newfd)) {
-          fileTable.setEntry(newfd, openFile);
+          (void)fileTable.setEntry(newfd, openFile);
           return newfd;
         }
         newfd++;

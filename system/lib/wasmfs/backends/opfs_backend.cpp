@@ -274,7 +274,10 @@ private:
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
 
-  void close() override { state.close(proxy); }
+  int close() override {
+    state.close(proxy);
+    return 0;
+  }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;

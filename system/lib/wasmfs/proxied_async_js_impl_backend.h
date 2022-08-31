@@ -86,7 +86,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
 
   // TODO: Notify the JS about open and close events?
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     ssize_t result;
