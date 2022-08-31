@@ -17,7 +17,7 @@ int main() {
 const char* file = "/opfs/data";
 
 // Each of these functions returns:
-//   0: failure with EACCES
+//   0: failure with EACCES (or other expected error code)
 //   1: success
 //   2: other error
 
@@ -58,6 +58,44 @@ int try_truncate(void) {
     return 1;
   }
   if (errno == EIO) {
+    return 0;
+  }
+  emscripten_console_error(strerror(errno));
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int try_oob_read(void) {
+  int fd = open(file, O_RDWR);
+  if (fd < 0) {
+    EM_ASM({ console.log('fd', $0); }, fd);
+    return 2;
+  }
+  char buf;
+  int nread = pread(fd, &buf, 1, (off_t)-1ll);
+  if (nread > 0) {
+    return 1;
+  }
+  if (errno == EINVAL) {
+    return 0;
+  }
+  EM_ASM({ console.log('errno', $0); }, errno);
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int try_oob_write(void) {
+  int fd = open(file, O_RDWR);
+  if (fd < 0) {
+    emscripten_console_error(strerror(errno));
+    return 2;
+  }
+  char buf = 0;
+  int nread = pwrite(fd, &buf, 1, (off_t)-1ll);
+  if (nread > 0) {
+    return 1;
+  }
+  if (errno == EINVAL) {
     return 0;
   }
   emscripten_console_error(strerror(errno));

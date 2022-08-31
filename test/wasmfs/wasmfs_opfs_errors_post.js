@@ -49,5 +49,13 @@ async function run_test() {
     throw "Unexpected failure when resizing file";
   }
 
+  if (Module._try_oob_read() != 0) {
+    throw "Did not get expected EINVAL doing out of bounds read";
+  }
+
+  if (Module._try_oob_write() != 0) {
+    throw "Did not get expected EINVAL doing out of bounds write";
+  }
+
   Module._report_result(0);
 }

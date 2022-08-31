@@ -75,7 +75,7 @@ int _wasmfs_opfs_read_blob(em_proxying_ctx* ctx,
                            uint8_t* buf,
                            uint32_t len,
                            uint32_t pos,
-                           uint32_t* nread);
+                           int32_t* nread);
 
 // Synchronous write. Return the number of bytes written.
 int _wasmfs_opfs_write_access(int access_id,
@@ -278,7 +278,8 @@ private:
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    uint32_t nread;
+    // TODO: use an i64 here.
+    int32_t nread;
     switch (state.getKind()) {
       case OpenState::Access:
         proxy([&]() {
@@ -296,18 +297,22 @@ private:
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
-    // TODO: Proper error reporting.
-    return nread;
+    // TODO: This is the correct error code for negative read positions, but we
+    // should handle other errors correctly as well.
+    return nread < 0 ? -EINVAL : nread;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     assert(state.getKind() == OpenState::Access);
-    uint32_t nwritten;
+    // TODO: use an i64 here.
+    int32_t nwritten;
     proxy([&]() {
       nwritten =
         _wasmfs_opfs_write_access(state.getAccessID(), buf, len, offset);
     });
-    return nwritten;
+    // TODO: This is the correct error code for negative write positions, but we
+    // should handle other errors correctly as well.
+    return nwritten < 0 ? -EINVAL : nwritten;
   }
 
   void flush() override {

@@ -293,7 +293,11 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_read_access: function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
-    return accessHandle.read(data, {at: pos});
+    try {
+      return accessHandle.read(data, {at: pos});
+    } catch (e) {
+      return -1;
+    }
   },
 
   _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs'],
@@ -326,7 +330,11 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_write_access: function(accessID, bufPtr, len, pos, nwrittenPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
-    return accessHandle.write(data, {at: pos});
+    try {
+      return accessHandle.write(data, {at: pos});
+    } catch (e) {
+      return -1;
+    }
   },
 
   _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles'],
