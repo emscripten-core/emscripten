@@ -28,10 +28,11 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
-                              int parent,
-                              const char* name,
-                              int* child_id);
+// Returns 0 on success, or an error code.
+int _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
+                             int parent,
+                             const char* name,
+                             int* child_id);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
 void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
@@ -365,10 +366,13 @@ private:
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {
     int childID = 0;
+    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID);
+      err = _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID);
     });
-    // TODO: Handle errors gracefully.
+    if (err != 0) {
+      return {};
+    }
     assert(childID >= 0);
     return std::make_shared<OPFSFile>(mode, getBackend(), childID, proxy);
   }

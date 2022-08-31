@@ -171,9 +171,16 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
   _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
-    let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
+    try {
+      let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
+    } catch(e) {
+      _emscripten_proxy_finish(ctx);
+      // TODO: Return a specific error code depending on the error. 
+      return 1;
+    }
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
+    return 0;
   },
 
   _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir'],
