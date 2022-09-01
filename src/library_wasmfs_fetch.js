@@ -42,7 +42,7 @@ mergeInto(LibraryManager.library, {
         var buffer = await response['arrayBuffer']();
         wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
       } else {
-        throw (response.status);
+        throw response;
       }
     }
 
@@ -73,15 +73,15 @@ mergeInto(LibraryManager.library, {
       read: async (file, buffer, length, offset) => {
         try {
           await getFile(file);
-        } catch (status) {
-          return status === 404 ? -{{{ cDefine('ENOENT') }}} : -{{{ cDefine('EBADF') }}};
+        } catch (response) {
+          return response.status === 404 ? -{{{ cDefine('ENOENT') }}} : -{{{ cDefine('EBADF') }}};
         }
         return jsFileOps.read(file, buffer, length, offset);
       },
       getSize: async (file) => {
         try {
           await getFile(file);
-        } catch (e) {}
+        } catch (response) {}
         return jsFileOps.getSize(file);
       },
     };
