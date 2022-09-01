@@ -442,6 +442,11 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
         }
       } else {
         created = backend->createFile(mode);
+        if (!created) {
+          // TODO Receive a specific error code, and report it here. For now,
+          //      report a generic error.
+          return -EIO;
+        }
         bool mounted = lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
@@ -592,8 +597,18 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   std::shared_ptr<File> created;
   if (backend == parent->getBackend()) {
     created = lockedParent.insertDirectory(childName, mode);
+    if (!created) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
   } else {
     created = backend->createDirectory(mode);
+    if (!created) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
     bool mounted = lockedParent.mountChild(childName, created);
     assert(mounted);
   }
