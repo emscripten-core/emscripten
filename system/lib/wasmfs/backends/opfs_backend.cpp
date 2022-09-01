@@ -28,8 +28,10 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_file(
-  em_proxying_ctx* ctx, int parent, const char* name, int* child_id, int* err);
+void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
+                              int parent,
+                              const char* name,
+                              int* child_id);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
 void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
@@ -138,7 +140,7 @@ public:
             [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &id); });
           // TODO: Fall back to open as a blob instead.
           if (id < 0) {
-            return -EACCES;
+            return id;
           }
           kind = Access;
           break;
@@ -147,7 +149,7 @@ public:
           proxy(
             [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
           if (id < 0) {
-            return -EACCES;
+            return id;
           }
           kind = Blob;
           break;
@@ -160,7 +162,7 @@ public:
       proxy(
         [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &newID); });
       if (newID < 0) {
-        return -EACCES;
+        return newID;
       }
       // We have an AccessHandle, so close the blob.
       proxy([&]() { _wasmfs_opfs_close_blob(getBlobID()); });
@@ -267,7 +269,7 @@ private:
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
-    return err ? -EIO : 0;
+    return err;
   }
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
@@ -297,9 +299,7 @@ private:
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
-    // TODO: This is the correct error code for negative read positions, but we
-    // should handle other errors correctly as well.
-    return nread < 0 ? -EINVAL : nread;
+    return nread;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
@@ -310,9 +310,7 @@ private:
       nwritten =
         _wasmfs_opfs_write_access(state.getAccessID(), buf, len, offset);
     });
-    // TODO: This is the correct error code for negative write positions, but we
-    // should handle other errors correctly as well.
-    return nwritten < 0 ? -EINVAL : nwritten;
+    return nwritten;
   }
 
   void flush() override {
@@ -371,14 +369,13 @@ private:
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {
     int childID = 0;
-    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID, &err);
+      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID);
     });
-    if (err) {
-      return {};
+    if (childID < 0) {
+      // TODO: Propagate specific errors.
+      return nullptr;
     }
-    assert(childID >= 0);
     return std::make_shared<OPFSFile>(mode, getBackend(), childID, proxy);
   }
 
@@ -388,14 +385,17 @@ private:
     proxy([&](auto ctx) {
       _wasmfs_opfs_insert_directory(ctx.ctx, dirID, name.c_str(), &childID);
     });
-    // TODO: Handle errors gracefully.
-    assert(childID >= 0);
+    if (childID < 0) {
+      // TODO: Propagate specific errors.
+      return nullptr;
+    }
     return std::make_shared<OPFSDirectory>(mode, getBackend(), childID, proxy);
   }
 
   std::shared_ptr<Symlink> insertSymlink(const std::string& name,
                                          const std::string& target) override {
     // Symlinks not supported.
+    // TODO: Propagate EPERM specifically.
     return nullptr;
   }
 

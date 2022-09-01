@@ -81,12 +81,8 @@ mergeInto(LibraryManager.library, {
   },
 
   // Return the file ID for the file with `name` under `parent`, creating it if
-  // it doesn't exist and `create` or otherwise return one of the following
-  // error codes:
-  //
-  // -1: file does not exist.
-  // -2: file exists but it is actually a directory.
-  // -3: file exists but an access handle cannot be created for it.
+  // it doesn't exist and `create` or otherwise return a negative error code
+  // corresponding to the error.
   $wasmfsOPFSGetOrCreateFile__deps: ['$wasmfsOPFSAllocate',
                                      '$wasmfsOPFSDirectoryHandles',
                                      '$wasmfsOPFSFileHandles'],
@@ -97,22 +93,22 @@ mergeInto(LibraryManager.library, {
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
     } catch (e) {
       if (e.name === "NotFoundError") {
-        return -1;
+        return -{{{ cDefine('EEXIST') }}};
       }
       if (e.name === "TypeMismatchError") {
-        return -2;
+        return -{{{ cDefine('EISDIR') }}};
       }
-      throw e;
+#if ASSERTIONS
+      err('unexpected error:', e, e.stack);
+#endif
+      return -{{{ cDefine('EIO') }}};
     }
     return wasmfsOPFSAllocate(wasmfsOPFSFileHandles, fileHandle);
   },
 
   // Return the file ID for the directory with `name` under `parent`, creating
-  // it if it doesn't exist and `create` or otherwise one of the following error
-  // codes:
-  //
-  // -1: directory does not exist.
-  // -2: directory exists but is actually a data file.
+  // it if it doesn't exist and `create` or otherwise return a negative error
+  // code corresponding to the error.
   $wasmfsOPFSGetOrCreateDir__deps: ['$wasmfsOPFSAllocate',
                                     '$wasmfsOPFSDirectoryHandles'],
   $wasmfsOPFSGetOrCreateDir: async function(parent, name, create) {
@@ -123,12 +119,15 @@ mergeInto(LibraryManager.library, {
           await parentHandle.getDirectoryHandle(name, {create: create});
     } catch (e) {
       if (e.name === "NotFoundError") {
-        return -1;
+        return -{{{ cDefine('EEXIST') }}};
       }
       if (e.name === "TypeMismatchError") {
-        return -2;
+        return -{{{ cDefine('ENOTDIR') }}};
       }
-      throw e;
+#if ASSERTIONS
+      err('unexpected error:', e, e.stack);
+#endif
+      return -{{{ cDefine('EIO') }}};
     }
     return wasmfsOPFSAllocate(wasmfsOPFSDirectoryHandles, childHandle);
   },
@@ -140,7 +139,7 @@ mergeInto(LibraryManager.library, {
     let name = UTF8ToString(namePtr);
     let childType = 1;
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, false);
-    if (childID == -2) {
+    if (childID == -{{{ cDefine('EISDIR') }}}) {
       childType = 2;
       childID = await wasmfsOPFSGetOrCreateDir(parent, name, false);
     }
@@ -154,6 +153,7 @@ mergeInto(LibraryManager.library, {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
     // TODO: Use 'for await' once Acorn supports that.
+    // TODO: Error handling.
     let iter = dirHandle.entries();
     for (let entry; entry = await iter.next(), !entry.done;) {
       let [name, child] = entry.value;
@@ -169,17 +169,9 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
-  _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr, errPtr) {
+  _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
-    let childID;
-    try {
-      childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
-    } catch(e) {
-      // TODO: Return a specific error code depending on the error.
-      {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
-      _emscripten_proxy_finish(ctx);
-      return;
-    }
+    let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
     _emscripten_proxy_finish(ctx);
   },
@@ -199,6 +191,7 @@ mergeInto(LibraryManager.library, {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let newDirHandle = wasmfsOPFSDirectoryHandles.get(newDirID);
+    // TODO: error handling
     await fileHandle.move(newDirHandle, name);
     _emscripten_proxy_finish(ctx);
   },
@@ -243,9 +236,12 @@ mergeInto(LibraryManager.library, {
       // TODO: Presumably only one of these will appear in the final API?
       if (e.name === "InvalidStateError" ||
           e.name === "NoModificationAllowedError") {
-        accessID = -1;
+        accessID = -{{{ cDefine('EACCES') }}};
       } else {
-        throw e;
+#if ASSERTIONS
+        err('unexpected error:', e, e.stack);
+#endif
+        accessID = -{{{ cDefine('EIO') }}};
       }
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
@@ -263,9 +259,12 @@ mergeInto(LibraryManager.library, {
       blobID = wasmfsOPFSAllocate(wasmfsOPFSBlobs, blob);
     } catch (e) {
       if (e.name === "NotAllowedError") {
-        blobID = -1;
+        blobID = -{{{ cDefine('EACCES') }}};
       } else {
-        throw e;
+#if ASSERTIONS
+        err('unexpected error:', e, e.stack);
+#endif
+        blobID = -{{{ cDefine('EIO') }}};
       }
     }
     {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
@@ -296,7 +295,13 @@ mergeInto(LibraryManager.library, {
     try {
       return accessHandle.read(data, {at: pos});
     } catch (e) {
-      return -1;
+      if (e.name == "TypeError") {
+        return -{{{ cDefine('EINVAL') }}};
+      }
+#if ASSERTIONS
+      err('unexpected error:', e, e.stack);
+#endif
+      return -{{{ cDefine('EIO') }}};
     }
   },
 
@@ -316,9 +321,12 @@ mergeInto(LibraryManager.library, {
       nread += data.length;
     } catch (e) {
       if (e instanceof RangeError) {
-        nread = -1;
+        nread = -{{{ cDefine('EFAULT') }}};
       } else {
-        throw e;
+#if ASSERTIONS
+        err('unexpected error:', e, e.stack);
+#endif
+        nread = -{{{ cDefine('EIO') }}};
       }
     }
 
@@ -327,19 +335,26 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_write_access: function(accessID, bufPtr, len, pos, nwrittenPtr) {
+  _wasmfs_opfs_write_access: function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
       return accessHandle.write(data, {at: pos});
     } catch (e) {
-      return -1;
+      if (e.name == "TypeError") {
+        return -{{{ cDefine('EINVAL') }}};
+      }
+#if ASSERTIONS
+      err('unexpected error:', e, e.stack);
+#endif
+      return -{{{ cDefine('EIO') }}};
     }
   },
 
   _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_get_size_access: async function(ctx, accessID, sizePtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
+    // TODO: Error handling
     let size = await accessHandle.getSize();
     {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
     _emscripten_proxy_finish(ctx);
@@ -347,12 +362,14 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: function(blobID) {
+    // This cannot fail.
     return wasmfsOPFSBlobs.get(blobID).size;
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles'],
   _wasmfs_opfs_get_size_file: async function(ctx, fileID, sizePtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
+    // TODO: Error handling
     let size = (await fileHandle.getFile()).size;
     {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
     _emscripten_proxy_finish(ctx);
@@ -364,7 +381,8 @@ mergeInto(LibraryManager.library, {
     try {
       await accessHandle.truncate(size);
     } catch {
-      {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
   },
@@ -377,7 +395,8 @@ mergeInto(LibraryManager.library, {
       await writable.truncate(size);
       await writable.close();
     } catch {
-      {{{ makeSetValue('errPtr', 0, '1', 'i32') }}};
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
   },
@@ -385,6 +404,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_flush_access: async function(ctx, accessID) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
+    // TODO: Error handling
     await accessHandle.flush();
     _emscripten_proxy_finish(ctx);
   }
