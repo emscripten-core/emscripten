@@ -25,7 +25,7 @@ from . import utils
 from .shared import CLANG_CC, CLANG_CXX
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
-from .shared import try_delete, run_process, check_call, exit_with_error
+from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import TEMP_DIR
@@ -71,7 +71,7 @@ def extract_archive_contents(archive_files):
   unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
   def clean_at_exit():
-    try_delete(unpack_temp_dir)
+    utils.delete_dir(unpack_temp_dir)
   shared.atexit.register(clean_at_exit)
 
   archive_contents = []
@@ -521,7 +521,7 @@ def link_bitcode(args, target, force_archive_contents=False):
     scan_archive_group(current_archive_group)
     current_archive_group = None
 
-  try_delete(target)
+  utils.delete_file(target)
 
   # Finish link
   # tolerate people trying to link a.so a.so etc.
@@ -595,7 +595,7 @@ def parse_llvm_nm_symbols(output):
 
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  try_delete(output_filename)
+  utils.delete_file(output_filename)
   cmd = [EMAR, action, output_filename] + filenames
   cmd = get_command_with_possible_response_file(cmd)
   run_process(cmd, stdout=stdout, stderr=stderr, env=env)
@@ -913,7 +913,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
   # But it looks like it creates such files on Linux(?) even without setting that command line
   # flag (and currently we don't), so delete the produced source map file to not leak files in
   # temp directory.
-  try_delete(outfile + '.map')
+  utils.delete_file(outfile + '.map')
 
   # Print Closure diagnostics result up front.
   if proc.returncode != 0:
