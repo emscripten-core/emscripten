@@ -1532,11 +1532,11 @@ intptr_t _mmap_js(
     return -ENOMEM;
   }
 
-  auto written = file->locked().read(ptr, length, offset);
-  if (written < 0) {
+  auto nread = file->locked().read(ptr, length, offset);
+  if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
     free(ptr);
-    return written;
+    return nread;
   }
 
   // From here on, we have succeeded, and can mark the allocation as having
@@ -1544,10 +1544,10 @@ intptr_t _mmap_js(
   *allocated = true;
 
   // The read must be of a valid amount, or we have had an internal logic error.
-  assert(written <= length);
+  assert(nread <= length);
 
   // mmap clears any extra bytes after the data itself.
-  memset(ptr + written, 0, length - written);
+  memset(ptr + nread, 0, length - nread);
 
   return (intptr_t)ptr;
 }
