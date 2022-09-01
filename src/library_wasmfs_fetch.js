@@ -38,8 +38,12 @@ mergeInto(LibraryManager.library, {
         }
       }
       var response = await fetch(url);
-      var buffer = await response['arrayBuffer']();
-      wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
+      if (response.ok) {
+        var buffer = await response['arrayBuffer']();
+        wasmFS$JSMemoryFiles[file] = new Uint8Array(buffer);
+      } else {
+        throw response;
+      }
     }
 
     // Start with the normal JSFile operations. This sets
@@ -67,11 +71,17 @@ mergeInto(LibraryManager.library, {
 
       // read/getSize fetch the data, then forward to the parent class.
       read: async (file, buffer, length, offset) => {
-        await getFile(file);
+        try {
+          await getFile(file);
+        } catch (response) {
+          return response.status === 404 ? -{{{ cDefine('ENOENT') }}} : -{{{ cDefine('EBADF') }}};
+        }
         return jsFileOps.read(file, buffer, length, offset);
       },
-      getSize: async(file) => {
-        await getFile(file);
+      getSize: async (file) => {
+        try {
+          await getFile(file);
+        } catch (response) {}
         return jsFileOps.getSize(file);
       },
     };
