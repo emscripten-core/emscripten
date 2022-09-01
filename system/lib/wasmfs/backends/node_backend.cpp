@@ -154,7 +154,7 @@ private:
     return size_t(size);
   }
 
-  void setSize(size_t size) override {
+  int setSize(size_t size) override {
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 

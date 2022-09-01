@@ -97,7 +97,8 @@ void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
                                   int access_id,
-                                  uint32_t size);
+                                  uint32_t size,
+                                  int* err);
 
 void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
                                 int file_id,
@@ -242,32 +243,31 @@ private:
     return size_t(size);
   }
 
-  void setSize(size_t size) override {
+  int setSize(size_t size) override {
+    int err = 0;
     switch (state.getKind()) {
       case OpenState::Access:
         proxy([&](auto ctx) {
-          _wasmfs_opfs_set_size_access(ctx.ctx, state.getAccessID(), size);
+          _wasmfs_opfs_set_size_access(
+            ctx.ctx, state.getAccessID(), size, &err);
         });
         break;
       case OpenState::Blob:
         // We don't support `truncate` in blob mode because the blob would
         // become invalidated and refreshing it while ensuring other in-flight
         // operations on the same file do not observe the invalidated blob would
-        // be extermely complicated.
-        WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+        // be extremely complicated.
+        return -EIO;
       case OpenState::None: {
-        int err = 1;
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
         });
-        if (err) {
-          WASMFS_UNREACHABLE("TODO: proper setSize error handling");
-        }
         break;
       }
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
+    return err ? -EIO : 0;
   }
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }

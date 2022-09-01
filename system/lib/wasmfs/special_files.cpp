@@ -30,7 +30,7 @@ class NullFile : public DataFile {
 
   void flush() override {}
   size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int setSize(size_t size) override { return -EPERM; }
 
 public:
   NullFile() : DataFile(S_IRUGO | S_IWUGO, NullBackend, S_IFCHR) {}
@@ -51,7 +51,7 @@ class StdinFile : public DataFile {
 
   void flush() override {}
   size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int setSize(size_t size) override { return -EPERM; }
 
 public:
   StdinFile() : DataFile(S_IRUGO, NullBackend, S_IFCHR) { seekable = false; }
@@ -78,7 +78,7 @@ protected:
   }
 
   size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int setSize(size_t size) override { return -EPERM; }
 
   ssize_t writeToJS(const uint8_t* buf,
                     size_t len,
@@ -152,7 +152,7 @@ class RandomFile : public DataFile {
 
   void flush() override {}
   size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int setSize(size_t size) override { return -EPERM; }
 
 public:
   RandomFile() : DataFile(S_IRUGO, NullBackend, S_IFCHR) { seekable = false; }

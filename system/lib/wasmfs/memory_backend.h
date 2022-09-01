@@ -25,7 +25,10 @@ class MemoryFile : public DataFile {
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override;
   void flush() override {}
   size_t getSize() override { return buffer.size(); }
-  void setSize(size_t size) override { return buffer.resize(size); }
+  int setSize(size_t size) override {
+    buffer.resize(size);
+    return 0;
+  }
 
 public:
   MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}

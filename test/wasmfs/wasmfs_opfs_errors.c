@@ -52,6 +52,19 @@ int try_open_rdonly(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int try_truncate(void) {
+  int err = truncate(file, 42);
+  if (err == 0) {
+    return 1;
+  }
+  if (errno == EIO) {
+    return 0;
+  }
+  emscripten_console_error(strerror(errno));
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
 void report_result(int result) {
   EM_ASM({ console.log(new Error().stack); });
 #ifdef REPORT_RESULT

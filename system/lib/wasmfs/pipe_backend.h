@@ -48,9 +48,8 @@ class PipeFile : public DataFile {
 
   size_t getSize() override { return data->size(); }
 
-  void setSize(size_t size) override {
-    // no-op
-  }
+  // TODO: Should this return an error?
+  int setSize(size_t size) override { return 0; }
 
 public:
   // PipeFiles do not have or need a backend. Pass NullBackend to the parent for
