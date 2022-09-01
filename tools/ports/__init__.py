@@ -89,7 +89,7 @@ class Ports:
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    shared.try_delete(dest)
+    utils.delete_dir(dest)
     logger.debug(f'installing headers: {dest}')
     shutil.copytree(src_dir, dest)
 
@@ -156,9 +156,7 @@ class Ports:
   @staticmethod
   def erase():
     dirname = Ports.get_dir()
-    shared.try_delete(dirname)
-    if os.path.exists(dirname):
-      logger.warning('could not delete ports dir %s - try to delete it manually' % dirname)
+    utils.delete_dir(dirname)
 
   @staticmethod
   def get_build_dir():
@@ -204,7 +202,7 @@ class Ports:
               logger.warning(f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)')
             else:
               logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
-              shared.try_delete(fullname)
+              utils.delete_file(fullname)
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
@@ -265,8 +263,8 @@ class Ports:
           return
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
-        shared.try_delete(fullname)
-        shared.try_delete(fullpath)
+        utils.delete_dir(fullname)
+        utils.delete_file(fullpath)
 
       retrieve()
       unpack()
@@ -279,7 +277,7 @@ class Ports:
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
-    shared.try_delete(build_dir)
+    utils.delete_dir(build_dir)
     return build_dir
 
 

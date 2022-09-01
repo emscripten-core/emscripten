@@ -512,22 +512,14 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
   // If O_TRUNC, truncate the file if possible.
   if (flags & O_TRUNC) {
-    if (child->is<DataFile>()) {
-      if (fileMode & WASMFS_PERM_WRITE) {
-        // TODO: Linux still truncates the file when it's opened only for
-        // reading, so we should too. But until we get proper error reporting
-        // from setSize (which we can then ignore here), the OPFS backend will
-        // crash in this case because it does not support truncating files open
-        // only for reading.
-        if (accessMode != O_RDONLY) {
-          child->cast<DataFile>()->locked().setSize(0);
-        }
-      } else {
-        return -EACCES;
-      }
-    } else {
+    if (!child->is<DataFile>()) {
       return -EISDIR;
     }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+    // Try to truncate the file, continuing silently if we cannot.
+    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -1191,9 +1183,9 @@ int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
 
 static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   auto dataFile = file->dynCast<DataFile>();
-  // TODO: support for symlinks.
+
   if (!dataFile) {
-    return __WASI_ERRNO_ISDIR;
+    return -EISDIR;
   }
 
   auto locked = dataFile->locked();
@@ -1205,11 +1197,7 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
     return -EINVAL;
   }
 
-  // TODO: error handling for allocation errors. atm with exceptions disabled,
-  //       however, C++ backends using std::vector for storage have no way to
-  //       report that, and will abort in malloc.
-  locked.setSize(size);
-  return 0;
+  return locked.setSize(size);
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
@@ -1368,14 +1356,14 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
     return -EINVAL;
   }
 
-  // TODO: We silently do nothing if the stream does not support allocation, but
-  //       in principle we should return EOPNOTSUPP.
   // TODO: We could only fill zeros for regions that were completely unused
   //       before, which for a backend with sparse data storage could make a
   //       difference. For that we'd need a new backend API.
   auto newNeededSize = off + len;
   if (newNeededSize > locked.getSize()) {
-    locked.setSize(newNeededSize);
+    if (auto err = locked.setSize(newNeededSize)) {
+      return err;
+    }
   }
 
   return 0;
@@ -1559,11 +1547,11 @@ intptr_t _mmap_js(
     return -ENOMEM;
   }
 
-  auto written = file->locked().read(ptr, length, offset);
-  if (written < 0) {
+  auto nread = file->locked().read(ptr, length, offset);
+  if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
     free(ptr);
-    return written;
+    return nread;
   }
 
   // From here on, we have succeeded, and can mark the allocation as having
@@ -1571,10 +1559,10 @@ intptr_t _mmap_js(
   *allocated = true;
 
   // The read must be of a valid amount, or we have had an internal logic error.
-  assert(written <= length);
+  assert(nread <= length);
 
   // mmap clears any extra bytes after the data itself.
-  memset(ptr + written, 0, length - written);
+  memset(ptr + nread, 0, length - nread);
 
   return (intptr_t)ptr;
 }

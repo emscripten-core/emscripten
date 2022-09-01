@@ -28,8 +28,10 @@ void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
                             int* child_id);
 
 // Create a file under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_file(
-  em_proxying_ctx* ctx, int parent, const char* name, int* child_id, int* err);
+void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
+                              int parent,
+                              const char* name,
+                              int* child_id);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
 void _wasmfs_opfs_insert_directory(
@@ -73,7 +75,7 @@ int _wasmfs_opfs_read_blob(em_proxying_ctx* ctx,
                            uint8_t* buf,
                            uint32_t len,
                            uint32_t pos,
-                           uint32_t* nread);
+                           int32_t* nread);
 
 // Synchronous write. Return the number of bytes written.
 int _wasmfs_opfs_write_access(int access_id,
@@ -95,7 +97,8 @@ void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
                                   int access_id,
-                                  uint32_t size);
+                                  uint32_t size,
+                                  int* err);
 
 void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
                                 int file_id,
@@ -135,7 +138,7 @@ public:
             [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &id); });
           // TODO: Fall back to open as a blob instead.
           if (id < 0) {
-            return -EACCES;
+            return id;
           }
           kind = Access;
           break;
@@ -144,7 +147,7 @@ public:
           proxy(
             [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
           if (id < 0) {
-            return -EACCES;
+            return id;
           }
           kind = Blob;
           break;
@@ -157,7 +160,7 @@ public:
       proxy(
         [&](auto ctx) { _wasmfs_opfs_open_access(ctx.ctx, fileID, &newID); });
       if (newID < 0) {
-        return -EACCES;
+        return newID;
       }
       // We have an AccessHandle, so close the blob.
       proxy([&]() { _wasmfs_opfs_close_blob(getBlobID()); });
@@ -240,32 +243,31 @@ private:
     return size_t(size);
   }
 
-  void setSize(size_t size) override {
+  int setSize(size_t size) override {
+    int err = 0;
     switch (state.getKind()) {
       case OpenState::Access:
         proxy([&](auto ctx) {
-          _wasmfs_opfs_set_size_access(ctx.ctx, state.getAccessID(), size);
+          _wasmfs_opfs_set_size_access(
+            ctx.ctx, state.getAccessID(), size, &err);
         });
         break;
       case OpenState::Blob:
         // We don't support `truncate` in blob mode because the blob would
         // become invalidated and refreshing it while ensuring other in-flight
         // operations on the same file do not observe the invalidated blob would
-        // be extermely complicated.
-        WASMFS_UNREACHABLE("TODO: proper setSize error handling");
+        // be extremely complicated.
+        return -EIO;
       case OpenState::None: {
-        int err = 1;
         proxy([&](auto ctx) {
           _wasmfs_opfs_set_size_file(ctx.ctx, fileID, size, &err);
         });
-        if (err) {
-          WASMFS_UNREACHABLE("TODO: proper setSize error handling");
-        }
         break;
       }
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
+    return err;
   }
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
@@ -276,7 +278,8 @@ private:
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    uint32_t nread;
+    // TODO: use an i64 here.
+    int32_t nread;
     switch (state.getKind()) {
       case OpenState::Access:
         proxy([&]() {
@@ -294,13 +297,13 @@ private:
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
-    // TODO: Proper error reporting.
     return nread;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     assert(state.getKind() == OpenState::Access);
-    uint32_t nwritten;
+    // TODO: use an i64 here.
+    int32_t nwritten;
     proxy([&]() {
       nwritten =
         _wasmfs_opfs_write_access(state.getAccessID(), buf, len, offset);
@@ -364,14 +367,13 @@ private:
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {
     int childID = 0;
-    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID, &err);
+      _wasmfs_opfs_insert_file(ctx.ctx, dirID, name.c_str(), &childID);
     });
-    if (err) {
-      return {};
+    if (childID < 0) {
+      // TODO: Propagate specific errors.
+      return nullptr;
     }
-    assert(childID >= 0);
     return std::make_shared<OPFSFile>(mode, getBackend(), childID, proxy);
   }
 
@@ -383,16 +385,17 @@ private:
       _wasmfs_opfs_insert_directory(
         ctx.ctx, dirID, name.c_str(), &childID, &err);
     });
-    if (err) {
-      return {};
+    if (childID < 0) {
+      // TODO: Propagate specific errors.
+      return nullptr;
     }
-    assert(childID >= 0);
     return std::make_shared<OPFSDirectory>(mode, getBackend(), childID, proxy);
   }
 
   std::shared_ptr<Symlink> insertSymlink(const std::string& name,
                                          const std::string& target) override {
     // Symlinks not supported.
+    // TODO: Propagate EPERM specifically.
     return nullptr;
   }
 

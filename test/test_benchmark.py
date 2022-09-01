@@ -21,8 +21,8 @@ import jsrun
 import common
 from tools.shared import CLANG_CC, CLANG_CXX
 from common import TEST_ROOT, test_file, read_file, read_binary
-from tools.shared import run_process, PIPE, try_delete, EMCC, config
-from tools import building
+from tools.shared import run_process, PIPE, EMCC, config
+from tools import building, utils
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -197,7 +197,7 @@ class EmscriptenBenchmarker(Benchmarker):
       emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
-    try_delete(final)
+    utils.delete_file(final)
     cmd = [
       EMCC, filename,
       OPTIMIZATIONS,
@@ -317,7 +317,7 @@ class CheerpBenchmarker(Benchmarker):
       cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
-    try_delete(final)
+    utils.delete_file(final)
     dirs_to_delete = []
     cheerp_args += ['-cheerp-preexecute']
     try:
@@ -339,7 +339,7 @@ class CheerpBenchmarker(Benchmarker):
         run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
-        try_delete(dir_)
+        utils.delete_dir(dir_)
 
   def run(self, args):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)

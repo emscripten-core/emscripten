@@ -150,6 +150,34 @@ void test_small_reads() {
   assert(close(fd) == 0);
 }
 
+void test_nonexistent() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  const char* dir_path = "/subdir";
+  char url[200];
+  snprintf(url, sizeof(url), "%s%s", url_orig, dir_path);
+
+  backend_t backend = wasmfs_get_backend_by_path(url);
+
+  const char* file_name = "/subdir/nonexistent.txt";
+  int fd = wasmfs_create_file(file_name, 0777, backend);
+
+  struct stat file;
+  assert(fstat(fd, &file) != -1);
+  printf("file size: %lld\n", file.st_size);
+  assert(file.st_size == 0);
+
+  errno = 0;
+  char buf[1];
+  int bytes_read = read(fd, buf, sizeof(buf));
+  printf("Bytes read: %d\n", bytes_read);
+  assert(bytes_read == -1);
+  printf("Errno: %s\n", strerror(errno));
+  assert(errno == ENOENT);
+
+  assert(close(fd) == 0);
+}
+
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
@@ -157,6 +185,7 @@ int main() {
   test_url_absolute();
   test_directory_abs();
   test_small_reads();
+  test_nonexistent();
 
   return 0;
 }
