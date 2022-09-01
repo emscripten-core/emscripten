@@ -115,7 +115,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
 
   if (setOffset == OffsetHandling::OpenFileState) {
     if (lockedOpenFile.getFlags() & O_APPEND) {
-      offset = lockedFile.getSize();
+      off_t size = lockedFile.getSize();
+      if (size < 0) {
+        // Translate to WASI standard of positive return codes.
+        return -size;
+      }
+      offset = size;
       lockedOpenFile.setPosition(offset);
     } else {
       offset = lockedOpenFile.getPosition();
@@ -339,7 +344,11 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   auto lockedFile = file->locked();
   auto buffer = (struct stat*)buf;
 
-  buffer->st_size = lockedFile.getSize();
+  off_t size = lockedFile.getSize();
+  if (size < 0) {
+    return size;
+  }
+  buffer->st_size = size;
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
@@ -654,7 +663,12 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_END) {
     // Only the open file state is altered in seek. Locking the underlying
     // data file here once is sufficient.
-    position = lockedOpenFile.getFile()->locked().getSize() + offset;
+    off_t size = lockedOpenFile.getFile()->locked().getSize();
+    if (size < 0) {
+      // Translate to WASI standard of positive return codes.
+      return -size;
+    }
+    position = size + offset;
   } else {
     return __WASI_ERRNO_INVAL;
   }
@@ -1312,8 +1326,8 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
       if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
-        //       the position is at the end, we can't read from the current
-        //       position at least.
+        // the position is at the end, we can't read from the current position
+        // at least. If we update this, make sure the size isn't an error!
         if (openFile->locked().getFile()->locked().getSize() > 0) {
           mask |= writeBit;
         }
@@ -1361,7 +1375,11 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   //       before, which for a backend with sparse data storage could make a
   //       difference. For that we'd need a new backend API.
   auto newNeededSize = off + len;
-  if (newNeededSize > locked.getSize()) {
+  off_t size = locked.getSize();
+  if (size < 0) {
+    return size;
+  }
+  if (newNeededSize > size) {
     if (auto err = locked.setSize(newNeededSize)) {
       return err;
     }

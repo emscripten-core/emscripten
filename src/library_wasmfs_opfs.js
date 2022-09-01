@@ -354,9 +354,13 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_get_size_access: async function(ctx, accessID, sizePtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
-    // TODO: Error handling
-    let size = await accessHandle.getSize();
-    {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
+    let size;
+    try {
+      size = await accessHandle.getSize();
+    } catch {
+      size = -{{{ cDefine('EIO') }}};
+    }
+    {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
   },
 
@@ -369,14 +373,21 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles'],
   _wasmfs_opfs_get_size_file: async function(ctx, fileID, sizePtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
-    // TODO: Error handling
-    let size = (await fileHandle.getFile()).size;
-    {{{ makeSetValue('sizePtr', 0, 'size', 'i32') }}};
+    let size;
+    try {
+      size = (await fileHandle.getFile()).size;
+    } catch {
+      size = -{{{ cDefine('EIO') }}};
+    }
+    {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
+  _wasmfs_opfs_set_size_access: async function(ctx, accessID,
+                                               {{{ defineI64Param('size') }}},
+                                               errPtr) {
+    {{{ receiveI64ParamAsDouble('size') }}};
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.truncate(size);
@@ -388,7 +399,10 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles'],
-  _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
+  _wasmfs_opfs_set_size_file: async function(ctx, fileID,
+                                             {{{ defineI64Param('size') }}},
+                                             errPtr) {
+    {{{ receiveI64ParamAsDouble('size') }}};
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
       let writable = await fileHandle.createWritable({keepExistingData: true});
