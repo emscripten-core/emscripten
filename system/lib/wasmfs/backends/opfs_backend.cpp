@@ -34,8 +34,10 @@ void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
                               int* child_id);
 
 // Create a directory under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_directory(
-  em_proxying_ctx* ctx, int parent, const char* name, int* child_id, int* err);
+void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
+                                   int parent,
+                                   const char* name,
+                                   int* child_id);
 
 void _wasmfs_opfs_move(em_proxying_ctx* ctx,
                        int file_id,
@@ -380,10 +382,8 @@ private:
   std::shared_ptr<Directory> insertDirectory(const std::string& name,
                                              mode_t mode) override {
     int childID = 0;
-    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_insert_directory(
-        ctx.ctx, dirID, name.c_str(), &childID, &err);
+      _wasmfs_opfs_insert_directory(ctx.ctx, dirID, name.c_str(), &childID);
     });
     if (childID < 0) {
       // TODO: Propagate specific errors.
