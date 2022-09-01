@@ -140,7 +140,8 @@ That error can happen when loading the page using a ``file://`` URL, which works
 in some browsers but not in others. Instead, it's best
 to use a local webserver. For example, Python has one built in,
 ``python -m http.server`` in Python 3 or ``python -m SimpleHTTPServer``
-in Python 2. After doing that, you can visit ``http://localhost:8000/``.
+in Python 2. After doing that, you can visit ``http://localhost:8000/``. You can
+also use ``emrun FILENAME.html`` (which will run a python webserver for you).
 
 When doing quick local testing, another option than a local webserver is to
 bundle everything into a single file, using ``-sSINGLE_FILE`` (as then no XHRs
