@@ -98,7 +98,7 @@ mergeInto(LibraryManager.library, {
       if (e.name === "TypeMismatchError") {
         return -{{{ cDefine('EISDIR') }}};
       }
-#ifdef ASSERTIONS
+#if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
       return -{{{ cDefine('EIO') }}};
@@ -124,7 +124,7 @@ mergeInto(LibraryManager.library, {
       if (e.name === "TypeMismatchError") {
         return -{{{ cDefine('ENOTDIR') }}};
       }
-#ifdef ASSERTIONS
+#if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
       return -{{{ cDefine('EIO') }}};
@@ -238,7 +238,7 @@ mergeInto(LibraryManager.library, {
           e.name === "NoModificationAllowedError") {
         accessID = -{{{ cDefine('EACCES') }}};
       } else {
-#ifdef ASSERTIONS
+#if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
         accessID = -{{{ cDefine('EIO') }}};
@@ -261,7 +261,7 @@ mergeInto(LibraryManager.library, {
       if (e.name === "NotAllowedError") {
         blobID = -{{{ cDefine('EACCES') }}};
       } else {
-#ifdef ASSERTIONS
+#if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
         blobID = -{{{ cDefine('EIO') }}};
@@ -298,7 +298,7 @@ mergeInto(LibraryManager.library, {
       if (e.name == "TypeError") {
         return -{{{ cDefine('EINVAL') }}};
       }
-#ifdef ASSERTIONS
+#if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
       return -{{{ cDefine('EIO') }}};
@@ -323,7 +323,7 @@ mergeInto(LibraryManager.library, {
       if (e instanceof RangeError) {
         nread = -{{{ cDefine('EFAULT') }}};
       } else {
-#ifdef ASSERTIONS
+#if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
         nread = -{{{ cDefine('EIO') }}};
@@ -344,7 +344,7 @@ mergeInto(LibraryManager.library, {
       if (e.name == "TypeError") {
         return -{{{ cDefine('EINVAL') }}};
       }
-#ifdef ASSERTIONS
+#if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
       return -{{{ cDefine('EIO') }}};
