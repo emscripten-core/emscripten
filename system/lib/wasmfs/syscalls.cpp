@@ -292,7 +292,8 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   // way. TODO: in the future we may want syncing of directories.
   auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
-    dataFile->locked().flush();
+    // Translate to WASI standard of positive return codes.
+    return -dataFile->locked().flush();
   }
 
   return __WASI_ERRNO_SUCCESS;

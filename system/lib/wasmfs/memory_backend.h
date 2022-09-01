@@ -23,9 +23,9 @@ class MemoryFile : public DataFile {
   int close() override { return 0; }
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override;
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override;
-  void flush() override {}
-  size_t getSize() override { return buffer.size(); }
-  int setSize(size_t size) override {
+  int flush() override { return 0; }
+  off_t getSize() override { return buffer.size(); }
+  int setSize(off_t size) override {
     buffer.resize(size);
     return 0;
   }

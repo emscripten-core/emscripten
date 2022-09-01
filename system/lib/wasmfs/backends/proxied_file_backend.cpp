@@ -47,17 +47,17 @@ class ProxiedFile : public DataFile {
     return result;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
   // Querying the size of the Proxied File returns the size of the underlying
   // file given by the proxying mechanism.
-  size_t getSize() override {
-    size_t result;
+  off_t getSize() override {
+    off_t result;
     proxy([&]() { result = baseFile->locked().getSize(); });
     return result;
   }
 
-  int setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: ProxiedFS setSize");
   }
 

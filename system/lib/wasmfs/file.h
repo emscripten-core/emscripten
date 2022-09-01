@@ -101,8 +101,9 @@ protected:
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
-  // May be called on files that have not been opened.
-  virtual size_t getSize() = 0;
+  // The the size in bytes of a file or return a negative error code. May be
+  // called on files that have not been opened.
+  virtual off_t getSize() = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
@@ -144,10 +145,11 @@ protected:
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized. May be called on files that have not been
   // opened. Returns 0 on success or a negative error code.
-  virtual int setSize(size_t size) = 0;
+  virtual int setSize(off_t size) = 0;
 
-  // TODO: Design a proper API for flushing files.
-  virtual void flush() = 0;
+  // Sync the file data to the underlying persistent storage, if any. Returns 0
+  // on success or a negative error code.
+  virtual int flush() = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
@@ -253,7 +255,7 @@ public:
 protected:
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.
-  size_t getSize() override { return 4096; }
+  off_t getSize() override { return 4096; }
 };
 
 class Symlink : public File {
@@ -269,7 +271,7 @@ public:
   virtual std::string getTarget() const = 0;
 
 protected:
-  size_t getSize() override { return getTarget().size(); }
+  off_t getSize() override { return getTarget().size(); }
 };
 
 class File::Handle {
@@ -285,7 +287,7 @@ public:
   Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
     : file(file), lock(file->mutex, std::defer_lock) {}
-  size_t getSize() { return file->getSize(); }
+  off_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) {
     // The type bits can never be changed (whether something is a file or a
@@ -324,10 +326,10 @@ public:
     return getFile()->write(buf, len, offset);
   }
 
-  [[nodiscard]] int setSize(size_t size) { return getFile()->setSize(size); }
+  [[nodiscard]] int setSize(off_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
-  void flush() { getFile()->flush(); }
+  [[nodiscard]] int flush() { return getFile()->flush(); }
 
   // This function loads preloaded files from JS Memory into this DataFile.
   // TODO: Make this virtual so specific backends can specialize it for better

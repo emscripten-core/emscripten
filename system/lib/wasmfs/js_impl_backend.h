@@ -94,13 +94,13 @@ class JSImplFile : public DataFile {
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
-  size_t getSize() override {
+  off_t getSize() override {
     return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());
   }
 
-  int setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: JSImpl setSize");
   }
 

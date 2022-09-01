@@ -44,12 +44,12 @@ class PipeFile : public DataFile {
     return len;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
-  size_t getSize() override { return data->size(); }
+  off_t getSize() override { return data->size(); }
 
   // TODO: Should this return an error?
-  int setSize(size_t size) override { return 0; }
+  int setSize(off_t size) override { return 0; }
 
 public:
   // PipeFiles do not have or need a backend. Pass NullBackend to the parent for
