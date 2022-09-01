@@ -66,7 +66,7 @@ void _wasmfs_jsimpl_async_read(em_proxying_ctx* ctx,
 void _wasmfs_jsimpl_async_get_size(em_proxying_ctx* ctx,
                                    js_index_t backend,
                                    js_index_t index,
-                                   off_t* result);
+                                   size_t* result);
 }
 
 namespace wasmfs {
@@ -108,8 +108,8 @@ class ProxiedAsyncJSImplFile : public DataFile {
 
   int flush() override { return 0; }
 
-  off_t getSize() override {
-    off_t result;
+  size_t getSize() override {
+    size_t result;
     proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_get_size(
         ctx.ctx, getBackendIndex(), getFileIndex(), &result);
@@ -117,7 +117,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return result;
   }
 
-  int setSize(off_t size) override {
+  int setSize(size_t size) override {
     WASMFS_UNREACHABLE("TODO: ProxiedAsyncJSImplFile setSize");
   }
 
