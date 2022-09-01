@@ -149,7 +149,7 @@ public:
           proxy(
             [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
           if (id < 0) {
-            return -id;
+            return id;
           }
           kind = Blob;
           break;
