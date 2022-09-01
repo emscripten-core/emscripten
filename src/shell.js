@@ -187,10 +187,6 @@ function logExceptionOnExit(e) {
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var fs;
-var nodePath;
-var requireNodeFS;
-
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT
 #if ASSERTIONS
