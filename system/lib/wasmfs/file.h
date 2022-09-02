@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "support.h"
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <map>
@@ -100,8 +101,9 @@ protected:
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
-  // May be called on files that have not been opened.
-  virtual size_t getSize() = 0;
+  // The the size in bytes of a file or return a negative error code. May be
+  // called on files that have not been opened.
+  virtual off_t getSize() = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
@@ -131,7 +133,7 @@ protected:
   // responsible for keeping files accessible as long as they are open, even if
   // they are unlinked. Returns 0 on success or a negative error code.
   virtual int open(oflags_t flags) = 0;
-  virtual void close() = 0;
+  virtual int close() = 0;
 
   // Return the accessed length or a negative error code. It is not an error to
   // access fewer bytes than requested. Will only be called on opened files.
@@ -142,11 +144,12 @@ protected:
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized. May be called on files that have not been
-  // opened.
-  virtual void setSize(size_t size) = 0;
+  // opened. Returns 0 on success or a negative error code.
+  virtual int setSize(off_t size) = 0;
 
-  // TODO: Design a proper API for flushing files.
-  virtual void flush() = 0;
+  // Sync the file data to the underlying persistent storage, if any. Returns 0
+  // on success or a negative error code.
+  virtual int flush() = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
@@ -189,6 +192,7 @@ protected:
   // Inserts a file with the given name, kind, and mode. Returns a `File` object
   // corresponding to the newly created file or nullptr if the new file could
   // not be created. Assumes a child with this name does not already exist.
+  // If the operation failed, returns nullptr.
   virtual std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                                    mode_t mode) = 0;
   virtual std::shared_ptr<Directory> insertDirectory(const std::string& name,
@@ -199,10 +203,10 @@ protected:
   // Move the file represented by `file` from its current directory to this
   // directory with the new `name`, possibly overwriting another file that
   // already exists with that name. The old directory may be the same as this
-  // directory. On success, return `true`. Otherwise return `false` without
-  // changing any underlying state.
-  virtual bool insertMove(const std::string& name,
-                          std::shared_ptr<File> file) = 0;
+  // directory. On success return 0 and otherwise return a negative error code
+  // without changing any underlying state.
+  virtual int insertMove(const std::string& name,
+                         std::shared_ptr<File> file) = 0;
 
   // Remove the file with the given name, returning `true` on success or if the
   // child has already been removed or returning `false` if the child cannot be
@@ -214,6 +218,30 @@ protected:
 
   // The list of entries in this directory.
   virtual std::vector<Directory::Entry> getEntries() = 0;
+
+  // Only backends that maintain file identity themselves (see below) need to
+  // implement this.
+  virtual std::string getName(std::shared_ptr<File> file) {
+    WASMFS_UNREACHABLE("getName unimplemented");
+  }
+
+  // Whether this directory implementation always returns the same `File` object
+  // for a given file. Most backends can be much simpler if they don't handle
+  // this themselves. Instead, they rely on the directory cache (dcache) to
+  // maintain file identity for them by ensuring each file is looked up in the
+  // backend only once. Some backends, however, already track file identity, so
+  // the dcache is not necessary (or would even introduce problems).
+  //
+  // When this is `true`, backends are responsible for:
+  //
+  //  1. Ensuring that all insert* and getChild calls returning a particular
+  //     file return the same File object.
+  //
+  //  2. Clearing the File's parent field in `removeChild`.
+  //
+  //  3. Implementing `getName`, since it cannot be implemented in terms of the
+  //     dcache.
+  virtual bool maintainsFileIdentity() { return false; }
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
@@ -227,7 +255,7 @@ public:
 protected:
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.
-  size_t getSize() override { return 4096; }
+  off_t getSize() override { return 4096; }
 };
 
 class Symlink : public File {
@@ -243,7 +271,7 @@ public:
   virtual std::string getTarget() const = 0;
 
 protected:
-  size_t getSize() override { return getTarget().size(); }
+  off_t getSize() override { return getTarget().size(); }
 };
 
 class File::Handle {
@@ -259,7 +287,7 @@ public:
   Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
     : file(file), lock(file->mutex, std::defer_lock) {}
-  size_t getSize() { return file->getSize(); }
+  off_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) {
     // The type bits can never be changed (whether something is a file or a
@@ -289,7 +317,7 @@ public:
   Handle(Handle&&) = default;
 
   [[nodiscard]] int open(oflags_t flags) { return getFile()->open(flags); }
-  void close() { getFile()->close(); }
+  [[nodiscard]] int close() { return getFile()->close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) {
     return getFile()->read(buf, len, offset);
@@ -298,10 +326,10 @@ public:
     return getFile()->write(buf, len, offset);
   }
 
-  void setSize(size_t size) { return getFile()->setSize(size); }
+  [[nodiscard]] int setSize(off_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
-  void flush() { getFile()->flush(); }
+  [[nodiscard]] int flush() { return getFile()->flush(); }
 
   // This function loads preloaded files from JS Memory into this DataFile.
   // TODO: Make this virtual so specific backends can specialize it for better
@@ -332,6 +360,7 @@ public:
   // Insert a child of the given name, kind, and mode in the underlying backend,
   // which will allocate and return a corresponding `File` on success or return
   // nullptr otherwise. Assumes a child with this name does not already exist.
+  // If the operation failed, returns nullptr.
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode);
   std::shared_ptr<Directory> insertDirectory(const std::string& name,
@@ -342,10 +371,11 @@ public:
   // Move the file represented by `file` from its current directory to this
   // directory with the new `name`, possibly overwriting another file that
   // already exists with that name. The old directory may be the same as this
-  // directory. On success, return `true`. Otherwise return `false` without
-  // changing any underlying state. This should only be called from renameat
-  // with the locks on the old and new parents already held.
-  bool insertMove(const std::string& name, std::shared_ptr<File> file);
+  // directory. On success return 0 and otherwise return a negative error code
+  // without changing any underlying state. This should only be called from
+  // renameat with the locks on the old and new parents already held.
+  [[nodiscard]] int insertMove(const std::string& name,
+                               std::shared_ptr<File> file);
 
   // Remove the file with the given name, returning `true` on success or if the
   // vhild has already been removed or returning `false` if the child cannot be

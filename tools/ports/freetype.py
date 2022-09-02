@@ -101,7 +101,7 @@ def get(ports, settings, shared):
     ports.create_lib(final, o_s)
 
     ports.install_header_dir(os.path.join(dest_path, 'include'),
-                             target=os.path.join('freetype2', 'freetype'))
+                             target=os.path.join('freetype2'))
 
   return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
 
@@ -111,7 +111,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('freetype2/freetype')]
+  return ['-I' + ports.get_include_dir('freetype2')]
 
 
 def show():

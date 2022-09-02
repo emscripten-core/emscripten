@@ -20,12 +20,15 @@ class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override;
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override;
-  void flush() override {}
-  size_t getSize() override { return buffer.size(); }
-  void setSize(size_t size) override { return buffer.resize(size); }
+  int flush() override { return 0; }
+  off_t getSize() override { return buffer.size(); }
+  int setSize(off_t size) override {
+    buffer.resize(size);
+    return 0;
+  }
 
 public:
   MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
@@ -58,9 +61,7 @@ protected:
     entries.push_back({name, child});
   }
 
-  std::shared_ptr<File> getChild(const std::string& name) override {
-    return nullptr;
-  }
+  std::shared_ptr<File> getChild(const std::string& name) override;
 
   bool removeChild(const std::string& name) override;
 
@@ -85,10 +86,16 @@ protected:
     return child;
   }
 
-  bool insertMove(const std::string& name, std::shared_ptr<File> file) override;
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override;
 
   size_t getNumEntries() override { return entries.size(); }
   std::vector<Directory::Entry> getEntries() override;
+
+  std::string getName(std::shared_ptr<File> file) override;
+
+  // Since we internally track files with `File` objects, we don't need the
+  // dcache as well.
+  bool maintainsFileIdentity() override { return true; }
 
 public:
   MemoryDirectory(mode_t mode, backend_t backend) : Directory(mode, backend) {}

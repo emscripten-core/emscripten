@@ -51,7 +51,7 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary
+from tools.utils import read_file, write_file, read_binary, delete_file
 
 logger = logging.getLogger('emcc')
 
@@ -2146,12 +2146,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
-  # When building a side module we currently have to assume that any undefined
-  # symbols that exist at link time will be satisfied by the main module or JS.
-  if settings.SIDE_MODULE:
-    default_setting(user_settings, 'ERROR_ON_UNDEFINED_SYMBOLS', 0)
-    default_setting(user_settings, 'WARN_ON_UNDEFINED_SYMBOLS', 0)
-
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
@@ -2386,8 +2380,15 @@ def phase_linker_setup(options, state, newargs, user_settings):
     options.memory_init_file = True
     settings.MEM_INIT_IN_WASM = True
 
-  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE or not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.REQUIRED_EXPORTS += ['getTempRet0', 'setTempRet0']
+  if (
+      settings.MAYBE_WASM2JS or
+      settings.AUTODEBUG or
+      settings.LINKABLE or
+      settings.INCLUDE_FULL_LIBRARY or
+      not settings.DISABLE_EXCEPTION_CATCHING or
+      (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
+  ):
+      settings.REQUIRED_EXPORTS += ["getTempRet0", "setTempRet0"]
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
@@ -2676,6 +2677,16 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   apply_min_browser_versions(user_settings)
 
+  if settings.SIDE_MODULE:
+    # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
+    # They all come from either libc or compiler-rt.  The exception is __wasm_call_ctors
+    # which is a per-module export.
+    settings.REQUIRED_EXPORTS.clear()
+
+  if not settings.STANDALONE_WASM:
+    # in standalone mode, crt1 will call the constructors from inside the wasm
+    settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
+
   return target, wasm_target
 
 
@@ -2869,7 +2880,7 @@ def phase_link(linker_arguments, wasm_target):
   # fastcomp deferred linking opts.
   # TODO: we could check if this is a fastcomp build, and still speed things up here
   js_syms = None
-  if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS:
+  if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS and not settings.SIDE_MODULE:
     js_syms = get_all_js_syms()
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
@@ -3059,7 +3070,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     generate_worker_js(target, js_target, target_basename)
 
   if embed_memfile() and memfile:
-    shared.try_delete(memfile)
+    delete_file(memfile)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
@@ -3550,7 +3561,7 @@ def phase_binaryen(target, options, wasm_target):
     if settings.WASM != 2:
       final_js = wasm2js
       # if we only target JS, we don't need the wasm any more
-      shared.try_delete(wasm_target)
+      delete_file(wasm_target)
 
     save_intermediate('wasm2js')
 
@@ -3588,7 +3599,7 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
-    shared.try_delete(wasm_target)
+    delete_file(wasm_target)
     write_file(final_js, js)
 
 
@@ -3786,7 +3797,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     js_contents = script.inline or ''
     if script.src:
       js_contents += read_file(js_target)
-    shared.try_delete(js_target)
+    delete_file(js_target)
     script.src = None
     script.inline = js_contents
 

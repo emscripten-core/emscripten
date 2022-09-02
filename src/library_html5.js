@@ -2705,6 +2705,7 @@ var LibraryHTML5 = {
     return requestAnimationFrame(tick);
   },
 
+  emscripten_date_now__sig: 'd',
   emscripten_date_now: function() {
     return Date.now();
   },

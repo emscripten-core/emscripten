@@ -19,9 +19,9 @@ from functools import wraps
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
-from tools.shared import try_delete, PIPE
+from tools.shared import PIPE
 from tools.shared import EMCC, EMAR
-from tools.utils import WINDOWS, MACOS, write_file
+from tools.utils import WINDOWS, MACOS, write_file, delete_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -1015,6 +1015,8 @@ base align: 0, 0, 0, 0'''])
     'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
   })
   def test_emmalloc(self, *args):
+    if '-DEMMALLOC_VERBOSE' in args and self.is_wasm64():
+      self.skipTest('EMMALLOC_VERBOSE is not compatible with wasm64')
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
@@ -4061,7 +4063,7 @@ ok
 
     if isinstance(main, list):
       # main is just a library
-      try_delete('main.js')
+      delete_file('main.js')
       self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'main.js'])
       self.do_run('main.js', expected, no_build=True, **kwargs)
     else:
@@ -6402,7 +6404,7 @@ int main(void) {
     if self.emcc_args == []:
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
-      try_delete('src.js')
+      delete_file('src.js')
       self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
       self.do_run(None, '*1,0*', ['200', '1'], no_build=True)

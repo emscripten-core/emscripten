@@ -448,11 +448,6 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
-  _emscripten_date_now__sig: 'j',
-  _emscripten_date_now: function() {
-    return Date.now();
-  },
-
   _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -491,6 +486,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
     return (date.getTime() / 1000)|0;
   },
@@ -3194,6 +3190,9 @@ mergeInto(LibraryManager.library, {
   },
 
 #if DYNCALLS || !WASM_BIGINT
+#if MAIN_MODULE == 1
+  $dynCallLegacy__deps: ['$createDyncallWrapper'],
+#endif
   $dynCallLegacy: function(sig, ptr, args) {
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
@@ -3212,6 +3211,11 @@ mergeInto(LibraryManager.library, {
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
+#if MAIN_MODULE == 1
+    if (!('dynCall_' + sig in Module)) {
+      Module['dynCall_' + sig] = createDyncallWrapper(sig);
+    }
+#endif
     var f = Module['dynCall_' + sig];
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);

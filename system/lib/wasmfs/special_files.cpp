@@ -20,7 +20,7 @@ namespace {
 // No-op reads and writes: /dev/null
 class NullFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return len;
@@ -28,9 +28,9 @@ class NullFile : public DataFile {
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override { return 0; }
 
-  void flush() override {}
-  size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int flush() override { return 0; }
+  off_t getSize() override { return 0; }
+  int setSize(off_t size) override { return -EPERM; }
 
 public:
   NullFile() : DataFile(S_IRUGO | S_IWUGO, NullBackend, S_IFCHR) {}
@@ -38,7 +38,7 @@ public:
 
 class StdinFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;
@@ -49,9 +49,9 @@ class StdinFile : public DataFile {
     abort();
   };
 
-  void flush() override {}
-  size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int flush() override { return 0; }
+  off_t getSize() override { return 0; }
+  int setSize(off_t size) override { return -EPERM; }
 
 public:
   StdinFile() : DataFile(S_IRUGO, NullBackend, S_IFCHR) { seekable = false; }
@@ -63,22 +63,23 @@ protected:
   std::vector<char> writeBuffer;
 
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;
   };
 
-  void flush() override {
+  int flush() override {
     // Write a null to flush the output if we have content.
     if (!writeBuffer.empty()) {
       const uint8_t nothing = '\0';
       write(&nothing, 1, 0);
     }
+    return 0;
   }
 
-  size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  off_t getSize() override { return 0; }
+  int setSize(off_t size) override { return -EPERM; }
 
   ssize_t writeToJS(const uint8_t* buf,
                     size_t len,
@@ -135,7 +136,7 @@ public:
 
 class RandomFile : public DataFile {
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return -__WASI_ERRNO_INVAL;
@@ -150,9 +151,9 @@ class RandomFile : public DataFile {
     return len;
   };
 
-  void flush() override {}
-  size_t getSize() override { return 0; }
-  void setSize(size_t size) override {}
+  int flush() override { return 0; }
+  off_t getSize() override { return 0; }
+  int setSize(off_t size) override { return -EPERM; }
 
 public:
   RandomFile() : DataFile(S_IRUGO, NullBackend, S_IFCHR) { seekable = false; }
