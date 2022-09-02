@@ -86,7 +86,7 @@ protected:
     return child;
   }
 
-  bool insertMove(const std::string& name, std::shared_ptr<File> file) override;
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override;
 
   size_t getNumEntries() override { return entries.size(); }
   std::vector<Directory::Entry> getEntries() override;

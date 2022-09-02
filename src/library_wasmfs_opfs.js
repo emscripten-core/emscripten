@@ -187,12 +187,16 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_move__deps: ['$wasmfsOPFSFileHandles',
                             '$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_move: async function(ctx, fileID, newDirID, namePtr) {
+  _wasmfs_opfs_move: async function(ctx, fileID, newDirID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let newDirHandle = wasmfsOPFSDirectoryHandles.get(newDirID);
-    // TODO: error handling
-    await fileHandle.move(newDirHandle, name);
+    try {
+      await fileHandle.move(newDirHandle, name);
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   },
 

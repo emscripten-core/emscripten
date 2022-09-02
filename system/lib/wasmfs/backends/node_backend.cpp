@@ -256,8 +256,7 @@ private:
     abort();
   }
 
-  bool insertMove(const std::string& name,
-                  std::shared_ptr<File> file) override {
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override {
     // TODO
     abort();
   }
