@@ -39,8 +39,10 @@ var LibraryEGL = {
     },
 
     chooseConfig: function(display, attribList, config, config_size, numConfigs) {
+      err('CI DEBUG EGL.chooseConfig', display, attribList, config, config_size, numConfigs);
       if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+        err('bad display');
         return 0;
       }
 
@@ -75,6 +77,7 @@ var LibraryEGL = {
 
       if ((!config || !config_size) && !numConfigs) {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
+        err('bad param');
         return 0;
       }
       if (numConfigs) {
@@ -85,6 +88,7 @@ var LibraryEGL = {
       }
 
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+      err('success');
       return 1;
     },
   },
