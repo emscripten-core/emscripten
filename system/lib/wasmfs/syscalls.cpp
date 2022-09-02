@@ -1014,8 +1014,8 @@ int __syscall_renameat(int olddirfd,
   }
 
   // Perform the move.
-  if (!lockedNewParent.insertMove(newFileName, oldFile)) {
-    return -EPERM;
+  if (auto err = lockedNewParent.insertMove(newFileName, oldFile)) {
+    return err;
   }
   return 0;
 }

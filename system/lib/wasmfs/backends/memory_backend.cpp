@@ -63,8 +63,8 @@ std::vector<Directory::Entry> MemoryDirectory::getEntries() {
   return result;
 }
 
-bool MemoryDirectory::insertMove(const std::string& name,
-                                 std::shared_ptr<File> file) {
+int MemoryDirectory::insertMove(const std::string& name,
+                                std::shared_ptr<File> file) {
   auto& oldEntries =
     std::static_pointer_cast<MemoryDirectory>(file->locked().getParent())
       ->entries;
@@ -76,7 +76,7 @@ bool MemoryDirectory::insertMove(const std::string& name,
   }
   removeChild(name);
   insertChild(name, file);
-  return true;
+  return 0;
 }
 
 std::string MemoryDirectory::getName(std::shared_ptr<File> file) {

@@ -143,11 +143,11 @@ Directory::Handle::insertSymlink(const std::string& name,
 // TODO: consider moving this to be `Backend::move` to avoid asymmetry between
 // the source and destination directories and/or taking `Directory::Handle`
 // arguments to prove that the directories have already been locked.
-bool Directory::Handle::insertMove(const std::string& name,
-                                   std::shared_ptr<File> file) {
+int Directory::Handle::insertMove(const std::string& name,
+                                  std::shared_ptr<File> file) {
   // Cannot insert into an unlinked directory.
   if (!getParent()) {
-    return false;
+    return -EPERM;
   }
 
   // Look up the file in its old parent's cache.
@@ -161,8 +161,8 @@ bool Directory::Handle::insertMove(const std::string& name,
   // involving the backend.
 
   // Attempt the move.
-  if (!getDir()->insertMove(name, file)) {
-    return false;
+  if (auto err = getDir()->insertMove(name, file)) {
+    return err;
   }
 
   if (oldIt != oldCache.end()) {
@@ -189,7 +189,7 @@ bool Directory::Handle::insertMove(const std::string& name,
   oldParent->locked().setMTime(now);
   setMTime(now);
 
-  return true;
+  return 0;
 }
 
 bool Directory::Handle::removeChild(const std::string& name) {

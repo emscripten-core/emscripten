@@ -203,10 +203,10 @@ protected:
   // Move the file represented by `file` from its current directory to this
   // directory with the new `name`, possibly overwriting another file that
   // already exists with that name. The old directory may be the same as this
-  // directory. On success, return `true`. Otherwise return `false` without
-  // changing any underlying state.
-  virtual bool insertMove(const std::string& name,
-                          std::shared_ptr<File> file) = 0;
+  // directory. On success return 0 and otherwise return a negative error code
+  // without changing any underlying state.
+  virtual int insertMove(const std::string& name,
+                         std::shared_ptr<File> file) = 0;
 
   // Remove the file with the given name, returning `true` on success or if the
   // child has already been removed or returning `false` if the child cannot be
@@ -371,10 +371,11 @@ public:
   // Move the file represented by `file` from its current directory to this
   // directory with the new `name`, possibly overwriting another file that
   // already exists with that name. The old directory may be the same as this
-  // directory. On success, return `true`. Otherwise return `false` without
-  // changing any underlying state. This should only be called from renameat
-  // with the locks on the old and new parents already held.
-  bool insertMove(const std::string& name, std::shared_ptr<File> file);
+  // directory. On success return 0 and otherwise return a negative error code
+  // without changing any underlying state. This should only be called from
+  // renameat with the locks on the old and new parents already held.
+  [[nodiscard]] int insertMove(const std::string& name,
+                               std::shared_ptr<File> file);
 
   // Remove the file with the given name, returning `true` on success or if the
   // vhild has already been removed or returning `false` if the child cannot be

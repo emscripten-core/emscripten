@@ -42,7 +42,8 @@ void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
 void _wasmfs_opfs_move(em_proxying_ctx* ctx,
                        int file_id,
                        int new_dir_id,
-                       const char* name);
+                       const char* name,
+                       int* err);
 
 void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
                                int dir_id,
@@ -401,14 +402,13 @@ private:
     return nullptr;
   }
 
-  bool insertMove(const std::string& name,
-                  std::shared_ptr<File> file) override {
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override {
     auto old_file = std::static_pointer_cast<OPFSFile>(file);
+    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_move(ctx.ctx, old_file->fileID, dirID, name.c_str());
+      _wasmfs_opfs_move(ctx.ctx, old_file->fileID, dirID, name.c_str(), &err);
     });
-    // TODO: Handle errors.
-    return true;
+    return err;
   }
 
   bool removeChild(const std::string& name) override {
