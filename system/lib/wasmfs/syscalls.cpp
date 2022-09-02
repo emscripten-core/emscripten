@@ -604,16 +604,14 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  std::shared_ptr<File> created;
   if (backend == parent->getBackend()) {
-    created = lockedParent.insertDirectory(childName, mode);
-    if (!created) {
+    if (!lockedParent.insertDirectory(childName, mode)) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.
       return -EIO;
     }
   } else {
-    created = backend->createDirectory(mode);
+    auto created = backend->createDirectory(mode);
     if (!created) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.
