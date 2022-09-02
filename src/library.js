@@ -448,11 +448,6 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
-  _emscripten_date_now__sig: 'j',
-  _emscripten_date_now: function() {
-    return Date.now();
-  },
-
   _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
