@@ -90,7 +90,7 @@ def get(ports, settings, shared):
     build_path = ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
-    freetype_include = ports.get_include_dir('freetype2/freetype')
+    freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
     # TODO(sbc): Look into HB_TINY, HB_LEAN, HB_MINI options.  Remove
