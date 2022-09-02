@@ -44,7 +44,7 @@ class PipeFile : public DataFile {
     return len;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
   size_t getSize() override { return data->size(); }
 

@@ -107,7 +107,7 @@ void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
                                 uint32_t size,
                                 int* err);
 
-void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id);
+void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id, int* err);
 
 } // extern "C"
 
@@ -313,11 +313,12 @@ private:
     return nwritten;
   }
 
-  void flush() override {
+  int flush() override {
+    int err = 0;
     switch (state.getKind()) {
       case OpenState::Access:
         proxy([&](auto ctx) {
-          _wasmfs_opfs_flush_access(ctx.ctx, state.getAccessID());
+          _wasmfs_opfs_flush_access(ctx.ctx, state.getAccessID(), &err);
         });
         break;
       case OpenState::Blob:
@@ -325,6 +326,7 @@ private:
       default:
         break;
     }
+    return err;
   }
 };
 

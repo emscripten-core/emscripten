@@ -94,7 +94,7 @@ class JSImplFile : public DataFile {
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
   size_t getSize() override {
     return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());

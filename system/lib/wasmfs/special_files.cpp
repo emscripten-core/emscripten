@@ -28,7 +28,7 @@ class NullFile : public DataFile {
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override { return 0; }
 
-  void flush() override {}
+  int flush() override { return 0; }
   size_t getSize() override { return 0; }
   int setSize(size_t size) override { return -EPERM; }
 
@@ -49,7 +49,7 @@ class StdinFile : public DataFile {
     abort();
   };
 
-  void flush() override {}
+  int flush() override { return 0; }
   size_t getSize() override { return 0; }
   int setSize(size_t size) override { return -EPERM; }
 
@@ -69,12 +69,13 @@ protected:
     return -__WASI_ERRNO_INVAL;
   };
 
-  void flush() override {
+  int flush() override {
     // Write a null to flush the output if we have content.
     if (!writeBuffer.empty()) {
       const uint8_t nothing = '\0';
       write(&nothing, 1, 0);
     }
+    return 0;
   }
 
   size_t getSize() override { return 0; }
@@ -150,7 +151,7 @@ class RandomFile : public DataFile {
     return len;
   };
 
-  void flush() override {}
+  int flush() override { return 0; }
   size_t getSize() override { return 0; }
   int setSize(size_t size) override { return -EPERM; }
 

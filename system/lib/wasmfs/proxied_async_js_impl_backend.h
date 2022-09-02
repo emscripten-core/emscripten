@@ -106,7 +106,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return result;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
   size_t getSize() override {
     size_t result;

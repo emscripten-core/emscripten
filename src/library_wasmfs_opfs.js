@@ -402,10 +402,14 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_flush_access: async function(ctx, accessID) {
+  _wasmfs_opfs_flush_access: async function(ctx, accessID, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
-    // TODO: Error handling
-    await accessHandle.flush();
+    try {
+      await accessHandle.flush();
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   }
 });

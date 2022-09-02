@@ -179,7 +179,7 @@ private:
     return nwritten;
   }
 
-  void flush() override {
+  int flush() override {
     WASMFS_UNREACHABLE("TODO: implement NodeFile::flush");
   }
 };

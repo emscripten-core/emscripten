@@ -146,8 +146,9 @@ protected:
   // opened. Returns 0 on success or a negative error code.
   virtual int setSize(size_t size) = 0;
 
-  // TODO: Design a proper API for flushing files.
-  virtual void flush() = 0;
+  // Sync the file data to the underlying persistent storage, if any. Returns 0
+  // on success or a negative error code.
+  virtual int flush() = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
@@ -327,7 +328,7 @@ public:
   [[nodiscard]] int setSize(size_t size) { return getFile()->setSize(size); }
 
   // TODO: Design a proper API for flushing files.
-  void flush() { getFile()->flush(); }
+  [[nodiscard]] int flush() { return getFile()->flush(); }
 
   // This function loads preloaded files from JS Memory into this DataFile.
   // TODO: Make this virtual so specific backends can specialize it for better
