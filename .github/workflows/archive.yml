@@ -8,9 +8,6 @@ on:
       - main
   pull_request:
 
-permissions:
-  contents: read
-
 jobs:
   archive:
     runs-on: ubuntu-latest
