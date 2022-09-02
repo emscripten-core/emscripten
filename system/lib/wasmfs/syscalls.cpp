@@ -297,8 +297,10 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   // way. TODO: in the future we may want syncing of directories.
   auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
+    auto ret = dataFile->locked().flush();
+    assert(ret <= 0);
     // Translate to WASI standard of positive return codes.
-    return -dataFile->locked().flush();
+    return -ret;
   }
 
   return __WASI_ERRNO_SUCCESS;
@@ -467,6 +469,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
       std::shared_ptr<OpenFileState> openFile;
       if (auto err = OpenFileState::create(created, flags, openFile)) {
+        assert(err < 0);
         return err;
       }
       return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -517,6 +520,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
   if (auto err = OpenFileState::create(child, flags, openFile)) {
+    assert(err < 0);
     return err;
   }
 
@@ -1011,7 +1015,11 @@ int __syscall_renameat(int olddirfd,
   }
 
   // Perform the move.
-  return lockedNewParent.insertMove(newFileName, oldFile);
+  if (auto err = lockedNewParent.insertMove(newFileName, oldFile)) {
+    assert(err < 0);
+    return err;
+  }
+  return 0;
 }
 
 int __syscall_rename(intptr_t oldpath, intptr_t newpath) {
@@ -1204,7 +1212,9 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
     return -EINVAL;
   }
 
-  return locked.setSize(size);
+  int ret = locked.setSize(size);
+  assert(ret <= 0);
+  return ret;
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
@@ -1373,6 +1383,7 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   }
   if (newNeededSize > size) {
     if (auto err = locked.setSize(newNeededSize)) {
+      assert(err < 0);
       return err;
     }
   }

@@ -41,6 +41,7 @@ int FileTable::Handle::setEntry(__wasi_fd_t fd,
     auto file = fileTable.entries[fd]->locked().getFile();
     if (auto f = file->dynCast<DataFile>()) {
       ret = f->locked().close();
+      assert(ret <= 0);
     }
   }
   fileTable.entries[fd] = openFile;
