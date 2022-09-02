@@ -28,6 +28,10 @@ async function run_test() {
     throw "Did not get expected EIO when resizing file";
   }
 
+  if (Module._try_unlink() != 0) {
+    throw "Did not get expected EIO when unlinking file";
+  }
+
   await access.close();
 
   // We can open the file in any mode now that there is no open access
