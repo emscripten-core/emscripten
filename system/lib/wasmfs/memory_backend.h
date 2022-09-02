@@ -63,7 +63,7 @@ protected:
 
   std::shared_ptr<File> getChild(const std::string& name) override;
 
-  bool removeChild(const std::string& name) override;
+  int removeChild(const std::string& name) override;
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {

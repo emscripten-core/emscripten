@@ -192,23 +192,24 @@ int Directory::Handle::insertMove(const std::string& name,
   return 0;
 }
 
-bool Directory::Handle::removeChild(const std::string& name) {
+int Directory::Handle::removeChild(const std::string& name) {
   auto& dcache = getDir()->dcache;
   auto entry = dcache.find(name);
   // If this is a mount, we don't need to call into the backend.
   if (entry != dcache.end() && entry->second.kind == DCacheKind::Mount) {
     dcache.erase(entry);
-    return true;
+    return 0;
   }
-  if (!getDir()->removeChild(name)) {
-    return false;
+  if (auto err = getDir()->removeChild(name)) {
+    assert(err < 0);
+    return err;
   }
   if (entry != dcache.end()) {
     entry->second.file->locked().setParent(nullptr);
     dcache.erase(entry);
   }
   setMTime(time(NULL));
-  return true;
+  return 0;
 }
 
 std::string Directory::Handle::getName(std::shared_ptr<File> file) {

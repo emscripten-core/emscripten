@@ -411,11 +411,12 @@ private:
     return err;
   }
 
-  bool removeChild(const std::string& name) override {
+  int removeChild(const std::string& name) override {
+    int err = 0;
     proxy([&](auto ctx) {
-      _wasmfs_opfs_remove_child(ctx.ctx, dirID, name.c_str());
+      _wasmfs_opfs_remove_child(ctx.ctx, dirID, name.c_str(), &err);
     });
-    return true;
+    return err;
   }
 
   size_t getNumEntries() override { return getEntries().size(); }

@@ -202,10 +202,15 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSFree',
                                     '$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr) {
+  _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
-    await dirHandle.removeEntry(name);
+    try {
+      await dirHandle.removeEntry(name);
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   },
 
