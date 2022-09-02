@@ -137,7 +137,7 @@ public:
     : DataFile(mode, backend), state(path) {}
 
 private:
-  size_t getSize() override {
+  off_t getSize() override {
     // TODO: This should really be using a 64-bit file size type.
     uint32_t size;
     if (state.isOpen()) {
@@ -151,10 +151,10 @@ private:
         return 0;
       }
     }
-    return size_t(size);
+    return off_t(size);
   }
 
-  int setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 

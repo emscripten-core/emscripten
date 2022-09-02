@@ -88,23 +88,22 @@ int _wasmfs_opfs_write_access(int access_id,
 // Get the size via an AccessHandle.
 void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
-                                  uint32_t* size);
+                                  off_t* size);
 
+// TODO: return 64-byte off_t.
 uint32_t _wasmfs_opfs_get_size_blob(int blob_id);
 
 // Get the size of a file handle via a File Blob.
-void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx,
-                                int file_id,
-                                uint32_t* size);
+void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx, int file_id, off_t* size);
 
 void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
                                   int access_id,
-                                  uint32_t size,
+                                  off_t size,
                                   int* err);
 
 void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
                                 int file_id,
-                                uint32_t size,
+                                off_t size,
                                 int* err);
 
 void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id, int* err);
@@ -222,9 +221,8 @@ public:
   }
 
 private:
-  size_t getSize() override {
-    // TODO: 64-bit sizes.
-    uint32_t size;
+  off_t getSize() override {
+    off_t size;
     switch (state.getKind()) {
       case OpenState::None:
         proxy([&](auto ctx) {
@@ -242,10 +240,10 @@ private:
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
     }
-    return size_t(size);
+    return size;
   }
 
-  int setSize(size_t size) override {
+  int setSize(off_t size) override {
     int err = 0;
     switch (state.getKind()) {
       case OpenState::Access:
@@ -259,6 +257,8 @@ private:
         // become invalidated and refreshing it while ensuring other in-flight
         // operations on the same file do not observe the invalidated blob would
         // be extremely complicated.
+        // TODO: Can we assume there are no other in-flight operations on this
+        // file and do something better here?
         return -EIO;
       case OpenState::None: {
         proxy([&](auto ctx) {
