@@ -41,7 +41,7 @@ commands:
     steps:
       - run:
           name: emsdk_env.sh
-          command: echo "source ~/emsdk/emsdk_env.sh 2> /dev/null" >> $BASH_ENV
+          command: echo "EMSDK_QUIET=1 source ~/emsdk/emsdk_env.sh" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
