@@ -12478,3 +12478,8 @@ Module['postRun'] = function() {{
     with shared.Cache.lock('testing'):
       err = self.expect_fail([EMBUILDER, 'build', 'libc', '--force'], expect_traceback=True)
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
+
+  @also_with_wasmfs
+  def test_fs_icase(self):
+    # c++20 for ends_with().
+    self.do_other_test('test_fs_icase.cpp', emcc_args=['-sCASE_INSENSITIVE_FS=1', '-std=c++20'])
