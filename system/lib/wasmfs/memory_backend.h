@@ -88,8 +88,8 @@ protected:
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override;
 
-  size_t getNumEntries() override { return entries.size(); }
-  std::vector<Directory::Entry> getEntries() override;
+  ssize_t getNumEntries() override { return entries.size(); }
+  Directory::MaybeEntries getEntries() override;
 
   std::string getName(std::shared_ptr<File> file) override;
 

@@ -149,21 +149,25 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_get_entries__deps: [],
-  _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
+  _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
     // TODO: Use 'for await' once Acorn supports that.
-    // TODO: Error handling.
-    let iter = dirHandle.entries();
-    for (let entry; entry = await iter.next(), !entry.done;) {
-      let [name, child] = entry.value;
-      withStackSave(() => {
-        let namePtr = allocateUTF8OnStack(name);
-        let type = child.kind == "file" ?
-            {{{ cDefine('File::DataFileKind') }}} :
-            {{{ cDefine('File::DirectoryKind') }}};
-        __wasmfs_opfs_record_entry(entries, namePtr, type)
-      });
+    try {
+      let iter = dirHandle.entries();
+      for (let entry; entry = await iter.next(), !entry.done;) {
+        let [name, child] = entry.value;
+        withStackSave(() => {
+          let namePtr = allocateUTF8OnStack(name);
+          let type = child.kind == "file" ?
+              {{{ cDefine('File::DataFileKind') }}} :
+          {{{ cDefine('File::DirectoryKind') }}};
+          __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
+        });
+      }
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
   },

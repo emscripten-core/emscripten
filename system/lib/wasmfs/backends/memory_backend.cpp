@@ -54,13 +54,13 @@ int MemoryDirectory::removeChild(const std::string& name) {
   return 0;
 }
 
-std::vector<Directory::Entry> MemoryDirectory::getEntries() {
+Directory::MaybeEntries MemoryDirectory::getEntries() {
   std::vector<Directory::Entry> result;
   result.reserve(entries.size());
   for (auto& [name, child] : entries) {
     result.push_back({name, child->kind, child->getIno()});
   }
-  return result;
+  return {result};
 }
 
 int MemoryDirectory::insertMove(const std::string& name,

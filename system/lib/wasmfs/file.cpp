@@ -225,7 +225,7 @@ std::string Directory::Handle::getName(std::shared_ptr<File> file) {
   return "";
 }
 
-size_t Directory::Handle::getNumEntries() {
+ssize_t Directory::Handle::getNumEntries() {
   size_t mounts = 0;
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
@@ -233,16 +233,23 @@ size_t Directory::Handle::getNumEntries() {
       ++mounts;
     }
   }
-  return getDir()->getNumEntries() + mounts;
+  auto numReal = getDir()->getNumEntries();
+  if (numReal < 0) {
+    return numReal;
+  }
+  return numReal + mounts;
 }
 
-std::vector<Directory::Entry> Directory::Handle::getEntries() {
+Directory::MaybeEntries Directory::Handle::getEntries() {
   auto entries = getDir()->getEntries();
+  if (entries.getError()) {
+    return entries;
+  }
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
     auto& [name, entry] = *it;
     if (entry.kind == DCacheKind::Mount) {
-      entries.push_back({name, entry.file->kind, entry.file->getIno()});
+      entries->push_back({name, entry.file->kind, entry.file->getIno()});
     }
   }
   return entries;
