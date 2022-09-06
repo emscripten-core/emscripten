@@ -16,6 +16,7 @@ import time
 import unittest
 import webbrowser
 import zlib
+from functools import wraps
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
@@ -169,8 +170,9 @@ def requires_threads(f):
 
 
 def also_with_threads(f):
+  @wraps(f)
   def decorated(self, *args, **kwargs):
-    f(self)
+    f(self, *args, **kwargs)
     if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       print('(threads)')
       self.emcc_args += ['-pthread']
@@ -4327,16 +4329,32 @@ Module["preRun"].push(function () {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
   @also_with_threads
-  def test_TextDecoder(self):
+  def test_TextDecoder(self, args):
+    self.emcc_args += args
+
     self.btest('browser_test_hello_world.c', '0', args=['-sTEXTDECODER=0'])
     just_fallback = os.path.getsize('test.js')
+    print('just_fallback:\t%s' % just_fallback)
+
     self.btest('browser_test_hello_world.c', '0')
     td_with_fallback = os.path.getsize('test.js')
+    print('td_with_fallback:\t%s' % td_with_fallback)
+
     self.btest('browser_test_hello_world.c', '0', args=['-sTEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
-    self.assertGreater(td_without_fallback, just_fallback)
-    self.assertLess(just_fallback, td_with_fallback)
+    print('td_without_fallback:\t%s' % td_without_fallback)
+
+    # td_with_fallback should always be largest of all three in terms of code side
+    self.assertGreater(td_with_fallback, td_without_fallback)
+    self.assertGreater(td_with_fallback, just_fallback)
+
+    # the fallback is also expected to be larger in code size than using td
+    self.assertGreater(just_fallback, td_without_fallback)
 
   def test_small_js_flags(self):
     self.btest('browser_test_hello_world.c', '0', args=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web'])
