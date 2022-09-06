@@ -45,13 +45,13 @@ std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
   return nullptr;
 }
 
-bool MemoryDirectory::removeChild(const std::string& name) {
+int MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
   if (entry != entries.end()) {
     entry->child->locked().setParent(nullptr);
     entries.erase(entry);
   }
-  return true;
+  return 0;
 }
 
 std::vector<Directory::Entry> MemoryDirectory::getEntries() {
@@ -74,7 +74,7 @@ int MemoryDirectory::insertMove(const std::string& name,
       break;
     }
   }
-  removeChild(name);
+  (void)removeChild(name);
   insertChild(name, file);
   return 0;
 }

@@ -834,10 +834,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   }
 
   // Input is valid, perform the unlink.
-  if (!lockedParent.removeChild(childName)) {
-    return -EPERM;
-  }
-  return 0;
+  return lockedParent.removeChild(childName);
 }
 
 int __syscall_rmdir(intptr_t path) {
@@ -1014,10 +1011,7 @@ int __syscall_renameat(int olddirfd,
   }
 
   // Perform the move.
-  if (auto err = lockedNewParent.insertMove(newFileName, oldFile)) {
-    return err;
-  }
-  return 0;
+  return lockedNewParent.insertMove(newFileName, oldFile);
 }
 
 int __syscall_rename(intptr_t oldpath, intptr_t newpath) {

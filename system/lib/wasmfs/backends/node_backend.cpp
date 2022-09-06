@@ -217,19 +217,16 @@ private:
     }
   }
 
-  bool removeChild(const std::string& name) override {
+  int removeChild(const std::string& name) override {
     auto childPath = getChildPath(name);
     // Try both `unlink` and `rmdir`.
     if (auto err = _wasmfs_node_unlink(childPath.c_str())) {
       if (err == EISDIR) {
         err = _wasmfs_node_rmdir(childPath.c_str());
       }
-      if (err) {
-        // TODO: Report specific errors.
-        return false;
-      }
+      return -err;
     }
-    return true;
+    return 0;
   }
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,

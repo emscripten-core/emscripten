@@ -208,10 +208,10 @@ protected:
   virtual int insertMove(const std::string& name,
                          std::shared_ptr<File> file) = 0;
 
-  // Remove the file with the given name, returning `true` on success or if the
-  // child has already been removed or returning `false` if the child cannot be
-  // removed.
-  virtual bool removeChild(const std::string& name) = 0;
+  // Remove the file with the given name. Returns zero on success or if the
+  // child has already been removed and otherwise returns a negative error code
+  // if the child cannot be removed.
+  virtual int removeChild(const std::string& name) = 0;
 
   // The number of entries in this directory.
   virtual size_t getNumEntries() = 0;
@@ -377,10 +377,10 @@ public:
   [[nodiscard]] int insertMove(const std::string& name,
                                std::shared_ptr<File> file);
 
-  // Remove the file with the given name, returning `true` on success or if the
-  // vhild has already been removed or returning `false` if the child cannot be
-  // removed.
-  bool removeChild(const std::string& name);
+  // Remove the file with the given name. Returns zero on success or if the
+  // child has already been removed and otherwise returns a negative error code
+  // if the child cannot be removed.
+  [[nodiscard]] int removeChild(const std::string& name);
 
   std::string getName(std::shared_ptr<File> file);
 
