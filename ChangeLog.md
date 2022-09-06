@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.22 (in development)
 -----------------------
+- compiler-rt updated to LLVM 15. (#17802)
 
 3.1.21 - 09/09/2022
 -------------------
