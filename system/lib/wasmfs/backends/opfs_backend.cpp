@@ -52,7 +52,8 @@ void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_get_entries(em_proxying_ctx* ctx,
                               int dirID,
-                              std::vector<Directory::Entry>* entries);
+                              std::vector<Directory::Entry>* entries,
+                              int* err);
 
 void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
                               int file_id,
@@ -420,13 +421,25 @@ private:
     return err;
   }
 
-  size_t getNumEntries() override { return getEntries().size(); }
+  ssize_t getNumEntries() override {
+    auto entries = getEntries();
+    if (int err = entries.getError()) {
+      return err;
+    }
+    return entries->size();
+  }
 
-  std::vector<Directory::Entry> getEntries() override {
+  Directory::MaybeEntries getEntries() override {
     std::vector<Directory::Entry> entries;
-    proxy(
-      [&](auto ctx) { _wasmfs_opfs_get_entries(ctx.ctx, dirID, &entries); });
-    return entries;
+    int err = 0;
+    proxy([&](auto ctx) {
+      _wasmfs_opfs_get_entries(ctx.ctx, dirID, &entries, &err);
+    });
+    if (err) {
+      assert(err < 0);
+      return {err};
+    }
+    return {entries};
   }
 };
 

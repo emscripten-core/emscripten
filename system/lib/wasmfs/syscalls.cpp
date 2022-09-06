@@ -879,7 +879,10 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     {".", File::DirectoryKind, dir->getIno()},
     {"..", File::DirectoryKind, parent->getIno()}};
   auto dirEntries = lockedDir.getEntries();
-  entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
+  if (int err = dirEntries.getError()) {
+    return err;
+  }
+  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
 
   off_t bytesRead = 0;
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
