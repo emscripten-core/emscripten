@@ -87,12 +87,15 @@ int try_oob_read(void) {
   char buf;
   int nread = pread(fd, &buf, 1, (off_t)-1ll);
   if (nread > 0) {
+    close(fd);
     return 1;
   }
   if (errno == EINVAL) {
+    close(fd);
     return 0;
   }
   EM_ASM({ console.log('errno', $0); }, errno);
+  close(fd);
   return 2;
 }
 
@@ -106,12 +109,15 @@ int try_oob_write(void) {
   char buf = 0;
   int nread = pwrite(fd, &buf, 1, (off_t)-1ll);
   if (nread > 0) {
+    close(fd);
     return 1;
   }
   if (errno == EINVAL) {
+    close(fd);
     return 0;
   }
   emscripten_console_error(strerror(errno));
+  close(fd);
   return 2;
 }
 

@@ -61,5 +61,10 @@ async function run_test() {
     throw "Did not get expected EINVAL doing out of bounds write";
   }
 
+  if (Module._try_unlink() != 1) {
+    throw "Did not succeed to unlink the file (which should work now that " +
+          "nothing prevents it)";
+  }
+
   Module._report_result(0);
 }
