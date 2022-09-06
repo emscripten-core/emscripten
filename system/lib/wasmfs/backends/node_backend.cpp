@@ -224,7 +224,7 @@ private:
       if (err == EISDIR) {
         err = _wasmfs_node_rmdir(childPath.c_str());
       }
-      return err;
+      return -err;
     }
     return 0;
   }

@@ -208,7 +208,7 @@ protected:
   virtual int insertMove(const std::string& name,
                          std::shared_ptr<File> file) = 0;
 
-  // Remove the file with the given name. Returns true on success or if the
+  // Remove the file with the given name. Returns zero on success or if the
   // child has already been removed and otherwise returns a negative error code
   // if the child cannot be removed.
   virtual int removeChild(const std::string& name) = 0;
@@ -377,7 +377,7 @@ public:
   [[nodiscard]] int insertMove(const std::string& name,
                                std::shared_ptr<File> file);
 
-  // Remove the file with the given name. Returns true on success or if the
+  // Remove the file with the given name. Returns zero on success or if the
   // child has already been removed and otherwise returns a negative error code
   // if the child cannot be removed.
   [[nodiscard]] int removeChild(const std::string& name);
