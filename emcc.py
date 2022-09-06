@@ -1498,6 +1498,7 @@ def phase_setup(options, state, newargs, user_settings):
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
   if settings.MEMORY64:
+    diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
     default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
     if settings.SUPPORT_LONGJMP and settings.SUPPORT_LONGJMP != 'wasm':
       exit_with_error('MEMORY64 is not compatible with (non-wasm) SUPPORT_LONGJMP')

@@ -9560,10 +9560,12 @@ cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', emcc_args=['--profiling-funcs'], settings={'MEMORY64': 1},
+wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+                  settings={'MEMORY64': 1},
                   require_v8=True, v8_args=['--experimental-wasm-memory64'])
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', emcc_args=['--profiling-funcs'], settings={'MEMORY64': 2},
+wasm64l = make_run('wasm64l', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+                   settings={'MEMORY64': 2},
                    node_args=['--experimental-wasm-bigint'])
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])

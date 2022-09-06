@@ -288,7 +288,7 @@ def inspect_headers(headers, cflags):
   if settings.MEMORY64:
     # Always use =2 here so that we don't generate binar that actually requires
     # memeory64 to run.  All we care about is that the output is correct.
-    cmd += ['-sMEMORY64=2']
+    cmd += ['-sMEMORY64=2', '-Wno-experimental']
 
   show(shared.shlex_join(cmd))
   try:

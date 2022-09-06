@@ -49,7 +49,7 @@ def get_base_cflags(force_object_files=False):
   if settings.RELOCATABLE:
     flags += ['-sRELOCATABLE']
   if settings.MEMORY64:
-    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
 
 
