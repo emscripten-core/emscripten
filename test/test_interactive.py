@@ -265,7 +265,7 @@ class interactive(BrowserCore):
   # Tests simple AudioWorklet noise generation
   @also_with_minimal_runtime
   def test_audio_worklet(self):
-    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--preload-file', test_file('hello_world.c') + '@/'])
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS'])
 
   # Tests a second AudioWorklet example: sine wave tone generator.

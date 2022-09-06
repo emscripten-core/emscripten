@@ -5410,6 +5410,7 @@ Module["preRun"].push(function () {
   # Tests the AudioWorklet demo
   @parameterized({
     'default': ([],),
+    'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'pthreads': (['-sUSE_PTHREADS'],),
     'pthreads_and_closure': (['-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
