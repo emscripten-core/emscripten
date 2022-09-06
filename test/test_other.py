@@ -6784,7 +6784,7 @@ Resolved: "/" => "/"
     'normal': (['-sWASM_BIGINT=0'], 'testbind.js'),
     'bigint': (['-sWASM_BIGINT'], 'testbind_bigint.js'),
   })
-  def test_sixtyfour_bit_return_value(self, args, bind_js):
+  def test_i64_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
     # The MS 32 bits should be available in getTempRet0() even when compiled with -O2 --closure 1
@@ -11000,6 +11000,7 @@ int main () {
     # we used to include malloc by default. show a clear error in builds with
     # ASSERTIONS to help with any confusion when the user calls a JS API that
     # requires malloc
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$allocateUTF8')
     create_file('unincluded_malloc.c', r'''
       #include <emscripten.h>
       int main() {
@@ -12164,24 +12165,26 @@ Module['postRun'] = function() {{
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString', '$ALLOC_NORMAL'])
 
-    # By default `LEGACY_RUNTIME` is enabled and `allocate` is available to call.
-    self.do_runf(test_file('other/test_legacy_runtime.c'))
-
-    # When we disable `LEGACY_RUNTIME`, `allocate` should not be available implicitly.
-    self.set_setting('LEGACY_RUNTIME', 0)
+    # By default `LEGACY_RUNTIME` is disabled and `allocate` is not available.
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     self.do_runf(test_file('other/test_legacy_runtime.c'),
                  '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
-    # Adding it to EXPORTED_RUNTIME_METHODS makes it available.
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate', 'ALLOC_NORMAL'])
+    # When we enable `LEGACY_RUNTIME`, `allocate` should be available.
+    self.set_setting('LEGACY_RUNTIME', 1)
+    self.do_runf(test_file('other/test_legacy_runtime.c'))
+
+    # Adding it to EXPORTED_RUNTIME_METHODS should also make it available.
+    self.clear_setting('LEGACY_RUNTIME')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate'])
     self.do_runf(test_file('other/test_legacy_runtime.c'), 'hello from js')
 
     # In strict mode the library function is not even available, so we get a build time error
     self.set_setting('STRICT')
+    self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
     err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c')] + self.get_emcc_args())
     self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
