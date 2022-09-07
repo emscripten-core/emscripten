@@ -648,8 +648,9 @@ var LibraryPThread = {
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
-    for (var name of transferredCanvasNames) {
-      name = name.trim();
+    // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).  
+    for (var i in transferredCanvasNames) {
+      var name = transferredCanvasNames[i].trim();
       var offscreenCanvasInfo;
       try {
         if (name == '#canvas') {
