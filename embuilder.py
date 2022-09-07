@@ -237,7 +237,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        library.build()
+        library.generate()
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')
@@ -261,6 +261,7 @@ def main():
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
   if len(tasks) > 1:
+    system_libs.build_deferred()
     all_build_time_taken = time.time() - all_build_start_time
     logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
 

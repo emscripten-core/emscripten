@@ -260,6 +260,10 @@ class Library:
     """
     return shared.Cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
+  def generate(self):
+    return shared.Cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2,
+                            quiet=USE_NINJA, deferred=True)
+
   def get_link_flag(self):
     """
     Gets the link flags needed to use the library.
@@ -346,16 +350,17 @@ rule archive
 '''
     suffix = shared.suffix(libname)
     input_files = self.get_files()
+    build_dir = os.path.dirname(filename)
 
     if suffix == '.o':
       assert len(input_files) == 1
-      depfile = shared.unsuffixed_basename(input_files[0]) + '.d'
+      depfile = os.path.join(shared.unsuffixed_basename(input_files[0]) + '.d')
       out += f'build {libname}: direct_cc {input_files[0]}\n'
       out += f'  with_depfile = {depfile}\n'
     else:
       objects = []
       for src in input_files:
-        o = shared.unsuffixed_basename(src) + '.o'
+        o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
         object_uuid = 0
         # Find a unique basename
         while o in objects:
@@ -440,8 +445,15 @@ rule archive
     For example, libc uses this to replace -Oz with -O2 for some subset of files."""
     return flags
 
-  def do_build(self, out_filename):
-    """Builds the library and returns the path to the file."""
+  def ensure_in_file(self, ninja_file, target):
+    if os.path.isfile(ninja_file):
+      with open(ninja_file, 'r') as f:
+        if target in f.read():
+          return
+    with open(ninja_file, 'a') as f:
+      f.write(target + '\n')
+
+  def do_generate(self, out_filename):
     assert out_filename == self.get_path(absolute=True)
     build_dir = os.path.join(shared.Cache.get_path('build'), self.get_base_name())
     if USE_NINJA:
@@ -449,7 +461,16 @@ rule archive
       utils.safe_ensure_dirs(build_dir)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       self.write_ninja_file(ninja_file, out_filename)
-      shared.check_call(['ninja', '-C', build_dir], env=clean_env())
+      parent_ninja = os.path.join(shared.Cache.get_path('build'), 'build.ninja')
+      self.ensure_in_file(parent_ninja, f'subninja {ninja_file}')
+
+  def do_build(self, out_filename):
+    """Builds the library and returns the path to the file."""
+    assert out_filename == self.get_path(absolute=True)
+    build_dir = os.path.join(shared.Cache.get_path('build'), self.get_base_name())
+    if USE_NINJA:
+      self.do_generate(out_filename)
+      shared.check_call(['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}'], env=clean_env())
     else:
       # Use a seperate build directory to the ninja flavor so that building without
       # EMCC_USE_NINJA doesn't clobber the ninja build tree
@@ -808,6 +829,10 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'emscripten_tempret.s',
         '__trap.c',
       ])
+
+  # FIXME?: Don't let compiler_rt be built deferred, because struct_info depends on it
+  def generate(self):
+    return self.build()
 
 
 class libnoexit(Library):
@@ -2165,3 +2190,7 @@ def install_system_headers(stamp):
 @ToolchainProfiler.profile()
 def ensure_sysroot():
   shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+
+def build_deferred():
+  shared.check_call(['ninja', '-C', shared.Cache.get_path('build'),
+                     f'-j{shared.get_num_cores()}'], env=clean_env())
