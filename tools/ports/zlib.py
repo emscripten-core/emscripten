@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 from pathlib import Path
 
 VERSION = '1.2.12'
@@ -20,23 +19,13 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
-    dest_path = ports.clear_project_build('zlib')
-    shutil.copytree(source_path, dest_path)
-    Path(dest_path, 'zconf.h').write_text(zconf_h)
-    ports.install_headers(dest_path)
+    Path(source_path, 'zconf.h').write_text(zconf_h)
+    ports.install_headers(source_path)
 
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(dest_path, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w', '-c'])
-      o_s.append(o)
-    ports.run_commands(commands)
-
-    ports.create_lib(final, o_s)
+    dest_path = ports.clear_project_build('zlib')
+    ports.build_port(source_path, final, dest_path, srcs=srcs)
 
   return [shared.Cache.get_lib('libz.a', create, what='port')]
 

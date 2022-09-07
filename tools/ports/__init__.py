@@ -108,44 +108,38 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):  # noqa
-    srcs = []
-    for root, _, files in os.walk(src_path, topdown=False):
-      if any((excluded in root) for excluded in exclude_dirs):
-        continue
-      for f in files:
-        ext = shared.suffix(f)
-        if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
-          srcs.append(os.path.join(root, f))
-    include_commands = ['-I' + src_path]
-    for include in includes:
-      include_commands.append('-I' + include)
+  def build_port(src_dir, output_path, build_dir, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+    if srcs:
+      srcs = [os.path.join(src_dir, s) for s in srcs]
+    else:
+      srcs = []
+      for root, _, files in os.walk(src_dir, topdown=False):
+        if any((excluded in root) for excluded in exclude_dirs):
+          continue
+        for f in files:
+          ext = shared.suffix(f)
+          if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+            srcs.append(os.path.join(root, f))
 
+    cflags = system_libs.get_base_cflags() + ['-O2', '-w', '-I' + src_dir] + flags
+    for include in includes:
+      cflags.append('-I' + include)
+
+    if build_dir:
+      if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+      build_dir = src_dir
     commands = []
     objects = []
     for src in srcs:
-      obj = src + '.o'
-      commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
+      relpath = os.path.relpath(src, src_dir)
+      obj = os.path.join(build_dir, relpath) + '.o'
+      commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
       objects.append(obj)
 
-    Ports.run_commands(commands)
+    system_libs.run_build_commands(commands)
     system_libs.create_lib(output_path, objects)
     return output_path
-
-  @staticmethod
-  def run_commands(commands):
-    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
-    # that the ports are built in the correct configuration.
-    def add_args(cmd):
-      # this must only be called on a standard build command
-      assert cmd[0] in (shared.EMCC, shared.EMXX)
-      # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + system_libs.get_base_cflags() + cmd[1:]
-    system_libs.run_build_commands([add_args(c) for c in commands])
-
-  @staticmethod
-  def create_lib(libname, inputs): # make easily available for port objects
-    system_libs.create_lib(libname, inputs)
 
   @staticmethod
   def get_dir():

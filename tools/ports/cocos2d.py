@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 import re
 
@@ -28,48 +27,34 @@ def get(ports, settings, shared):
     cocos2d_src = os.path.join(ports.get_dir(), 'cocos2d')
     cocos2d_root = os.path.join(cocos2d_src, 'Cocos2d-' + TAG)
     cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
-    cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
-    cocos2dx_includes = make_includes(cocos2d_root)
 
-    cocos2d_build = ports.clear_project_build('cocos2d')
-    shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
-                    os.path.join(cocos2d_build, 'samples'))
+    srcs = make_source_list(cocos2d_root, cocos2dx_root)
+    includes = make_includes(cocos2d_root)
+    flags = [
+      '-Wno-overloaded-virtual',
+      '-Wno-deprecated-declarations',
+      '-D__CC_PLATFORM_FILEUTILS_CPP__',
+      '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
+      '-DCC_KEYBOARD_SUPPORT',
+      '-DGL_ES=1',
+      '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
+      # Cocos2d source code hasn't switched to __EMSCRIPTEN__.
+      # See https://github.com/emscripten-ports/Cocos2d/pull/3
+      '-DEMSCRIPTEN',
+      '-DCP_USE_DOUBLES=0',
+      '-sUSE_ZLIB=1',
+      '-sUSE_LIBPNG=1',
+    ]
+    build_dir = ports.clear_project_build('cocos2d')
 
-    commands = []
-    o_s = []
-    for src in cocos2dx_src:
-      o = os.path.join(cocos2d_build, 'Cocos2d-' + TAG, 'build', src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.EMCC,
-                 '-c', src,
-                 '-Wno-overloaded-virtual',
-                 '-Wno-deprecated-declarations',
-                 '-D__CC_PLATFORM_FILEUTILS_CPP__',
-                 '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
-                 '-DCC_KEYBOARD_SUPPORT',
-                 '-DGL_ES=1',
-                 '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
-                 # Cocos2d source code hasn't switched to __EMSCRIPTEN__.
-                 # See https://github.com/emscripten-ports/Cocos2d/pull/3
-                 '-DEMSCRIPTEN',
-                 '-DCP_USE_DOUBLES=0',
-                 '-O2',
-                 '-sUSE_ZLIB=1',
-                 '-sUSE_LIBPNG=1',
-                 '-o', o, '-w']
-
-      for include in cocos2dx_includes:
-        command.append('-I' + include)
-
-      commands.append(command)
-      o_s.append(o)
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
-
-    for dirname in cocos2dx_includes:
+    for dirname in includes:
       target = os.path.join('cocos2d', os.path.relpath(dirname, cocos2d_root))
       ports.install_header_dir(dirname, target=target)
+
+    ports.build_port(cocos2d_src, final, build_dir,
+                     flags=flags,
+                     includes=includes,
+                     srcs=srcs)
 
   return [shared.Cache.get_lib('libcocos2d.a', create, what='port')]
 
