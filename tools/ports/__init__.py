@@ -126,19 +126,28 @@ class Ports:
     for include in includes:
       cflags.append('-I' + include)
 
-    commands = []
-    objects = []
-    for src in srcs:
-      relpath = os.path.relpath(src, src_dir)
-      obj = os.path.join(build_dir, relpath) + '.o'
-      dirname = os.path.dirname(obj)
-      if not os.path.exists(dirname):
-        os.makedirs(dirname)
-      commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
-      objects.append(obj)
+    if system_libs.USE_NINJA:
+      if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+      ninja_file = os.path.join(build_dir, 'build.ninja')
+      system_libs.ensure_sysroot()
+      system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
+      system_libs.run_ninja(build_dir)
+    else:
+      commands = []
+      objects = []
+      for src in srcs:
+        relpath = os.path.relpath(src, src_dir)
+        obj = os.path.join(build_dir, relpath) + '.o'
+        dirname = os.path.dirname(obj)
+        if not os.path.exists(dirname):
+          os.makedirs(dirname)
+        commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
+        objects.append(obj)
 
-    system_libs.run_build_commands(commands)
-    system_libs.create_lib(output_path, objects)
+      system_libs.run_build_commands(commands)
+      system_libs.create_lib(output_path, objects)
+
     return output_path
 
   @staticmethod
@@ -273,6 +282,12 @@ class Ports:
     build_dir = os.path.join(Ports.get_build_dir(), name)
     utils.delete_dir(build_dir)
     return build_dir
+
+  @staticmethod
+  def write_file(filename, contents):
+    if os.path.exists(filename) and utils.read_file(filename) == contents:
+      return
+    utils.write_file(filename, contents)
 
 
 def dependency_order(port_list):

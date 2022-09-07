@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-from pathlib import Path
 
 TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
@@ -19,7 +18,7 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
-    Path(source_path, 'include/ftconfig.h').write_text(ftconf_h)
+    ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))
 
