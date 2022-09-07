@@ -166,6 +166,9 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       lockedOpenFile.getFile()->isSeekable()) {
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
+  if (bytesWritten) {
+    lockedFile.setMTime(time(NULL));
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
