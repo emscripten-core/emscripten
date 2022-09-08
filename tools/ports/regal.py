@@ -113,10 +113,11 @@ def get(ports, settings, shared):
       o = os.path.join(dest_path_src, src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
 
-      command = [shared.EMCC, '-c', c,
+      command = [shared.EMXX, '-c', c,
                  '-DNDEBUG',
                  '-DREGAL_LOG=0',  # Set to 1 if you need to have some logging info
                  '-DREGAL_MISSING=0',  # Set to 1 if you don't want to crash in case of missing GL implementation
+                 '-std=gnu++14',
                  '-fno-rtti',
                  '-fno-exceptions', # Disable exceptions (in STL containers mostly), as they are not used at all
                  '-O3',

@@ -34,6 +34,7 @@ def get(ports, settings, shared):
       '-DREAL_IS_FLOAT',
       '-DHAVE_CONFIG_H',
       '-DSYM_VISIBILITY',
+      '-std=gnu++14',
       '-O2',
       '-fno-exceptions',
       '-ffast-math',
