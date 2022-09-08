@@ -2437,9 +2437,6 @@ int main(int argc, char **argv) {
   def test_llvmswitch(self):
     self.do_core_test('test_llvmswitch.c')
 
-  def test_cxx_version(self):
-    self.do_core_test('test_cxx_version.cpp')
-
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):
     self.do_runf(test_file('bigswitch.cpp'), '''34962: GL_ARRAY_BUFFER (0x8892)
