@@ -1214,6 +1214,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-Oz',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+      '-std=c++14',
     ]
   includes = ['system/lib/libcxx/src']
 
