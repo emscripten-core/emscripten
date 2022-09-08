@@ -2192,5 +2192,6 @@ def ensure_sysroot():
   shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
 
 def build_deferred():
-  shared.check_call(['ninja', '-C', shared.Cache.get_path('build'),
-                     f'-j{shared.get_num_cores()}'], env=clean_env())
+  if os.path.isfile(os.path.join(shared.Cache.get_path('build'), 'build.ninja')):
+    shared.check_call(['ninja', '-C', shared.Cache.get_path('build'),
+                       f'-j{shared.get_num_cores()}'], env=clean_env())

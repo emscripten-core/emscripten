@@ -102,6 +102,7 @@ commands:
     description: "Build all libraries, and freeze the cache"
     steps:
       - pip-install
+      - run: apt-get install ninja-build
       - run:
           name: embuilder build ALL
           command: |

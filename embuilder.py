@@ -14,6 +14,7 @@ running multiple build commands in parallel, confusion can occur).
 
 import argparse
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
@@ -237,7 +238,10 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        library.generate()
+        if os.environ.get('EMCC_USE_NINJA', 0):
+          library.generate()
+        else:
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')
