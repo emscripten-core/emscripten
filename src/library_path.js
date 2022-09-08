@@ -5,8 +5,14 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $PATH__postset: 'if (ENVIRONMENT_IS_NODE) { requireNodeFS(); }',
   $PATH: {
-    isAbs: (path) => path.charAt(0) === '/',
+    isAbs: (path) => {
+      if (ENVIRONMENT_IS_NODE) {
+        return nodePath.isAbsolute(path);
+      }
+      return path.charAt(0) === '/';
+    },
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
     splitPath: (filename) => {
