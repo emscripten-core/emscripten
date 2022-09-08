@@ -61,7 +61,7 @@ void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_open_blob(em_proxying_ctx* ctx, int file_id, int* blob_id);
 
-void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id);
+void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id, int* err);
 
 void _wasmfs_opfs_close_blob(int blob_id);
 
@@ -175,13 +175,15 @@ public:
     return 0;
   }
 
-  void close(ProxyWorker& proxy) {
+  int close(ProxyWorker& proxy) {
     // TODO: Downgrade to Blob access once the last writable file descriptor has
     // been closed.
+    int err = 0;
     if (--openCount == 0) {
       switch (kind) {
         case Access:
-          proxy([&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, id); });
+          proxy(
+            [&](auto ctx) { _wasmfs_opfs_close_access(ctx.ctx, id, &err); });
           break;
         case Blob:
           proxy([&]() { _wasmfs_opfs_close_blob(id); });
@@ -192,6 +194,7 @@ public:
       kind = None;
       id = -1;
     }
+    return err;
   }
 
   int getAccessID() {
@@ -277,10 +280,7 @@ private:
 
   int open(oflags_t flags) override { return state.open(proxy, fileID, flags); }
 
-  int close() override {
-    state.close(proxy);
-    return 0;
-  }
+  int close() override { return state.close(proxy); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     // TODO: use an i64 here.
