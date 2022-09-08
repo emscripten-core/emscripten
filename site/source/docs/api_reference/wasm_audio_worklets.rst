@@ -179,6 +179,9 @@ The main browser thread that created the Web Audio context can adjust the values
 
 2. Data can be shared with the Audio Worklet thread using GCC/Clang lock-free atomics operations, Emscripten atomics operations and the Wasm Worker API thread synchronization primitives. See :ref:`wasm_workers` for more information.
 
+3. Utilize the ``emscripten_audio_worklet_post_function_*()`` family of event passing functions. These functions operate similar to how the function family emscripten_wasm_worker_post_function_*()`` does. Posting functions enables a ``postMessage()`` style of communication, where the audio worklet thread and the main browser thread can send messages (function call dispatches) to each others.
+
+
 More Examples
 =============
 

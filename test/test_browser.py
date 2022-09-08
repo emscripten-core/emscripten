@@ -5420,6 +5420,14 @@ Module["preRun"].push(function () {
   def test_audio_worklet(self, args):
     self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
+  # Tests that posting functions between the main thread and the audioworklet thread works
+  @parameterized({
+    'default': ([],),
+    'closure': (['--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet_post_function(self, args):
+    self.btest(test_file('webaudio/audioworklet_post_function.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):

@@ -141,26 +141,29 @@ class BootstrapMessages extends AudioWorkletProcessor {
 #endif
     // Listen to messages from the main thread. These messages will ask this scope to create the real
     // AudioWorkletProcessors that call out to Wasm to do audio processing.
-    let p = this.port;
+    let p = globalThis['messagePort'] = this.port;
     p.onmessage = (msg) => {
       let d = msg.data;
+      if (d['_wpn']) { // '_wpn' is short for 'Worklet Processor Node', using an identifier that will never conflict with user messages
 #if MODULARIZE
-      // Instantiate the MODULARIZEd Module function, which is stored for us under the special global
-      // name AudioWorkletModule in MODULARIZE+AUDIO_WORKLET builds.
-      if (globalThis.AudioWorkletModule) {
-        AudioWorkletModule(Module); // This populates the Module object with all the Wasm properties
-        delete globalThis.AudioWorkletModule; // We have now instantiated the Module function, can discard it from global scope
-      }
+        // Instantiate the MODULARIZEd Module function, which is stored for us under the special global
+        // name AudioWorkletModule in MODULARIZE+AUDIO_WORKLET builds.
+        if (globalThis.AudioWorkletModule) {
+          AudioWorkletModule(Module); // This populates the Module object with all the Wasm properties
+          delete globalThis.AudioWorkletModule; // We have now instantiated the Module function, can discard it from global scope
+        }
 #endif
-      // Register a real AudioWorkletProcessor that will actually do audio processing.
-      registerProcessor(d['name'], createWasmAudioWorkletProcessor(d['audioParams']));
+        // Register a real AudioWorkletProcessor that will actually do audio processing.
+        registerProcessor(d['name'], createWasmAudioWorkletProcessor(d['audioParams']));
 #if WEBAUDIO_DEBUG
-      console.log(`Registered a new WasmAudioWorkletProcessor "${d['name']}" with AudioParams: ${d['audioParams']}`);
+        console.log(`Registered a new WasmAudioWorkletProcessor "${d['name']}" with AudioParams: ${d['audioParams']}`);
 #endif
-      // Post a message back telling that we have now registered the AudioWorkletProcessor class.
-      // This message does not need to contain any information - just need to let the main thread know that
-      // the processor can now be instantiated.
-      p.postMessage(0);
+        // Post a Wasm Call message back telling that we have now registered the AudioWorkletProcessor class,
+        // and should trigger the user onSuccess callback of the emscripten_create_wasm_audio_worklet_processor_async() call.
+        p.postMessage({'_wsc': d['callback'], 'x': [d['contextHandle'], 1/*EM_TRUE*/, d['userData']] }); // "WaSm Call"
+      } else if (d['_wsc']) { // '_wsc' is short for 'wasm call', using an identifier that will never conflict with user messages
+        Module['wasmTable'].get(d['_wsc'])(...d['x']);
+      };
     }
   }
 

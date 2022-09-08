@@ -210,25 +210,17 @@ let LibraryWebAudio = {
     }).catch(audioWorkletCreationFailed);
   },
 
-  // Store a queue of async callbacks we need to fire when AudioWorkletProcessors have completed
-  // loading.
-  $_EmAudioProcessorCreateRequests: [],
-
-  $_EmAudioDispatchProcessorCallback__deps: ['$_EmAudioProcessorCreateRequests'],
-  $_EmAudioDispatchProcessorCallback: function() {
-    let e = _EmAudioProcessorCreateRequests.shift();
-    {{{ makeDynCall('viii', 'e[1]') }}}(e[0], 1/*EM_TRUE*/, e[2]);
+  $_EmAudioDispatchProcessorCallback: function(e) {
+    let data = e.data, wasmCall = data['_wsc']; // '_wsc' is short for 'wasm call', trying to use an identifier name that will never conflict with user code
+    wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
-  emscripten_create_wasm_audio_worklet_processor_async__deps: ['$_EmAudioProcessorCreateRequests'],
   emscripten_create_wasm_audio_worklet_processor_async: function(contextHandle, options, callback, userData) {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_processor_async() with a null Web Audio Context handle!`);
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_processor_async() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_processor_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
-
-    _EmAudioProcessorCreateRequests.push([contextHandle, callback, userData]);
 
     options >>= 2;
     let audioParams = [],
@@ -251,8 +243,11 @@ let LibraryWebAudio = {
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
-      name: UTF8ToString(HEAPU32[options]),
-      audioParams: audioParams
+      _wpn: UTF8ToString(HEAPU32[options]), // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so that this field won't accidentally be mixed with user submitted messages.
+      audioParams: audioParams,
+      contextHandle: contextHandle,
+      callback: callback,
+      userData: userData
     });
   },
 
@@ -287,6 +282,46 @@ let LibraryWebAudio = {
 
   emscripten_current_thread_is_audio_worklet: function() {
     return typeof AudioWorkletGlobalScope !== 'undefined';
+  },
+
+  emscripten_audio_worklet_post_function_v__sig: 'vip',
+  emscripten_audio_worklet_post_function_v: function(audioContext, funcPtr) {
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
+  },
+
+  emscripten_audio_worklet_post_function_1__sig: 'vipd',
+  emscripten_audio_worklet_post_function_1: function(audioContext, funcPtr, arg0) {
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
+  },
+
+  emscripten_audio_worklet_post_function_vi: 'emscripten_audio_worklet_post_function_1',
+  emscripten_audio_worklet_post_function_vd: 'emscripten_audio_worklet_post_function_1',
+
+  emscripten_audio_worklet_post_function_2__sig: 'vipdd',
+  emscripten_audio_worklet_post_function_2: function(audioContext, funcPtr, arg0, arg1) {
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
+  },
+  emscripten_audio_worklet_post_function_vii: 'emscripten_audio_worklet_post_function_2',
+  emscripten_audio_worklet_post_function_vdd: 'emscripten_audio_worklet_post_function_2',
+
+  emscripten_audio_worklet_post_function_3__sig: 'vipddd',
+  emscripten_audio_worklet_post_function_3: function(audioContext, funcPtr, arg0, arg1, arg2) {
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
+  },
+  emscripten_audio_worklet_post_function_viii: 'emscripten_audio_worklet_post_function_3',
+  emscripten_audio_worklet_post_function_vddd: 'emscripten_audio_worklet_post_function_3',
+
+  emscripten_audio_worklet_post_function_sig__deps: ['$readAsmConstArgs'],
+  emscripten_audio_worklet_post_function_sig__sig: 'vippp',
+  emscripten_audio_worklet_post_function_sig: function(audioContext, funcPtr, sigPtr, varargs) {
+#if ASSERTIONS
+    assert(audioContext >= 0);
+    assert(funcPtr);
+    assert(sigPtr);
+    assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
+    assert(varargs);
+#endif
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': readAsmConstArgs(sigPtr, varargs) });
   }
 };
 
