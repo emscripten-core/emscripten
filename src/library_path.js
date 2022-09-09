@@ -5,14 +5,9 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $PATH__postset: `
-    if (ENVIRONMENT_IS_NODE) {
-      var nodePath = undefined;
-    }
-  `,
   $PATH: {
     isAbs: (path) => {
-      if (ENVIRONMENT_IS_NODE && nodePath && nodePath.isAbsolute) {
+      if (ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined') {
         return nodePath.isAbsolute(path);
       }
       return path.charAt(0) === '/';
