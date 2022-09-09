@@ -5,16 +5,16 @@
  */
 
 mergeInto(LibraryManager.library, {
-#if ENVIRONMENT_MAY_BE_NODE
-  $PATH__postset: 'if (ENVIRONMENT_IS_NODE) { requireNodeFS(); }',
-#endif
+  $PATH__postset: `
+    if (ENVIRONMENT_IS_NODE) {
+      var nodePath = undefined;
+    }
+  `,
   $PATH: {
     isAbs: (path) => {
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
+      if (ENVIRONMENT_IS_NODE && nodePath && nodePath.isAbsolute) {
         return nodePath.isAbsolute(path);
       }
-#endif
       return path.charAt(0) === '/';
     },
     // split a filename into [root, dir, basename, ext], unix version
