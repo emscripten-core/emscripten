@@ -75,6 +75,7 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   shared.run_multiple_processes(commands, env=clean_env())
+  logger.info('compiled %d inputs' % len(commands))
 
 
 def create_lib(libname, inputs):

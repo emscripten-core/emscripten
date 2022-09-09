@@ -87,7 +87,6 @@ def get(ports, settings, shared):
 
   def create(final):
     logging.info('building port: harfbuzz')
-    build_path = ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
     freetype_include = ports.get_include_dir('freetype2')
@@ -131,15 +130,8 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(build_path, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, '-c', os.path.join(source_path, 'src', src), '-o', o] + cflags)
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    build_dir = ports.clear_project_build('harfbuzz')
+    ports.build_port(os.path.join(source_path, 'src'), final, build_dir, flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

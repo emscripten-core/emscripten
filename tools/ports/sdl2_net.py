@@ -25,18 +25,9 @@ def get(ports, settings, shared):
     logging.info('building port: sdl2_net')
     src_dir = os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
-    srcs = 'SDLnet.c SDLnetselect.c SDLnetTCP.c SDLnetUDP.c'.split()
-    commands = []
-    o_s = []
     build_dir = ports.clear_project_build('sdl2_net')
-    shared.safe_ensure_dirs(build_dir)
-    for src in srcs:
-      o = os.path.join(build_dir, shared.replace_suffix(src, '.o'))
-      commands.append([shared.EMCC, '-c', os.path.join(src_dir, src),
-                       '-O2', '-sUSE_SDL=2', '-o', o, '-w'])
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    excludes = ['chatd.c', 'chat.cpp', 'showinterfaces.c']
+    ports.build_port(src_dir, final, build_dir, exclude_files=excludes)
 
   return [shared.Cache.get_lib('libSDL2_net.a', create, what='port')]
 

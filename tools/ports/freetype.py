@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 from pathlib import Path
 
 TAG = 'version_1'
@@ -19,10 +18,10 @@ def get(ports, settings, shared):
   ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
 
   def create(final):
-    dest_path = ports.clear_project_build('freetype')
     source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
-    shutil.copytree(source_path, dest_path)
-    Path(dest_path, 'include/ftconfig.h').write_text(ftconf_h)
+    Path(source_path, 'include/ftconfig.h').write_text(ftconf_h)
+    ports.install_header_dir(os.path.join(source_path, 'include'),
+                             target=os.path.join('freetype2'))
 
     # build
     srcs = ['src/autofit/autofit.c',
@@ -77,31 +76,23 @@ def get(ports, settings, shared):
             'src/type1/type1.c',
             'src/type42/type42.c',
             'src/winfonts/winfnt.c']
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(dest_path, shared.replace_suffix(src, '.o'))
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
-                       '-DFT2_BUILD_LIBRARY', '-O2',
-                       '-I' + dest_path + '/include',
-                       '-I' + dest_path + '/truetype',
-                       '-I' + dest_path + '/sfnt',
-                       '-I' + dest_path + '/autofit',
-                       '-I' + dest_path + '/smooth',
-                       '-I' + dest_path + '/raster',
-                       '-I' + dest_path + '/psaux',
-                       '-I' + dest_path + '/psnames',
-                       '-I' + dest_path + '/truetype',
-                       '-w',
-                       '-pthread'])
-      o_s.append(o)
 
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    flags = [
+      '-DFT2_BUILD_LIBRARY',
+      '-I' + source_path + '/include',
+      '-I' + source_path + '/truetype',
+      '-I' + source_path + '/sfnt',
+      '-I' + source_path + '/autofit',
+      '-I' + source_path + '/smooth',
+      '-I' + source_path + '/raster',
+      '-I' + source_path + '/psaux',
+      '-I' + source_path + '/psnames',
+      '-I' + source_path + '/truetype',
+      '-pthread'
+    ]
 
-    ports.install_header_dir(os.path.join(dest_path, 'include'),
-                             target=os.path.join('freetype2'))
+    dest_path = ports.clear_project_build('freetype')
+    ports.build_port(source_path, final, dest_path, flags=flags, srcs=srcs)
 
   return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
 

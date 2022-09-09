@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 TAG = 'release-2.0.4'
@@ -45,8 +44,6 @@ def get(ports, settings, shared):
     source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
     dest_path = ports.clear_project_build('sdl2_mixer')
 
-    shutil.copytree(source_path, dest_path)
-
     flags = [
       '-sUSE_SDL=2',
       '-O2',
@@ -78,9 +75,9 @@ def get(ports, settings, shared):
       ]
 
     ports.build_port(
-      dest_path,
+      source_path,
       final,
-      includes=[],
+      dest_path,
       flags=flags,
       exclude_files=[
         'playmus.c',
