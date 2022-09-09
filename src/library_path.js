@@ -7,9 +7,11 @@
 mergeInto(LibraryManager.library, {
   $PATH: {
     isAbs: (path) => {
-      if (ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined') {
+#if ENVIRONMENT_MAY_BE_NODE
+      if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined' && nodePath.isAbsolute !== undefined) {
         return nodePath.isAbsolute(path);
       }
+#endif
       return path.charAt(0) === '/';
     },
     // split a filename into [root, dir, basename, ext], unix version
