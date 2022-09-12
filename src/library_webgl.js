@@ -82,7 +82,7 @@ var LibraryGL = {
     return HEAPU16;
   },
 
-  // Returns the appropriate amount of times for a heap (based on the element
+  // Returns the appropriate amount of shifts for a heap (based on the element
   // size in the heap).
   $heapAccessShiftForWebGLHeap: function(heap) {
     return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
