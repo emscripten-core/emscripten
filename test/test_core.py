@@ -5661,7 +5661,9 @@ main( int argv, char ** argc ) {
   @no_linux("uses windows only paths for testing")
   @also_with_noderawfs
   def test_readdir_windows(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_windows.c', args=f'{os.environ["WINDIR"]} {os.environ["TEMP"]}')
+    self.require_node()
+    self.emcc_args += ['-sNODERAWFS']
+    self.do_run_in_out_file_test('dirent/test_readdir_windows.c', args=[os.environ["WINDIR"], os.environ["TEMP"]])
 
   @also_with_wasm_bigint
   def test_readdir_empty(self):

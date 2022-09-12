@@ -9,7 +9,7 @@ mergeInto(LibraryManager.library, {
     isAbs: (path) => {
 #if ENVIRONMENT_MAY_BE_NODE
       if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined' && nodePath.isAbsolute !== undefined) {
-        return nodePath.isAbsolute(path);
+          return nodePath.isAbsolute(path);
       }
 #endif
       return path.charAt(0) === '/';
@@ -44,6 +44,11 @@ mergeInto(LibraryManager.library, {
       return parts;
     },
     normalize: (path) => {
+#if ENVIRONMENT_MAY_BE_NODE
+      if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined' && nodePath.normalize !== undefined) {
+          return nodePath.normalize(path)?.replace(/\\/g, '/');
+      }
+#endif
       var isAbsolute = PATH.isAbs(path),
           trailingSlash = path.substr(-1) === '/';
       // Normalize the path

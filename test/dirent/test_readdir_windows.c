@@ -15,24 +15,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <limits.h>
 
-#define CHECK(cond) if (!(cond)) { printf("errno: %s\n", strerror(errno)); assert(cond); }
+void cleanup();
+
+#define ASSERT_WITH_CLEANUP(cond) if (!(cond)) { cleanup(); assert(cond); }
+
+#define CHECK(cond) if (!(cond)) { printf("errno: %s\n", strerror(errno)); ASSERT_WITH_CLEANUP(cond); }
 
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   CHECK(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
-  assert(err ==  (sizeof(char) * strlen(buffer)));
+  ASSERT_WITH_CLEANUP(err ==  (sizeof(char) * strlen(buffer)));
 
   close(fd);
 }
 
-const char windir[PATH_MAX] = {0};
-const char tempdir[PATH_MAX] = {0};
+char windir[PATH_MAX] = {0};
+char tempdir[PATH_MAX] = {0};
+char testtmp[PATH_MAX] = {0};
 
 void setup() {
-  const char testtmp[PATH_MAX] = {0};
   sprintf(testtmp, "%s\\testtmp", tempdir);
   int err;
   err = mkdir(testtmp, 0777);  // can't call it tmp, that already exists
@@ -47,7 +52,7 @@ void setup() {
 
 void cleanup() {
   rmdir("nocanread");
-  unlink("foobar/file.txt");
+  unlink("foobar\\file.txt");
   rmdir("foobar");
   chdir("..");
   rmdir("testtmp");
@@ -64,29 +69,20 @@ void test() {
 
   // check bad opendir input
   dir = opendir("noexist");
-  assert(!dir);
-  assert(errno == ENOENT);
-// NODERAWFS tests run as root, and the root user can opendir any directory
-#ifndef NODERAWFS
-  dir = opendir("nocanread");
-  assert(!dir);
-  assert(errno == EACCES);
-#endif
-  const char filepath[PATH_MAX] = {0};
-  sprintf(filepath, "%s\\foobar\\file.txt", tempdir);
+  ASSERT_WITH_CLEANUP(!dir);
+  ASSERT_WITH_CLEANUP(errno == ENOENT);
+  char filepath[PATH_MAX] = {0};
+  sprintf(filepath, "%s\\foobar\\file.txt", testtmp);
   dir = opendir(filepath);
-  assert(!dir);
-  assert(errno == ENOTDIR);
-  err = closedir(dir);
-  assert(!err);
+  ASSERT_WITH_CLEANUP(!dir);
 
   //
   // do a normal read with readdir
   //
-  const char dirpath[PATH_MAX] = {0};
-  sprintf(dirpath, "%s\\foobar", tempdir);
+  char dirpath[PATH_MAX] = {0};
+  sprintf(dirpath, "%s\\foobar", testtmp);
   dir = opendir(dirpath);
-  assert(dir);
+  ASSERT_WITH_CLEANUP(dir);
   int seen[3] = { 0, 0, 0 };
   for (i = 0; i < 3; i++) {
     errno = 0;
@@ -95,94 +91,94 @@ void test() {
       fprintf(stderr, "%d file: %s (%d : %lu)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
     } else {
       fprintf(stderr, "ent: %p, errno: %d\n", ent, errno);
-      assert(ent);
+      ASSERT_WITH_CLEANUP(ent);
     }
-    assert(ent->d_reclen == sizeof(*ent));
+    ASSERT_WITH_CLEANUP(ent->d_reclen == sizeof(*ent));
     if (!seen[0] && !strcmp(ent->d_name, ".")) {
-      assert(ent->d_type & DT_DIR);
+      ASSERT_WITH_CLEANUP(ent->d_type & DT_DIR);
       seen[0] = 1;
       continue;
     }
     if (!seen[1] && !strcmp(ent->d_name, "..")) {
-      assert(ent->d_type & DT_DIR);
+      ASSERT_WITH_CLEANUP(ent->d_type & DT_DIR);
       seen[1] = 1;
       continue;
     }
     if (!seen[2] && !strcmp(ent->d_name, "file.txt")) {
-      assert(ent->d_type & DT_REG);
+      ASSERT_WITH_CLEANUP(ent->d_type & DT_REG);
       seen[2] = 1;
       continue;
     }
-    assert(0 && "odd filename");
+    ASSERT_WITH_CLEANUP(0 && "odd filename");
   }
   ent = readdir(dir);
   if (ent) printf("surprising ent: %p : %s\n", ent, ent->d_name);
-  assert(!ent);
+  ASSERT_WITH_CLEANUP(!ent);
 
   // test rewinddir
   rewinddir(dir);
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
 
   // test seek / tell
   rewinddir(dir);
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   loc = telldir(dir);
-  assert(loc >= 0);
+  ASSERT_WITH_CLEANUP(loc >= 0);
   //printf("loc=%d\n", loc);
   loc2 = ent->d_off;
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
   char name_at_loc[1024];
   strcpy(name_at_loc, ent->d_name);
   //printf("name_at_loc: %s\n", name_at_loc);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
-  assert(!strcmp(ent->d_name, name_at_loc));
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, name_at_loc));
 
   seekdir(dir, loc2);
   ent = readdir(dir);
-  assert(ent && ent->d_ino);
+  ASSERT_WITH_CLEANUP(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
-  assert(!strcmp(ent->d_name, name_at_loc));
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, name_at_loc));
 
   //
   // do a normal read with readdir_r
   //
   rewinddir(dir);
   err = readdir_r(dir, &ent_r, &result);
-  assert(!err);
-  assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(!err);
+  ASSERT_WITH_CLEANUP(&ent_r == result);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   err = readdir_r(dir, &ent_r, &result);
-  assert(!err);
-  assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(!err);
+  ASSERT_WITH_CLEANUP(&ent_r == result);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   err = readdir_r(dir, &ent_r, &result);
-  assert(!err);
-  assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  ASSERT_WITH_CLEANUP(!err);
+  ASSERT_WITH_CLEANUP(&ent_r == result);
+  ASSERT_WITH_CLEANUP(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   err = readdir_r(dir, &ent_r, &result);
-  assert(!err);
-  assert(!result);
+  ASSERT_WITH_CLEANUP(!err);
+  ASSERT_WITH_CLEANUP(!result);
 
   err = closedir(dir);
-  assert(!err);
+  ASSERT_WITH_CLEANUP(!err);
 
   // Read the windir and verify
   dir = opendir(windir);
-  assert(dir);
+  ASSERT_WITH_CLEANUP(dir);
   err = closedir(dir);
-  assert(!err);
+  ASSERT_WITH_CLEANUP(!err);
 
   puts("success");
 }
@@ -206,16 +202,17 @@ void test_scandir() {
 
 int main(int argc, char * argv[]) {
   if (argc < 3) {
-    printf("test_readdir_windows args: %%WINDIR%% %%TEMP%%");
-    assert(0);
+    printf("test_readdir_windows args: %%WINDIR%% %%TEMP%%\n");
+    return -1;
   }
   strcpy(windir, argv[1]);
   strcpy(tempdir, argv[2]);
-  atexit(cleanup);
+  // atexit(cleanup); Doesn't work on windows
   signal(SIGABRT, cleanup);
-  setup(argc, argv);
+  setup();
   test();
   test_scandir();
+  cleanup();
 
   return EXIT_SUCCESS;
 }

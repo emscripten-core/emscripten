@@ -1,0 +1,9 @@
+0 file: . (280 : 280)
+1 file: .. (280 : 280)
+2 file: file.txt (280 : 280)
+success
+n: 4
+name: nocanread
+name: foobar
+name: ..
+name: .
