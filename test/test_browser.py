@@ -1951,6 +1951,13 @@ keydown(100);keyup(100); // trigger the end
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1', args=['-lGL', '-lSDL'])
 
+  @unittest.skip("can only work in chrome canary atm (Sep 2022)")
+  @requires_graphics_hardware
+  def test_gl_glteximage_gl2_4gb(self):
+    # test glTexImage2D in WebGL2, where using >2GB of memory may be tricky: we
+    # have a pointer there that is shifted, and we must shift it as unsigned.
+    self.btest('gl_teximage.c', '1', args=['-lGL', '-lSDL', '-sINITIAL_MEMORY=3GB', '-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2_2GB'])
+
   @parameterized({
     '': ([],),
     'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),

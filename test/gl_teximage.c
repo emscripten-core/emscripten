@@ -14,9 +14,11 @@
 #include "GLES2/gl2.h"
 #include "SDL/SDL.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #include <unistd.h>
 
 typedef enum {
@@ -47,6 +49,27 @@ static void clear_gl_errors()
 
 int main(int argc, char *argv[])
 {
+#ifdef TEST_WEBGL2_2GB
+    // Init in WebGL mode.
+    emscripten_set_canvas_element_size("#canvas", 256, 256);
+    EmscriptenWebGLContextAttributes attr;
+    emscripten_webgl_init_context_attributes(&attr);
+    attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;
+    attr.enableExtensionsByDefault = 1;
+    attr.premultipliedAlpha = 0;
+    attr.majorVersion = 2;
+    attr.minorVersion = 0;
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
+    emscripten_webgl_make_context_current(ctx);
+
+    // Allocate 2GB to force the texture data to have an address in the upper
+    // 2GB region.
+    for (int i = 0; i < 2; i++) {
+        void* wasted = malloc(1024 * 1024 * 1024);
+        assert(wasted);
+    }
+#endif
+
     TestStatus passed = TEST_STATUS_SUCCESS;
     SDL_Surface *screen;
 
@@ -78,6 +101,12 @@ int main(int argc, char *argv[])
         printf("Unable to allocate pixel data\n");
         exit_with_status(TEST_STATUS_FAILURE);
     }
+
+#ifdef TEST_WEBGL2_2GB
+    // Pointer must use 32 bits to test the possible bug with shifting the
+    // pointer in texImage2D (we need to shift it as unsigned, not signed).
+    assert((size_t)pixels >= (size_t)0x80000000UL);
+#endif
 
     // First, try 0xffff for the internal format - should fail
     glTexImage2D(GL_TEXTURE_2D, 0, 0xffff, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
