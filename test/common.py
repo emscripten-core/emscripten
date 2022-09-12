@@ -32,7 +32,7 @@ import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
+from tools.utils import MACOS, WINDOWS, LINUX, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
@@ -153,6 +153,11 @@ def no_mac(note=''):
     return unittest.skip(note)
   return lambda f: f
 
+def no_linux(note=''):
+  assert not callable(note)
+  if LINUX:
+    return unittest.skip(note)
+  return lambda f: f
 
 def no_windows(note=''):
   assert not callable(note)
