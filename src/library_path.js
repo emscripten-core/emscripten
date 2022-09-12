@@ -46,8 +46,11 @@ mergeInto(LibraryManager.library, {
     normalize: (path) => {
 #if ENVIRONMENT_MAY_BE_NODE
       if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE && typeof nodePath !== 'undefined' && nodePath.normalize !== undefined) {
-          return nodePath.normalize(path)?.replace(/\\/g, '/');
-      }
+        const normalized = nodePath.normalize(path);
+        if (normalized) {
+            return normalized.replace(/\\/g, '/');
+        }
+    }
 #endif
       var isAbsolute = PATH.isAbs(path),
           trailingSlash = path.substr(-1) === '/';
