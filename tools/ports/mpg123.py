@@ -38,7 +38,6 @@ def get(ports, settings, shared):
       '-DREAL_IS_FLOAT',
       '-O2',
       '-fomit-frame-pointer',
-      '-funroll-all-loops',
       '-finline-functions',
       '-ffast-math',
       '-I' + src_path,

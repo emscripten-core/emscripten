@@ -41,7 +41,7 @@ def get(ports, settings, shared):
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'''.split()
 
-    defs = ['-O2', '-sUSE_SDL=2']
+    defs = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
 
     for fmt in settings.SDL2_IMAGE_FORMATS:
       defs.append('-DLOAD_' + fmt.upper())

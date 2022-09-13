@@ -25,7 +25,8 @@ def get(ports, settings, shared):
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
     dest_path = ports.clear_project_build('zlib')
-    ports.build_port(source_path, final, dest_path, srcs=srcs)
+    flags = ['-Wno-deprecated-non-prototype']
+    ports.build_port(source_path, final, dest_path, srcs=srcs, flags=flags)
 
   return [shared.Cache.get_lib('libz.a', create, what='port')]
 

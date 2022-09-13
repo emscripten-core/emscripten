@@ -41,6 +41,9 @@ def get(ports, settings, shared):
     logging.debug('building port: icu- ' + lib_output)
 
     additional_build_flags = [
+        # TODO: investigate why this is needed and remove
+        '-Wno-macro-redefined',
+        '-Wno-deprecated-declarations',
         # usage of 'using namespace icu' is deprecated: icu v61
         '-DU_USING_ICU_NAMESPACE=0',
         # make explicit inclusion of utf header: ref utf.h
