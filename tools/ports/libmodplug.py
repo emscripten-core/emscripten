@@ -28,6 +28,7 @@ def get(ports, settings, shared):
     Path(source_path, 'config.h').write_text(config_h)
 
     flags = [
+      '-Wno-deprecated-register',
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
       '-DHAVE_CONFIG_H',

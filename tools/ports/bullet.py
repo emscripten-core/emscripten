@@ -41,7 +41,12 @@ def get(ports, settings, shared):
       for dir in dirs:
         includes.append(os.path.join(base, dir))
 
-    ports.build_port(src_path, final, dest_path, includes=includes, exclude_dirs=['MiniCL'], flags=['-std=gnu++14'])
+    flags = [
+      '-Wno-single-bit-bitfield-constant-conversion',
+      '-std=gnu++14'
+    ]
+
+    ports.build_port(src_path, final, dest_path, includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
   return [shared.Cache.get_lib('libbullet.a', create)]
 

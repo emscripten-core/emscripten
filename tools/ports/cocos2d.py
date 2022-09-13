@@ -31,8 +31,7 @@ def get(ports, settings, shared):
     srcs = make_source_list(cocos2d_root, cocos2dx_root)
     includes = make_includes(cocos2d_root)
     flags = [
-      '-Wno-overloaded-virtual',
-      '-Wno-deprecated-declarations',
+      '-w',
       '-D__CC_PLATFORM_FILEUTILS_CPP__',
       '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
       '-DCC_KEYBOARD_SUPPORT',
