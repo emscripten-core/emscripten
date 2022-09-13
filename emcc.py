@@ -2334,6 +2334,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.MEMORY64:
     if settings.RELOCATABLE:
       exit_with_error('MEMORY64 is not compatible with dynamic linking')
+    if settings.ASYNCIFY and settings.MEMORY64 == 1:
+      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     if not settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
     settings.WASM_BIGINT = 1
