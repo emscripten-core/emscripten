@@ -35,6 +35,7 @@ See docs/process.md for more on how version tagging works.
   `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
   `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
   but not errors). See https://reviews.llvm.org/D134831
+- libcxx and libcxxabi updated to LLVM 15. (#18113)
 
 3.1.24 - 10/11/22
 -----------------
