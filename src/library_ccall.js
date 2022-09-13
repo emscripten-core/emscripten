@@ -34,12 +34,24 @@ mergeInto(LibraryManager.library, {
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
           var len = (str.length << 2) + 1;
+#if STACK_OVERFLOW_CHECK
+          var stackFree = _emscripten_stack_get_free();
+          if (len >= stackFree)
+            abort('ccall allocating huge string will overflow the stack. str len = ' + str.length);
+#endif
+
           ret = stackAlloc(len);
           stringToUTF8(str, ret, len);
         }
         return {{{ to64('ret') }}};
       },
       'array': (arr) => {
+#if STACK_OVERFLOW_CHECK
+        var stackFree = _emscripten_stack_get_free();
+        if (arr.length >= stackFree)
+            abort('ccall allocating huge array will overflow the stack. array len = ' + arr.length);
+#endif
+
         var ret = stackAlloc(arr.length);
         writeArrayToMemory(arr, ret);
         return {{{ to64('ret') }}};
