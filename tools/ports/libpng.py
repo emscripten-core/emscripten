@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 from pathlib import Path
 
@@ -31,17 +30,15 @@ def get(ports, settings, shared):
     logging.info('building port: libpng')
 
     source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
-    dest_path = ports.clear_project_build('libpng')
-    shutil.copytree(source_path, dest_path)
-
-    Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
-    ports.install_headers(dest_path)
+    Path(source_path, 'pnglibconf.h').write_text(pnglibconf_h)
+    ports.install_headers(source_path)
 
     flags = ['-sUSE_ZLIB=1']
     if settings.USE_PTHREADS:
       flags += ['-sUSE_PTHREADS=1']
 
-    ports.build_port(dest_path, final, flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    build_dir = ports.clear_project_build('libpng')
+    ports.build_port(source_path, final, build_dir, flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

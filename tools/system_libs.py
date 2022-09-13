@@ -75,6 +75,7 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   shared.run_multiple_processes(commands, env=clean_env())
+  logger.info('compiled %d inputs' % len(commands))
 
 
 def create_lib(libname, inputs):
@@ -1214,6 +1215,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-Oz',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+      '-std=c++14',
     ]
   includes = ['system/lib/libcxx/src']
 

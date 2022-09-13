@@ -417,7 +417,8 @@ class TestCoreBase(RunnerCore):
   def get_bullet_library(self, use_cmake):
     if use_cmake:
       configure_commands = ['cmake', '.']
-      configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
+      configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF',
+                        '-DCMAKE_CXX_STANDARD=14']
       # Depending on whether 'configure' or 'cmake' is used to build, Bullet
       # places output files in different directory structures.
       generated_libs = [Path('src/BulletDynamics/libBulletDynamics.a'),
@@ -2436,9 +2437,6 @@ int main(int argc, char **argv) {
 
   def test_llvmswitch(self):
     self.do_core_test('test_llvmswitch.c')
-
-  def test_cxx_version(self):
-    self.do_core_test('test_cxx_version.cpp')
 
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):

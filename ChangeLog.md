@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.21 (in development)
+3.1.22 (in development)
 -----------------------
+
+3.1.21 - 09/09/2022
+-------------------
+- Update SDL2 port to 2.24.0 (#17748)
 - The `LEGACY_RUNTIME` setting is no longer enabled by default.  If you use any
   of these legacy runtime functions (except in library code with explict
   dependencies) then you would need to set `LEGACY_RUNTIME` on the command line
