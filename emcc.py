@@ -3160,11 +3160,9 @@ def parse_args(newargs):
       if options.requested_level == 's':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 1
-        settings_changes.append('INLINING_LIMIT=1')
       elif options.requested_level == 'z':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 2
-        settings_changes.append('INLINING_LIMIT=1')
       settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
