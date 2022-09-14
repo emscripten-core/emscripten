@@ -91,6 +91,8 @@ global.LibraryManager = {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');
+        // NODERAWFS overwrites library_path.js
+        libraries.push('library_nodepath.js');
       }
     } else if (WASMFS) {
       libraries.push('library_wasmfs.js');
