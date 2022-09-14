@@ -24,8 +24,8 @@ def get(ports, settings, shared):
   def create(final):
     logging.info('building port: sdl2_gfx')
     source_path = os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG)
-    dest_path = ports.clear_project_build('sdl2_gfx')
-    ports.build_port(source_path, final, dest_path, includes=[dest_path], exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
+    build_dir = ports.clear_project_build('sdl2_gfx')
+    ports.build_port(source_path, final, build_dir, exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
     ports.install_headers(source_path, target='SDL2')
 
   return [shared.Cache.get_lib('libSDL2_gfx.a', create)]

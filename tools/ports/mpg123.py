@@ -75,8 +75,8 @@ def get(ports, settings, shared):
       os.path.join(compat_path, 'compat_str.c'),
     ]
 
-    dest_path = ports.clear_project_build('mpg123')
-    ports.build_port(source_path, final, dest_path, flags=flags, srcs=srcs)
+    build_dir = ports.clear_project_build('mpg123')
+    ports.build_port(source_path, final, build_dir, flags=flags, srcs=srcs)
 
   return [shared.Cache.get_lib('libmpg123.a', create, what='port')]
 

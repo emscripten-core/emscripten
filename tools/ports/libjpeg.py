@@ -24,7 +24,6 @@ def get(ports, settings, shared):
   def create(final):
     logging.info('building port: libjpeg')
     source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
-    dest_path = ports.clear_project_build('libjpeg')
     Path(source_path, 'jconfig.h').write_text(jconfig_h)
     ports.install_headers(source_path)
     excludes = [
@@ -32,7 +31,8 @@ def get(ports, settings, shared):
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
       'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
     ]
-    ports.build_port(source_path, final, dest_path, exclude_files=excludes)
+    build_dir = ports.clear_project_build('libjpeg')
+    ports.build_port(source_path, final, build_dir, exclude_files=excludes)
 
   return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
 
