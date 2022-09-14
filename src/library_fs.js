@@ -116,7 +116,7 @@ FS.staticInit();` +
     // paths
     //
     lookupPath: (path, opts = {}) => {
-      path = PATH_FS.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
 
