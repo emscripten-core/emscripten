@@ -25,8 +25,8 @@ def get(ports, settings, shared):
       'blocksort.c', 'compress.c', 'decompress.c', 'huffman.c',
       'randtable.c', 'bzlib.c', 'crctable.c',
     ]
-    dest_path = ports.clear_project_build('bzip2')
-    ports.build_port(source_path, final, dest_path, srcs=srcs)
+    build_dir = ports.clear_project_build('bzip2')
+    ports.build_port(source_path, final, build_dir, srcs=srcs)
 
   return [shared.Cache.get_lib('libbz2.a', create, what='port')]
 

@@ -24,8 +24,8 @@ def get(ports, settings, shared):
     source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
     Path(source_path, 'include', 'ogg', 'config_types.h').write_text(config_types_h)
     ports.install_header_dir(os.path.join(source_path, 'include', 'ogg'), 'ogg')
-    dest_path = ports.clear_project_build('ogg')
-    ports.build_port(os.path.join(source_path, 'src'), final, dest_path)
+    build_dir = ports.clear_project_build('ogg')
+    ports.build_port(os.path.join(source_path, 'src'), final, build_dir)
 
   return [shared.Cache.get_lib('libogg.a', create)]
 

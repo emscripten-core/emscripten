@@ -91,8 +91,8 @@ def get(ports, settings, shared):
       '-pthread'
     ]
 
-    dest_path = ports.clear_project_build('freetype')
-    ports.build_port(source_path, final, dest_path, flags=flags, srcs=srcs)
+    build_dir = ports.clear_project_build('freetype')
+    ports.build_port(source_path, final, build_dir, flags=flags, srcs=srcs)
 
   return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
 

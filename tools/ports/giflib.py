@@ -20,9 +20,9 @@ def get(ports, settings, shared):
   def create(final):
     logging.info('building port: giflib')
     source_path = os.path.join(ports.get_dir(), 'giflib', f'giflib-{VERSION}')
-    dest_path = ports.clear_project_build('giflib')
     ports.install_headers(source_path)
-    ports.build_port(source_path, final, dest_path)
+    build_dir = ports.clear_project_build('giflib')
+    ports.build_port(source_path, final, build_dir)
 
   return [shared.Cache.get_lib('libgif.a', create, what='port')]
 

@@ -125,15 +125,14 @@ class Ports:
     for include in includes:
       cflags.append('-I' + include)
 
-    if build_dir:
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
-      build_dir = src_dir
     commands = []
     objects = []
     for src in srcs:
       relpath = os.path.relpath(src, src_dir)
       obj = os.path.join(build_dir, relpath) + '.o'
+      dirname = os.path.dirname(obj)
+      if not os.path.exists(dirname):
+        os.makedirs(dirname)
       commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
       objects.append(obj)
 
