@@ -600,6 +600,8 @@ def get_binaryen_passes():
     if settings.ASYNCIFY_ONLY:
       check_human_readable_list(settings.ASYNCIFY_ONLY)
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
+  elif settings.ASYNCIFY == 2:
+    passes += ['--jspi']
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
