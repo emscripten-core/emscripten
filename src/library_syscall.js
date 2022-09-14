@@ -127,7 +127,7 @@ var SyscallsLibrary = {
     '$FS',
 #endif
   ],
-  _mmap_js: function(len, prot, flags, fd, off, allocated) {
+  _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var res = FS.mmap(stream, len, off, prot, flags);
@@ -136,7 +136,8 @@ var SyscallsLibrary = {
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
-    return ptr;
+    {{{ makeSetValue('addr', 0, 'ptr', '*') }}};
+    return 0;
 #else // no filesystem support; report lack of support
     return -{{{ cDefine('ENOSYS') }}};
 #endif
