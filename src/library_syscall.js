@@ -121,7 +121,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  _mmap_js__sig: 'ppiiipp',
+  _mmap_js__sig: 'ipiiippp',
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
