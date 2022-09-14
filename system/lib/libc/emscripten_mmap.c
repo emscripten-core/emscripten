@@ -33,7 +33,13 @@ static volatile int lock[1];
 static struct map* mappings;
 
 // JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-intptr_t _mmap_js(size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
+int _mmap_js(size_t length,
+             int prot,
+             int flags,
+             int fd,
+             size_t offset,
+             int* allocated,
+             void** addr);
 int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
 int _msync_js(intptr_t addr, size_t length, int flags, int fd);
 
@@ -132,12 +138,12 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
     new_map->allocated = true;
   } else {
     new_map = emscripten_builtin_malloc(sizeof(struct map));
-    long rtn = _mmap_js(len, prot, flags, fd, off, &new_map->allocated);
+    int rtn =
+      _mmap_js(len, prot, flags, fd, off, &new_map->allocated, &new_map->addr);
     if (rtn < 0) {
       emscripten_builtin_free(new_map);
       return rtn;
     }
-    new_map->addr = (void*)rtn;
     new_map->fd = fd;
   }
 
