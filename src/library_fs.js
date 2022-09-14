@@ -130,8 +130,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
       }
 
-      // split the path
-      var parts = PATH.normalizeArray(path.split('/').filter((p) => !!p), false);
+      // split the absolute path
+      var parts = path.split('/').filter((p) => !!p);
 
       // start at the root
       var current = FS.root;
