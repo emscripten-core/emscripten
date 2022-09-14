@@ -108,7 +108,8 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, build_dir, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+    build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:

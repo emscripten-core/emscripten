@@ -45,8 +45,7 @@ def get(ports, settings, shared):
       '-std=gnu++14'
     ]
 
-    build_dir = ports.clear_project_build('bullet')
-    ports.build_port(src_path, final, build_dir, includes=includes, flags=flags, exclude_dirs=['MiniCL'])
+    ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
   return [shared.Cache.get_lib('libbullet.a', create)]
 

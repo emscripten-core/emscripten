@@ -29,12 +29,10 @@ def get(ports, settings, shared):
   url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
   ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
   icu_source_path = None
-  build_dir = None
 
   def prepare_build():
-    nonlocal icu_source_path, build_dir
+    nonlocal icu_source_path
     source_path = os.path.join(ports.get_dir(), 'icu', 'icu') # downloaded icu4c path
-    build_dir = ports.clear_project_build('icu') # icu build path
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
@@ -59,7 +57,7 @@ def get(ports, settings, shared):
     if settings.USE_PTHREADS:
       additional_build_flags.append('-pthread')
 
-    ports.build_port(lib_src, lib_output, build_dir, includes=other_includes, flags=build_flags + additional_build_flags)
+    ports.build_port(lib_src, lib_output, 'icu', includes=other_includes, flags=build_flags + additional_build_flags)
 
   # creator for libicu_common
   def create_libicu_common(lib_output):
