@@ -10,6 +10,8 @@
 // Uncomment to compute the expected results without testing:
 //#define GENERATE_ANSWERS
 
+EM_JS_DEPS(test, "$convertI32PairToI53Checked");
+
 double test(int64_t val) {
   int32_t lo = (uint32_t)val;
   int32_t hi = (uint64_t)val >> 32;

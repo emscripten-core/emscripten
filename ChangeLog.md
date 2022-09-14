@@ -22,6 +22,12 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - In Wasm exception mode (`-fwasm-exceptions`), when `ASSERTIONS` is enabled,
   uncaught exceptions will display stack traces. (#17979)
+- It is now possible to specify indirect dependencies on JS library functions
+  directly in C/C++ source code.  For example, in the case of a EM_JS or EM_ASM
+  JavaScript function that depends on a JS library function.  See the
+  `EM_JS_DEPS` macro in the `em_macros.h` header.  Adding dependencies in this
+  way avoids the need to specify them on the command line with
+  `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17854)
 
 3.1.23 - 09/23/22
 -----------------

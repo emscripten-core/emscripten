@@ -38,6 +38,7 @@ var SIDE_MODULE_IMPORTS = [];
 // programs contains EM_JS or EM_ASM data section, in which case these symbols
 // won't exist.
 var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm',
+                         '__start_em_lib_deps', '__stop_em_lib_deps',
                          '__start_em_js', '__stop_em_js'];
 
 // Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
