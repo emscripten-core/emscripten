@@ -79,8 +79,7 @@ def get(ports, settings, shared):
       os.path.join(src_dir, 'sndmix.cpp'),
     ]
 
-    build_dir = ports.clear_project_build('libmodplug')
-    ports.build_port(source_path, final, build_dir, flags=flags, srcs=srcs)
+    ports.build_port(source_path, final, 'libmodplug', flags=flags, srcs=srcs)
 
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
     ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')

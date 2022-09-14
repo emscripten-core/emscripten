@@ -31,8 +31,7 @@ def get(ports, settings, shared):
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
       'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
     ]
-    build_dir = ports.clear_project_build('libjpeg')
-    ports.build_port(source_path, final, build_dir, exclude_files=excludes)
+    ports.build_port(source_path, final, 'libjpeg', exclude_files=excludes)
 
   return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
 

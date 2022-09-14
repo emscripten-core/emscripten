@@ -37,8 +37,7 @@ def get(ports, settings, shared):
     if settings.USE_PTHREADS:
       flags += ['-sUSE_PTHREADS=1']
 
-    build_dir = ports.clear_project_build('libpng')
-    ports.build_port(source_path, final, build_dir, flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

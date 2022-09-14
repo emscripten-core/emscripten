@@ -130,8 +130,7 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
-    build_dir = ports.clear_project_build('harfbuzz')
-    ports.build_port(os.path.join(source_path, 'src'), final, build_dir, flags=cflags, srcs=srcs)
+    ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
