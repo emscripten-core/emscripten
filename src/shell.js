@@ -258,7 +258,6 @@ if (ENVIRONMENT_IS_NODE) {
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
   if (typeof WebAssembly == 'undefined') {
-    requireNodeFS();
     eval(fs.readFileSync(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
@@ -423,7 +422,6 @@ if (ENVIRONMENT_IS_NODE) {
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.warn.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  requireNodeFS();
   defaultPrint = (str) => fs.writeSync(1, str + '\n');
   defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
 }

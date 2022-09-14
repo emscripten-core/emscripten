@@ -4,18 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-var fs;
-var nodePath;
-
-var requireNodeFS = () => {
-  // Use nodePath as the indicator for these not being initialized,
-  // since in some environments a global fs may have already been
-  // created.
-  if (!nodePath) {
-    fs = require('fs');
-    nodePath = require('path');
-  }
-};
+// These modules will usually be used on Node.js.
+var fs = require('fs');
+var nodePath = require('path');
 
 read_ = (filename, binary) => {
 #if SUPPORT_BASE64_EMBEDDING
@@ -24,7 +15,6 @@ read_ = (filename, binary) => {
     return binary ? ret : ret.toString();
   }
 #endif
-  requireNodeFS();
   filename = nodePath['normalize'](filename);
   return fs.readFileSync(filename, binary ? undefined : 'utf8');
 };
@@ -47,7 +37,6 @@ readAsync = (filename, onload, onerror) => {
     onload(ret);
   }
 #endif
-  requireNodeFS();
   filename = nodePath['normalize'](filename);
   fs.readFile(filename, function(err, data) {
     if (err) onerror(err);
