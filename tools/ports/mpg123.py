@@ -5,7 +5,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 TAG = '1.26.2'
 HASH = 'aa63fcb08b243a1e09f7701b3d84a19d7412a87253d54d49f014fdb9e75bbc81d152a41ed750fccde901453929b2a001585a7645351b41845ad205c17a73dcc9'
@@ -27,8 +26,8 @@ def get(ports, settings, shared):
     libmpg123_path = os.path.join(src_path, 'libmpg123')
     compat_path = os.path.join(src_path, 'compat')
 
-    Path(src_path, 'config.h').write_text(config_h)
-    Path(libmpg123_path, 'mpg123.h').write_text(mpg123_h)
+    ports.write_file(os.path.join(src_path, 'config.h'), config_h)
+    ports.write_file(os.path.join(libmpg123_path, 'mpg123.h'), mpg123_h)
 
     # copy header to a location so it can be used as 'MPG123/'
     ports.install_headers(libmpg123_path, pattern="*123.h", target='')
