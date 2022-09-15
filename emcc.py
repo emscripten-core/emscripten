@@ -3165,6 +3165,8 @@ def parse_args(newargs):
       elif options.requested_level == 'z':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 2
+      else:
+        settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
@@ -3175,7 +3177,7 @@ def parse_args(newargs):
       if '=' in arg:
         settings.LTO = arg.split('=')[1]
       else:
-        settings.LTO = "full"
+        settings.LTO = 'full'
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
