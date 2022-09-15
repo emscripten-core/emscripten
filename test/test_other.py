@@ -146,6 +146,10 @@ def requires_pkg_config(func):
   return decorated
 
 
+def llvm_nm(file):
+  return building.llvm_nm_multiple([file])[0]
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -342,7 +346,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.clear()
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
       self.assertIsObjectFile(target)
-      syms = building.llvm_nm(target)
+      syms = llvm_nm(target)
       self.assertIn('main', syms['defs'])
       # we also expect to have the '__original_main' wrapper and __main_void alias.
       # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
@@ -518,7 +522,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('warning: object file output extension (.o) used for non-object output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
-    syms = building.llvm_nm('combined.o')
+    syms = llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
     # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
     self.assertIn(len(syms['defs']), (4, 3))
@@ -541,7 +545,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertIsObjectFile('combined.o')
 
     # Should be two symbols (and in the wasm backend, also __original_main)
-    syms = building.llvm_nm('combined.o')
+    syms = llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
     # TODO(sbc): Should be 3 once https://reviews.llvm.org/D75277 lands
     self.assertIn(len(syms['defs']), (3, 4))
@@ -4139,17 +4143,14 @@ EM_ASM({ _middle() });
     self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
     self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
 
-  def test_bc_to_bc(self):
-    # emcc should 'process' bitcode to bitcode. build systems can request this if
-    # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
-    # (the user would then need to build bc to js of course, but we need to actually
-    # emit the bc)
+  def test_bitcode_linking(self):
+    # emcc used to be able to link bitcode together, but these days partial linking
+    # always outputs an object file.
     self.run_process([EMCC, '-flto', '-c', test_file('hello_world.c')])
     self.assertExists('hello_world.o')
-    err = self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world.bc'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: bitcode linking with llvm-link is deprecated', err)
-    self.assertExists('hello_world.o')
-    self.assertExists('hello_world.bc')
+    self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world2.o'])
+    building.is_bitcode('hello_world.o')
+    building.is_wasm('hello_world2.o')
 
   @parameterized({
     '': (True, False),
