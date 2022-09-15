@@ -1340,6 +1340,9 @@ class libmalloc(MTLibrary):
   name = 'libmalloc'
 
   cflags = ['-fno-builtin']
+  # malloc/free/calloc are runtime functions and can be generated during LTO
+  # Therefor they cannot themselves be part of LTO.
+  force_object_files = True
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
