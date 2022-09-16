@@ -1,0 +1,1467 @@
+EXISTING FILE 0,0
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,0
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,0
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,1
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,2
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,2
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,2
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,3
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,3
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,3
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,4
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,4
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,4
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,5
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,6
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,6
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,6
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,7
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,7
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,7
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,8
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,8
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,8
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,9
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,10
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,10
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,10
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,11
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,11
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,11
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,12
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,12
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,12
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,13
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,14
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,14
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,14
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,15
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,15
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,15
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,16
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,16
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,16
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,17
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,18
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,18
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,18
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,19
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,19
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,19
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,20
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,20
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,20
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,21
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,22
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,22
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,22
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,23
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,23
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,23
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,24
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,24
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,24
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,25
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,26
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,26
+success: 1
+errno: 0
+st_mode: 040000
+
+NON-EXISTING 0,26
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,27
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,27
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,27
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,28
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,28
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,28
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,29
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 0,30
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 0,30
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 0,30
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 0,31
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 0,31
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 0,31
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING LINK 0,0
+success: 1
+errno: 0
+
+EXISTING LINK 0,1
+success: 0
+errno: 32
+
+EXISTING FILE 1,0
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,0
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,0
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,1
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,2
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,2
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,2
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,3
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,3
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,3
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,4
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,4
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,4
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,5
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,6
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,6
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,6
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,7
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,7
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,7
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,8
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,8
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,8
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,9
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,10
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,10
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,10
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,11
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,11
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,11
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,12
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,12
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,12
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,13
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,14
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,14
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,14
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,15
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,15
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,15
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,16
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,16
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,16
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,17
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,18
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,18
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,18
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,19
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,19
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,19
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,20
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,20
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,20
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,21
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,22
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,22
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,22
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,23
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,23
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,23
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,24
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,24
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,24
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,25
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,26
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,26
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,26
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,27
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,27
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,27
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,28
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,28
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,28
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,29
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 1,30
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 1,30
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 1,30
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 1,31
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 1,31
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 1,31
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING LINK 1,0
+success: 1
+errno: 0
+
+EXISTING LINK 1,1
+success: 0
+errno: 32
+
+EXISTING FILE 2,0
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,0
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,0
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,1
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,1
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,2
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,2
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,2
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,3
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,3
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,3
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,4
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,4
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,4
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,5
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,5
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,6
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,6
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,6
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,7
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,7
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,7
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,8
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,8
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,8
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,9
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,9
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,10
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,10
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,10
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,11
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,11
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,11
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,12
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,12
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,12
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,13
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,13
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,14
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,14
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,14
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,15
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,15
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,15
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,16
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,16
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,16
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,17
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,17
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,18
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,18
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,18
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,19
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,19
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,19
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,20
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,20
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,20
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,21
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,21
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,22
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,22
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,22
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,23
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,23
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,23
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,24
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,24
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,24
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,25
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,25
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,26
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,26
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,26
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,27
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,27
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,27
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,28
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,28
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,28
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,29
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,29
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FILE 2,30
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING FOLDER 2,30
+success: 0
+errno: 31
+st_mode: 040000
+
+NON-EXISTING 2,30
+success: 0
+errno: 44
+st_mode: 00
+
+EXISTING FILE 2,31
+success: 0
+errno: 20
+st_mode: 0100000
+
+EXISTING FOLDER 2,31
+success: 0
+errno: 20
+st_mode: 040000
+
+NON-EXISTING 2,31
+success: 1
+errno: 0
+st_mode: 0100000
+
+EXISTING LINK 2,0
+success: 1
+errno: 0
+
+EXISTING LINK 2,1
+success: 0
+errno: 32
+
+CREAT
+success: 1
+errno: 0

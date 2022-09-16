@@ -132,11 +132,10 @@ mergeInto(LibraryManager.library, {
                   expanded += pp() + str.substring(j, lineEnd);
                 }
                 return expandMacros(expanded, 0);
-              } else {
-                out += symbol;
-                i = j-1;
-                break;
               }
+              out += symbol;
+              i = j-1;
+              break;
             }
           }
         } else {

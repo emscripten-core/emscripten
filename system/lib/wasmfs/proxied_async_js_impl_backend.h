@@ -38,7 +38,7 @@
 // For a simple example, see fetch_backend.cpp and library_wasmfs_fetch.js.
 //
 
-using js_index_t = uint32_t;
+using js_index_t = uintptr_t;
 
 extern "C" {
 
@@ -66,7 +66,7 @@ void _wasmfs_jsimpl_async_read(em_proxying_ctx* ctx,
 void _wasmfs_jsimpl_async_get_size(em_proxying_ctx* ctx,
                                    js_index_t backend,
                                    js_index_t index,
-                                   size_t* result);
+                                   off_t* result);
 }
 
 namespace wasmfs {
@@ -75,18 +75,18 @@ class ProxiedAsyncJSImplFile : public DataFile {
   emscripten::ProxyWorker& proxy;
 
   js_index_t getBackendIndex() {
-    static_assert(sizeof(backend_t) == sizeof(js_index_t), "TODO: wasm64");
+    static_assert(sizeof(backend_t) == sizeof(js_index_t));
     return js_index_t(getBackend());
   }
 
   js_index_t getFileIndex() {
-    static_assert(sizeof(this) == sizeof(js_index_t), "TODO: wasm64");
+    static_assert(sizeof(this) == sizeof(js_index_t));
     return js_index_t(this);
   }
 
   // TODO: Notify the JS about open and close events?
-  void open(oflags_t) override {}
-  void close() override {}
+  int open(oflags_t) override { return 0; }
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     ssize_t result;
@@ -106,10 +106,10 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return result;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
-  size_t getSize() override {
-    size_t result;
+  off_t getSize() override {
+    off_t result;
     proxy([&](auto ctx) {
       _wasmfs_jsimpl_async_get_size(
         ctx.ctx, getBackendIndex(), getFileIndex(), &result);
@@ -117,7 +117,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return result;
   }
 
-  void setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: ProxiedAsyncJSImplFile setSize");
   }
 

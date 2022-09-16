@@ -77,7 +77,7 @@ _deps_info = {
   'gmtime': ['malloc'],
   'ctime_r': ['malloc'],
   'dladdr': ['malloc'],
-  'dlopen': ['__dl_seterr'],
+  'dlopen': ['__dl_seterr', 'malloc'],
   'dlsym': ['__dl_seterr'],
   'eglGetProcAddress': ['malloc'],
   'eglQueryString': ['malloc'],
@@ -87,7 +87,7 @@ _deps_info = {
   'emscripten_async_wget2_data': ['malloc', 'free'],
   'emscripten_async_wget_data': ['malloc', 'free'],
   'emscripten_create_worker': ['malloc', 'free'],
-  'emscripten_get_compiler_setting': ['emscripten_builtin_malloc'],
+  'emscripten_get_compiler_setting': ['malloc'],
   'emscripten_get_preloaded_image_data': ['malloc'],
   'emscripten_get_preloaded_image_data_from_FILE': ['fileno'],
   'emscripten_get_window_title': ['malloc'],
@@ -103,7 +103,7 @@ _deps_info = {
   'emscripten_pc_get_file': ['malloc', 'free'],
   'emscripten_pc_get_function': ['malloc', 'free'],
   'emscripten_run_preload_plugins_data': ['malloc'],
-  'emscripten_run_script_string': ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
+  'emscripten_run_script_string': ['malloc', 'free'],
   'emscripten_set_batterychargingchange_callback_on_thread': ['malloc'],
   'emscripten_set_batterylevelchange_callback_on_thread': ['malloc'],
   'emscripten_set_blur_callback_on_thread': ['malloc'],
@@ -196,16 +196,16 @@ def get_deps_info():
   if not settings.WASM_EXCEPTIONS and settings.LINK_AS_CXX:
     _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
     _deps_info['__cxa_throw'] = ['__cxa_is_pointer_type']
-    _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_3'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_4'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_5'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_6'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch']
-    _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_3'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_4'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_5'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_6'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch', 'setTempRet0']
   if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
     _deps_info['mmap'] = ['emscripten_builtin_memalign']
   if settings.USE_PTHREADS and settings.OFFSCREEN_FRAMEBUFFER:

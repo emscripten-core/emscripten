@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-requireNodeFS = () => {
+var fs;
+var nodePath;
+
+var requireNodeFS = () => {
   // Use nodePath as the indicator for these not being initialized,
   // since in some environments a global fs may have already been
   // created.
@@ -14,7 +17,7 @@ requireNodeFS = () => {
   }
 };
 
-read_ = function shell_read(filename, binary) {
+read_ = (filename, binary) => {
 #if SUPPORT_BASE64_EMBEDDING
   var ret = tryParseAsDataURI(filename);
   if (ret) {

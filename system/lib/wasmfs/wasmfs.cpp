@@ -58,8 +58,8 @@ WasmFS::~WasmFS() {
   // Note that we lock here, although strictly speaking it is unnecessary given
   // that we are in the destructor of WasmFS: nothing can possibly be running
   // on files at this time.
-  SpecialFiles::getStdout()->locked().flush();
-  SpecialFiles::getStderr()->locked().flush();
+  (void)SpecialFiles::getStdout()->locked().flush();
+  (void)SpecialFiles::getStderr()->locked().flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.

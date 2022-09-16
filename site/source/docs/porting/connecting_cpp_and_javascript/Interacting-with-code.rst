@@ -60,17 +60,17 @@ function and returns a JavaScript function you can call normally.
 :js:func:`cwrap` is therefore more useful if you plan to call a compiled
 function a number of times.
 
-Consider the **tests/hello_function.cpp** file shown below. The
+Consider the **test/hello_function.cpp** file shown below. The
 ``int_sqrt()`` function to be compiled is wrapped in ``extern "C"``
 to prevent C++ name mangling.
 
-.. include:: ../../../../../tests/hello_function.cpp
+.. include:: ../../../../../test/hello_function.cpp
    :literal:
 
 To compile this code run the following command in the Emscripten
 home directory::
 
-    emcc tests/hello_function.cpp -o function.html -sEXPORTED_FUNCTIONS=_int_sqrt -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
+    emcc test/hello_function.cpp -o function.html -sEXPORTED_FUNCTIONS=_int_sqrt -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -368,7 +368,7 @@ By default, the implementation is added to **library.js** (and this is
 where you'll find parts of Emscripten's *libc*). You can put
 the JavaScript implementation in your own library file and add it using
 the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **tests/test_other.py** for a complete working
+`test_js_libraries`_ in **test/test_other.py** for a complete working
 example, including the syntax you should use inside the JavaScript library
 file.
 
@@ -615,7 +615,7 @@ function pointer. Passing that integer to C code then lets it call that value as
 a function pointer, and the JavaScript function you sent to ``addFunction`` will
 be called.
 
-See `test_add_function in tests/test_core.py`_ for an example.
+See `test_add_function in test/test_core.py`_ for an example.
 
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
@@ -634,7 +634,7 @@ added to the table. Otherwise by default the table has a fixed size.
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
-   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/tests/interop/test_add_function_post.js>`_ for an example.
+   `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-access-memory:
@@ -649,7 +649,7 @@ LLVM IR type, one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``,
 ``double`` or a pointer type like ``i8*`` (or just ``*``).
 
 There are examples of these functions being used in the tests — see
-`tests/core/test_utf.in`_ and `tests/test_core.py`_.
+`test/core/test_utf.in`_ and `test/test_core.py`_.
 
 .. note:: This is a lower-level operation than :js:func:`ccall` and
    :js:func:`cwrap` — we *do* need to care what specific type (e.g.
@@ -803,8 +803,8 @@ for defining the binding:
 .. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
-.. _test_add_function in tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
-.. _tests/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/main/tests/core/test_utf.in
-.. _tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
+.. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
+.. _test/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/main/test/core/test_utf.in
+.. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs

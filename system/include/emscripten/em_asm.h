@@ -141,7 +141,7 @@ void emscripten_asm_const_async_on_main_thread(
 #else // __cplusplus
 
 // C++ needs to support vararg template parameter packs, e.g. like in
-// tests/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
+// test/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
 // approach doesn't work (a macro applied to a parameter pack would expand
 // incorrectly). So we can use a template class instead to build a temporary
 // buffer of characters.
@@ -212,7 +212,7 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 #endif // __cplusplus
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
-// then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
+// then wrap the whole code block inside parentheses (). See test/core/test_em_asm_2.cpp
 // for example code snippets.
 
 #define CODE_EXPR(code) (__extension__({           \

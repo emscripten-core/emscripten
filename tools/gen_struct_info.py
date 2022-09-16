@@ -246,7 +246,7 @@ def inspect_headers(headers, cflags):
   # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
   shared.check_sanity()
 
-  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].get_path()
+  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].build()
 
   # Close all unneeded FDs.
   os.close(src_file[0])
@@ -288,7 +288,7 @@ def inspect_headers(headers, cflags):
   if settings.MEMORY64:
     # Always use =2 here so that we don't generate binar that actually requires
     # memeory64 to run.  All we care about is that the output is correct.
-    cmd += ['-sMEMORY64=2']
+    cmd += ['-sMEMORY64=2', '-Wno-experimental']
 
   show(shared.shlex_join(cmd))
   try:

@@ -5,9 +5,11 @@
 
 import os
 
-TAG = '0fcfaf9e9482953ee425cc15b91160b92de3df7f'
-HASH = '2891b65bbe34ada80de6c83751b01cd259f877123f0eeb31cbacf8f7bac06b2157e17a2183f58911a9849ab57ca8aba165d5b3058ecd2d7191bfb61c0595807e'
+TAG = 'release-2.24.0'
+HASH = '33ea357de1c137b4ce101349b119105d090ef2e05224fd3f05074b65579e53b068fa94aba6a37ac44c21f246e14ed15f0045dcdd1ddf7357a35aa7e8f2db2d3b'
 SUBDIR = 'SDL-' + TAG
+
+variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
 
 
 def needed(settings):
@@ -24,13 +26,14 @@ def get(ports, settings, shared):
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
-    source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
+    src_dir = os.path.join(ports.get_dir(), 'sdl2', SUBDIR)
+    source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
 
     # build
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_guid.c SDL_hints.c SDL_list.c SDL_log.c
-    atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
-    audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
+    SDL_utils.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c
+    audio/SDL_audiodev.c audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
@@ -63,21 +66,12 @@ def get(ports, settings, shared):
     thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.EMCC,
-                 '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
-                 '-o', o, '-I' + ports.get_include_dir('SDL2'),
-                 '-O2', '-w']
-      if settings.USE_PTHREADS:
-        command += ['-sUSE_PTHREADS']
-      commands.append(command)
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
+    flags = ['-sUSE_SDL=0']
+    includes = [ports.get_include_dir('SDL2')]
+    if settings.USE_PTHREADS:
+      flags += ['-sUSE_PTHREADS']
+    ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
@@ -91,8 +85,7 @@ def linker_setup(ports, settings):
 
 
 def process_args(ports):
-  # TODO(sbc): remove this
-  return ['-Xclang', '-isystem' + ports.get_include_dir('SDL2')]
+  return ['-I' + ports.get_include_dir('SDL2')]
 
 
 def show():

@@ -6,6 +6,7 @@
  */
 
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #include <time.h>
 #include <stdbool.h>
 #include <sys/time.h>
@@ -19,11 +20,14 @@ __attribute__((__weak__)) int   daylight = 0;
 __attribute__((__weak__)) char *tzname[2] = { 0, 0 };
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
-time_t _timegm_js(struct tm *tm);
-time_t _mktime_js(struct tm *tm);
+// Declare these functions `int` rather than time_t to avoid int64 at the wasm
+// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
+// missing).
+// TODO(sbc): Covert back to `time_t` before 2038 ...
+int _timegm_js(struct tm *tm);
+int _mktime_js(struct tm *tm);
 void _localtime_js(const time_t *restrict t, struct tm *restrict tm);
 void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
-double _emscripten_date_now();
 double emscripten_get_now_res();
 
 __attribute__((__weak__))
@@ -66,14 +70,14 @@ __attribute__((__weak__))
 clock_t __clock() {
   static thread_local double start = 0;
   if (!start) {
-    start = _emscripten_date_now();
+    start = emscripten_date_now();
   }
-  return (_emscripten_date_now() - start) * (CLOCKS_PER_SEC / 1000);
+  return (emscripten_date_now() - start) * (CLOCKS_PER_SEC / 1000);
 }
 
 __attribute__((__weak__))
 time_t __time(time_t *t) {
-  double ret = _emscripten_date_now() / 1000;
+  double ret = emscripten_date_now() / 1000;
   if (t) {
     *t = ret;
   }
@@ -93,7 +97,7 @@ int __clock_gettime(clockid_t clk, struct timespec *ts) {
 
   double now_ms;
   if (clk == CLOCK_REALTIME) {
-    now_ms = _emscripten_date_now();
+    now_ms = emscripten_date_now();
   } else if ((clk == CLOCK_MONOTONIC || clk == CLOCK_MONOTONIC_RAW) && is_monotonic) {
     now_ms = emscripten_get_now();
   } else {
@@ -130,7 +134,7 @@ int __clock_getres(clockid_t clk, struct timespec *ts) {
 
 __attribute__((__weak__))
 int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
-  double now_ms = _emscripten_date_now();
+  double now_ms = emscripten_date_now();
   long long now_s = now_ms / 1000;
   tv->tv_sec = now_s; // seconds
   tv->tv_usec = (now_ms - (now_s * 1000)) * 1000; // nicroseconds

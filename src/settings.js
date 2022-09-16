@@ -49,13 +49,10 @@
 
 // Tuning
 
-// Whether we should add runtime assertions, for example to
-// check that each allocation to the stack does not
-// exceed its size, whether all allocations (stack and static) are
-// of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
-// if code flow runs into a fault
+// Whether we should add runtime assertions. This affects both JS and how
+// system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
-// includes internal dlmalloc assertions.
+// includes internal dlmalloc assertions, for example.
 // [link]
 var ASSERTIONS = 1;
 
@@ -239,6 +236,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
+// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
@@ -711,7 +709,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // depending on the kind of EH you use
 // (https://github.com/emscripten-core/emscripten/issues/17115).
 //
-// See test_EXPORT_EXCEPTION_HANDLING_HELPERS in tests/test_core.py for an
+// See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
@@ -863,10 +861,7 @@ var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
-// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
-// that methods on this list are only exported if they are included (either
-// automatically from linking, or due to being in
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
 // having "FS" in this list.
@@ -1498,6 +1493,10 @@ var SDL2_IMAGE_FORMATS = [];
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
+// 1 = use sqlite3 from emscripten-ports
+// [link]
+var USE_SQLITE3 = false;
+
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
 var IN_TEST_HARNESS = false;
@@ -1698,6 +1697,7 @@ var FETCH = false;
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.
 // [link]
+// [experimental]
 var WASMFS = false;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
@@ -1731,6 +1731,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
 // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_FIREFOX_VERSION = 65;
 
@@ -1741,13 +1742,14 @@ var MIN_FIREFOX_VERSION = 65;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
 // Specifies the oldest version of Internet Explorer to target. E.g. pass -s
 // MIN_IE_VERSION = 11 to drop support for IE 10 and older.
 // Internet Explorer is at end of life and does not support WebAssembly.
-// MAX_INT (0x7FFFFFFF) specifies that target is not supported.
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_IE_VERSION = 0x7FFFFFFF;
 
@@ -1755,12 +1757,14 @@ var MIN_IE_VERSION = 0x7FFFFFFF;
 // flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
 // EdgeHTML 39 and older.
 // Edge 44.17763 was released on November 13, 2018
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_EDGE_VERSION = 44;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 75.0.3770 was released on 2019-06-04
+// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_CHROME_VERSION = 75;
 
@@ -1916,6 +1920,7 @@ var PRINTF_LONG_DOUBLE = false;
 // if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
 // which avoids trampling a C file).
 // [link]
+// [experimental]
 var WASM2C = false;
 
 // Experimental sandboxing mode, see
@@ -1924,6 +1929,7 @@ var WASM2C = false;
 //  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
 //  * mask: Masks loads and stores.
 //  * none: No sandboxing at all.
+// [experimental]
 var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
@@ -1944,18 +1950,20 @@ var SEPARATE_DWARF_URL = '';
 // [link]
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
-// Whether the program should abort when an unhandled WASM exception is encountered.
-// This makes the Emscripten program behave more like a native program where the OS
-// would terminate the process and no further code can be executed when an unhandled
-// exception (e.g. out-of-bounds memory access) happens.
+// Abort on unhandled excptions that occur when calling exported WebAssembly
+// functions. This makes the program behave more like a native program where the
+// OS would terminate the process and no further code can be executed when an
+// unhandled exception (e.g. out-of-bounds memory access) happens.
 // This will instrument all exported functions to catch thrown exceptions and
-// call abort() when they happen. Once the program aborts any exported function calls
-// will fail with a "program has already aborted" exception to prevent calls into
-// code with a potentially corrupted program state.
-// This adds a small fixed amount to code size in optimized builds and a slight overhead
-// for the extra instrumented function indirection.
-// Enable this if you want Emscripten to handle unhandled exceptions nicely at the
-// cost of a few bytes extra.
+// call abort() when they happen. Once the program aborts any exported function
+// calls will fail with a "program has already aborted" exception to prevent
+// calls into code with a potentially corrupted program state.
+// This adds a small fixed amount to code size in optimized builds and a slight
+// overhead for the extra instrumented function indirection.  Enable this if you
+// want Emscripten to handle unhandled exceptions nicely at the cost of a few
+// bytes extra.
+// Exceptions that occur within the `main` function are already handled via an
+// alternative mechanimsm.
 // [link]
 var ABORT_ON_WASM_EXCEPTIONS = false;
 
@@ -1966,6 +1974,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.
 // [link]
+// [experimental]
 var PURE_WASI = false;
 
 // Set to 1 to define the WebAssembly.Memory object outside of the wasm
@@ -2038,6 +2047,12 @@ var POLYFILL = true;
 // - GL_DEBUG
 // [link]
 var RUNTIME_DEBUG = false;
+
+// Include JS library symbols that were previously part of the default runtime.
+// Without this, such symbols can be made available by adding them to
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
+// library symbol.
+var LEGACY_RUNTIME = false;
 
 //===========================================
 // Internal, used for testing only, from here

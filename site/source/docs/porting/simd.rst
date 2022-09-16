@@ -557,7 +557,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_loadu_si16
      - ❌ emulated with const+scalar load+replace lane
    * - _mm_madd_epi16
-     - ✅ wasm_dot_s_i32x4_i16x8
+     - ✅ wasm_i32x4_dot_i16x8
    * - _mm_maskmoveu_si128
      - ❌ scalarized
    * - _mm_max_epi16

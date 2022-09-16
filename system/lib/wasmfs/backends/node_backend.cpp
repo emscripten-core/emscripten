@@ -35,10 +35,10 @@ int _wasmfs_node_unlink(const char* path);
 int _wasmfs_node_rmdir(const char* path);
 
 // Open the file and return the underlying file descriptor.
-int _wasmfs_node_open(const char* path, const char* mode);
+[[nodiscard]] int _wasmfs_node_open(const char* path, const char* mode);
 
 // Close the underlying file descriptor.
-int _wasmfs_node_close(int fd);
+[[nodiscard]] int _wasmfs_node_close(int fd);
 
 // Read up to `size` bytes into `buf` from position `pos` in the file, writing
 // the number of bytes read to `nread`. Return 0 on success or an error code.
@@ -105,7 +105,7 @@ public:
         return result;
       }
       // Success! Close the old fd before updating it.
-      _wasmfs_node_close(fd);
+      (void)_wasmfs_node_close(fd);
       // Fall through to update our state with the new result.
     } else {
       // Reuse the existing file descriptor.
@@ -119,11 +119,13 @@ public:
     return 0;
   }
 
-  void close() {
+  int close() {
+    int ret = 0;
     if (--openCount == 0) {
-      _wasmfs_node_close(fd);
+      ret = _wasmfs_node_close(fd);
       *this = NodeState(path);
     }
+    return ret;
   }
 };
 
@@ -135,7 +137,7 @@ public:
     : DataFile(mode, backend), state(path) {}
 
 private:
-  size_t getSize() override {
+  off_t getSize() override {
     // TODO: This should really be using a 64-bit file size type.
     uint32_t size;
     if (state.isOpen()) {
@@ -149,19 +151,16 @@ private:
         return 0;
       }
     }
-    return size_t(size);
+    return off_t(size);
   }
 
-  void setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 
-  void open(oflags_t flags) override {
-    // TODO: Properly report errors.
-    state.open(flags);
-  }
+  int open(oflags_t flags) override { return state.open(flags); }
 
-  void close() override { state.close(); }
+  int close() override { return state.close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint32_t nread;
@@ -180,7 +179,7 @@ private:
     return nwritten;
   }
 
-  void flush() override {
+  int flush() override {
     WASMFS_UNREACHABLE("TODO: implement NodeFile::flush");
   }
 };
@@ -218,19 +217,16 @@ private:
     }
   }
 
-  bool removeChild(const std::string& name) override {
+  int removeChild(const std::string& name) override {
     auto childPath = getChildPath(name);
     // Try both `unlink` and `rmdir`.
     if (auto err = _wasmfs_node_unlink(childPath.c_str())) {
       if (err == EISDIR) {
         err = _wasmfs_node_rmdir(childPath.c_str());
       }
-      if (err) {
-        // TODO: Report specific errors.
-        return false;
-      }
+      return -err;
     }
-    return true;
+    return 0;
   }
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
@@ -257,27 +253,27 @@ private:
     abort();
   }
 
-  bool insertMove(const std::string& name,
-                  std::shared_ptr<File> file) override {
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override {
     // TODO
     abort();
   }
 
-  size_t getNumEntries() override {
+  ssize_t getNumEntries() override {
     // TODO: optimize this?
-    return getEntries().size();
+    auto entries = getEntries();
+    if (int err = entries.getError()) {
+      return err;
+    }
+    return entries->size();
   }
 
-  std::vector<Directory::Entry> getEntries() override {
+  Directory::MaybeEntries getEntries() override {
     std::vector<Directory::Entry> entries;
     int err = _wasmfs_node_readdir(state.path.c_str(), &entries);
-    // TODO: Make this fallible. We actually depend on suppressing the error
-    //       here to pass test_unlink_wasmfs_node because the File stored in the
-    //       file table is not the same File that had its parent pointer reset
-    //       during the unlink. Fixing this may require caching Files at some
-    //       layer to ensure they are the same.
-    (void)err;
-    return entries;
+    if (err) {
+      return {-err};
+    }
+    return {entries};
   }
 };
 

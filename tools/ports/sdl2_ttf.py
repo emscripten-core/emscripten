@@ -21,22 +21,8 @@ def get(ports, settings, shared):
   def create(final):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
-
-    srcs = ['SDL_ttf.c']
-    commands = []
-    o_s = []
-
-    for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
-      command = [shared.EMCC,
-                 '-c', os.path.join(src_root, src),
-                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1', '-o', o, '-w']
-      commands.append(command)
-      o_s.append(o)
-
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1']
+    ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
   return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
 

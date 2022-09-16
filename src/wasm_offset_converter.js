@@ -81,7 +81,8 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
           // skip name
           offset = unsignedLEB128() + offset;
 
-          switch (buffer[offset++]) {
+          var kind = buffer[offset++];
+          switch (kind) {
             case 0: // function import
               ++funcidx;
               unsignedLEB128(); // skip function type
@@ -96,8 +97,11 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
             case 3: // global import
               offset += 2; // skip type id byte and mutability byte
               break;
+            case 4: // tag import
+              ++offset; // // FIXME: should be SLEB128
+              break;
 #if ASSERTIONS
-            default: throw 'bad import kind';
+            default: throw 'bad import kind: ' + kind;
 #endif
           }
         }

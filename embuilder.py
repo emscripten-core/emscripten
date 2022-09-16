@@ -28,6 +28,7 @@ import emscripten
 # Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
+    'libcompiler_rt-wasm-sjlj',
     'libc',
     'libc-debug',
     'libc_optz',
@@ -43,6 +44,7 @@ MINIMAL_TASKS = [
     'libdlmalloc-noerrno',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libembind',
     'libembind-rtti',
     'libemmalloc',
     'libemmalloc-debug',
@@ -60,13 +62,14 @@ MINIMAL_TASKS = [
     'crt1_proxy_main',
     'libunwind-except',
     'libnoexit',
+    'sqlite3',
+    'sqlite3-mt',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
 MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libcompiler_rt-mt',
-    'libcompiler_rt-wasm-sjlj',
     'libc-mt',
     'libc-mt-debug',
     'libc_optz-mt',
@@ -89,22 +92,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasmfs',
 ]
 
-# Variant builds that we want to support for certain ports
-# TODO: It would be nice if the ports themselves could specify the variants that they
-# support.
-PORT_VARIANTS = {
-    'regal-mt': ('regal', {'USE_PTHREADS': 1}),
-    'harfbuzz-mt': ('harfbuzz', {'USE_PTHREADS': 1}),
-    'sdl2-mt': ('sdl2', {'USE_PTHREADS': 1}),
-    'icu-mt': ('icu', {'USE_PTHREADS': 1}),
-    'sdl2_mixer_mp3': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': ["mp3"]}),
-    'sdl2_mixer_none': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': []}),
-    'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
-    'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
-    'libpng-mt': ('libpng', {'USE_PTHREADS': 1}),
-}
-
-PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
+PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
 
 temp_files = shared.get_temp_files()
 logger = logging.getLogger('embuilder')
@@ -127,8 +115,8 @@ Issuing 'embuilder build ALL' causes each task to be built.
 
 @contextmanager
 def get_port_variant(name):
-  if name in PORT_VARIANTS:
-    name, extra_settings = PORT_VARIANTS[name]
+  if name in ports.port_variants:
+    name, extra_settings = ports.port_variants[name]
     old_settings = settings.dict().copy()
     for key, value in extra_settings.items():
       setattr(settings, key, value)
@@ -249,7 +237,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        library.get_path()
+        library.build()
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')

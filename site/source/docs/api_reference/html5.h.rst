@@ -131,9 +131,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_core.c>`_
-  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_mouse.c>`_
+  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_core.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_mouse.c>`_
 
 
 General types

@@ -18,7 +18,6 @@ import time
 import logging
 import pprint
 import shutil
-from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
@@ -142,19 +141,26 @@ def update_settings_glue(wasm_file, metadata):
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.ASYNCIFY == 2:
+    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+
   if settings.USE_PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS']
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on this library function
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$allocateUTF8OnStack']
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
-    settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata['exports']
@@ -303,11 +309,13 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata['emJsFuncs']:
-    module = webassembly.Module(in_wasm)
-    types = module.get_types()
     import_map = {}
-    for imp in module.get_imports():
-      import_map[imp.field] = imp
+
+    with webassembly.Module(in_wasm) as module:
+      types = module.get_types()
+      for imp in module.get_imports():
+        import_map[imp.field] = imp
+
     for em_js_func, raw in metadata.get('emJsFuncs', {}).items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
@@ -347,12 +355,22 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
+    if settings.ASYNCIFY:
+      metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
+
+  invoke_funcs = metadata['invokeFuncs']
+  if invoke_funcs:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
+
   glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+
+  if forwarded_json['warnings']:
+    diagnostics.warning('js-compiler', 'warnings in JS library compilation')
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -368,7 +386,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(forwarded_json['libraryFunctions'])
+  report_missing_symbols(forwarded_json['librarySymbols'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
@@ -394,7 +412,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     out.write(normalize_line_endings(pre))
     pre = None
 
-    invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
@@ -413,25 +430,12 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
 def remove_trailing_zeros(memfile):
   mem_data = utils.read_binary(memfile)
-  end = len(mem_data)
-  while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
-    end -= 1
-  utils.write_binary(memfile, mem_data[:end])
+  mem_data = mem_data.rstrip(b'\0')
+  utils.write_binary(memfile, mem_data)
 
 
 @ToolchainProfiler.profile()
-def get_metadata_binaryen(infile, outfile, modify_wasm, args):
-  stdout = building.run_binaryen_command('wasm-emscripten-finalize',
-                                         infile=infile,
-                                         outfile=outfile if modify_wasm else None,
-                                         args=args,
-                                         stdout=subprocess.PIPE)
-  metadata = load_metadata_json(stdout)
-  return metadata
-
-
-@ToolchainProfiler.profile()
-def get_metadata_python(infile, outfile, modify_wasm, args):
+def get_metadata(infile, outfile, modify_wasm, args):
   metadata = extract_metadata.extract_metadata(infile)
   if modify_wasm:
     # In some cases we still need to modify the wasm file
@@ -439,42 +443,13 @@ def get_metadata_python(infile, outfile, modify_wasm, args):
     building.run_binaryen_command('wasm-emscripten-finalize',
                                   infile=infile,
                                   outfile=outfile,
-                                  args=args,
-                                  stdout=subprocess.PIPE)
+                                  args=args)
     # When we do this we can generate new imports, so
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
-  elif 'main' in metadata['exports']:
-    # Mimic a bug in wasm-emscripten-finalize where we don't correctly
-    # detect the presense of the main wrapper function unless we are
-    # modifying the binary.  This is because binaryen doesn't reaad
-    # the function bodies in this mode.
-    # TODO(sbc): Remove this once we make the switch away from
-    # binaryen metadata.
-    metadata['mainReadsParams'] = 1
+  if DEBUG:
+    logger.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
-
-
-# Test function for comparing binaryen vs python metadata.
-# Remove this once we go back to having just one method.
-def compare_metadata(metadata, pymetadata):
-  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
-    print(sorted(metadata.keys()))
-    print(sorted(pymetadata.keys()))
-    exit_with_error('metadata keys mismatch')
-  for key in metadata:
-    old = metadata[key]
-    new = pymetadata[key]
-    if key == 'features':
-      old = sorted(old)
-      new = sorted(new)
-    if old != new:
-      print(key)
-      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
-      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
-      print(pprint.pformat(old))
-      print(pprint.pformat(new))
-      exit_with_error('metadata mismatch')
 
 
 def finalize_wasm(infile, outfile, memfile):
@@ -514,15 +489,19 @@ def finalize_wasm(infile, outfile, memfile):
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
-  if settings.LEGALIZE_JS_FFI:
-    # When we dynamically link our JS loader adds functions from wasm modules to
-    # the table. It must add the original versions of them, not legalized ones,
-    # so that indirect calls have the right type, so export those.
-    if settings.RELOCATABLE:
-      args.append('--pass-arg=legalize-js-interface-export-originals')
-    modify_wasm = True
+  if settings.AUTODEBUG:
+    # In AUTODEBUG mode we want to delay all legalization until later.  This is hack
+    # to force wasm-emscripten-finalize not to do any legalization at all.
+    args.append('--bigint')
   else:
-    args.append('--no-legalize-javascript-ffi')
+    if settings.LEGALIZE_JS_FFI:
+      # When we dynamically link our JS loader adds functions from wasm modules to
+      # the table. It must add the original versions of them, not legalized ones,
+      # so that indirect calls have the right type, so export those.
+      args += building.js_legalization_pass_flags()
+      modify_wasm = True
+    else:
+      args.append('--no-legalize-javascript-ffi')
   if memfile:
     args.append(f'--separate-data-segments={memfile}')
     args.append(f'--global-base={settings.GLOBAL_BASE}')
@@ -538,30 +517,7 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
 
-  # Currently we have two different ways to extract the metadata from the
-  # wasm binary:
-  # 1. via wasm-emscripten-finalize (binaryen)
-  # 2. via local python code
-  # We also have a 'compare' mode that runs both extraction methods and
-  # checks that they produce identical results.
-  read_metadata = os.environ.get('EMCC_READ_METADATA', 'binaryen')
-  if read_metadata == 'binaryen':
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'python':
-    metadata = get_metadata_python(infile, outfile, modify_wasm, args)
-  elif read_metadata == 'compare':
-    shutil.copy2(infile, infile + '.bak')
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.copy2(infile + '.map', infile + '.map.bak')
-    pymetadata = get_metadata_python(infile, outfile, modify_wasm, args)
-    shutil.move(infile + '.bak', infile)
-    if settings.GENERATE_SOURCE_MAP:
-      shutil.move(infile + '.map.bak', infile + '.map')
-    metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-    compare_metadata(metadata, pymetadata)
-  else:
-    assert False
-
+  metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
@@ -575,6 +531,18 @@ def finalize_wasm(infile, outfile, memfile):
     # we can do so here, since we make sure to zero out that memory (even in
     # the dynamic linking case, our loader zeros it out)
     remove_trailing_zeros(memfile)
+
+  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+
+  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # These are any exports that were not requested on the command line and are
+  # not known auto-generated system functions.
+  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
+  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
+  building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
@@ -624,6 +592,8 @@ def create_em_js(metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
+  extra_sent_items = []
+
   if settings.IMPORTED_MEMORY:
     memory_import = 'wasmMemory'
     if settings.MODULARIZE and settings.USE_PTHREADS:
@@ -633,8 +603,8 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map['memory'] = memory_import
 
   if settings.SAFE_HEAP:
-    send_items_map['segfault'] = 'segfault'
-    send_items_map['alignfault'] = 'alignfault'
+    extra_sent_items.append('segfault')
+    extra_sent_items.append('alignfault')
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
@@ -643,112 +613,40 @@ def add_standard_wasm_imports(send_items_map):
     if settings.SUPPORT_LONGJMP == 'wasm':
       send_items_map['__c_longjmp'] = '___c_longjmp'
 
-  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
-    # legalization of i64 support code may require these in some modes
-    send_items_map['setTempRet0'] = 'setTempRet0'
-    send_items_map['getTempRet0'] = 'getTempRet0'
-
   if settings.AUTODEBUG:
-    send_items_map['log_execution'] = '''function(loc) {
-      console.log('log_execution ' + loc);
-    }'''
-    send_items_map['get_i32'] = '''function(loc, index, value) {
-      console.log('get_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_i64'] = '''function(loc, index, low, high) {
-      console.log('get_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['get_f32'] = '''function(loc, index, value) {
-      console.log('get_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_f64'] = '''function(loc, index, value) {
-      console.log('get_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_anyref'] = '''function(loc, index, value) {
-      console.log('get_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['get_exnref'] = '''function(loc, index, value) {
-      console.log('get_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i32'] = '''function(loc, index, value) {
-      console.log('set_i32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_i64'] = '''function(loc, index, low, high) {
-      console.log('set_i64 ' + [loc, index, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['set_f32'] = '''function(loc, index, value) {
-      console.log('set_f32 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_f64'] = '''function(loc, index, value) {
-      console.log('set_f64 ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_anyref'] = '''function(loc, index, value) {
-      console.log('set_anyref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['set_exnref'] = '''function(loc, index, value) {
-      console.log('set_exnref ' + [loc, index, value]);
-      return value;
-    }'''
-    send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('load_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['load_val_i32'] = '''function(loc, value) {
-      console.log('load_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_i64'] = '''function(loc, low, high) {
-      console.log('load_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['load_val_f32'] = '''function(loc, value) {
-      console.log('load_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['load_val_f64'] = '''function(loc, value) {
-      console.log('load_val_f64 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_ptr'] = '''function(loc, bytes, offset, ptr) {
-      console.log('store_ptr ' + [loc, bytes, offset, ptr]);
-      return ptr;
-    }'''
-    send_items_map['store_val_i32'] = '''function(loc, value) {
-      console.log('store_val_i32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_i64'] = '''function(loc, low, high) {
-      console.log('store_val_i64 ' + [loc, low, high]);
-      setTempRet0(high);
-      return low;
-    }'''
-    send_items_map['store_val_f32'] = '''function(loc, value) {
-      console.log('store_val_f32 ' + [loc, value]);
-      return value;
-    }'''
-    send_items_map['store_val_f64'] = '''function(loc, value) {
-      console.log('store_val_f64 ' + [loc, value]);
-      return value;
-    }'''
+    extra_sent_items += [
+      'log_execution',
+      'get_i32',
+      'get_i64',
+      'get_f32',
+      'get_f64',
+      'get_anyref',
+      'get_exnref',
+      'set_i32',
+      'set_i64',
+      'set_f32',
+      'set_f64',
+      'set_anyref',
+      'set_exnref',
+      'load_ptr',
+      'load_val_i32',
+      'load_val_i64',
+      'load_val_f32',
+      'load_val_f64',
+      'store_ptr',
+      'store_val_i32',
+      'store_val_i64',
+      'store_val_f32',
+      'store_val_f64',
+    ]
+
+  for s in extra_sent_items:
+    send_items_map[s] = s
 
 
 def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
-  send_items_map = OrderedDict()
+  send_items_map = {}
 
   def add_send_items(name, mangled_name, ignore_dups=False):
     # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
@@ -782,7 +680,9 @@ def make_export_wrappers(exports, delay_assignment):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if settings.ASSERTIONS and not name.startswith('emscripten_stack_'):
+    # Likewise `__trap` can occur before the runtime is initialized since it is used in
+    # abort.
+    if settings.ASSERTIONS and not name.startswith('emscripten_stack_') and name != '__trap':
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:
@@ -871,48 +771,6 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   return module
 
 
-def load_metadata_json(metadata_raw):
-  try:
-    metadata_json = json.loads(metadata_raw)
-  except Exception:
-    logger.error('emscript: failure to parse metadata output from wasm-emscripten-finalize. raw output is: \n' + metadata_raw)
-    raise
-
-  metadata = {
-    'declares': [],
-    'globalImports': [],
-    'exports': [],
-    'namedGlobals': {},
-    'emJsFuncs': {},
-    'asmConsts': {},
-    'invokeFuncs': [],
-    'features': [],
-    'mainReadsParams': 1,
-  }
-
-  for key, value in metadata_json.items():
-    if key not in metadata:
-      exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
-    metadata[key] = value
-
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
-
-  expected_exports = set(settings.EXPORTED_FUNCTIONS)
-  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
-
-  # Calculate the subset of exports that were explicitly marked with llvm.used.
-  # These are any exports that were not requested on the command line and are
-  # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
-  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
-  building.user_requested_exports.update(unexpected_exports)
-  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
-
-  return metadata
-
-
 def create_invoke_wrappers(invoke_funcs):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
@@ -955,6 +813,7 @@ def create_wasm64_wrappers(metadata):
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
+    '_wasmfs_write_file': '_ppp',
   }
 
   wasm64_wrappers = '''

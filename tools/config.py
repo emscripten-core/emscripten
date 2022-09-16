@@ -137,7 +137,7 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
-      if env_value == '':
+      if env_value in ('', '0'):
         env_value = None
       globals()[key] = env_value
     elif key in config:
@@ -162,9 +162,6 @@ def parse_config_file():
       exit_with_error('%s is not defined in %s', key, EM_CONFIG)
     if not globals()[key]:
       exit_with_error('%s is set to empty value in %s', key, EM_CONFIG)
-
-  if not NODE_JS:
-    exit_with_error('NODE_JS is not defined in %s', EM_CONFIG)
 
   normalize_config_settings()
 
@@ -226,11 +223,11 @@ embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
 # layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
-#  - emsdk/emscipten/1.38.31/emcc
+#  - emsdk/emscripten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.
 # Without this check, when emcc is run from within the emsdk in embedded mode
 # and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
-# will not see any config file at all and fall back to creating a new/emtpy
+# will not see any config file at all and fall back to creating a new/empty
 # one.
 # We could remove this special case if emsdk were to write its embedded config
 # file into the emscripten directory itself.

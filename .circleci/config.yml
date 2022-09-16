@@ -17,11 +17,13 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+      # Currently pinned due to https://github.com/emscripten-core/emscripten/issues/17846
+      V8_VERSION: "10.7.186"
   mac:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "12.2.0"
+      xcode: "13.4.1"
 
 commands:
   download-chrome:
@@ -41,7 +43,7 @@ commands:
     steps:
       - run:
           name: emsdk_env.sh
-          command: echo "source ~/emsdk/emsdk_env.sh 2> /dev/null" >> $BASH_ENV
+          command: echo "EMSDK_QUIET=1 source ~/emsdk/emsdk_env.sh" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
@@ -82,13 +84,13 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/15.0.0/
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/16.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -98,7 +100,7 @@ commands:
           name: clear cache
           command: |
             ./emcc --clear-cache
-  build-libs-and-freeze:
+  build-libs:
     description: "Build all libraries, and freeze the cache"
     steps:
       - pip-install
@@ -106,12 +108,12 @@ commands:
           name: embuilder build ALL
           command: |
             ./embuilder build ALL
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
             ./embuilder build MINIMAL --lto
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (WASM64)
           command: |
@@ -120,16 +122,12 @@ commands:
           name: embuilder (PIC)
           command: |
             ./embuilder build MINIMAL_PIC --pic
-            ./tests/runner test_hello_world
+            ./test/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
             ./embuilder build MINIMAL --pic --lto
-            ./tests/runner test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+            ./test/runner test_hello_world
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
@@ -167,16 +165,30 @@ commands:
       - run:
           name: run tests
           command: |
-            ./tests/runner << parameters.test_targets >>
+            ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
+  freeze-cache:
+    description: "Freeze emscripten cache"
+    steps:
+      - run:
+          name: Add EM_FROZEN_CACHE to bash env
+          command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
   run-tests-linux:
     description: "Runs emscripten tests"
     parameters:
       test_targets:
         description: "Test suites to run"
         type: string
+      frozen_cache:
+        description: "Run with cache frozen"
+        type: boolean
+        default: true
     steps:
       - prepare-for-tests
+      - when:
+          condition: << parameters.frozen_cache >>
+          steps:
+            - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
   test-firefox:
@@ -220,14 +232,14 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             echo "-----"
             echo "Running browser tests"
             echo "-----"
-            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
@@ -249,13 +261,13 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # There are a tests in the browser test suite that using library
+            # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
-            tests/runner emrun
+            test/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            test/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -274,7 +286,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            tests/runner sockets
+            test/runner sockets
 
 jobs:
   build-docs:
@@ -301,6 +313,7 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
+          frozen_cache: false
           test_targets: "sanity"
   build-linux:
     executor: bionic
@@ -344,9 +357,9 @@ jobs:
             export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
-            jsvu --os=default --engines=v8
+            jsvu --os=default --engines=v8 v8@${V8_VERSION}
       - build
-      - build-libs-and-freeze
+      - build-libs
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
@@ -356,25 +369,19 @@ jobs:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
-    # Temporarily set EMCC_READ_METADATA to compare to ensure that the python
-    # can marches precisely the output wasm-emscripten-finalize.
-    environment:
-      EMCC_READ_METADATA: "compare"
     steps:
       - run-tests-linux:
-          # test_em_js_pthreads current triggers a bug in python metadata
-          # extraction: https://github.com/emscripten-core/emscripten/issues/16573
-          test_targets: "core0 skip:core0.test_em_js_pthreads"
+          test_targets: "core0"
   test-core2:
     executor: bionic
     environment:
       EMTEST_BROWSER: "node"
     steps:
       - run-tests-linux:
-          # also add a few asan tests and a single test of EMTEST_BROWSER=node
-          # also add a corez test of dynamic linking + forced syslibs
+          # also run a few asan tests.  Run these with frozen_cache disabled
+          # since we don't pre-build all the asan libraries.
+          frozen_cache: false
           test_targets: "
-            core2
             asan.test_stat
             asan.test_float_builtins
             asan.test_embind*
@@ -383,8 +390,16 @@ jobs:
             asan.test_pthread*
             asan.test_dyncall_specific_minimal_runtime
             asan.test_async_hello
+            asan.test_dlfcn_basic
             lsan.test_stdio_locking
-            lsan.test_pthread_create
+            lsan.test_dlfcn_basic
+            lsan.test_pthread_create"
+      - freeze-cache
+      - run-tests:
+          # also run a single test of EMTEST_BROWSER=node.
+          # also run a corez test of dynamic linking + forced syslibs.
+          test_targets: "
+            core2
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
   test-core3:
@@ -395,9 +410,11 @@ jobs:
           # also add a little select wasmfs testing
           test_targets: "
             core3
+            core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
+            core2s.test_dylink_syslibs_missing_assertions
             wasm2js3.test_memorygrowth_2
             other.test_unistd_fstatfs_wasmfs
             wasmfs.test_hello_world
@@ -420,7 +437,10 @@ jobs:
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
             wasmfs.test_getcwd_with_non_ascii_name
-            wasmfs.test_stat"
+            wasmfs.test_stat
+            wasmfs.test_fstatat
+            wasmfs.test_unistd_links_memfs
+            wasmfs.test_fcntl_open"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -430,7 +450,10 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm64.test_hello_world wasm64.test_ccall wasm64l"
+          frozen_cache: false
+          test_targets: "wasm64"
+      - run-tests:
+          test_targets: "wasm64l"
   test-other:
     executor: bionic
     steps:
@@ -479,12 +502,16 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run-tests:
           test_targets: "
+            core0.test_dylink_basics
             core2.test_sse1
             core2.test_ccall
             core2.test_utf16
             core2.test_em_asm_unicode
             core2.test_em_js
             core2.test_em_js_pthreads
+            core2.test_unicode_js_library
+            other.test_dlmalloc_modes
+            other.test_c_preprocessor
             other.test_prejs_unicode
             other.test_em_js_side_module
             other.test_es5_transpile
@@ -493,7 +520,7 @@ jobs:
             other.test_bad_triple
             other.test_closure_externs
             other.test_binaryen_debug
-            other.test_js_optimizer_parse_error
+            other.test_js_optimizer*
             other.test_output_to_nowhere
             other.test_emcc_dev_null
             other.test_cmake*

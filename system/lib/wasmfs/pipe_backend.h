@@ -23,8 +23,8 @@ using PipeData = std::queue<uint8_t>;
 class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
 
-  void open(oflags_t) override {}
-  void close() override {}
+  int open(oflags_t) override { return 0; }
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     for (size_t i = 0; i < len; i++) {
@@ -44,13 +44,12 @@ class PipeFile : public DataFile {
     return len;
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
-  size_t getSize() override { return data->size(); }
+  off_t getSize() override { return data->size(); }
 
-  void setSize(size_t size) override {
-    // no-op
-  }
+  // TODO: Should this return an error?
+  int setSize(off_t size) override { return 0; }
 
 public:
   // PipeFiles do not have or need a backend. Pass NullBackend to the parent for

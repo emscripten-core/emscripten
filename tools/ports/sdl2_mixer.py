@@ -4,13 +4,16 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 TAG = 'release-2.0.4'
 HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
 
 deps = ['sdl2']
+variants = {
+  'sdl2_mixer_mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
+  'sdl2_mixer_none': {'SDL2_MIXER_FORMATS': []},
+}
 
 
 def needed(settings):
@@ -39,11 +42,6 @@ def get(ports, settings, shared):
     logging.info('building port: sdl2_mixer')
 
     source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
-
     flags = [
       '-sUSE_SDL=2',
       '-O2',
@@ -58,6 +56,7 @@ def get(ports, settings, shared):
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
+        '-Wno-incompatible-function-pointer-types',
         '-sUSE_MPG123=1',
         '-DMUSIC_MP3_MPG123',
       ]
@@ -73,10 +72,11 @@ def get(ports, settings, shared):
         '-DMUSIC_MID_TIMIDITY',
       ]
 
+    build_dir = ports.clear_project_build('sdl2_mixer')
     ports.build_port(
-      dest_path,
+      source_path,
       final,
-      includes=[],
+      build_dir,
       flags=flags,
       exclude_files=[
         'playmus.c',

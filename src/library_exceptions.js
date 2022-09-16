@@ -336,7 +336,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
   //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
     var thrown = exceptionLast;
@@ -353,7 +353,6 @@ var LibraryExceptions = {
       setTempRet0(0);
       return thrown;
     }
-    var typeArray = Array.prototype.slice.call(arguments);
 
     // can_catch receives a **, add indirection
 #if EXCEPTION_DEBUG
@@ -363,8 +362,8 @@ var LibraryExceptions = {
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
-    for (var i = 0; i < typeArray.length; i++) {
-      var caughtType = typeArray[i];
+    for (var i = 0; i < arguments.length; i++) {
+      var caughtType = arguments[i];
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
@@ -392,6 +391,26 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 
+#endif
+#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessageCommon: function(ptr) {
+    return withStackSave(function() {
+      var type_addr_addr = stackAlloc(4);
+      var message_addr_addr = stackAlloc(4);
+      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
+      var type_addr = HEAP32[type_addr_addr >> 2];
+      var message_addr = HEAP32[message_addr_addr >> 2];
+      var type = UTF8ToString(type_addr);
+      _free(type_addr);
+      var message;
+      if (message_addr) {
+        message = UTF8ToString(message_addr);
+        _free(message_addr);
+      }
+      return [type, message];
+    });
+  },
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
@@ -423,15 +442,10 @@ var LibraryExceptions = {
     ___cxa_decrement_exception_refcount(ptr);
   },
 
-  $getExceptionMessage__deps: ['__get_exception_message', 'free', '$getCppExceptionThrownObjectFromWebAssemblyException'],
+  $getExceptionMessage__deps: ['$getCppExceptionThrownObjectFromWebAssemblyException', '$getExceptionMessageCommon'],
   $getExceptionMessage: function(ex) {
-    // In Wasm EH, the thrown object is a WebAssembly.Exception. Extract the
-    // thrown value from it.
     var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
-    var utf8_addr = ___get_exception_message(ptr);
-    var result = UTF8ToString(utf8_addr);
-    _free(utf8_addr);
-    return result;
+    return getExceptionMessageCommon(ptr);
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
@@ -444,14 +458,12 @@ var LibraryExceptions = {
   $decrementExceptionRefcount: function(ptr) {
     ___cxa_decrement_exception_refcount(ptr);
   },
-
-  $getExceptionMessage__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
   $getExceptionMessage: function(ptr) {
-    var utf8_addr = ___get_exception_message(ptr);
-    var result = UTF8ToString(utf8_addr);
-    _free(utf8_addr);
-    return result;
+    return getExceptionMessageCommon(ptr);
   },
+
+
 #endif
 };
 

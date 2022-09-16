@@ -12,8 +12,9 @@ var LibraryStackTrace = {
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
     demangle.recursionGuard = (demangle.recursionGuard|0)+1;
     if (demangle.recursionGuard > 1) return func;
-    var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
-    assert(__cxa_demangle_func);
+#if ASSERTIONS
+    assert(___cxa_demangle);
+#endif
     return withStackSave(function() {
       try {
         var s = func;
@@ -23,7 +24,7 @@ var LibraryStackTrace = {
         var buf = stackAlloc(len);
         stringToUTF8(s, buf, len);
         var status = stackAlloc(4);
-        var ret = __cxa_demangle_func(buf, 0, 0, status);
+        var ret = ___cxa_demangle(buf, 0, 0, status);
         if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
           return UTF8ToString(ret);
         }

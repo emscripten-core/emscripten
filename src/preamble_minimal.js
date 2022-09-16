@@ -30,10 +30,6 @@ var tempDouble;
 var tempI64;
 #endif
 
-var tempRet0 = 0;
-var setTempRet0 = (value) => { tempRet0 = value };
-var getTempRet0 = () => tempRet0;
-
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
 if (Module['doWasm2JS']) {
@@ -49,7 +45,6 @@ if (Module['doWasm2JS']) {
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
-#include "runtime_functions.js"
 #include "runtime_strings.js"
 
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,

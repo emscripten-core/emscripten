@@ -298,7 +298,7 @@ bool IsAccessibleMemoryRange(uptr beg, uptr size) {
 #endif // SANITIZER_EMSCRIPTEN
 }
 
-void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {
+void PlatformPrepareForSandboxing(void *args) {
   // Some kinds of sandboxes may forbid filesystem access, so we won't be able
   // to read the file mappings from /proc/self/maps. Luckily, neither the
   // process will be able to load additional libraries, so it's fine to use the
@@ -394,7 +394,7 @@ real_pthread_attr_getstack(void *attr, void **addr, size_t *size);
 } // extern "C"
 
 int my_pthread_attr_getstack(void *attr, void **addr, uptr *size) {
-#if !SANITIZER_GO && !SANITIZER_MAC
+#if !SANITIZER_GO && !SANITIZER_APPLE
   if (&real_pthread_attr_getstack)
     return real_pthread_attr_getstack((pthread_attr_t *)attr, addr,
                                       (size_t *)size);
@@ -429,6 +429,7 @@ void AdjustStackSize(void *attr_) {
 }
 #endif // !SANITIZER_GO
 
+#if !SANITIZER_EMSCRIPTEN
 pid_t StartSubprocess(const char *program, const char *const argv[],
                       const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
                       fd_t stderr_fd) {
@@ -503,6 +504,7 @@ int WaitForProcess(pid_t pid) {
   }
   return process_status;
 }
+#endif
 
 bool IsStateDetached(int state) {
   return state == PTHREAD_CREATE_DETACHED;

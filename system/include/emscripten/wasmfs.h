@@ -30,7 +30,7 @@ int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend);
 
 // Creates a new directory in the new file system under a specific backend.
 // Returns 0 on success like `mkdir`, or a negative value on error.
-int wasmfs_create_directory(const char* path, long mode, backend_t backend);
+int wasmfs_create_directory(const char* path, mode_t mode, backend_t backend);
 
 // Backend creation
 

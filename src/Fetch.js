@@ -5,7 +5,8 @@
  */
 
 var Fetch = {
-  xhrs: [],
+  // Map of integer fetch id to XHR request object
+  xhrs: {},
 
   // The web worker that runs proxied file I/O requests. (this field is populated on demand, start as undefined to save code size)
   // worker: undefined,
@@ -314,9 +315,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       xhr.setRequestHeader(keyStr, valueStr);
     }
   }
-  Fetch.xhrs.push(xhr);
-  var id = Fetch.xhrs.length;
-  HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.id }}} >> 2] = id;
+  var id = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.id }}} >> 2];
+  Fetch.xhrs[id] = xhr;
   var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
@@ -324,11 +324,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   // and on error (despite an error, there may be a response, like a 404 page).
   // This receives a condition, which determines whether to save the xhr's
   // response, or just 0.
-  function saveResponse(condition) {
+  function saveResponseAndStatus() {
     var ptr = 0;
     var ptrLen = 0;
-    if (condition) {
-      ptrLen = xhr.response ? xhr.response.byteLength : 0;
+    if (xhr.response && fetchAttrLoadToMemory && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
+      ptrLen = xhr.response.byteLength;
+    }
+    if (ptrLen > 0) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
@@ -339,12 +341,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     }
     HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
-  }
-
-  xhr.onload = (e) => {
-    saveResponse(fetchAttrLoadToMemory && !fetchAttrStreamData);
-    var len = xhr.response ? xhr.response.byteLength : 0;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
+    var len = xhr.response ? xhr.response.byteLength : 0;
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
@@ -354,9 +352,17 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+  }
+
+  xhr.onload = (e) => {
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) { 
+      return;
+    }
+    saveResponseAndStatus();
     if (xhr.status >= 200 && xhr.status < 300) {
 #if FETCH_DEBUG
-      console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
+      console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status ' + xhr.status);
 #endif
       if (onsuccess) onsuccess(fetch, xhr, e);
     } else {
@@ -367,27 +373,34 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     }
   };
   xhr.onerror = (e) => {
-    saveResponse(fetchAttrLoadToMemory);
-    var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) { 
+      return;
+    }
 #if FETCH_DEBUG
-    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
+    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, xhr.response ? xhr.response.byteLength : 0);
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = status;
+    saveResponseAndStatus();
     if (onerror) onerror(fetch, xhr, e);
   };
   xhr.ontimeout = (e) => {
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) { 
+      return;
+    }
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" timed out, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     if (onerror) onerror(fetch, xhr, e);
   };
   xhr.onprogress = (e) => {
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) { 
+      return;
+    }
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
     var ptr = 0;
-    if (fetchAttrLoadToMemory && fetchAttrStreamData) {
+    if (ptrLen > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
@@ -413,6 +426,11 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     }
   };
   xhr.onreadystatechange = (e) => {
+    // check if xhr was aborted by user and don't try to call back
+    if (!(id in Fetch.xhrs)) {
+      {{{ runtimeKeepalivePop() }}}
+      return;
+    }
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     if (xhr.readyState >= 2) {
       HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
@@ -454,22 +472,30 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
 
+  function doCallback(f) {
+    if (fetchAttrSynchronous) {
+      f();
+    } else {
+      callUserCallback(f);
+    }
+  }
+
   var reportSuccess = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(() => {
-      if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+    doCallback(() => {
+      if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportProgress = (fetch, xhr, e) => {
-    callUserCallback(() => {
-      if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
+    doCallback(() => {
+      if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportError = (fetch, xhr, e) => {
@@ -477,20 +503,20 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     console.error('fetch: operation failed: ' + e);
 #endif
     {{{ runtimeKeepalivePop() }}}
-    callUserCallback(() => {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
+    doCallback(() => {
+      if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(fetch);
       else if (errorcb) errorcb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var reportReadyStateChange = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
-    callUserCallback(() => {
-      if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
+    doCallback(() => {
+      if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetch);
       else if (readystatechangecb) readystatechangecb(fetch);
-    }, fetchAttrSynchronous);
+    });
   };
 
   var performUncachedXhr = (fetch, xhr, e) => {
@@ -510,20 +536,20 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       console.log('fetch: IndexedDB store succeeded.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+      doCallback(() => {
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      }, fetchAttrSynchronous);
+      });
     };
     var storeError = (fetch, xhr, e) => {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
+      doCallback(() => {
+        if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      }, fetchAttrSynchronous);
+      });
     };
     fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };
@@ -559,11 +585,11 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 }
 
 function fetchGetResponseHeadersLength(id) {
-    return lengthBytesUTF8(Fetch.xhrs[id-1].getAllResponseHeaders()) + 1;
+    return lengthBytesUTF8(Fetch.xhrs[id].getAllResponseHeaders()) + 1;
 }
 
 function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
-    var responseHeaders = Fetch.xhrs[id-1].getAllResponseHeaders();
+    var responseHeaders = Fetch.xhrs[id].getAllResponseHeaders();
     var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
     stringToUTF8(responseHeaders, dst, dstSizeBytes);
     return Math.min(lengthBytes, dstSizeBytes);
@@ -571,9 +597,15 @@ function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
 
 //Delete the xhr JS object, allowing it to be garbage collected.
 function fetchFree(id) {
-  //Note: should just be [id], but indexes off by 1 (see: #8803)
 #if FETCH_DEBUG
-  console.log("fetch: Deleting id:" + (id-1) + " of " + Fetch.xhrs);
+    console.log("fetch: Deleting id:" + id + " of " + Fetch.xhrs);
 #endif
-  delete Fetch.xhrs[id-1];
+    var xhr = Fetch.xhrs[id];
+    if (xhr) {
+        delete Fetch.xhrs[id];
+        // check if fetch is still in progress and should be aborted
+        if (xhr.readyState > 0 && xhr.readyState < 4) {
+            xhr.abort();
+        }
+    }
 }

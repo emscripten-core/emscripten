@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1258,7 +1258,7 @@ FS.staticInit();` +
 #if CAN_ADDRESS_2GB
       offset >>>= 0;
 #endif
-      if (!stream || !stream.stream_ops.msync) {
+      if (!stream.stream_ops.msync) {
         return 0;
       }
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
@@ -1500,7 +1500,7 @@ FS.staticInit();` +
     quit: () => {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
-#if hasExportedFunction('_fflush')
+#if hasExportedSymbol('fflush')
       _fflush(0);
 #endif
       // close all of our streams
@@ -1524,11 +1524,10 @@ FS.staticInit();` +
     },
     findObject: (path, dontResolveLastLink) => {
       var ret = FS.analyzePath(path, dontResolveLastLink);
-      if (ret.exists) {
-        return ret.object;
-      } else {
+      if (!ret.exists) {
         return null;
       }
+      return ret.object;
     },
     analyzePath: (path, dontResolveLastLink) => {
       // operate from within the context of the symlink's target
@@ -1736,9 +1735,8 @@ FS.staticInit();` +
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
           if (xhr.response !== undefined) {
             return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
-          } else {
-            return intArrayFromString(xhr.responseText || '', true);
           }
+          return intArrayFromString(xhr.responseText || '', true);
         };
         var lazyArray = this;
         lazyArray.setDataGetter((chunkNum) => {

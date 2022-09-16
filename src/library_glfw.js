@@ -80,7 +80,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
-    '$callUserCallback',
+    '$allocateUTF8',
 #if FILESYSTEM
     '$FS',
 #endif
@@ -590,15 +590,13 @@ var LibraryGLFW = {
 
       if (!GLFW.active.windowSizeFunc) return;
 
-      callUserCallback(function() {
 #if USE_GLFW == 2
-        {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
 #endif
 
 #if USE_GLFW == 3
-        {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      });
     },
 
     onFramebufferSizeChanged: function() {
@@ -606,11 +604,9 @@ var LibraryGLFW = {
 
       if (!GLFW.active.framebufferSizeFunc) return;
 
-      callUserCallback(function() {
 #if USE_GLFW == 3
-        {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
-      });
     },
 
     getTime: function() {
@@ -1131,7 +1127,7 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-    Browser.resizeListeners.push(function(width, height) {
+    Browser.resizeListeners.push((width, height) => {
        GLFW.onCanvasResize(width, height);
     });
     return 1; // GL_TRUE
@@ -1673,9 +1669,8 @@ var LibraryGLFW = {
   glfwGetJoystickName: function(joy) {
     if (GLFW.joys[joy]) {
       return GLFW.joys[joy].id;
-    } else {
-      return 0;
     }
+    return 0;
   },
 
   glfwSetJoystickCallback__sig: 'ii',

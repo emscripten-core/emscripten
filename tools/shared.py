@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from functools import wraps
 from subprocess import PIPE
 import atexit
 import binascii
@@ -34,7 +35,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 
-from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles
 from . import diagnostics
@@ -46,7 +46,7 @@ from .settings import settings
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (4, 1, 1)
-EXPECTED_LLVM_VERSION = "15.0"
+EXPECTED_LLVM_VERSION = "16.0"
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
@@ -73,6 +73,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
+diagnostics.add_warning('js-compiler')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -139,7 +140,14 @@ def returncode_to_str(code):
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
-def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+def run_multiple_processes(commands,
+                           env=None,
+                           route_stdout_to_temp_files_suffix=None,
+                           pipe_stdout=False,
+                           check=True,
+                           cwd=None):
+  if env is None:
+    env = os.environ.copy()
   # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
   # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
@@ -227,12 +235,13 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
+  check_node()
   command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
@@ -247,14 +256,29 @@ def get_npm_cmd(name):
   return cmd
 
 
+# TODO(sbc): Replace with functools.cache, once we update to python 3.7
+def memoize(func):
+  called = False
+  result = None
+
+  @wraps(func)
+  def helper():
+    nonlocal called, result
+    if not called:
+      result = func()
+      called = True
+    return result
+
+  return helper
+
+
+@memoize
 def get_clang_version():
-  if not hasattr(get_clang_version, 'found_version'):
-    if not os.path.exists(CLANG_CC):
-      exit_with_error('clang executable not found at `%s`' % CLANG_CC)
-    proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
-    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
-    get_clang_version.found_version = m and m.group(1)
-  return get_clang_version.found_version
+  if not os.path.exists(CLANG_CC):
+    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+  proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
+  m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
+  return m and m.group(1)
 
 
 def check_llvm_version():
@@ -311,14 +335,20 @@ def check_node_version():
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
-    return False
 
   if version < MINIMUM_NODE_VERSION:
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
-    return False
 
-  return True
+
+@memoize
+@ToolchainProfiler.profile()
+def check_node():
+  check_node_version()
+  try:
+    run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+  except Exception as e:
+    exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
 def set_version_globals():
@@ -339,7 +369,6 @@ def generate_sanity():
 
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-  check_node_version()
   check_llvm_version()
 
   llvm_ok = check_llvm()
@@ -352,12 +381,6 @@ def perform_sanity_checks():
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
-
-  with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    try:
-      run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
-    except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -382,6 +405,8 @@ def check_sanity(force=False):
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
 
+  # In DEBUG mode we perform the sanity checks even when
+  # early return due to the file being up-to-date.
   if DEBUG:
     force = True
 
@@ -397,31 +422,45 @@ def check_sanity(force=False):
   expected = generate_sanity()
 
   sanity_file = Cache.get_path('sanity.txt')
-  with Cache.lock():
+
+  def sanity_is_correct():
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        logger.info('(Emscripten: config changed, clearing cache)')
-        Cache.erase()
-        # the check actually failed, so definitely write out the sanity file, to
-        # avoid others later seeing failures too
-        force = False
-      else:
+      if sanity_data == expected:
+        logger.debug(f'sanity file up-to-date: {sanity_file}')
+        # Even if the sanity file is up-to-date we still need to at least
+        # check the llvm version. This comes at no extra performance cost
+        # since the version was already extracted and cached by the
+        # generate_sanity() call above.
         if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+          perform_sanity_checks()
         else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
+          check_llvm_version()
+        return True # all is well
+    return False
+
+  if sanity_is_correct():
+    # Early return without taking the cache lock
+    return
+
+  with Cache.lock('sanity'):
+    # Check again once the cache lock as aquired
+    if sanity_is_correct():
+      return
+
+    if os.path.exists(sanity_file):
+      sanity_data = utils.read_file(sanity_file)
+      logger.info('old sanity: %s' % sanity_data)
+      logger.info('new sanity: %s' % expected)
+      logger.info('(Emscripten: config changed, clearing cache)')
+      Cache.erase()
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
     perform_sanity_checks()
 
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      utils.write_file(sanity_file, expected)
+    # Only create/update this file if the sanity check succeeded, i.e., we got here
+    utils.write_file(sanity_file, expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -474,7 +513,7 @@ def get_emscripten_temp_dir():
     if not DEBUG_SAVE:
       def prepare_to_clean_temp(d):
         def clean_temp():
-          try_delete(d)
+          utils.delete_dir(d)
 
         atexit.register(clean_temp)
       # this global var might change later
@@ -546,11 +585,13 @@ def mangle_c_symbol_name(name):
 
 
 def demangle_c_symbol_name(name):
-  return name[1:] if name.startswith('_') else '$' + name
+  if not is_c_symbol(name):
+    return '$' + name
+  return name[1:] if name.startswith('_') else name
 
 
 def is_c_symbol(name):
-  return name.startswith('_')
+  return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
 def treat_as_user_function(name):

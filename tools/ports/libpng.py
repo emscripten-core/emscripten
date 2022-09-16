@@ -4,14 +4,13 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
-from pathlib import Path
 
 TAG = '1.6.37'
 HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
 
 deps = ['zlib']
+variants = {'libpng-mt': {'USE_PTHREADS': 1}}
 
 
 def needed(settings):
@@ -30,19 +29,14 @@ def get(ports, settings, shared):
     logging.info('building port: libpng')
 
     source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'libpng')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
-
-    Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
-    ports.install_headers(dest_path)
+    ports.write_file(os.path.join(source_path, 'pnglibconf.h'), pnglibconf_h)
+    ports.install_headers(source_path)
 
     flags = ['-sUSE_ZLIB=1']
     if settings.USE_PTHREADS:
       flags += ['-sUSE_PTHREADS=1']
 
-    ports.build_port(dest_path, final, flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

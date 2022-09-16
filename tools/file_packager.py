@@ -474,11 +474,11 @@ def main():
   # even if we cd'd into a symbolic link.
   curr_abspath = os.path.abspath(os.getcwd())
 
-  if not file_.explicit_dst_path:
-    for file_ in data_files:
+  for file_ in data_files:
+    if not file_.explicit_dst_path:
       # This file was not defined with src@dst, so we inferred the destination
-      # from the source. In that case, we require that the destination not be
-      # under the current location
+      # from the source. In that case, we require that the destination be
+      # within the current working directory.
       path = file_.dstpath
       # Use os.path.realpath to resolve any symbolic links to hard paths,
       # to match the structure in curr_abspath.
@@ -486,18 +486,19 @@ def main():
       if DEBUG:
         err(path, abspath, curr_abspath)
       if not abspath.startswith(curr_abspath):
-        err('Error: Embedding "%s" which is below the current directory '
-            '"%s". This is invalid since the current directory becomes the '
-            'root that the generated code will see' % (path, curr_abspath))
+        err('Error: Embedding "%s" which is not contained within the current directory '
+            '"%s".  This is invalid since the current directory becomes the '
+            'root that the generated code will see.  To include files outside of the current '
+            'working directoty you can use the `--preload-file srcpath@dstpath` syntax to '
+            'explicitly specify the target location.' % (path, curr_abspath))
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
       if os.path.isabs(path):
         err('Warning: Embedding an absolute file/directory name "%s" to the '
             'virtual filesystem. The file will be made available in the '
-            'relative path "%s". You can use the explicit syntax '
-            '--preload-file srcpath@dstpath to explicitly specify the target '
-            'location the absolute source path should be directed to.'
-            % (path, file_.dstpath))
+            'relative path "%s". You can use the `--preload-file srcpath@dstpath` '
+            'syntax to explicitly specify the target location the absolute source '
+            'path should be directed to.' % (path, file_.dstpath))
 
   for file_ in data_files:
     # name in the filesystem, native and emulated
@@ -520,6 +521,10 @@ def main():
     seen.add(name)
     return False
 
+  # The files are sorted by the dstpath to make the order of files reproducible
+  # across file systems / operating systems (os.walk does not produce the same
+  # file order on different file systems / operating systems)
+  data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
   if AV_WORKAROUND:
@@ -682,12 +687,13 @@ def generate_js(data_target, data_files, metadata):
     dirname = os.path.dirname(filename)
     basename = os.path.basename(filename)
     if file_.mode == 'embed':
-      # Embed
-      data = base64_encode(utils.read_binary(file_.srcpath))
-      code += "      var fileData%d = '%s';\n" % (counter, data)
-      # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-      code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
-               % (dirname, basename, counter))
+      if not options.obj_output:
+        # Embed (only needed when not generating object file output)
+        data = base64_encode(utils.read_binary(file_.srcpath))
+        code += "      var fileData%d = '%s';\n" % (counter, data)
+        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
+        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+                 % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
       metadata_el = {
@@ -990,7 +996,7 @@ def generate_js(data_target, data_files, metadata):
     code += '''
       function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s

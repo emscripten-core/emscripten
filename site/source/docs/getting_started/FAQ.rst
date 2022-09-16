@@ -44,7 +44,7 @@ Some general steps that might help figure things out:
  * Search the documentation on this site.
  * Check if there is a test for the failing functionality in the
    :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in
-   **tests/**). They should all pass (with only rare exceptions), so they
+   **test/**). They should all pass (with only rare exceptions), so they
    provide concrete "known-good" examples of how various options and code are
    used.
 
@@ -140,7 +140,8 @@ That error can happen when loading the page using a ``file://`` URL, which works
 in some browsers but not in others. Instead, it's best
 to use a local webserver. For example, Python has one built in,
 ``python -m http.server`` in Python 3 or ``python -m SimpleHTTPServer``
-in Python 2. After doing that, you can visit ``http://localhost:8000/``.
+in Python 2. After doing that, you can visit ``http://localhost:8000/``. You can
+also use ``emrun FILENAME.html`` (which will run a python webserver for you).
 
 When doing quick local testing, another option than a local webserver is to
 bundle everything into a single file, using ``-sSINGLE_FILE`` (as then no XHRs
@@ -237,7 +238,7 @@ discussed in :ref:`emscripten-runtime-environment`). The related functions in
 useful, allowing you to add events that block the main loop, etc.
 
 To respond to browser events use the SDL API in the normal way. There are
-examples in the SDL tests (search for SDL in **tests/runner.py**).
+examples in the SDL tests (search for SDL in **test/runner.py**).
 
 See also: :ref:`faq-my-html-app-hangs`
 
@@ -245,7 +246,7 @@ See also: :ref:`faq-my-html-app-hangs`
 Why doesn't my SDL app work?
 =============================
 
-See the :term:`SDL` automatic tests for working examples: ``python tests/runner.py browser``.
+See the :term:`SDL` automatic tests for working examples: ``python test/runner.py browser``.
 
 
 How do I link against system libraries like SDL, boost, etc.?

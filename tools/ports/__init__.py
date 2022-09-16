@@ -19,6 +19,10 @@ ports = []
 
 ports_by_name = {}
 
+# Variant builds that we want to support for certain ports
+# {variant_name: (port_name, extra_settings)}
+port_variants = {}
+
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
@@ -42,6 +46,14 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
+    if not hasattr(port, 'variants'):
+      # port variants (default: no variants)
+      port.variants = {}
+
+    for variant, extra_settings in port.variants.items():
+      if variant in port_variants:
+        utils.exit_with_error('duplicate port variant: %s' % variant)
+      port_variants[variant] = (port.name, extra_settings)
 
   for dep in port.deps:
     if dep not in ports_by_name:
@@ -49,7 +61,7 @@ def read_ports():
 
 
 def get_all_files_under(dirname):
-  for path, subdirs, files in os.walk(dirname):
+  for path, _, files in os.walk(dirname):
     for name in files:
       yield os.path.join(path, name)
 
@@ -77,7 +89,7 @@ class Ports:
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    shared.try_delete(dest)
+    utils.delete_dir(dest)
     logger.debug(f'installing headers: {dest}')
     shutil.copytree(src_dir, dest)
 
@@ -85,6 +97,7 @@ class Ports:
   def install_headers(src_dir, pattern='*.h', target=None):
     logger.debug('install_headers')
     dest = Ports.get_include_dir()
+    assert os.path.exists(dest)
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
@@ -95,44 +108,47 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
-    srcs = []
-    for root, dirs, files in os.walk(src_path, topdown=False):
-      if any((excluded in root) for excluded in exclude_dirs):
-        continue
-      for f in files:
-        ext = shared.suffix(f)
-        if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
-          srcs.append(os.path.join(root, f))
-    include_commands = ['-I' + src_path]
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+    build_dir = os.path.join(Ports.get_build_dir(), port_name)
+    if srcs:
+      srcs = [os.path.join(src_dir, s) for s in srcs]
+    else:
+      srcs = []
+      for root, _, files in os.walk(src_dir, topdown=False):
+        if any((excluded in root) for excluded in exclude_dirs):
+          continue
+        for f in files:
+          ext = shared.suffix(f)
+          if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+            srcs.append(os.path.join(root, f))
+
+    cflags = system_libs.get_base_cflags() + ['-Werror', '-O2', '-I' + src_dir] + flags
     for include in includes:
-      include_commands.append('-I' + include)
+      cflags.append('-I' + include)
 
-    commands = []
-    objects = []
-    for src in srcs:
-      obj = src + '.o'
-      commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
-      objects.append(obj)
+    if system_libs.USE_NINJA:
+      if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+      ninja_file = os.path.join(build_dir, 'build.ninja')
+      system_libs.ensure_sysroot()
+      system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
+      system_libs.run_ninja(build_dir)
+    else:
+      commands = []
+      objects = []
+      for src in srcs:
+        relpath = os.path.relpath(src, src_dir)
+        obj = os.path.join(build_dir, relpath) + '.o'
+        dirname = os.path.dirname(obj)
+        if not os.path.exists(dirname):
+          os.makedirs(dirname)
+        commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
+        objects.append(obj)
 
-    Ports.run_commands(commands)
-    system_libs.create_lib(output_path, objects)
+      system_libs.run_build_commands(commands)
+      system_libs.create_lib(output_path, objects)
+
     return output_path
-
-  @staticmethod
-  def run_commands(commands):
-    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
-    # that the ports are built in the correct configuration.
-    def add_args(cmd):
-      # this must only be called on a standard build command
-      assert cmd[0] in (shared.EMCC, shared.EMXX)
-      # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + system_libs.get_base_cflags() + cmd[1:]
-    system_libs.run_build_commands([add_args(c) for c in commands])
-
-  @staticmethod
-  def create_lib(libname, inputs): # make easily available for port objects
-    system_libs.create_lib(libname, inputs)
 
   @staticmethod
   def get_dir():
@@ -143,9 +159,7 @@ class Ports:
   @staticmethod
   def erase():
     dirname = Ports.get_dir()
-    shared.try_delete(dirname)
-    if os.path.exists(dirname):
-      logger.warning('could not delete ports dir %s - try to delete it manually' % dirname)
+    utils.delete_dir(dirname)
 
   @staticmethod
   def get_build_dir():
@@ -168,14 +182,14 @@ class Ports:
     # e.g.
     #     sdl2=/home/username/dev/ports/SDL2
     # so you could run
-    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
+    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./test/runner.py browser.test_sdl2_mouse
     # this will simply copy that directory into the ports directory for sdl2, and use that. It also
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      with shared.Cache.lock():
+      with shared.Cache.lock('local ports'):
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -191,7 +205,7 @@ class Ports:
               logger.warning(f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)')
             else:
               logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
-              shared.try_delete(fullname)
+              utils.delete_file(fullname)
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
@@ -244,7 +258,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock():
+    with shared.Cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process build the library while we were
         # waiting for the lock
@@ -252,8 +266,8 @@ class Ports:
           return
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
-        shared.try_delete(fullname)
-        shared.try_delete(fullpath)
+        utils.delete_dir(fullname)
+        utils.delete_file(fullpath)
 
       retrieve()
       unpack()
@@ -265,7 +279,15 @@ class Ports:
   def clear_project_build(name):
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
-    shared.try_delete(os.path.join(Ports.get_build_dir(), name))
+    build_dir = os.path.join(Ports.get_build_dir(), name)
+    utils.delete_dir(build_dir)
+    return build_dir
+
+  @staticmethod
+  def write_file(filename, contents):
+    if os.path.exists(filename) and utils.read_file(filename) == contents:
+      return
+    utils.write_file(filename, contents)
 
 
 def dependency_order(port_list):
@@ -354,7 +376,7 @@ def add_cflags(args, settings): # noqa: U100
 
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
-    args += ['-Xclang', '-iwithsysroot/include/SDL']
+    args += ['-I' + Ports.get_include_dir('SDL')]
 
   needed = get_needed_ports(settings)
 

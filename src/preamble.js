@@ -86,146 +86,15 @@ function assert(condition, text) {
   }
 }
 
-// Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-function getCFunc(ident) {
-  var func = Module['_' + ident]; // closure exported function
-#if ASSERTIONS
-  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
-#endif
-  return func;
-}
-
-// C calling interface.
-/** @param {string|null=} returnType
-    @param {Array=} argTypes
-    @param {Arguments|Array=} args
-    @param {Object=} opts */
-function ccall(ident, returnType, argTypes, args, opts) {
-  // For fast lookup of conversion functions
-  var toC = {
-#if MEMORY64
-    'pointer': (p) => {{{ to64('p') }}},
-#endif
-    'string': function(str) {
-      var ret = 0;
-      if (str !== null && str !== undefined && str !== 0) { // null string
-        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-        var len = (str.length << 2) + 1;
-        ret = stackAlloc(len);
-        stringToUTF8(str, ret, len);
-      }
-      return {{{ to64('ret') }}};
-    },
-    'array': function(arr) {
-      var ret = stackAlloc(arr.length);
-      writeArrayToMemory(arr, ret);
-      return {{{ to64('ret') }}};
-    }
-  };
-
-  function convertReturnValue(ret) {
-    if (returnType === 'string') {
-      {{{ from64('ret') }}}
-      return UTF8ToString(ret);
-    }
-#if MEMORY64
-    if (returnType === 'pointer') return Number(ret);
-#endif
-    if (returnType === 'boolean') return Boolean(ret);
-    return ret;
-  }
-
-  var func = getCFunc(ident);
-  var cArgs = [];
-  var stack = 0;
-#if ASSERTIONS
-  assert(returnType !== 'array', 'Return type should not be "array".');
-#endif
-  if (args) {
-    for (var i = 0; i < args.length; i++) {
-      var converter = toC[argTypes[i]];
-      if (converter) {
-        if (stack === 0) stack = stackSave();
-        cArgs[i] = converter(args[i]);
-      } else {
-        cArgs[i] = args[i];
-      }
-    }
-  }
-#if ASYNCIFY
-  // Data for a previous async operation that was in flight before us.
-  var previousAsync = Asyncify.currData;
-#endif
-  var ret = func.apply(null, cArgs);
-  function onDone(ret) {
-#if ASYNCIFY
-    runtimeKeepalivePop();
-#endif
-    if (stack !== 0) stackRestore(stack);
-    return convertReturnValue(ret);
-  }
-#if ASYNCIFY
-  // Keep the runtime alive through all calls. Note that this call might not be
-  // async, but for simplicity we push and pop in all calls.
-  runtimeKeepalivePush();
-  var asyncMode = opts && opts.async;
-  if (Asyncify.currData != previousAsync) {
-#if ASSERTIONS
-    // A change in async operation happened. If there was already an async
-    // operation in flight before us, that is an error: we should not start
-    // another async operation while one is active, and we should not stop one
-    // either. The only valid combination is to have no change in the async
-    // data (so we either had one in flight and left it alone, or we didn't have
-    // one), or to have nothing in flight and to start one.
-    assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
-    assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
-#endif
-    // This is a new async operation. The wasm is paused and has unwound its stack.
-    // We need to return a Promise that resolves the return value
-    // once the stack is rewound and execution finishes.
-#if ASSERTIONS
-    assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-#endif
-    return Asyncify.whenDone().then(onDone);
-  }
-#endif
-
-  ret = onDone(ret);
-#if ASYNCIFY
-  // If this is an async ccall, ensure we return a promise
-  if (asyncMode) return Promise.resolve(ret);
-#endif
-  return ret;
-}
-
-/** @param {string=} returnType
-    @param {Array=} argTypes
-    @param {Object=} opts */
-function cwrap(ident, returnType, argTypes, opts) {
-#if !ASSERTIONS
-  argTypes = argTypes || [];
-  // When the function takes numbers and returns a number, we can just return
-  // the original function
-  var numericArgs = argTypes.every(function(type){ return type === 'number'});
-  var numericRet = returnType !== 'string';
-  if (numericRet && numericArgs && !opts) {
-    return getCFunc(ident);
-  }
-#endif
-  return function() {
-    return ccall(ident, returnType, argTypes, arguments, opts);
-  }
-}
-
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !hasExportedFunction('_malloc')
+#if !hasExportedSymbol('malloc')
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !hasExportedFunction('_free')
+#if !hasExportedSymbol('free')
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -233,11 +102,7 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-#if !STRICT
-#include "runtime_legacy.js"
-#endif
 #include "runtime_strings.js"
-#include "runtime_strings_extra.js"
 
 // Memory management
 
@@ -338,6 +203,10 @@ var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
+#if RELOCATABLE
+var __RELOC_FUNCS__ = [];
+#endif
+
 var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
@@ -393,6 +262,9 @@ function initRuntime() {
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
+#if RELOCATABLE
+  callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
   <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
@@ -692,7 +564,6 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When exception catching is enabled (!DISABLE_EXCEPTION_CATCHING)
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
 // that we only handle exceptions at the top level letting the exception
 // mechanics work uninterrupted at the inner level.  Additionally,
@@ -708,13 +579,10 @@ function makeAbortWrapper(original) {
       throw "program has already aborted!";
     }
 
-#if !DISABLE_EXCEPTION_CATCHING
     abortWrapperDepth += 1;
-#endif
     try {
       return original.apply(null, arguments);
-    }
-    catch (e) {
+    } catch (e) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
@@ -727,12 +595,10 @@ function makeAbortWrapper(original) {
 
       abort("unhandled exception: " + [e, e.stack]);
     }
-#if !DISABLE_EXCEPTION_CATCHING
     finally {
       abortWrapperDepth -= 1;
     }
-#endif
-    }
+  }
 }
 
 // Instrument all the exported functions to:
@@ -800,13 +666,12 @@ function getBinary(file) {
 #endif
     if (readBinary) {
       return readBinary(file);
-    } else {
-#if WASM_ASYNC_COMPILATION
-      throw "both async and sync fetching of the wasm failed";
-#else
-      throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
-#endif
     }
+#if WASM_ASYNC_COMPILATION
+    throw "both async and sync fetching of the wasm failed";
+#else
+    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
   }
   catch (err) {
     abort(err);
@@ -887,7 +752,7 @@ var splitModuleProxyHandler = {
 #if LOAD_SOURCE_MAP
 function receiveSourceMapJSON(sourceMap) {
   wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runOnMainThread("removeRunDependency('source-map');") }}}
+  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
 }
 #endif
 
@@ -1047,8 +912,12 @@ function createWasm() {
 #endif
 #endif
 
-#if hasExportedFunction('___wasm_call_ctors')
+#if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
+#endif
+
+#if hasExportedSymbol('__wasm_apply_data_relocs')
+    __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
@@ -1097,10 +966,10 @@ function createWasm() {
 
   }
   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
+  {{{ runIfMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
-  {{{ runOnMainThread("addRunDependency('source-map');") }}}
+  {{{ runIfMainThread("addRunDependency('source-map');") }}}
 #endif
 
   // Prefer streaming instantiation if available.
@@ -1274,7 +1143,12 @@ function createWasm() {
       return exports;
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
-      return false;
+      #if MODULARIZE
+        // If instantiation fails, reject the module ready promise.
+        readyPromiseReject(e);
+      #else
+        return false;
+      #endif
     }
   }
 

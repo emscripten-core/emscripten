@@ -10,6 +10,7 @@ VERSION = '3.2.0'
 HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
 
 deps = ['freetype']
+variants = {'harfbuzz-mt': {'USE_PTHREADS': 1}}
 
 srcs = '''
 hb-aat-layout.cc
@@ -86,11 +87,9 @@ def get(ports, settings, shared):
 
   def create(final):
     logging.info('building port: harfbuzz')
-    ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
-    build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
-    freetype_include = ports.get_include_dir('freetype2/freetype')
+    freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
     # TODO(sbc): Look into HB_TINY, HB_LEAN, HB_MINI options.  Remove
@@ -131,15 +130,7 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(build_path, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, '-c', os.path.join(source_path, 'src', src), '-o', o] + cflags)
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

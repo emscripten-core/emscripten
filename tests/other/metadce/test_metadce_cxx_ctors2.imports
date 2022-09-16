@@ -1,9 +1,0 @@
-env.abort
-env.emscripten_memcpy_big
-env.emscripten_resize_heap
-env.setTempRet0
-env.strftime_l
-wasi_snapshot_preview1.fd_close
-wasi_snapshot_preview1.fd_read
-wasi_snapshot_preview1.fd_seek
-wasi_snapshot_preview1.fd_write

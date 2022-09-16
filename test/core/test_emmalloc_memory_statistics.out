@@ -1,0 +1,7 @@
+1
+validate_memory_regions: 0
+dynamic_heap_size: 106971424
+free_dynamic_memory: 4210892
+numFreeMemoryRegions: 3
+0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 
+unclaimed_heap_memory: 21999616

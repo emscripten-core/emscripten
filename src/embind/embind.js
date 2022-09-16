@@ -10,11 +10,10 @@
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
 /*global Emval, emval_handle_array, __emval_decref*/
-/*global ___getTypeName*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
+/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
@@ -172,23 +171,23 @@ var LibraryEmbind = {
   $extendError__deps: ['$createNamedFunction'],
   $extendError: function(baseErrorType, errorName) {
     var errorClass = createNamedFunction(errorName, function(message) {
-        this.name = errorName;
-        this.message = message;
+      this.name = errorName;
+      this.message = message;
 
-        var stack = (new Error(message)).stack;
-        if (stack !== undefined) {
-            this.stack = this.toString() + '\n' +
-                stack.replace(/^Error(:[^\n]*)?\n/, '');
-        }
+      var stack = (new Error(message)).stack;
+      if (stack !== undefined) {
+        this.stack = this.toString() + '\n' +
+            stack.replace(/^Error(:[^\n]*)?\n/, '');
+      }
     });
     errorClass.prototype = Object.create(baseErrorType.prototype);
     errorClass.prototype.constructor = errorClass;
     errorClass.prototype.toString = function() {
-        if (this.message === undefined) {
-            return this.name;
-        } else {
-            return this.name + ': ' + this.message;
-        }
+      if (this.message === undefined) {
+        return this.name;
+      } else {
+        return this.name + ': ' + this.message;
+      }
     };
 
     return errorClass;
@@ -216,7 +215,7 @@ var LibraryEmbind = {
 #endif
   },
 
-  embind_repr: function(v) {
+  $embindRepr: function(v) {
     if (v === null) {
         return 'null';
     }
@@ -279,9 +278,9 @@ var LibraryEmbind = {
   $getLiveInheritedInstances: function() {
     var rv = [];
     for (var k in registeredInstances) {
-        if (registeredInstances.hasOwnProperty(k)) {
-            rv.push(registeredInstances[k]);
-        }
+      if (registeredInstances.hasOwnProperty(k)) {
+        rv.push(registeredInstances[k]);
+      }
     }
     return rv;
   },
@@ -394,7 +393,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['$readLatin1String'],
+  $getTypeName__deps: ['$readLatin1String', '__getTypeName'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -405,7 +404,9 @@ var LibraryEmbind = {
   $heap32VectorToArray: function(count, firstElement) {
     var array = [];
     for (var i = 0; i < count; i++) {
-        array.push(HEAP32[(firstElement >> 2) + i]);
+        // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
+        // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
+        array.push({{{ makeGetValue('firstElement', 'i * ' + POINTER_SIZE, '*') }}});
     }
     return array;
   },
@@ -420,6 +421,7 @@ var LibraryEmbind = {
     return impl;
   },
 
+  _embind_register_void__sig: 'vpp',
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
@@ -437,9 +439,9 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
-  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
     var shift = getShiftFromSize(size);
 
@@ -544,10 +546,10 @@ var LibraryEmbind = {
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
-  _embind_register_integer__deps: [
-    'embind_repr', '$getShiftFromSize', '$integerReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
   _embind_register_integer__sig: 'vpppii',
+  _embind_register_integer__deps: [
+    '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
+    '$readLatin1String', '$registerType'],
   _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
     // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
@@ -568,42 +570,42 @@ var LibraryEmbind = {
     var isUnsignedType = (name.includes('unsigned'));
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
-        if (typeof value != "number" && typeof value != "boolean") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
-        }
-        if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-        }
+      if (typeof value != "number" && typeof value != "boolean") {
+        throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
+      }
+      if (value < minRange || value > maxRange) {
+        throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+      }
 #endif
     }
     var toWireType;
     if (isUnsignedType) {
-        toWireType = function(destructors, value) {
-            checkAssertions(value, this.name);
-            return value >>> 0;
-        }
+      toWireType = function(destructors, value) {
+        checkAssertions(value, this.name);
+        return value >>> 0;
+      }
     } else {
-        toWireType = function(destructors, value) {
-            checkAssertions(value, this.name);
-            // The VM will perform JS to Wasm value conversion, according to the spec:
-            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
-            return value;
-        }
+      toWireType = function(destructors, value) {
+        checkAssertions(value, this.name);
+        // The VM will perform JS to Wasm value conversion, according to the spec:
+        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+        return value;
+      }
     }
     registerType(primitiveType, {
-        name: name,
-        'fromWireType': fromWireType,
-        'toWireType': toWireType,
-        'argPackAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
-        destructorFunction: null, // This type does not need a destructor
+      name: name,
+      'fromWireType': fromWireType,
+      'toWireType': toWireType,
+      'argPackAdvance': 8,
+      'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 
 #if WASM_BIGINT
-  _embind_register_bigint__deps: [
-    'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint__sig: 'vpppjj',
+  _embind_register_bigint__deps: [
+    '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
 
@@ -613,27 +615,27 @@ var LibraryEmbind = {
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-        // Use string because acorn does recognize bigint literals
-        maxRange = (1n << 64n) - 1n;
+      // Use string because acorn does recognize bigint literals
+      maxRange = (1n << 64n) - 1n;
     }
 
     registerType(primitiveType, {
-        name: name,
-        'fromWireType': function (value) {
-            return value;
-        },
-        'toWireType': function (destructors, value) {
-            if (typeof value != "bigint") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-            }
-            if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-            }
-            return value;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
-        destructorFunction: null, // This type does not need a destructor
+      name: name,
+      'fromWireType': function (value) {
+        return value;
+      },
+      'toWireType': function (destructors, value) {
+        if (typeof value != "bigint" && typeof value != "number") {
+          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+        }
+        if (value < minRange || value > maxRange) {
+          throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        }
+        return value;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 #else
@@ -641,39 +643,40 @@ var LibraryEmbind = {
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
-  _embind_register_float__deps: [
-    'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
-    '$readLatin1String', '$registerType'],
   _embind_register_float__sig: 'vppp',
+  _embind_register_float__deps: [
+    '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
+    '$readLatin1String', '$registerType'],
   _embind_register_float: function(rawType, name, size) {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
     registerType(rawType, {
-        name: name,
-        'fromWireType': function(value) {
-             return value;
-        },
-        'toWireType': function(destructors, value) {
+      name: name,
+      'fromWireType': function(value) {
+         return value;
+      },
+      'toWireType': function(destructors, value) {
 #if ASSERTIONS
-            if (typeof value != "number" && typeof value != "boolean") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-            }
+        if (typeof value != "number" && typeof value != "boolean") {
+          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+        }
 #endif
-            // The VM will perform JS to Wasm value conversion, according to the spec:
-            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
-            return value;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': floatReadValueFromPointer(name, shift),
-        destructorFunction: null, // This type does not need a destructor
+        // The VM will perform JS to Wasm value conversion, according to the spec:
+        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+        return value;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': floatReadValueFromPointer(name, shift),
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 
   // For types whose wire types are 32-bit pointers.
   $simpleReadValueFromPointer: function(pointer) {
-    return this['fromWireType'](HEAPU32[pointer >> 2]);
+    return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
+  _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError'],
@@ -688,100 +691,100 @@ var LibraryEmbind = {
 #endif
 
     registerType(rawType, {
-        name: name,
-        'fromWireType': function(value) {
-            var length = HEAPU32[value >> 2];
+      name: name,
+      'fromWireType': function(value) {
+        var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
+        var payload = value + {{{ POINTER_SIZE }}};
 
-            var str;
-            if (stdStringIsUTF8) {
-                var decodeStartPtr = value + 4;
-                // Looping here to support possible embedded '0' bytes
-                for (var i = 0; i <= length; ++i) {
-                    var currentBytePtr = value + 4 + i;
-                    if (i == length || HEAPU8[currentBytePtr] == 0) {
-                        var maxRead = currentBytePtr - decodeStartPtr;
-                        var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
-                        if (str === undefined) {
-                            str = stringSegment;
-                        } else {
-                            str += String.fromCharCode(0);
-                            str += stringSegment;
-                        }
-                        decodeStartPtr = currentBytePtr + 1;
-                    }
-                }
-            } else {
-                var a = new Array(length);
-                for (var i = 0; i < length; ++i) {
-                    a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
-                }
-                str = a.join('');
+        var str;
+        if (stdStringIsUTF8) {
+          var decodeStartPtr = payload;
+          // Looping here to support possible embedded '0' bytes
+          for (var i = 0; i <= length; ++i) {
+            var currentBytePtr = payload + i;
+            if (i == length || HEAPU8[currentBytePtr] == 0) {
+              var maxRead = currentBytePtr - decodeStartPtr;
+              var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
+              if (str === undefined) {
+                str = stringSegment;
+              } else {
+                str += String.fromCharCode(0);
+                str += stringSegment;
+              }
+              decodeStartPtr = currentBytePtr + 1;
             }
+          }
+        } else {
+          var a = new Array(length);
+          for (var i = 0; i < length; ++i) {
+            a[i] = String.fromCharCode(HEAPU8[payload + i]);
+          }
+          str = a.join('');
+        }
 
-            _free(value);
+        _free(value);
 
-            return str;
-        },
-        'toWireType': function(destructors, value) {
-            if (value instanceof ArrayBuffer) {
-                value = new Uint8Array(value);
-            }
+        return str;
+      },
+      'toWireType': function(destructors, value) {
+        if (value instanceof ArrayBuffer) {
+          value = new Uint8Array(value);
+        }
 
-            var getLength;
-            var valueIsOfTypeString = (typeof value == 'string');
+        var length;
+        var valueIsOfTypeString = (typeof value == 'string');
 
-            if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
-                throwBindingError('Cannot pass non-string to std::string');
-            }
-            if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = () => lengthBytesUTF8(value);
-            } else {
-                getLength = () => value.length;
-            }
+        if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+          throwBindingError('Cannot pass non-string to std::string');
+        }
+        if (stdStringIsUTF8 && valueIsOfTypeString) {
+          length = lengthBytesUTF8(value);
+        } else {
+          length = value.length;
+        }
 
-            // assumes 4-byte alignment
-            var length = getLength();
-            var ptr = _malloc(4 + length + 1);
+        // assumes 4-byte alignment
+        var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
+        var ptr = base + {{{ POINTER_SIZE }}};
 #if CAN_ADDRESS_2GB
-            ptr >>>= 0;
+        ptr >>>= 0;
 #endif
-            HEAPU32[ptr >> 2] = length;
-            if (stdStringIsUTF8 && valueIsOfTypeString) {
-                stringToUTF8(value, ptr + 4, length + 1);
-            } else {
-                if (valueIsOfTypeString) {
-                    for (var i = 0; i < length; ++i) {
-                        var charCode = value.charCodeAt(i);
-                        if (charCode > 255) {
-                            _free(ptr);
-                            throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
-                        }
-                        HEAPU8[ptr + 4 + i] = charCode;
-                    }
-                } else {
-                    for (var i = 0; i < length; ++i) {
-                        HEAPU8[ptr + 4 + i] = value[i];
-                    }
-                }
+        {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
+        if (stdStringIsUTF8 && valueIsOfTypeString) {
+          stringToUTF8(value, ptr, length + 1);
+        } else {
+          if (valueIsOfTypeString) {
+            for (var i = 0; i < length; ++i) {
+              var charCode = value.charCodeAt(i);
+              if (charCode > 255) {
+                _free(ptr);
+                throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+              }
+              HEAPU8[ptr + i] = charCode;
             }
+          } else {
+            for (var i = 0; i < length; ++i) {
+              HEAPU8[ptr + i] = value[i];
+            }
+          }
+        }
 
-            if (destructors !== null) {
-                destructors.push(_free, ptr);
-            }
-            return ptr;
-        },
-        'argPackAdvance': 8,
-        'readValueFromPointer': simpleReadValueFromPointer,
-        destructorFunction: function(ptr) { _free(ptr); },
+        if (destructors !== null) {
+          destructors.push(_free, base);
+        }
+        return base;
+      },
+      'argPackAdvance': 8,
+      'readValueFromPointer': simpleReadValueFromPointer,
+      destructorFunction: function(ptr) { _free(ptr); },
     });
   },
 
+  _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
-#if MINIMAL_RUNTIME
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
     '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
-#endif
     ],
   _embind_register_std_wstring: function(rawType, charSize, name) {
     name = readLatin1String(name);
@@ -854,6 +857,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_emval__sig: 'vpp',
   _embind_register_emval__deps: [
     '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
@@ -878,6 +882,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_memory_view__sig: 'vpip',
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
@@ -1154,7 +1159,7 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT || MEMORY64
     , '$getDynCaller'
 #endif
   ],
@@ -1169,6 +1174,10 @@ var LibraryEmbind = {
       if (signature.includes('j')) {
         return getDynCaller(signature, rawFunction);
       }
+#elif MEMORY64
+      if (signature.includes('p')) {
+        return getDynCaller(signature, rawFunction);
+      }
 #endif
       return getWasmTableEntry(rawFunction);
 #endif
@@ -1181,6 +1190,7 @@ var LibraryEmbind = {
     return fp;
   },
 
+  _embind_register_function__sig: 'vpipppp',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
@@ -1192,18 +1202,19 @@ var LibraryEmbind = {
     rawInvoker = embind__requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
-        throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
+      throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
     }, argCount - 1);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
-        var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-        replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
-        return [];
+      var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
+      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
+      return [];
     });
   },
 
   $tupleRegistrations: {},
 
+  _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1222,6 +1233,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: function(
@@ -1245,6 +1257,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1282,21 +1295,21 @@ var LibraryEmbind = {
         'fromWireType': function(ptr) {
           var rv = new Array(elementsLength);
           for (var i = 0; i < elementsLength; ++i) {
-              rv[i] = elements[i].read(ptr);
+            rv[i] = elements[i].read(ptr);
           }
           rawDestructor(ptr);
           return rv;
         },
         'toWireType': function(destructors, o) {
           if (elementsLength !== o.length) {
-              throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
+            throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
           }
           var ptr = rawConstructor();
           for (var i = 0; i < elementsLength; ++i) {
-              elements[i].write(ptr, o[i]);
+            elements[i].write(ptr, o[i]);
           }
           if (destructors !== null) {
-              destructors.push(rawDestructor, ptr);
+            destructors.push(rawDestructor, ptr);
           }
           return ptr;
         },
@@ -1444,7 +1457,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1513,7 +1526,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1535,7 +1548,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1640,9 +1653,19 @@ var LibraryEmbind = {
 
   $RegisteredPointer_fromWireType__deps: [
     '$downcastPointer', '$registeredPointers',
-    '$getInheritedInstance', '$makeClassHandle'],
+    '$getInheritedInstance', '$makeClassHandle',
+#if MEMORY64
+    '$bigintToI53Checked'
+#endif
+  ],
   $RegisteredPointer_fromWireType: function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
+#if MEMORY64
+    ptr = bigintToI53Checked(ptr);
+#if ASSERTIONS
+    assert(ptr != NaN);
+#endif
+#endif
 
     // rawPointer is a maybe-null raw pointer
     var rawPointer = this.getPointee(ptr);
@@ -1700,7 +1723,7 @@ var LibraryEmbind = {
         this.registeredClass,
         toType.registeredClass);
     if (dp === null) {
-        return makeDefaultHandle.call(this);
+      return makeDefaultHandle.call(this);
     }
     if (this.isSmartPointer) {
       return makeClassHandle(toType.registeredClass.instancePrototype, {
@@ -1719,9 +1742,9 @@ var LibraryEmbind = {
 
   $runDestructor: function($$) {
     if ($$.smartPtr) {
-        $$.smartPtrType.rawDestructor($$.smartPtr);
+      $$.smartPtrType.rawDestructor($$.smartPtr);
     } else {
-        $$.ptrType.registeredClass.rawDestructor($$.ptr);
+      $$.ptrType.registeredClass.rawDestructor($$.ptr);
     }
   },
 
@@ -1743,8 +1766,8 @@ var LibraryEmbind = {
                            '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationRegistry) {
-        attachFinalizer = (handle) => handle;
-        return handle;
+      attachFinalizer = (handle) => handle;
+      return handle;
     }
     // If the running environment has a FinalizationRegistry (see
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
@@ -1752,9 +1775,9 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry((info) => {
 #if ASSERTIONS
-        console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
 #endif
-        releaseClassHandle(info.$$);
+      releaseClassHandle(info.$$);
     });
     attachFinalizer = (handle) => {
       var $$ = handle.$$;
@@ -1773,7 +1796,7 @@ var LibraryEmbind = {
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
         if ('captureStackTrace' in Error) {
-            Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+          Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
         }
 #endif
         finalizationRegistry.register(handle, info, handle);
@@ -1959,16 +1982,17 @@ var LibraryEmbind = {
 
   $shallowCopyInternalPointer: function(o) {
     return {
-        count: o.count,
-        deleteScheduled: o.deleteScheduled,
-        preservePointerOnDelete: o.preservePointerOnDelete,
-        ptr: o.ptr,
-        ptrType: o.ptrType,
-        smartPtr: o.smartPtr,
-        smartPtrType: o.smartPtrType,
+      count: o.count,
+      deleteScheduled: o.deleteScheduled,
+      preservePointerOnDelete: o.preservePointerOnDelete,
+      ptr: o.ptr,
+      ptrType: o.ptrType,
+      smartPtr: o.smartPtr,
+      smartPtrType: o.smartPtrType,
     };
   },
 
+  _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
@@ -2079,6 +2103,7 @@ var LibraryEmbind = {
     );
   },
 
+  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
@@ -2131,7 +2156,7 @@ var LibraryEmbind = {
 
     var rv = downcastPointer(ptr, ptrClass, desiredClass.baseClass);
     if (rv === null) {
-        return null;
+      return null;
     }
     return desiredClass.downcast(rv);
   },
@@ -2166,6 +2191,7 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
+  _embind_register_class_function__sig: 'vppippppi',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2232,6 +2258,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_property__sig: 'vpppppppppp',
   _embind_register_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2303,6 +2330,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_function__sig: 'vppipppp',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2359,6 +2387,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_property__sig: 'vpppppppp',
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2422,6 +2451,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
@@ -2505,6 +2535,7 @@ var LibraryEmbind = {
     return name;
   },
 
+  _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
@@ -2543,6 +2574,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_enum__sig: 'vpppi',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
@@ -2568,6 +2600,7 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
+  _embind_register_enum_value__sig: 'vppi',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
@@ -2583,6 +2616,7 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
+  _embind_register_constant__sig: 'vppd',
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: function(name, type, value) {
     name = readLatin1String(name);

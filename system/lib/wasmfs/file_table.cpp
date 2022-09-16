@@ -12,12 +12,15 @@
 namespace wasmfs {
 
 FileTable::FileTable() {
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDONLY, SpecialFiles::getStdin()));
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStdout()));
-  entries.push_back(
-    std::make_shared<OpenFileState>(0, O_WRONLY, SpecialFiles::getStderr()));
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStdin(), O_RDONLY, entries.back());
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStdout(), O_WRONLY, entries.back());
+  entries.emplace_back();
+  (void)OpenFileState::create(
+    SpecialFiles::getStderr(), O_WRONLY, entries.back());
 }
 
 std::shared_ptr<OpenFileState> FileTable::Handle::getEntry(__wasi_fd_t fd) {
@@ -27,13 +30,22 @@ std::shared_ptr<OpenFileState> FileTable::Handle::getEntry(__wasi_fd_t fd) {
   return fileTable.entries[fd];
 }
 
-void FileTable::Handle::setEntry(__wasi_fd_t fd,
-                                 std::shared_ptr<OpenFileState> openFile) {
+int FileTable::Handle::setEntry(__wasi_fd_t fd,
+                                std::shared_ptr<OpenFileState> openFile) {
   assert(fd >= 0);
   if (fd >= fileTable.entries.size()) {
     fileTable.entries.resize(fd + 1);
   }
+  int ret = 0;
+  if (fileTable.entries[fd]) {
+    auto file = fileTable.entries[fd]->locked().getFile();
+    if (auto f = file->dynCast<DataFile>()) {
+      ret = f->locked().close();
+      assert(ret <= 0);
+    }
+  }
   fileTable.entries[fd] = openFile;
+  return ret;
 }
 
 __wasi_fd_t
@@ -41,7 +53,7 @@ FileTable::Handle::addEntry(std::shared_ptr<OpenFileState> openFileState) {
   // TODO: add freelist to avoid linear lookup time.
   for (__wasi_fd_t i = 0;; i++) {
     if (!getEntry(i)) {
-      setEntry(i, openFileState);
+      (void)setEntry(i, openFileState);
       return i;
     }
   }
