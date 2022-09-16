@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.21 (in development)
+3.1.22 (in development)
 -----------------------
+- compiler-rt updated to LLVM 15. (#17802)
+- Using `-Oz` or `-Os` will no longer pass `-fno-inline-functions` to clang and
+  instead rely on clang's normal inline heuristics for these optimization
+  levels.  `-fno-inline-functions` can be passed explicitly if needed.
+
+3.1.21 - 09/09/2022
+-------------------
+- Update SDL2 port to 2.24.0 (#17748)
 - The `LEGACY_RUNTIME` setting is no longer enabled by default.  If you use any
   of these legacy runtime functions (except in library code with explict
   dependencies) then you would need to set `LEGACY_RUNTIME` on the command line

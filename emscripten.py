@@ -141,6 +141,9 @@ def update_settings_glue(wasm_file, metadata):
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.ASYNCIFY == 2:
+    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+
   if settings.USE_PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
@@ -427,10 +430,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
 def remove_trailing_zeros(memfile):
   mem_data = utils.read_binary(memfile)
-  end = len(mem_data)
-  while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
-    end -= 1
-  utils.write_binary(memfile, mem_data[:end])
+  mem_data = mem_data.rstrip(b'\0')
+  utils.write_binary(memfile, mem_data)
 
 
 @ToolchainProfiler.profile()

@@ -166,6 +166,9 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       lockedOpenFile.getFile()->isSeekable()) {
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
+  if (bytesWritten) {
+    lockedFile.setMTime(time(NULL));
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -1524,8 +1527,13 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
 }
 
-intptr_t _mmap_js(
-  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
+int _mmap_js(size_t length,
+             int prot,
+             int flags,
+             int fd,
+             size_t offset,
+             int* allocated,
+             void** addr) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1582,6 +1590,7 @@ intptr_t _mmap_js(
   // From here on, we have succeeded, and can mark the allocation as having
   // occurred (which means that the caller has the responsibility to free it).
   *allocated = true;
+  *addr = (void*)ptr;
 
   // The read must be of a valid amount, or we have had an internal logic error.
   assert(nread <= length);
@@ -1589,7 +1598,7 @@ intptr_t _mmap_js(
   // mmap clears any extra bytes after the data itself.
   memset(ptr + nread, 0, length - nread);
 
-  return (intptr_t)ptr;
+  return 0;
 }
 
 // Stubs (at least for now)

@@ -5,8 +5,6 @@
 
 import logging
 import os
-import shutil
-from pathlib import Path
 
 TAG = 'version_1'
 HASH = '929e8d6003c06ae09593021b83323c8f1f54532b67b8ba189f4aedce52c25dc182bac474de5392c46ad5b0dea5a24928e4ede1492d52f4dd5cd58eea9be4dba7'
@@ -23,13 +21,9 @@ def get(ports, settings, shared):
     logging.info('building port: ogg')
 
     source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
-    dest_path = ports.clear_project_build('ogg')
-    shutil.copytree(source_path, dest_path)
-
-    Path(dest_path, 'include', 'ogg', 'config_types.h').write_text(config_types_h)
-
-    ports.install_header_dir(os.path.join(dest_path, 'include', 'ogg'), 'ogg')
-    ports.build_port(os.path.join(dest_path, 'src'), final)
+    ports.write_file(os.path.join(source_path, 'include', 'ogg', 'config_types.h'), config_types_h)
+    ports.install_header_dir(os.path.join(source_path, 'include', 'ogg'), 'ogg')
+    ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
   return [shared.Cache.get_lib('libogg.a', create)]
 

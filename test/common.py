@@ -616,15 +616,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return os.path.join(self.get_dir(), *pathelems)
 
   def add_pre_run(self, code):
-    create_file('prerun.js', 'Module.preRun = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'prerun.js']
 
   def add_post_run(self, code):
-    create_file('postrun.js', 'Module.postRun = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'postrun.js']
 
   def add_on_exit(self, code):
-    create_file('onexit.js', 'Module.onExit = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
   # returns the full list of arguments to pass to emcc

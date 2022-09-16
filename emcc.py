@@ -600,6 +600,8 @@ def get_binaryen_passes():
     if settings.ASYNCIFY_ONLY:
       check_human_readable_list(settings.ASYNCIFY_ONLY)
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
+  elif settings.ASYNCIFY == 2:
+    passes += ['--jspi']
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -2334,6 +2336,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.MEMORY64:
     if settings.RELOCATABLE:
       exit_with_error('MEMORY64 is not compatible with dynamic linking')
+    if settings.ASYNCIFY and settings.MEMORY64 == 1:
+      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     if not settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
     settings.WASM_BIGINT = 1
@@ -3158,11 +3162,11 @@ def parse_args(newargs):
       if options.requested_level == 's':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 1
-        settings_changes.append('INLINING_LIMIT=1')
       elif options.requested_level == 'z':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 2
-        settings_changes.append('INLINING_LIMIT=1')
+      else:
+        settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
@@ -3173,7 +3177,7 @@ def parse_args(newargs):
       if '=' in arg:
         settings.LTO = arg.split('=')[1]
       else:
-        settings.LTO = "full"
+        settings.LTO = 'full'
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()

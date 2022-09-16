@@ -25,9 +25,7 @@ public:
   // Spawn the worker thread.
   ProxyWorker()
     : queue(), thread([&]() {
-        // Process the queue in case any work came in while we were starting up,
-        // then sit in the event loop performing work as it comes in.
-        queue.execute();
+        // Sit in the event loop performing work as it comes in.
         emscripten_exit_with_live_runtime();
       }) {}
 

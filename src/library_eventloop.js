@@ -70,6 +70,7 @@ LibraryJSEventLoop = {
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
+  emscripten_set_immediate__sig: 'ipp',
   emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
@@ -82,12 +83,14 @@ LibraryJSEventLoop = {
     });
   },
 
+  emscripten_clear_immediate__sig: 'vi',
   emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
   emscripten_clear_immediate: function(id) {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
+  emscripten_set_immediate_loop__sig: 'vpp' ,
   emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
@@ -104,6 +107,7 @@ LibraryJSEventLoop = {
     return emSetImmediate(tick);
   },
 
+  emscripten_set_timeout__sig: 'ipdp',
   emscripten_set_timeout__deps: ['$callUserCallback'],
   emscripten_set_timeout: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
@@ -115,10 +119,12 @@ LibraryJSEventLoop = {
     }, msecs);
   },
 
+  emscripten_clear_timeout__sig: 'vi',
   emscripten_clear_timeout: function(id) {
     clearTimeout(id);
   },
 
+  emscripten_set_timeout_loop__sig: 'vpdp',
   emscripten_set_timeout_loop__deps: ['$callUserCallback'],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
@@ -139,6 +145,7 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
+  emscripten_set_interval__sig: 'ipdp',
   emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: function(cb, msecs, userData) {
     {{{ runtimeKeepalivePush() }}}
@@ -149,6 +156,7 @@ LibraryJSEventLoop = {
     }, msecs);
   },
 
+  emscripten_clear_interval__sig: 'vi',
   emscripten_clear_interval: function(id) {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);
