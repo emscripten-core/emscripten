@@ -108,8 +108,8 @@ class Cache:
       path = Path(path, '-'.join(subdir))
     return path
 
-  def get_lib_name(self, name, varies=True):
-    return str(self.get_lib_dir(absolute=False, varies=varies).joinpath(name))
+  def get_lib_name(self, name, varies=True, absolute=False):
+    return str(self.get_lib_dir(absolute=absolute, varies=varies).joinpath(name))
 
   def erase_lib(self, name):
     self.erase_file(self.get_lib_name(name))
@@ -127,7 +127,7 @@ class Cache:
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, what=None, force=False):
+  def get(self, shortname, creator, what=None, force=False, quiet=False):
     cachename = Path(self.dirname, shortname)
     # Check for existence before taking the lock in case we can avoid the
     # lock completely.
@@ -152,6 +152,7 @@ class Cache:
       utils.safe_ensure_dirs(cachename.parent)
       creator(str(cachename))
       assert cachename.exists()
-      logger.info(' - ok')
+      if not quiet:
+        logger.info(' - ok')
 
     return str(cachename)

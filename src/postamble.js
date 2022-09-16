@@ -181,8 +181,19 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
+#if ASYNCIFY == 2
+    // The current spec of JSPI returns a promise only if the function suspends
+    // and a plain value otherwise. This will likely change:
+    // https://github.com/WebAssembly/js-promise-integration/issues/11
+    Promise.resolve(ret).then((result) => {
+      exitJS(result, /* implicit = */ true);
+    }).catch((e) => {
+      handleException(e);
+    });
+#else
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
+#endif // ASYNCIFY == 2
     return ret;
   }
   catch (e) {

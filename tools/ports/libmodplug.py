@@ -5,7 +5,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 TAG = '11022021'
 HASH = 'f770031ad6c2152cbed8c8eab8edf2be1d27f9e74bc255a9930c17019944ee5fdda5308ea992c66a78af9fe1d8dca090f6c956910ce323f8728247c10e44036b'
@@ -25,9 +24,10 @@ def get(ports, settings, shared):
     src_dir = os.path.join(source_path, 'src')
     libmodplug_path = os.path.join(src_dir, 'libmodplug')
 
-    Path(source_path, 'config.h').write_text(config_h)
+    ports.write_file(os.path.join(source_path, 'config.h'), config_h)
 
     flags = [
+      '-Wno-deprecated-register',
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
       '-DHAVE_CONFIG_H',
@@ -78,8 +78,7 @@ def get(ports, settings, shared):
       os.path.join(src_dir, 'sndmix.cpp'),
     ]
 
-    build_dir = ports.clear_project_build('libmodplug')
-    ports.build_port(source_path, final, build_dir, flags=flags, srcs=srcs)
+    ports.build_port(source_path, final, 'libmodplug', flags=flags, srcs=srcs)
 
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
     ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')

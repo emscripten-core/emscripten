@@ -91,19 +91,19 @@ class ProxyingQueue {
   em_proxying_queue* queue = em_proxying_queue_create();
 
   static void runAndFree(void* arg) {
-    auto f = (std::function<void()>*)arg;
+    auto* f = (std::function<void()>*)arg;
     (*f)();
     delete f;
   }
 
   static void run(void* arg) {
-    auto f = *(std::function<void()>*)arg;
-    f();
+    auto* f = (std::function<void()>*)arg;
+    (*f)();
   }
 
   static void runWithCtx(em_proxying_ctx* ctx, void* arg) {
-    auto f = *(std::function<void(ProxyingCtx)>*)arg;
-    f(ProxyingCtx{ctx});
+    auto* f = (std::function<void(ProxyingCtx)>*)arg;
+    (*f)(ProxyingCtx{ctx});
   }
 
 public:

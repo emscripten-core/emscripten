@@ -35,7 +35,7 @@ var WasiLibrary = {
       ABORT = true;
     }
     quit_(code, new ExitStatus(code));
-#endif
+#endif // MINIMAL_RUNTIME
   },
 
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],

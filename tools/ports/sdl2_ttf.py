@@ -22,8 +22,7 @@ def get(ports, settings, shared):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
     flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1']
-    build_dir = ports.clear_project_build('sdl2_ttf')
-    ports.build_port(src_root, final, build_dir, flags=flags, srcs=['SDL_ttf.c'])
+    ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
   return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
 

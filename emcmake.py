@@ -4,6 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import os
 import sys
 from tools import shared
 from tools import config
@@ -30,7 +31,7 @@ variables so that emcc etc. are used. Typical usage:
     return any(substr in s for s in args)
 
   # Append the Emscripten toolchain file if the user didn't specify one.
-  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
+  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE') and 'CMAKE_TOOLCHAIN_FILE' not in os.environ:
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):

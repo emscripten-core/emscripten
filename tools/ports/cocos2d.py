@@ -31,8 +31,7 @@ def get(ports, settings, shared):
     srcs = make_source_list(cocos2d_root, cocos2dx_root)
     includes = make_includes(cocos2d_root)
     flags = [
-      '-Wno-overloaded-virtual',
-      '-Wno-deprecated-declarations',
+      '-w',
       '-D__CC_PLATFORM_FILEUTILS_CPP__',
       '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
       '-DCC_KEYBOARD_SUPPORT',
@@ -45,13 +44,12 @@ def get(ports, settings, shared):
       '-sUSE_ZLIB=1',
       '-sUSE_LIBPNG=1',
     ]
-    build_dir = ports.clear_project_build('cocos2d')
 
     for dirname in includes:
       target = os.path.join('cocos2d', os.path.relpath(dirname, cocos2d_root))
       ports.install_header_dir(dirname, target=target)
 
-    ports.build_port(cocos2d_src, final, build_dir,
+    ports.build_port(cocos2d_src, final, 'cocos2d',
                      flags=flags,
                      includes=includes,
                      srcs=srcs)

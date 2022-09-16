@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.22 (in development)
 -----------------------
+- compiler-rt updated to LLVM 15. (#17802)
+- Using `-Oz` or `-Os` will no longer pass `-fno-inline-functions` to clang and
+  instead rely on clang's normal inline heuristics for these optimization
+  levels.  `-fno-inline-functions` can be passed explicitly if needed.
+- C++17 is now the default version of the C++ standard used by the compiler.
+  This is due to an upstream change in llvm.  Use `-std=c++14` (or technically
+  `-std=gnu++14`) to revert to the previous default.
 
 3.1.21 - 09/09/2022
 -------------------

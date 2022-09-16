@@ -1780,6 +1780,8 @@ int main() {
   @no_wasm2js('eval_ctors not supported yet')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
+    if self.get_setting('MEMORY64') == 1:
+      self.skipTest('https://github.com/WebAssembly/binaryen/issues/5017')
     self.set_setting('EVAL_CTORS')
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
@@ -2101,6 +2103,9 @@ int main() {
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
   def test_emscripten_has_asyncify(self):
+    if self.get_setting('MEMORY64') == 1:
+      # This test passes under MEMORY64=2 but not MEMORY64=1 so we don't use is_wasm64 here.
+      self.skipTest('TODO: asyncify for wasm64')
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -5867,14 +5872,20 @@ main( int argv, char ** argc ) {
   def test_fs_append(self):
     self.do_runf(test_file('fs/test_append.c'), 'success')
 
-  def test_fs_mmap(self):
+  @parameterized({
+    'memfs': ['MEMFS'],
+    'nodefs': ['NODEFS'],
+    'noderaswfs': ['NODERAWFS'],
+  })
+  def test_fs_mmap(self, fs):
     self.uses_es6 = True
-    for fs in ['MEMFS', 'NODEFS', 'NODERAWFS']:
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      if fs == 'NODERAWFS':
-        self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
-      self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
+    if fs == 'NODEFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js']
+    if fs == 'NODERAWFS':
+      self.require_node()
+      self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
+    self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
   @parameterized({
     '': [],
@@ -6095,6 +6106,10 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
+        if config.NODE_JS not in config.JS_ENGINES:
+          # NODEFS requires node
+          continue
+        self.require_node()
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
           # TODO: NODEFS in WasmFS
@@ -6222,6 +6237,7 @@ PORT: 3979
   def test_stdvec(self):
     self.do_core_test('test_stdvec.cpp')
 
+  @requires_node
   def test_random_device(self):
     self.maybe_closure()
     self.do_core_test('test_random_device.cpp')
@@ -6493,7 +6509,11 @@ void* operator new(size_t size) {
     self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
-  def test_cubescript(self):
+  @parameterized({
+      '': (False,),
+      '_asyncify': (True,)
+  })
+  def test_cubescript(self, asyncify):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     self.maybe_closure()
@@ -6502,15 +6522,13 @@ void* operator new(size_t size) {
     if '-fsanitize=address' in self.emcc_args:
       self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
-    def test():
-      src = test_file('third_party/cubescript/command.cpp')
-      self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
+    if asyncify:
+      if self.is_wasm64():
+        self.skipTest('TODO: asyncify for wasm64')
+      self.set_setting('ASYNCIFY')
 
-    test()
-
-    print('asyncify') # extra coverage
-    self.set_setting('ASYNCIFY')
-    test()
+    src = test_file('third_party/cubescript/command.cpp')
+    self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
   @needs_dylink
   def test_relocatable_void_function(self):
@@ -6523,7 +6541,7 @@ void* operator new(size_t size) {
       self.do_runf(test_file('test_wasm_intrinsics_simd.c'), 'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
-    self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
+    self.emcc_args = ['-Wpedantic', '-Werror', '-Wall', '-xc++'] + self.emcc_args
     run()
     self.emcc_args.append('-funsigned-char')
     run()
@@ -6539,6 +6557,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
   def test_sse1(self):
@@ -6554,6 +6573,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @is_slow_test
   def test_sse2(self):
@@ -6566,6 +6586,7 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @wasm_simd
   @requires_native_clang
   def test_sse3(self):
@@ -6578,6 +6599,7 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @wasm_simd
   @requires_native_clang
   def test_ssse3(self):
@@ -6590,6 +6612,7 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @wasm_simd
   @requires_native_clang
   @is_slow_test
@@ -6649,6 +6672,7 @@ void* operator new(size_t size) {
 
   @requires_native_clang
   @wasm_relaxed_simd
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   def test_relaxed_simd_implies_simd128(self):
     src = test_file('sse/test_sse1.cpp')
     self.build(src, emcc_args=['-msse'])
@@ -7662,6 +7686,7 @@ void* operator new(size_t size) {
     '': ([],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
+  @requires_node
   def test_source_map(self, args):
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
@@ -7987,8 +8012,6 @@ void* operator new(size_t size) {
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_hello(self):
-    if self.get_setting('ASYNCIFY') == 2:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/17532')
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
 
@@ -8125,6 +8148,7 @@ Module['onRuntimeInitialized'] = function() {
     self.maybe_closure()
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY')
@@ -8577,6 +8601,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
+  @requires_node
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
@@ -9495,7 +9520,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_main_reads_args(self):
     self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(ldflags=False))
-    self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'])
+    self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
 
 
 # Generate tests for everything

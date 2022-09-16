@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-from pathlib import Path
 
 VERSION = '1.2.12'
 HASH = 'cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14'
@@ -19,13 +18,13 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
-    Path(source_path, 'zconf.h').write_text(zconf_h)
+    ports.write_file(os.path.join(source_path, 'zconf.h'), zconf_h)
     ports.install_headers(source_path)
 
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
-    dest_path = ports.clear_project_build('zlib')
-    ports.build_port(source_path, final, dest_path, srcs=srcs)
+    flags = ['-Wno-deprecated-non-prototype']
+    ports.build_port(source_path, final, 'zlib', srcs=srcs, flags=flags)
 
   return [shared.Cache.get_lib('libz.a', create, what='port')]
 

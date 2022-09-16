@@ -13,11 +13,12 @@
 
 #include "lsan.h"
 
-#include "sanitizer_common/sanitizer_flags.h"
-#include "sanitizer_common/sanitizer_flag_parser.h"
 #include "lsan_allocator.h"
 #include "lsan_common.h"
 #include "lsan_thread.h"
+#include "sanitizer_common/sanitizer_flag_parser.h"
+#include "sanitizer_common/sanitizer_flags.h"
+#include "sanitizer_common/sanitizer_interface_internal.h"
 
 #if SANITIZER_EMSCRIPTEN
 extern "C" void emscripten_builtin_free(void *);
@@ -126,9 +127,7 @@ extern "C" void __lsan_init() {
   InstallDeadlySignalHandlers(LsanOnDeadlySignal);
 #endif
   InitializeMainThread();
-
-  if (common_flags()->detect_leaks && common_flags()->leak_check_at_exit)
-    Atexit(DoLeakCheck);
+  InstallAtExitCheckLeaks();
 
   InitializeCoverage(common_flags()->coverage, common_flags()->coverage_dir);
 

@@ -41,7 +41,7 @@ def get(ports, settings, shared):
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'''.split()
 
-    defs = ['-O2', '-sUSE_SDL=2']
+    defs = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
 
     for fmt in settings.SDL2_IMAGE_FORMATS:
       defs.append('-DLOAD_' + fmt.upper())
@@ -52,8 +52,7 @@ def get(ports, settings, shared):
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-sUSE_LIBJPEG=1']
 
-    build_dir = ports.clear_project_build('sdl2_image')
-    ports.build_port(src_dir, final, build_dir, flags=defs, srcs=srcs)
+    ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
   return [shared.Cache.get_lib(libname, create, what='port')]
 
