@@ -23,9 +23,7 @@ def get(ports, settings, shared):
     logging.info('building port: vorbis')
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
-    dest_path = ports.clear_project_build('vorbis')
-    ports.build_port(os.path.join(source_path, 'lib'), final, dest_path,
-                     includes=[os.path.join(dest_path, 'include')],
+    ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
                      flags=['-sUSE_OGG=1'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 

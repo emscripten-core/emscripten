@@ -117,8 +117,7 @@ def get(ports, settings, shared):
     if settings.USE_PTHREADS:
       flags += ['-pthread']
 
-    build_dir = ports.clear_project_build('regal')
-    ports.build_port(source_path_src, final, build_dir, srcs=srcs_regal, flags=flags)
+    ports.build_port(source_path_src, final, 'regal', srcs=srcs_regal, flags=flags)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

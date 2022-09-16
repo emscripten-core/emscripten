@@ -5,7 +5,6 @@
 
 import logging
 import os
-from pathlib import Path
 
 TAG = '1.75.0'
 HASH = '8c38be1ebef1b8ada358ad6b7c9ec17f5e0a300e8085db3473a13e19712c95eeb3c3defacd3c53482eb96368987c4b022efa8da2aac2431a154e40153d3c3dcd'
@@ -23,17 +22,17 @@ def get(ports, settings, shared):
     logging.info('building port: boost_headers')
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'boost')
+    source_path = os.path.join(ports.get_dir(), 'boost_headers')
+    source_path_include = os.path.join(source_path, 'boost')
     ports.install_header_dir(source_path_include, 'boost')
 
     # write out a dummy cpp file, to create an empty library
     # this is needed as emscripted ports expect this, even if it is not used
-    build_dir = ports.clear_project_build('boost_headers')
-    dummy_file = os.path.join(build_dir, 'dummy.cpp')
+    dummy_file = os.path.join(source_path, 'dummy.cpp')
     shared.safe_ensure_dirs(os.path.dirname(dummy_file))
-    Path(dummy_file).write_text('static void dummy() {}')
+    ports.write_file(dummy_file, 'static void dummy() {}')
 
-    ports.build_port(build_dir, final, build_dir)
+    ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'])
 
   return [shared.Cache.get_lib('libboost_headers.a', create, what='port')]
 

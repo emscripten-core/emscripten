@@ -72,8 +72,7 @@ def get(ports, settings, shared):
     else:
       flags += ['-DSQLITE_THREADSAFE=0']
 
-    dest_path = ports.clear_project_build('sqlite3')
-    ports.build_port(source_path, final, dest_path, flags=flags, exclude_files=['shell.c'])
+    ports.build_port(source_path, final, 'sqlite3', flags=flags, exclude_files=['shell.c'])
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

@@ -5,7 +5,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 VERSION = '9c'
 HASH = 'b2affe9a1688bd49fc033f4682c4a242d4ee612f1affaef532f5adcb4602efc4433c4a52a4b3d69e7440ff1f6413b1b041b419bc90efd6d697999961a9a6afb7'
@@ -24,15 +23,14 @@ def get(ports, settings, shared):
   def create(final):
     logging.info('building port: libjpeg')
     source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
-    dest_path = ports.clear_project_build('libjpeg')
-    Path(source_path, 'jconfig.h').write_text(jconfig_h)
+    ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
     ports.install_headers(source_path)
     excludes = [
       'ansi2knr.c', 'cjpeg.c', 'ckconfig.c', 'djpeg.c', 'example.c',
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
       'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
     ]
-    ports.build_port(source_path, final, dest_path, exclude_files=excludes)
+    ports.build_port(source_path, final, 'libjpeg', exclude_files=excludes)
 
   return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
 

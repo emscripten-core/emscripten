@@ -52,8 +52,7 @@ def get(ports, settings, shared):
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-sUSE_LIBJPEG=1']
 
-    build_dir = ports.clear_project_build('sdl2_image')
-    ports.build_port(src_dir, final, build_dir, flags=defs, srcs=srcs)
+    ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
   return [shared.Cache.get_lib(libname, create, what='port')]
 
