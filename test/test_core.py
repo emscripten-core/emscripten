@@ -6975,6 +6975,7 @@ void* operator new(size_t size) {
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
     create_file('post.js', '''
       out('*');
       var ret;
