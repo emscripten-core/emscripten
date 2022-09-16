@@ -281,13 +281,23 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = wasmFS.getFileTable().locked();
-  auto entry = fileTable.getEntry(fd);
-  if (!entry) {
-    return __WASI_ERRNO_BADF;
+  std::shared_ptr<DataFile> closee;
+  {
+    // Do not hold the file table lock while performing the close.
+    auto fileTable = wasmFS.getFileTable().locked();
+    auto entry = fileTable.getEntry(fd);
+    if (!entry) {
+      return __WASI_ERRNO_BADF;
+    }
+    closee = fileTable.setEntry(fd, nullptr);
   }
-  // Translate to WASI standard of positive return codes.
-  return -fileTable.setEntry(fd, nullptr);
+  if (closee) {
+    // Translate to WASI standard of positive return codes.
+    int ret = -closee->locked().close();
+    assert(ret >= 0);
+    return ret;
+  }
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
@@ -1293,11 +1303,11 @@ int __syscall_pipe(intptr_t fd) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
-  auto fileTable = wasmFS.getFileTable().locked();
-
   std::shared_ptr<OpenFileState> openReader, openWriter;
   (void)OpenFileState::create(reader, O_RDONLY, openReader);
   (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+
+  auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
   fds[1] = fileTable.addEntry(openWriter);
 
