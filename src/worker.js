@@ -284,7 +284,10 @@ self.onmessage = (e) => {
         // Defer executing this queue until the runtime is initialized.
         pendingNotifiedProxyingQueues.push(e.data.queue);
       }
-    } else {
+    } else if (e.data.cmd) {
+      // The received message looks like something that should be handled by this message
+      // handler, (since there is a e.data.cmd field present), but is not one of the
+      // recognized commands:
       err('worker.js received unknown command ' + e.data.cmd);
       err(e.data);
     }
