@@ -109,6 +109,15 @@ def run_ninja(build_dir):
   shared.check_call(cmd, env=clean_env())
 
 
+def ensure_in_file(ninja_file, target):
+  if os.path.isfile(ninja_file):
+    with open(ninja_file, 'r') as f:
+      if target in f.read():
+        return
+  with open(ninja_file, 'a') as f:
+    f.write(target + '\n')
+
+
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
@@ -209,6 +218,8 @@ rule archive
     out += f'build {libname}: archive {objects}\n'
 
   utils.write_file(filename, out)
+  parent_ninja = os.path.join(os.path.dirname(build_dir), 'build.ninja')
+  ensure_in_file(parent_ninja, f'subninja {filename}')
 
 
 def is_case_insensitive(path):
@@ -470,21 +481,18 @@ class Library:
     For example, libc uses this to replace -Oz with -O2 for some subset of files."""
     return cmd
 
-  def ensure_in_file(self, ninja_file, target):
-    if os.path.isfile(ninja_file):
-      with open(ninja_file, 'r') as f:
-        if target in f.read():
-          return
-    with open(ninja_file, 'a') as f:
-      f.write(target + '\n')
-
   def do_build(self, out_filename, generate_only=False):
     """Builds the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
     build_dir = os.path.join(shared.Cache.get_path('build'), self.get_base_name())
     if USE_NINJA:
       self.generate_ninja(build_dir, out_filename)
-      if not generate_only:
+      if generate_only:
+        # TODO: should we only write into the parent ninja if we are doing a deferred build, or everytime we generate any ninja?
+        pass
+        #parent_ninja = os.path.join(shared.Cache.get_path('build'), 'build.ninja')
+        #ensure_in_file(parent_ninja, f'subninja {ninja_file}')
+      else:
         run_ninja(build_dir)
     else:
       # Use a seperate build directory to the ninja flavor so that building without
