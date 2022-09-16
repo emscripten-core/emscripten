@@ -1803,11 +1803,12 @@ def run():
     #   Workaround an issue where passing 'cmd /C start' is not able to detect
     #   when the user closes the page.
     #   serve_forever = True
-    global previous_browser_processes
-    logv(browser_exe)
-    previous_browser_processes = list_processes_by_name(browser_exe)
-    for p in previous_browser_processes:
-      logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
+    if browser_exe:
+      global previous_browser_processes
+      logv(browser_exe)
+      previous_browser_processes = list_processes_by_name(browser_exe)
+      for p in previous_browser_processes:
+        logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
     browser_process = subprocess.Popen(browser, env=subprocess_env())
     logv('Launched browser process with pid=' + str(browser_process.pid))
     if options.kill_exit:
