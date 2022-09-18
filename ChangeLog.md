@@ -27,12 +27,17 @@ See docs/process.md for more on how version tagging works.
 - C++17 is now the default version of the C++ standard used by the compiler.
   This is due to an upstream change in llvm.  Use `-std=c++14` (or technically
   `-std=gnu++14`) to revert to the previous default.
+- Closure warnings are now controlled via the standard `-Wclosure` warning flags
+  rather than via a specific/custom `CLOSURE_WARNINGS` setting.  The old
+  setting continues to work but will issue a deprecation warning.
+  If you link with `-Werror` but you don't want closure warnings to be errors
+  you can add `-Wno-error=closure` or `-Wno-closure`.
 
 3.1.21 - 09/09/2022
 -------------------
 - Update SDL2 port to 2.24.0 (#17748)
 - The `LEGACY_RUNTIME` setting is no longer enabled by default.  If you use any
-  of these legacy runtime functions (except in library code with explict
+  of these legacy runtime functions (except in library code with explicit
   dependencies) then you would need to set `LEGACY_RUNTIME` on the command line
   or add the ones you need to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`:
    - addFunction

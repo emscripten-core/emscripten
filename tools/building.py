@@ -915,17 +915,19 @@ def run_closure_cmd(cmd, filename, env, pretty):
   # temp directory.
   utils.delete_file(outfile + '.map')
 
+  closure_warnings = diagnostics.manager.warnings['closure']
+
   # Print Closure diagnostics result up front.
   if proc.returncode != 0:
     logger.error('Closure compiler run failed:\n')
-  elif len(proc.stderr.strip()) > 0:
-    if settings.CLOSURE_WARNINGS == 'error':
-      logger.error('Closure compiler completed with warnings and -sCLOSURE_WARNINGS=error enabled, aborting!\n')
-    elif settings.CLOSURE_WARNINGS == 'warn':
+  elif len(proc.stderr.strip()) > 0 and closure_warnings['enabled']:
+    if closure_warnings['error']:
+      logger.error('Closure compiler completed with warnings and -Werror=closure enabled, aborting!\n')
+    else:
       logger.warn('Closure compiler completed with warnings:\n')
 
   # Print input file (long wall of text!)
-  if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
+  if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
     input_file = open(filename, 'r').read().splitlines()
     for i in range(len(input_file)):
       sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
@@ -939,9 +941,9 @@ def run_closure_cmd(cmd, filename, env, pretty):
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
 
-  if len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet':
+  if len(proc.stderr.strip()) > 0 and closure_warnings['enabled']:
     # print list of warnings (possibly long wall of text if input was minified)
-    if settings.CLOSURE_WARNINGS == 'error':
+    if closure_warnings['error']:
       logger.error(proc.stderr)
     else:
       logger.warn(proc.stderr)
@@ -952,8 +954,8 @@ def run_closure_cmd(cmd, filename, env, pretty):
     elif DEBUG != 2:
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
-    if settings.CLOSURE_WARNINGS == 'error':
-      exit_with_error('closure compiler produced warnings and -sCLOSURE_WARNINGS=error enabled')
+    if closure_warnings['error']:
+      exit_with_error('closure compiler produced warnings and -W=error=closure enabled')
 
   return outfile
 

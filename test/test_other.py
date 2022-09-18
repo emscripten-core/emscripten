@@ -8232,7 +8232,7 @@ end
     # Test for closure errors and warnings in the entire JS library.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       # Enable as many features as possible in order to maximise
       # tha amount of library code we inculde here.
@@ -8246,7 +8246,7 @@ end
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       '-sUSE_WEBGPU'
     ])
@@ -8318,7 +8318,7 @@ end
       '-sINCLUDE_FULL_LIBRARY',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '--pre-js=pre.js'
     ])
     code = read_file('hello_world.js')
@@ -9450,7 +9450,7 @@ int main () {
 
     for closure in [[], ['--closure=1']]:
       for opt in [['-O2'], ['-O3'], ['-Os']]:
-        test(['-sWASM=0'], closure, opt)
+        test(['-sWASM=0', '-Wno-closure'], closure, opt)
         test(['-sWASM_ASYNC_COMPILATION=0'], closure, opt)
 
   @parameterized({
@@ -10724,13 +10724,22 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet'], stderr=PIPE)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
     self.assertNotContained('WARNING', proc.stderr)
 
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn'], stderr=PIPE)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-error=closure'], stderr=PIPE)
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error'])
+    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
+
+    # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
+
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], stderr=PIPE)
+    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
+
+    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error', '-Wno-deprecated'])
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
@@ -11214,17 +11223,17 @@ exec "$@"
 
   # Make sure that --cpuprofiler compiles with --closure 1
   def test_cpuprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--cpuprofiler'])
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'])
 
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sUSE_PTHREADS', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
 
   @node_pthreads

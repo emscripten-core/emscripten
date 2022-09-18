@@ -265,12 +265,13 @@ var GLOBAL_BASE = 1024;
 // [link]
 var USE_CLOSURE_COMPILER = false;
 
-// Specifies how warnings emitted by Closure are treated. Possible
-// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
-// out to console. If set to 'error', Closure warnings are treated like errors,
-// similar to -Werror compiler flag.
+// Deprecated: Use the standard warnings flags instead. e.g. `-Wclosure`,
+// `-Wno-closure`, `-Werror=closure`.
+// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are
+// printed out to console. If set to 'error', Closure warnings are treated like
+// errors, similar to -Werror compiler flag.
 // [link]
-var CLOSURE_WARNINGS = 'quiet';
+var CLOSURE_WARNINGS = '';
 
 // Ignore closure warnings and errors (like on duplicate definitions)
 // [link]
