@@ -23,6 +23,11 @@ See docs/process.md for more on how version tagging works.
 - The `__EMSCRIPTEN_major__/minor__/tiny__` macros are no longer defined on the
   command line but require `<emscripten.h/>` (or just `<emscripten/version.h>`
   to be included. (#17883)
+- Linking of bitcode files using `emcc -r` + `-flto` is no longer supported.
+  `emcc -r` will now always use lld to link to an object file.  This matches the
+  behavior of upstream llvm where bitcode linking using lld does not exist.
+  The recommend way to combine bitcode input is to use library files (`ar`
+  archives).  See #13492 for more details.
 
 3.1.22 - 09/19/22
 -----------------
