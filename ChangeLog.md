@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.22 (in development)
+3.1.23 (in development)
 -----------------------
+
+3.1.22 - 09/19/22
+-----------------
 - compiler-rt updated to LLVM 15. (#17802)
 - Using `-Oz` or `-Os` will no longer pass `-fno-inline-functions` to clang and
   instead rely on clang's normal inline heuristics for these optimization
