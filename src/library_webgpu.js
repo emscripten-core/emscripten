@@ -2408,9 +2408,6 @@ var LibraryWebGPU = {
     var selectorPtr = {{{ makeGetValue('descriptorFromCanvasHTMLSelector', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}};
     {{{ gpu.makeCheck('selectorPtr') }}}
     var canvas = findCanvasEventTarget(selectorPtr);
-#if ASSERTIONS
-    assert(canvas instanceof HTMLCanvasElement);
-#endif
     var context = canvas.getContext('webgpu');
 #if ASSERTIONS
     assert(context);
