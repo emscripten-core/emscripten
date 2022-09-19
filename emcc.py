@@ -900,12 +900,6 @@ def get_cflags(user_args, is_cxx):
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
     cflags.append('-DEMSCRIPTEN')
-    # The __EMSCRIPTEN_major__/__EMSCRIPTEN_minor__/__EMSCRIPTEN_tiny__ macros
-    # are now defined in emscripten/version.h but in non-strict mode, we continue
-    # to define them here (for now) for backwards compatibility.
-    cflags += ['-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
-               '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
-               '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY)]
 
   # Changes to default clang behavior
 
