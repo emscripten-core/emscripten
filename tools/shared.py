@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import multiprocessing
 import shutil
 import subprocess
 import signal
@@ -159,79 +160,17 @@ def run_multiple_processes(commands,
     of filenames is returned.
   """
 
+  global multiprocessing_pool
+
+  if not multiprocessing_pool:
+    max_workers = cap_max_workers_in_pool(get_num_cores())
+    multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
+
   if env is None:
     env = os.environ.copy()
 
-  # By default, avoid using Python multiprocessing library due to a large amount
-  # of bugs it has on Windows (#8013, #718, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
-  # faster, but may not work on Windows.
-  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
-    import multiprocessing
-    global multiprocessing_pool
-    if not multiprocessing_pool:
-      multiprocessing_pool = multiprocessing.Pool(processes=cap_max_workers_in_pool(get_num_cores()))
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
-
-  std_outs = []
-
-  # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
-  # when multiple child processes have been spawned.
-  # import signal
-  # def signal_handler(sig, frame):
-  #   sys.exit(1)
-  # signal.signal(signal.SIGINT, signal_handler)
-
-  # Map containing all currently running processes.
-  # command index -> proc/Popen object
-  processes = {}
-
-  def get_finished_process():
-    while True:
-      for idx, proc in processes.items():
-        if proc.poll() is not None:
-          return idx
-      # All processes still running; wait a short while for the first
-      # (oldest) process to finish, then look again if any process has completed.
-      idx, proc = next(iter(processes.items()))
-      try:
-        proc.communicate(timeout=0.2)
-        return idx
-      except subprocess.TimeoutExpired:
-        pass
-
-  num_parallel_processes = get_num_cores()
-  temp_files = get_temp_files()
-  i = 0
-  num_completed = 0
-  while num_completed < len(commands):
-    if i < len(commands) and len(processes) < num_parallel_processes:
-      # Not enough parallel processes running, spawn a new one.
-      if route_stdout_to_temp_files_suffix:
-        stdout = temp_files.get(route_stdout_to_temp_files_suffix)
-      else:
-        stdout = None
-      if DEBUG:
-        logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
-      print_compiler_stage(commands[i])
-      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env)
-      processes[i] = proc
-      if route_stdout_to_temp_files_suffix:
-        std_outs.append((i, stdout.name))
-      i += 1
-    else:
-      # Not spawning a new process (Too many commands running in parallel, or
-      # no commands left): find if a process has finished.
-      idx = get_finished_process()
-      finished_process = processes.pop(idx)
-      if finished_process.returncode != 0:
-        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
-      num_completed += 1
-
-  if route_stdout_to_temp_files_suffix:
-    # If processes finished out of order, sort the results to the order of the input.
-    std_outs.sort(key=lambda x: x[0])
-    return [x[1] for x in std_outs]
+  cmd_list = [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands]
+  return multiprocessing_pool.map(mp_run_process, cmd_list, chunksize=1)
 
 
 def check_call(cmd, *args, **kw):

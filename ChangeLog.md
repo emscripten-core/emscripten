@@ -272,6 +272,8 @@ See docs/process.md for more on how version tagging works.
   behavior of upstream llvm where bitcode linking using lld does not exist.
   The recommend way to combine bitcode input is to use library files (`ar`
   archives).  See #13492 for more details.
+- Remove EM_PYTHON_MULTIPROCESSING=1 environment variable which is no longer
+  required. (#17881)
 
 3.1.22 - 09/19/22
 -----------------
