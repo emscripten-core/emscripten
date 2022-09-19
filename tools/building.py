@@ -576,7 +576,7 @@ def parse_llvm_nm_symbols(output):
 
     filename = line[:filename_pos]
     if entry_pos + 13 >= len(line):
-      exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with and old version of llvm.' % line)
+      exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with an old version of llvm (please rebuild it).' % line)
 
     status = line[entry_pos + 11] # Skip address, which is always fixed-length 8 chars.
     symbol = line[entry_pos + 13:]
