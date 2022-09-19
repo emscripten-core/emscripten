@@ -116,15 +116,19 @@ def get_num_cores():
 
 
 def mp_run_process(command_tuple):
-  temp_files = get_temp_files()
   cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
-  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
-  ret = std_out.name if route_stdout_to_temp_files_suffix else None
-  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
-  out, _ = proc.communicate()
-  if pipe_stdout:
-    ret = out.decode('UTF-8')
-  return ret
+  stdout = None
+  stderr = None
+  if route_stdout_to_temp_files_suffix:
+    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
+  elif pipe_stdout:
+    stdout = subprocess.PIPE
+    stderr = subprocess.PIPE
+  proc = subprocess.run(cmd, stdout=stdout, stderr=stderr, env=env, cwd=cwd, check=True)
+  if route_stdout_to_temp_files_suffix:
+    return stdout.name
+  elif pipe_stdout:
+    return proc.stdout.decode('UTF-8')
 
 
 def returncode_to_str(code):
