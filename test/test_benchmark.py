@@ -1039,8 +1039,11 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_part/sqlite')],
-                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
+    self.do_benchmark('sqlite', src, 'TOTAL...',
+                      native_args=['-ldl', '-pthread'],
+                      shared_args=['-I' + test_file('third_party/sqlite')],
+                      # not minimal because of files
+                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
                       force_c=True)
 
   def test_zzz_poppler(self):
