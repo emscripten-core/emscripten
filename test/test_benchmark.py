@@ -215,7 +215,7 @@ class EmscriptenBenchmarker(Benchmarker):
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
-    if '-sFORCE_FILESYSTEM' not in cmd:
+    if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
@@ -1091,8 +1091,10 @@ class benchmark(common.RunnerCore):
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + test_file('poppler/include'), '-I' + test_file('freetype/include')],
-                      emcc_args=['-sFILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
-                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                      shared_args=['-I' + test_file('poppler/include'),
+                                   '-I' + test_file('freetype/include')],
+                      emcc_args=['-sFILESYSTEM', '--pre-js=pre.js', '--embed-file',
+                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
+                                 '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)
