@@ -61,6 +61,15 @@ int main(int argc, char* argv[]) {
 
 #endif // !WASMFS_RESUME
 
+  int newfd1 = dup(fd);
+  assert(newfd1 != -1);
+  int newfd2 = dup(newfd1);
+  assert(newfd2 != -1);
+  err = close(newfd1);
+  assert(err != -1);
+  err = close(newfd2);
+  assert(err != -1);
+
   char buf[100] = {};
   int nread = read(fd, buf, 100);
   assert(nread == strlen(msg));
