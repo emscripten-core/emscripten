@@ -23,47 +23,47 @@ def main():
 
   shared.set_version_globals()
 
-  old_version = [shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR,
-                 shared.EMSCRIPTEN_VERSION_TINY]
-  new_version = list(old_version)
-  new_version[2] += 1
+  release_version = [shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR,
+                     shared.EMSCRIPTEN_VERSION_TINY]
+  new_dev_version = list(release_version)
+  new_dev_version[2] += 1
 
-  old_version = '.'.join(str(v) for v in old_version)
-  new_version = '.'.join(str(v) for v in new_version)
+  release_version = '.'.join(str(v) for v in release_version)
+  new_dev_version = '.'.join(str(v) for v in new_dev_version)
 
-  print('Creating new release: %s' % new_version)
+  print('Creating new release: %s' % release_version)
 
   version_file = os.path.join(root_dir, 'emscripten-version.txt')
   changelog_file = os.path.join(root_dir, 'ChangeLog.md')
 
   old_content = utils.read_file(version_file)
-  utils.write_file(version_file, old_content.replace(old_version, new_version))
+  utils.write_file(version_file, old_content.replace(release_version, new_dev_version))
 
   changelog = utils.read_file(changelog_file)
-  marker = f'{old_version} (in development)'
+  marker = f'{release_version} (in development)'
   pos = changelog.find(marker)
   assert pos != -1
   pos += 2 * len(marker) + 1
 
   # Add new entry
   today = datetime.now().strftime('%m/%d/%y')
-  new_entry = f'{old_version} - {today}'
+  new_entry = f'{release_version} - {today}'
   new_entry = '\n\n' + new_entry + '\n' + ('-' * len(new_entry))
   changelog = changelog[:pos] + new_entry + changelog[pos:]
 
   # Update the "in development" entry
-  changelog = changelog.replace(f'{old_version} (in development)', f'{new_version} (in development)')
+  changelog = changelog.replace(f'{release_version} (in development)', f'{new_dev_version} (in development)')
 
   utils.write_file(changelog_file, changelog)
 
-  branch_name = 'version_' + new_version
+  branch_name = 'version_' + release_version
 
   # Create a new git branch
   subprocess.check_call(['git', 'checkout', '-b', branch_name], cwd=root_dir)
 
   # Create auto-generated changes to the new git branch
   subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
-  subprocess.check_call(['git', 'commit', '-m', new_version], cwd=root_dir)
+  subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
 
   print('New relase created in branch: `%s`' % branch_name)
 
