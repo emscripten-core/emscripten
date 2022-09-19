@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.23 (in development)
 -----------------------
+- The `__EMSCRIPTEN_major__/minor__/tiny__` macros are no longer defined on the
+  command line but require `<emscripten.h/>` (or just `<emscripten/version.h>`
+  to be included. (#17883)
 
 3.1.22 - 09/19/22
 -----------------
