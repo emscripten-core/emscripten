@@ -203,7 +203,7 @@ def run_multiple_processes(commands,
           # All processes still running; wait a short while for the first (oldest) process to finish,
           # then look again if any process has completed.
           try:
-            processes[0][1].communicate(timeout=0.2)
+            processes[0][1].communicate(timeout=0.05)
             return 0
           except subprocess.TimeoutExpired:
             pass
