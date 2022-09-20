@@ -219,7 +219,7 @@ def run_multiple_processes(commands,
           # All processes still running; wait a short while for the first (oldest) process to finish,
           # then look again if any process has completed.
           try:
-            out, err = processes[0][1].communicate(0.2)
+            out, err = processes[0][1].communicate(timeout=0.2)
             return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
           except subprocess.TimeoutExpired:
             pass
