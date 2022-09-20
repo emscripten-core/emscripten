@@ -5450,7 +5450,7 @@ Pass: 0.000012 0.000012''')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       # Sadly --closure=2 is not yet free of closure warnings
       # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
-      self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+      self.ldflags.append('-Wno-error=closure')
     elif self.maybe_closure():
       # closure can generate variables called 'gc', which pick up js shell stuff
       self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
@@ -7639,7 +7639,7 @@ void* operator new(size_t size) {
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
     # TODO(): Remove once we make webidl output closure-warning free.
-    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+    self.ldflags.append('-Wno-error=closure')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString'])
     if self.maybe_closure():
@@ -7905,7 +7905,7 @@ void* operator new(size_t size) {
     create_file('post.js', 'var TheModule = Module();\n')
     if not self.is_wasm():
       # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
-      self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+      self.ldflags.append('-Wno-error=closure')
 
     self.emcc_args += [
       '--pre-js', test_file('core/modularize_closure_pre.js'),

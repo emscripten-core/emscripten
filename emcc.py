@@ -1860,8 +1860,21 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
 
-  if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
-    exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+  if settings.CLOSURE_WARNINGS:
+    if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
+      exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+
+    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instread')
+    closure_warnings = diagnostics.manager.warnings['closure']
+    if settings.CLOSURE_WARNINGS == 'error':
+      closure_warnings['error'] = True
+      closure_warnings['enabled'] = True
+    elif settings.CLOSURE_WARNINGS == 'warn':
+      closure_warnings['error'] = False
+      closure_warnings['enabled'] = True
+    elif settings.CLOSURE_WARNINGS == 'quiet':
+      closure_warnings['error'] = False
+      closure_warnings['enabled'] = False
 
   if not settings.MINIMAL_RUNTIME:
     if not settings.BOOTSTRAPPING_STRUCT_INFO:

@@ -496,10 +496,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
-    # We want to be strict about closure warnings in our test code.
-    # TODO(sbc): Remove this if we make it the default for `-Werror`:
-    # https://github.com/emscripten-core/emscripten/issues/16205):
-    self.ldflags = ['-sCLOSURE_WARNINGS=error']
+    self.ldflags = []
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',

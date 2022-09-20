@@ -1447,7 +1447,9 @@ keydown(100);keyup(100); // trigger the end
     print('    opts')
     self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-sCLOSURE_WARNINGS=quiet'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1',
+                                                             '-sFORCE_FILESYSTEM', '-O2',
+                                                             '--closure=1', '-g1', '-Wno-closure'])
 
     '''# non-lz4 for comparison
     try:
@@ -3474,7 +3476,7 @@ Module["preRun"].push(function () {
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
-    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+    self.ldflags.append('-Wno-error=closure')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
@@ -5032,7 +5034,7 @@ Module["preRun"].push(function () {
 
   def test_no_declare_asm_module_exports_asmjs(self):
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
-    self.ldflags.remove('-sCLOSURE_WARNINGS=error')
+    self.ldflags.append('-Wno-error=closure')
     for minimal_runtime in [[], ['-sMINIMAL_RUNTIME']]:
       self.btest(test_file('declare_asm_module_exports.cpp'), '1', args=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + minimal_runtime)
 
