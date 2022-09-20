@@ -327,16 +327,7 @@ def make_dir_writeable(dirname):
 
 def force_delete_dir(dirname):
   make_dir_writeable(dirname)
-  if WINDOWS:
-    # We have seen issues where windows was unable to cleanup the test directory
-    # See: https://github.com/emscripten-core/emscripten/pull/17512
-    # TODO: Remove this try/catch.
-    try:
-      utils.delete_dir(dirname)
-    except IOError as e:
-      logger.warning(f'failed to remove directory: {dirname} ({e})')
-  else:
-    utils.delete_dir(dirname)
+  utils.delete_dir(dirname)
 
 
 def parameterized(parameters):
