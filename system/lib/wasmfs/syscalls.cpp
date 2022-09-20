@@ -1629,7 +1629,7 @@ int _mmap_js(size_t length,
 
 int _msync_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
-  // TOOD: This is not correct! Mappings should be associated with files, not
+  // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
   if (mapType == MAP_SHARED && (prot & PROT_WRITE)) {
@@ -1645,7 +1645,7 @@ int _msync_js(
 
 int _munmap_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
-  // TOOD: This is not correct! Mappings should be associated with files, not
+  // TODO: This is not correct! Mappings should be associated with files, not
   // fds.
   // TODO: Syncing should probably be handled in __syscall_munmap instead.
   return _msync_js(addr, length, prot, flags, fd, offset);
