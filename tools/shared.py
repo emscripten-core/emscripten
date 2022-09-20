@@ -165,13 +165,19 @@ def run_multiple_processes(commands,
   if env is None:
     env = os.environ.copy()
 
-  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+  # By default, avoid using Python multiprocessing library due to a large amount
+  # of bugs it has on Windows (#8013, #718, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
+  # faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
     import multiprocessing
+    max_workers = get_num_cores()
     global multiprocessing_pool
     if not multiprocessing_pool:
-      multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
+      if WINDOWS:
+        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
+        max_workers = min(max_workers, 61)
+      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
     return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
 
   std_outs = []
