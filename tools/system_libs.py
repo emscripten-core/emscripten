@@ -1350,7 +1350,7 @@ class crtbegin(MuslInternalLibrary):
     return super().can_use() and settings.SHARED_MEMORY
 
 
-class libcxxabi(NoExceptLibrary, MTLibrary):
+class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
