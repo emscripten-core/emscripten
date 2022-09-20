@@ -15,6 +15,10 @@
 
 namespace wasmfs {
 
+#ifdef WASMFS_CASE_INSENSITIVE
+backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
+#endif
+
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
 // compilation error about using a reserved init priority less than 101. This
@@ -67,9 +71,15 @@ WasmFS::~WasmFS() {
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+  
+#ifdef WASMFS_CASE_INSENSITIVE
+  auto rootBackend =
+    createIgnoreCaseBackend([]() { return createMemoryFileBackend(); });
+#else
   auto rootBackend = createMemoryFileBackend();
+#endif
   auto rootDirectory =
-    std::make_shared<MemoryDirectory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
+    rootBackend->createDirectory(S_IRUGO | S_IXUGO | S_IWUGO);
   auto lockedRoot = rootDirectory->locked();
 
   // The root directory is its own parent.
