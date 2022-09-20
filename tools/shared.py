@@ -186,7 +186,7 @@ def run_multiple_processes(commands,
       # (oldest) process to finish, then look again if any process has completed.
       idx, proc = next(iter(processes.items()))
       try:
-        proc.communicate(timeout=0.2)
+        proc.communicate(timeout=0.01)
         return idx
       except subprocess.TimeoutExpired:
         pass
