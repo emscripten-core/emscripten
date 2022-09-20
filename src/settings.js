@@ -271,7 +271,7 @@ var USE_CLOSURE_COMPILER = false;
 // printed out to console. If set to 'error', Closure warnings are treated like
 // errors, similar to -Werror compiler flag.
 // [link]
-var CLOSURE_WARNINGS = '';
+var CLOSURE_WARNINGS = 'quiet';
 
 // Ignore closure warnings and errors (like on duplicate definitions)
 // [link]

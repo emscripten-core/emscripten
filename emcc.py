@@ -1860,7 +1860,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
 
-  if settings.CLOSURE_WARNINGS:
+  if 'CLOSURE_WARNINGS' in user_settings:
     if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 

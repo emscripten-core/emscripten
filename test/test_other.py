@@ -10725,15 +10725,20 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
+    # Default should be no warnings
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
     proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
     self.assertNotContained('WARNING', proc.stderr)
 
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-error=closure'], stderr=PIPE)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wclosure'], stderr=PIPE)
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
     self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
 
     # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-deprecated'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
     proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
     self.assertNotContained('WARNING', proc.stderr)
 
