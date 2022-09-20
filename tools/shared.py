@@ -118,19 +118,13 @@ def get_num_cores():
 
 
 def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
+  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
   stdout = None
-  stderr = None
   if route_stdout_to_temp_files_suffix:
     stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  elif pipe_stdout:
-    stdout = subprocess.PIPE
-    stderr = subprocess.PIPE
-  proc = subprocess.run(cmd, stdout=stdout, stderr=stderr, env=env, cwd=cwd, check=True)
+  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
   if route_stdout_to_temp_files_suffix:
     return stdout.name
-  elif pipe_stdout:
-    return proc.stdout.decode('UTF-8')
 
 
 def returncode_to_str(code):
@@ -144,24 +138,13 @@ def returncode_to_str(code):
 
 def run_multiple_processes(commands,
                            env=None,
-                           route_stdout_to_temp_files_suffix=None,
-                           pipe_stdout=False,
-                           check=True,
-                           cwd=None):
+                           route_stdout_to_temp_files_suffix=None):
   """Runs multiple subprocess commands.
-
-  check : bool
-    If True (default), raises an exception if any of the subprocesses
-    failed with a nonzero exit code.
 
   route_stdout_to_temp_files_suffix : string
     if not None, all stdouts are instead written to files, and an array
     of filenames is returned.
-
-  pipe_stdout : bool
-    If True, an array of stdouts is returned, for each subprocess.
   """
-  assert not (route_stdout_to_temp_files_suffix and pipe_stdout), 'Cannot simultaneously pipe stdout to file and a string! Choose one or the other.'
 
   if env is None:
     env = os.environ.copy()
@@ -179,7 +162,7 @@ def run_multiple_processes(commands,
         # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
         max_workers = min(max_workers, 61)
       multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
 
@@ -199,11 +182,11 @@ def run_multiple_processes(commands,
   while num_completed < len(commands):
     if i < len(commands) and len(processes) < num_parallel_processes:
       # Not enough parallel processes running, spawn a new one.
-      std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+      std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else None
       if DEBUG:
         logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
       print_compiler_stage(commands[i])
-      processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+      processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=None, env=env))]
       if route_stdout_to_temp_files_suffix:
         std_outs += [(i, std_out.name)]
       i += 1
@@ -214,34 +197,28 @@ def run_multiple_processes(commands,
           j = 0
           while j < len(processes):
             if processes[j][1].poll() is not None:
-              out, err = processes[j][1].communicate()
-              return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+              processes[j][1].communicate()
+              return j
             j += 1
           # All processes still running; wait a short while for the first (oldest) process to finish,
           # then look again if any process has completed.
           try:
-            out, err = processes[0][1].communicate(timeout=0.2)
-            return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+            processes[0][1].communicate(timeout=0.2)
+            return 0
           except subprocess.TimeoutExpired:
             pass
 
-      j, out, err = get_finished_process()
+      j = get_finished_process()
       idx, finished_process = processes[j]
       del processes[j]
-      if pipe_stdout:
-        std_outs += [(idx, out)]
-      if check and finished_process.returncode != 0:
-        if out:
-          logger.info(out)
-        if err:
-          logger.error(err)
-
+      if finished_process.returncode != 0:
         raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
       num_completed += 1
 
-  # If processes finished out of order, sort the results to the order of the input.
-  std_outs.sort(key=lambda x: x[0])
-  return [x[1] for x in std_outs]
+  if route_stdout_to_temp_files_suffix:
+    # If processes finished out of order, sort the results to the order of the input.
+    std_outs.sort(key=lambda x: x[0])
+    return [x[1] for x in std_outs]
 
 
 def check_call(cmd, *args, **kw):
