@@ -1638,8 +1638,7 @@ int _msync_js(
     iovec.buf_len = length;
     __wasi_size_t nwritten;
     // Translate from WASI positive error codes to negative error codes.
-    auto ret = -__wasi_fd_pwrite(fd, &iovec, 1, offset, &nwritten);
-    return ret;
+    return -__wasi_fd_pwrite(fd, &iovec, 1, offset, &nwritten);
   }
   return 0;
 }

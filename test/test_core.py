@@ -5887,7 +5887,6 @@ main( int argv, char ** argc ) {
       self.require_node()
       self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
     if fs == 'WASMFS':
-      print("HELLO")
       self.emcc_args += ['-sWASMFS', '-sFORCE_FILESYSTEM']
     self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
