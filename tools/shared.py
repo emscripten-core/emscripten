@@ -141,18 +141,30 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
-# Runs multiple subprocess commands.
-# bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
-# string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
-# bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
 def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None,
                            pipe_stdout=False,
                            check=True,
                            cwd=None):
+  """Runs multiple subprocess commands.
+
+  check : bool
+    If True (default), raises an exception if any of the subprocesses
+    failed with a nonzero exit code.
+
+  route_stdout_to_temp_files_suffix : string
+    if not None, all stdouts are instead written to files, and an array
+    of filenames is returned.
+
+  pipe_stdout : bool
+    If True, an array of stdouts is returned, for each subprocess.
+  """
+  assert not (route_stdout_to_temp_files_suffix and pipe_stdout), 'Cannot simultaneously pipe stdout to file and a string! Choose one or the other.'
+
   if env is None:
     env = os.environ.copy()
+
   # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
   # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
@@ -164,9 +176,6 @@ def run_multiple_processes(commands,
 
   std_outs = []
 
-  if route_stdout_to_temp_files_suffix and pipe_stdout:
-    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
-
   # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
   # when multiple child processes have been spawned.
   # import signal
@@ -174,55 +183,54 @@ def run_multiple_processes(commands,
   #   sys.exit(1)
   # signal.signal(signal.SIGINT, signal_handler)
 
-  with ToolchainProfiler.profile_block('run_multiple_processes'):
-    processes = []
-    num_parallel_processes = get_num_cores()
-    temp_files = get_temp_files()
-    i = 0
-    num_completed = 0
+  processes = []
+  num_parallel_processes = get_num_cores()
+  temp_files = get_temp_files()
+  i = 0
+  num_completed = 0
 
-    while num_completed < len(commands):
-      if i < len(commands) and len(processes) < num_parallel_processes:
-        # Not enough parallel processes running, spawn a new one.
-        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
-        if DEBUG:
-          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
-        print_compiler_stage(commands[i])
-        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
-        if route_stdout_to_temp_files_suffix:
-          std_outs += [(i, std_out.name)]
-        i += 1
-      else:
-        # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
-        def get_finished_process():
-          while True:
-            j = 0
-            while j < len(processes):
-              if processes[j][1].poll() is not None:
-                out, err = processes[j][1].communicate()
-                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
-              j += 1
-            # All processes still running; wait a short while for the first (oldest) process to finish,
-            # then look again if any process has completed.
-            try:
-              out, err = processes[0][1].communicate(0.2)
-              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
-            except subprocess.TimeoutExpired:
-              pass
+  while num_completed < len(commands):
+    if i < len(commands) and len(processes) < num_parallel_processes:
+      # Not enough parallel processes running, spawn a new one.
+      std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+      if DEBUG:
+        logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+      print_compiler_stage(commands[i])
+      processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+      if route_stdout_to_temp_files_suffix:
+        std_outs += [(i, std_out.name)]
+      i += 1
+    else:
+      # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
+      def get_finished_process():
+        while True:
+          j = 0
+          while j < len(processes):
+            if processes[j][1].poll() is not None:
+              out, err = processes[j][1].communicate()
+              return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+            j += 1
+          # All processes still running; wait a short while for the first (oldest) process to finish,
+          # then look again if any process has completed.
+          try:
+            out, err = processes[0][1].communicate(0.2)
+            return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+          except subprocess.TimeoutExpired:
+            pass
 
-        j, out, err = get_finished_process()
-        idx, finished_process = processes[j]
-        del processes[j]
-        if pipe_stdout:
-          std_outs += [(idx, out)]
-        if check and finished_process.returncode != 0:
-          if out:
-            logger.info(out)
-          if err:
-            logger.error(err)
+      j, out, err = get_finished_process()
+      idx, finished_process = processes[j]
+      del processes[j]
+      if pipe_stdout:
+        std_outs += [(idx, out)]
+      if check and finished_process.returncode != 0:
+        if out:
+          logger.info(out)
+        if err:
+          logger.error(err)
 
-          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
-        num_completed += 1
+        raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+      num_completed += 1
 
   # If processes finished out of order, sort the results to the order of the input.
   std_outs.sort(key=lambda x: x[0])
