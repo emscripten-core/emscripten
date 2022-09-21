@@ -771,7 +771,6 @@ function instantiateSync(file, info) {
       // to load ok, but we do actually recompile the binary every time).
       var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
       cachedCodeFile = locateFile(cachedCodeFile);
-      requireNodeFS();
       var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
 #if RUNTIME_LOGGING
