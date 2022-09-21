@@ -781,18 +781,6 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def emsdk_ldflags(user_args):
-  library_paths = [
-     shared.Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = [f'-L{l}' for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  return ldflags
-
-
 def emsdk_cflags(user_args):
   cflags = ['--sysroot=' + shared.Cache.get_sysroot(absolute=True)]
 
@@ -1615,9 +1603,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # Add `#!` line to output JS and make it executable.
     options.executable = True
 
-  ldflags = emsdk_ldflags(newargs)
-  for f in ldflags:
-    add_link_flag(state, sys.maxsize, f)
+  system_libpath = '-L' + str(shared.Cache.get_lib_dir(absolute=True))
+  add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
     default_setting(user_settings, 'ASSERTIONS', 0)
