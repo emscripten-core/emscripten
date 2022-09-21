@@ -390,7 +390,6 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
 def run(filename, passes, extra_info=None):
   just_split = 'receiveJSON' in passes
   just_concat = 'emitJSON' in passes

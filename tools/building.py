@@ -17,6 +17,7 @@ from typing import Set, Dict
 from subprocess import PIPE
 
 from . import cache
+from . import js_optimizer
 from . import diagnostics
 from . import response_file
 from . import shared
@@ -363,8 +364,8 @@ def opt_level_to_str(opt_level, shrink_level=0):
     return f'-O{min(opt_level, 3)}'
 
 
-def js_optimizer(filename, passes):
-  from . import js_optimizer
+@ToolchainProfiler.profile()
+def run_js_optimizer(filename, passes):
   try:
     return js_optimizer.run(filename, passes)
   except subprocess.CalledProcessError as e:
@@ -372,7 +373,7 @@ def js_optimizer(filename, passes):
 
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
-def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+def acorn_optimizer(filename, passes, extra_info=None, return_output=False) -> str:
   optimizer = path_from_root('tools/acorn-optimizer.js')
   original_filename = filename
   if extra_info is not None:
@@ -382,6 +383,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     with open(temp, 'a') as f:
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
+  assert config.NODE_JS
   cmd = config.NODE_JS + [optimizer, filename] + passes
   # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
   # will be carried over to a later Closure run.
@@ -394,11 +396,11 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   if return_output:
     return check_call(cmd, stdout=PIPE).stdout
 
-  acorn_optimizer.counter += 1
+  acorn_optimizer.counter += 1  # type: ignore
   basename = shared.unsuffixed(original_filename)
   if '.jso' in basename:
     basename = shared.unsuffixed(basename)
-  output_file = basename + '.jso%d.js' % acorn_optimizer.counter
+  output_file = basename + '.jso%d.js' % acorn_optimizer.counter  # type: ignore
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
   check_call(cmd)
@@ -1241,6 +1243,7 @@ def check_binaryen(bindir):
 
 def get_binaryen_bin():
   global binaryen_checked
+  assert config.BINARYEN_ROOT
   rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:
     check_binaryen(rtn)
@@ -1311,6 +1314,7 @@ def save_intermediate(src, dst):
   if DEBUG:
     dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
     save_intermediate.counter += 1
+    assert shared.CANONICAL_TEMP_DIR
     dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)

@@ -6,7 +6,7 @@
 import os
 import sys
 import logging
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 from . import utils, diagnostics
 from .utils import path_from_root, exit_with_error, __rootpath__, which
@@ -18,8 +18,8 @@ logger = logging.getLogger('config')
 # is in ALL_UPPER_CASE is condifered a valid config file key.
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
-NODE_JS = None
-BINARYEN_ROOT = None
+NODE_JS: Optional[List[str]] = None
+BINARYEN_ROOT: Optional[str] = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE: Optional[List[str]] = None
 LLVM_ROOT = None
@@ -61,6 +61,7 @@ def normalize_config_settings():
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
+    assert NODE_JS
     JS_ENGINES = [NODE_JS]
 
   # Engine tweaks
@@ -114,7 +115,7 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
-  config = {}
+  config: Dict[str, object] = {}
   config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)

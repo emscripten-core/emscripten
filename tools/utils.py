@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from typing import NoReturn, List
 
 from . import diagnostics
 
@@ -17,7 +18,7 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
 
-def exit_with_error(msg, *args):
+def exit_with_error(msg, *args) -> NoReturn:
   diagnostics.error(msg, *args)
 
 
@@ -110,7 +111,7 @@ def delete_dir(dirname):
   shutil.rmtree(dirname)
 
 
-def delete_contents(dirname, exclude=None):
+def delete_contents(dirname: str, exclude: List[str] = None) -> None:
   """Delete the contents of a directory without removing
   the directory itself."""
   if not os.path.exists(dirname):
