@@ -5876,6 +5876,7 @@ main( int argv, char ** argc ) {
     'memfs': ['MEMFS'],
     'nodefs': ['NODEFS'],
     'noderaswfs': ['NODERAWFS'],
+    'wasmfs': ['WASMFS']
   })
   def test_fs_mmap(self, fs):
     self.uses_es6 = True
@@ -5885,6 +5886,8 @@ main( int argv, char ** argc ) {
     if fs == 'NODERAWFS':
       self.require_node()
       self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
+    if fs == 'WASMFS':
+      self.emcc_args += ['-sWASMFS', '-sFORCE_FILESYSTEM']
     self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
   @parameterized({

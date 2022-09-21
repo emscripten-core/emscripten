@@ -223,7 +223,7 @@ void test_mmap_hint() {
  * operation.
  */
 void test_mmap_overallocate() {
-#if !defined(NODEFS) && !defined(NODERAWFS)
+#if !defined(NODEFS) && !defined(NODERAWFS) && !defined(WASMFS)
   int fd = open("yolo/overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
   assert(fd != -1);
 

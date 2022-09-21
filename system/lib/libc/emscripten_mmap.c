@@ -43,7 +43,8 @@ int _mmap_js(size_t length,
              int* allocated,
              void** addr);
 int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
-int _msync_js(intptr_t addr, size_t length, int flags, int fd);
+int _msync_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
 
 static struct map* find_mapping(intptr_t addr, struct map** prev) {
   struct map* map = mappings;
@@ -112,7 +113,7 @@ int __syscall_msync(intptr_t addr, size_t len, int flags) {
   if (map->flags & MAP_ANONYMOUS) {
     return 0;
   }
-  return _msync_js(addr, len, map->flags, map->fd);
+  return _msync_js(addr, len, map->prot, map->flags, map->fd, map->offset);
 }
 
 intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
