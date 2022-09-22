@@ -1236,7 +1236,8 @@ var EXPORT_ES6 = false;
 
 // Use the ES6 Module relative import feature 'import.meta.url'
 // to auto-detect WASM Module path.
-// It might not be supported on old browsers / toolchains
+// It might not be supported on old browsers / toolchains. This setting
+// may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
 // [link]
 var USE_ES6_IMPORT_META = true;
 

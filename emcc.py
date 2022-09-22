@@ -2338,11 +2338,17 @@ def phase_linker_setup(options, state, newargs):
   if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
     diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
 
-  if settings.EXPORT_ES6 and not settings.MODULARIZE:
-    # EXPORT_ES6 requires output to be a module
-    if 'MODULARIZE' in user_settings:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-    settings.MODULARIZE = 1
+  if settings.EXPORT_ES6:
+    if not settings.MODULARIZE:
+      # EXPORT_ES6 requires output to be a module
+      if 'MODULARIZE' in user_settings:
+        exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+      settings.MODULARIZE = 1
+    if shared.target_environment_may_be('node') and not settings.USE_ES6_IMPORT_META:
+      # EXPORT_ES6 + ENVIRONMENT=*node* requires the use of import.meta.url
+      if 'USE_ES6_IMPORT_META' in user_settings:
+        exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
+      settings.USE_ES6_IMPORT_META = 1
 
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
@@ -3103,13 +3109,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # mode)
     final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
 
-  # Unmangle previously mangled `import.meta` references in both main code and libraries.
+  # Unmangle previously mangled `import.meta` and `await import` references in
+  # both main code and libraries.
   # See also: `preprocess` in parseTools.js.
   if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
     src = read_file(final_js)
     final_js += '.esmeta.js'
-    write_file(final_js, src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
-    save_intermediate('es6-import-meta')
+    write_file(final_js, src
+               .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+               .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+    shared.get_temp_files().note(final_js)
+    save_intermediate('es6-module')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
@@ -3681,10 +3691,32 @@ def phase_binaryen(target, options, wasm_target):
     write_file(final_js, js)
 
 
+def node_es6_imports():
+  if not settings.EXPORT_ES6 or not shared.target_environment_may_be('node'):
+    return ''
+
+  # Multi-environment builds uses `await import` in `shell.js`
+  if shared.target_environment_may_be('web'):
+    return ''
+
+  # Use static import declaration if we only target Node.js
+  return '''
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+'''
+
+
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
   src = read_file(final_js)
+
+  # Multi-environment ES6 builds require an async function
+  async_emit = ''
+  if settings.EXPORT_ES6 and \
+     shared.target_environment_may_be('node') and \
+     shared.target_environment_may_be('web'):
+    async_emit = 'async '
 
   return_value = settings.EXPORT_NAME
   if settings.WASM_ASYNC_COMPILATION:
@@ -3693,7 +3725,7 @@ def modularize():
     return_value = '{}'
 
   src = '''
-function(%(EXPORT_NAME)s) {
+%(maybe_async)sfunction(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
@@ -3701,6 +3733,7 @@ function(%(EXPORT_NAME)s) {
   return %(return_value)s
 }
 ''' % {
+    'maybe_async': async_emit,
     'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
     'return_value': return_value
@@ -3711,24 +3744,25 @@ function(%(EXPORT_NAME)s) {
     # document.currentScript, so a simple export declaration is enough.
     src = 'var %s=%s' % (settings.EXPORT_NAME, src)
   else:
-    script_url_node = ""
+    script_url_node = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
     # In EXPORT_ES6 + USE_PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
     # so doesn't have access to 'document'. In this case use 'import.meta' instead.
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-      script_url = "import.meta.url"
+      script_url = 'import.meta.url'
     else:
       script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
-    src = '''
+    src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptDir = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
 ''' % {
+      'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,

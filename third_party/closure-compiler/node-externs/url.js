@@ -61,3 +61,15 @@ url.format = function(urlObj) {};
  * @nosideeffects
  */
 url.resolve = function(from, to) {};
+
+/**
+ * @param {url.URL|string} url
+ * @return {string}
+ */
+url.fileURLToPath = function(url) {};
+
+/**
+ * @param {string} path
+ * @return {url.URL}
+ */
+url.pathToFileURL = function(path) {};
