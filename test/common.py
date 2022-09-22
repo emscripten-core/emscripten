@@ -972,7 +972,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # get_library() is used to compile libraries, and not link executables,
     # so we don't want to pass linker flags here (emscripten warns if you
     # try to pass linker settings when compiling).
-    emcc_args = self.get_emcc_args(ldflags=False)
+    emcc_args = []
+    if not native:
+      emcc_args = self.get_emcc_args(ldflags=False)
 
     hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
