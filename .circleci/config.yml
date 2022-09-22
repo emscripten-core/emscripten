@@ -100,13 +100,13 @@ commands:
             cat ~/emsdk/.emscripten
       - emsdk-env
       - npm-install
+  build-libs:
+    description: "Build all libraries, and freeze the cache"
+    steps:
       - run:
           name: clear cache
           command: |
             ./emcc --clear-cache
-  build-libs:
-    description: "Build all libraries, and freeze the cache"
-    steps:
       - pip-install
       - run:
           name: embuilder build ALL
@@ -574,7 +574,7 @@ jobs:
       # only limited tests here, it's more efficient to build on demand
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - run-tests:
+      - run-tests-linux:
           # skip other.test_stack_switching_size as we do not currently install
           # d8 on mac
           test_targets: "
@@ -628,4 +628,6 @@ workflows:
           requires:
             - build-linux
       - test-windows
-      - test-mac
+      - test-mac:
+          requires:
+            - build-linux
