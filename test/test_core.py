@@ -1996,7 +1996,6 @@ int main() {
     self.do_core_test('test_stack_void.c')
 
   def test_life(self):
-    self.emcc_args += ['-std=c99']
     self.do_run_in_out_file_test('life.c', args=['2'])
 
   def test_array2(self):

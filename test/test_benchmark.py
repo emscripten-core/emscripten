@@ -857,7 +857,7 @@ class benchmark(common.RunnerCore):
   @non_core
   def test_life(self):
     src = read_file(test_file('life.c'))
-    self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
+    self.do_benchmark('life', src, '''--------------------------------''', force_c=True)
 
   def test_zzz_linpack(self):
     def output_parser(output):
