@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.23 (in development)
+3.1.24 (in development)
 -----------------------
+
+3.1.23 - 09/23/22
+-----------------
 - The `__EMSCRIPTEN_major__/minor__/tiny__` macros are no longer defined on the
   command line but require `<emscripten.h/>` (or just `<emscripten/version.h>`
   to be included. (#17883)
