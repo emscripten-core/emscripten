@@ -870,21 +870,33 @@ class benchmark(common.RunnerCore):
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', test_file('benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['--js-library', test_file('benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_128b(self):
