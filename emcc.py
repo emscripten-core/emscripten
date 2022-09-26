@@ -2587,12 +2587,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
-      if not settings.EXIT_RUNTIME:
-        # FIXME: investigate d8 issues without EXIT_RUNTIME (quit exits too
-        #        early, not leaving async work a chance to run; only
-        #        EXIT_RUNTIME tracks whether such work exists and should stop us
-        #        from exiting).
-        exit_with_error('ASYNCIFY with stack switching requires EXIT_RUNTIME for now')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:

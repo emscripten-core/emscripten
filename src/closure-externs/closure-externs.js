@@ -116,6 +116,39 @@ WebAssembly.Memory.prototype.buffer;
 WebAssembly.Table.prototype.length;
 
 /**
+ * @record
+ */
+function FunctionType() {}
+/**
+ * @type {Array<string>}
+ */
+FunctionType.prototype.parameters;
+/**
+ * @type {Array<string>}
+ */
+FunctionType.prototype.results;
+/**
+ * @record
+ */
+ function FunctionUsage() {}
+ /**
+  * @type {string}
+  */
+FunctionUsage.prototype.promising;
+ /**
+  * @type {string}
+  */
+FunctionUsage.prototype.suspending;
+
+/**
+ * @constructor
+ * @param {!FunctionType} type
+ * @param {!Function} func
+ * @param {FunctionUsage=} usage
+ */
+WebAssembly.Function = function(type, func, usage) {};
+
+/**
  * @suppress {undefinedVars}
  */
 var wakaUnknownAfter;

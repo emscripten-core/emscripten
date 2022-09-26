@@ -265,6 +265,7 @@ def extract_metadata(filename):
   invoke_funcs = []
   global_imports = []
   em_js_funcs = {}
+  em_js_func_types = {}
 
   with webassembly.Module(filename) as module:
     exports = module.get_exports()
@@ -286,7 +287,10 @@ def extract_metadata(filename):
       if i.kind == webassembly.ExternType.FUNC:
         if i.field.startswith('invoke_'):
           invoke_funcs.append(i.field)
-        elif i.field not in em_js_funcs:
+        elif i.field in em_js_funcs:
+          types = module.get_types()
+          em_js_func_types[i.field] = types[i.type]
+        else:
           declares.append(i.field)
 
     export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
@@ -303,6 +307,7 @@ def extract_metadata(filename):
     metadata['asmConsts'] = get_asm_strings(module, export_map)
     metadata['declares'] = declares
     metadata['emJsFuncs'] = em_js_funcs
+    metadata['emJsFuncTypes'] = em_js_func_types
     metadata['exports'] = export_names
     metadata['features'] = features
     metadata['globalImports'] = global_imports
