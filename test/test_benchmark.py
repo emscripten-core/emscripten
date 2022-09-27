@@ -552,7 +552,8 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('memops', src, 'final:')
 
-  def zzztest_files(self):
+  @non_core
+  def test_files(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -593,7 +594,7 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark(src, 'ok')
+    self.do_benchmark('files', src, 'ok', emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0', '-sEXIT_RUNTIME'])
 
   def test_copy(self):
     src = r'''
@@ -783,7 +784,7 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('corrections', src, 'final:')
 
-  def zzz_test_corrections64(self):
+  def test_corrections64(self):
     src = r'''
       #include <stdio.h>
       #include <math.h>
