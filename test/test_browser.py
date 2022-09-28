@@ -4904,7 +4904,7 @@ Module["preRun"].push(function () {
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
   def test_emscripten_thread_sleep(self):
-    self.btest_exit(test_file('pthread/emscripten_thread_sleep.c'), args=['-sUSE_PTHREADS', '-sEXPORTED_RUNTIME_METHODS=[print]'])
+    self.btest_exit(test_file('pthread/emscripten_thread_sleep.c'), args=['-sUSE_PTHREADS'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
