@@ -81,6 +81,7 @@ mid_js = []
 
 pre_c += [r'''
 #include <emscripten.h>
+#include <stddef.h>
 ''']
 
 mid_c += [r'''
