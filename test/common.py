@@ -422,8 +422,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('WASM') != 0
 
   def check_dylink(self):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('MEMORY64 does not yet support dynamic linking')
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():

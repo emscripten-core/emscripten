@@ -2328,8 +2328,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # Any "pointers" passed to JS will now be i64's, in both modes.
   # Also turn off minifying, which clashes with instrumented functions in preamble.js
   if settings.MEMORY64:
-    if settings.RELOCATABLE:
-      exit_with_error('MEMORY64 is not compatible with dynamic linking')
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     if not settings.DISABLE_EXCEPTION_CATCHING:
