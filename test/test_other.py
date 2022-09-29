@@ -2310,8 +2310,7 @@ int f() {
     if common.EMTEST_REBASELINE:
       write_file(expected_file, js)
     else:
-      expected = read_file(expected_file)
-      self.assertIdentical(expected, js)
+      self.assertFileContents(expected_file, js)
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
