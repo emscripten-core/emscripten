@@ -10,13 +10,18 @@
 #include <emscripten.h>
 #include <SDL/SDL.h>
 
-Uint32 SDLCALL report_result(Uint32 interval, void *param) {
+Uint32 start_time;
+
+Uint32 SDLCALL timer_callback(Uint32 interval, void *param) {
   static int reported = 0;
-  if (reported) return 0;
+  assert(!reported);
   reported = 1;
-  SDL_Quit();
   int result = *(int *)param;
-  printf("report_result: %p %d\n", param, result);
+  printf("timer_callback: %p %d\n", param, result);
+  assert(result == 5);
+  Uint32 now = SDL_GetTicks();
+  assert(now >= start_time + 500);
+  SDL_Quit();
   emscripten_force_exit(0);
 }
 
@@ -34,10 +39,10 @@ int main(int argc, char** argv) {
   int badret = 4;
   int goodret = 5;
 
-  SDL_TimerID badtimer = SDL_AddTimer(500, report_result, &badret);
-  SDL_TimerID goodtimer = SDL_AddTimer(1000, report_result, &goodret);
+  start_time = SDL_GetTicks();
+  SDL_TimerID badtimer = SDL_AddTimer(500, timer_callback, &badret);
+  SDL_TimerID goodtimer = SDL_AddTimer(1000, timer_callback, &goodret);
   SDL_RemoveTimer(badtimer);
 
-  emscripten_set_main_loop(nop, 0, 0);
   return 99;
 }
