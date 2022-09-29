@@ -117,21 +117,19 @@ var LibraryDylink = {
 #endif
 
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
+        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
 #if DYLINK_DEBUG
         err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
 #endif
         if (typeof value == 'function') {
-          GOT[symName].value = addFunction(value);
+          GOT[symName].value = {{{ to64('addFunction(value)') }}};
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
-        } else if (typeof value == 'number') {
+        } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
           GOT[symName].value = value;
-        } else if (typeof value == 'bigint') {
-          GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
@@ -171,8 +169,8 @@ var LibraryDylink = {
         // https://github.com/WebAssembly/mutable-global/issues/1
         value = value.value;
       }
-      if (typeof value == 'number') {
-        value += memoryBase;
+      if (typeof value == {{{ POINTER_JS_TYPE }}}) {
+        value += {{{ to64('memoryBase') }}};
       }
       relocated[e] = value;
     }
@@ -204,12 +202,16 @@ var LibraryDylink = {
 #endif
         if (typeof value == 'function') {
           /** @suppress {checkTypes} */
-          GOT[symName].value = addFunction(value, value.sig);
+          GOT[symName].value = {{{ to64('addFunction(value, value.sig)') }}};
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
         } else if (typeof value == 'number') {
+          GOT[symName].value = {{{ to64('value') }}};
+#if MEMORY64
+        } else if (typeof value == 'bigint') {
           GOT[symName].value = value;
+#endif
         } else {
           throw new Error('bad export type for `' + symName + '`: ' + (typeof value));
         }
@@ -256,7 +258,7 @@ var LibraryDylink = {
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
-      ___dl_seterr(cmsg);
+      ___dl_seterr(cmsg, 0);
     });
   },
 
@@ -308,7 +310,7 @@ var LibraryDylink = {
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
     ___heap_base = end;
-    GOT['__heap_base'].value = end;
+    GOT['__heap_base'].value = {{{ to64('end') }}};
     return ret;
   },
 
@@ -594,9 +596,17 @@ var LibraryDylink = {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
-              return memoryBase;
+              return {{{ to64('memoryBase') }}};
             case '__table_base':
+              return {{{ to64('tableBase') }}};
+#if MEMORY64
+#if MEMORY64 == 2
+            case '__memory_base32':
+              return memoryBase;
+#endif
+            case '__table_base32':
               return tableBase;
+#endif
           }
           if (prop in asmLibraryArg) {
             // No stub needed, symbol already exists in symbol table
@@ -643,7 +653,7 @@ var LibraryDylink = {
           // __set_stack_limits until $setDylinkStackLimits.
           if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
 #endif
-          moduleExports['__set_stack_limits'](_emscripten_stack_get_base(), _emscripten_stack_get_end())
+          moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
         }
 #endif
 
@@ -952,7 +962,7 @@ var LibraryDylink = {
   },
 
   _dlopen_js__deps: ['$dlopenInternal'],
-  _dlopen_js__sig: 'iiii',
+  _dlopen_js__sig: 'pp',
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
@@ -974,7 +984,7 @@ var LibraryDylink = {
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
-  _emscripten_dlopen_js__sig: 'viiiii',
+  _emscripten_dlopen_js__sig: 'vppp',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     /** @param {Object=} e */
     function errorCallback(e) {
@@ -999,7 +1009,7 @@ var LibraryDylink = {
 
   // void* dlsym(void* handle, const char* symbol);
   _dlsym_js__deps: ['$dlSetError'],
-  _dlsym_js__sig: 'iii',
+  _dlsym_js__sig: 'ppp',
   _dlsym_js: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html

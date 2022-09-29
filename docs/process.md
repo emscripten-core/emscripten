@@ -85,9 +85,10 @@ How:
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
    the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file
    above.
-1. Update [`emscripten-version.txt`][emscripten_version] and
-   [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
-   upcoming, version. An example of this PR is emscripten-core/emscripten#17439.
+1. Run the `tools/maint/create_release.py` tool in the emscripten repo to update
+   [`emscripten-version.txt`][emscripten_version] and
+   [`ChangeLog.md`][changelog].  An example of such PR is
+   emscripten-core/emscripten#17439.
 
 Major version update (1.X.Y to 1.(X+1).0)
 -----------------------------------------

@@ -281,13 +281,23 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = wasmFS.getFileTable().locked();
-  auto entry = fileTable.getEntry(fd);
-  if (!entry) {
-    return __WASI_ERRNO_BADF;
+  std::shared_ptr<DataFile> closee;
+  {
+    // Do not hold the file table lock while performing the close.
+    auto fileTable = wasmFS.getFileTable().locked();
+    auto entry = fileTable.getEntry(fd);
+    if (!entry) {
+      return __WASI_ERRNO_BADF;
+    }
+    closee = fileTable.setEntry(fd, nullptr);
   }
-  // Translate to WASI standard of positive return codes.
-  return -fileTable.setEntry(fd, nullptr);
+  if (closee) {
+    // Translate to WASI standard of positive return codes.
+    int ret = -closee->locked().close();
+    assert(ret >= 0);
+    return ret;
+  }
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
@@ -1293,11 +1303,11 @@ int __syscall_pipe(intptr_t fd) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
-  auto fileTable = wasmFS.getFileTable().locked();
-
   std::shared_ptr<OpenFileState> openReader, openWriter;
   (void)OpenFileState::create(reader, O_RDONLY, openReader);
   (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+
+  auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
   fds[1] = fileTable.addEntry(openWriter);
 
@@ -1534,6 +1544,23 @@ int _mmap_js(size_t length,
              size_t offset,
              int* allocated,
              void** addr) {
+  // PROT_EXEC is not supported (although we pretend to support the absence of
+  // PROT_READ or PROT_WRITE).
+  if ((prot & PROT_EXEC)) {
+    return -EPERM;
+  }
+
+  // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.
+  int mapType = flags & MAP_TYPE;
+  if (mapType != MAP_PRIVATE && mapType != MAP_SHARED &&
+      mapType != MAP_SHARED_VALIDATE) {
+    return -EINVAL;
+  }
+
+  if (mapType == MAP_SHARED_VALIDATE) {
+    WASMFS_UNREACHABLE("TODO: MAP_SHARED_VALIDATE");
+  }
+
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1554,7 +1581,7 @@ int _mmap_js(size_t length,
     // According to the POSIX spec it is possible to write to a file opened in
     // read-only mode with MAP_PRIVATE flag, as all modifications will be
     // visible only in the memory of the current process.
-    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+    if ((prot & PROT_WRITE) != 0 && mapType != MAP_PRIVATE &&
         (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
       return -EACCES;
     }
@@ -1566,16 +1593,15 @@ int _mmap_js(size_t length,
     return -ENODEV;
   }
 
-  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
-  //       like avoiding an allocation and a copy as we do below (whereas a
-  //       private mmap is always a copy into a new, private region not shared
-  //       with anything else).
-  assert(flags & MAP_PRIVATE);
+  // TODO: On MAP_SHARED, install the mapping on the DataFile object itself so
+  // that reads and writes can be redirected to the mapped region and so that
+  // the mapping can correctly outlive the file being closed. This will require
+  // changes to emscripten_mmap.c as well.
 
   // Align to a wasm page size, as we expect in the future to get wasm
   // primitives to do this work, and those would presumably be aligned to a page
   // size. Aligning now avoids confusion later.
-  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  uint8_t* ptr = (uint8_t*)emscripten_builtin_memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
     return -ENOMEM;
   }
@@ -1583,7 +1609,7 @@ int _mmap_js(size_t length,
   auto nread = file->locked().read(ptr, length, offset);
   if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
-    free(ptr);
+    emscripten_builtin_free(ptr);
     return nread;
   }
 
@@ -1599,6 +1625,30 @@ int _mmap_js(size_t length,
   memset(ptr + nread, 0, length - nread);
 
   return 0;
+}
+
+int _msync_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds. Only need to sync if shared and writes are allowed.
+  int mapType = flags & MAP_TYPE;
+  if (mapType == MAP_SHARED && (prot & PROT_WRITE)) {
+    __wasi_ciovec_t iovec;
+    iovec.buf = (uint8_t*)addr;
+    iovec.buf_len = length;
+    __wasi_size_t nwritten;
+    // Translate from WASI positive error codes to negative error codes.
+    return -__wasi_fd_pwrite(fd, &iovec, 1, offset, &nwritten);
+  }
+  return 0;
+}
+
+int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds.
+  // TODO: Syncing should probably be handled in __syscall_munmap instead.
+  return _msync_js(addr, length, prot, flags, fd, offset);
 }
 
 // Stubs (at least for now)

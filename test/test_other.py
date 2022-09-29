@@ -146,6 +146,10 @@ def requires_pkg_config(func):
   return decorated
 
 
+def llvm_nm(file):
+  return building.llvm_nm_multiple([file])[0]
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -342,7 +346,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.clear()
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
       self.assertIsObjectFile(target)
-      syms = building.llvm_nm(target)
+      syms = llvm_nm(target)
       self.assertIn('main', syms['defs'])
       # we also expect to have the '__original_main' wrapper and __main_void alias.
       # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
@@ -518,7 +522,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('warning: object file output extension (.o) used for non-object output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
-    syms = building.llvm_nm('combined.o')
+    syms = llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
     # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
     self.assertIn(len(syms['defs']), (4, 3))
@@ -541,7 +545,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertIsObjectFile('combined.o')
 
     # Should be two symbols (and in the wasm backend, also __original_main)
-    syms = building.llvm_nm('combined.o')
+    syms = llvm_nm('combined.o')
     self.assertIn('main', syms['defs'])
     # TODO(sbc): Should be 3 once https://reviews.llvm.org/D75277 lands
     self.assertIn(len(syms['defs']), (3, 4))
@@ -2306,8 +2310,7 @@ int f() {
     if common.EMTEST_REBASELINE:
       write_file(expected_file, js)
     else:
-      expected = read_file(expected_file)
-      self.assertIdentical(expected, js)
+      self.assertFileContents(expected_file, js)
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
@@ -4139,17 +4142,14 @@ EM_ASM({ _middle() });
     self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
     self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
 
-  def test_bc_to_bc(self):
-    # emcc should 'process' bitcode to bitcode. build systems can request this if
-    # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
-    # (the user would then need to build bc to js of course, but we need to actually
-    # emit the bc)
+  def test_bitcode_linking(self):
+    # emcc used to be able to link bitcode together, but these days partial linking
+    # always outputs an object file.
     self.run_process([EMCC, '-flto', '-c', test_file('hello_world.c')])
     self.assertExists('hello_world.o')
-    err = self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world.bc'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: bitcode linking with llvm-link is deprecated', err)
-    self.assertExists('hello_world.o')
-    self.assertExists('hello_world.bc')
+    self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world2.o'])
+    building.is_bitcode('hello_world.o')
+    building.is_wasm('hello_world2.o')
 
   @parameterized({
     '': (True, False),
@@ -8232,7 +8232,7 @@ end
     # Test for closure errors and warnings in the entire JS library.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       # Enable as many features as possible in order to maximise
       # tha amount of library code we inculde here.
@@ -8246,7 +8246,7 @@ end
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       '-sUSE_WEBGPU'
     ])
@@ -8318,7 +8318,7 @@ end
       '-sINCLUDE_FULL_LIBRARY',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
-      '-sCLOSURE_WARNINGS=error',
+      '-Werror=closure',
       '--pre-js=pre.js'
     ])
     code = read_file('hello_world.js')
@@ -9450,7 +9450,7 @@ int main () {
 
     for closure in [[], ['--closure=1']]:
       for opt in [['-O2'], ['-O3'], ['-Os']]:
-        test(['-sWASM=0'], closure, opt)
+        test(['-sWASM=0', '-Wno-closure'], closure, opt)
         test(['-sWASM_ASYNC_COMPILATION=0'], closure, opt)
 
   @parameterized({
@@ -10724,13 +10724,27 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet'], stderr=PIPE)
+    # Default should be no warnings
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
     self.assertNotContained('WARNING', proc.stderr)
 
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn'], stderr=PIPE)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wclosure'], stderr=PIPE)
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error'])
+    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
+
+    # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-deprecated'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
+
+    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], stderr=PIPE)
+    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
+
+    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error', '-Wno-deprecated'])
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
@@ -11214,17 +11228,17 @@ exec "$@"
 
   # Make sure that --cpuprofiler compiles with --closure 1
   def test_cpuprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--cpuprofiler'])
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'])
 
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
-    # TODO: Enable '-sCLOSURE_WARNINGS=error' in the following, but that has currently regressed.
+    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sUSE_PTHREADS', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
 
   @node_pthreads
@@ -12478,3 +12492,8 @@ Module['postRun'] = function() {{
     with shared.Cache.lock('testing'):
       err = self.expect_fail([EMBUILDER, 'build', 'libc', '--force'], expect_traceback=True)
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
+
+  @also_with_wasmfs
+  def test_fs_icase(self):
+    # c++20 for ends_with().
+    self.do_other_test('test_fs_icase.cpp', emcc_args=['-sCASE_INSENSITIVE_FS=1', '-std=c++20'])

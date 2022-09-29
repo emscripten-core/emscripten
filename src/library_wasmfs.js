@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
         var buffer = allocateUTF8OnStack(path);
-        return __wasmfs_mkdir(buffer, mode);
+        return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
       });
     },
     // TODO: mkdirTree

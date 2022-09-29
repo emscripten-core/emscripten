@@ -327,16 +327,7 @@ def make_dir_writeable(dirname):
 
 def force_delete_dir(dirname):
   make_dir_writeable(dirname)
-  if WINDOWS:
-    # We have seen issues where windows was unable to cleanup the test directory
-    # See: https://github.com/emscripten-core/emscripten/pull/17512
-    # TODO: Remove this try/catch.
-    try:
-      utils.delete_dir(dirname)
-    except IOError as e:
-      logger.warning(f'failed to remove directory: {dirname} ({e})')
-  else:
-    utils.delete_dir(dirname)
+  utils.delete_dir(dirname)
 
 
 def parameterized(parameters):
@@ -431,8 +422,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('WASM') != 0
 
   def check_dylink(self):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('MEMORY64 does not yet support dynamic linking')
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
@@ -496,10 +485,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
-    # We want to be strict about closure warnings in our test code.
-    # TODO(sbc): Remove this if we make it the default for `-Werror`:
-    # https://github.com/emscripten-core/emscripten/issues/16205):
-    self.ldflags = ['-sCLOSURE_WARNINGS=error']
+    self.ldflags = []
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
@@ -984,7 +970,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # get_library() is used to compile libraries, and not link executables,
     # so we don't want to pass linker flags here (emscripten warns if you
     # try to pass linker settings when compiling).
-    emcc_args = self.get_emcc_args(ldflags=False)
+    emcc_args = []
+    if not native:
+      emcc_args = self.get_emcc_args(ldflags=False)
 
     hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra

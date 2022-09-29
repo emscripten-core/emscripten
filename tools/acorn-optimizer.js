@@ -1799,11 +1799,11 @@ function reattachComments(ast, comments) {
 
 let suffix = '';
 
-const argv = process['argv'].slice(2);
+const argv = process.argv.slice(2);
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
 let closureFriendly = argv.indexOf('--closureFriendly');
-if (closureFriendly > -1) {
+if (closureFriendly != -1) {
   argv.splice(closureFriendly, 1);
   closureFriendly = true;
 } else {
@@ -1811,11 +1811,18 @@ if (closureFriendly > -1) {
 }
 
 let exportES6 = argv.indexOf('--exportES6');
-if (exportES6 > -1) {
+if (exportES6 != -1) {
   argv.splice(exportES6, 1);
   exportES6 = true;
 } else {
   exportES6 = false;
+}
+
+let outfile;
+const outfileIndex = argv.indexOf('-o');
+if (outfileIndex != -1) {
+  outfile = argv[outfileIndex + 1];
+  argv.splice(outfileIndex, 2);
 }
 
 const infile = argv[0];
@@ -1899,8 +1906,13 @@ if (!noPrint) {
     keep_quoted_props: true, // for closure
     comments: true, // for closure as well
   });
-  print(output);
+
+  let fd = process.stdout.fd;
+  if (outfile) {
+    fd = fs.openSync(outfile, 'w');
+  }
+  fs.writeSync(fd, output + '\n');
   if (suffix) {
-    print(suffix);
+    fs.writeSync(fd, suffix + '\n');
   }
 }

@@ -148,7 +148,7 @@ var SyscallsLibrary = {
     '$FS',
 #endif
   ],
-  _munmap_js__sig: 'vppiiip',
+  _munmap_js__sig: 'ippiiip',
   _munmap_js: function(addr, len, prot, flags, fd, offset) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -156,6 +156,7 @@ var SyscallsLibrary = {
       SYSCALLS.doMsync(addr, stream, len, flags, offset);
     }
     FS.munmap(stream);
+    // implicitly return 0
 #endif
   },
 
@@ -585,8 +586,8 @@ var SyscallsLibrary = {
 
     return total;
   },
-  _msync_js__sig: 'ippii',
-  _msync_js: function(addr, len, flags, fd) {
+  _msync_js__sig: 'ippiiip',
+  _msync_js: function(addr, len, prot, flags, fd, offset) {
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
     return 0;
   },

@@ -781,18 +781,6 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def emsdk_ldflags(user_args):
-  library_paths = [
-     shared.Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = [f'-L{l}' for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  return ldflags
-
-
 def emsdk_cflags(user_args):
   cflags = ['--sysroot=' + shared.Cache.get_sysroot(absolute=True)]
 
@@ -900,12 +888,6 @@ def get_cflags(user_args, is_cxx):
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
     cflags.append('-DEMSCRIPTEN')
-    # The __EMSCRIPTEN_major__/__EMSCRIPTEN_minor__/__EMSCRIPTEN_tiny__ macros
-    # are now defined in emscripten/version.h but in non-strict mode, we continue
-    # to define them here (for now) for backwards compatibility.
-    cflags += ['-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
-               '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
-               '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY)]
 
   # Changes to default clang behavior
 
@@ -1621,9 +1603,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # Add `#!` line to output JS and make it executable.
     options.executable = True
 
-  ldflags = emsdk_ldflags(newargs)
-  for f in ldflags:
-    add_link_flag(state, sys.maxsize, f)
+  system_libpath = '-L' + str(shared.Cache.get_lib_dir(absolute=True))
+  add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
     default_setting(user_settings, 'ASSERTIONS', 0)
@@ -1866,8 +1847,21 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
 
-  if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
-    exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+  if 'CLOSURE_WARNINGS' in user_settings:
+    if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
+      exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+
+    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instread')
+    closure_warnings = diagnostics.manager.warnings['closure']
+    if settings.CLOSURE_WARNINGS == 'error':
+      closure_warnings['error'] = True
+      closure_warnings['enabled'] = True
+    elif settings.CLOSURE_WARNINGS == 'warn':
+      closure_warnings['error'] = False
+      closure_warnings['enabled'] = True
+    elif settings.CLOSURE_WARNINGS == 'quiet':
+      closure_warnings['error'] = False
+      closure_warnings['enabled'] = False
 
   if not settings.MINIMAL_RUNTIME:
     if not settings.BOOTSTRAPPING_STRUCT_INFO:
@@ -2334,8 +2328,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # Any "pointers" passed to JS will now be i64's, in both modes.
   # Also turn off minifying, which clashes with instrumented functions in preamble.js
   if settings.MEMORY64:
-    if settings.RELOCATABLE:
-      exit_with_error('MEMORY64 is not compatible with dynamic linking')
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     if not settings.DISABLE_EXCEPTION_CATCHING:
@@ -3007,13 +2999,13 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
     worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
-    with open(worker_output, 'w') as f:
-      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'wasm_worker.js'), expand_macros=True))
+    contents = shared.read_and_preprocess(shared.path_from_root('src/wasm_worker.js'), expand_macros=True)
+    write_file(worker_output, contents)
 
     # Minify the wasm_worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      open(worker_output, 'w').write(minified_worker)
+      write_file(worker_output, minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []

@@ -194,7 +194,9 @@ class EmscriptenBenchmarker(Benchmarker):
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
       env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
-      emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
+      # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
+      # a parameter and changes will be visible to the caller.
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     utils.delete_file(final)
@@ -215,7 +217,7 @@ class EmscriptenBenchmarker(Benchmarker):
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
-    if '-sFORCE_FILESYSTEM' not in cmd:
+    if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
@@ -855,7 +857,7 @@ class benchmark(common.RunnerCore):
   @non_core
   def test_life(self):
     src = read_file(test_file('life.c'))
-    self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
+    self.do_benchmark('life', src, '''--------------------------------''', force_c=True)
 
   def test_zzz_linpack(self):
     def output_parser(output):
@@ -868,21 +870,33 @@ class benchmark(common.RunnerCore):
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', test_file('benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['--js-library', test_file('benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_128b(self):
@@ -1039,8 +1053,11 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_part/sqlite')],
-                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
+    self.do_benchmark('sqlite', src, 'TOTAL...',
+                      native_args=['-ldl', '-pthread'],
+                      shared_args=['-I' + test_file('third_party/sqlite')],
+                      # not minimal because of files
+                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1088,8 +1105,10 @@ class benchmark(common.RunnerCore):
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + test_file('poppler/include'), '-I' + test_file('freetype/include')],
-                      emcc_args=['-sFILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
-                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                      shared_args=['-I' + test_file('poppler/include'),
+                                   '-I' + test_file('freetype/include')],
+                      emcc_args=['-sFILESYSTEM', '--pre-js=pre.js', '--embed-file',
+                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
+                                 '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)

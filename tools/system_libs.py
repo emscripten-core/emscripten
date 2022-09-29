@@ -1260,8 +1260,7 @@ class libwasm_workers(MTLibrary):
   name = 'libwasm_workers'
 
   def get_cflags(self):
-    cflags = ['-pthread',
-              '-D_DEBUG' if self.debug else '-Oz']
+    cflags = get_base_cflags() + ['-pthread', '-D_DEBUG' if self.debug else '-Oz']
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
@@ -1717,10 +1716,35 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   includes = ['system/lib/wasmfs', 'system/lib/pthread']
 
+  def __init__(self, **kwargs):
+    self.ignore_case = kwargs.pop('ignore_case')
+    super().__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.ignore_case:
+      cflags += ['-DWASMFS_CASE_INSENSITIVE']
+    return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.ignore_case:
+      name += '-icase'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['ignore_case']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(ignore_case=settings.CASE_INSENSITIVE_FS, **kwargs)
+
   def get_files(self):
     backends = files_in_path(
         path='system/lib/wasmfs/backends',
         filenames=['fetch_backend.cpp',
+                   'ignore_case_backend.cpp',
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
