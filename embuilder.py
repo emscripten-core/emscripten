@@ -35,6 +35,7 @@ MINIMAL_TASKS = [
     'libc_optz-debug',
     'libc++abi',
     'libc++abi-except',
+    'libc++abi-debug-except',
     'libc++abi-noexcept',
     'libc++',
     'libc++-except',
