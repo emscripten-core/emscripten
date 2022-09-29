@@ -1900,19 +1900,24 @@ if (!noPrint) {
     reattachComments(terserAst, sourceComments);
   }
 
-  const output = terserAst.print_to_string({
+  let output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
     comments: true, // for closure as well
   });
 
-  let fd = process.stdout.fd;
-  if (outfile) {
-    fd = fs.openSync(outfile, 'w');
-  }
-  fs.writeSync(fd, output + '\n');
+  output += '\n';
   if (suffix) {
-    fs.writeSync(fd, suffix + '\n');
+    output += suffix + '\n';
+  }
+
+  if (outfile) {
+    fs.writeFileSync(outfile, output);
+  } else {
+    // Simply using `fs.writeFileSync` on `process.stdout` has issues with
+    // large amount of data. It can cause:
+    //   Error: EAGAIN: resource temporarily unavailable, write
+    process.stdout.write(output);
   }
 }
