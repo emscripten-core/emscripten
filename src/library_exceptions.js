@@ -431,7 +431,7 @@ var LibraryExceptions = {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   // In release builds, this function is not needed and the native
   // _Unwind_RaiseException in libunwind is used instead.
-  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag'],
+  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag', '$getExceptionMessage'],
   __throw_exception_with_stack_trace: function(ex) {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
     // The generated stack trace will be in the form of:
@@ -446,6 +446,7 @@ var LibraryExceptions = {
     var arr = e.stack.split('\n');
     arr.splice(1,1);
     e.stack = arr.join('\n');
+    e.message = getExceptionMessage(e);
     throw e;
   },
 #endif
