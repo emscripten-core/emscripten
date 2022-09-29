@@ -501,6 +501,7 @@ def replace_or_append_suffix(filename, new_suffix):
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
 # temp directory (TEMP_DIR/emscripten_temp).
+@memoize
 def get_emscripten_temp_dir():
   """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global EMSCRIPTEN_TEMP_DIR
@@ -555,6 +556,7 @@ def setup_temp_dirs():
       atexit.register(lock.release)
 
 
+@memoize
 def get_temp_files():
   if DEBUG_SAVE:
     # In debug mode store all temp files in the emscripten-specific temp dir
