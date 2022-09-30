@@ -54,9 +54,6 @@ em_task_queue* em_task_queue_create(pthread_t thread);
 
 void em_task_queue_destroy(em_task_queue* queue);
 
-// Not thread safe. Returns 1 on success and 0 on failure.
-int em_task_queue_grow(em_task_queue* queue);
-
 // Execute tasks until an empty queue is observed.
 void em_task_queue_execute(em_task_queue* queue);
 
@@ -71,18 +68,7 @@ static inline int em_task_queue_is_full(em_task_queue* queue) {
 }
 
 // Not thread safe. Returns 1 on success and 0 on failure.
-static inline int em_task_queue_enqueue(em_task_queue* queue, task t) {
-  if (em_task_queue_is_full(queue) && !em_task_queue_grow(queue)) {
-    return 0;
-  }
-  queue->tasks[queue->tail] = t;
-  queue->tail = (queue->tail + 1) % queue->capacity;
-  return 1;
-}
+int em_task_queue_enqueue(em_task_queue* queue, task t);
 
 // Not thread safe. Assumes the queue is not empty.
-static inline task em_task_queue_dequeue(em_task_queue* queue) {
-  task t = queue->tasks[queue->head];
-  queue->head = (queue->head + 1) % queue->capacity;
-  return t;
-}
+task em_task_queue_dequeue(em_task_queue* queue);

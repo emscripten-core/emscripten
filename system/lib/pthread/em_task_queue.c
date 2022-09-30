@@ -40,7 +40,8 @@ void em_task_queue_destroy(em_task_queue* queue) {
   free(queue);
 }
 
-int em_task_queue_grow(em_task_queue* queue) {
+// Not thread safe. Returns 1 on success and 0 on failure.
+static int em_task_queue_grow(em_task_queue* queue) {
   // Allocate a larger task queue.
   int new_capacity = queue->capacity * 2;
   task* new_tasks = malloc(sizeof(task) * new_capacity);
@@ -85,4 +86,19 @@ void em_task_queue_execute(em_task_queue* queue) {
   }
   pthread_mutex_unlock(&queue->mutex);
   queue->processing = 0;
+}
+
+int em_task_queue_enqueue(em_task_queue* queue, task t) {
+  if (em_task_queue_is_full(queue) && !em_task_queue_grow(queue)) {
+    return 0;
+  }
+  queue->tasks[queue->tail] = t;
+  queue->tail = (queue->tail + 1) % queue->capacity;
+  return 1;
+}
+
+task em_task_queue_dequeue(em_task_queue* queue) {
+  task t = queue->tasks[queue->head];
+  queue->head = (queue->head + 1) % queue->capacity;
+  return t;
 }
