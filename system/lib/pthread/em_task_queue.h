@@ -5,7 +5,11 @@
  * found in the LICENSE file.
  */
 
+#pragma once
+
 #include <pthread.h>
+
+#include "proxying_notification_state.h"
 
 // A task is an arbitrary function combined with some arbitrary state.
 typedef struct task {
