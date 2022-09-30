@@ -789,7 +789,7 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      new Uint8Array(data.object.contents), true, true,
+      FS.readFile(_file), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vi', 'onload') }}}(file);
