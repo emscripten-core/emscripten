@@ -311,9 +311,10 @@ function addMissingLibraryStubs() {
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
 
-  const legacyRuntimeElements = new Map();
-  legacyRuntimeElements.set('print', 'out');
-  legacyRuntimeElements.set('printErr', 'err');
+  const legacyRuntimeElements = new Map([
+    ['print', 'out'],
+    ['printErr', 'err'],
+  ]);
 
   // optionally export something.
   // in ASSERTIONS mode we show a useful error if it is used without
