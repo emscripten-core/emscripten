@@ -977,6 +977,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'library_pthread.c',
+          'em_task_queue.c',
           'proxying.c',
           'pthread_create.c',
           'pthread_kill.c',
