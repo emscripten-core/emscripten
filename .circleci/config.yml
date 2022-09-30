@@ -406,9 +406,11 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
+          frozen_cache: false
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
           test_targets: "
+            lto2.test_dylink_syslibs_all
             core3
             core2g.test_externref
             corez.test_dylink_iostream
