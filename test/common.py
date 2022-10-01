@@ -484,7 +484,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
+    self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
