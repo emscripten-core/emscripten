@@ -131,18 +131,22 @@ mergeInto(LibraryManager.library, {
               dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
 #endif
 #if ASYNCIFY == 1
+              err('arg count' + arguments.length);
+              err('arg0: ' + arguments[0]);
+              err('arg0: ' + typeof(arguments[0]));
+              err(original);
               Asyncify.exportCallStack.push(x);
               try {
 #endif
+                err("DOING");
                 return original.apply(null, arguments);
+                err("DONE");
 #if ASYNCIFY == 1
               } finally {
                 if (!ABORT) {
-                  var y = Asyncify.exportCallStack.pop();
+                  var y = Asyncify.exportCallStack.pop()[0];
                   assert(y === x);
-#if ASYNCIFY_DEBUG >= 2
                   dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
-#endif
                   Asyncify.maybeStopUnwind();
                 }
               }
@@ -183,6 +187,7 @@ mergeInto(LibraryManager.library, {
     exportCallStack: [],
     callStackNameToId: {},
     callStackIdToName: {},
+    callStackIdToArgs: {},
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
@@ -248,12 +253,12 @@ mergeInto(LibraryManager.library, {
     },
 
     setDataHeader: function(ptr, stack, stackSize) {
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', '*') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', '*') }}};
     },
 
     setDataRewindFunc: function(ptr) {
-      var bottomOfCallStack = Asyncify.exportCallStack[0];
+      var bottomOfCallStack = Asyncify.exportCallStack[0][0];
 #if ASYNCIFY_DEBUG >= 2
       dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
@@ -268,6 +273,9 @@ mergeInto(LibraryManager.library, {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
+      err("getDataRewindFunc ptr: " + ptr);
+      err("getDataRewindFunc id: " + id);
+      err("getDataRewindFunc name: " + name);
 #if RELOCATABLE
       // Exported functions in side modules are not listed in `Module["asm"]`,
       // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
@@ -280,9 +288,7 @@ mergeInto(LibraryManager.library, {
 
     doRewind: function(ptr) {
       var start = Asyncify.getDataRewindFunc(ptr);
-#if ASYNCIFY_DEBUG
       dbg('ASYNCIFY: start:', start);
-#endif
       // Once we have rewound and the stack we no longer need to artificially
       // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
@@ -330,13 +336,19 @@ mergeInto(LibraryManager.library, {
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
+          runAndAbortIfError(() => {
+            err("calling _asyncify_start_rewind: " + Asyncify.currData);
+            _asyncify_start_rewind(Asyncify.currData)
+            err("done calling _asyncify_start_rewind: " + Asyncify.currData);
+          });
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
           try {
+            err("calling Asyncify.doRewind: " + Asyncify.currData);
             asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+            err("done calling Asyncify.doRewind: " + Asyncify.currData);
           } catch (err) {
             asyncWasmReturnValue = err;
             isError = true;
@@ -398,6 +410,9 @@ mergeInto(LibraryManager.library, {
       } else {
         abort(`invalid state: ${Asyncify.state}`);
       }
+      err("Asyncify.handleSleepReturnValue:");
+      err(Asyncify.handleSleepReturnValue);
+      err(typeof(Asyncify.handleSleepReturnValue));
       return Asyncify.handleSleepReturnValue;
     },
 
@@ -479,7 +494,7 @@ mergeInto(LibraryManager.library, {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
         {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
@@ -573,9 +588,9 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
 #endif
         Asyncify.currData = null;
-        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
+        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
 
-        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
         {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
@@ -611,7 +626,7 @@ mergeInto(LibraryManager.library, {
       _asyncify_start_unwind(asyncifyData);
 
       var stackTop = stackSave();
-      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
+      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
 
       Fibers.nextFiber = newFiber;
     } else {

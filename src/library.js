@@ -3168,7 +3168,10 @@ mergeInto(LibraryManager.library, {
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
+    err("dynCallLegacy: " + sig);
+    err(typeof args[0]);
 #if ASSERTIONS
+    assert(!sig.includes('p'), 'signature should have been normalized: ' + sig);
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
@@ -3199,6 +3202,9 @@ mergeInto(LibraryManager.library, {
 #endif
     var f = Module['dynCall_' + sig];
 #endif
+    err('ptr: ' + ptr);
+    err('argcount: ' + args.length);
+    err(f);
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
@@ -3214,6 +3220,7 @@ mergeInto(LibraryManager.library, {
 #endif
     var argCache = [];
     return function() {
+      //err('calling getDynCaller: ' + sig);
       argCache.length = 0;
       Object.assign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
@@ -3222,6 +3229,16 @@ mergeInto(LibraryManager.library, {
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: (sig, ptr, args) => {
+    err("dynCall: " + sig);
+    // With MEMORY64 we have an additional step to convert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    for (var i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
+    }
+    sig = sig.replace(/p/g, 'j');
+#endif
+>>>>>>> 17683f85e5 ([Wasm64] Enable asyncify)
 #if DYNCALLS
     return dynCallLegacy(sig, ptr, args);
 #else
@@ -3235,14 +3252,6 @@ mergeInto(LibraryManager.library, {
 #endif
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
-#endif
-#if MEMORY64
-    // With MEMORY64 we have an additional step to convert `p` arguments to
-    // bigint. This is the runtime equivalent of the wrappers we create for wasm
-    // exports in `emscripten.py:create_wasm64_wrappers`.
-    for (var i = 1; i < sig.length; ++i) {
-      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
-    }
 #endif
     var rtn = getWasmTableEntry(ptr).apply(null, args);
 #if MEMORY64

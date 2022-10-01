@@ -1000,6 +1000,8 @@ var LibraryEmbind = {
 
     function makeDynCaller() {
 #if DYNCALLS
+      //err('DYNCALLS embind__requireFunction ' + signature);
+      //console.trace()
       return getDynCaller(signature, rawFunction);
 #else
 #if !WASM_BIGINT
@@ -1008,6 +1010,7 @@ var LibraryEmbind = {
       }
 #elif MEMORY64
       if (signature.includes('p')) {
+        //err('embind__requireFunction ' + signature);
         return getDynCaller(signature, rawFunction);
       }
 #endif

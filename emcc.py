@@ -638,8 +638,6 @@ def get_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  if settings.MEMORY64 == 2:
-    passes += ['--memory64-lowering']
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
@@ -708,6 +706,8 @@ def get_binaryen_passes():
     if settings.SPLIT_MODULE:
       passes += ['--pass-arg=jspi-split-module']
 
+  if settings.MEMORY64 == 2:
+    passes += ['--memory64-lowering']
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -2590,6 +2590,9 @@ def phase_linker_setup(options, state, newargs):
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
+
+  if settings.MEMORY64 and settings.DISABLE_EXCEPTION_CATCHING:
+    exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0

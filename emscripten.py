@@ -881,6 +881,8 @@ def create_pointer_conversion_wrappers(metadata):
     '__errno_location': 'p',
     'emscripten_builtin_memalign': 'ppp',
     'emscripten_builtin_free': 'vp',
+    'asyncify_start_unwind': 'vp',
+    'asyncify_start_rewind': 'vp',
     'main': '__PP',
     '__main_argc_argv': '__PP',
     'emscripten_stack_set_limits': '_pp',
