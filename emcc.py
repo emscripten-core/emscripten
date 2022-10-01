@@ -1483,9 +1483,6 @@ def phase_setup(options, state, newargs, user_settings):
 
   if settings.MEMORY64:
     diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
-    default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
-    if settings.SUPPORT_LONGJMP and settings.SUPPORT_LONGJMP != 'wasm':
-      exit_with_error('MEMORY64 is not compatible with (non-wasm) SUPPORT_LONGJMP')
 
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
