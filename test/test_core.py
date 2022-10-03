@@ -9497,9 +9497,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_em_async_js(self):
     self.uses_es6 = True
-    self.set_setting('ASYNCIFY')
+    if not self.get_setting('ASYNCIFY'):
+      self.set_setting('ASYNCIFY')
     self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')

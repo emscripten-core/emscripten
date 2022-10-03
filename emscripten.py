@@ -575,6 +575,22 @@ def create_asm_consts(metadata):
   return asm_consts
 
 
+def type_to_sig(type):
+  # These should match the conversion in $sigToWasmTypes.
+  return {
+    webassembly.Type.I32: 'i',
+    webassembly.Type.I64: 'j',
+    webassembly.Type.F32: 'f',
+    webassembly.Type.F64: 'd',
+    webassembly.Type.VOID: 'v'
+  }[type]
+
+
+def func_type_to_sig(type):
+  parameters = [type_to_sig(param) for param in type.params]
+  return type_to_sig(type.returns[0]) + ''.join(parameters)
+
+
 def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
@@ -589,6 +605,9 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
+    if settings.ASYNCIFY == 2 and name in metadata['emJsFuncTypes']:
+      sig = func_type_to_sig(metadata['emJsFuncTypes'][name])
+      func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)
 
   return em_js_funcs
