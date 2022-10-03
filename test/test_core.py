@@ -9499,6 +9499,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_em_async_js(self):
+    if self.get_setting('ASYNCIFY') == 2:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/17977')
     self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
       self.set_setting('ASYNCIFY')
