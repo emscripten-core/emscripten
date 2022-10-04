@@ -132,11 +132,11 @@ FunctionType.prototype.results;
  */
  function FunctionUsage() {}
  /**
-  * @type {string}
+  * @type {string|undefined}
   */
 FunctionUsage.prototype.promising;
  /**
-  * @type {string}
+  * @type {string|undefined}
   */
 FunctionUsage.prototype.suspending;
 
@@ -147,6 +147,11 @@ FunctionUsage.prototype.suspending;
  * @param {FunctionUsage=} usage
  */
 WebAssembly.Function = function(type, func, usage) {};
+/**
+ * @param {Function} func
+ * @return {FunctionType}
+ */
+WebAssembly.Function.type = function(func) {};
 
 /**
  * @suppress {undefinedVars}

@@ -135,6 +135,10 @@ function isNull(node) {
   return node.type === 'Literal' && node.raw === 'null';
 }
 
+function isUseStrict(node) {
+  return node.type === 'Literal' && node.value === 'use strict';
+}
+
 function setLiteralValue(item, value) {
   item.value = value;
   item.raw = "'" + value + "'";
@@ -332,7 +336,7 @@ function runJSDCE(ast, aggressive) {
         },
         ExpressionStatement(node, c) {
           if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression)) {
+            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
               convertToNullStatement(node);
               removed++;
             }
