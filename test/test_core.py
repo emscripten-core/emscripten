@@ -8712,7 +8712,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if not self.is_wasm():
@@ -8726,7 +8725,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if not self.is_wasm():
@@ -8743,7 +8741,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_overflow(self, args):
     self.emcc_args += args
     self.do_runf(test_file('core/test_ubsan_full_overflow.c'),
@@ -8757,7 +8754,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_no_return(self, args):
     self.emcc_args += ['-Wno-return-type'] + args
     self.do_runf(test_file('core/test_ubsan_full_no_return.cpp'),
@@ -8769,7 +8765,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_left_shift(self, args):
     self.emcc_args += args
     self.do_runf(test_file('core/test_ubsan_full_left_shift.c'),
@@ -8784,7 +8779,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_null_ref(self, args):
     if is_sanitizing(self.emcc_args):
       self.skipTest('test is specific to null sanitizer')
@@ -8801,7 +8795,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_vptr': (['-fsanitize=vptr'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_static_cast(self, args):
     self.emcc_args += args
     self.do_runf(test_file('core/test_ubsan_full_static_cast.cpp'),
@@ -8822,7 +8815,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
     if g_flag == '-gsource-map':
       if not self.is_wasm():
@@ -8837,7 +8829,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_wasm64('UBSan not yet supported with MEMORY64')
   def test_ubsan_typeinfo_eq(self):
     # https://github.com/emscripten-core/emscripten/issues/13330
     src = r'''

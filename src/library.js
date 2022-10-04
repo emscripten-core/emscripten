@@ -2865,7 +2865,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the line number from our stack frame cache with our PC representation.
   emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_line__sig: 'pp',
+  emscripten_pc_get_line__sig: 'ip',
   emscripten_pc_get_line: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
@@ -2873,12 +2873,13 @@ mergeInto(LibraryManager.library, {
 
   // Look up the column number from our stack frame cache with our PC representation.
   emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_column__sig: 'pp',
+  emscripten_pc_get_column__sig: 'ip',
   emscripten_pc_get_column: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 
+  emscripten_get_module_name__sig: 'ppp',
   emscripten_get_module_name: function(buf, length) {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
