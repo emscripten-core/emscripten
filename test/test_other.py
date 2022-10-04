@@ -7923,7 +7923,6 @@ int main() {
 
     # Stack trace example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error
-    #     at ___throwCppWebAssemblyException (test.js:1139:13)
     #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
     #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
     #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
