@@ -1278,11 +1278,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return js_output
 
   def get_freetype_library(self):
-    if '-Werror' in self.emcc_args:
-      self.emcc_args.remove('-Werror')
-    return self.get_library(os.path.join('third_party', 'freetype'), os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
+    self.emcc_args += [
+      '-Wno-misleading-indentation',
+      '-Wno-unused-but-set-variable',
+      '-Wno-pointer-bool-conversion',
+      '-Wno-shift-negative-value',
+    ]
+    return self.get_library(os.path.join('third_party', 'freetype'),
+                            os.path.join('objs', '.libs', 'libfreetype.a'),
+                            configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
+    freetype = self.get_freetype_library()
+
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
@@ -1292,18 +1300,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-I' + test_file('third_party/poppler/include')
     ]
 
-    freetype = self.get_freetype_library()
-
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    if '-Werror' in self.emcc_args:
-      self.emcc_args.remove('-Werror')
     self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
       '-Wno-tautological-compare',
       '-Wno-unknown-pragmas',
+      '-Wno-shift-negative-value',
+      '-Wno-dynamic-class-memaccess',
+      # Avoid warning about ERROR_ON_UNDEFINED_SYMBOLS being used at compile time
+      '-Wno-unused-command-line-argument',
+      '-Wno-js-compiler',
     ]
     env_init = env_init.copy() if env_init else {}
     env_init['FONTCONFIG_CFLAGS'] = ' '
@@ -1885,7 +1894,8 @@ def build_library(name,
     return open(os.path.join(project_dir, 'make.err'), mode)
 
   if EMTEST_BUILD_VERBOSE >= 3:
-    make_args += ['VERBOSE=1']
+    # VERBOSE=1 is cmake and V=1 is for autoconf
+    make_args += ['VERBOSE=1', 'V=1']
 
   try:
     with open_make_out('w') as make_out:
