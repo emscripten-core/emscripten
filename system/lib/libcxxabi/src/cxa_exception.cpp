@@ -256,7 +256,7 @@ exception.
 
 #if defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
 extern "C" {
-void __throwCppWebAssemblyException(_Unwind_Exception*, bool);
+void __throw_exception_with_stack_trace(_Unwind_Exception*, bool);
 } // extern "C"
 #endif
 
@@ -293,7 +293,7 @@ __cxa_throw(void *thrown_object, std::type_info *tinfo, void (*dest)(void *)) {
 #else
     // In debug mode, call a JS library function to use WebAssembly.Exception JS
     // API, which enables us to include stack traces
-    __throwCppWebAssemblyException(&exception_header->unwindHeader, true);
+    __throw_exception_with_stack_trace(&exception_heade->unwindHeader, true);
 #endif
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);

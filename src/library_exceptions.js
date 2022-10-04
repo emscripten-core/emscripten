@@ -417,28 +417,31 @@ var LibraryExceptions = {
     return Module['asm']['__cpp_exception'];
   },
 
-  // Throw a WebAssembly.Exception object with the C++ tag. If traceStack is
-  // true, includes the stack traces within the exception object.
-  // WebAssembly.Exception is a JS object representing a Wasm exception,
-  // provided by Wasm JS API:
+#if ASSERTIONS
+  // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
+  // embedded. WebAssembly.Exception is a JS object representing a Wasm
+  // exception, provided by Wasm JS API:
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
-  __throwCppWebAssemblyException__deps: ['$getCppExceptionTag'],
-  __throwCppWebAssemblyException: function(ex, traceStack) {
-    var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: traceStack});
+  // In release builds, this function is not needed and the native
+  // _Unwind_RaiseException in libunwind is used instead.
+  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag'],
+  __throw_exception_with_stack_trace: function(ex) {
+    var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
     // The generated stack trace will be in the form of:
     //
     // Error
-    //     at ___throwCppWebAssemblyException (test.js:1139:13)
+    //     at ___throw_exception_with_stack_trace(test.js:1139:13)
     //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
     //     ...
     //
     // Remove this JS function name, which is in the second line, from the stack
     // trace.
-    arr = e.stack.split('\n');
+    var arr = e.stack.split('\n');
     arr.splice(1,1);
     e.stack = arr.join('\n');
     throw e;
   },
+#endif
 
   // Given an WebAssembly.Exception object, returns the actual user-thrown
   // C++ object address in the Wasm memory.
