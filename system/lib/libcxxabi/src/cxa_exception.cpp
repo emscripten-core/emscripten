@@ -293,7 +293,7 @@ __cxa_throw(void *thrown_object, std::type_info *tinfo, void (*dest)(void *)) {
 #else
     // In debug mode, call a JS library function to use WebAssembly.Exception JS
     // API, which enables us to include stack traces
-    __throw_exception_with_stack_trace(&exception_heade->unwindHeader, true);
+    __throw_exception_with_stack_trace(&exception_header->unwindHeader, true);
 #endif
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
