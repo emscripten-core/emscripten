@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from typing import Set, Dict
 from subprocess import PIPE
 
 from . import diagnostics
@@ -27,8 +28,7 @@ from .shared import LLVM_OBJCOPY
 from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
+from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings
@@ -41,10 +41,9 @@ EXPECTED_BINARYEN_VERSION = 109
 
 # cache results of nm - it can be slow to run
 nm_cache = {}
-_is_ar_cache = {}
-
+_is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
-user_requested_exports = set()
+user_requested_exports: Set[str] = set()
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -281,7 +280,7 @@ def get_command_with_possible_response_file(cmd):
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
-  filename = response_file.create_response_file(cmd[1:], TEMP_DIR)
+  filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
 
@@ -1307,7 +1306,7 @@ def save_intermediate(src, dst):
   if DEBUG:
     dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
     save_intermediate.counter += 1
-    dst = os.path.join(CANONICAL_TEMP_DIR, dst)
+    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)
 

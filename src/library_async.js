@@ -91,7 +91,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
             assert(sig, 'Missing __sig for ' + x);
 #endif
-            var type = sigToWasmTypes(sig, original);
+            var type = sigToWasmTypes(sig);
 #if ASYNCIFY_DEBUG
             err('asyncify: suspendOnReturnedPromise for', x, original);
 #endif

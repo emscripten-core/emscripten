@@ -12537,3 +12537,6 @@ Module['postRun'] = function() {{
   def test_fs_icase(self):
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', emcc_args=['-sCASE_INSENSITIVE_FS=1', '-std=c++20'])
+
+  def test_strict_js_closure(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])

@@ -75,18 +75,13 @@ void InitializeFlags() {
   parser.ParseString(__ubsan_default_options());
   // Override from environment variable.
 #if SANITIZER_EMSCRIPTEN
-#ifdef __wasm64__
-    // FIXME: support UBSAN in wasm64.
-    abort();
-#else
-  char *options = (char*) EM_ASM_INT({
+  char *options = (char*) EM_ASM_PTR({
     return withBuiltinMalloc(function () {
       return allocateUTF8(Module['UBSAN_OPTIONS'] || 0);
     });
   });
   parser.ParseString(options);
   emscripten_builtin_free(options);
-#endif
 #else
   parser.ParseStringFromEnv("UBSAN_OPTIONS");
 #endif // SANITIZER_EMSCRIPTEN
