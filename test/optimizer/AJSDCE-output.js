@@ -1,3 +1,5 @@
+"use strict";
+
 var z = fleefl();
 
 var zz = fleefl();
