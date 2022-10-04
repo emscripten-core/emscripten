@@ -74,3 +74,7 @@ throwing and catching exceptions to WebAssembly.
 As a result, it can reduce code size and performance overhead compared
 to the JavaScript-based implementation. However, it's still brand-new
 and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
+
+Note that this option will not compile if you are also using
+``Asyncify``, for more details you can check `this thread <https://github.com/WebAssembly/binaryen/issues/4470>`_
+were the issue was reported.
