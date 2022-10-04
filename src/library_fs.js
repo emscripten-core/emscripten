@@ -24,6 +24,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
+#if ASSERTIONS && !MINIMAL_RUNTIME
+    '$demangleAll',
+#endif
     ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?

@@ -2110,6 +2110,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.DEMANGLE_SUPPORT:
     settings.REQUIRED_EXPORTS += ['__cxa_demangle']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
 
   if settings.FULL_ES3:
     settings.FULL_ES2 = 1
@@ -2147,23 +2148,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
-  if settings.BOOTSTRAPPING_STRUCT_INFO:
-    # Called by `callMain` to handle exceptions
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$handleException']
-  else:
-    if not settings.MINIMAL_RUNTIME:
-      # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
-      # no longer always bundled in)
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$demangle',
-        '$demangleAll',
-        '$jsStackTrace',
-        '$stackTrace',
-        # Called by `callMain` to handle exceptions
-        '$handleException',
-        # Needed by ccall (remove this once ccall itself is a library function)
-        '$writeArrayToMemory',
-      ]
+  if not settings.BOOTSTRAPPING_STRUCT_INFO:
+    if settings.DYNAMIC_EXECUTION == 2 and not settings.MINIMAL_RUNTIME:
+      # Used by makeEval in the DYNAMIC_EXECUTION == 2 case
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackTrace']
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
       # to flush streams on FS exit, we need to be able to call fflush
