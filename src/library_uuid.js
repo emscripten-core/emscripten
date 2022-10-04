@@ -32,6 +32,7 @@ mergeInto(LibraryManager.library, {
   // Write a RFC4122 version 4 compliant UUID largely based on the method found in
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
   // tweaked slightly in order to use the 'compact' UUID form used by libuuid.
+  uuid_generate__deps: ['$writeArrayToMemory'],
   uuid_generate: function(out) {
     // void uuid_generate(uuid_t out);
     var uuid = null;

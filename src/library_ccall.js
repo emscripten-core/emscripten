@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
