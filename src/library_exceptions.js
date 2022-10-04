@@ -424,7 +424,20 @@ var LibraryExceptions = {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   __throwCppWebAssemblyException__deps: ['$getCppExceptionTag'],
   __throwCppWebAssemblyException: function(ex, traceStack) {
-    throw new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: traceStack});
+    var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: traceStack});
+    // The generated stack trace will be in the form of:
+    //
+    // Error
+    //     at ___throwCppWebAssemblyException (test.js:1139:13)
+    //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    //     ...
+    //
+    // Remove this JS function name, which is in the second line, from the stack
+    // trace.
+    arr = e.stack.split('\n');
+    arr.splice(1,1);
+    e.stack = arr.join('\n');
+    throw e;
   },
 
   // Given an WebAssembly.Exception object, returns the actual user-thrown
