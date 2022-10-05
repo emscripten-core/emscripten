@@ -36,6 +36,7 @@ MINIMAL_TASKS = [
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
+    'libc++abi-debug',
     'libc++abi-debug-except',
     'libc++abi-debug-noexcept',
     'libc++',
