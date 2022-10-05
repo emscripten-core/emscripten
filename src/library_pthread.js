@@ -424,13 +424,14 @@ var LibraryPThread = {
         );
 #endif // ASSERTIONS
 
-#if PTHREAD_POOL_SIZE_STRICT == 2
+#endif
+#if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT == 2
         // Don't return a Worker, which will translate into an EAGAIN error.
         return;
-#endif
-#endif
+#else
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+#endif
       }
       return PThread.unusedWorkers.pop();
     }
