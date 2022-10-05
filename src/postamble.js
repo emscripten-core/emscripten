@@ -180,6 +180,9 @@ function callMain(args) {
 #if ASSERTIONS
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
+#if ABORT_ON_WASM_EXCEPTIONS
+  }
+#endif
 #else
 #if ASYNCIFY == 2
     // The current spec of JSPI returns a promise only if the function suspends
