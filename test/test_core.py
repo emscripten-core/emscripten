@@ -125,6 +125,32 @@ def with_both_eh_sjlj(f):
   return metafunc
 
 
+# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
+# Use this for tests that use setjmp/longjmp but not exceptions handling.
+def with_both_sjlj(f):
+  assert callable(f)
+
+  def metafunc(self, is_native):
+    if is_native:
+      # Wasm SjLj is currently supported only in wasm backend and V8
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support wasm SjLj')
+      self.require_v8()
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
+      self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      self.v8_args.append('--experimental-wasm-eh')
+      f(self)
+    else:
+      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm': (True,)}
+  return metafunc
+
+
 def no_wasm2js(note=''):
   assert not callable(note)
 
@@ -1089,12 +1115,11 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_core_test('test_regex.c')
 
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   def test_longjmp_standalone(self):
     self.do_core_test('test_longjmp.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
@@ -1120,63 +1145,63 @@ base align: 0, 0, 0, 0'''])
     for arg in ['-fwasm-exceptions', '-fno-exceptions']:
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp2(self):
     self.do_core_test('test_longjmp2.c')
 
   @needs_dylink
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_longjmp2.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp3(self):
     self.do_core_test('test_longjmp3.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp4(self):
     self.do_core_test('test_longjmp4.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_funcptr(self):
     self.do_core_test('test_longjmp_funcptr.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_repeat(self):
     self.do_core_test('test_longjmp_repeat.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_stacked(self):
     self.do_core_test('test_longjmp_stacked.c', assert_returncode=NON_ZERO)
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_exc(self):
     self.do_core_test('test_longjmp_exc.c', assert_returncode=NON_ZERO)
 
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
+  @no_wasm64('MEMORY64 does not yet support exception handling')
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print(disable_throw)
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_throw)
       self.do_core_test('test_longjmp_throw.cpp')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_unwind(self):
     self.do_core_test('test_longjmp_unwind.c', assert_returncode=NON_ZERO)
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_longjmp_i64(self):
     self.emcc_args += ['-g']
     self.do_core_test('test_longjmp_i64.c', assert_returncode=NON_ZERO)
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_siglongjmp(self):
     self.do_core_test('test_siglongjmp.c')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -1193,7 +1218,7 @@ base align: 0, 0, 0, 0'''])
       print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -1222,11 +1247,11 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_setjmp_noleak(self):
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
-  @with_both_eh_sjlj
+  @with_both_sjlj
   def test_setjmp_within_loop(self):
     self.do_core_test('test_setjmp_within_loop.c')
 
@@ -1263,8 +1288,6 @@ int main()
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      if support_longjmp and self.is_wasm64():
-        self.skipTest('MEMORY64 does not yet support SJLJ')
       self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -3754,7 +3777,6 @@ ok
     self.do_runf(test_file('dlmalloc_proxy.c'), '*293,153*')
 
   @needs_dylink
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   def test_dlfcn_longjmp(self):
     create_file('liblib.c', r'''
       #include <setjmp.h>
@@ -6689,7 +6711,6 @@ void* operator new(size_t size) {
     self.do_runf(test_file('third_party/libiberty/cp-demangle.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @needs_make('make')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   def test_lua(self):
     self.emcc_args.remove('-Werror')
     env_init = {
@@ -6911,7 +6932,7 @@ void* operator new(size_t size) {
         true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
 
         # Compare them
-        assert(len(js_data) == len(true_data))
+        self.assertEqual(len(js_data), len(true_data))
         num = len(js_data)
         diff_total = js_total = true_total = 0
         for i in range(num):
@@ -7308,6 +7329,7 @@ void* operator new(size_t size) {
   def test_demangle_stacks_symbol_map(self):
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
 
     self.set_setting('DEMANGLE_SUPPORT')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
@@ -9437,6 +9459,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # And not be translated into abort by makeAbortWrapper
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
+
+  @node_pthreads
+  def test_abort_on_exceptions_pthreads(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_world.c')
 
   @needs_dylink
   def test_gl_main_module(self):

@@ -393,7 +393,7 @@ var LibraryExceptions = {
 
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
       var type_addr_addr = stackAlloc(4);

@@ -42,7 +42,7 @@ _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
   // Call personality function. Wasm does not have two-phase unwinding, so we
   // only do the cleanup phase.
   _Unwind_Reason_Code ret = __gxx_personality_wasm0(
-      1, _UA_CLEANUP_PHASE, exception_object->exception_class, exception_object,
+      1, _UA_SEARCH_PHASE, exception_object->exception_class, exception_object,
       (struct _Unwind_Context *)&__wasm_lpad_context);
   return ret;
 }

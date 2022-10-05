@@ -977,7 +977,8 @@ mergeInto(LibraryManager.library, {
     return bytes.length-1;
   },
   strftime_l__deps: ['strftime'],
-  strftime_l: function(s, maxsize, format, tm) {
+  strftime_l__sig: 'pppppp',
+  strftime_l: function(s, maxsize, format, tm, loc) {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
@@ -3623,13 +3624,10 @@ mergeInto(LibraryManager.library, {
 #endif
 #if SUPPORT_LONGJMP == 'wasm'
   __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-  __c_longjmp_import: true,
 #endif
 #if ASYNCIFY
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_state__import: true,
   __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data__import: true,
 #endif
 #endif
 
