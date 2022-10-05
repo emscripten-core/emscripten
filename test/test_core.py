@@ -9460,6 +9460,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
 
+  @node_pthreads
+  def test_abort_on_exceptions_pthreads(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_world.c')
+
   @needs_dylink
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
