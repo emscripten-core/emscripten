@@ -5069,8 +5069,43 @@ Module["preRun"].push(function () {
 
   def test_wasm2js_fallback(self):
     self.set_setting('EXIT_RUNTIME')
-    for args in [[], ['-sMINIMAL_RUNTIME']]:
-      self.compile_btest([test_file('small_hello_world.c'), '-sWASM=2', '-o', 'test.html'] + args)
+    for args in [[], ['-sMINIMAL_RUNTIME'], ['-sMODULARIZE']]:
+      self.compile_btest([test_file('small_hello_world.c'), '-sWASM=2', '-o', 'test.js'] + args)
+      create_file('test.html', '''
+<body>
+<script>
+  var Module = {};
+  var supportsWasm = Boolean(window.WebAssembly);
+
+  function binary(url) { // Downloads a binary file and outputs it in the specified callback
+    return new Promise((ok, err) => {
+      var x = new XMLHttpRequest();
+      x.open('GET', url, true);
+      x.responseType = 'arraybuffer';
+      x.onload = () => { ok(x.response); }
+      x.send(null);
+    });
+  }
+  function script(url) { // Downloads a script file and adds it to DOM
+    return new Promise((ok, err) => {
+      var s = document.createElement('script');
+      s.src = url;
+      s.onload = () => { ok(); };
+      document.body.appendChild(s);
+    });
+  }
+  Promise.all([binary('test.js'), supportsWasm ? binary('test.wasm') : script('test.wasm.js')]).then((r) => {
+    if (supportsWasm) Module.wasm = r[1];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => {
+      URL.revokeObjectURL(url);
+      if (typeof Module === 'function')
+        Module(typeof wasmBinary == 'undefined' ? undefined : { wasmBinary });
+    });
+  });
+</script>
+</body>
+      ''')
 
       # First run with WebAssembly support enabled
       # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
