@@ -967,6 +967,8 @@ __gxx_personality_v0
             exc->catchTemp = reinterpret_cast<void*>(results.landingPad);
             exc->adjustedPtr = results.adjustedPtr;
 #ifdef __USING_WASM_EXCEPTIONS__
+            // Wasm only uses a single phase (_UA_SEARCH_PHASE), so save the
+            // results here.
             set_registers(unwind_exception, context, results);
 #endif
         }
