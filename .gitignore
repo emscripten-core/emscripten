@@ -26,3 +26,4 @@ htmlcov/
 coverage.xml
 
 .DS_Store
+.vscode/
