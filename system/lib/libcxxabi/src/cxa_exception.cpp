@@ -253,6 +253,13 @@ handler, _Unwind_RaiseException may return. In that case, __cxa_throw
 will call terminate, assuming that there was no handler for the
 exception.
 */
+
+#if defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+extern "C" {
+void __throw_exception_with_stack_trace(_Unwind_Exception*, bool);
+} // extern "C"
+#endif
+
 void
 #ifdef __USING_WASM_EXCEPTIONS__
 // In wasm, destructors return their argument
@@ -280,6 +287,14 @@ __cxa_throw(void *thrown_object, std::type_info *tinfo, void (*dest)(void *)) {
 
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
+#elif __USING_WASM_EXCEPTIONS__
+#ifdef NDEBUG
+    _Unwind_RaiseException(&exception_header->unwindHeader);
+#else
+    // In debug mode, call a JS library function to use WebAssembly.Exception JS
+    // API, which enables us to include stack traces
+    __throw_exception_with_stack_trace(&exception_header->unwindHeader, true);
+#endif
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
