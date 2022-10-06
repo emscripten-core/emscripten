@@ -7905,10 +7905,12 @@ int main() {
       self.assertContained('no native wasm support detected', out)
 
   @requires_v8
-  def test_wasm_exceptions_stack_trace(self):
+  def test_wasm_exceptions_stack_trace_and_message(self):
     src = r'''
+      #include <stdexcept>
+
       void bar() {
-        throw 3;
+        throw std::runtime_error("my message");
       }
       void foo() {
         bar();
@@ -7921,8 +7923,8 @@ int main() {
     emcc_args = ['-g', '-fwasm-exceptions']
     self.v8_args.append('--experimental-wasm-eh')
 
-    # Stack trace example for this example code:
-    # exiting due to exception: [object WebAssembly.Exception],Error
+    # Stack trace and message example for this example code:
+    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error, my message
     #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
     #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
     #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
@@ -7932,7 +7934,12 @@ int main() {
     #     at callMain (test.js:4567:15)
     #     at doRun (test.js:4621:23)
     #     at run (test.js:4636:5)
-    stack_trace_checks = ['at __cxa_throw', 'at bar', 'at foo', 'at main']
+    stack_trace_checks = [
+      'std::runtime_error,my message',
+      'at __cxa_throw',
+      'at bar',
+      'at foo',
+      'at main']
 
     # We attach stack traces to exception objects only when ASSERTIONS is set
     self.set_setting('ASSERTIONS')

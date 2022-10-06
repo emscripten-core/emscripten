@@ -434,6 +434,7 @@ var LibraryExceptions = {
   __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag', '$getExceptionMessage'],
   __throw_exception_with_stack_trace: function(ex) {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
+    e.message = getExceptionMessage(e);
     // The generated stack trace will be in the form of:
     //
     // Error
@@ -446,7 +447,6 @@ var LibraryExceptions = {
     var arr = e.stack.split('\n');
     arr.splice(1,1);
     e.stack = arr.join('\n');
-    e.message = getExceptionMessage(e);
     throw e;
   },
 #endif
