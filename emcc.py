@@ -2626,14 +2626,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
       if setting in user_settings:
         diagnostics.warning('linkflags', 'setting `%s` is not meaningful unless linking as C++', setting)
 
-  # Export tag objects which are likely needed by the native code, but which are
-  # currently not reported in the metadata of wasm-emscripten-finalize
-  if settings.RELOCATABLE:
-    if settings.WASM_EXCEPTIONS:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
-
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 

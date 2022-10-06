@@ -234,6 +234,10 @@ def get_named_globals(module, exports):
   return named_globals
 
 
+def get_export_names(module):
+  return [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+
+
 def update_metadata(filename, metadata):
   imports = []
   invoke_funcs = []
@@ -245,10 +249,12 @@ def update_metadata(filename, metadata):
           invoke_funcs.append(i.field)
         elif i.field not in em_js_funcs:
           imports.append(i.field)
+      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+        imports.append(i.field)
 
-    exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+    metadata.exports = get_export_names(module)
+
   metadata.imports = imports
-  metadata.exports = exports
   metadata.invokeFuncs = invoke_funcs
 
 
@@ -266,7 +272,6 @@ class Metadata:
   emJsFuncs: {}
   emJsFuncTypes: []
   features: []
-  globalImports: []
   invokeFuncs: []
   mainReadsParams: bool
   namedGlobals: []
@@ -276,20 +281,14 @@ class Metadata:
 
 
 def extract_metadata(filename):
-  export_names = []
   import_names = []
   invoke_funcs = []
-  global_imports = []
   em_js_funcs = {}
   em_js_func_types = {}
 
   with webassembly.Module(filename) as module:
     exports = module.get_exports()
     imports = module.get_imports()
-
-    for i in imports:
-      if i.kind == webassembly.ExternType.GLOBAL:
-        global_imports.append(i.field)
 
     export_map = {e.name: e for e in exports}
     for e in exports:
@@ -308,8 +307,8 @@ def extract_metadata(filename):
           em_js_func_types[i.field] = types[i.type]
         else:
           import_names.append(i.field)
-
-    export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+        import_names.append(i.field)
 
     features = module.parse_features_section()
     features = ['--enable-' + f[1] for f in features if f[0] == '+']
@@ -321,12 +320,11 @@ def extract_metadata(filename):
     # calls __original_main (which has no parameters).
     metadata = Metadata()
     metadata.imports = import_names
-    metadata.exports = export_names
+    metadata.exports = get_export_names(module)
     metadata.asmConsts = get_asm_strings(module, export_map)
     metadata.emJsFuncs = em_js_funcs
     metadata.emJsFuncTypes = em_js_func_types
     metadata.features = features
-    metadata.globalImports = global_imports
     metadata.invokeFuncs = invoke_funcs
     metadata.mainReadsParams = get_main_reads_params(module, export_map)
     metadata.namedGlobals = get_named_globals(module, exports)
