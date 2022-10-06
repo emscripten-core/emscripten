@@ -262,7 +262,7 @@ class other(RunnerCore):
 
   def test_emcc_output_worker_mjs_single_file(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread',
-                      test_file('hello_world.c'), '-sSINGLE_FILE=1'])
+                      test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
     self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
@@ -274,16 +274,16 @@ class other(RunnerCore):
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
 
   def test_export_es6_implies_modularize(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6=1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
     self.assertContained('export default Module;', src)
 
   def test_export_es6_requires_modularize(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6=1', '-sMODULARIZE=0'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
 
   def test_export_es6_allows_export_in_post_js(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sEXPORT_ES6=1', '--post-js', test_file('export_module.js')])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sEXPORT_ES6', '--post-js', test_file('export_module.js')])
     src = read_file('a.out.js')
     self.assertContained('export{doNothing};', src)
 
@@ -1651,7 +1651,7 @@ int f() {
       EMXX,
       '-o', 'side.wasm',
       'side.cpp',
-      '-sSIDE_MODULE=1',
+      '-sSIDE_MODULE',
       '-sDISABLE_EXCEPTION_CATCHING=0',
       '-sASSERTIONS=2'])
 
@@ -1671,8 +1671,8 @@ int f() {
       'main.cpp',
       '0123456789',
       emcc_args=[
-        '-sEXIT_RUNTIME=1',
-        '-sMAIN_MODULE=1',
+        '-sEXIT_RUNTIME',
+        '-sMAIN_MODULE',
         '-sDISABLE_EXCEPTION_CATCHING=0',
         '-sASSERTIONS=2',
         'side.wasm',
@@ -1759,7 +1759,7 @@ int f() {
       '-o', 'side.wasm',
       'side.cpp',
       '-pthread', '-Wno-experimental',
-      '-sSIDE_MODULE=1'])
+      '-sSIDE_MODULE'])
 
     create_file('main.cpp', r'''
       #include <stdio.h>
@@ -1862,7 +1862,7 @@ int f() {
       '-o', 'libside.wasm',
       side,
       '-pthread', '-Wno-experimental',
-      '-sSIDE_MODULE=1'])
+      '-sSIDE_MODULE'])
     self.do_runf(
       main,
       'main: Foo typeid: 3Foo\nside: Foo typeid: 3Foo\n',
@@ -1984,7 +1984,7 @@ int f() {
   def test_bzip2(self):
     self.emcc_args.remove('-Werror')
     self.emcc_args.append('-Wno-pointer-sign')
-    self.emcc(test_file('bzip2_test.c'), ['-sUSE_BZIP2=1'], output_filename='a.out.js')
+    self.emcc(test_file('bzip2_test.c'), ['-sUSE_BZIP2'], output_filename='a.out.js')
     self.assertContained("usage: unzcrash filename", self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_freetype(self):
@@ -10953,12 +10953,12 @@ int main () {
 
   def test_shared_and_side_module_flag(self):
     # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning.
-    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
+    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertIsWasmDylib('out.foo')
 
     # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning even if given exectuable output name.
-    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.wasm'],
+    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE', test_file('hello_world.c'), '-o', 'out.wasm'],
                            stderr=PIPE).stderr
     self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
     self.assertIsWasmDylib('out.wasm')
@@ -11288,12 +11288,12 @@ exec "$@"
     side_src = test_file('other/lib_hello.c')
     post_js = test_file('other/test_split_module.post.js')
 
-    self.run_process([EMCC, side_src, '-sSIDE_MODULE=1', '-g', '-o', 'libhello.wasm'])
+    self.run_process([EMCC, side_src, '-sSIDE_MODULE', '-g', '-o', 'libhello.wasm'])
 
     self.emcc_args += ['-g']
     self.emcc_args += ['-sMAIN_MODULE=2']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_printf']
-    self.emcc_args += ['-sSPLIT_MODULE=1', '-Wno-experimental']
+    self.emcc_args += ['-sSPLIT_MODULE', '-Wno-experimental']
     self.emcc_args += ['--embed-file', 'libhello.wasm']
     self.emcc_args += ['--post-js', post_js]
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
@@ -11823,7 +11823,7 @@ void foo() {}
 
     # With NODEJS_CATCH_REJECTION we expect the unhandled rejection to cause a non-zero
     # exit code and log the stack trace correctly.
-    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=1', 'main.c'])
+    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION', 'main.c'])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
@@ -12495,7 +12495,7 @@ Module['postRun'] = function() {{
   @also_with_wasmfs
   def test_fs_icase(self):
     # c++20 for ends_with().
-    self.do_other_test('test_fs_icase.cpp', emcc_args=['-sCASE_INSENSITIVE_FS=1', '-std=c++20'])
+    self.do_other_test('test_fs_icase.cpp', emcc_args=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
   def test_strict_js_closure(self):
     self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])

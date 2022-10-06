@@ -747,7 +747,7 @@ class SjLjLibrary(Library):
       # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sDISABLE_EXCEPTION_THROWING=1',
+                 '-sDISABLE_EXCEPTION_THROWING',
                  '-D__USING_WASM_SJLJ__']
     return cflags
 

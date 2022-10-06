@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
-                     flags=['-sUSE_OGG=1'],
+                     flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 
   return [shared.Cache.get_lib('libvorbis.a', create)]
@@ -43,4 +43,4 @@ def process_args(ports):
 
 
 def show():
-  return 'vorbis (USE_VORBIS=1; zlib license)'
+  return 'vorbis (-sUSE_VORBIS; zlib license)'
