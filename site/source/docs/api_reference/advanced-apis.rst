@@ -92,7 +92,6 @@ example, writing a new local file system) or legacy file system compatibility.
   FS.lookup(parent, name)
   FS.mknod(path, mode, dev)
   FS.create(path, mode)
-  FS.readdir(path)
   FS.allocate(stream, offset, length)
   FS.mmap(stream, buffer, offset, length, position, prot, flags)
   FS.ioctl(stream, cmd, arg)
