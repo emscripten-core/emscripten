@@ -589,7 +589,12 @@ def type_to_sig(type):
 
 def func_type_to_sig(type):
   parameters = [type_to_sig(param) for param in type.params]
-  return type_to_sig(type.returns[0]) + ''.join(parameters)
+  if type.returns:
+    assert len(type.returns) == 1, "One return type expected."
+    ret = type.returns[0]
+  else:
+    ret = webassembly.Type.VOID
+  return type_to_sig(ret) + ''.join(parameters)
 
 
 def create_em_js(metadata):
