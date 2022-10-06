@@ -414,14 +414,44 @@ var LibraryExceptions = {
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
+    // In static linking, tags are defined within the wasm module and are
+    // exported, whereas in dynamic linking, tags are defined in library.js in
+    // JS code and wasm modules import them.
+#if RELOCATABLE
+    return ___cpp_exception; // defined in library.js
+#else
     return Module['asm']['__cpp_exception'];
+#endif
   },
+
+#if ASSERTIONS
+  // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
+  // embedded. WebAssembly.Exception is a JS object representing a Wasm
+  // exception, provided by Wasm JS API:
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
+  // In release builds, this function is not needed and the native
+  // _Unwind_RaiseException in libunwind is used instead.
+  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag'],
+  __throw_exception_with_stack_trace: function(ex) {
+    var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
+    // The generated stack trace will be in the form of:
+    //
+    // Error
+    //     at ___throw_exception_with_stack_trace(test.js:1139:13)
+    //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    //     ...
+    //
+    // Remove this JS function name, which is in the second line, from the stack
+    // trace.
+    var arr = e.stack.split('\n');
+    arr.splice(1,1);
+    e.stack = arr.join('\n');
+    throw e;
+  },
+#endif
 
   // Given an WebAssembly.Exception object, returns the actual user-thrown
   // C++ object address in the Wasm memory.
-  // WebAssembly.Exception is a JS object representing a Wasm exception,
-  // provided by Wasm JS API:
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   $getCppExceptionThrownObjectFromWebAssemblyException__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
   $getCppExceptionThrownObjectFromWebAssemblyException: function(ex) {
     // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer

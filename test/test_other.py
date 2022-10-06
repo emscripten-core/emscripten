@@ -7904,6 +7904,46 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
+  @requires_v8
+  def test_wasm_exceptions_stack_trace(self):
+    src = r'''
+      void bar() {
+        throw 3;
+      }
+      void foo() {
+        bar();
+      }
+      int main() {
+        foo();
+        return 0;
+      }
+    '''
+    emcc_args = ['-g', '-fwasm-exceptions']
+    self.v8_args.append('--experimental-wasm-eh')
+
+    # Stack trace example for this example code:
+    # exiting due to exception: [object WebAssembly.Exception],Error
+    #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
+    #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
+    #     at __original_main (wasm://wasm/009a7c9a:wasm-function[20]:0x15a6)
+    #     at main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
+    #     at test.js:833:22
+    #     at callMain (test.js:4567:15)
+    #     at doRun (test.js:4621:23)
+    #     at run (test.js:4636:5)
+    stack_trace_checks = ['at __cxa_throw', 'at bar', 'at foo', 'at main']
+
+    # We attach stack traces to exception objects only when ASSERTIONS is set
+    self.set_setting('ASSERTIONS')
+    self.do_run(src, emcc_args=emcc_args, assert_all=True,
+                assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
+
+    self.set_setting('ASSERTIONS', 0)
+    err = self.do_run(src, emcc_args=emcc_args, assert_returncode=NON_ZERO)
+    for check in stack_trace_checks:
+      self.assertNotContained(check, err)
+
   @requires_node
   def test_jsrun(self):
     print(config.NODE_JS)
