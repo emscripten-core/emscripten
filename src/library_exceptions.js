@@ -414,7 +414,14 @@ var LibraryExceptions = {
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
+    // In static linking, tags are defined within the wasm module and are
+    // exported, whereas in dynamic linking, tags are defined in library.js in
+    // JS code and wasm modules import them.
+#if RELOCATABLE
+    return ___cpp_exception; // defined in library.js
+#else
     return Module['asm']['__cpp_exception'];
+#endif
   },
 
 #if ASSERTIONS
