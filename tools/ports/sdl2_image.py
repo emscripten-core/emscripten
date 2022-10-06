@@ -47,10 +47,10 @@ def get(ports, settings, shared):
       defs.append('-DLOAD_' + fmt.upper())
 
     if 'png' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-sUSE_LIBPNG=1']
+      defs += ['-sUSE_LIBPNG']
 
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-sUSE_LIBJPEG=1']
+      defs += ['-sUSE_LIBJPEG']
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
