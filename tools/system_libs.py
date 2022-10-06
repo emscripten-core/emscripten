@@ -460,7 +460,7 @@ class Library:
     run_build_commands(commands)
     return objects
 
-  def customize_build_cmd(self, cmd, filename):  # noqa
+  def customize_build_cmd(self, cmd, _filename):
     """Allows libraries to customize the build command used on per-file basis.
 
     For example, libc uses this to replace -Oz with -O2 for some subset of files."""

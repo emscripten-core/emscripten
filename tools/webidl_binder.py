@@ -43,7 +43,7 @@ class Dummy:
     for k, v in init.items():
       self.__dict__[k] = v
 
-  def getExtendedAttribute(self, name): # noqa: U100
+  def getExtendedAttribute(self, _name):
     return None
 
 

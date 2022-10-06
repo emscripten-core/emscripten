@@ -7463,11 +7463,11 @@ int main() {
     # find the imports we send from JS
     js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
-    assert(start != -1)
+    assert start != -1
     end = js.find('}', start)
-    assert(end != -1)
+    assert end != -1
     start = js.find('{', start)
-    assert(start != -1)
+    assert start != -1
     relevant = js[start + 2:end - 1]
     relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
@@ -11530,7 +11530,7 @@ exec "$@"
     main = '#include<stdio.h>\n%s int main() { int value = 0; %s printf("%%d\\n", value); }' % (decls, calls)
     open('main.c', 'w').write(main)
 
-    assert(sum(len(f) for f in files) > 32767)
+    assert sum(len(f) for f in files) > 32767
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
