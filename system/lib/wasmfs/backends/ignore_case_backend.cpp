@@ -10,6 +10,7 @@
 #include "file.h"
 #include "memory_backend.h"
 #include "wasmfs.h"
+#include <map>
 
 namespace {
 
@@ -24,15 +25,12 @@ std::string normalize(const std::string& name) {
 
 namespace wasmfs {
 
-// Problem: Child entries are stored both in IgnoreCaseDirectory and in baseDirectory.
-//
-// Original name case preservation could be possible if MemoryDirectory::entries
-// were accesible. Then, we would store the original case there but search
-// ignoring case.
-//
+// Normalizes case and then forwards calls to a directory from underlying
+// backend `baseDirectory`.
 class IgnoreCaseDirectory : public MemoryDirectory {
   using BaseClass = MemoryDirectory;
   std::shared_ptr<Directory> baseDirectory;
+  std::map<std::string, std::string> origNames;
 
 public:
   IgnoreCaseDirectory(std::shared_ptr<Directory> base, backend_t proxyBackend)
@@ -49,6 +47,7 @@ public:
     auto child = baseDirLocked.insertDataFile(name2, mode);
     if (child) {
       insertChild(name2, child);
+      origNames[name2] = name;
       // Directory::Hanlde needs a parent
       child->locked().setParent(cast<Directory>());
     }
@@ -64,6 +63,7 @@ public:
     auto baseChild = baseDirLocked.insertDirectory(name2, mode);
     auto child = std::make_shared<IgnoreCaseDirectory>(baseChild, getBackend());
     insertChild(name2, child);
+    origNames[name2] = name;
     return child;
   }
 
@@ -73,6 +73,7 @@ public:
     auto child = baseDirectory->locked().insertSymlink(name2, target);
     if (child) {
       insertChild(name2, child);
+      origNames[name2] = name;
       // Directory::Hanlde needs a parent
       child->locked().setParent(cast<Directory>());
     }
@@ -80,20 +81,22 @@ public:
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    auto newName = normalize(name);
+    auto name2 = normalize(name);
     // Remove entry with the new name (if any) from this directory.
-    if (auto err = removeChild(newName))
+    if (auto err = removeChild(name))
       return err;
     auto oldParent = file->locked().getParent()->locked();
-    auto oldName = normalize(oldParent.getName(file));
+    auto oldName = oldParent.getName(file);
+    auto oldName2 = normalize(oldName);
     // Move in underlying directory.
-    if (auto err = baseDirectory->locked().insertMove(newName, file))
+    if (auto err = baseDirectory->locked().insertMove(name2, file))
       return err;
     // Ensure old file was removed.
-    if (auto err = oldParent.removeChild(oldName))
+    if (auto err = oldParent.removeChild(oldName2))
       return err;
     // Cache file with the new name in this directory.
-    insertChild(newName, file);
+    insertChild(name2, file);
+    origNames[name2] = name;
     file->locked().setParent(cast<Directory>());
     return 0;
   }
@@ -102,19 +105,34 @@ public:
     auto name2 = normalize(name);
     if (auto err = BaseClass::removeChild(name2))
       return err;
+    auto it = origNames.find(name2);
+    if (it != origNames.end())
+      origNames.erase(it);
     return baseDirectory->locked().removeChild(name2);
   }
 
   ssize_t getNumEntries() override { return baseDirectory->locked().getNumEntries(); }
 
-  // TODO: preserve original name, denormalize, and use it here
   Directory::MaybeEntries getEntries() override {
-    return baseDirectory->locked().getEntries();
+    auto e = baseDirectory->locked().getEntries();
+    if (e.getError()) {
+      return e;
+    }
+    // Restore case:
+    for (size_t i = 0; i != e->size(); ++i) {
+      auto it = origNames.find(e->at(i).name);
+      if (it != origNames.end()) {
+        e->at(i).name = it->second;
+      }
+    }
+    return e;
   }
 
-  // TODO: preserve original name, denormalize, and use it here
   std::string getName(std::shared_ptr<File> file) override {
-    return BaseClass::getName(file);
+    // Restore case:
+    auto n = BaseClass::getName(file);
+    auto it = origNames.find(n);
+    return it == origNames.end() ? n : it->second;
   }
 
   bool maintainsFileIdentity() override { return true; }
