@@ -43,7 +43,11 @@ commands:
     steps:
       - run:
           name: emsdk_env.sh
-          command: echo "EMSDK_QUIET=1 source ~/emsdk/emsdk_env.sh" >> $BASH_ENV
+          command: |
+            echo "EMSDK_QUIET=1 source ~/emsdk/emsdk_env.sh" >> $BASH_ENV
+            # In order make our external version of emscripten use the emsdk
+            # config we need to explictly set EM_CONFIG here.
+            echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
   npm-install:
     description: "npm ci"
     steps:
