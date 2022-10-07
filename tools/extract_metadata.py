@@ -235,21 +235,21 @@ def get_named_globals(module, exports):
 
 
 def update_metadata(filename, metadata):
-  declares = []
+  imports = []
   invoke_funcs = []
-  em_js_funcs = set(metadata['emJsFuncs'])
+  em_js_funcs = set(metadata.emJsFuncs)
   with webassembly.Module(filename) as module:
     for i in module.get_imports():
       if i.kind == webassembly.ExternType.FUNC:
         if i.field.startswith('invoke_'):
           invoke_funcs.append(i.field)
         elif i.field not in em_js_funcs:
-          declares.append(i.field)
+          imports.append(i.field)
 
     exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
-  metadata['declares'] = declares
-  metadata['exports'] = exports
-  metadata['invokeFuncs'] = invoke_funcs
+  metadata.imports = imports
+  metadata.exports = exports
+  metadata.invokeFuncs = invoke_funcs
 
 
 def get_string_at(module, address):
@@ -259,9 +259,25 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+class Metadata:
+  imports: []
+  export: []
+  asmConsts: []
+  emJsFuncs: {}
+  emJsFuncTypes: []
+  features: []
+  globalImports: []
+  invokeFuncs: []
+  mainReadsParams: bool
+  namedGlobals: []
+
+  def __init__(self):
+    pass
+
+
 def extract_metadata(filename):
   export_names = []
-  declares = []
+  import_names = []
   invoke_funcs = []
   global_imports = []
   em_js_funcs = {}
@@ -291,7 +307,7 @@ def extract_metadata(filename):
           types = module.get_types()
           em_js_func_types[i.field] = types[i.type]
         else:
-          declares.append(i.field)
+          import_names.append(i.field)
 
     export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
 
@@ -303,16 +319,17 @@ def extract_metadata(filename):
 
     # If main does not read its parameters, it will just be a stub that
     # calls __original_main (which has no parameters).
-    metadata = {}
-    metadata['asmConsts'] = get_asm_strings(module, export_map)
-    metadata['declares'] = declares
-    metadata['emJsFuncs'] = em_js_funcs
-    metadata['emJsFuncTypes'] = em_js_func_types
-    metadata['exports'] = export_names
-    metadata['features'] = features
-    metadata['globalImports'] = global_imports
-    metadata['invokeFuncs'] = invoke_funcs
-    metadata['mainReadsParams'] = get_main_reads_params(module, export_map)
-    metadata['namedGlobals'] = get_named_globals(module, exports)
+    metadata = Metadata()
+    metadata.imports = import_names
+    metadata.exports = export_names
+    metadata.asmConsts = get_asm_strings(module, export_map)
+    metadata.emJsFuncs = em_js_funcs
+    metadata.emJsFuncTypes = em_js_func_types
+    metadata.features = features
+    metadata.globalImports = global_imports
+    metadata.invokeFuncs = invoke_funcs
+    metadata.mainReadsParams = get_main_reads_params(module, export_map)
+    metadata.namedGlobals = get_named_globals(module, exports)
+
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata
