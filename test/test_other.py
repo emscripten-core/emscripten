@@ -12320,7 +12320,8 @@ Module['postRun'] = function() {{
   @requires_v8
   def test_extended_const(self):
     self.v8_args = ['--experimental-wasm-extended-const']
-    self.do_runf(test_file('hello_world.c'), emcc_args=['-mextended-const', '-sMAIN_MODULE=2'])
+    # Export at least one global so that we exercise the parsing of the global section.
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
     wat = self.get_wasm_text('hello_world.wasm')
     # Test that extended-const expressions are used in the data segments.
     self.assertTrue(re.search(r'\(data \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))

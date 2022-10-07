@@ -109,6 +109,7 @@ class OpCode(IntEnum):
   F32_CONST = 0x43
   F64_CONST = 0x44
   I32_ADD = 0x6a
+  I64_ADD = 0x6b
   REF_NULL = 0xd0
   ATOMIC_PREFIX = 0xfe
   MEMORY_PREFIX = 0xfc
@@ -239,7 +240,7 @@ class Module:
         args.append(self.read_uleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
-      elif opcode in (OpCode.END,):
+      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
         pass
       else:
         raise Exception('unexpected opcode %s' % opcode)
