@@ -396,11 +396,11 @@ var LibraryExceptions = {
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
-      var type_addr_addr = stackAlloc(4);
-      var message_addr_addr = stackAlloc(4);
-      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
-      var type_addr = HEAP32[type_addr_addr >> 2];
-      var message_addr = HEAP32[message_addr_addr >> 2];
+      var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+      var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
+      var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
       var type = UTF8ToString(type_addr);
       _free(type_addr);
       var message;
