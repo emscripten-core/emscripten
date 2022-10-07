@@ -129,7 +129,6 @@ def update_settings_glue(wasm_file, metadata):
   else:
     syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata.imports]
     syms = set(syms).difference(metadata.exports)
-    syms.update(metadata.globalImports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
       get_weak_imports(wasm_file)
@@ -308,7 +307,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
-    metadata.globalImports += ['__memory_base32']
+    metadata.imports += ['__memory_base32']
 
   update_settings_glue(out_wasm, metadata)
 
@@ -360,7 +359,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
     if settings.ASYNCIFY:
-      metadata.globalImports += ['__asyncify_state', '__asyncify_data']
+      metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   invoke_funcs = metadata.invokeFuncs
   if invoke_funcs:
@@ -631,10 +630,6 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.WASM_EXCEPTIONS:
-      send_items_map['__cpp_exception'] = '___cpp_exception'
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      send_items_map['__c_longjmp'] = '___c_longjmp'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
@@ -671,21 +666,12 @@ def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  def add_send_items(name, mangled_name, ignore_dups=False):
-    # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
-    if not ignore_dups and name in send_items_map:
-      assert name not in send_items_map, 'duplicate symbol in exports: %s' % name
-    send_items_map[name] = mangled_name
-
   for name in metadata.emJsFuncs:
-    add_send_items(name, name)
+    send_items_map[name] = name
   for name in invoke_funcs:
-    add_send_items(name, name)
+    send_items_map[name] = name
   for name in metadata.imports:
-    add_send_items(name, asmjs_mangle(name))
-  for name in metadata.globalImports:
-    # globalImports can currently overlap with declares, in the case of dynamic linking
-    add_send_items(name, asmjs_mangle(name), ignore_dups=settings.RELOCATABLE)
+    send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
 
