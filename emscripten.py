@@ -328,7 +328,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
         c_sig = c_sig.split(',')
       if em_js_func in import_map:
         imp = import_map[em_js_func]
-        assert(imp.kind == webassembly.ExternType.FUNC)
+        assert imp.kind == webassembly.ExternType.FUNC
         signature = types[imp.type]
         if len(signature.params) != len(c_sig):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)

@@ -4035,7 +4035,7 @@ def parse_value(text, expected_type):
       if not len(current):
         exit_with_error('string array should not contain an empty value')
       first = current[0]
-      if not(first == "'" or first == '"'):
+      if not (first == "'" or first == '"'):
         result.append(current.rstrip())
       else:
         start = index

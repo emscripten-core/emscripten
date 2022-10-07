@@ -197,7 +197,7 @@ class Module:
   def __enter__(self):
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb): # noqa
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.buf:
       self.buf.close()
       self.buf = None
@@ -370,7 +370,7 @@ class Module:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
           self.skip(subsection_size)
-        assert(self.tell() == end)
+        assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
 
