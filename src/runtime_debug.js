@@ -5,6 +5,7 @@
  */
 
 #if ASSERTIONS
+
 function legacyModuleProp(prop, newName) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
     Object.defineProperty(Module, prop, {
@@ -105,5 +106,12 @@ function prettyPrint(arg) {
     if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
   }
   return arg;
+}
+
+// Used by XXXXX_DEBUG settings to output debug messages.
+function dbg(text) {
+  // TODO(sbc): Make this configurable somehow.  Its not always convient for
+  // logging to show up as errors.
+  console.error(text);
 }
 #endif
