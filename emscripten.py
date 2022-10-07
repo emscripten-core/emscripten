@@ -165,6 +165,9 @@ def update_settings_glue(wasm_file, metadata):
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata.exports
 
+  for deps in metadata.jsDeps:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
+
 
 def apply_static_code_hooks(forwarded_json, code):
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))

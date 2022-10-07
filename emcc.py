@@ -1907,7 +1907,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$registerTLSInit',
+      '$registerTLSInit',
     ]
 
   if settings.RELOCATABLE:

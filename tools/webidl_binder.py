@@ -81,6 +81,8 @@ mid_js = []
 
 pre_c += [r'''
 #include <emscripten.h>
+
+EM_JS_DEPS(webidl_binder, "$intArrayFromString");
 ''']
 
 mid_c += [r'''
