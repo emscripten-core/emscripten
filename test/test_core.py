@@ -8061,6 +8061,25 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
+  @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
+  def test_async_loop(self):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+
+    create_file('main.c',  r'''
+#include <stdio.h>
+#include <emscripten.h>
+int main() {
+  for (int i = 0; i < 5; i++) {
+    emscripten_sleep(1);
+    printf("hello %d\n", i);
+  }
+}
+''')
+
+    self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
+
   @requires_v8
   @no_wasm64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):

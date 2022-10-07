@@ -25,54 +25,11 @@ mergeInto(LibraryManager.library, {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop'
 #endif
   ],
+
   $Asyncify: {
-    State: {
-      Normal: 0,
-      Unwinding: 1,
-      Rewinding: 2,
-      Disabled: 3,
-    },
-    state: 0,
-    StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
-    currData: null,
-    // The return value passed to wakeUp() in
-    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
-    // so we can return it later from the C function that called
-    // Asyncify.handleSleep() after rewinding finishes.
-    handleSleepReturnValue: 0,
-    // We must track which wasm exports are called into and
-    // exited, so that we know where the call stack began,
-    // which is where we must call to rewind it.
-    exportCallStack: [],
-    callStackNameToId: {},
-    callStackIdToName: {},
-    callStackId: 0,
-    asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
-    sleepCallbacks: [], // functions to call every time we sleep
-
-#if ASYNCIFY == 2
-    // TODO: Stack switching support could be implemented without all the
-    //       asyncify infrastructure, perhaps as code on the size instead of
-    //       ifdefs. That might be cleaner, and it would avoid overhead like the
-    //       malloc() asyncify does (we could ifdef it out, but it's even more
-    //       ifdefing).
-
-    // The promise that is being suspended on in the VM atm, or null.
-    promise: null,
-    // The function we should call to resolve the promise at the right time.
-    promiseResolve: null,
-#endif
-
-    getCallStackId: function(funcName) {
-      var id = Asyncify.callStackNameToId[funcName];
-      if (id === undefined) {
-        id = Asyncify.callStackId++;
-        Asyncify.callStackNameToId[funcName] = id;
-        Asyncify.callStackIdToName[id] = funcName;
-      }
-      return id;
-    },
-
+    //
+    // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
+    //
     instrumentWasmImports: function(imports) {
 #if ASYNCIFY_DEBUG
       err('asyncify instrumenting imports');
@@ -174,9 +131,12 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG >= 2
               err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
+#if ASYNCIFY == 1
               Asyncify.exportCallStack.push(x);
               try {
+#endif
                 return original.apply(null, arguments);
+#if ASYNCIFY == 1
               } finally {
                 if (!ABORT) {
                   var y = Asyncify.exportCallStack.pop();
@@ -187,6 +147,7 @@ mergeInto(LibraryManager.library, {
                   Asyncify.maybeStopUnwind();
                 }
               }
+#endif
             };
 #if MAIN_MODULE
             ret[x].orig = original;
@@ -197,6 +158,44 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
       return ret;
+    },
+
+#if ASYNCIFY == 1
+    //
+    // Original implementation of Asyncify.
+    //
+    State: {
+      Normal: 0,
+      Unwinding: 1,
+      Rewinding: 2,
+      Disabled: 3,
+    },
+    state: 0,
+    StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
+    currData: null,
+    // The return value passed to wakeUp() in
+    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // so we can return it later from the C function that called
+    // Asyncify.handleSleep() after rewinding finishes.
+    handleSleepReturnValue: 0,
+    // We must track which wasm exports are called into and
+    // exited, so that we know where the call stack began,
+    // which is where we must call to rewind it.
+    exportCallStack: [],
+    callStackNameToId: {},
+    callStackIdToName: {},
+    callStackId: 0,
+    asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
+
+    getCallStackId: function(funcName) {
+      var id = Asyncify.callStackNameToId[funcName];
+      if (id === undefined) {
+        id = Asyncify.callStackId++;
+        Asyncify.callStackNameToId[funcName] = id;
+        Asyncify.callStackIdToName[id] = funcName;
+      }
+      return id;
     },
 
     maybeStopUnwind: function() {
@@ -217,9 +216,7 @@ mergeInto(LibraryManager.library, {
 #endif
         {{{ runtimeKeepalivePush(); }}}
         // Keep the runtime alive so that a re-wind can be done later.
-#if ASYNCIFY == 1
         runAndAbortIfError(_asyncify_stop_unwind);
-#endif
         if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
         }
@@ -286,16 +283,6 @@ mergeInto(LibraryManager.library, {
     },
 
     doRewind: function(ptr) {
-#if ASYNCIFY == 2
-      // Resolve the promise. The VM will resume the wasm on the next event loop
-      // turn.
-      Asyncify.promiseResolve(Asyncify.handleSleepReturnValue);
-      setTimeout(() => {
-        // This timeout happens after the wasm has been resumed; we can stop
-        // artificially keeping the runtime alive at that time.
-        {{{ runtimeKeepalivePop(); }}}
-      });
-#else
       var start = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: start:', start);
@@ -304,7 +291,6 @@ mergeInto(LibraryManager.library, {
       // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
       return start();
-#endif
     },
 
     // This receives a function to call to start the async operation, and
@@ -348,9 +334,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-#if ASYNCIFY == 1
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-#endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -402,16 +386,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
-#if ASYNCIFY == 2
-          // Return a Promise to get the browser's stack switching logic to run.
-          return Asyncify.promise = new Promise((resolve, reject) => {
-            // Stash the resolve hook so we can call it at the proper time.
-            Asyncify.promiseResolve = resolve;
-            // TODO: handle rejection
-          });
-#else
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
-#endif
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -419,9 +394,7 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY: stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
-#if ASYNCIFY == 1
         runAndAbortIfError(_asyncify_stop_rewind);
-#endif
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
@@ -443,6 +416,28 @@ mergeInto(LibraryManager.library, {
         startAsync().then(wakeUp);
       });
     },
+
+#elif ASYNCIFY == 2
+    //
+    // JSPI implementation of Asyncify.
+    //
+    handleSleep: function(startAsync) {
+      {{{ runtimeKeepalivePush(); }}}
+      var promise = new Promise((resolve) => {
+        startAsync(resolve);
+      });
+      promise.finally(() => {
+        {{{ runtimeKeepalivePop(); }}}
+      });
+      return promise;
+    },
+    handleAsync: function(startAsync) {
+      return Asyncify.handleSleep((wakeUp) => {
+        // TODO: add error handling as a second param when handleSleep implements it.
+        startAsync().then(wakeUp);
+      });
+    },
+#endif
   },
 
   emscripten_sleep__sig: 'vi',
