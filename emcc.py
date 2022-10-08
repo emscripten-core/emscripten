@@ -2366,7 +2366,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.LINKABLE or
       settings.INCLUDE_FULL_LIBRARY or
       not settings.DISABLE_EXCEPTION_CATCHING or
-      (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
+      (settings.MAIN_MODULE and (settings.DYNCALLS or not settings.WASM_BIGINT))
   ):
       settings.REQUIRED_EXPORTS += ["getTempRet0", "setTempRet0"]
 
