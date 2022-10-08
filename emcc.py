@@ -632,15 +632,23 @@ def make_js_executable(script):
   cmd = config.JS_ENGINE
   if settings.WASM_BIGINT:
     cmd.append('--experimental-wasm-bigint')
+
+  # Write script file with .cjs extension to force Node to commonjs mode.
+  # This prevents build failures when any parent directory has
+  # package.json with {"type": "module"}. In addition, write a shell
+  # wrapper that calls node with this .cjs script, because autoconf
+  # does not expect its conftest binary to have an extension.
+  # See https://github.com/emscripten-core/emscripten/issues/17431
+  cjs_script = script + '.cjs'
+  cmd.append(cjs_script)
   cmd = shared.shlex_join(cmd)
-  if not os.path.isabs(config.JS_ENGINE[0]):
-    # TODO: use whereis etc. And how about non-*NIX?
-    cmd = '/usr/bin/env -S ' + cmd
-  logger.debug('adding `#!` to JavaScript file: %s' % cmd)
-  # add shebang
-  with open(script, 'w') as f:
-    f.write('#!%s\n' % cmd)
+  logger.debug('writing %s JavaScript file' % cjs_script)
+  with open(cjs_script, 'w') as f:
     f.write(src)
+  logger.debug('writing a %s shell wrapper for %s JavaScript file: %s' % (script, cjs_script, cmd))
+  with open(script, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write(cmd)
   try:
     os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
   except OSError:
