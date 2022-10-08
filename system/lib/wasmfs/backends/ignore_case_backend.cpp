@@ -24,22 +24,43 @@ std::string normalize(const std::string& name) {
 
 namespace wasmfs {
 
-// Problem: Child entries are stored both in IgnoreCaseDirectory and in baseDirectory.
-//
-// Original name case preservation could be possible if MemoryDirectory::entries
-// were accesible. Then, we would store the original case there but search
-// ignoring case.
-//
-class IgnoreCaseDirectory : public MemoryDirectory {
-  using BaseClass = MemoryDirectory;
+// Normalizes case and then forwards calls to a directory from underlying
+// backend `baseDirectory`. Code is based on `MemoryDirectory`.
+class IgnoreCaseDirectory : public Directory {
+
+  // Use a vector instead of a map to save code size.
+  struct ChildEntry {
+    std::string name; // Normalized name.
+    std::string origName;
+    std::shared_ptr<File> child;
+  };
+
+  std::vector<ChildEntry> entries;
   std::shared_ptr<Directory> baseDirectory;
+
+  std::vector<ChildEntry>::iterator findEntry(const std::string& name) {
+    return std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.name == name;
+    });
+  }
+
+  void insertChild(const std::string& originalName,
+                   const std::string& normalizedName,
+                   std::shared_ptr<File> child) {
+    assert(findEntry(normalizedName) == entries.end());
+    entries.push_back({normalizedName, originalName, child});
+  }
 
 public:
   IgnoreCaseDirectory(std::shared_ptr<Directory> base, backend_t proxyBackend)
-    : BaseClass(base->locked().getMode(), proxyBackend), baseDirectory(base) {}
+    : Directory(base->locked().getMode(), proxyBackend), baseDirectory(base) {}
 
   std::shared_ptr<File> getChild(const std::string& name) override {
-    return BaseClass::getChild(normalize(name));
+    auto name2 = normalize(name);
+    if (auto entry = findEntry(name2); entry != entries.end()) {
+      return entry->child;
+    }
+    return nullptr;
   }
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
@@ -48,8 +69,8 @@ public:
     auto baseDirLocked = baseDirectory->locked();
     auto child = baseDirLocked.insertDataFile(name2, mode);
     if (child) {
-      insertChild(name2, child);
-      // Directory::Hanlde needs a parent
+      insertChild(name, name2, child);
+      // Directory::Handle needs a parent
       child->locked().setParent(cast<Directory>());
     }
     return child;
@@ -59,11 +80,14 @@ public:
                                              mode_t mode) override {
     auto name2 = normalize(name);
     auto baseDirLocked = baseDirectory->locked();
-    if (!baseDirLocked.getParent())
-      baseDirLocked.setParent(parent.lock()); // Directory::Hanlde needs a parent
+    if (!baseDirLocked.getParent()) {
+      // Directory::Handle needs a parent
+      assert(parent.lock());
+      baseDirLocked.setParent(parent.lock());
+    }
     auto baseChild = baseDirLocked.insertDirectory(name2, mode);
     auto child = std::make_shared<IgnoreCaseDirectory>(baseChild, getBackend());
-    insertChild(name2, child);
+    insertChild(name, name2, child);
     return child;
   }
 
@@ -72,51 +96,72 @@ public:
     auto name2 = normalize(name);
     auto child = baseDirectory->locked().insertSymlink(name2, target);
     if (child) {
-      insertChild(name2, child);
-      // Directory::Hanlde needs a parent
+      insertChild(name, name2, child);
+      // Directory::Handle needs a parent
       child->locked().setParent(cast<Directory>());
     }
     return child;
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    auto newName = normalize(name);
+    auto name2 = normalize(name);
     // Remove entry with the new name (if any) from this directory.
-    if (auto err = removeChild(newName))
+    if (auto err = removeChild(name))
       return err;
     auto oldParent = file->locked().getParent()->locked();
-    auto oldName = normalize(oldParent.getName(file));
+    auto oldName = oldParent.getName(file);
+    auto oldName2 = normalize(oldName);
     // Move in underlying directory.
-    if (auto err = baseDirectory->locked().insertMove(newName, file))
+    if (auto err = baseDirectory->locked().insertMove(name2, file))
       return err;
     // Ensure old file was removed.
-    if (auto err = oldParent.removeChild(oldName))
+    if (auto err = oldParent.removeChild(oldName2))
       return err;
     // Cache file with the new name in this directory.
-    insertChild(newName, file);
+    insertChild(name, name2, file);
     file->locked().setParent(cast<Directory>());
     return 0;
   }
 
   int removeChild(const std::string& name) override {
     auto name2 = normalize(name);
-    if (auto err = BaseClass::removeChild(name2))
-      return err;
+    auto entry = findEntry(name2);
+    if (entry != entries.end()) {
+      entry->child->locked().setParent(nullptr);
+      entries.erase(entry);
+    }
     return baseDirectory->locked().removeChild(name2);
   }
 
-  ssize_t getNumEntries() override { return baseDirectory->locked().getNumEntries(); }
+  ssize_t getNumEntries() override {
+    return baseDirectory->locked().getNumEntries();
+  }
 
-  // TODO: preserve original name, denormalize, and use it here
   Directory::MaybeEntries getEntries() override {
-    return baseDirectory->locked().getEntries();
+    auto result = baseDirectory->locked().getEntries();
+    if (result.getError()) {
+      return result;
+    }
+    // Restore original case.
+    for (size_t i = 0; i != result->size(); ++i) {
+      auto& x = result->at(i);
+      auto it = findEntry(normalize(x.name));
+      if (it != entries.end()) {
+        x.name = it->origName;
+      }
+    }
+    return result;
   }
 
-  // TODO: preserve original name, denormalize, and use it here
   std::string getName(std::shared_ptr<File> file) override {
-    return BaseClass::getName(file);
+    for (auto&& x : entries) {
+      if (x.child == file)
+        return x.origName;
+    }
+    return {};
   }
 
+  // Don't use `dcache` because of underlying backend and case differences.
   bool maintainsFileIdentity() override { return true; }
 };
 
