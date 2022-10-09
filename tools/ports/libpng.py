@@ -32,9 +32,9 @@ def get(ports, settings, shared):
     ports.write_file(os.path.join(source_path, 'pnglibconf.h'), pnglibconf_h)
     ports.install_headers(source_path)
 
-    flags = ['-sUSE_ZLIB=1']
+    flags = ['-sUSE_ZLIB']
     if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS=1']
+      flags += ['-sUSE_PTHREADS']
 
     ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
@@ -54,7 +54,7 @@ def process_args(ports):
 
 
 def show():
-  return 'libpng (USE_LIBPNG=1; zlib license)'
+  return 'libpng (-sUSE_LIBPNG; zlib license)'
 
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */

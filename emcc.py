@@ -724,7 +724,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
     # For now we ignore `invoke_` functions imported by side modules and rely
     # on the dynamic linker to create them on the fly.
-    # TODO(sbc): Integrate with metadata['invokeFuncs'] that comes from the
+    # TODO(sbc): Integrate with metadata.invokeFuncs that comes from the
     # main module to avoid creating new invoke functions at runtime.
     imports = set(i for i in imports if not i.startswith('invoke_'))
     weak_imports = imports.intersection(exports)
@@ -1907,7 +1907,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$registerTLSInit',
+      '$registerTLSInit',
     ]
 
   if settings.RELOCATABLE:
@@ -2625,14 +2625,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
     for setting in cxx_only_settings:
       if setting in user_settings:
         diagnostics.warning('linkflags', 'setting `%s` is not meaningful unless linking as C++', setting)
-
-  # Export tag objects which are likely needed by the native code, but which are
-  # currently not reported in the metadata of wasm-emscripten-finalize
-  if settings.RELOCATABLE:
-    if settings.WASM_EXCEPTIONS:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
 
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
@@ -4036,7 +4028,7 @@ def parse_value(text, expected_type):
       if not len(current):
         exit_with_error('string array should not contain an empty value')
       first = current[0]
-      if not(first == "'" or first == '"'):
+      if not (first == "'" or first == '"'):
         result.append(current.rstrip())
       else:
         start = index

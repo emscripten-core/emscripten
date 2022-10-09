@@ -3,10 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
+
 from . import webassembly
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
+
+logger = logging.getLogger('extract_metadata')
 
 
 def skip_function_header(module):
@@ -177,12 +181,15 @@ def data_to_string(data):
   return data
 
 
-def get_asm_strings(module, export_map):
-  if '__start_em_asm' not in export_map or '__stop_em_asm' not in export_map:
+def get_section_strings(module, export_map, section_name):
+  start_name = f'__start_{section_name}'
+  stop_name = f'__stop_{section_name}'
+  if start_name not in export_map or stop_name not in export_map:
+    logger.debug(f'no start/stop symbols found for section: {section_name}')
     return {}
 
-  start = export_map['__start_em_asm']
-  end = export_map['__stop_em_asm']
+  start = export_map[start_name]
+  end = export_map[stop_name]
   start_global = module.get_global(start.index)
   end_global = module.get_global(end.index)
   start_addr = get_global_value(start_global)
@@ -190,7 +197,7 @@ def get_asm_strings(module, export_map):
 
   seg = find_segment_with_address(module, start_addr)
   if not seg:
-    exit_with_error('unable to find segment starting at __start_em_asm: %s' % start_addr)
+    exit_with_error(f'unable to find segment starting at __start_{section_name}: {start_addr}')
   seg, seg_offset = seg
 
   asm_strings = {}
@@ -225,31 +232,41 @@ def get_main_reads_params(module, export_map):
 
 def get_named_globals(module, exports):
   named_globals = {}
+  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
+                                     '__start_em_lib_deps', '__stop_em_lib_deps',
+                                     '__em_lib_deps'])
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
   for export in exports:
     if export.kind == webassembly.ExternType.GLOBAL:
-      if export.name in ('__start_em_asm', '__stop_em_asm') or export.name.startswith('__em_js__'):
+      if export.name in internal_start_stop_symbols or any(export.name.startswith(p) for p in internal_prefixes):
         continue
       g = module.get_global(export.index)
       named_globals[export.name] = str(get_global_value(g))
   return named_globals
 
 
+def get_export_names(module):
+  return [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+
+
 def update_metadata(filename, metadata):
-  declares = []
+  imports = []
   invoke_funcs = []
-  em_js_funcs = set(metadata['emJsFuncs'])
+  em_js_funcs = set(metadata.emJsFuncs)
   with webassembly.Module(filename) as module:
     for i in module.get_imports():
       if i.kind == webassembly.ExternType.FUNC:
         if i.field.startswith('invoke_'):
           invoke_funcs.append(i.field)
         elif i.field not in em_js_funcs:
-          declares.append(i.field)
+          imports.append(i.field)
+      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+        imports.append(i.field)
 
-    exports = [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
-  metadata['declares'] = declares
-  metadata['exports'] = exports
-  metadata['invokeFuncs'] = invoke_funcs
+    metadata.exports = get_export_names(module)
+
+  metadata.imports = imports
+  metadata.invokeFuncs = invoke_funcs
 
 
 def get_string_at(module, address):
@@ -259,21 +276,31 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+class Metadata:
+  imports: []
+  export: []
+  asmConsts: []
+  jsDeps: []
+  emJsFuncs: {}
+  emJsFuncTypes: []
+  features: []
+  invokeFuncs: []
+  mainReadsParams: bool
+  namedGlobals: []
+
+  def __init__(self):
+    pass
+
+
 def extract_metadata(filename):
-  export_names = []
-  declares = []
+  import_names = []
   invoke_funcs = []
-  global_imports = []
   em_js_funcs = {}
   em_js_func_types = {}
 
   with webassembly.Module(filename) as module:
     exports = module.get_exports()
     imports = module.get_imports()
-
-    for i in imports:
-      if i.kind == webassembly.ExternType.GLOBAL:
-        global_imports.append(i.field)
 
     export_map = {e.name: e for e in exports}
     for e in exports:
@@ -291,9 +318,9 @@ def extract_metadata(filename):
           types = module.get_types()
           em_js_func_types[i.field] = types[i.type]
         else:
-          declares.append(i.field)
-
-    export_names = [e.name for e in exports if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+          import_names.append(i.field)
+      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+        import_names.append(i.field)
 
     features = module.parse_features_section()
     features = ['--enable-' + f[1] for f in features if f[0] == '+']
@@ -303,16 +330,17 @@ def extract_metadata(filename):
 
     # If main does not read its parameters, it will just be a stub that
     # calls __original_main (which has no parameters).
-    metadata = {}
-    metadata['asmConsts'] = get_asm_strings(module, export_map)
-    metadata['declares'] = declares
-    metadata['emJsFuncs'] = em_js_funcs
-    metadata['emJsFuncTypes'] = em_js_func_types
-    metadata['exports'] = export_names
-    metadata['features'] = features
-    metadata['globalImports'] = global_imports
-    metadata['invokeFuncs'] = invoke_funcs
-    metadata['mainReadsParams'] = get_main_reads_params(module, export_map)
-    metadata['namedGlobals'] = get_named_globals(module, exports)
+    metadata = Metadata()
+    metadata.imports = import_names
+    metadata.exports = get_export_names(module)
+    metadata.asmConsts = get_section_strings(module, export_map, 'em_asm')
+    metadata.jsDeps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
+    metadata.emJsFuncs = em_js_funcs
+    metadata.emJsFuncTypes = em_js_func_types
+    metadata.features = features
+    metadata.invokeFuncs = invoke_funcs
+    metadata.mainReadsParams = get_main_reads_params(module, export_map)
+    metadata.namedGlobals = get_named_globals(module, exports)
+
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata
