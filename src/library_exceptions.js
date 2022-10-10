@@ -396,11 +396,11 @@ var LibraryExceptions = {
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
-      var type_addr_addr = stackAlloc(4);
-      var message_addr_addr = stackAlloc(4);
-      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
-      var type_addr = HEAP32[type_addr_addr >> 2];
-      var message_addr = HEAP32[message_addr_addr >> 2];
+      var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+      var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
+      var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
       var type = UTF8ToString(type_addr);
       _free(type_addr);
       var message;
@@ -431,9 +431,10 @@ var LibraryExceptions = {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   // In release builds, this function is not needed and the native
   // _Unwind_RaiseException in libunwind is used instead.
-  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag'],
+  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag', '$getExceptionMessage'],
   __throw_exception_with_stack_trace: function(ex) {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
+    e.message = getExceptionMessage(e);
     // The generated stack trace will be in the form of:
     //
     // Error
