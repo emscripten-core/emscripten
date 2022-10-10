@@ -23,7 +23,7 @@ is unlikely to work.
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the `emscripten-releases` repository contains all the information about
-the various repositories that go into an emscripten release. This is the repos
+the various repositories that go into an emscripten release. These are the repos
 used by our CI to build and test emscripten.  To find out which revisions went
 into a given release you need to check out the DEPS file that the revision
 corresponding to that release.  It has lines like these:
