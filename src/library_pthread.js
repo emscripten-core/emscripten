@@ -73,10 +73,12 @@ var LibraryPThread = {
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
       }
 
-      // When PTHREAD_DEBUG is enabled, prefix all err() messages with the calling
-      // thread ID.
+      // When PTHREAD_DEBUG is enabled, prefix all err()/dbg() messages with the
+      // calling thread ID.
       var origErr = err;
       err = (message) => origErr(pthreadLogPrefix() + message);
+      var origDbg = dbg;
+      dbg = (message) => origDbg(pthreadLogPrefix() + message);
     },
 #endif
     init: function() {
@@ -160,7 +162,7 @@ var LibraryPThread = {
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
 #endif
 #if PTHREADS_DEBUG
-      err('terminateAllThreads');
+      dbg('terminateAllThreads');
 #endif
       for (var worker of Object.values(PThread.pthreads)) {
 #if ASSERTIONS
@@ -221,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInitTLS: function() {
 #if PTHREADS_DEBUG
-      err('threadInitTLS.');
+      dbg('threadInitTLS.');
 #endif
       // Call thread init functions (these are the _emscripten_tls_init for each
       // module loaded.
@@ -373,7 +375,7 @@ var LibraryPThread = {
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
 #if PTHREADS_DEBUG
-        err('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+        dbg('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
@@ -399,7 +401,7 @@ var LibraryPThread = {
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
 #if PTHREADS_DEBUG
-      err('Allocating a new web worker from ' + pthreadMainJs);
+      dbg('Allocating a new web worker from ' + pthreadMainJs);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -440,7 +442,7 @@ var LibraryPThread = {
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    err('killThread ' + ptrToString(pthread_ptr));
+    dbg('killThread ' + ptrToString(pthread_ptr));
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
@@ -479,7 +481,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   $registerTLSInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
-    err("registerTLSInit: " + tlsInitFunc);
+    dbg("registerTLSInit: " + tlsInitFunc);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`_emscripten_tls_init`) to relocate the TLS exports of the module
@@ -487,7 +489,7 @@ var LibraryPThread = {
     function tlsInitWrapper() {
       var __tls_base = tlsInitFunc();
 #if DYLINK_DEBUG
-      err('tlsInit -> ' + __tls_base);
+      dbg('tlsInit -> ' + __tls_base);
 #endif
       if (!__tls_base) {
 #if ASSERTIONS
@@ -622,7 +624,7 @@ var LibraryPThread = {
       return {{{ cDefine('EAGAIN') }}};
     }
 #if PTHREADS_DEBUG
-    err("createThread: " + ptrToString(pthread_ptr));
+    dbg("createThread: " + ptrToString(pthread_ptr));
 #endif
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
@@ -644,7 +646,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    err('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    dbg('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
@@ -683,7 +685,7 @@ var LibraryPThread = {
           }
           if (canvas.transferControlToOffscreen) {
 #if GL_DEBUG
-            err('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
+            dbg('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
 #endif
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
@@ -815,7 +817,7 @@ var LibraryPThread = {
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: function(returnCode) {
 #if PTHREADS_DEBUG
-    err('exitOnMainThread');
+    dbg('exitOnMainThread');
 #endif
 #if MINIMAL_RUNTIME
     _exit(returnCode);
@@ -922,7 +924,7 @@ var LibraryPThread = {
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackMax = stackTop - stackSize;
 #if PTHREADS_DEBUG
-    err('establishStackSpace: ' + ptrToString(stackTop) + ' -> ' + ptrToString(stackMax));
+    dbg('establishStackSpace: ' + ptrToString(stackTop) + ' -> ' + ptrToString(stackMax));
 #endif
 #if ASSERTIONS
     assert(stackTop != 0);
@@ -956,7 +958,7 @@ var LibraryPThread = {
   $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
-    err('invokeEntryPoint: ' + ptrToString(ptr));
+    dbg('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
