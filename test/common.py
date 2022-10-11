@@ -1202,8 +1202,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     srcfile = test_file(*path)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
-    expected = read_file(outfile)
-    return self._build_and_run(srcfile, expected, **kwargs)
+    if EMTEST_REBASELINE:
+      expected = None
+    else:
+      expected = read_file(outfile)
+    output = self._build_and_run(srcfile, expected, **kwargs)
+    if EMTEST_REBASELINE:
+      write_file(outfile, output)
+    return output
 
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
