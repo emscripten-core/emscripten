@@ -8336,7 +8336,11 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and self.is_optimizing() and \
+
+    # For the purposes of this test we don't consider O1 to be optimizing
+    is_optimizing = self.is_optimizing() and '-O1' not in self.emcc_args
+
+    if not conditional and is_optimizing and \
        '-g' not in self.emcc_args and \
        '-fsanitize=leak' not in self.emcc_args and \
        not self.get_setting('WASMFS'):
@@ -8384,7 +8388,7 @@ Module['onRuntimeInitialized'] = function() {
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
-    if not conditional and self.is_optimizing():
+    if not conditional and is_optimizing:
       self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
     verify_working(['0'])
     # but breaking the second wasm actually breaks us
