@@ -10612,8 +10612,9 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       self.run_process([EMCC, test_file(filename)] + args)
       self.assertContained(expected, self.run_js('a.out.js'))
 
-    # -O0 with BigInt support (to avoid the need for legalization)
-    required_flags = ['-sWASM_BIGINT']
+    # -O0 with BigInt support (to avoid the need for legalization) and STACK_OVERFLOW_CHECK=1 (to
+    # avoid the need for the stack check pass).
+    required_flags = ['-sWASM_BIGINT', '-sSTACK_OVERFLOW_CHECK=1']
     ok(required_flags)
     # Same with DWARF
     ok(required_flags + ['-g'])

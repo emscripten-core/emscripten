@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.25 (in development)
 -----------------------
+- `STACK_OVERFLOW_CHECK` now defaults 2 in debug builds (when `ASSERTIONS` are
+  enabled). This is because we are planning on lowering the default stack size
+  and we want good reporting of stack overflow in debug builds.  See #14177.
+  This can be set of 1 or 0 if the performance overhead is a problem. (#18040)
 
 3.1.24 - 10/11/22
 -----------------

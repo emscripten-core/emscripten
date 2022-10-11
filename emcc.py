@@ -1774,14 +1774,20 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
 
-  # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
-  # implies full stack overflow checks.
-  if settings.ASSERTIONS:
-    # However, we don't set this default in PURE_WASI, or when we are linking without standard
-    # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
-    # in libcompiler-rt.
-    if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-      default_setting(user_settings, 'STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
+  # -sASSERTIONS implies stack overflow checks
+  # However, we don't set this default when we are linking without standard
+  # libraries (because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end
+  # which is defined in compiler-rt).
+  if settings.ASSERTIONS and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+    # Don't set the default to 2 in STANDALONE_WASM since it (currently)
+    # requires the host to call __set_stack_limits (which WASI runtimes
+    # don't know about).
+    # TODO(sbc): Remove this once https://github.com/emscripten-core/emscripten/pull/17564
+    # lands.
+    if settings.STANDALONE_WASM:
+      default_setting(user_settings, 'STACK_OVERFLOW_CHECK', 1)
+    else:
+      default_setting(user_settings, 'STACK_OVERFLOW_CHECK', 2)
 
   if settings.LLD_REPORT_UNDEFINED or settings.STANDALONE_WASM:
     # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function

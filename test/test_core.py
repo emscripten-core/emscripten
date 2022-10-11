@@ -4131,6 +4131,7 @@ ok
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('MEMORY64=2 always requires module re-writing')
     self.set_setting('WASM_BIGINT')
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
@@ -8324,6 +8325,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/16828')
+    self.set_setting('STACK_OVERFLOW_CHECK', 0)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
     self.set_setting('MALLOC', 'emmalloc')

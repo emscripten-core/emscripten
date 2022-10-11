@@ -63,10 +63,10 @@ var ASSERTIONS = 1;
 var RUNTIME_LOGGING = false;
 
 // Chooses what kind of stack smash checks to emit to generated code:
-// Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
+// Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 2.
 // Since ASSERTIONS=1 is the default at -O0, which itself is the default
 // optimization level this means that this setting also effectively
-// defaults 1, absent any other settings.
+// defaults 2, absent any other settings.
 // 0: Stack overflows are not checked.
 // 1: Adds a security cookie at the top of the stack, which is checked at end of
 //    each tick and at exit (practically zero performance overhead)

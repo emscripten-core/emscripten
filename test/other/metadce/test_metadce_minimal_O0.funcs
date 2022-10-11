@@ -3,6 +3,7 @@ $__lock
 $__lockfile
 $__ofl_lock
 $__ofl_unlock
+$__set_stack_limits
 $__unlock
 $__unlockfile
 $__wasm_call_ctors
