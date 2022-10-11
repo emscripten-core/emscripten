@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.24 (in development)
+3.1.25 (in development)
 -----------------------
+
+3.1.24 - 10/11/22
+-----------------
 - In Wasm exception mode (`-fwasm-exceptions`), when `ASSERTIONS` is enabled,
   uncaught exceptions will display stack traces and what() message. (#17979 and
   #18003)
