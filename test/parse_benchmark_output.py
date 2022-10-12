@@ -54,13 +54,20 @@ for line in matrix[1:]:
     for i in range(1, len(line)):
       line[i] = line[i] / base
 
+col0_width = max(len(r[0]) for r in matrix)
+
 # filter results
 result = []
-for line in matrix:
-  if len(line) != len(matrix[0]):
-    print('warning: not enough results, skipping line:', line[0])
+for i, row in enumerate(matrix):
+  if len(row) != len(matrix[0]):
+    print('warning: not enough results, skipping row:', row[0])
   else:
-    result += ['\t'.join([str(x) for x in line])]
+    line = '%*s ' % (col0_width, row[0])
+    if i == 0:
+      line += '\t'.join([str(x) for x in row[1:]])
+    else:
+      line += '\t'.join(['%.3f' % x for x in row[1:]])
+    result.append(line)
 
 # print results
 print()
