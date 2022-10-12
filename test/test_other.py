@@ -1956,7 +1956,7 @@ int f() {
     self.assertContained('libpng passes test', output)
 
   @node_pthreads
-  def test_pthread_libpng(self):
+  def test_zzz_libpng_with_pthreads(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-sUSE_PTHREADS'], output_filename='a.out.js')
     output = self.run_js('a.out.js')
