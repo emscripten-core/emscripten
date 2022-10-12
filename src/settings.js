@@ -834,14 +834,18 @@ var ASYNCIFY_REMOVE = [];
 // in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ADD = [];
 
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ONLY = [];
 
