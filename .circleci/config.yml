@@ -318,7 +318,9 @@ jobs:
     steps:
       - checkout
       - npm-install
-      - run: npm run lint
+      - run: |
+          npm run lint
+          npm run check
   test-sanity:
     executor: bionic
     steps:
