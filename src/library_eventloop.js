@@ -122,16 +122,15 @@ LibraryJSEventLoop = {
   emscripten_set_timeout_loop__deps: ['$callUserCallback'],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
-      var t = performance.now();
-      var n = t + msecs;
-      {{{ runtimeKeepalivePop() }}}
+      // Schedule the new setTimeout() immediately when this cb fires, so that the next cb suffers
+      // as little as possible from the mandated minimum 4ms setTimeout throttling delay.
+      // If the user does not want to continue the loop, we will cancel it below.
+      var t = performance.now(),
+        ev = setTimeout(msecs);
       callUserCallback(function() {
-        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
-          // Save a little bit of code space: modern browsers should treat
-          // negative setTimeout as timeout of 0
-          // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-          {{{ runtimeKeepalivePush() }}}
-          setTimeout(tick, n - performance.now());
+        if (!({{{ makeDynCall('idi', 'cb') }}}(t, userData))) {
+          cancelTimeout(ev);
+          {{{ runtimeKeepalivePop() }}}
         }
       });
     }
