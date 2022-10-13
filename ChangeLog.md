@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Exporting `print`/`printErr` via `-sEXPORTED_RUNTIME_METHODS` is deprecated in
   favor of `out`/`err`.  The former symbols are supposed to be used with
   `-sINCOMING_MODULE_JS_API` instead. (#17955)
+- aio.h was removed from the sysroot.  Emscripten doesn't support any of the
+  functions in this header.
 
 3.1.24 - 10/11/22
 -----------------
