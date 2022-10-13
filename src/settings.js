@@ -1251,7 +1251,8 @@ var EXPORT_NAME = 'Module';
 // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
 // that is targeting a privileged or a certified execution environment, see
 // Firefox Content Security Policy (CSP) webpage for details:
-// https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
+// in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
 //  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
