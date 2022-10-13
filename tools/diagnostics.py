@@ -10,6 +10,7 @@ import ctypes
 import logging
 import os
 import sys
+from typing import Dict
 
 
 WINDOWS = sys.platform.startswith('win')
@@ -156,7 +157,7 @@ def warn(msg, *args):
 
 
 class WarningManager:
-  warnings = {}
+  warnings: Dict[str, Dict] = {}
 
   def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):
     self.warnings[name] = {

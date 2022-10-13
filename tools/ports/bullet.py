@@ -22,10 +22,7 @@ def get(ports, settings, shared):
     logging.info('building port: bullet')
 
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
-    dest_path = ports.clear_project_build('bullet')
-    shutil.copytree(source_path, dest_path)
-    src_path = os.path.join(dest_path, 'bullet', 'src')
-    src_path = os.path.join(dest_path, 'bullet', 'src')
+    src_path = os.path.join(source_path, 'bullet', 'src')
 
     dest_include_path = ports.get_include_dir('bullet')
     for base, _, files in os.walk(src_path):
@@ -43,7 +40,12 @@ def get(ports, settings, shared):
       for dir in dirs:
         includes.append(os.path.join(base, dir))
 
-    ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
+    flags = [
+      '-Wno-single-bit-bitfield-constant-conversion',
+      '-std=gnu++14'
+    ]
+
+    ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
   return [shared.Cache.get_lib('libbullet.a', create)]
 

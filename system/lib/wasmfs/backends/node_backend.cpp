@@ -217,19 +217,16 @@ private:
     }
   }
 
-  bool removeChild(const std::string& name) override {
+  int removeChild(const std::string& name) override {
     auto childPath = getChildPath(name);
     // Try both `unlink` and `rmdir`.
     if (auto err = _wasmfs_node_unlink(childPath.c_str())) {
       if (err == EISDIR) {
         err = _wasmfs_node_rmdir(childPath.c_str());
       }
-      if (err) {
-        // TODO: Report specific errors.
-        return false;
-      }
+      return -err;
     }
-    return true;
+    return 0;
   }
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
@@ -261,21 +258,22 @@ private:
     abort();
   }
 
-  size_t getNumEntries() override {
+  ssize_t getNumEntries() override {
     // TODO: optimize this?
-    return getEntries().size();
+    auto entries = getEntries();
+    if (int err = entries.getError()) {
+      return err;
+    }
+    return entries->size();
   }
 
-  std::vector<Directory::Entry> getEntries() override {
+  Directory::MaybeEntries getEntries() override {
     std::vector<Directory::Entry> entries;
     int err = _wasmfs_node_readdir(state.path.c_str(), &entries);
-    // TODO: Make this fallible. We actually depend on suppressing the error
-    //       here to pass test_unlink_wasmfs_node because the File stored in the
-    //       file table is not the same File that had its parent pointer reset
-    //       during the unlink. Fixing this may require caching Files at some
-    //       layer to ensure they are the same.
-    (void)err;
-    return entries;
+    if (err) {
+      return {-err};
+    }
+    return {entries};
   }
 };
 

@@ -62,9 +62,9 @@ uint32_t testSetjmp(uintptr_t id, TableEntry* table, uint32_t size) {
   return 0;
 }
 
-#ifndef __USING_WASM_SJLJ__
+#if !defined(__USING_WASM_SJLJ__)
 
-extern void _emscripten_throw_longjmp(); // defined in src/library.js
+void _emscripten_throw_longjmp(); // defined in src/library.js
 
 void emscripten_longjmp(uintptr_t env, int val) {
   setThrew(env, val);

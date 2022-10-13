@@ -20,6 +20,8 @@ extern "C" int baz() {
   return 3;
 }
 
+EM_JS_DEPS(main, "$addFunction,$removeFunction");
+
 int main(int argc, char **argv) {
 #if defined(GROWTH)
   EM_ASM({

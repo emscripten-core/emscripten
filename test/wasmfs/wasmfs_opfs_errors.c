@@ -65,6 +65,19 @@ int try_truncate(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int try_unlink(void) {
+  int err = unlink(file);
+  if (err == 0) {
+    return 1;
+  }
+  if (errno == EIO) {
+    return 0;
+  }
+  emscripten_console_error(strerror(errno));
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
 int try_oob_read(void) {
   int fd = open(file, O_RDWR);
   if (fd < 0) {
@@ -74,12 +87,15 @@ int try_oob_read(void) {
   char buf;
   int nread = pread(fd, &buf, 1, (off_t)-1ll);
   if (nread > 0) {
+    close(fd);
     return 1;
   }
   if (errno == EINVAL) {
+    close(fd);
     return 0;
   }
   EM_ASM({ console.log('errno', $0); }, errno);
+  close(fd);
   return 2;
 }
 
@@ -93,12 +109,15 @@ int try_oob_write(void) {
   char buf = 0;
   int nread = pwrite(fd, &buf, 1, (off_t)-1ll);
   if (nread > 0) {
+    close(fd);
     return 1;
   }
   if (errno == EINVAL) {
+    close(fd);
     return 0;
   }
   emscripten_console_error(strerror(errno));
+  close(fd);
   return 2;
 }
 

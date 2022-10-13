@@ -33,7 +33,7 @@ static const u32 kStackTraceMax = 255;
 // Fast unwind is the only option on Mac for now; we will need to
 // revisit this macro when slow unwind works on Mac, see
 // https://github.com/google/sanitizers/issues/137
-#if SANITIZER_MAC || SANITIZER_EMSCRIPTEN
+#if SANITIZER_APPLE || SANITIZER_EMSCRIPTEN
 #  define SANITIZER_CAN_SLOW_UNWIND 0
 #else
 # define SANITIZER_CAN_SLOW_UNWIND 1
@@ -91,9 +91,6 @@ uptr StackTrace::GetPreviousInstructionPc(uptr pc) {
   // so we return (pc-2) in that case in order to be safe.
   // For A32 mode we return (pc-4) because all instructions are 32 bit long.
   return (pc - 3) & (~1);
-#elif defined(__powerpc__) || defined(__powerpc64__) || defined(__aarch64__)
-  // PCs are always 4 byte aligned.
-  return pc - 4;
 #elif defined(__sparc__) || defined(__mips__)
   return pc - 8;
 #elif SANITIZER_RISCV64
@@ -104,8 +101,10 @@ uptr StackTrace::GetPreviousInstructionPc(uptr pc) {
   // It seems difficult to figure out the exact instruction length -
   // pc - 2 seems like a safe option for the purposes of stack tracing
   return pc - 2;
-#else
+#elif SANITIZER_S390 || SANITIZER_I386 || SANITIZER_X32 || SANITIZER_X64
   return pc - 1;
+#else
+  return pc - 4;
 #endif
 }
 

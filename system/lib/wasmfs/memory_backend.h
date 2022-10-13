@@ -63,7 +63,7 @@ protected:
 
   std::shared_ptr<File> getChild(const std::string& name) override;
 
-  bool removeChild(const std::string& name) override;
+  int removeChild(const std::string& name) override;
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {
@@ -88,8 +88,8 @@ protected:
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override;
 
-  size_t getNumEntries() override { return entries.size(); }
-  std::vector<Directory::Entry> getEntries() override;
+  ssize_t getNumEntries() override { return entries.size(); }
+  Directory::MaybeEntries getEntries() override;
 
   std::string getName(std::shared_ptr<File> file) override;
 

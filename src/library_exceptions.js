@@ -73,7 +73,7 @@ var LibraryExceptions = {
     // Initialize native structure fields. Should be called once after allocated.
     this.init = function(type, destructor) {
 #if EXCEPTION_DEBUG
-      err('ExceptionInfo init: ' + [type, destructor]);
+      dbg('ExceptionInfo init: ' + [type, destructor]);
 #endif
       this.set_adjusted_ptr(0);
       this.set_type(type);
@@ -133,7 +133,7 @@ var LibraryExceptions = {
 
   $exception_addRef: function (info) {
 #if EXCEPTION_DEBUG
-    err('exception_addRef ' + ptrToString(info.excPtr));
+    dbg('exception_addRef ' + ptrToString(info.excPtr));
 #endif
     info.add_ref();
   },
@@ -145,7 +145,7 @@ var LibraryExceptions = {
   ],
   $exception_decRef: function(info) {
 #if EXCEPTION_DEBUG
-    err('exception_decRef ' + ptrToString(info.excPtr));
+    dbg('exception_decRef ' + ptrToString(info.excPtr));
 #endif
     // A rethrown exception can reach refcount 0; it must not be discarded
     // Its next handler will clear the rethrown flag and addRef it, prior to
@@ -158,7 +158,7 @@ var LibraryExceptions = {
       }
       ___cxa_free_exception(info.excPtr);
 #if EXCEPTION_DEBUG
-      err('decref freeing exception ' + [ptrToString(info.excPtr), exceptionLast, 'stack', exceptionCaught]);
+      dbg('decref freeing exception ' + [ptrToString(info.excPtr), exceptionLast, 'stack', exceptionCaught]);
 #endif
     }
   },
@@ -206,7 +206,7 @@ var LibraryExceptions = {
   __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    err('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
+    dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
 #endif
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
@@ -235,7 +235,7 @@ var LibraryExceptions = {
       uncaughtExceptionCount++;
     }
 #if EXCEPTION_DEBUG
-    err('__cxa_rethrow, popped ' +
+    dbg('__cxa_rethrow, popped ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
     exceptionLast = ptr;
@@ -258,7 +258,7 @@ var LibraryExceptions = {
     info.set_rethrown(false);
     exceptionCaught.push(info);
 #if EXCEPTION_DEBUG
-    err('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
+    dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
     exception_addRef(info);
     return info.get_exception_ptr();
@@ -280,7 +280,7 @@ var LibraryExceptions = {
     var info = exceptionCaught.pop();
 
 #if EXCEPTION_DEBUG
-    err('__cxa_end_catch popped ' + [info, exceptionLast, 'stack', exceptionCaught]);
+    dbg('__cxa_end_catch popped ' + [info, exceptionLast, 'stack', exceptionCaught]);
 #endif
     exception_decRef(info);
     exceptionLast = 0; // XXX in decRef?
@@ -290,7 +290,7 @@ var LibraryExceptions = {
   __cxa_get_exception_ptr__sig: 'pp',
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
-    err('__cxa_get_exception_ptr ' + ptrToString(ptr));
+    dbg('__cxa_get_exception_ptr ' + ptrToString(ptr));
 #endif
     return new ExceptionInfo(ptr).get_exception_ptr();
   },
@@ -356,7 +356,7 @@ var LibraryExceptions = {
 
     // can_catch receives a **, add indirection
 #if EXCEPTION_DEBUG
-    err("__cxa_find_matching_catch on " + ptrToString(thrown));
+    dbg("__cxa_find_matching_catch on " + ptrToString(thrown));
 #endif
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
@@ -371,7 +371,7 @@ var LibraryExceptions = {
       var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
       if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
-        err("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
+        dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
         setTempRet0(caughtType);
         return thrown;
@@ -385,7 +385,7 @@ var LibraryExceptions = {
   __resumeException__sig: 'vp',
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    err("__resumeException " + [ptrToString(ptr), exceptionLast]);
+    dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
     if (!exceptionLast) { exceptionLast = ptr; }
     {{{ makeThrow('ptr') }}}
@@ -393,14 +393,14 @@ var LibraryExceptions = {
 
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free'],
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
   $getExceptionMessageCommon: function(ptr) {
     return withStackSave(function() {
-      var type_addr_addr = stackAlloc(4);
-      var message_addr_addr = stackAlloc(4);
-      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
-      var type_addr = HEAP32[type_addr_addr >> 2];
-      var message_addr = HEAP32[message_addr_addr >> 2];
+      var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+      ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+      var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
+      var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
       var type = UTF8ToString(type_addr);
       _free(type_addr);
       var message;
@@ -414,14 +414,45 @@ var LibraryExceptions = {
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
+    // In static linking, tags are defined within the wasm module and are
+    // exported, whereas in dynamic linking, tags are defined in library.js in
+    // JS code and wasm modules import them.
+#if RELOCATABLE
+    return ___cpp_exception; // defined in library.js
+#else
     return Module['asm']['__cpp_exception'];
+#endif
   },
+
+#if ASSERTIONS
+  // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
+  // embedded. WebAssembly.Exception is a JS object representing a Wasm
+  // exception, provided by Wasm JS API:
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
+  // In release builds, this function is not needed and the native
+  // _Unwind_RaiseException in libunwind is used instead.
+  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag', '$getExceptionMessage'],
+  __throw_exception_with_stack_trace: function(ex) {
+    var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
+    e.message = getExceptionMessage(e);
+    // The generated stack trace will be in the form of:
+    //
+    // Error
+    //     at ___throw_exception_with_stack_trace(test.js:1139:13)
+    //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    //     ...
+    //
+    // Remove this JS function name, which is in the second line, from the stack
+    // trace.
+    var arr = e.stack.split('\n');
+    arr.splice(1,1);
+    e.stack = arr.join('\n');
+    throw e;
+  },
+#endif
 
   // Given an WebAssembly.Exception object, returns the actual user-thrown
   // C++ object address in the Wasm memory.
-  // WebAssembly.Exception is a JS object representing a Wasm exception,
-  // provided by Wasm JS API:
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   $getCppExceptionThrownObjectFromWebAssemblyException__deps: ['$getCppExceptionTag', '__thrown_object_from_unwind_exception'],
   $getCppExceptionThrownObjectFromWebAssemblyException: function(ex) {
     // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer

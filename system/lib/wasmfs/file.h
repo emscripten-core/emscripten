@@ -16,6 +16,7 @@
 #include <mutex>
 #include <optional>
 #include <sys/stat.h>
+#include <variant>
 #include <vector>
 #include <wasi/api.h>
 
@@ -171,6 +172,20 @@ public:
     ino_t ino;
   };
 
+  struct MaybeEntries : std::variant<std::vector<Entry>, int> {
+    int getError() {
+      if (int* err = std::get_if<int>(this)) {
+        assert(*err < 0);
+        return *err;
+      }
+      return 0;
+    }
+
+    std::vector<Entry>* operator->() {
+      return std::get_if<std::vector<Entry>>(this);
+    }
+  };
+
 private:
   // The directory cache, or `dcache`, stores `File` objects for the children of
   // each directory so that subsequent lookups do not need to query the backend.
@@ -208,16 +223,17 @@ protected:
   virtual int insertMove(const std::string& name,
                          std::shared_ptr<File> file) = 0;
 
-  // Remove the file with the given name, returning `true` on success or if the
-  // child has already been removed or returning `false` if the child cannot be
-  // removed.
-  virtual bool removeChild(const std::string& name) = 0;
+  // Remove the file with the given name. Returns zero on success or if the
+  // child has already been removed and otherwise returns a negative error code
+  // if the child cannot be removed.
+  virtual int removeChild(const std::string& name) = 0;
 
-  // The number of entries in this directory.
-  virtual size_t getNumEntries() = 0;
+  // The number of entries in this directory. Returns the number of entries or a
+  // negative error code.
+  virtual ssize_t getNumEntries() = 0;
 
-  // The list of entries in this directory.
-  virtual std::vector<Directory::Entry> getEntries() = 0;
+  // The list of entries in this directory or a negative error code.
+  virtual MaybeEntries getEntries() = 0;
 
   // Only backends that maintain file identity themselves (see below) need to
   // implement this.
@@ -377,15 +393,15 @@ public:
   [[nodiscard]] int insertMove(const std::string& name,
                                std::shared_ptr<File> file);
 
-  // Remove the file with the given name, returning `true` on success or if the
-  // vhild has already been removed or returning `false` if the child cannot be
-  // removed.
-  bool removeChild(const std::string& name);
+  // Remove the file with the given name. Returns zero on success or if the
+  // child has already been removed and otherwise returns a negative error code
+  // if the child cannot be removed.
+  [[nodiscard]] int removeChild(const std::string& name);
 
   std::string getName(std::shared_ptr<File> file);
 
-  size_t getNumEntries();
-  std::vector<Directory::Entry> getEntries();
+  [[nodiscard]] ssize_t getNumEntries();
+  [[nodiscard]] MaybeEntries getEntries();
 };
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }

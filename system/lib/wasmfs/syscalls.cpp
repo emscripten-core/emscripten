@@ -166,6 +166,9 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       lockedOpenFile.getFile()->isSeekable()) {
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
+  if (bytesWritten) {
+    lockedFile.setMTime(time(NULL));
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -278,13 +281,23 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = wasmFS.getFileTable().locked();
-  auto entry = fileTable.getEntry(fd);
-  if (!entry) {
-    return __WASI_ERRNO_BADF;
+  std::shared_ptr<DataFile> closee;
+  {
+    // Do not hold the file table lock while performing the close.
+    auto fileTable = wasmFS.getFileTable().locked();
+    auto entry = fileTable.getEntry(fd);
+    if (!entry) {
+      return __WASI_ERRNO_BADF;
+    }
+    closee = fileTable.setEntry(fd, nullptr);
   }
-  // Translate to WASI standard of positive return codes.
-  return -fileTable.setEntry(fd, nullptr);
+  if (closee) {
+    // Translate to WASI standard of positive return codes.
+    int ret = -closee->locked().close();
+    assert(ret >= 0);
+    return ret;
+  }
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
@@ -297,8 +310,10 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   // way. TODO: in the future we may want syncing of directories.
   auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
+    auto ret = dataFile->locked().flush();
+    assert(ret <= 0);
     // Translate to WASI standard of positive return codes.
-    return -dataFile->locked().flush();
+    return -ret;
   }
 
   return __WASI_ERRNO_SUCCESS;
@@ -467,6 +482,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
       std::shared_ptr<OpenFileState> openFile;
       if (auto err = OpenFileState::create(created, flags, openFile)) {
+        assert(err < 0);
         return err;
       }
       return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -517,6 +533,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
   if (auto err = OpenFileState::create(child, flags, openFile)) {
+    assert(err < 0);
     return err;
   }
 
@@ -834,10 +851,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   }
 
   // Input is valid, perform the unlink.
-  if (!lockedParent.removeChild(childName)) {
-    return -EPERM;
-  }
-  return 0;
+  return lockedParent.removeChild(childName);
 }
 
 int __syscall_rmdir(intptr_t path) {
@@ -878,7 +892,10 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     {".", File::DirectoryKind, dir->getIno()},
     {"..", File::DirectoryKind, parent->getIno()}};
   auto dirEntries = lockedDir.getEntries();
-  entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
+  if (int err = dirEntries.getError()) {
+    return err;
+  }
+  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
 
   off_t bytesRead = 0;
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
@@ -1015,6 +1032,7 @@ int __syscall_renameat(int olddirfd,
 
   // Perform the move.
   if (auto err = lockedNewParent.insertMove(newFileName, oldFile)) {
+    assert(err < 0);
     return err;
   }
   return 0;
@@ -1210,7 +1228,9 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
     return -EINVAL;
   }
 
-  return locked.setSize(size);
+  int ret = locked.setSize(size);
+  assert(ret <= 0);
+  return ret;
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
@@ -1283,11 +1303,11 @@ int __syscall_pipe(intptr_t fd) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
-  auto fileTable = wasmFS.getFileTable().locked();
-
   std::shared_ptr<OpenFileState> openReader, openWriter;
   (void)OpenFileState::create(reader, O_RDONLY, openReader);
   (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+
+  auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
   fds[1] = fileTable.addEntry(openWriter);
 
@@ -1379,6 +1399,7 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
   }
   if (newNeededSize > size) {
     if (auto err = locked.setSize(newNeededSize)) {
+      assert(err < 0);
       return err;
     }
   }
@@ -1516,8 +1537,30 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
 }
 
-intptr_t _mmap_js(
-  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
+int _mmap_js(size_t length,
+             int prot,
+             int flags,
+             int fd,
+             size_t offset,
+             int* allocated,
+             void** addr) {
+  // PROT_EXEC is not supported (although we pretend to support the absence of
+  // PROT_READ or PROT_WRITE).
+  if ((prot & PROT_EXEC)) {
+    return -EPERM;
+  }
+
+  // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.
+  int mapType = flags & MAP_TYPE;
+  if (mapType != MAP_PRIVATE && mapType != MAP_SHARED &&
+      mapType != MAP_SHARED_VALIDATE) {
+    return -EINVAL;
+  }
+
+  if (mapType == MAP_SHARED_VALIDATE) {
+    WASMFS_UNREACHABLE("TODO: MAP_SHARED_VALIDATE");
+  }
+
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1538,7 +1581,7 @@ intptr_t _mmap_js(
     // According to the POSIX spec it is possible to write to a file opened in
     // read-only mode with MAP_PRIVATE flag, as all modifications will be
     // visible only in the memory of the current process.
-    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+    if ((prot & PROT_WRITE) != 0 && mapType != MAP_PRIVATE &&
         (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
       return -EACCES;
     }
@@ -1550,16 +1593,15 @@ intptr_t _mmap_js(
     return -ENODEV;
   }
 
-  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
-  //       like avoiding an allocation and a copy as we do below (whereas a
-  //       private mmap is always a copy into a new, private region not shared
-  //       with anything else).
-  assert(flags & MAP_PRIVATE);
+  // TODO: On MAP_SHARED, install the mapping on the DataFile object itself so
+  // that reads and writes can be redirected to the mapped region and so that
+  // the mapping can correctly outlive the file being closed. This will require
+  // changes to emscripten_mmap.c as well.
 
   // Align to a wasm page size, as we expect in the future to get wasm
   // primitives to do this work, and those would presumably be aligned to a page
   // size. Aligning now avoids confusion later.
-  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  uint8_t* ptr = (uint8_t*)emscripten_builtin_memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
     return -ENOMEM;
   }
@@ -1567,13 +1609,14 @@ intptr_t _mmap_js(
   auto nread = file->locked().read(ptr, length, offset);
   if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
-    free(ptr);
+    emscripten_builtin_free(ptr);
     return nread;
   }
 
   // From here on, we have succeeded, and can mark the allocation as having
   // occurred (which means that the caller has the responsibility to free it).
   *allocated = true;
+  *addr = (void*)ptr;
 
   // The read must be of a valid amount, or we have had an internal logic error.
   assert(nread <= length);
@@ -1581,7 +1624,31 @@ intptr_t _mmap_js(
   // mmap clears any extra bytes after the data itself.
   memset(ptr + nread, 0, length - nread);
 
-  return (intptr_t)ptr;
+  return 0;
+}
+
+int _msync_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds. Only need to sync if shared and writes are allowed.
+  int mapType = flags & MAP_TYPE;
+  if (mapType == MAP_SHARED && (prot & PROT_WRITE)) {
+    __wasi_ciovec_t iovec;
+    iovec.buf = (uint8_t*)addr;
+    iovec.buf_len = length;
+    __wasi_size_t nwritten;
+    // Translate from WASI positive error codes to negative error codes.
+    return -__wasi_fd_pwrite(fd, &iovec, 1, offset, &nwritten);
+  }
+  return 0;
+}
+
+int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds.
+  // TODO: Syncing should probably be handled in __syscall_munmap instead.
+  return _msync_js(addr, length, prot, flags, fd, offset);
 }
 
 // Stubs (at least for now)

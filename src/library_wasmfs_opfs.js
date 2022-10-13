@@ -149,21 +149,25 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_get_entries__deps: [],
-  _wasmfs_opfs_get_entries: async function(ctx, dirID, entries) {
+  _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
     // TODO: Use 'for await' once Acorn supports that.
-    // TODO: Error handling.
-    let iter = dirHandle.entries();
-    for (let entry; entry = await iter.next(), !entry.done;) {
-      let [name, child] = entry.value;
-      withStackSave(() => {
-        let namePtr = allocateUTF8OnStack(name);
-        let type = child.kind == "file" ?
-            {{{ cDefine('File::DataFileKind') }}} :
-            {{{ cDefine('File::DirectoryKind') }}};
-        __wasmfs_opfs_record_entry(entries, namePtr, type)
-      });
+    try {
+      let iter = dirHandle.entries();
+      for (let entry; entry = await iter.next(), !entry.done;) {
+        let [name, child] = entry.value;
+        withStackSave(() => {
+          let namePtr = allocateUTF8OnStack(name);
+          let type = child.kind == "file" ?
+              {{{ cDefine('File::DataFileKind') }}} :
+          {{{ cDefine('File::DirectoryKind') }}};
+          __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
+        });
+      }
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
   },
@@ -202,10 +206,15 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSFree',
                                     '$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr) {
+  _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
-    await dirHandle.removeEntry(name);
+    try {
+      await dirHandle.removeEntry(name);
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+    }
     _emscripten_proxy_finish(ctx);
   },
 
@@ -277,11 +286,14 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSFree',
                                     '$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_close_access: async function(ctx, accessID) {
+  _wasmfs_opfs_close_access: async function(ctx, accessID, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
-    // Wait for the close to finish to ensure that subsequent opens succeed. The
-    // close cannot fail, so we don't need any kind of error handling.
-    await accessHandle.close();
+    try {
+      await accessHandle.close();
+    } catch {
+      let err = -{{{ cDefine('EIO') }}};
+      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+    }
     wasmfsOPFSFree(wasmfsOPFSAccessHandles, accessID);
     _emscripten_proxy_finish(ctx);
   },

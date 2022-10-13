@@ -33,6 +33,8 @@ EM_JS(void, test_remove_cpp_comments_in_shaders, (void), {
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 
+EM_JS_DEPS(main, "$preprocess_c_code,$remove_cpp_comments_in_shaders");
+
 EM_JS(void, test_c_preprocessor, (void), {
 	var numFailed = 0;
 	function test(input, expected) {

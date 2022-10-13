@@ -18,8 +18,78 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.21 (in development)
+3.1.25 (in development)
 -----------------------
+
+3.1.24 - 10/11/22
+-----------------
+- In Wasm exception mode (`-fwasm-exceptions`), when `ASSERTIONS` is enabled,
+  uncaught exceptions will display stack traces and what() message. (#17979 and
+  #18003)
+- It is now possible to specify indirect dependencies on JS library functions
+  directly in C/C++ source code.  For example, in the case of a EM_JS or EM_ASM
+  JavaScript function that depends on a JS library function.  See the
+  `EM_JS_DEPS` macro in the `em_macros.h` header.  Adding dependencies in this
+  way avoids the need to specify them on the command line with
+  `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. (#17854)
+
+3.1.23 - 09/23/22
+-----------------
+- The `__EMSCRIPTEN_major__/minor__/tiny__` macros are no longer defined on the
+  command line but require `<emscripten.h/>` (or just `<emscripten/version.h>`
+  to be included. (#17883)
+- Linking of bitcode files using `emcc -r` + `-flto` is no longer supported.
+  `emcc -r` will now always use lld to link to an object file.  This matches the
+  behavior of upstream llvm where bitcode linking using lld does not exist.
+  The recommend way to combine bitcode input is to use library files (`ar`
+  archives).  See #13492 for more details.
+
+3.1.22 - 09/19/22
+-----------------
+- compiler-rt updated to LLVM 15. (#17802)
+- Using `-Oz` or `-Os` will no longer pass `-fno-inline-functions` to clang and
+  instead rely on clang's normal inline heuristics for these optimization
+  levels.  `-fno-inline-functions` can be passed explicitly if needed.
+- C++17 is now the default version of the C++ standard used by the compiler.
+  This is due to an upstream change in llvm.  Use `-std=c++14` (or technically
+  `-std=gnu++14`) to revert to the previous default.
+- Closure warnings are now controlled via the standard `-Wclosure` warning flags
+  rather than via a specific/custom `CLOSURE_WARNINGS` setting.  The old
+  setting continues to work but will issue a deprecation warning.
+  If you link with `-Werror` but you don't want closure warnings to be errors
+  you can add `-Wno-error=closure` or `-Wno-closure`.
+
+3.1.21 - 09/09/2022
+-------------------
+- Update SDL2 port to 2.24.0 (#17748)
+- The `LEGACY_RUNTIME` setting is no longer enabled by default.  If you use any
+  of these legacy runtime functions (except in library code with explicit
+  dependencies) then you would need to set `LEGACY_RUNTIME` on the command line
+  or add the ones you need to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`:
+   - addFunction
+   - removeFunction
+   - allocate
+   - AsciiToString
+   - stringToAscii
+   - UTF16ToString
+   - stringToUTF16
+   - lengthBytesUTF16
+   - UTF32ToString
+   - stringToUTF32
+   - lengthBytesUTF32
+   - allocateUTF8
+   - allocateUTF8OnStack
+   - writeStringToMemory
+   - writeArrayToMemory
+   - writeAsciiToMemory
+   - intArrayFromString
+   - intArrayToString
+   - warnOnce
+   - ccall
+   - cwrap
+  Although this is technically a breaking change for those who use these
+  functions, there are assertion in debug builds that catch such usages and
+  direct towards how to fix the issue.
 
 3.1.20 - 08/24/2022
 -------------------
