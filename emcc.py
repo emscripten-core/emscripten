@@ -1883,6 +1883,14 @@ def phase_linker_setup(options, state, newargs):
   if not settings.AUTO_JS_LIBRARIES:
     default_setting('USE_SDL', 0)
 
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
+    # When optimizing for size it helps to put static data first before
+    # the stack (sincs this makes instructions for accessing this data
+    # use a smaller LEB encoding).
+    # However, for debugability is better to have the stack come first
+    # (becuase stack overflows will trap rather than corrupting data).
+    settings.STACK_FIRST = True
+
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
   # In pthreads enabled builds, TEXTDECODER==2 may not work, see
@@ -2074,7 +2082,8 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += [
       'emscripten_stack_get_end',
       'emscripten_stack_get_free',
-      'emscripten_stack_get_base'
+      'emscripten_stack_get_base',
+      'emscripten_stack_get_current',
     ]
 
     # We call one of these two functions during startup which caches the stack limits
@@ -2219,7 +2228,7 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
-    exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
+    exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
 
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
@@ -2567,6 +2576,7 @@ def phase_linker_setup(options, state, newargs):
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
+    settings.STACK_FIRST = False
 
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem

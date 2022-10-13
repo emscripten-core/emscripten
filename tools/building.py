@@ -225,8 +225,11 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
       cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
-    if not settings.RELOCATABLE:
-      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if settings.STACK_FIRST:
+    cmd.append('--stack-first')
+  elif not settings.RELOCATABLE:
+    cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
   return cmd
 

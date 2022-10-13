@@ -26,6 +26,11 @@ See docs/process.md for more on how version tagging works.
   that will allow the command to be replicated.  This can be useful for sharing
   reproduction cases with others (inspired by the lld option of the same name).
   (#18160)
+- In non-optimizing builds emscripten will now place the stack first in memory,
+  before global data.  This is to get more accurate stack overflow errors (since
+  overflow will trap rather corrupting global data first).  This should not
+  be a user-visible change (unless your program does something very odd such
+  depending on the specific location of stack data in memory). (#18154)
 
 3.1.25 - 11/08/22
 -----------------
