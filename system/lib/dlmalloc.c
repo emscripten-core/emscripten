@@ -723,9 +723,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #define UNSIGNED_MORECORE 0
 #endif  /* UNSIGNED_MORECORE */
 #if UNSIGNED_MORECORE
-#ifndef MORECORE_CANNOT_TRIM
 #define MORECORE_CANNOT_TRIM 1
-#endif  /* MORECORE_CANNOT_TRIM */
 #else  /* !UNSIGNED_MORECORE */
 #ifndef MORECORE_CANNOT_TRIM
 #define MORECORE_CANNOT_TRIM 0
