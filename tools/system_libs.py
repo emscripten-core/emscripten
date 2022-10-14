@@ -103,7 +103,7 @@ def create_lib(libname, inputs):
 
 def run_ninja(build_dir):
   diagnostics.warning('experimental', 'ninja support is experimental')
-  cmd = ['ninja', '-C', build_dir, f'-j {shared.get_num_cores()}']
+  cmd = ['ninja', '-C', build_dir]
   if shared.PRINT_STAGES:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
@@ -406,8 +406,8 @@ class Library:
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
 
-    source_dir = utils.__rootpath__
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=buildbot']
+    source_dir = utils.path_from_root()
+    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/buildbot']
     asflags = get_base_cflags()
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -423,8 +423,9 @@ class Library:
     """
     commands = []
     objects = []
-    source_dir = utils.__rootpath__
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=buildbot']
+    source_dir = utils.path_from_root()
+    print(source_dir)
+    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/buildbot']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       object_basename = shared.unsuffixed_basename(src)
