@@ -530,7 +530,9 @@ struct __sanitizer_dirent64 {
 };
 #endif
 
-#if defined(__x86_64__) && !defined(_LP64)
+#if SANITIZER_EMSCRIPTEN
+typedef int __sanitizer_clock_t;
+#elif defined(__x86_64__) && !defined(_LP64)
 typedef long long __sanitizer_clock_t;
 #else
 typedef long __sanitizer_clock_t;

@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from typing import Set, Dict
 from subprocess import PIPE
 
 from . import diagnostics
@@ -27,8 +28,7 @@ from .shared import LLVM_OBJCOPY
 from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
+from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings
@@ -41,10 +41,9 @@ EXPECTED_BINARYEN_VERSION = 109
 
 # cache results of nm - it can be slow to run
 nm_cache = {}
-_is_ar_cache = {}
-
+_is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
-user_requested_exports = set()
+user_requested_exports: Set[str] = set()
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -281,7 +280,7 @@ def get_command_with_possible_response_file(cmd):
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
-  filename = response_file.create_response_file(cmd[1:], TEMP_DIR)
+  filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
 
@@ -387,15 +386,22 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     cmd += ['--exportES6']
   if settings.VERBOSE:
     cmd += ['verbose']
-  if not return_output:
-    next = original_filename + '.jso.js'
-    shared.get_temp_files().note(next)
-    check_call(cmd, stdout=open(next, 'w'))
-    save_intermediate(next, '%s.js' % passes[0])
-    return next
-  output = check_call(cmd, stdout=PIPE).stdout
-  return output
+  if return_output:
+    return check_call(cmd, stdout=PIPE).stdout
 
+  acorn_optimizer.counter += 1
+  basename = shared.unsuffixed(original_filename)
+  if '.jso' in basename:
+    basename = shared.unsuffixed(basename)
+  output_file = basename + '.jso%d.js' % acorn_optimizer.counter
+  shared.get_temp_files().note(output_file)
+  cmd += ['-o', output_file]
+  check_call(cmd)
+  save_intermediate(output_file, '%s.js' % passes[0])
+  return output_file
+
+
+acorn_optimizer.counter = 0
 
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
@@ -1296,17 +1302,16 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-save_intermediate_counter = 0
-
-
 def save_intermediate(src, dst):
   if DEBUG:
-    global save_intermediate_counter
-    dst = 'emcc-%d-%s' % (save_intermediate_counter, dst)
-    save_intermediate_counter += 1
-    dst = os.path.join(CANONICAL_TEMP_DIR, dst)
+    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
+    save_intermediate.counter += 1
+    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)
+
+
+save_intermediate.counter = 0
 
 
 def js_legalization_pass_flags():

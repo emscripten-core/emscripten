@@ -3724,16 +3724,17 @@ var LibrarySDL = {
   },
 
   SDL_AddTimer__proxy: 'sync',
+  SDL_AddTimer__deps: ['$safeSetTimeout'],
   SDL_AddTimer__sig: 'iiii',
   SDL_AddTimer: function(interval, callback, param) {
-    return window.setTimeout(function() {
-      {{{ makeDynCall('iii', 'callback') }}}(interval, param);
-    }, interval);
+    return safeSetTimeout(
+      () => {{{ makeDynCall('iii', 'callback') }}}(interval, param),
+      interval);
   },
   SDL_RemoveTimer__proxy: 'sync',
   SDL_RemoveTimer__sig: 'ii',
   SDL_RemoveTimer: function(id) {
-    window.clearTimeout(id);
+    clearTimeout(id);
     return true;
   },
 

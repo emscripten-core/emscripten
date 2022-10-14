@@ -18,6 +18,7 @@ mergeInto(LibraryManager.library, {
     '$PATH',
     '$allocateUTF8',
     '$allocateUTF8OnStack',
+    '$withStackSave',
     '$readI53FromI64',
   ],
   $FS : {

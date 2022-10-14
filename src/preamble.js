@@ -286,9 +286,9 @@ function preMain() {
 #if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
-  err('exitRuntime');
+  dbg('exitRuntime');
 #endif
-#if ASYNCIFY && ASSERTIONS
+#if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
 #endif
@@ -857,10 +857,6 @@ function createWasm() {
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
-#endif
-
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
@@ -868,8 +864,6 @@ function createWasm() {
 #if ABORT_ON_WASM_EXCEPTIONS
     exports = instrumentWasmExportsWithAbort(exports);
 #endif
-
-    Module['asm'] = exports;
 
 #if MAIN_MODULE
     var metadata = getDylinkMetadata(module);
@@ -880,6 +874,12 @@ function createWasm() {
 #endif
     mergeLibSymbols(exports, 'main')
 #endif
+
+#if MEMORY64
+    exports = instrumentWasmExportsForMemory64(exports);
+#endif
+
+    Module['asm'] = exports;
 
 #if USE_PTHREADS
 #if MAIN_MODULE

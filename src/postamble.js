@@ -167,7 +167,7 @@ function callMain(args) {
     // that if we get here main returned zero.
     var ret = 0;
 #else
-    var ret = entryFunction(argc, argv);
+    var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
 
 #if BENCHMARK
@@ -179,6 +179,9 @@ function callMain(args) {
 #if PROXY_TO_PTHREAD
 #if ASSERTIONS
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
+#endif
+#if ABORT_ON_WASM_EXCEPTIONS
+  }
 #endif
 #else
 #if ASYNCIFY == 2

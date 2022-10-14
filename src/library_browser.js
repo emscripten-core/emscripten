@@ -507,10 +507,11 @@ var LibraryBrowser = {
 
     // abort and pause-aware versions TODO: build main loop on top of this?
 
-    safeSetTimeout: function(func) {
+    safeSetTimeout: function(func, timeout) {
       // Legacy function, this is used by the SDL2 port so we need to keep it
       // around at least until that is updated.
-      return safeSetTimeout(func);
+      // See https://github.com/libsdl-org/SDL/pull/6304
+      return safeSetTimeout(func, timeout);
     },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
@@ -984,7 +985,7 @@ var LibraryBrowser = {
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
-        err('main loop exiting..');
+        dbg('main loop exiting..');
 #endif
         {{{ runtimeKeepalivePop() }}}
 #if !MINIMAL_RUNTIME

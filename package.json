@@ -3,7 +3,8 @@
   "devDependencies": {
     "es-check": "^6.2.1",
     "eslint": "^8.16.0",
-    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "prettier": "^2.7.1",
     "source-map": "0.7.3",
     "ws": "^8.6.0"
   },
@@ -14,6 +15,8 @@
     "wasm2c": "1.0.0"
   },
   "scripts": {
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "fmt": "prettier --write tools/acorn-optimizer.js",
+    "check": "prettier --check tools/acorn-optimizer.js"
   }
 }

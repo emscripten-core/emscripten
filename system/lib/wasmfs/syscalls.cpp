@@ -1601,7 +1601,7 @@ int _mmap_js(size_t length,
   // Align to a wasm page size, as we expect in the future to get wasm
   // primitives to do this work, and those would presumably be aligned to a page
   // size. Aligning now avoids confusion later.
-  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  uint8_t* ptr = (uint8_t*)emscripten_builtin_memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
     return -ENOMEM;
   }
@@ -1609,7 +1609,7 @@ int _mmap_js(size_t length,
   auto nread = file->locked().read(ptr, length, offset);
   if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
-    free(ptr);
+    emscripten_builtin_free(ptr);
     return nread;
   }
 

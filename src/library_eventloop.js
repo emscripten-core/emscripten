@@ -108,15 +108,9 @@ LibraryJSEventLoop = {
   },
 
   emscripten_set_timeout__sig: 'ipdp',
-  emscripten_set_timeout__deps: ['$callUserCallback'],
+  emscripten_set_timeout__deps: ['$safeSetTimeout'],
   emscripten_set_timeout: function(cb, msecs, userData) {
-    {{{ runtimeKeepalivePush() }}}
-    return setTimeout(function() {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
-        {{{ makeDynCall('vi', 'cb') }}}(userData);
-      });
-    }, msecs);
+    return safeSetTimeout(() => {{{ makeDynCall('vi', 'cb') }}}(userData), msecs);
   },
 
   emscripten_clear_timeout__sig: 'vi',

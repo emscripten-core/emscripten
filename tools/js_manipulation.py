@@ -108,7 +108,11 @@ def make_dynCall(sig, args):
     else:
       return 'Module["dynCall_%s"](%s)' % (sig, args)
   else:
-    return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
+    func_ptr = args[0]
+    if settings.MEMORY64:
+      func_ptr = f'Number({func_ptr})'
+    call_args = ",".join(args[1:])
+    return f'getWasmTableEntry({func_ptr})({call_args})'
 
 
 def make_invoke(sig):

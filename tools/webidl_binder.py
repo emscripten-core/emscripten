@@ -43,7 +43,7 @@ class Dummy:
     for k, v in init.items():
       self.__dict__[k] = v
 
-  def getExtendedAttribute(self, name): # noqa: U100
+  def getExtendedAttribute(self, _name):
     return None
 
 
@@ -81,6 +81,8 @@ mid_js = []
 
 pre_c += [r'''
 #include <emscripten.h>
+
+EM_JS_DEPS(webidl_binder, "$intArrayFromString");
 ''']
 
 mid_c += [r'''

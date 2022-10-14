@@ -1003,7 +1003,8 @@
                 "__attributes"
             ]
         },
-        "defines": ["EMSCRIPTEN_FETCH_LOAD_TO_MEMORY",
+        "defines": [
+            "EMSCRIPTEN_FETCH_LOAD_TO_MEMORY",
             "EMSCRIPTEN_FETCH_STREAM_DATA",
             "EMSCRIPTEN_FETCH_PERSIST_FILE",
             "EMSCRIPTEN_FETCH_APPEND",
@@ -1030,6 +1031,38 @@
                 "asyncify_data"
             ]
         }
+    },
+    {
+        "file": "AL/al.h",
+        "defines": [
+          "AL_TRUE",
+          "AL_FALSE",
+          "AL_NONE",
+          "AL_NO_ERROR",
+          "AL_DOPPLER_FACTOR",
+          "AL_SPEED_OF_SOUND",
+          "AL_POSITION",
+          "AL_DIRECTION",
+          "AL_ORIENTATION",
+          "AL_VELOCITY",
+          "AL_GAIN",
+          "AL_DISTANCE_MODEL",
+          "AL_INVALID_ENUM",
+          "AL_INVALID_NAME",
+          "AL_INVALID_OPERATION",
+          "AL_INVALID_VALUE"
+        ]
+    },
+    {
+        "file": "AL/alc.h",
+        "defines": [
+          "ALC_TRUE",
+          "ALC_FALSE",
+          "ALC_NO_ERROR",
+          "ALC_INVALID_DEVICE",
+          "ALC_INVALID_VALUE",
+          "ALC_INVALID_ENUM"
+        ]
     },
     // ===========================================
     // WebGPU
