@@ -421,7 +421,7 @@ _Static_assert(MALLOC_ALIGNMENT == 8, "max_align_t must be 8");
  True if MORECORE can only handle unsigned arguments. This sets
  MORECORE_CANNOT_TRIM to 1 (true).
 
- MORECORE_CANNOT_TRIM      default: 0 (false)
+ MORECORE_CANNOT_TRIM      default: NOT defined
  True if MORECORE cannot release space back to the system when given
  negative arguments. This is generally necessary only if you are
  using a hand-crafted MORECORE function that cannot handle negative
@@ -724,10 +724,6 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #endif  /* UNSIGNED_MORECORE */
 #if UNSIGNED_MORECORE
 #define MORECORE_CANNOT_TRIM 1
-#else  /* !UNSIGNED_MORECORE */
-#ifndef MORECORE_CANNOT_TRIM
-#define MORECORE_CANNOT_TRIM 0
-#endif  /* MORECORE_CANNOT_TRIM */
 #endif  /* UNSIGNED_MORECORE */
 #if !HAVE_MORECORE
 #define MORECORE_CONTIGUOUS 0
@@ -745,7 +741,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #endif  /* MORECORE_CONTIGUOUS */
 #endif  /* DEFAULT_GRANULARITY */
 #ifndef DEFAULT_TRIM_THRESHOLD
-#if !MORECORE_CANNOT_TRIM
+#ifndef MORECORE_CANNOT_TRIM
 #define DEFAULT_TRIM_THRESHOLD ((size_t)2U * (size_t)1024U * (size_t)1024U)
 #else   /* MORECORE_CANNOT_TRIM */
 #define DEFAULT_TRIM_THRESHOLD MAX_SIZE_T
@@ -2802,7 +2798,7 @@ static int has_segment_link(mstate m, msegmentptr ss) {
     }
 }
 
-#if !MORECORE_CANNOT_TRIM
+#ifndef MORECORE_CANNOT_TRIM
 #define should_trim(M,s)  ((s) > (M)->trim_check)
 #else  /* MORECORE_CANNOT_TRIM */
 #define should_trim(M,s)  (0)
