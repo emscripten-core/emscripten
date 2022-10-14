@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.25 (in development)
 -----------------------
+- Exporting `print`/`printErr` via `-sEXPORTED_RUNTIME_METHODS` is deprecated in
+  favor of `out`/`err`.  The former symbols are supposed to be used with
+  `-sINCOMING_MODULE_JS_API` instead. (#17955)
 
 3.1.24 - 10/11/22
 -----------------
@@ -394,7 +397,7 @@ See docs/process.md for more on how version tagging works.
    `isFunctionDef`, `isPossiblyFunctionType`, `isFunctionType`, `getReturnType`,
    `splitTokenList`, `_IntToHex`, `IEEEUnHex`, `Compiletime.isPointerType`,
    `Compiletime.isStructType`, `Compiletime.INT_TYPES`, `isType`.
-- The example `shell.html` and `shell_minimal.html` templaces no longer override
+- The example `shell.html` and `shell_minimal.html` templates no longer override
   `printErr` on the module object.  This means error message from emscripten and
   stderr from the application will go to the default location of `console.warn`
   rather than `console.error`.  This only effects application that use the

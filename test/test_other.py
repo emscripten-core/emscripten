@@ -7132,7 +7132,7 @@ int main() {}
     self.run_process([EMXX, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(error, read_file('a.out.js'))
 
-  def test_warn_module_print_err(self):
+  def test_warn_module_out_err(self):
     error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)'
 
     def test(contents, expected, args=[], assert_returncode=0):  # noqa
@@ -7147,12 +7147,15 @@ int main() {}
       self.assertContained(expected, self.run_js('a.out.js', assert_returncode=assert_returncode))
 
     # error shown (when assertions are on)
-    test("Module.print('x')", error, assert_returncode=NON_ZERO)
-    test("Module['print']('x')", error, assert_returncode=NON_ZERO)
-    test("Module.printErr('x')", error, assert_returncode=NON_ZERO)
-    test("Module['printErr']('x')", error, assert_returncode=NON_ZERO)
+    test("Module.out('x')", error, assert_returncode=NON_ZERO)
+    test("Module['out']('x')", error, assert_returncode=NON_ZERO)
+    test("Module.err('x')", error, assert_returncode=NON_ZERO)
+    test("Module['err']('x')", error, assert_returncode=NON_ZERO)
 
     # when exported, all good
+    test("Module['out']('print'); Module['err']('err'); ", 'print\nerr', ['-sEXPORTED_RUNTIME_METHODS=out,err'])
+
+    # test backwards compatibility
     test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-sEXPORTED_RUNTIME_METHODS=print,printErr'])
 
   def test_warn_unexported_main(self):

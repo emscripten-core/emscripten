@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <emscripten.h>
+#include <emscripten/console.h>
 #include <emscripten/threading.h>
 #include <assert.h>
 #include <stdio.h>
@@ -16,7 +17,7 @@ void Sleep(double msecs)
 
 void *thread_main(void *arg)
 {
-	EM_ASM(Module.print('hello from thread!'));
+	_emscripten_out("hello from thread!");
 
 	Sleep(1);
 	Sleep(10);
