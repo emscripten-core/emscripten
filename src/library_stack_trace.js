@@ -45,6 +45,7 @@ var LibraryStackTrace = {
 #endif // DEMANGLE_SUPPORT
   },
 
+  $demangleAll__deps: ['$demangle'],
   $demangleAll: function(text) {
     var regex =
       /\b_Z[\w\d_]+/g;
@@ -72,6 +73,7 @@ var LibraryStackTrace = {
     return error.stack.toString();
   },
 
+  $stackTrace__deps: ['$jsStackTrace', '$demangleAll'],
   $stackTrace: function() {
     var js = jsStackTrace();
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();

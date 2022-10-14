@@ -1,6 +1,8 @@
 #include <emscripten.h>
 #include <stdio.h>
 
+EM_JS_DEPS(main, "$runtimeKeepalivePush,$runtimeKeepalivePop,$callUserCallback");
+
 int main() {
   EM_ASM({
     Module["onExit"] = () => { out("onExit"); };

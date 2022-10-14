@@ -37,6 +37,8 @@ $dlfree
 $dlmalloc
 $do_dispatch_to_thread
 $em_queued_call_malloc
+$em_task_queue_execute
+$em_task_queue_is_empty
 $emscripten_async_run_in_main_thread
 $emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
@@ -53,4 +55,3 @@ $sbrk
 $stackAlloc
 $stackRestore
 $stackSave
-$task_queue_is_empty

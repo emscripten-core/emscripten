@@ -23,7 +23,12 @@ mergeInto(LibraryManager.library, {
   $sigToWasmTypes: function(sig) {
     var typeNames = {
       'i': 'i32',
+#if MEMORY64
       'j': 'i64',
+#else
+      // i64 values will be split into two i32s.
+      'j': 'i32',
+#endif
       'f': 'f32',
       'd': 'f64',
 #if MEMORY64
@@ -41,6 +46,11 @@ mergeInto(LibraryManager.library, {
       assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
 #endif
       type.parameters.push(typeNames[sig[i]]);
+#if !MEMORY64
+      if (sig[i] === 'j') {
+        type.parameters.push('i32');
+      }
+#endif
     }
     return type;
   },

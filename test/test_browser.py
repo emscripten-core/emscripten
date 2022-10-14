@@ -1304,15 +1304,15 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_webgl_explicit_uniform_location(self):
-    self.btest_exit('webgl_explicit_uniform_location.c', args=['-sGL_EXPLICIT_UNIFORM_LOCATION=1', '-sMIN_WEBGL_VERSION=2'])
+    self.btest_exit('webgl_explicit_uniform_location.c', args=['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_sampler_layout_binding(self):
-    self.btest_exit('webgl_sampler_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING=1'])
+    self.btest_exit('webgl_sampler_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING'])
 
   @requires_graphics_hardware
   def test_webgl2_ubo_layout_binding(self):
-    self.btest_exit('webgl2_ubo_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING=1', '-sMIN_WEBGL_VERSION=2'])
+    self.btest_exit('webgl2_ubo_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING', '-sMIN_WEBGL_VERSION=2'])
 
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -1417,21 +1417,21 @@ keydown(100);keyup(100); // trigger the end
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
     assert os.path.getsize('file1.txt') + os.path.getsize(Path('subdir/file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
+    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     create_file('files.js', out, binary=True)
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 2, args=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    modularize')
-    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-sMODULARIZE=1', '-sEXIT_RUNTIME'])
+    self.compile_btest([test_file('fs/test_lz4fs.cpp'), '--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXIT_RUNTIME'])
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -1443,11 +1443,11 @@ keydown(100);keyup(100); // trigger the end
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4=1',
+    self.btest_exit(test_file('fs/test_lz4fs.cpp'), 1, args=['-DLOAD_MANUALLY', '-sLZ4',
                                                              '-sFORCE_FILESYSTEM', '-O2',
                                                              '--closure=1', '-g1', '-Wno-closure'])
 
@@ -1512,7 +1512,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_sdl_gl_mapbuffers(self):
-    self.btest_exit('browser/test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3=1', '-lSDL', '-lGL'])
+    self.btest_exit('browser/test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl(self):
@@ -1763,7 +1763,7 @@ keydown(100);keyup(100); // trigger the end
              '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
              '--shell-file', test_file('hello_world_gles_shell.html')]
       if 'full' in filename:
-        cmd += ['-sFULL_ES2=1']
+        cmd += ['-sFULL_ES2']
       self.compile_btest(cmd)
       self.run_browser('something.html', '/report_gl_result?true')
 
@@ -1812,9 +1812,9 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @parameterized({
-    'normal': (['-sFULL_ES2=1'],),
+    'normal': (['-sFULL_ES2'],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'full_es3': (['-sFULL_ES3=1'],)
+    'full_es3': (['-sFULL_ES3'],)
   })
   def test_gles2_emulation(self, args):
     print(args)
@@ -1844,7 +1844,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_clientside_vertex_arrays_es3(self):
-    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-sFULL_ES3=1', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
+    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
@@ -2144,7 +2144,7 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
-    self.btest(Path('third_party/cubegeom', 'cubegeom_pre_vao_es.c'), reference=Path('third_party/cubegeom', 'cubegeom_pre_vao.png'), args=['-sFULL_ES2=1', '-lGL', '-lSDL'])
+    self.btest(Path('third_party/cubegeom', 'cubegeom_pre_vao_es.c'), reference=Path('third_party/cubegeom', 'cubegeom_pre_vao.png'), args=['-sFULL_ES2', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
@@ -2495,7 +2495,7 @@ void *getBindBuffer() {
 
   def test_worker_api_with_pthread_compilation_fails(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
-    stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-sUSE_PTHREADS', '-sBUILD_AS_WORKER=1'])
+    stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-sUSE_PTHREADS', '-sBUILD_AS_WORKER'])
     self.assertContained("USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
   def test_emscripten_async_wget2(self):
@@ -2624,7 +2624,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2']]:
       print(opts)
       self.btest_exit(test_file('webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'])
 
@@ -2632,7 +2632,7 @@ Module["preRun"].push(function () {
   @requires_threads
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2=1'], ['-sUSE_PTHREADS']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2'], ['-sUSE_PTHREADS']]:
       print(opts)
       self.btest_exit(test_file('webgl_create_context.cpp'), args=opts + ['-lGL'])
 
@@ -2649,7 +2649,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
-    for opts in [[], ['-O2', '-g1'], ['-sFULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1'], ['-sFULL_ES2']]:
       print(opts)
       self.btest_exit(test_file('webgl_destroy_context.cpp'), args=opts + ['--shell-file', test_file('webgl_destroy_context_shell.html'), '-lGL'])
 
@@ -2663,7 +2663,7 @@ Module["preRun"].push(function () {
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   @requires_graphics_hardware
   def test_webgl_shader_source_length(self):
-    for opts in [[], ['-sFULL_ES2=1']]:
+    for opts in [[], ['-sFULL_ES2']]:
       print(opts)
       self.btest_exit(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'])
 
@@ -2677,7 +2677,7 @@ Module["preRun"].push(function () {
     for opts in [
       ['-sMIN_CHROME_VERSION=0', '-Wno-transpile'],
       ['-O2', '-g1', '--closure=1', '-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
-      ['-sFULL_ES2=1'],
+      ['-sFULL_ES2'],
     ]:
       print(opts)
       self.btest_exit(test_file('webgl2.cpp'), args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + opts)
@@ -2718,7 +2718,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
-    self.btest_exit(test_file('webgl2_backwards_compatibility_emulation.cpp'), args=['-sMAX_WEBGL_VERSION=2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'])
+    self.btest_exit(test_file('webgl2_backwards_compatibility_emulation.cpp'), args=['-sMAX_WEBGL_VERSION=2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'])
 
   @requires_graphics_hardware
   def test_webgl2_runtime_no_context(self):
@@ -2786,7 +2786,7 @@ Module["preRun"].push(function () {
 
   @parameterized({
     '': ([],),
-    'es6': (['-sEXPORT_ES6=1'],),
+    'es6': (['-sEXPORT_ES6'],),
   })
   def test_locate_file(self, args):
     self.set_setting('EXIT_RUNTIME')
@@ -3301,7 +3301,7 @@ Module["preRun"].push(function () {
       self.btest_exit('browser/async.cpp', args=['-O' + str(opts), '-g2', '-sASYNCIFY'])
 
   def test_asyncify_tricky_function_sig(self):
-    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY=1'])
+    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
 
   @requires_threads
   def test_async_in_pthread(self):
@@ -3907,7 +3907,7 @@ Module["preRun"].push(function () {
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
   @requires_threads
   def test_pthread_cancel_cond_wait(self):
-    self.btest_exit(test_file('pthread/test_pthread_cancel_cond_wait.cpp'), assert_returncode=1, args=['-O3', '-sUSE_PTHREADS=1', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_cancel_cond_wait.cpp'), assert_returncode=1, args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
@@ -4402,7 +4402,7 @@ Module["preRun"].push(function () {
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
-    self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2=1'])
+    self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2'])
 
   # Tests for WEBGL_multi_draw extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,

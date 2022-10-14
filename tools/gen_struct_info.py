@@ -268,10 +268,10 @@ def inspect_headers(headers, cflags):
                                '-Wno-format',
                                '-nostdlib',
                                compiler_rt,
-                               '-sBOOTSTRAPPING_STRUCT_INFO=1',
-                               '-sLLD_REPORT_UNDEFINED=1',
+                               '-sBOOTSTRAPPING_STRUCT_INFO',
+                               '-sLLD_REPORT_UNDEFINED',
                                '-sSTRICT',
-                               # Use SINGLE_FILE=1 so there is only a single
+                               # Use SINGLE_FILE so there is only a single
                                # file to cleanup.
                                '-sSINGLE_FILE']
 

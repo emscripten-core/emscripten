@@ -97,14 +97,14 @@ var SyscallsLibrary = {
       SYSCALLS.varargs += 4;
       var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
 #if SYSCALL_DEBUG
-      err('    (raw: "' + ret + '")');
+      dbg('    (raw: "' + ret + '")');
 #endif
       return ret;
     },
     getStr: function(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
-      err('    (str: "' + ret + '")');
+      dbg('    (str: "' + ret + '")');
 #endif
       return ret;
     },
@@ -114,7 +114,7 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
-      err('    (stream: "' + stream.path + '")');
+      dbg('    (stream: "' + stream.path + '")');
 #endif
       return stream;
     },
@@ -208,7 +208,7 @@ var SyscallsLibrary = {
   __syscall_ioctl: function(fd, op, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
+    dbg('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -218,7 +218,7 @@ var SyscallsLibrary = {
       case {{{ cDefine('TCGETS') }}}: {
         if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
 #if SYSCALL_DEBUG
-        err('warning: not filling tio struct');
+        dbg('warning: not filling tio struct');
 #endif
         return 0;
       }
@@ -283,7 +283,7 @@ var SyscallsLibrary = {
     var socket = SOCKFS.getSocket(fd);
     if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
-    err('    (socket: "' + socket.path + '")');
+    dbg('    (socket: "' + socket.path + '")');
 #endif
     return socket;
   },
@@ -296,7 +296,7 @@ var SyscallsLibrary = {
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-    err('    (socketaddress: "' + [info.addr, info.port] + '")');
+    dbg('    (socketaddress: "' + [info.addr, info.port] + '")');
 #endif
     return info;
   },
@@ -712,7 +712,7 @@ var SyscallsLibrary = {
   __syscall_fcntl64: function(fd, cmd, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in fcntl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
+    dbg('no-op in fcntl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -762,7 +762,7 @@ var SyscallsLibrary = {
         return -1;
       default: {
 #if SYSCALL_DEBUG
-        err('warning: fcntl unrecognized command ' + cmd);
+        dbg('warning: fcntl unrecognized command ' + cmd);
 #endif
         return -{{{ cDefine('EINVAL') }}};
       }
@@ -810,7 +810,7 @@ var SyscallsLibrary = {
   __syscall_mkdirat__sig: 'iipi',
   __syscall_mkdirat: function(dirfd, path, mode) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -824,7 +824,7 @@ var SyscallsLibrary = {
   __syscall_mknodat__sig: 'iipii',
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -844,7 +844,7 @@ var SyscallsLibrary = {
   __syscall_fchownat__sig: 'iipiii',
   __syscall_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
@@ -897,7 +897,7 @@ var SyscallsLibrary = {
   },
   __syscall_symlinkat: function(target, newdirfd, linkpath) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     linkpath = SYSCALLS.calculateAt(newdirfd, linkpath);
     FS.symlink(target, linkpath);
@@ -921,7 +921,7 @@ var SyscallsLibrary = {
   __syscall_fchmodat__sig: 'iipip',
   __syscall_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -931,7 +931,7 @@ var SyscallsLibrary = {
   __syscall_faccessat__sig: 'iipii',
   __syscall_faccessat: function(dirfd, path, amode, flags) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    dbg('warning: untested syscall');
 #endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -1042,14 +1042,14 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += "err('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
+  pre += "dbg('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  err('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
+  post += "  dbg('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
   post += "}\n";
-  post += "err('syscall return: ' + ret);\n";
+  post += "dbg('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
   delete library[x + '__nothrow'];
@@ -1061,7 +1061,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+    "  dbg('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.

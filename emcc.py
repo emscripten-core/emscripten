@@ -56,21 +56,21 @@ from tools.utils import read_file, write_file, read_binary, delete_file
 logger = logging.getLogger('emcc')
 
 # endings = dot + a suffix, compare against result of shared.suffix()
-C_ENDINGS = ('.c', '.i')
-CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
-OBJC_ENDINGS = ('.m', '.mi')
-PREPROCESSED_ENDINGS = ('.i', '.ii')
-OBJCXX_ENDINGS = ('.mm', '.mii')
-SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
+C_ENDINGS = ['.c', '.i']
+CXX_ENDINGS = ['.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
+OBJC_ENDINGS = ['.m', '.mi']
+PREPROCESSED_ENDINGS = ['.i', '.ii']
+OBJCXX_ENDINGS = ['.mm', '.mii']
+SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
+C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ('.ll', '.S')
-C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.ll', '.S']
 
-EXECUTABLE_ENDINGS = ('.wasm', '.html', '.js', '.mjs', '.out', '')
-DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
-STATICLIB_ENDINGS = ('.a',)
-ASSEMBLY_ENDINGS = ('.s',)
-HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
+EXECUTABLE_ENDINGS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
+DYNAMICLIB_ENDINGS = ['.dylib', '.so'] # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
+STATICLIB_ENDINGS = ['.a']
+ASSEMBLY_ENDINGS = ['.s']
+HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
 
 # Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
@@ -724,7 +724,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
     # For now we ignore `invoke_` functions imported by side modules and rely
     # on the dynamic linker to create them on the fly.
-    # TODO(sbc): Integrate with metadata['invokeFuncs'] that comes from the
+    # TODO(sbc): Integrate with metadata.invokeFuncs that comes from the
     # main module to avoid creating new invoke functions at runtime.
     imports = set(i for i in imports if not i.startswith('invoke_'))
     weak_imports = imports.intersection(exports)
@@ -1483,9 +1483,6 @@ def phase_setup(options, state, newargs, user_settings):
 
   if settings.MEMORY64:
     diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
-    default_setting(user_settings, 'SUPPORT_LONGJMP', 0)
-    if settings.SUPPORT_LONGJMP and settings.SUPPORT_LONGJMP != 'wasm':
-      exit_with_error('MEMORY64 is not compatible with (non-wasm) SUPPORT_LONGJMP')
 
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
   # 'emscripten'
@@ -1618,10 +1615,17 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
-  default_setting(user_settings, 'RUNTIME_DEBUG', settings.LIBRARY_DEBUG or
-                  settings.GL_DEBUG or
-                  settings.DYLINK_DEBUG or
-                  settings.PTHREADS_DEBUG)
+  if not settings.RUNTIME_DEBUG:
+    settings.RUNTIME_DEBUG = (settings.LIBRARY_DEBUG or
+                              settings.GL_DEBUG or
+                              settings.DYLINK_DEBUG or
+                              settings.OPENAL_DEBUG or
+                              settings.SYSCALL_DEBUG or
+                              settings.WEBSOCKET_DEBUG or
+                              settings.SOCKET_DEBUG or
+                              settings.FETCH_DEBUG or
+                              settings.EXCEPTION_DEBUG or
+                              settings.PTHREADS_DEBUG)
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
@@ -1910,7 +1914,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.USE_PTHREADS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$registerTLSInit',
+      '$registerTLSInit',
     ]
 
   if settings.RELOCATABLE:
@@ -2113,6 +2117,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if settings.DEMANGLE_SUPPORT:
     settings.REQUIRED_EXPORTS += ['__cxa_demangle']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
 
   if settings.FULL_ES3:
     settings.FULL_ES2 = 1
@@ -2150,23 +2155,10 @@ def phase_linker_setup(options, state, newargs, user_settings):
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
-  if settings.BOOTSTRAPPING_STRUCT_INFO:
-    # Called by `callMain` to handle exceptions
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$handleException']
-  else:
-    if not settings.MINIMAL_RUNTIME:
-      # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
-      # no longer always bundled in)
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '$demangle',
-        '$demangleAll',
-        '$jsStackTrace',
-        '$stackTrace',
-        # Called by `callMain` to handle exceptions
-        '$handleException',
-        # Needed by ccall (remove this once ccall itself is a library function)
-        '$writeArrayToMemory',
-      ]
+  if not settings.BOOTSTRAPPING_STRUCT_INFO:
+    if settings.DYNAMIC_EXECUTION == 2 and not settings.MINIMAL_RUNTIME:
+      # Used by makeEval in the DYNAMIC_EXECUTION == 2 case
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackTrace']
 
     if not settings.STANDALONE_WASM and (settings.EXIT_RUNTIME or settings.ASSERTIONS):
       # to flush streams on FS exit, we need to be able to call fflush
@@ -2585,12 +2577,6 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
-      if not settings.EXIT_RUNTIME:
-        # FIXME: investigate d8 issues without EXIT_RUNTIME (quit exits too
-        #        early, not leaving async work a chance to run; only
-        #        EXIT_RUNTIME tracks whether such work exists and should stop us
-        #        from exiting).
-        exit_with_error('ASYNCIFY with stack switching requires EXIT_RUNTIME for now')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
@@ -2647,16 +2633,14 @@ def phase_linker_setup(options, state, newargs, user_settings):
       if setting in user_settings:
         diagnostics.warning('linkflags', 'setting `%s` is not meaningful unless linking as C++', setting)
 
-  # Export tag objects which are likely needed by the native code, but which are
-  # currently not reported in the metadata of wasm-emscripten-finalize
-  if settings.RELOCATABLE:
-    if settings.WASM_EXCEPTIONS:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__c_longjmp')
-
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
+
+  # When ASSERTIONS is set, we include stack traces in Wasm exception objects
+  # using the JS API, which needs this C++ tag exported.
+  if settings.ASSERTIONS and settings.WASM_EXCEPTIONS:
+    settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
+    settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
 
   # Make `getExceptionMessage` and other necessary functions available for use.
   if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
@@ -2666,7 +2650,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # What you need to do is different depending on the kind of EH you use
     # (https://github.com/emscripten-core/emscripten/issues/17115).
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
-    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message']
+    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message', '_free']
     if settings.WASM_EXCEPTIONS:
       settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
 
@@ -4051,7 +4035,7 @@ def parse_value(text, expected_type):
       if not len(current):
         exit_with_error('string array should not contain an empty value')
       first = current[0]
-      if not(first == "'" or first == '"'):
+      if not (first == "'" or first == '"'):
         result.append(current.rstrip())
       else:
         start = index

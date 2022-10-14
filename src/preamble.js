@@ -286,9 +286,9 @@ function preMain() {
 #if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
-  err('exitRuntime');
+  dbg('exitRuntime');
 #endif
-#if ASYNCIFY && ASSERTIONS
+#if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
 #endif

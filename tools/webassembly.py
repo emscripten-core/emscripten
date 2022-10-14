@@ -109,6 +109,7 @@ class OpCode(IntEnum):
   F32_CONST = 0x43
   F64_CONST = 0x44
   I32_ADD = 0x6a
+  I64_ADD = 0x6b
   REF_NULL = 0xd0
   ATOMIC_PREFIX = 0xfe
   MEMORY_PREFIX = 0xfc
@@ -197,7 +198,7 @@ class Module:
   def __enter__(self):
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb): # noqa
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.buf:
       self.buf.close()
       self.buf = None
@@ -239,7 +240,7 @@ class Module:
         args.append(self.read_uleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
-      elif opcode in (OpCode.END,):
+      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
         pass
       else:
         raise Exception('unexpected opcode %s' % opcode)
@@ -370,7 +371,7 @@ class Module:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
           self.skip(subsection_size)
-        assert(self.tell() == end)
+        assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
 

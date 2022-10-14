@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#pragma once
+
 // Flag values used when creating postMessage notifications and when freeing
 // proxying queues. New postMessages are created for new work unless the
 // relevant task queue is in state NOTIFICATION_PENDING and proxying queues can

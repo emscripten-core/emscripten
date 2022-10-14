@@ -173,46 +173,50 @@ def run_multiple_processes(commands,
   #   sys.exit(1)
   # signal.signal(signal.SIGINT, signal_handler)
 
-  processes = []
+  # Map containing all currently running processes.
+  # command index -> proc/Popen object
+  processes = {}
+
+  def get_finished_process():
+    while True:
+      for idx, proc in processes.items():
+        if proc.poll() is not None:
+          return idx
+      # All processes still running; wait a short while for the first
+      # (oldest) process to finish, then look again if any process has completed.
+      idx, proc = next(iter(processes.items()))
+      try:
+        proc.communicate(timeout=0.2)
+        return idx
+      except subprocess.TimeoutExpired:
+        pass
+
   num_parallel_processes = get_num_cores()
   temp_files = get_temp_files()
   i = 0
   num_completed = 0
-
   while num_completed < len(commands):
     if i < len(commands) and len(processes) < num_parallel_processes:
       # Not enough parallel processes running, spawn a new one.
-      std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else None
+      if route_stdout_to_temp_files_suffix:
+        stdout = temp_files.get(route_stdout_to_temp_files_suffix)
+      else:
+        stdout = None
       if DEBUG:
         logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
       print_compiler_stage(commands[i])
-      processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=None, env=env))]
+      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env)
+      processes[i] = proc
       if route_stdout_to_temp_files_suffix:
-        std_outs += [(i, std_out.name)]
+        std_outs.append((i, stdout.name))
       i += 1
     else:
-      # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
-      def get_finished_process():
-        while True:
-          j = 0
-          while j < len(processes):
-            if processes[j][1].poll() is not None:
-              processes[j][1].communicate()
-              return j
-            j += 1
-          # All processes still running; wait a short while for the first (oldest) process to finish,
-          # then look again if any process has completed.
-          try:
-            processes[0][1].communicate(timeout=0.2)
-            return 0
-          except subprocess.TimeoutExpired:
-            pass
-
-      j = get_finished_process()
-      idx, finished_process = processes[j]
-      del processes[j]
+      # Not spawning a new process (Too many commands running in parallel, or
+      # no commands left): find if a process has finished.
+      idx = get_finished_process()
+      finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -644,7 +648,7 @@ def strip_prefix(string, prefix):
 
 
 def make_writable(filename):
-  assert(os.path.isfile(filename))
+  assert os.path.isfile(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IWUSR)
 

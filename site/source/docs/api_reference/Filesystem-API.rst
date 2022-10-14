@@ -875,6 +875,14 @@ Paths
   :param string path: The path to set as current working directory.
 
 
+.. js:function:: FS.readdir(path)
+
+  Reads the contents of the ``path``.
+
+  :param string path: The incoming path.
+
+  :returns: an array of the names of the files in the directory including ``'.'`` and ``'..'``.
+
 .. js:function:: FS.lookupPath(path, opts)
 
   Looks up the incoming path and returns an object containing both the resolved path and node.
