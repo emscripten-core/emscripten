@@ -424,7 +424,6 @@ class Library:
     commands = []
     objects = []
     source_dir = utils.path_from_root()
-    print(source_dir)
     cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/buildbot']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
