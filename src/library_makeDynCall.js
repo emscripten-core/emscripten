@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
       "i", // The first argument is the function pointer to call
       // in the rest of the argument list, one 64 bit integer is legalized into
       // two 32 bit integers.
-      sig.slice(1).replace("j", "ii"),
+      sig.slice(1).replace(/j/g, "ii")
     ].join("");
 
     var typeSectionBody = [
