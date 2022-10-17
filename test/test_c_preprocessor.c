@@ -100,6 +100,11 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 1\n#if FOO >= 1\nB\n#endif', 'B\n'); // Test >=
 	test('#define FOO 1\n#if FOO >= 2\nB\n#endif', "");    // Test >=
 
+	test('#define FOO 0\n#define BAR 0\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '4\n'); // Test nested #if-#elses
+	test('#define FOO 0\n#define BAR 1\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '3\n'); // Test nested #if-#elses
+	test('#define FOO 1\n#define BAR 0\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '2\n'); // Test nested #if-#elses
+	test('#define FOO 1\n#define BAR 1\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '1\n'); // Test nested #if-#elses
+
 	test('#define FOO 1\n#define BAR 2\n#if FOO < 3 && BAR < 4\nB\n#endif', 'B\n'); // Test evaluation of && and <
 	test('#define FOO 1\n#define BAR 2\n#if FOO < 3 && BAR < 2\nB\n#endif', "");    // Test evaluation of && and <
 

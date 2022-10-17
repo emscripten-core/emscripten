@@ -249,7 +249,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'ifdef': stack.push(!!defs[expression] * stack[stack.length-1]); break;
       case 'ifndef': stack.push(!defs[expression] * stack[stack.length-1]); break;
-      case 'else': stack[stack.length-1] = 1-stack[stack.length-1]; break;
+      case 'else': stack[stack.length-1] = (1-stack[stack.length-1]) * stack[stack.length-2]; break;
       case 'endif': stack.pop(); break;
       case 'define':
         if (thisLineIsInActivePreprocessingBlock) {
