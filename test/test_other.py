@@ -1939,6 +1939,18 @@ int f() {
     self.run_process([EMXX, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', self.run_js('a.out.js'))
 
+  def test_sdl_scan_code_from_key(self):
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <SDL/SDL_keyboard.h>
+
+      int main() {
+        printf("%d\n", SDL_GetScancodeFromKey(35));
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', '204\n')
+
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
 
