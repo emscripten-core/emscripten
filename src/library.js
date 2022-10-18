@@ -2389,6 +2389,7 @@ mergeInto(LibraryManager.library, {
   $nowIsMonotonic: 'true;',
 #endif
 
+  _emscripten_get_now_is_monotonic__sig: 'i',
   _emscripten_get_now_is_monotonic__internal: true,
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: function() {
@@ -2984,7 +2985,11 @@ mergeInto(LibraryManager.library, {
     return ASM_CONSTS[code].apply(null, args);
 #endif
   },
-  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  emscripten_asm_const_double__sig: 'dppp',
+  emscripten_asm_const_double__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_double: function(code, sigPtr, argbuf) {
+    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+  },
 
 #if MEMORY64
   emscripten_asm_const_ptr__sig: 'pppp',
