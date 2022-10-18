@@ -97,10 +97,8 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof Module != 'undefined') {
-  if (typeof document != 'undefined') {
-    emscriptenThreadProfiler.initialize();
-  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
-    emscriptenThreadProfiler.initializeNode();
-  }
+if (typeof document != 'undefined') {
+  emscriptenThreadProfiler.initialize();
+} else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
+  emscriptenThreadProfiler.initializeNode();
 }

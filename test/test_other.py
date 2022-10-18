@@ -3252,7 +3252,6 @@ m0.ccall('myreadSeekEnd', 'number', [], []);
 ''')
 
     create_file('proxyfs_pre.js', r'''
-if (typeof Module === 'undefined') Module = {};
 Module["noInitialRun"]=true;
 Module["noExitRuntime"]=true;
 ''')

@@ -671,4 +671,6 @@ setTimeout = (fn, delay) => {
 // Backwards compatibility with previously compiled code. Don't call this anymore!
 function cpuprofiler_add_hooks() { emscriptenCpuProfiler.initialize(); }
 
-if (typeof Module != 'undefined' && typeof document != 'undefined') emscriptenCpuProfiler.initialize();
+if (typeof document != 'undefined') {
+  emscriptenCpuProfiler.initialize();
+}
