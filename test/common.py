@@ -260,7 +260,7 @@ def also_with_wasm_bigint(f):
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
       self.require_node()
-      self.node_args.append('--experimental-wasm-bigint')
+      self.node_args += shared.node_bigint_flags()
       f(self)
     else:
       f(self)
@@ -457,7 +457,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.node_args += shared.node_pthread_flags()
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -1799,7 +1799,7 @@ class BrowserCore(RunnerCore):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
       self.js_engines = [config.NODE_JS]
-      self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+      self.node_args += shared.node_pthread_flags()
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:

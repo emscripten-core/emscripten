@@ -6844,7 +6844,7 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    out = self.run_js('testrun.js', engine=config.NODE_JS + ['--experimental-wasm-bigint'])
+    out = self.run_js('testrun.js', engine=config.NODE_JS + shared.node_bigint_flags())
     self.assertContained('''\
 input = 0xaabbccdd11223344
 low = 5678
@@ -12106,7 +12106,7 @@ Module['postRun'] = function() {{
   @wasmfs_all_backends
   def test_wasmfs_readfile_bigint(self):
     self.set_setting('WASM_BIGINT')
-    self.node_args += ['--experimental-wasm-bigint']
+    self.node_args += shared.node_bigint_flags()
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   def test_wasmfs_jsfile(self):
@@ -12319,7 +12319,7 @@ Module['postRun'] = function() {{
   @also_with_minimal_runtime
   def test_shared_memory(self):
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '0', emcc_args=[])
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.node_args += shared.node_pthread_flags()
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sSHARED_MEMORY'])
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-sWASM_WORKERS'])
     self.do_runf(test_file('wasm_worker/shared_memory.c'), '1', emcc_args=['-pthread'])
