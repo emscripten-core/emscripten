@@ -9542,8 +9542,7 @@ int main () {
 
   @parameterized({
     'hello_world_wasm': ('hello_world', False, True),
-    # Temporarily disabled compare_js_output here while https://github.com/WebAssembly/binaryen/pull/5018 rolls in
-    'hello_world_wasm2js': ('hello_world', True, False),
+    'hello_world_wasm2js': ('hello_world', True, True),
     'random_printf_wasm': ('random_printf', False),
     'random_printf_wasm2js': ('random_printf', True),
     'hello_webgl_wasm': ('hello_webgl', False),
