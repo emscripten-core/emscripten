@@ -1,45 +1,59 @@
-var b = Module, c = new TextDecoder("utf8"), f = new function(a) {
+var b = Module, d = new TextDecoder("utf8"), k = new function(a) {
     this.buffer = new ArrayBuffer(65536 * a.initial);
 }({
     initial: 256,
     maximum: 256
-}), h = f.buffer, d = new Uint8Array(h), k = {
-    a: function(a) {
-        var n = console, e = n.log;
-        if (a) {
-            for (var g = a + void 0, m = a; !(m >= g) && d[m]; ) ++m;
-            a = c.decode(d.subarray(a, m));
-        } else a = "";
-        e.call(n, a);
-    },
-    memory: f
-}, p = (new function() {
-    this.exports = function(a) {
-        function n(e) {
-            e.set = function(g, m) {
-                this[g] = m;
+}), l = k.buffer, g = new Uint8Array(l), m;
+
+function c(a) {
+    this.exports = function(h) {
+        function n(f) {
+            f.set = function(e, p) {
+                this[e] = p;
             };
-            e.get = function(g) {
-                return this[g];
+            f.get = function(e) {
+                return this[e];
             };
-            return e;
+            return f;
         }
-        return function(e) {
-            var g = e.a;
+        return function(f) {
+            var e = f.a.a;
             return {
                 b: function() {},
-                c: function(m, q) {
-                    g(1024);
+                c: function(p, q) {
+                    e(1024);
                     return 0;
                 },
                 d: n([])
             };
-        }(a);
-    }(k);
-}).exports, l = p.c;
+        }(h);
+    }(a);
+}
 
-d.set(new Uint8Array(b.mem), 1024);
-
-p.b();
-
-l();
+(function(a, h) {
+    return {
+        then: function(n) {
+            n({
+                instance: new c(h)
+            });
+        }
+    };
+})(b.wasm, {
+    a: {
+        a: function(a) {
+            var h = console, n = h.log;
+            if (a) {
+                for (var f = a + void 0, e = a; !(e >= f) && g[e]; ) ++e;
+                a = d.decode(g.subarray(a, e));
+            } else a = "";
+            n.call(h, a);
+        },
+        memory: k
+    }
+}).then((function(a) {
+    a = a.instance.exports;
+    m = a.c;
+    g.set(new Uint8Array(b.mem), 1024);
+    a.b();
+    m();
+}));
