@@ -135,6 +135,9 @@ def parse_config_file():
     if env_value is not None:
       if env_value in ('', '0'):
         env_value = None
+      # Unlike the other keys these two should always be lists.
+      if key in ('JS_ENGINES', 'WASM_ENGINES'):
+        env_value = env_value.split(',')
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]

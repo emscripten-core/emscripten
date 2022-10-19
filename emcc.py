@@ -631,7 +631,7 @@ def make_js_executable(script):
   src = read_file(script)
   cmd = config.JS_ENGINES[0]
   if settings.WASM_BIGINT:
-    cmd.append('--experimental-wasm-bigint')
+    cmd += shared.node_bigint_flags()
   cmd = shared.shlex_join(cmd)
   if not os.path.isabs(cmd[0]):
     # TODO: use whereis etc. And how about non-*NIX?
