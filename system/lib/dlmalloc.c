@@ -4401,7 +4401,8 @@ static int sys_trim(mstate m, size_t pad) {
                         }
                     }
                 }
-                else if (HAVE_MORECORE && !UNSIGNED_MORECORE) {
+                else if (HAVE_MORECORE) {
+#ifndef MORECORE_CANNOT_TRIM
                     if (extra >= HALF_MAX_SIZE_T) /* Avoid wrapping negative */
                         extra = (HALF_MAX_SIZE_T) + SIZE_T_ONE - unit;
                     ACQUIRE_MALLOC_GLOBAL_LOCK();
@@ -4417,6 +4418,7 @@ static int sys_trim(mstate m, size_t pad) {
                     }
                     RELEASE_MALLOC_GLOBAL_LOCK();
                 }
+#endif
             }
             
             if (released != 0) {
