@@ -574,8 +574,7 @@ jobs:
       - emsdk-env
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - pip-install:
-          python: "$EMSDK_PYTHON"
+      - pip-install
 
       - npm-install
       - run-tests:
