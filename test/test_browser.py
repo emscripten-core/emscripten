@@ -5317,7 +5317,7 @@ Module["preRun"].push(function () {
   @no_firefox('no 4GB support yet')
   def test_dlmalloc_3GB(self):
     self.btest_exit(test_file('alloc_3gb.cpp'),
-               args=['-sMALLOC=dlmalloc', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH=1'])
+                    args=['-sMALLOC=dlmalloc', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH=1'])
 
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
