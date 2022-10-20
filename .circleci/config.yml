@@ -577,6 +577,9 @@ jobs:
             ls -l ~/cache/sysroot
             ls -l ~/cache/sysroot/lib/wasm32-emscripten
       - checkout
+      - run:
+          command: |
+            rm -rf ~/emsdk
       - build
       - run:
           name: ls cache
