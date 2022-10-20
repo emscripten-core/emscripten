@@ -18,7 +18,8 @@ def main():
   print('')
 
   here = os.path.dirname(__file__)
-  output = subprocess.check_output(['git', 'status', '--short'], cwd=here)
+  root = os.path.dirname(here)
+  output = subprocess.check_output(['git', 'status', '--short'], cwd=root)
   output = output.decode('utf-8').strip()
   if not output:
     print('Tree is clean.')

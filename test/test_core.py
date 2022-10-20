@@ -6349,7 +6349,7 @@ PORT: 3979
     self.emcc_args += ['--js-library', 'mylib1.js', '--js-library', 'mylib2.js']
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
-  @with_env_modify({'LC_CTYPE': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
+  @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   def test_unicode_js_library(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -9655,7 +9655,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
+def make_run(name, emcc_args, settings=None, env=None,
+             require_v8=False, v8_args=None,
+             require_node=False, node_args=None,
+             require_wasm64=False):
   if env is None:
     env = {}
   if settings is None:
@@ -9697,6 +9700,11 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v
 
     if require_v8:
       self.require_v8()
+    elif require_node:
+      self.require_node()
+
+    if require_wasm64:
+      self.require_wasm64()
 
   TT.setUp = setUp
 
@@ -9721,8 +9729,9 @@ corez = make_run('corez', emcc_args=['-Oz'])
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],
-                  settings={'MEMORY64': 1},
-                  require_v8=True, v8_args=['--experimental-wasm-memory64'])
+                  settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
+wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+                     settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},
