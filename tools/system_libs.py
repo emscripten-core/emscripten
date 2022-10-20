@@ -407,7 +407,7 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
 
     source_dir = utils.path_from_root()
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/buildbot']
+    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/emsdk/emscripten']
     asflags = get_base_cflags()
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -424,7 +424,7 @@ class Library:
     commands = []
     objects = []
     source_dir = utils.path_from_root()
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/buildbot']
+    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       object_basename = shared.unsuffixed_basename(src)
