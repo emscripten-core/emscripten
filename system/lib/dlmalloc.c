@@ -4417,8 +4417,8 @@ static int sys_trim(mstate m, size_t pad) {
                         }
                     }
                     RELEASE_MALLOC_GLOBAL_LOCK();
-                }
 #endif
+                }
             }
             
             if (released != 0) {
