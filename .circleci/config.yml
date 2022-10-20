@@ -568,14 +568,16 @@ jobs:
             brew list ninja || brew install ninja
             brew list python3 || brew install python3
             brew list pkg-config || brew install pkg-config
+      - attach_workspace:
+          at: ~/
+      - checkout
+      - emsdk-env
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - attach_workspace:
-          at: ~/
-      - checkout
-      - build
+
+      - npm-install
       - run-tests:
           # skip other.test_stack_switching_size as we do not currently install
           # d8 on mac
