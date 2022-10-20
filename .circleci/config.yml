@@ -570,13 +570,26 @@ jobs:
             brew list pkg-config || brew install pkg-config
       - attach_workspace:
           at: ~/
+      - run:
+          name: ls cache
+          command: |
+            ls -l cache
+            ls -l cache/sysroot
+            ls -l cache/sysroot/lib/wasm32-emscripten
       - checkout
-      - emsdk-env
+      - build
+      - run:
+          name: ls cache
+          command: |
+            ls -l cache
+            ls -l cache/sysroot
+            ls -l cache/sysroot/lib/wasm32-emscripten
+      #- emsdk-env
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - pip-install
-
-      - npm-install
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      #- npm-install
       - run-tests:
           # skip other.test_stack_switching_size as we do not currently install
           # d8 on mac
