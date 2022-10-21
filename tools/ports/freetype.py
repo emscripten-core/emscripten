@@ -21,8 +21,8 @@ def get(ports, settings, shared):
     ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))
-    
-    with open(os.path.join(source_path, 'include', 'freetype', 'config','ftoption.h'), 'a') as ftheader:
+
+    with open(os.path.join(source_path, 'include', 'freetype', 'config', 'ftoption.h'), 'a') as ftheader:
       ftheader.write('#define FT_CONFIG_OPTION_SYSTEM_ZLIB')
 
     # build
