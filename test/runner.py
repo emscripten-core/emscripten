@@ -93,6 +93,47 @@ misc_test_modes = [
 ]
 
 
+cross_platform_tests = [
+    'core0.test_dylink_basics',
+    'core2.test_sse1',
+    'core2.test_ccall',
+    'core2.test_utf16',
+    'core2.test_em_asm_unicode',
+    'core2.test_em_js',
+    'core2.test_em_js_pthreads',
+    'core2.test_unicode_js_library',
+    'other.test_dlmalloc_modes',
+    'other.test_c_preprocessor',
+    'other.test_prejs_unicode',
+    'other.test_em_js_side_module',
+    'other.test_es5_transpile',
+    'other.test_emcc_cflags',
+    'other.test_stdin',
+    'other.test_bad_triple',
+    'other.test_closure_externs',
+    'other.test_binaryen_debug',
+    'other.test_js_optimizer*',
+    'other.test_output_to_nowhere',
+    'other.test_emcc_dev_null',
+    'other.test_cmake*',
+    'other.test_system_include_paths',
+    'other.test_emar_response_file',
+    'other.test_special_chars_in_arguments',
+    'other.test_toolchain_profiler',
+    'other.test_realpath_nodefs',
+    'other.test_response_file_encoding',
+    'other.test_libc_progname',
+    'other.test_realpath',
+    'other.test_embed_file_dup',
+    'other.test_dot_a_all_contents_invalid',
+    'other.test_emcc_print_search_dirs',
+    'other.test_emcc_print_file_name',
+    'other.test_pkg_config*',
+    'sockets.test_nodejs_sockets_echo*',
+    'core0.test_lua',
+    'core0.test_longjmp_standalone',
+]
+
 def check_js_engines():
   working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
   if len(working_engines) < len(config.JS_ENGINES):
