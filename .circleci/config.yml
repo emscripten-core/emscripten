@@ -111,27 +111,27 @@ commands:
       - run:
           name: embuilder build ALL
           command: |
-            ./embuilder build SYSTEM
+            ./embuilder build ALL
             ./test/runner test_hello_world
-      #- run:
-      #    name: embuilder (LTO)
-      #    command: |
-      #      ./embuilder build MINIMAL --lto
-      #      ./test/runner test_hello_world
-      #- run:
-      #    name: embuilder (WASM64)
-      #    command: |
-      #      ./embuilder build MINIMAL --wasm64
-      #- run:
-      #    name: embuilder (PIC)
-      #    command: |
-      #      ./embuilder build MINIMAL_PIC --pic
-      #      ./test/runner test_hello_world
-      #- run:
-      #    name: embuilder (PIC+LTO)
-      #    command: |
-      #      ./embuilder build MINIMAL --pic --lto
-      #      ./test/runner test_hello_world
+      - run:
+          name: embuilder (LTO)
+          command: |
+            ./embuilder build MINIMAL --lto
+            ./test/runner test_hello_world
+      - run:
+          name: embuilder (WASM64)
+          command: |
+            ./embuilder build MINIMAL --wasm64
+      - run:
+          name: embuilder (PIC)
+          command: |
+            ./embuilder build MINIMAL_PIC --pic
+            ./test/runner test_hello_world
+      - run:
+          name: embuilder (PIC+LTO)
+          command: |
+            ./embuilder build MINIMAL --pic --lto
+            ./test/runner test_hello_world
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
