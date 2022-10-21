@@ -9182,6 +9182,20 @@ _d
     self.assertContained('[asyncify] g can', out)
     self.assertContained('[asyncify] i can', out)
 
+  def test_asyncify_stack_overflow(self):
+    args = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4']
+
+    # The unreachable error on small stack sizes is not super-helpful. Try at
+    # least to hint at increasing the stack size.
+
+    self.do_runf(test_file('other/async_stack_overflow.cpp'),
+                 emcc_args=args + ['-sASSERTIONS=0'],
+                 expected_output=['Aborted(RuntimeError: unreachable). Build with -sASSERTIONS for more info.'])
+
+    self.do_runf(test_file('other/async_stack_overflow.cpp'),
+                 emcc_args=args + ['-sASSERTIONS=1'],
+                 expected_output=['Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)'])
+
   # Sockets and networking
 
   def test_inet(self):
