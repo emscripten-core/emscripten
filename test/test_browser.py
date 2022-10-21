@@ -5313,6 +5313,12 @@ Module["preRun"].push(function () {
     test(['-sMALLOC=emmalloc-memvalidate'])
     test(['-sMALLOC=emmalloc-memvalidate-verbose'])
 
+  # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using dlmalloc.
+  @no_firefox('no 4GB support yet')
+  def test_dlmalloc_3GB(self):
+    self.btest_exit(test_file('alloc_3gb.cpp'),
+                    args=['-sMALLOC=dlmalloc', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH=1'])
+
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait

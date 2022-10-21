@@ -6,6 +6,8 @@
 #define DLMALLOC_EXPORT static
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
+/* Emscripten's sbrk can interpret unsigned values greater than (MAX_SIZE_T / 2U) (2GB) correctly */
+#define UNSIGNED_MORECORE 1
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
 #ifndef DLMALLOC_DEBUG
@@ -415,6 +417,10 @@ _Static_assert(MALLOC_ALIGNMENT == 8, "max_align_t must be 8");
  Setting it false when definitely non-contiguous saves time
  and possibly wasted space it would take to discover this though.
  
+ UNSIGNED_MORECORE         default: 0 (false)
+ True if MORECORE can only handle unsigned arguments. This sets
+ MORECORE_CANNOT_TRIM to 1 (true).
+
  MORECORE_CANNOT_TRIM      default: NOT defined
  True if MORECORE cannot release space back to the system when given
  negative arguments. This is generally necessary only if you are
@@ -713,6 +719,12 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #define HAVE_MORECORE 1
 #endif  /* ONLY_MSPACES */
 #endif  /* HAVE_MORECORE */
+#ifndef UNSIGNED_MORECORE
+#define UNSIGNED_MORECORE 0
+#endif  /* UNSIGNED_MORECORE */
+#if UNSIGNED_MORECORE
+#define MORECORE_CANNOT_TRIM 1
+#endif  /* UNSIGNED_MORECORE */
 #if !HAVE_MORECORE
 #define MORECORE_CONTIGUOUS 0
 #else   /* !HAVE_MORECORE */
@@ -4161,7 +4173,8 @@ static void* sys_alloc(mstate m, size_t nb) {
                 if (!is_page_aligned(base))
                     ssize += (page_align((size_t)base) - (size_t)base);
                 fp = m->footprint + ssize; /* recheck limits */
-                if (ssize > nb && ssize < HALF_MAX_SIZE_T &&
+                if (ssize > nb &&
+                    (UNSIGNED_MORECORE || ssize < HALF_MAX_SIZE_T) &&
                     (m->footprint_limit == 0 ||
                      (fp > m->footprint && fp <= m->footprint_limit)) &&
                     (br = (char*)(CALL_MORECORE(ssize))) == base) {
@@ -4174,7 +4187,7 @@ static void* sys_alloc(mstate m, size_t nb) {
             /* Subtract out existing available top space from MORECORE request. */
             ssize = granularity_align(nb - m->topsize + SYS_ALLOC_PADDING);
             /* Use mem here only if it did continuously extend old space */
-            if (ssize < HALF_MAX_SIZE_T &&
+            if ((UNSIGNED_MORECORE || ssize < HALF_MAX_SIZE_T) &&
                 (br = (char*)(CALL_MORECORE(ssize))) == ss->base+ss->size) {
                 tbase = br;
                 tsize = ssize;
@@ -4183,15 +4196,17 @@ static void* sys_alloc(mstate m, size_t nb) {
         
         if (tbase == CMFAIL) {    /* Cope with partial failure */
             if (br != CMFAIL) {    /* Try to use/extend the space we did get */
-                if (ssize < HALF_MAX_SIZE_T &&
+                if ((UNSIGNED_MORECORE || ssize < HALF_MAX_SIZE_T) &&
                     ssize < nb + SYS_ALLOC_PADDING) {
                     size_t esize = granularity_align(nb + SYS_ALLOC_PADDING - ssize);
-                    if (esize < HALF_MAX_SIZE_T) {
+                    if (UNSIGNED_MORECORE || esize < HALF_MAX_SIZE_T) {
                         char* end = (char*)CALL_MORECORE(esize);
                         if (end != CMFAIL)
                             ssize += esize;
                         else {            /* Can't use; try to release */
-                            (void) CALL_MORECORE(-ssize);
+                            if (!UNSIGNED_MORECORE) {
+                                (void) CALL_MORECORE(-ssize);
+                            }
                             br = CMFAIL;
                         }
                     }
@@ -4218,7 +4233,7 @@ static void* sys_alloc(mstate m, size_t nb) {
     }
     
     if (HAVE_MORECORE && tbase == CMFAIL) { /* Try noncontiguous MORECORE */
-        if (asize < HALF_MAX_SIZE_T) {
+        if (UNSIGNED_MORECORE || asize < HALF_MAX_SIZE_T) {
             char* br = CMFAIL;
             char* end = CMFAIL;
             ACQUIRE_MALLOC_GLOBAL_LOCK();
@@ -4387,6 +4402,7 @@ static int sys_trim(mstate m, size_t pad) {
                     }
                 }
                 else if (HAVE_MORECORE) {
+#ifndef MORECORE_CANNOT_TRIM
                     if (extra >= HALF_MAX_SIZE_T) /* Avoid wrapping negative */
                         extra = (HALF_MAX_SIZE_T) + SIZE_T_ONE - unit;
                     ACQUIRE_MALLOC_GLOBAL_LOCK();
@@ -4401,6 +4417,7 @@ static int sys_trim(mstate m, size_t pad) {
                         }
                     }
                     RELEASE_MALLOC_GLOBAL_LOCK();
+#endif
                 }
             }
             
@@ -6087,8 +6104,8 @@ extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlme
  just return MFAIL when given negative arguments.
  Negative arguments are always multiples of pagesize. MORECORE
  must not misinterpret negative args as large positive unsigned
- args. You can suppress all such calls from even occurring by defining
- MORECORE_CANNOT_TRIM,
+ args unless UNSIGNED_MORECORE is defined. You can suppress all such calls
+ from even occurring by defining MORECORE_CANNOT_TRIM,
  
  As an example alternative MORECORE, here is a custom allocator
  kindly contributed for pre-OSX macOS.  It uses virtually but not
