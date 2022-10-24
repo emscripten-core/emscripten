@@ -9191,7 +9191,6 @@ _d
     def test(args, expected):
       self.do_runf(test_file('other/test_asyncify_stack_overflow.cpp'),
                    emcc_args=args,
-                   check_for_error=False,
                    assert_returncode=common.NON_ZERO,
                    expected_output=[expected])
 
