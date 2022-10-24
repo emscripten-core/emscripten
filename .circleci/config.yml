@@ -101,7 +101,7 @@ commands:
       - emsdk-env
       - npm-install
   build-libs:
-    description: "Build all libraries, and freeze the cache"
+    description: "Build all libraries"
     steps:
       - run:
           name: clear cache
@@ -636,5 +636,8 @@ workflows:
             - build-linux
       - test-windows
       - test-mac:
+          # The mac tester also uses the libraries built on the linux builder to
+          # save total build time (this is fine because the libraries are wasm
+          # and do not depend on the underlying build platform)
           requires:
             - build-linux
