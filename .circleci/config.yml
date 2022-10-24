@@ -97,19 +97,19 @@ commands:
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/16.0.0/
+            test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/16.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
       - emsdk-env
       - npm-install
+  build-libs:
+    description: "Build all libraries"
+    steps:
       - run:
           name: clear cache
           command: |
             ./emcc --clear-cache
-  build-libs:
-    description: "Build all libraries, and freeze the cache"
-    steps:
       - pip-install
       - run:
           name: embuilder build ALL
@@ -584,6 +584,7 @@ jobs:
     executor: mac
     environment:
       EMTEST_SKIP_V8: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - run:
           name: Install brew package dependencies
@@ -594,7 +595,13 @@ jobs:
             brew list ninja || brew install ninja
             brew list python3 || brew install python3
             brew list pkg-config || brew install pkg-config
+      - attach_workspace:
+          at: ~/
       - checkout
+      - run:
+          name: Remove Linux binaries
+          command: |
+            rm -rf ~/emsdk ~/vms
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
@@ -655,4 +662,9 @@ workflows:
             - build-linux
       - test-latest-node
       - test-windows
-      - test-mac
+      - test-mac:
+          # The mac tester also uses the libraries built on the linux builder to
+          # save total build time (this is fine because the libraries are wasm
+          # and do not depend on the underlying build platform)
+          requires:
+            - build-linux
