@@ -9188,17 +9188,18 @@ _d
     # The unreachable error on small stack sizes is not super-helpful. Try at
     # least to hint at increasing the stack size.
 
-    self.do_runf(test_file('other/test_asyncify_stack_overflow.cpp'),
-                 emcc_args=['-sASSERTIONS=0'],
-                 check_for_error=False,
-                 assert_returncode=common.NON_ZERO,
-                 expected_output=['Aborted(RuntimeError: unreachable). Build with -sASSERTIONS for more info.'])
+    def test(args, expected):
+      self.do_runf(test_file('other/test_asyncify_stack_overflow.cpp'),
+                   emcc_args=args,
+                   check_for_error=False,
+                   assert_returncode=common.NON_ZERO,
+                   expected_output=[expected])
 
-    self.do_runf(test_file('other/test_asyncify_stack_overflow.cpp'),
-                 emcc_args=['-sASSERTIONS=1'],
-                 check_for_error=False,
-                 assert_returncode=common.NON_ZERO,
-                 expected_output=['Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)'])
+    test(['-sASSERTIONS=0'],
+         'Aborted(RuntimeError: unreachable). Build with -sASSERTIONS for more info.')
+
+    test(['-sASSERTIONS=1'],
+         'Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)')
 
   # Sockets and networking
 
