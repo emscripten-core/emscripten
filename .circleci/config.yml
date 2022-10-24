@@ -573,7 +573,7 @@ jobs:
           at: ~/
       - checkout
       - run:
-          name: Remove native binaries
+          name: Remove Linux binaries
           command: |
             rm -rf ~/emsdk ~/vms
       - build
