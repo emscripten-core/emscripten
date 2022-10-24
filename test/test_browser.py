@@ -3366,9 +3366,6 @@ Module["preRun"].push(function () {
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
 
-  def test_async_stack_overflow(self):
-    self.btest('browser/async_stack_overflow.cpp', 'abort:RuntimeError: unreachable', args=['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4'])
-
   def test_async_bad_list(self):
     self.btest('browser/async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=[waka]', '--profiling'])
 
