@@ -362,12 +362,13 @@ class Library:
   def get_path(self, absolute=False):
     return shared.Cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self):
+  def build(self, deterministic_paths=False):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
+    self.deterministic_paths = deterministic_paths
     return shared.Cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
@@ -407,7 +408,8 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
 
     source_dir = utils.path_from_root()
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/emsdk/emscripten']
+    if self.deterministic_paths:
+      cflags = self.get_cflags() + [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten']
     asflags = get_base_cflags()
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -424,7 +426,8 @@ class Library:
     commands = []
     objects = []
     source_dir = utils.path_from_root()
-    cflags = self.get_cflags() + [f'-fdebug-prefix-map={source_dir}=/emsdk/emscripten']
+    if self.deterministic_paths:
+      cflags = self.get_cflags() + [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       object_basename = shared.unsuffixed_basename(src)
