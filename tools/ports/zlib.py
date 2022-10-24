@@ -17,7 +17,6 @@ def get(ports, settings, shared):
   ports.fetch_project('zlib', 'https://github.com/madler/zlib/archive/refs/tags/v' + VERSION + '.tar.gz', 'zlib-' + VERSION, sha512hash=HASH)
 
   def create(final):
-    ports.clear_project_build('zlib')
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
     ports.write_file(os.path.join(source_path, 'zconf.h'), zconf_h)
     ports.install_headers(source_path)
