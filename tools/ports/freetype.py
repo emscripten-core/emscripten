@@ -154,9 +154,7 @@ FT_BEGIN_HEADER
   /* `builds/<system>' directory, and edit it to port the engine.          */
   /*                                                                       */
   /*************************************************************************/
-#def HAVE_UNISTD_H
-#def HAVE_FCNTL_H
-#undef HAVE_STDINT_H
+
   /* There are systems (like the Texas Instruments 'C54x) where a `char' */
   /* has 16 bits.  ANSI C says that sizeof(char) is always 1.  Since an  */
   /* `int' has 16 bits also for this system, sizeof(int) gives 1 which   */
