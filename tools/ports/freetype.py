@@ -8,6 +8,8 @@ import os
 TAG = 'VER-2-12-1'
 HASH = '3ef3e47752b7c3cd158c738d7e0194f1c9f97ac85c754b02be6ee0f7999c3c19050f713d1e975f5310a4689337463e7b54450ef62e02c3f09864f4c6b13740d9'
 
+deps = ['zlib']
+
 
 def needed(settings):
   return settings.USE_FREETYPE
