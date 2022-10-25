@@ -26,10 +26,14 @@ def get(ports, settings, shared):
 
     # fixes freetype + zlib duplicate symbols errors
     with open(os.path.join(source_path, 'include', 'freetype', 'config', 'ftoption.h'), 'a') as ftheader:
-      ftheader.write('#define FT_CONFIG_OPTION_SYSTEM_ZLIB')
+      ftheader.write("#define FT_CONFIG_OPTION_SYSTEM_ZLIB\n")
+      ftheader.write("#define HAVE_UNISTD_H\n")
+      ftheader.write("#define HAVE_FCNTL_H\n")
+      ftheader.write("#define HAVE_STDINT_H\n")
 
     # build
-    srcs = ['src/autofit/autofit.c',
+    srcs = ['builds/unix/ftsystem.c',
+            'src/autofit/autofit.c',
             'src/base/ftbase.c',
             'src/base/ftbbox.c',
             'src/base/ftbdf.c',
@@ -46,7 +50,6 @@ def get(ports, settings, shared):
             'src/base/ftpatent.c',
             'src/base/ftpfr.c',
             'src/base/ftstroke.c',
-            'src/base/ftsystem.c',
             'src/base/ftsynth.c',
             'src/base/fttype1.c',
             'src/base/ftwinfnt.c',
@@ -151,8 +154,8 @@ FT_BEGIN_HEADER
   /* `builds/<system>' directory, and edit it to port the engine.          */
   /*                                                                       */
   /*************************************************************************/
-#undef HAVE_UNISTD_H
-#undef HAVE_FCNTL_H
+#def HAVE_UNISTD_H
+#def HAVE_FCNTL_H
 #undef HAVE_STDINT_H
   /* There are systems (like the Texas Instruments 'C54x) where a `char' */
   /* has 16 bits.  ANSI C says that sizeof(char) is always 1.  Since an  */
