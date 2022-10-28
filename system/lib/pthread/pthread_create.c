@@ -68,6 +68,31 @@ static int dummy_getpid(void) {
 }
 weak_alias(dummy_getpid, __syscall_getpid);
 
+static int tl_lock_count;
+static int tl_lock_waiters;
+
+volatile int __thread_list_lock;
+
+void __tl_lock(void) {
+  int tid = __pthread_self()->tid;
+  int val = __thread_list_lock;
+  if (val == tid) {
+    tl_lock_count++;
+    return;
+  }
+  while ((val = a_cas(&__thread_list_lock, 0, tid)))
+    __wait(&__thread_list_lock, &tl_lock_waiters, val, 0);
+}
+
+void __tl_unlock(void) {
+  if (tl_lock_count) {
+    tl_lock_count--;
+    return;
+  }
+  a_store(&__thread_list_lock, 0);
+  if (tl_lock_waiters) __wake(&__thread_list_lock, 1, 0);
+}
+
 /* pthread_key_create.c overrides this */
 static volatile size_t dummy = 0;
 weak_alias(dummy, __pthread_tsd_size);
@@ -200,8 +225,6 @@ int __pthread_create(pthread_t* restrict res,
     return rtn;
   }
 
-  // TODO(sbc): Implement circular list of threads
-  /*
   __tl_lock();
 
   new->next = self->next;
@@ -210,7 +233,6 @@ int __pthread_create(pthread_t* restrict res,
   new->prev->next = new;
 
   __tl_unlock();
-  */
 
 #ifdef PTHREAD_DEBUG
   _emscripten_errf("done __pthread_create self=%p next=%p prev=%p new=%p", self, self->next, self->prev, new);
@@ -260,8 +282,6 @@ void _emscripten_thread_exit(void* result) {
 
   if (!--libc.threads_minus_1) libc.need_locks = 0;
 
-  // TODO(sbc): Implement circular list of threads
-  /*
   __tl_lock();
 
   self->next->prev = self->prev;
@@ -269,7 +289,6 @@ void _emscripten_thread_exit(void* result) {
   self->prev = self->next = self;
 
   __tl_unlock();
-  */
 
   if (self == emscripten_main_browser_thread_id()) {
     exit(0);

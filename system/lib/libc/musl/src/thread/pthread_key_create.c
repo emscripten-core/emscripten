@@ -26,7 +26,7 @@ weak_alias(dummy_0, __tl_unlock);
 
 int __pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 {
-	pthread_t self = __pthread_self();
+        pthread_t self = __pthread_self(), td=self;
 
 	/* This can only happen in the main thread before
 	 * pthread_create has been called. */
@@ -57,13 +57,10 @@ int __pthread_key_delete(pthread_key_t k)
 	__block_app_sigs(&set);
 	__pthread_rwlock_wrlock(&key_lock);
 
-  // TODO(sbc): Implement circular list of threads
-  /*
 	__tl_lock();
 	do td->tsd[k] = 0;
 	while ((td=td->next)!=self);
 	__tl_unlock();
-  */
 
 	keys[k] = 0;
 
