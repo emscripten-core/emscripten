@@ -93,6 +93,15 @@ void __tl_unlock(void) {
   if (tl_lock_waiters) __wake(&__thread_list_lock, 1, 0);
 }
 
+void __tl_sync(pthread_t td)
+{
+	a_barrier();
+	int val = __thread_list_lock;
+	if (!val) return;
+	__wait(&__thread_list_lock, &tl_lock_waiters, val, 0);
+	if (tl_lock_waiters) __wake(&__thread_list_lock, 1, 0);
+}
+
 /* pthread_key_create.c overrides this */
 static volatile size_t dummy = 0;
 weak_alias(dummy, __pthread_tsd_size);
@@ -253,6 +262,13 @@ void _emscripten_thread_free_data(pthread_t t) {
     emscripten_builtin_free(t->profilerBlock);
   }
 #endif
+
+  __tl_lock();
+
+  t->next->prev = t->prev;
+  t->prev->next = t->next;
+
+  __tl_unlock();
 
   // Free all the enture thread block (called map_base because
   // musl normally allocates this using mmap).  This region
