@@ -26,7 +26,7 @@ weak_alias(dummy_0, __tl_unlock);
 
 int __pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 {
-        pthread_t self = __pthread_self(), td=self;
+        pthread_t self = __pthread_self();
 
 	/* This can only happen in the main thread before
 	 * pthread_create has been called. */
