@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.68 (in development)
 -----------------------
+- The freetype port was updated from v2.6 to v2.13.3. (#22585)
 
 3.1.67 - 09/17/24
 -----------------
