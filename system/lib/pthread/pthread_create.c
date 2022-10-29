@@ -223,17 +223,7 @@ int __pthread_create(pthread_t* restrict res,
                    self, new, new+1, (char*)new->stack - new->stack_size, new->stack, new->stack_size, new->tls_base);
 #endif
 
-  // Set libc.need_locks before calling __pthread_create_js since
-  // by the time it returns the thread could be running and we
-  // want libc.need_locks to be set from the moment it starts.
-  if (!libc.threads_minus_1++) libc.need_locks = 1;
-
-  int rtn = __pthread_create_js(new, &attr, entry, arg);
-  if (rtn != 0) {
-    if (!--libc.threads_minus_1) libc.need_locks = 0;
-    return rtn;
-  }
-
+  // thread may already be running/exited after the _pthread_create_js call below
   __tl_lock();
 
   new->next = self->next;
@@ -242,6 +232,27 @@ int __pthread_create(pthread_t* restrict res,
   new->prev->next = new;
 
   __tl_unlock();
+
+  // Set libc.need_locks before calling __pthread_create_js since
+  // by the time it returns the thread could be running and we
+  // want libc.need_locks to be set from the moment it starts.
+  if (!libc.threads_minus_1++) libc.need_locks = 1;
+
+  int rtn = __pthread_create_js(new, &attr, entry, arg);
+  if (rtn != 0) {
+    if (!--libc.threads_minus_1) libc.need_locks = 0;
+
+    // undo previous addition to the thread list
+    __tl_lock();
+
+    new->next->prev = new->prev;
+    new->prev->next = new->next;
+    new->next = new->prev = new;
+
+    __tl_unlock();
+    
+    return rtn;
+  }
 
 #ifdef PTHREAD_DEBUG
   _emscripten_errf("done __pthread_create self=%p next=%p prev=%p new=%p", self, self->next, self->prev, new);
