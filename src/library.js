@@ -612,7 +612,7 @@ mergeInto(LibraryManager.library, {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', 'i32') }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', POINTER_TYPE) }}};
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
