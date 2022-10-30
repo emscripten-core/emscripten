@@ -448,6 +448,7 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
+  _mktime_js__deps: ['_yday_from_date'],
   _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -478,7 +479,7 @@ mergeInto(LibraryManager.library, {
     }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
+    var yday = __yday_from_date(date);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     // To match expected behavior, update fields from date
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -526,7 +527,7 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
-  _localtime_js__deps: ['$readI53FromI64'],
+  _localtime_js__deps: ['$readI53FromI64', '_yday_from_date'],
   _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
@@ -538,12 +539,12 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
-    var start = new Date(date.getFullYear(), 0, 1);
-    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
+    var yday = __yday_from_date(date);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
     // Attention: DST is in December in South, and some regions don't have DST at all.
+    var start = new Date(date.getFullYear(), 0, 1);
     var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
@@ -635,9 +636,20 @@ mergeInto(LibraryManager.library, {
 
   _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-
+  _MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
+  _MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
+    
   _isLeapYear: function(year) {
       return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
+  },
+
+  _yday_from_date__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP_CUMULATIVE', '_MONTH_DAYS_REGULAR_CUMULATIVE'],
+  _yday_from_date: function(date) {
+    var isLeapYear = __isLeapYear(date.getFullYear());
+    var monthDaysCumulative = (isLeapYear ? __MONTH_DAYS_LEAP_CUMULATIVE : __MONTH_DAYS_REGULAR_CUMULATIVE);
+    var yday = monthDaysCumulative[date.getMonth()] + date.getDate() - 1; // -1 since it's days since Jan 1
+
+    return yday;
   },
 
   _arraySum: function(array, index) {
