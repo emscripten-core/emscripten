@@ -131,7 +131,7 @@ def get(ports, settings, shared):
       cflags.append('-DHB_NO_MT')
 
     # https://github.com/harfbuzz/harfbuzz/commit/60c6b7786d9f4651ae2803bfc4ff4435b38a5bc6
-    cflags.append('-Wno-error=cast-function-type-strict')
+    cflags.append('-Wno-cast-function-type-strict')
     # TODO(kleisauke): Remove when LLVM rolls in
     cflags.append('-Wno-unknown-warning-option')
 
