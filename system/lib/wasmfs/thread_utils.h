@@ -33,15 +33,20 @@ public:
       // gets done so the thread holding the lock can make forward progress even
       // if the main thread is blocked.
       //
+      // TODO: Remove this once we can postMessage directly between workers
+      // without involving the main thread.
+      //
       // Note that this requires adding _emscripten_proxy_execute_queue to
       // EXPORTED_FUNCTIONS.
       EM_ASM({
-          var heartbeat = () => {
+        var intervalID = setInterval(() => {
+          if (ABORT) {
+            clearInterval(intervalID);
+          } else {
             _emscripten_proxy_execute_queue($0);
-            setTimeout(heartbeat, 50);
-          };
-          heartbeat();
-        }, queue.queue);
+          }
+        }, 50);
+      }, queue.queue);
 
         // Sit in the event loop performing work as it comes in.
         emscripten_exit_with_live_runtime();
