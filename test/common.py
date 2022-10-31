@@ -956,7 +956,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
                   configure_args=None, make=None, make_args=None,
-                  env_init=None, cache_name_extra='', native=False):
+                  env_init=None, cache_name_extra='', native=False,
+                  force_rebuild=False):
     if make is None:
       make = ['make']
     if env_init is None:
@@ -980,7 +981,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
-    if self.library_cache.get(cache_name):
+    if not force_rebuild and self.library_cache.get(cache_name):
       print('<load %s from cache> ' % cache_name, file=sys.stderr)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
