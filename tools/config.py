@@ -6,6 +6,7 @@
 import os
 import sys
 import logging
+from typing import List
 
 from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
@@ -26,11 +27,10 @@ LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 JAVA = None
-JS_ENGINE = None
 JS_ENGINES = None
 WASMER = None
 WASMTIME = None
-WASM_ENGINES = []
+WASM_ENGINES: List[str] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
@@ -57,13 +57,11 @@ def root_is_writable():
 
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
-  global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
-  if not JS_ENGINE:
-    JS_ENGINE = JS_ENGINES[0]
 
   # Engine tweaks
   if SPIDERMONKEY_ENGINE:
@@ -73,7 +71,6 @@ def normalize_config_settings():
     SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-  JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
@@ -121,7 +118,6 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
-    'JS_ENGINE',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -139,6 +135,9 @@ def parse_config_file():
     if env_value is not None:
       if env_value in ('', '0'):
         env_value = None
+      # Unlike the other keys these two should always be lists.
+      if key in ('JS_ENGINES', 'WASM_ENGINES'):
+        env_value = env_value.split(',')
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]

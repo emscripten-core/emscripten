@@ -899,15 +899,19 @@ Compiling
 
 .. c:macro:: EMSCRIPTEN_KEEPALIVE
 
-  Forces LLVM to not dead-code-eliminate a function.
-
-  This also exports the function, as if you added it to :ref:`EXPORTED_FUNCTIONS <faq-dead-code-elimination>`.
+  Tells the compiler and linker to preserve a symbol, and export it, as if you
+  added it to :ref:`EXPORTED_FUNCTIONS <faq-dead-code-elimination>`.
 
   For example: ::
 
     void EMSCRIPTEN_KEEPALIVE my_function() { printf("I am being kept alive\n"); }
 
-
+  Note that this will only work if the object file in which the symbol is
+  defined is otherwise included by the linker.  If the object file is part of an
+  archive, and is not otherwise referenced the linker will not include it at all
+  and any symbols in the object file will not be included or exported.  One way
+  to work around this limitation is to use the ``-Wl,--whole-archive`` /
+  ``-Wl,--no-whole-archive`` flags on either side of the archive file.
 
 
 Worker API

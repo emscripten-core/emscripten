@@ -45,8 +45,9 @@ mergeInto(LibraryManager.library, {
     defs['defined'] = (args) => { // built-in "#if defined(x)"" macro.
 #if ASSERTIONS
       assert(args.length == 1);
+      assert(/^[A-Za-z0-9_$]+$/.test(args[0].trim())); // Test that a C preprocessor identifier contains only valid characters (we likely parsed wrong if this fails)
 #endif
-      return defs[args[0]] ? 1 : 0;
+      return defs[args[0].trim()] ? 1 : 0;
     };
 
     // Returns true if str[i] is whitespace.
@@ -122,12 +123,17 @@ mergeInto(LibraryManager.library, {
               var pp = defs[symbol];
               if (pp) {
                 var expanded = str.substring(lineStart, i);
-                if (pp.length && str[j] == '(') { // Expanding a macro? (#define FOO(X) ...)
-                  var closeParens = find_closing_parens_index(str, j);
-#if ASSERTIONS
-                  assert(str[closeParens] == ')');
-#endif
-                  expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
+                if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
+                  while (isWhitespace(str, j)) ++j;
+                  if (str[j] == '(') {
+                    var closeParens = find_closing_parens_index(str, j);
+                    // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
+                    // e.g. FOO(a, BAR(b, c)) is not supported.
+                    expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
+                  } else {
+                    var j2 = nextWhitespace(str, j);
+                    expanded += pp([str.substring(j, j2)]) + str.substring(j2, lineEnd);
+                  }
                 } else { // Expanding a non-macro (#define FOO BAR)
                   expanded += pp() + str.substring(j, lineEnd);
                 }
@@ -243,7 +249,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'ifdef': stack.push(!!defs[expression] * stack[stack.length-1]); break;
       case 'ifndef': stack.push(!defs[expression] * stack[stack.length-1]); break;
-      case 'else': stack[stack.length-1] = 1-stack[stack.length-1]; break;
+      case 'else': stack[stack.length-1] = (1-stack[stack.length-1]) * stack[stack.length-2]; break;
       case 'endif': stack.pop(); break;
       case 'define':
         if (thisLineIsInActivePreprocessingBlock) {
@@ -272,7 +278,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'undef': if (thisLineIsInActivePreprocessingBlock) delete defs[expression]; break;
       default:
-        if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
+        if (directive != 'version' && directive != 'pragma' && directive != 'extension' && directive != 'line') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS
           err('Unrecognized preprocessor directive #' + directive + '!');
 #endif

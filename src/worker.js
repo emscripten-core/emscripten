@@ -85,6 +85,9 @@ var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
+#if RUNTIME_DEBUG
+var dbg = threadPrintErr;
+#endif
 
 #if !MINIMAL_RUNTIME
 Module['instantiateWasm'] = (info, receiveInstance) => {
@@ -115,7 +118,7 @@ self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if PTHREADS_DEBUG
-      err('worker.js: loading module')
+      dbg('worker.js: loading module')
 #endif
 #if MINIMAL_RUNTIME
       var imports = {};
@@ -220,7 +223,7 @@ self.onmessage = (e) => {
       if (!initializedJS) {
 #if EMBIND
 #if PTHREADS_DEBUG
-        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+        dbg('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
 #endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused

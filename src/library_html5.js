@@ -2444,7 +2444,7 @@ var LibraryHTML5 = {
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
-        err('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
+        dbg('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
           + prevViewport + ', so autoResizeViewport=' + autoResizeViewport);
 #endif
       }
@@ -2452,7 +2452,7 @@ var LibraryHTML5 = {
       canvas.height = height;
       if (autoResizeViewport) {
 #if GL_DEBUG
-        err('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
+        dbg('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
 #endif
         // TODO: Add -sCANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
@@ -2466,7 +2466,7 @@ var LibraryHTML5 = {
 #endif
     } else {
 #if GL_DEBUG
-      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      dbg('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2522,7 +2522,7 @@ var LibraryHTML5 = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2535,7 +2535,7 @@ var LibraryHTML5 = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -2551,7 +2551,7 @@ var LibraryHTML5 = {
   $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
-    err('setCanvasElementSize(target='+target+',width='+width+',height='+height);
+    dbg('setCanvasElementSize(target='+target+',width='+width+',height='+height);
 #endif
     if (!target.controlTransferredOffscreen) {
       target.width = width;
@@ -2592,7 +2592,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('height', 0, 'canvas.height', 'i32') }}};
     } else {
 #if GL_DEBUG
-      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      dbg('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }

@@ -374,12 +374,13 @@ class Library:
   def get_path(self, absolute=False):
     return shared.Cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self):
+  def build(self, deterministic_paths=False):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
+    self.deterministic_paths = deterministic_paths
     return shared.Cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
@@ -423,6 +424,10 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
 
     cflags = self.get_cflags()
+    if self.deterministic_paths:
+      source_dir = utils.path_from_root()
+      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 '-fdebug-compilation-dir=/emsdk/emscripten']
     asflags = get_base_cflags()
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -438,6 +443,10 @@ class Library:
     commands = []
     objects = []
     cflags = self.get_cflags()
+    if self.deterministic_paths:
+      source_dir = utils.path_from_root()
+      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       object_basename = shared.unsuffixed_basename(src)
@@ -475,7 +484,7 @@ class Library:
     run_build_commands(commands)
     return objects
 
-  def customize_build_cmd(self, cmd, filename):  # noqa
+  def customize_build_cmd(self, cmd, _filename):
     """Allows libraries to customize the build command used on per-file basis.
 
     For example, libc uses this to replace -Oz with -O2 for some subset of files."""
@@ -772,7 +781,7 @@ class SjLjLibrary(Library):
       # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sDISABLE_EXCEPTION_THROWING=1',
+                 '-sDISABLE_EXCEPTION_THROWING',
                  '-D__USING_WASM_SJLJ__']
     return cflags
 
@@ -1002,6 +1011,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'library_pthread.c',
+          'em_task_queue.c',
           'proxying.c',
           'pthread_create.c',
           'pthread_kill.c',
@@ -1260,11 +1270,11 @@ class libwasm_workers(MTLibrary):
   name = 'libwasm_workers'
 
   def get_cflags(self):
-    cflags = get_base_cflags() + ['-pthread', '-D_DEBUG' if self.debug else '-Oz']
+    cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
     if not self.debug:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
-      cflags += ['-sWASM_WORKERS']
+      cflags += ['-pthread', '-sWASM_WORKERS']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
     return cflags
@@ -1374,7 +1384,7 @@ class crtbegin(MuslInternalLibrary):
     return super().can_use() and settings.SHARED_MEMORY
 
 
-class libcxxabi(NoExceptLibrary, MTLibrary):
+class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -1387,7 +1397,6 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:

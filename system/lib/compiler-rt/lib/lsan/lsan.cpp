@@ -82,7 +82,7 @@ static void InitializeFlags() {
   const char *lsan_default_options = __lsan_default_options();
   parser.ParseString(lsan_default_options);
 #if SANITIZER_EMSCRIPTEN
-  char *options = (char*) EM_ASM_INT({
+  char *options = (char*) EM_ASM_PTR({
     return withBuiltinMalloc(function () {
       return allocateUTF8(Module['LSAN_OPTIONS'] || 0);
     });

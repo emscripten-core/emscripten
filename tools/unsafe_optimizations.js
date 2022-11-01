@@ -7,8 +7,6 @@
 
 const acorn = require('acorn');
 const fs = require('fs');
-const assert = require('assert');
-const path = require('path');
 const terser = require('../third_party/terser/terser');
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'

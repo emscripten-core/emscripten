@@ -37,6 +37,9 @@ MINIMAL_TASKS = [
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
+    'libc++abi-debug',
+    'libc++abi-debug-except',
+    'libc++abi-debug-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
@@ -77,6 +80,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc_optz-mt-debug',
     'libc++abi-mt',
     'libc++abi-mt-noexcept',
+    'libc++abi-debug-mt',
+    'libc++abi-debug-mt-noexcept',
     'libc++-mt',
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
@@ -241,7 +246,7 @@ def main():
         if os.environ.get('EMCC_USE_NINJA', 0):
           library.generate()
         else:
-          library.build()
+          library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')

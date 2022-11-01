@@ -9,7 +9,7 @@
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();
 #if RUNTIME_DEBUG
-  err('writeStackCookie: ' + max.toString(16));
+  dbg('writeStackCookie: ' + max.toString(16));
 #endif
 #if ASSERTIONS
   assert((max & 3) == 0);
@@ -31,7 +31,7 @@ function checkStackCookie() {
 #endif
   var max = _emscripten_stack_get_end();
 #if RUNTIME_DEBUG
-  err('checkStackCookie: ' + max.toString(16));
+  dbg('checkStackCookie: ' + max.toString(16));
 #endif
   var cookie1 = {{{ makeGetValue('max', 0, 'u32') }}};
   var cookie2 = {{{ makeGetValue('max', 4, 'u32') }}};

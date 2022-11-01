@@ -180,6 +180,9 @@ function callMain(args) {
 #if ASSERTIONS
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
+#if ABORT_ON_WASM_EXCEPTIONS
+  }
+#endif
 #else
 #if ASYNCIFY == 2
     // The current spec of JSPI returns a promise only if the function suspends
@@ -219,7 +222,7 @@ function stackCheckInit() {
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
+  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
 #else
   _emscripten_stack_init();
 #endif

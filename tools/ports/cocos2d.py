@@ -41,8 +41,8 @@ def get(ports, settings, shared):
       # See https://github.com/emscripten-ports/Cocos2d/pull/3
       '-DEMSCRIPTEN',
       '-DCP_USE_DOUBLES=0',
-      '-sUSE_ZLIB=1',
-      '-sUSE_LIBPNG=1',
+      '-sUSE_ZLIB',
+      '-sUSE_LIBPNG',
     ]
 
     for dirname in includes:

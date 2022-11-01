@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
     if (!implicit) {
       if (ENVIRONMENT_IS_PTHREAD) {
 #if PTHREADS_DEBUG
-        err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
+        dbg('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
 #endif
         // When running in a pthread we propagate the exit back to the main thread
         // where it can decide if the whole process should be shut down or not.
@@ -977,7 +977,8 @@ mergeInto(LibraryManager.library, {
     return bytes.length-1;
   },
   strftime_l__deps: ['strftime'],
-  strftime_l: function(s, maxsize, format, tm) {
+  strftime_l__sig: 'pppppp',
+  strftime_l: function(s, maxsize, format, tm, loc) {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
@@ -2388,6 +2389,7 @@ mergeInto(LibraryManager.library, {
   $nowIsMonotonic: 'true;',
 #endif
 
+  _emscripten_get_now_is_monotonic__sig: 'i',
   _emscripten_get_now_is_monotonic__internal: true,
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: function() {
@@ -2865,7 +2867,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the line number from our stack frame cache with our PC representation.
   emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_line__sig: 'pp',
+  emscripten_pc_get_line__sig: 'ip',
   emscripten_pc_get_line: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
@@ -2873,12 +2875,13 @@ mergeInto(LibraryManager.library, {
 
   // Look up the column number from our stack frame cache with our PC representation.
   emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_column__sig: 'pp',
+  emscripten_pc_get_column__sig: 'ip',
   emscripten_pc_get_column: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 
+  emscripten_get_module_name__sig: 'ppp',
   emscripten_get_module_name: function(buf, length) {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
@@ -2982,7 +2985,11 @@ mergeInto(LibraryManager.library, {
     return ASM_CONSTS[code].apply(null, args);
 #endif
   },
-  emscripten_asm_const_double: 'emscripten_asm_const_int',
+  emscripten_asm_const_double__sig: 'dppp',
+  emscripten_asm_const_double__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_double: function(code, sigPtr, argbuf) {
+    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+  },
 
 #if MEMORY64
   emscripten_asm_const_ptr__sig: 'pppp',
@@ -3445,7 +3452,7 @@ mergeInto(LibraryManager.library, {
 #if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
-    err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+    dbg('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
 #endif
 #endif
   },
@@ -3458,7 +3465,7 @@ mergeInto(LibraryManager.library, {
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
-    err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+    dbg('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
 #endif
 #endif
   },
@@ -3515,11 +3522,11 @@ mergeInto(LibraryManager.library, {
   $maybeExit: function() {
 #if EXIT_RUNTIME
 #if RUNTIME_DEBUG
-    err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+    dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
     if (!keepRuntimeAlive()) {
 #if RUNTIME_DEBUG
-      err('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+      dbg('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
 #endif
       try {
 #if USE_PTHREADS
@@ -3598,7 +3605,7 @@ mergeInto(LibraryManager.library, {
 #if RELOCATABLE
   // Globals that are normally exported from the wasm module but in relocatable
   // mode are created here and imported by the module.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_HIGH) }}})",
   // tell the memory segments where to place themselves
   __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   // the wasm backend reserves slot 0 for the NULL function pointer
@@ -3615,6 +3622,8 @@ mergeInto(LibraryManager.library, {
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
   __heap_base: '{{{ HEAP_BASE }}}',
+  __stack_high: '{{{ STACK_HIGH }}}',
+  __stack_low: '{{{ STACK_LOW }}}',
   __global_base: '{{{ GLOBAL_BASE }}}',
 #if WASM_EXCEPTIONS
   // In dynamic linking we define tags here and feed them to each module
@@ -3622,13 +3631,10 @@ mergeInto(LibraryManager.library, {
 #endif
 #if SUPPORT_LONGJMP == 'wasm'
   __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-  __c_longjmp_import: true,
 #endif
 #if ASYNCIFY
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_state__import: true,
   __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data__import: true,
 #endif
 #endif
 
@@ -3636,7 +3642,7 @@ mergeInto(LibraryManager.library, {
   _emscripten_fs_load_embedded_files__sig: 'vp',
   _emscripten_fs_load_embedded_files: function(ptr) {
 #if RUNTIME_DEBUG
-    err('preloading data files');
+    dbg('preloading data files');
 #endif
     do {
       var name_addr = {{{ makeGetValue('ptr', '0', '*') }}};
@@ -3647,14 +3653,14 @@ mergeInto(LibraryManager.library, {
       ptr += {{{ POINTER_SIZE }}};
       var name = UTF8ToString(name_addr)
 #if RUNTIME_DEBUG
-      err('preloading files: ' + name);
+      dbg('preloading files: ' + name);
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
       FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
     } while ({{{ makeGetValue('ptr', '0', '*') }}});
 #if RUNTIME_DEBUG
-    err('done preloading data files');
+    dbg('done preloading data files');
 #endif
   },
 });

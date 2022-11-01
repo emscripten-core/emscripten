@@ -130,6 +130,11 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
+    # https://github.com/harfbuzz/harfbuzz/commit/60c6b7786d9f4651ae2803bfc4ff4435b38a5bc6
+    cflags.append('-Wno-cast-function-type-strict')
+    # TODO(kleisauke): Remove when LLVM rolls in
+    cflags.append('-Wno-unknown-warning-option')
+
     ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]

@@ -17,7 +17,5 @@ int main(int argc, char* argv[]) {
   // We should not get here - the unwind will fail as the stack is too small
   printf("We should not get here %d %d %d\n", x, y, z);
 
-  REPORT_RESULT(1);
-
   return 0;
 }

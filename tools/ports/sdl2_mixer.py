@@ -50,20 +50,20 @@ def get(ports, settings, shared):
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-sUSE_VORBIS=1',
+        '-sUSE_VORBIS',
         '-DMUSIC_OGG',
       ]
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
         '-Wno-incompatible-function-pointer-types',
-        '-sUSE_MPG123=1',
+        '-sUSE_MPG123',
         '-DMUSIC_MP3_MPG123',
       ]
 
     if "mod" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-sUSE_MODPLUG=1',
+        '-sUSE_MODPLUG',
         '-DMUSIC_MOD_MODPLUG',
       ]
 

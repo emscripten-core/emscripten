@@ -552,7 +552,8 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('memops', src, 'final:')
 
-  def zzztest_files(self):
+  @non_core
+  def test_files(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -593,7 +594,7 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark(src, 'ok')
+    self.do_benchmark('files', src, 'ok', emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0', '-sEXIT_RUNTIME'])
 
   def test_copy(self):
     src = r'''
@@ -783,7 +784,7 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('corrections', src, 'final:')
 
-  def zzz_test_corrections64(self):
+  def test_corrections64(self):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -968,7 +969,9 @@ class benchmark(common.RunnerCore):
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      # We force recomputation for the native benchmarker because this benchmark
+      # uses native_exec=True, so we need to copy the native executable
+      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')

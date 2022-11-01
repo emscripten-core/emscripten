@@ -286,9 +286,9 @@ function preMain() {
 #if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
-  err('exitRuntime');
+  dbg('exitRuntime');
 #endif
-#if ASYNCIFY && ASSERTIONS
+#if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
 #endif
@@ -482,6 +482,10 @@ function abort(what) {
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
+#elif ASYNCIFY == 1
+  if (what.indexOf('RuntimeError: unreachable') >= 0) {
+    what += '. "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)';
+  }
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
