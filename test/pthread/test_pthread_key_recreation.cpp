@@ -3,11 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <iostream>
-#include <cassert>
-#include <condition_variable>
+#include <assert.h>
 #include <pthread.h>
-#include <emscripten.h>
 
 // tests, in the following sequence
 //  pthread_key_create with key k
@@ -19,8 +16,8 @@
 
 static pthread_key_t key;
 
-static std::mutex mutex;
-static std::condition_variable cond_var;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 static bool thread_sync = false;
 
 void *thread_main(void *arg) {
@@ -31,15 +28,17 @@ void *thread_main(void *arg) {
 
     // wait for slot to be recreated
     {
-        std::unique_lock<std::mutex> lock(mutex);
-	thread_sync = true;
-        cond_var.notify_one();
+        assert(pthread_mutex_lock(&mutex) == 0);
+        thread_sync = true;
+        assert(pthread_cond_signal(&cond_var) == 0);
+        assert(pthread_mutex_unlock(&mutex) == 0);
     }
 
     {
-        std::unique_lock<std::mutex> lock(mutex);
+        assert(pthread_mutex_lock(&mutex) == 0);
         while (thread_sync)
-            cond_var.wait(lock);
+            assert(pthread_cond_wait(&cond_var, &mutex) == 0);
+        assert(pthread_mutex_unlock(&mutex) == 0);
     }
 
     assert(pthread_getspecific(key) == 0);
@@ -65,9 +64,10 @@ int main() {
 
     // wait for worker thread to finish initial setting of the slot
     {
-        std::unique_lock<std::mutex> lock(mutex);
-	while (!thread_sync)
-	  cond_var.wait(lock);
+        assert(pthread_mutex_lock(&mutex) == 0);
+        while (!thread_sync)
+            assert(pthread_cond_wait(&cond_var, &mutex) == 0);
+        assert(pthread_mutex_unlock(&mutex) == 0);
     }
 
     // recreate
@@ -84,9 +84,10 @@ int main() {
 
     // notify worker thread to check the slot again
     {
-        std::unique_lock<std::mutex> lock(mutex);
-	thread_sync = false;
-        cond_var.notify_one();
+        assert(pthread_mutex_lock(&mutex) == 0);
+	    thread_sync = false;
+        assert(pthread_cond_signal(&cond_var) == 0);
+        assert(pthread_mutex_unlock(&mutex) == 0);
     }
 
     pthread_join(thread, nullptr);

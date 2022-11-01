@@ -274,13 +274,6 @@ void _emscripten_thread_free_data(pthread_t t) {
   }
 #endif
 
-  __tl_lock();
-
-  t->next->prev = t->prev;
-  t->prev->next = t->next;
-
-  __tl_unlock();
-
   // Free all the enture thread block (called map_base because
   // musl normally allocates this using mmap).  This region
   // includes the pthread structure itself.
