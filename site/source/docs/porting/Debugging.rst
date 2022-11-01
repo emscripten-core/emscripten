@@ -236,6 +236,7 @@ In order to debug these sorts of issues:
 - Compile with ``-Werror``. This turns warnings into errors, which can be useful as some cases of undefined behavior would otherwise show warnings.
 - Use ``-sASSERTIONS=2`` to get some useful information about the function pointer being called, and its type.
 - Look at the browser stack trace to see where the error occurs and which function should have been called.
+- Enable clang warnings on dangerous function pointer casts using ``-Wcast-function-type``.
 - Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>`.
 - :ref:`Sanitizers` can help here, in particular UBSan.
 
