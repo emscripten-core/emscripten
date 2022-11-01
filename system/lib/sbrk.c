@@ -69,9 +69,9 @@ void *sbrk(intptr_t increment_) {
     uintptr_t old_brk = *sbrk_ptr;
 #endif
     uintptr_t new_brk = old_brk + increment;
-    // Check for a 32-bit overflow, which would indicate that we are trying to
-    // allocate over 4GB, which is never possible in wasm32.
-    if (increment > 0 && (uint32_t)new_brk <= (uint32_t)old_brk) {
+    // Check for an overflow, which would indicate that we are trying to
+    // allocate over maximum addressable memory.
+    if (increment > 0 && new_brk <= old_brk) {
       goto Error;
     }
     old_size = emscripten_get_heap_size();
