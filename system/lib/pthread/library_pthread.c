@@ -681,7 +681,8 @@ void __emscripten_init_main_thread(void) {
   // tid is always non-zero.
   __main_pthread.tid = getpid();
   __main_pthread.locale = &libc.global_locale;
-  // TODO(sbc): Implement circular list of threads
-  //__main_pthread.next = __main_pthread.prev = &__main_pthread;
+  // pthread struct prev and next should initially point to itself (see __init_tp),
+  // this is used by pthread_key_delete for deleting thread-specific data.
+  __main_pthread.next = __main_pthread.prev = &__main_pthread;
   __main_pthread.tsd = (void **)__pthread_tsd_main;
 }

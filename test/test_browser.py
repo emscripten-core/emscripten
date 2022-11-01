@@ -5434,6 +5434,10 @@ Module["preRun"].push(function () {
                      test_file('pthread/test_pthread_unhandledrejection.post.js')],
                expected='exception:Uncaught [object ErrorEvent] / undefined')
 
+  @requires_threads
+  def test_pthread_key_recreation(self):
+    self.btest_exit(test_file('pthread/test_pthread_key_recreation.cpp'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=1'])
+
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
