@@ -4021,8 +4021,18 @@ var LibraryGL = {
   glMapBufferRange__sig: 'iiiii',
   glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glMapBufferRange: function(target, offset, length, access) {
-    if (access != 0x1A && access != 0xA) {
-      err("glMapBufferRange is only supported when access is MAP_WRITE|INVALIDATE_BUFFER");
+    if ((access & (0x1 | 0x20)) != 0) {
+      err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
+      return 0;
+    }
+
+    if ((access & 0x2) == 0) {
+      err("glMapBufferRange access must include MAP_WRITE");
+      return 0;
+    }
+
+    if ((access & (0x4 | 0x8)) == 0) {
+      err("glMapBufferRange access must include INVALIDATE_BUFFER or INVALIDATE_RANGE");
       return 0;
     }
 
