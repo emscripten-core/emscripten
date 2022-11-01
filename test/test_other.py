@@ -3909,7 +3909,7 @@ int main() {
       self.assertContained('Test passed.', self.run_js('a.out.js'))
 
   def test_os_oz(self):
-    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3']:
+    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og']:
       print(opt)
       proc = self.run_process([EMXX, '-v', test_file('hello_world.cpp'), opt], stderr=PIPE)
       self.assertContained(opt, proc.stderr)
@@ -3924,14 +3924,15 @@ int main() {
         ('s', ['-Os']),
         ('z', ['-Oz']),
         ('3', ['-O3']),
+        ('g', ['-Og']),
       ]:
       print(name, args)
       self.clear()
       self.run_process([EMCC, '-c', path_from_root('system/lib/dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
-    opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
-    opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
+    opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'], sizes['g'])
+    opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'], sizes['g'])
     # 'opt builds are all fairly close'
     self.assertLess(opt_min - opt_max, opt_max * 0.1)
     # unopt build is quite larger'
