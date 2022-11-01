@@ -85,7 +85,7 @@ int main() {
     // notify worker thread to check the slot again
     {
         assert(pthread_mutex_lock(&mutex) == 0);
-	    thread_sync = false;
+        thread_sync = false;
         assert(pthread_cond_signal(&cond_var) == 0);
         assert(pthread_mutex_unlock(&mutex) == 0);
     }
