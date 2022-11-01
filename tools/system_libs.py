@@ -384,6 +384,7 @@ class Library:
     return shared.Cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
+    self.deterministic_paths = False
     return shared.Cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                             deferred=True)
 
