@@ -3137,16 +3137,20 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      options.requested_level = strip_prefix(arg, '-O') or '2'
-      if options.requested_level == 's':
-        options.requested_level = 2
+      requested_level = strip_prefix(arg, '-O') or '2'
+      if requested_level == 's':
+        requested_level = 2
         settings.SHRINK_LEVEL = 1
-      elif options.requested_level == 'z':
-        options.requested_level = 2
+      elif requested_level == 'z':
+        requested_level = 2
         settings.SHRINK_LEVEL = 2
+      elif requested_level == 'g':
+        requested_level = 1
+        settings.SHRINK_LEVEL = 0
+        settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       else:
         settings.SHRINK_LEVEL = 0
-      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
+      settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()

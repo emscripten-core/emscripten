@@ -9,7 +9,7 @@ Generally you should first compile and run your code without optimizations (the 
 How to optimize code
 ====================
 
-Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, and :ref:`-O3 <emcc-O3>`.
+Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, :ref:`-Og <emcc-Og>`, and :ref:`-O3 <emcc-O3>`.
 
 For example, to compile with optimization level ``-O2``:
 
