@@ -27,6 +27,14 @@ See docs/process.md for more on how version tagging works.
   `-sINCOMING_MODULE_JS_API` instead. (#17955)
 - aio.h was removed from the sysroot.  Emscripten doesn't support any of the
   functions in this header.
+- Clang's function pointer cast warnings (enabled with `-Wcast-function-type`)
+  are now stricter. This warning is intended to help with CFI errors but also
+  helps wasm builds since wasm traps on such type mismatches in indirect calls.
+  We recommend that users enable it to prevent such errors (which can be hard to
+  debug otherwise). The older (less strict) behavior is also still possible with
+  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
+  but not errors). See https://reviews.llvm.org/D134831
 
 3.1.24 - 10/11/22
 -----------------
