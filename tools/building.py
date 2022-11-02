@@ -204,7 +204,7 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '-z', 'stack-size=%s' % settings.TOTAL_STACK,
+      '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
 

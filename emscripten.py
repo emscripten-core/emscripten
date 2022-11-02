@@ -208,7 +208,7 @@ def compile_settings():
 
 def set_memory(static_bump):
   stack_low = align_memory(settings.GLOBAL_BASE + static_bump)
-  stack_high = align_memory(stack_low + settings.TOTAL_STACK)
+  stack_high = align_memory(stack_low + settings.STACK_SIZE)
   settings.STACK_HIGH = stack_high
   settings.STACK_LOW = stack_low
   settings.HEAP_BASE = align_memory(stack_high)

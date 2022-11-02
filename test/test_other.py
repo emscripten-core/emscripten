@@ -462,7 +462,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
         assert '._main = ' not in generated, 'closure compiler should not have been run'
         if keep_debug:
-          assert ('assert(INITIAL_MEMORY >= TOTAL_STACK' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+          assert ('assert(INITIAL_MEMORY >= STACK_SIZE' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
         if 'WASM=0' in params:
           looks_unminified = ' = {}' in generated and ' = []' in generated
           looks_minified = '={}' in generated and '=[]' and ';var' in generated
@@ -7337,7 +7337,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=32MB'])
 
     # A tiny amount is fine in wasm
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=65536', '-sTOTAL_STACK=1024'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=65536', '-sSTACK_SIZE=1024'])
     # And the program works!
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -8042,7 +8042,7 @@ int main() {
           return (int)(long)&muchData;
         }
       ''')
-    err = self.expect_fail([EMXX, 'src.cpp', '-sTOTAL_STACK=1KB', '-sINITIAL_MEMORY=64KB'])
+    err = self.expect_fail([EMXX, 'src.cpp', '-sSTACK_SIZE=1KB', '-sINITIAL_MEMORY=64KB'])
     self.assertContained('wasm-ld: error: initial memory too small', err)
 
   def test_o_level_clamp(self):
@@ -10073,13 +10073,13 @@ int main(void) {
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
-    # Check that the proxied main gets run with TOTAL_STACK setting and not
+    # Check that the proxied main gets run with STACK_SIZE setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_runf(test_file('other/test_proxy_to_pthread_stack.c'),
                  ['success'],
                  emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
                             '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
-                            '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                            '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
   @parameterized({

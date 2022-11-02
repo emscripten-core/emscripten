@@ -3716,7 +3716,7 @@ Module["preRun"].push(function () {
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
-    self.btest('browser_test_hello_world.c', '0', args=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sTOTAL_STACK=16384', '--preload-file', 'data.dat'])
+    self.btest('browser_test_hello_world.c', '0', args=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sSTACK_SIZE=16384', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -4148,10 +4148,10 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_pthread_safe_stack(self):
-    # Note that as the test runs with PROXY_TO_PTHREAD, we set TOTAL_STACK,
+    # Note that as the test runs with PROXY_TO_PTHREAD, we set STACK_SIZE,
     # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
     # same stack size as the main thread normally would.
-    self.btest(test_file('core/test_safe_stack.c'), expected='abort:stack overflow', args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sTOTAL_STACK=64KB'])
+    self.btest(test_file('core/test_safe_stack.c'), expected='abort:stack overflow', args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
