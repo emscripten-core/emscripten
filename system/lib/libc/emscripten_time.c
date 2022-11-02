@@ -32,7 +32,16 @@ double emscripten_get_now_res();
 
 __attribute__((__weak__))
 void tzset() {
-  _tzset_js(&timezone, &daylight, tzname);
+  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+  static _Atomic bool done_init = false;
+  if (!done_init) {
+    pthread_mutex_lock(&lock);
+    if (!done_init) {
+      _tzset_js(&timezone, &daylight, tzname);
+      done_init = true;
+    }
+    pthread_mutex_unlock(&lock);
+  }
 }
 
 __attribute__((__weak__))
