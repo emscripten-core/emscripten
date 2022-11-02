@@ -590,20 +590,11 @@ mergeInto(LibraryManager.library, {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzset_js__deps: ['tzset_impl'],
+  _tzset_js__deps: ['$allocateUTF8'],
+  _tzset_js__internal: true,
   _tzset_js__sig: 'vppp',
   _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (__tzset_js.called) return;
-    __tzset_js.called = true;
-    _tzset_impl(timezone, daylight, tzname);
-  },
-
-  tzset_impl__internal: true,
-  tzset_impl__proxy: 'sync',
-  tzset_impl__sig: 'viii',
-  tzset_impl__deps: ['$allocateUTF8'],
-  tzset_impl: function(timezone, daylight, tzname) {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
