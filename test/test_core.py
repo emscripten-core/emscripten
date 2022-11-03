@@ -2858,7 +2858,7 @@ The current type of b is: 9
 
   def test_time(self):
     self.do_core_test('test_time.cpp')
-    for tz in ['EST+05EDT', 'UTC+0']:
+    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
         # Run the test with different time zone settings if
