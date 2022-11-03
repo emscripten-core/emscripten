@@ -3444,34 +3444,39 @@ def phase_binaryen(target, options, wasm_target):
     dwarf_info = settings.DEBUG_LEVEL >= 3
     if dwarf_info:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
-    building.run_wasm_opt(wasm_target,
-                          wasm_target,
-                          args=passes,
-                          debug=intermediate_debug_info)
-    building.save_intermediate(wasm_target, 'byn.wasm')
+    with ToolchainProfiler.profile_block('wasm_opt'):
+      building.run_wasm_opt(wasm_target,
+                            wasm_target,
+                            args=passes,
+                            debug=intermediate_debug_info)
+      building.save_intermediate(wasm_target, 'byn.wasm')
   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     sections = ['producers'] if strip_producers else []
-    building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
-    building.save_intermediate(wasm_target, 'strip.wasm')
+    with ToolchainProfiler.profile_block('strip_producers'):
+      building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
+      building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
-    building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
-    building.save_intermediate(wasm_target, 'ctors.wasm')
+    with ToolchainProfiler.profile_block('eval_ctors'):
+      building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
+      building.save_intermediate(wasm_target, 'ctors.wasm')
 
   # after generating the wasm, do some final operations
 
   if final_js:
     if settings.SUPPORT_BIG_ENDIAN:
-      final_js = building.little_endian_heap(final_js)
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
     if settings.CAN_ADDRESS_2GB:
-      final_js = building.use_unsigned_pointers_in_js(final_js)
+      with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
+        final_js = building.use_unsigned_pointers_in_js(final_js)
 
     # pthreads memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
@@ -3479,7 +3484,8 @@ def phase_binaryen(target, options, wasm_target):
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
     if settings.USE_PTHREADS and settings.ALLOW_MEMORY_GROWTH:
-      final_js = building.apply_wasm_memory_growth(final_js)
+      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
+        final_js = building.apply_wasm_memory_growth(final_js)
 
     if settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
@@ -3491,26 +3497,30 @@ def phase_binaryen(target, options, wasm_target):
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
-      save_intermediate_with_wasm('preclean', wasm_target)
-      final_js = building.minify_wasm_js(js_file=final_js,
-                                         wasm_file=wasm_target,
-                                         expensive_optimizations=will_metadce(),
-                                         minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
-                                         debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('postclean', wasm_target)
+      with ToolchainProfiler.profile_block('minify_wasm'):
+        save_intermediate_with_wasm('preclean', wasm_target)
+        final_js = building.minify_wasm_js(js_file=final_js,
+                                           wasm_file=wasm_target,
+                                           expensive_optimizations=will_metadce(),
+                                           minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
+                                           debug_info=intermediate_debug_info)
+        save_intermediate_with_wasm('postclean', wasm_target)
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
+    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
+      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
     return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
 
   if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
     if options.use_closure_compiler:
-      final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                           extra_closure_args=options.closure_args)
+      with ToolchainProfiler.profile_block('closure_compile'):
+        final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
+                                             extra_closure_args=options.closure_args)
     else:
-      final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
+      with ToolchainProfiler.profile_block('closure_transpile'):
+        final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
     save_intermediate_with_wasm('closure', wasm_target)
 
   symbols_file = None
@@ -3558,7 +3568,8 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if os.path.exists(wasm_target):
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      with ToolchainProfiler.profile_block('handle_final_symbols'):
+        building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
@@ -3575,7 +3586,8 @@ def phase_binaryen(target, options, wasm_target):
   # strip debug info if it was not already stripped by the last command
   if not debug_info and building.binaryen_kept_debug_info and \
      building.os.path.exists(wasm_target):
-    building.run_wasm_opt(wasm_target, wasm_target)
+    with ToolchainProfiler.profile_block('strip_with_wasm_opt'):
+      building.run_wasm_opt(wasm_target, wasm_target)
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
