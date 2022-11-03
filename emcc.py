@@ -3570,7 +3570,7 @@ def phase_binaryen(target, options, wasm_target):
     if os.path.exists(wasm_target):
       with ToolchainProfiler.profile_block('handle_final_symbols'):
         building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
+        save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
