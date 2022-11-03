@@ -176,7 +176,7 @@ class Ports:
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, sha512hash=None):
+  def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 

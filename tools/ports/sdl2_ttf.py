@@ -16,7 +16,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('sdl2_ttf', 'https://github.com/libsdl-org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_ttf', f'https://github.com/libsdl-org/SDL_ttf/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)

@@ -19,7 +19,7 @@ def needed(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_net'
-  ports.fetch_project('sdl2_net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_net', f'https://github.com/emscripten-ports/SDL2_net/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: sdl2_net')
