@@ -257,13 +257,13 @@ int main() {
     struct tm prev_tm;
     time_t test = xmas2002;
     localtime_r(&test, &prev_tm);
-    
+
     for (int i = 1; i < 2*24*366; ++i) {
       struct tm this_tm;
       test = xmas2002 + 30*60*i;
       localtime_r(&test, &this_tm);
 
-      if(this_tm.tm_year != prev_tm.tm_year) {
+      if (this_tm.tm_year != prev_tm.tm_year) {
         assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); //flipped over to 2003, 2002 was non-leap
       } else if(this_tm.tm_mday != prev_tm.tm_mday) {
         assert(this_tm.tm_yday == prev_tm.tm_yday + 1);
