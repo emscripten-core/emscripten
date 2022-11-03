@@ -3292,8 +3292,13 @@ Module["preRun"].push(function () {
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                      '-Wno-js-compiler',
+                     # cocos2d uses std::binary_function which was removing in C++17.
+                     # We could pass `-std=c++14` here but that doesn't currently work for btest
+                     # since we compile a C file (report_result.c) in the same command.
+                     '-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION',
                      '--preload-file', preload_file, '--use-preload-plugins',
-                     '-Wno-inconsistent-missing-override'])
+                     '-Wno-inconsistent-missing-override',
+                     '-Wno-deprecated-declarations'])
 
   def test_async(self):
     for opts in [0, 1, 2, 3]:

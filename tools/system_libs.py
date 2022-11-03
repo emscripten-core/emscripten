@@ -1364,9 +1364,10 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
   cflags = [
       '-Oz',
       '-fno-inline-functions',
+      '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++14',
+      '-std=c++20',
     ]
   includes = ['system/lib/libcxx/src']
 

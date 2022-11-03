@@ -10440,7 +10440,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', err)
 
   def test_boost_graph(self):
-    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-sUSE_BOOST_HEADERS'])
+    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''
