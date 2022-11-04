@@ -92,13 +92,29 @@ function sum(x) {
 // key: noOverride, value: true
 // if it is set, it prevents symbol redefinition and shows error
 // in case of redefinition
+//
+// key: checkSig, value: true
+// if it is set, __sig is checked for functions and error is reported
+// if <function name>__sig is missing
 function mergeInto(obj, other, options = null) {
-  // check for unintended symbol redefinition
-  if (options && options.noOverride) {
-    for (const key of Object.keys(other)) {
-      if (obj.hasOwnProperty(key)) {
-        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use noOverride if this is intended');
-        return;
+  if (options) {
+    // check for unintended symbol redefinition
+    if (options.noOverride) {
+      for (const key of Object.keys(other)) {
+        if (obj.hasOwnProperty(key)) {
+          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
+          return;
+        }
+      }
+    }
+
+    // check if sig is missing for added functions
+    if (options.checkSig) {
+      for (const [key, value] of Object.entries(other)) {
+        if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
+          error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
+          return;
+        }
       }
     }
   }

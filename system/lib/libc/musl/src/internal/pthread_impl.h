@@ -26,8 +26,7 @@ struct pthread {
 #ifndef TLS_ABOVE_TP
 	uintptr_t *dtv;
 #endif
-	// TODO(sbc): Implement circular list of threads
-	//struct pthread *prev, *next; /* non-ABI */
+	struct pthread *prev, *next; /* non-ABI */
 	uintptr_t sysinfo;
 #ifndef TLS_ABOVE_TP
 #ifdef CANARY_PAD

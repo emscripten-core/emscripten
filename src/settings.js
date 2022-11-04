@@ -110,7 +110,7 @@ var MEM_INIT_METHOD = false;
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
 // [link]
-var TOTAL_STACK = 5*1024*1024;
+var STACK_SIZE = 5*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
@@ -1060,7 +1060,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // The pthread that main() runs on is a normal pthread in all ways, with the one
 // difference that its stack size is the same as the main thread would normally
-// have, that is, TOTAL_STACK. This makes it easy to flip between
+// have, that is, STACK_SIZE. This makes it easy to flip between
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
@@ -2093,6 +2093,7 @@ var TEST_MEMORY_GROWTH_FAILS = false;
 // numeric setting, or -1 for a string setting).
 var LEGACY_SETTINGS = [
   ['BINARYEN', 'WASM'],
+  ['TOTAL_STACK', 'STACK_SIZE'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],

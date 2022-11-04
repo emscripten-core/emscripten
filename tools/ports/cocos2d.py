@@ -51,6 +51,7 @@ def get(ports, settings, shared):
 
     ports.build_port(cocos2d_src, final, 'cocos2d',
                      flags=flags,
+                     cxxflags=['-std=c++14'],
                      includes=includes,
                      srcs=srcs)
 

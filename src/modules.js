@@ -313,6 +313,11 @@ function addMissingLibraryStubs() {
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
 
+  const legacyRuntimeElements = new Map([
+    ['print', 'out'],
+    ['printErr', 'err'],
+  ]);
+
   // optionally export something.
   // in ASSERTIONS mode we show a useful error if it is used without
   // being exported. how we show the message depends on whether it's
@@ -325,10 +330,8 @@ function exportRuntime() {
       if (isFSPrefixed(exported)) {
         // this is a filesystem value, FS.x exported as FS_x
         exported = 'FS.' + exported.substr(3);
-      } else if (exported === 'print') {
-        exported = 'out';
-      } else if (exported === 'printErr') {
-        exported = 'err';
+      } else if (legacyRuntimeElements.has(exported)) {
+        exported = legacyRuntimeElements.get(exported);
       }
       return `Module["${name}"] = ${exported};`;
     }
@@ -363,8 +366,8 @@ function exportRuntime() {
     'registerFunctions',
     'prettyPrint',
     'getCompilerSetting',
-    'print',
-    'printErr',
+    'out',
+    'err',
     'callMain',
     'abort',
     'keepRuntimeAlive',
@@ -415,6 +418,15 @@ function exportRuntime() {
     }
   }
 
+  // Only export legacy runtime elements when explicitly
+  // requested.
+  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+    if (legacyRuntimeElements.has(name)) {
+      const newName = legacyRuntimeElements.get(name);
+      warn(`deprecated item in EXPORTED_RUNTIME_METHODS: ${name} use ${newName} instead.`);
+      runtimeElements.push(name);
+    }
+  }
 
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.

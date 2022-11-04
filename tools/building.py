@@ -204,7 +204,7 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '-z', 'stack-size=%s' % settings.TOTAL_STACK,
+      '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
 
@@ -217,7 +217,7 @@ def lld_flags_for_executable(external_symbols):
         cmd += ['--entry=_emscripten_proxy_main']
       else:
         # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this sice the entry point can be either `main` or
+        # For now we need to do this since the entry point can be either `main` or
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']

@@ -328,6 +328,7 @@ def env_with_node_in_path():
   return env
 
 
+@memoize
 def check_node_version():
   try:
     actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
@@ -336,10 +337,31 @@ def check_node_version():
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
+    return
 
   if version < MINIMUM_NODE_VERSION:
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
+
+  return version
+
+
+def node_bigint_flags():
+  node_version = check_node_version()
+  # wasm bigint was enabled by default in node v16.
+  if node_version and node_version < (16, 0, 0):
+    return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
+def node_pthread_flags():
+  node_version = check_node_version()
+  # bulk memory and wasm threads were enabled by default in node v16.
+  if node_version and node_version < (16, 0, 0):
+    return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
+  else:
+    return []
 
 
 @memoize

@@ -1346,10 +1346,10 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 112,
-            "profilerBlock": 104,
-            "stack": 44,
-            "stack_size": 48
+            "__size__": 120,
+            "profilerBlock": 112,
+            "stack": 52,
+            "stack_size": 56
         },
         "pthread_attr_t": {
             "__size__": 44,
