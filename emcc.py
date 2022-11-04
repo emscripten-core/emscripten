@@ -629,11 +629,11 @@ def get_binaryen_passes():
 
 def make_js_executable(script):
   src = read_file(script)
-  cmd = config.JS_ENGINE
+  cmd = config.JS_ENGINES[0]
   if settings.WASM_BIGINT:
-    cmd.append('--experimental-wasm-bigint')
+    cmd += shared.node_bigint_flags()
   cmd = shared.shlex_join(cmd)
-  if not os.path.isabs(config.JS_ENGINE[0]):
+  if not os.path.isabs(cmd[0]):
     # TODO: use whereis etc. And how about non-*NIX?
     cmd = '/usr/bin/env -S ' + cmd
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
@@ -1560,6 +1560,9 @@ def setup_pthreads(target):
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+    # TODO: Remove this once we no longer need the heartbeat hack in
+    # wasmfs/thread_utils.h
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_execute_queue']
 
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
@@ -2240,8 +2243,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   check_memory_setting('INITIAL_MEMORY')
   check_memory_setting('MAXIMUM_MEMORY')
-  if settings.INITIAL_MEMORY < settings.TOTAL_STACK:
-    exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {settings.INITIAL_MEMORY} (TOTAL_STACK={settings.TOTAL_STACK})')
+  if settings.INITIAL_MEMORY < settings.STACK_SIZE:
+    exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
@@ -3134,16 +3137,20 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      options.requested_level = strip_prefix(arg, '-O') or '2'
-      if options.requested_level == 's':
-        options.requested_level = 2
+      requested_level = strip_prefix(arg, '-O') or '2'
+      if requested_level == 's':
+        requested_level = 2
         settings.SHRINK_LEVEL = 1
-      elif options.requested_level == 'z':
-        options.requested_level = 2
+      elif requested_level == 'z':
+        requested_level = 2
         settings.SHRINK_LEVEL = 2
+      elif requested_level == 'g':
+        requested_level = 1
+        settings.SHRINK_LEVEL = 0
+        settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       else:
         settings.SHRINK_LEVEL = 0
-      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
+      settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()

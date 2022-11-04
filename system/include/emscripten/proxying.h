@@ -88,8 +88,6 @@ namespace emscripten {
 
 // A thin C++ wrapper around the underlying C API.
 class ProxyingQueue {
-  em_proxying_queue* queue = em_proxying_queue_create();
-
   static void runAndFree(void* arg) {
     auto* f = (std::function<void()>*)arg;
     (*f)();
@@ -107,6 +105,8 @@ class ProxyingQueue {
   }
 
 public:
+  em_proxying_queue* queue = em_proxying_queue_create();
+
   // ProxyingQueue can be moved but not copied. It is not valid to call any
   // methods on ProxyingQueues that have been moved out of.
   ProxyingQueue() = default;

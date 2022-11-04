@@ -13,6 +13,7 @@ from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'STACK_SIZE',
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',

@@ -242,7 +242,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        library.build()
+        library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')

@@ -165,15 +165,15 @@ function updateGlobalBufferAndViews(buf) {
 #endif
 }
 
-var TOTAL_STACK = {{{ TOTAL_STACK }}};
+var STACK_SIZE = {{{ STACK_SIZE }}};
 #if ASSERTIONS
-if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
+if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
 #endif
 
 {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
-assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
@@ -470,6 +470,10 @@ function abort(what) {
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
+#elif ASYNCIFY == 1
+  if (what.indexOf('RuntimeError: unreachable') >= 0) {
+    what += '. "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)';
+  }
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign

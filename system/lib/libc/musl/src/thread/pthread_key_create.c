@@ -57,13 +57,10 @@ int __pthread_key_delete(pthread_key_t k)
 	__block_app_sigs(&set);
 	__pthread_rwlock_wrlock(&key_lock);
 
-  // TODO(sbc): Implement circular list of threads
-  /*
 	__tl_lock();
 	do td->tsd[k] = 0;
 	while ((td=td->next)!=self);
 	__tl_unlock();
-  */
 
 	keys[k] = 0;
 

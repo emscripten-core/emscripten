@@ -130,6 +130,16 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
+    # Letting HarfBuzz enable warnings through pragmas can block compiler
+    # upgrades in situations where say a ToT compiler build adds a new
+    # stricter warning under -Wfoowarning-subgroup. HarfBuzz pragma-enables
+    # -Wfoowarning which default-enables -Wfoowarning-subgroup implicitly but
+    # HarfBuzz upstream is not yet clean of warnings produced for
+    # -Wfoowarning-subgroup. Hence disabling pragma warning control here.
+    # See also: https://github.com/emscripten-core/emscripten/pull/18119
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR')
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_WARNING')
+
     ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
