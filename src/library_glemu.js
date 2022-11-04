@@ -6,7 +6,7 @@
 
 var LibraryGLEmulation = {
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
-  $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable', 'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString', 'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader', 'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation', 'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint', 'glEnableVertexAttribArray', 'glDisableVertexAttribArray', 'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8'],
+  $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable', 'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString', 'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader', 'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation', 'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint', 'glEnableVertexAttribArray', 'glDisableVertexAttribArray', 'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8', '$ptrToString'],
   $GLEmulation__postset:
 #if USE_CLOSURE_COMPILER
     // Forward declare GL functions that are overridden by GLEmulation here to appease Closure compiler.
@@ -1090,7 +1090,7 @@ var LibraryGLEmulation = {
             func = "textureCube";
             break;
           default:
-            return abort_sanity("Unknown texType: 0x" + texType.toString(16));
+            return abort_sanity("Unknown texType: " + ptrToString(texType));
         }
 
         var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
@@ -1110,7 +1110,7 @@ var LibraryGLEmulation = {
             return "float";
         }
 
-        return abort_noSupport("Unsupported combiner op: 0x" + op.toString(16));
+        return abort_noSupport("Unsupported combiner op: " + ptrToString(op));
       }
 
       function getCurTexUnit() {
@@ -1135,7 +1135,7 @@ var LibraryGLEmulation = {
             srcExpr = previousVar;
             break;
           default:
-              return abort_noSupport("Unsupported combiner src: 0x" + src.toString(16));
+              return abort_noSupport("Unsupported combiner src: " + ptrToString(src));
         }
 
         var expr = null;
@@ -1153,7 +1153,7 @@ var LibraryGLEmulation = {
             expr = "(1.0 - " + srcExpr + ".a)";
             break;
           default:
-            return abort_noSupport("Unsupported combiner op: 0x" + op.toString(16));
+            return abort_noSupport("Unsupported combiner op: " + ptrToString(op));
         }
 
         return expr;
@@ -1465,7 +1465,7 @@ var LibraryGLEmulation = {
           }
         }
 
-        return abort_noSupport("Unsupported TexEnv mode: 0x" + this.mode.toString(16));
+        return abort_noSupport("Unsupported TexEnv mode: " + ptrToString(this.mode));
       }
 
       CTexEnv.prototype.genCombinerLines = function CTexEnv_getCombinerLines(isColor, outputVar,
@@ -1489,7 +1489,7 @@ var LibraryGLEmulation = {
             break;
 
           default:
-            return abort_noSupport("Unsupported combiner: 0x" + combiner.toString(16));
+            return abort_noSupport("Unsupported combiner: " + ptrToString(combiner));
         }
 
         var constantExpr = [
@@ -3409,7 +3409,7 @@ var LibraryGLEmulation = {
         break;
       default: // invalid value provided
 #if GL_ASSERTIONS
-        err('glAlphaFunc: Invalid alpha comparison function 0x' + func.toString(16) + ' !');
+        err('glAlphaFunc: Invalid alpha comparison function 0x' + ptrToString(func) + ' !');
 #endif
         break;
     }

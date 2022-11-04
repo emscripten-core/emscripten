@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
     HEAPU32[ptr+4>>2] = (num - HEAPU32[ptr>>2])/4294967296;
 #if ASSERTIONS
     var deserialized = (num >= 0) ? readI53FromU64(ptr) : readI53FromI64(ptr);
-    if (deserialized != num) warnOnce('writeI53ToI64() out of range: serialized JS Number ' + num + ' to Wasm heap as bytes lo=0x' + HEAPU32[ptr>>2].toString(16) + ', hi=0x' + HEAPU32[ptr+4>>2].toString(16) + ', which deserializes back to ' + deserialized + ' instead!');
+    if (deserialized != num) warnOnce('writeI53ToI64() out of range: serialized JS Number ' + num + ' to Wasm heap as bytes lo=' + ptrToString(HEAPU32[ptr>>2]) + ', hi=' + ptrToString(HEAPU32[ptr+4>>2]) + ', which deserializes back to ' + deserialized + ' instead!');
 #endif
   },
 

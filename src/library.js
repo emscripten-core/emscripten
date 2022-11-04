@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
     if (!implicit) {
       if (ENVIRONMENT_IS_PTHREAD) {
 #if PTHREADS_DEBUG
-        dbg('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
+        dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
 #endif
         // When running in a pthread we propagate the exit back to the main thread
         // where it can decide if the whole process should be shut down or not.
@@ -3145,9 +3145,9 @@ mergeInto(LibraryManager.library, {
   __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
-    abort('stack overflow (Attempt to set SP to 0x' + requested.toString(16) +
-          ', with stack limits [0x' + _emscripten_stack_get_end().toString(16) +
-          ' - 0x' + _emscripten_stack_get_base().toString(16) + '])');
+    abort('stack overflow (Attempt to set SP to ' + ptrToString(requested) +
+          ', with stack limits [' + ptrToString(_emscripten_stack_get_end()) +
+          ' - ' + ptrToString(_emscripten_stack_get_base()) + '])');
   },
 #endif
 

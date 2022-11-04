@@ -1997,6 +1997,10 @@ def phase_linker_setup(options, state, newargs):
       '$LE_HEAP_LOAD_F64'
     ]
 
+  if settings.RUNTIME_DEBUG or settings.ASSERTIONS or settings.STACK_OVERFLOW_CHECK or settings.PTHREADS_PROFILING or settings.GL_ASSERTIONS:
+    # Lots of code in debug/assertion blocks uses ptrToString.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ptrToString']
+
   if settings.STACK_OVERFLOW_CHECK:
     settings.REQUIRED_EXPORTS += [
       'emscripten_stack_get_end',
