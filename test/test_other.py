@@ -5598,6 +5598,37 @@ int main(void) {
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
 
+  @node_pthreads
+  def test_pthread_print_override_modularize(self):
+    self.set_setting('EXPORT_NAME', 'Test')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('MODULARIZE')
+    create_file('main.c', '''
+      #include <emscripten/console.h>
+
+      int main() {
+        _emscripten_out("hello, world!");
+        return 0;
+      }
+    ''')
+    create_file('main.js', '''
+      const Test = require('./test.js');
+
+      async function main() {
+        await Test({
+          // world -> earth
+          print: (text) => console.log(text.replace('world', 'earth'))
+        });
+      }
+      main();
+    ''')
+
+    self.emcc('main.c', output_filename='test.js')
+    output = self.run_js('main.js')
+    self.assertNotContained('hello, world!', output)
+    self.assertContained('hello, earth!', output)
+
   def test_define_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')

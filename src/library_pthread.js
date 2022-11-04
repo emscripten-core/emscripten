@@ -283,12 +283,8 @@ var LibraryPThread = {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
-#if expectToReceiveOnModule('onAbort')
-        } else if (cmd === 'onAbort') {
-          if (Module['onAbort']) {
-            Module['onAbort'](d['arg']);
-          }
-#endif
+        } else if (cmd === 'callHandler') {
+          Module[d['handler']](...d['args']);
         } else if (cmd) {
           // The received message looks like something that should be handled by this message
           // handler, (since there is a e.data.cmd field present), but is not one of the
@@ -329,9 +325,33 @@ var LibraryPThread = {
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
 
+      // When running on a pthread, none of the incoming parameters on the module
+      // object are present. Proxy known handlers back to the main thread if specified.
+      var handlers = [];
+      var knownHandlers = [
+#if expectToReceiveOnModule('onExit')
+        'onExit',
+#endif
+#if expectToReceiveOnModule('onAbort')
+        'onAbort',
+#endif
+#if expectToReceiveOnModule('print')
+        'print',
+#endif
+#if expectToReceiveOnModule('printErr')
+        'printErr',
+#endif
+      ];
+      for (var handler of knownHandlers) {
+        if (Module.hasOwnProperty(handler)) {
+          handlers.push(handler);
+        }
+      }
+
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
         'cmd': 'load',
+        'handlers': handlers,
         // If the application main .js file was loaded from a Blob, then it is not possible
         // to access the URL of the current script that could be passed to a Web Worker so that
         // it could load up the same file. In that case, developer must either deliver the Blob
