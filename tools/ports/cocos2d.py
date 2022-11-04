@@ -18,8 +18,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project(
-    'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
+  ports.fetch_project('cocos2d', f'https://github.com/emscripten-ports/Cocos2d/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')

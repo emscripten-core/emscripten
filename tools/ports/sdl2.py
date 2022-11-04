@@ -22,7 +22,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
+  ports.fetch_project('sdl2', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
