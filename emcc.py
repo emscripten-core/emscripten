@@ -50,7 +50,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file
 
 logger = logging.getLogger('emcc')
@@ -340,12 +340,12 @@ def expand_byte_size_suffixes(value):
   return value
 
 
-def default_setting(user_settings, name, new_default):
+def default_setting(name, new_default):
   if name not in user_settings:
     setattr(settings, name, new_default)
 
 
-def apply_settings(user_settings):
+def apply_user_settings():
   """Take a map of users settings {NAME: VALUE} and apply them to the global
   settings object.
   """
@@ -401,10 +401,10 @@ def apply_settings(user_settings):
 # apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
-def apply_min_browser_versions(user_settings):
+def apply_min_browser_versions():
 
   def default_min_browser_version(browser, version):
-    default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
+    default_setting(f'MIN_{browser.upper()}_VERSION', version)
 
   if settings.WASM_BIGINT:
     default_min_browser_version('Safari', 150000)
@@ -1127,7 +1127,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   ## Process argument and setup the compiler
   state = EmccState(args)
-  options, newargs, user_settings = phase_parse_arguments(state)
+  options, newargs = phase_parse_arguments(state)
 
   shared.check_sanity()
 
@@ -1145,11 +1145,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  newargs, input_files = phase_setup(options, state, newargs, user_settings)
+  newargs, input_files = phase_setup(options, state, newargs)
 
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
-    target, wasm_target = phase_linker_setup(options, state, newargs, user_settings)
+    target, wasm_target = phase_linker_setup(options, state, newargs)
     process_libraries(state, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
@@ -1174,7 +1174,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, state, newargs, user_settings)
+  target, wasm_target = phase_linker_setup(options, state, newargs)
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
@@ -1273,14 +1273,13 @@ def phase_parse_arguments(state):
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes
 
-  user_settings = {}
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
-  # called ing `apply_settings`.
+  # calling `apply_user_settings`.
   strict_cmdline = user_settings.get('STRICT')
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
@@ -1290,13 +1289,13 @@ def phase_parse_arguments(state):
     settings[s[0]] = s[1]
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
-  apply_settings(user_settings)
+  apply_user_settings()
 
-  return options, newargs, user_settings
+  return options, newargs
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs, user_settings):
+def phase_setup(options, state, newargs):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -1305,7 +1304,7 @@ def phase_setup(options, state, newargs, user_settings):
     newargs += settings.RUNTIME_LINKED_LIBS
 
   if settings.STRICT:
-    default_setting(user_settings, 'DEFAULT_TO_CXX', 0)
+    default_setting('DEFAULT_TO_CXX', 0)
 
   # Find input files
 
@@ -1495,7 +1494,7 @@ def phase_setup(options, state, newargs, user_settings):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    default_setting(user_settings, 'DISABLE_EXCEPTION_THROWING', 1)
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
     if not settings.DISABLE_EXCEPTION_THROWING:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
@@ -1593,7 +1592,7 @@ def setup_pthreads(target):
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state, newargs, user_settings):
+def phase_linker_setup(options, state, newargs):
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args
   if autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
@@ -1607,7 +1606,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
-    default_setting(user_settings, 'ASSERTIONS', 0)
+    default_setting('ASSERTIONS', 0)
 
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
@@ -1784,7 +1783,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
     if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-      default_setting(user_settings, 'STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
+      default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
   if settings.LLD_REPORT_UNDEFINED or settings.STANDALONE_WASM:
     # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1795,25 +1794,25 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
   # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
   if user_settings.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
-    default_setting(user_settings, 'ERROR_ON_UNDEFINED_SYMBOLS', 0)
+    default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
   # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
-    default_setting(user_settings, 'SUPPORT_ERRNO', 0)
+    default_setting('SUPPORT_ERRNO', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
-    default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
+    default_setting('AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
-    default_setting(user_settings, 'STRICT_JS', 1)
-    default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
-    default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
-    default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
-    default_setting(user_settings, 'IGNORE_MISSING_MAIN', 0)
-    default_setting(user_settings, 'ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+    default_setting('STRICT_JS', 1)
+    default_setting('AUTO_JS_LIBRARIES', 0)
+    default_setting('AUTO_NATIVE_LIBRARIES', 0)
+    default_setting('AUTO_ARCHIVE_INDEXES', 0)
+    default_setting('IGNORE_MISSING_MAIN', 0)
+    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
 
   if not settings.AUTO_JS_LIBRARIES:
-    default_setting(user_settings, 'USE_SDL', 0)
+    default_setting('USE_SDL', 0)
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -1823,7 +1822,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # widely supported there.
   if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
-    default_setting(user_settings, 'TEXTDECODER', 2)
+    default_setting('TEXTDECODER', 2)
 
   # If set to 1, we will run the autodebugger (the automatic debugging tool, see
   # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1900,7 +1899,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # If we are including the entire JS library then we know for sure we will, by definition,
   # require all the reverse dependencies.
   if settings.INCLUDE_FULL_LIBRARY:
-    default_setting(user_settings, 'REVERSE_DEPS', 'all')
+    default_setting('REVERSE_DEPS', 'all')
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2071,7 +2070,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   # MIN_WEBGL_VERSION=2 implies MAX_WEBGL_VERSION=2
   if settings.MIN_WEBGL_VERSION == 2:
-    default_setting(user_settings, 'MAX_WEBGL_VERSION', 2)
+    default_setting('MAX_WEBGL_VERSION', 2)
 
   if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
     exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
@@ -2187,7 +2186,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # the behavior of trying to grow and returning 0 from malloc on failure, like
     # a standard system would. However, if the user sets the flag it
     # overrides that.
-    default_setting(user_settings, 'ABORTING_MALLOC', 0)
+    default_setting('ABORTING_MALLOC', 0)
 
   if settings.USE_PTHREADS:
     setup_pthreads(target)
@@ -2426,11 +2425,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if 'leak' in sanitize:
     settings.USE_LSAN = 1
-    default_setting(user_settings, 'EXIT_RUNTIME', 1)
+    default_setting('EXIT_RUNTIME', 1)
 
   if 'address' in sanitize:
     settings.USE_ASAN = 1
-    default_setting(user_settings, 'EXIT_RUNTIME', 1)
+    default_setting('EXIT_RUNTIME', 1)
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
@@ -2657,7 +2656,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM_EXCEPTIONS:
       settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
 
-  apply_min_browser_versions(user_settings)
+  apply_min_browser_versions()
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
