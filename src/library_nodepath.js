@@ -4,6 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+// This implementation ensures that Windows-style paths are being
+// used when running on a Windows operating system - see:
+// https://nodejs.org/api/path.html#path_windows_vs_posix
+// It's only used/needed when linking with `-sNODERAWFS`, as that
+// will replace all normal filesystem access with direct Node.js
+// operations. Hence, using `nodePath` should be safe here.
+
 mergeInto(LibraryManager.library, {
   $PATH: {
     isAbs: (path) => nodePath['isAbsolute'](path),
