@@ -944,8 +944,7 @@ var FORCE_FILESYSTEM = false;
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
-// handles permissions and errors and so forth may be noticeable.  This has
-// mostly been tested on Linux so far.
+// handles permissions and errors and so forth may be noticeable.
 // [link]
 var NODERAWFS = false;
 
