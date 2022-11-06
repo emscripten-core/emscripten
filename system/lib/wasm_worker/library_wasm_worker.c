@@ -20,9 +20,12 @@ void __wasm_init_tls(void *memory);
 
 __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
+	//  __alignof__(max_align_t) should be sufficient,
+	// but using 16 to match emscripten_wasm_worker_initialize
+	const size_t NeedAlign = 16;
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 	__wasm_init_tls((void*)*sbrk_ptr);
-	*sbrk_ptr += __builtin_wasm_tls_size();
+	*sbrk_ptr += ((__builtin_wasm_tls_size() + (NeedAlign - 1)) & ~(NeedAlign - 1));
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
