@@ -21,6 +21,10 @@
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#define USE_LOCKS 1
+#endif
+
 /* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
 #if __EMSCRIPTEN_PTHREADS__
 #define USE_LOCKS 1
