@@ -119,7 +119,7 @@ FS.staticInit();` +
     // paths
     //
     lookupPath: (path, opts = {}) => {
-      path = PATH_FS.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
 
@@ -133,8 +133,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
       }
 
-      // split the path
-      var parts = PATH.normalizeArray(path.split('/').filter((p) => !!p), false);
+      // split the absolute path
+      var parts = path.split('/').filter((p) => !!p);
 
       // start at the root
       var current = FS.root;

@@ -456,7 +456,7 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => {
       var _url = UTF8ToString(url);
       var _file = UTF8ToString(file);
-      _file = PATH_FS.resolve(FS.cwd(), _file);
+      _file = PATH_FS.resolve(_file);
       var destinationDirectory = PATH.dirname(_file);
       FS.createPreloadedFile(
         destinationDirectory,

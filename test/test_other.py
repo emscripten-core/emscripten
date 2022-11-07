@@ -8488,6 +8488,17 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  def test_noderawfs_access_abspath(self):
+    create_file('foo', 'bar')
+    create_file('access.c', r'''
+      #include <unistd.h>
+      int main(int argc, char** argv) {
+        return access(argv[1], F_OK);
+      }
+    ''')
+    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
+    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, test_file('hello_world.c'),
