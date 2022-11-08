@@ -1791,7 +1791,7 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
+        info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <" + ptrToString($$.ptr) + ">.\n" +
         "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
