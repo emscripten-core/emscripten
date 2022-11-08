@@ -12105,6 +12105,30 @@ Module['postRun'] = function() {{
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
 
+  @requires_node
+  def test_noderawfs_override_standard_streams(self):
+    self.set_setting('NODERAWFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    create_file('pre.js', f'''
+let stdout = '';
+let stderr = '';
+
+Module['print'] = function(text) {{
+  stdout += text;
+}}
+Module['printErr'] = function(text) {{
+  stderr += text;
+}}
+Module['postRun'] = function() {{
+    assert(stderr == '', 'stderr should be empty. \\n' +
+        'stderr: \\n' + stderr);
+    assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
+        'stdout: \\n' + stdout);
+}}
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf(test_file('hello_world.c'))
+
   # WASMFS tests
 
   # TODO: This test will only work with the new file system.
