@@ -67,6 +67,10 @@ mergeInto(LibraryManager.library, {
 #endif
     // Run the C side Worker initialization for stack and TLS.
     _emscripten_wasm_worker_initialize(m['sb'], m['sz']);
+#if USE_PTHREADS
+    // Record that this Wasm Worker supports synchronous blocking in emscripten_futex_wake().
+    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/1);
+#endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
     // See https://github.com/emscripten-core/emscripten/issues/16496
