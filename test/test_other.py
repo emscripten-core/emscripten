@@ -12109,22 +12109,22 @@ Module['postRun'] = function() {{
   def test_noderawfs_override_standard_streams(self):
     self.set_setting('NODERAWFS')
     self.set_setting('FORCE_FILESYSTEM')
-    create_file('pre.js', f'''
+    create_file('pre.js', '''
 let stdout = '';
 let stderr = '';
 
-Module['print'] = function(text) {{
+Module['print'] = function(text) {
   stdout += text;
-}}
-Module['printErr'] = function(text) {{
+}
+Module['printErr'] = function(text) {
   stderr += text;
-}}
-Module['postRun'] = function() {{
+}
+Module['postRun'] = function() {
     assert(stderr == '', 'stderr should be empty. \\n' +
         'stderr: \\n' + stderr);
     assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
         'stdout: \\n' + stdout);
-}}
+}
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf(test_file('hello_world.c'))
