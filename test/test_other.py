@@ -13439,6 +13439,7 @@ void foo() {}
   def test_unistd_swab(self):
     self.do_run_in_out_file_test('unistd/swab.c')
 
+  @also_with_noderawfs
   def test_unistd_isatty(self):
     self.do_runf('unistd/isatty.c', 'success')
 
@@ -13475,6 +13476,38 @@ Module.postRun = () => {{
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
+
+  @requires_node
+  def test_noderawfs_override_standard_streams(self):
+    self.set_setting('NODERAWFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    create_file('pre.js', '''
+let stdout = '';
+let stderr = '';
+
+Module['print'] = (text) => stdout += text;
+Module['printErr'] = (text) => stderr += text;
+Module['postRun'] = () => {
+    assert(stderr == '', 'stderr should be empty. \\n' +
+        'stderr: \\n' + stderr);
+    assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
+        'stdout: \\n' + stdout);
+}
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf(test_file('hello_world.c'))
+
+  @requires_node
+  def test_noderawfs_override_stdin(self):
+    self.set_setting('NODERAWFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.set_setting('EXIT_RUNTIME')
+    create_file('pre.js', '''
+const data = 'hello, world!\\n'.split('').map(c => c.charCodeAt(0));
+Module['stdin'] = () => data.shift() || null;
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf(test_file('module/test_stdin.c'), 'hello, world!')
 
   # WASMFS tests
 
