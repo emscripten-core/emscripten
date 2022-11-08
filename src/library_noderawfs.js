@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
     // Use this to reference our in-memory filesystem
     var VFS = Object.assign({}, FS);
     // Override the init function with our own
-    FS['init'] = NODERAWFS['init'];`,
+    FS.init = NODERAWFS.init;`,
   $NODERAWFS: {
     init: (input, output, error) => {
       // Call the original FS.init, this will setup the
