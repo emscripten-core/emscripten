@@ -13,7 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tempfile
+from typing import Set, Dict
 from subprocess import PIPE
 
 from . import diagnostics
@@ -23,13 +23,12 @@ from . import webassembly
 from . import config
 from . import utils
 from .shared import CLANG_CC, CLANG_CXX
-from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
-from .shared import LLVM_LINK, LLVM_OBJCOPY
-from .shared import try_delete, run_process, check_call, exit_with_error
+from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD
+from .shared import LLVM_OBJCOPY
+from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
+from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings
@@ -42,83 +41,9 @@ EXPECTED_BINARYEN_VERSION = 109
 
 # cache results of nm - it can be slow to run
 nm_cache = {}
-_is_ar_cache = {}
-
+_is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
-user_requested_exports = set()
-
-
-# llvm-ar appears to just use basenames inside archives. as a result, files
-# with the same basename will trample each other when we extract them. to help
-# warn of such situations, we warn if there are duplicate entries in the
-# archive
-def warn_if_duplicate_entries(archive_contents, archive_filename):
-  if len(archive_contents) != len(set(archive_contents)):
-    msg = '%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename
-    warned = set()
-    for i in range(len(archive_contents)):
-      curr = archive_contents[i]
-      if curr not in warned and curr in archive_contents[i + 1:]:
-        msg += '\n   duplicate: %s' % curr
-        warned.add(curr)
-    diagnostics.warning('emcc', msg)
-
-
-# Extracts the given list of archive files and outputs their contents
-def extract_archive_contents(archive_files):
-  archive_results = shared.run_multiple_processes([[LLVM_AR, 't', a] for a in archive_files], pipe_stdout=True)
-
-  unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-
-  def clean_at_exit():
-    try_delete(unpack_temp_dir)
-  shared.atexit.register(clean_at_exit)
-
-  archive_contents = []
-
-  for i in range(len(archive_results)):
-    a = archive_results[i]
-    contents = [l for l in a.splitlines() if len(l)]
-    if len(contents) == 0:
-      logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % a)
-
-    # `ar` files can only contains filenames. Just to be sure, verify that each
-    # file has only as filename component and is not absolute
-    for f in contents:
-      assert not os.path.dirname(f)
-      assert not os.path.isabs(f)
-
-    warn_if_duplicate_entries(contents, a)
-
-    archive_contents += [{
-      'archive_name': archive_files[i],
-      'o_files': [os.path.join(unpack_temp_dir, c) for c in contents]
-    }]
-
-  shared.run_multiple_processes([[LLVM_AR, 'xo', a] for a in archive_files], cwd=unpack_temp_dir)
-
-  # check that all files were created
-  for a in archive_contents:
-    missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
-    if missing_contents:
-      exit_with_error(f'llvm-ar failed to extract file(s) {missing_contents} from archive file {f}!')
-
-  return archive_contents
-
-
-def unique_ordered(values):
-  """return a list of unique values in an input list, without changing order
-  (list(set(.)) would change order randomly).
-  """
-  seen = set()
-
-  def check(value):
-    if value in seen:
-      return False
-    seen.add(value)
-    return True
-
-  return [v for v in values if check(v)]
+user_requested_exports: Set[str] = set()
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -158,18 +83,14 @@ def get_building_env():
   return env
 
 
-def make_paths_absolute(f):
-  if f.startswith('-'):  # skip flags
-    return f
-  else:
-    return os.path.abspath(f)
-
-
-# Runs llvm-nm for the given list of files.
-# The results are populated in nm_cache, and also returned as an array with order corresponding with the input files.
-# If a given file cannot be processed, None will be present in its place.
 @ToolchainProfiler.profile()
 def llvm_nm_multiple(files):
+  """Runs llvm-nm for the given list of files.
+
+  The results are populated in nm_cache, and also returned as an array with
+  order corresponding with the input files.
+  If a given file cannot be processed, None will be present in its place.
+  """
   if len(files) == 0:
     return []
   # Run llvm-nm on files that we haven't cached yet
@@ -177,8 +98,10 @@ def llvm_nm_multiple(files):
   cmd = get_command_with_possible_response_file(cmd)
   results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
-  # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
-  # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+  # If one or more of the input files cannot be processed, llvm-nm will return
+  # a non-zero error code, but it will still process and print out all the
+  # other files in order. So even if process return code is non zero, we should
+  # always look at what we got to stdout.
   if results.returncode != 0:
     logger.debug(f'Subcommand {" ".join(cmd)} failed with return code {results.returncode}! (An input file was corrupt?)')
 
@@ -186,41 +109,6 @@ def llvm_nm_multiple(files):
     nm_cache[key] = value
 
   return [nm_cache[f] if f in nm_cache else {'defs': set(), 'undefs': set(), 'parse_error': True} for f in files]
-
-
-def llvm_nm(file):
-  return llvm_nm_multiple([file])[0]
-
-
-@ToolchainProfiler.profile()
-def read_link_inputs(files):
-  # Before performing the link, we need to look at each input file to determine which symbols
-  # each of them provides. Do this in multiple parallel processes.
-  archive_names = [] # .a files passed in to the command line to the link
-  object_names = [] # .o/.bc files passed in to the command line to the link
-  # Stores the object files contained in different archive files passed as input
-  ar_contents = {}
-  for f in files:
-    absolute_path_f = make_paths_absolute(f)
-
-    if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
-      archive_names.append(absolute_path_f)
-    elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
-      object_names.append(absolute_path_f)
-
-  # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-  archive_contents = extract_archive_contents(archive_names)
-
-  for a in archive_contents:
-    ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
-    for o in a['o_files']:
-      if o not in nm_cache:
-        object_names.append(o)
-
-  # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
-  # The results are not used here directly, but populated to llvm-nm cache structure.
-  llvm_nm_multiple(object_names)
-  return ar_contents
 
 
 def llvm_backend_args():
@@ -254,18 +142,7 @@ def llvm_backend_args():
 
 @ToolchainProfiler.profile()
 def link_to_object(args, target):
-  # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
-  if not settings.LTO:
-    link_lld(args + ['--relocatable'], target)
-  else:
-    link_bitcode(args, target)
-
-
-def link_llvm(linker_inputs, target):
-  # runs llvm-link to link things.
-  cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
-  cmd = get_command_with_possible_response_file(cmd)
-  check_call(cmd)
+  link_lld(args + ['--relocatable'], target)
 
 
 def lld_flags_for_executable(external_symbols):
@@ -327,7 +204,7 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '-z', 'stack-size=%s' % settings.TOTAL_STACK,
+      '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
 
@@ -340,7 +217,7 @@ def lld_flags_for_executable(external_symbols):
         cmd += ['--entry=_emscripten_proxy_main']
       else:
         # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this sice the entry point can be either `main` or
+        # For now we need to do this since the entry point can be either `main` or
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
@@ -393,144 +270,6 @@ def link_lld(args, target, external_symbols=None):
   check_call(cmd)
 
 
-def link_bitcode(args, target, force_archive_contents=False):
-  diagnostics.warning('deprecated', 'bitcode linking with llvm-link is deprecated.  Please use emar archives instead.  See https://github.com/emscripten-core/emscripten/issues/13492')
-  # "Full-featured" linking: looks into archives (duplicates lld functionality)
-  input_files = [a for a in args if not a.startswith('-')]
-  files_to_link = []
-  # Tracking unresolveds is necessary for .a linking, see below.
-  # Specify all possible entry points to seed the linking process.
-  # For a simple application, this would just be "main".
-  unresolved_symbols = {func[1:] for func in settings.EXPORTED_FUNCTIONS}
-  resolved_symbols = set()
-  # Paths of already included object files from archives.
-  added_contents = set()
-  has_ar = any(is_ar(make_paths_absolute(f)) for f in input_files)
-
-  # If we have only one archive or the force_archive_contents flag is set,
-  # then we will add every object file we see, regardless of whether it
-  # resolves any undefined symbols.
-  force_add_all = len(input_files) == 1 or force_archive_contents
-
-  # Considers an object file for inclusion in the link. The object is included
-  # if force_add=True or if the object provides a currently undefined symbol.
-  # If the object is included, the symbol tables are updated and the function
-  # returns True.
-  def consider_object(f, force_add=False):
-    new_symbols = llvm_nm(f)
-    # Check if the object was valid according to llvm-nm. It also accepts
-    # native object files.
-    if new_symbols['parse_error']:
-      diagnostics.warning('emcc', 'object %s is not valid according to llvm-nm, cannot link', f)
-      return False
-    # Check the object is valid for us, and not a native object file.
-    if not is_bitcode(f):
-      exit_with_error('unknown file type: %s', f)
-    provided = new_symbols['defs'].union(new_symbols['commons'])
-    do_add = force_add or not unresolved_symbols.isdisjoint(provided)
-    if do_add:
-      logger.debug('adding object %s to link (forced: %d)' % (f, force_add))
-      # Update resolved_symbols table with newly resolved symbols
-      resolved_symbols.update(provided)
-      # Update unresolved_symbols table by adding newly unresolved symbols and
-      # removing newly resolved symbols.
-      unresolved_symbols.update(new_symbols['undefs'].difference(resolved_symbols))
-      unresolved_symbols.difference_update(provided)
-      files_to_link.append(f)
-    return do_add
-
-  ar_contents = read_link_inputs(input_files)
-
-  # Traverse a single archive. The object files are repeatedly scanned for
-  # newly satisfied symbols until no new symbols are found. Returns true if
-  # any object files were added to the link.
-  def consider_archive(f, force_add):
-    added_any_objects = False
-    loop_again = True
-    logger.debug('considering archive %s' % (f))
-    contents = ar_contents[f]
-    while loop_again: # repeatedly traverse until we have everything we need
-      loop_again = False
-      for content in contents:
-        if content in added_contents:
-          continue
-        # Link in the .o if it provides symbols, *or* this is a singleton archive (which is
-        # apparently an exception in gcc ld)
-        if consider_object(content, force_add=force_add):
-          added_contents.add(content)
-          loop_again = True
-          added_any_objects = True
-    logger.debug('done running loop of archive %s' % (f))
-    return added_any_objects
-
-  # Rescan a group of archives until we don't find any more objects to link.
-  def scan_archive_group(group):
-    loop_again = True
-    logger.debug('starting archive group loop')
-    while loop_again:
-      loop_again = False
-      for archive in group:
-        if consider_archive(archive, force_add=False):
-          loop_again = True
-    logger.debug('done with archive group loop')
-
-  current_archive_group = None
-  in_whole_archive = False
-  for a in args:
-    if a.startswith('-'):
-      if a in ['--start-group', '-(']:
-        assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
-        current_archive_group = []
-      elif a in ['--end-group', '-)']:
-        assert current_archive_group is not None, '--end-group without --start-group'
-        scan_archive_group(current_archive_group)
-        current_archive_group = None
-      elif a in ['--whole-archive', '-whole-archive']:
-        in_whole_archive = True
-      elif a in ['--no-whole-archive', '-no-whole-archive']:
-        in_whole_archive = False
-      else:
-        # Command line flags should already be vetted by the time this method
-        # is called, so this is an internal error
-        exit_with_error('unsupported link flag: %s', a)
-    else:
-      lib_path = make_paths_absolute(a)
-      if is_ar(lib_path):
-        # Extract object files from ar archives, and link according to gnu ld semantics
-        # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(lib_path, in_whole_archive or force_add_all)
-        # If we're inside a --start-group/--end-group section, add to the list
-        # so we can loop back around later.
-        if current_archive_group is not None:
-          current_archive_group.append(lib_path)
-      elif is_bitcode(lib_path):
-        if has_ar:
-          consider_object(a, force_add=True)
-        else:
-          # If there are no archives then we can simply link all valid object
-          # files and skip the symbol table stuff.
-          files_to_link.append(a)
-      else:
-        exit_with_error('unknown file type: %s', a)
-
-  # We have to consider the possibility that --start-group was used without a matching
-  # --end-group; GNU ld permits this behavior and implicitly treats the end of the
-  # command line as having an --end-group.
-  if current_archive_group:
-    logger.debug('--start-group without matching --end-group, rescanning')
-    scan_archive_group(current_archive_group)
-    current_archive_group = None
-
-  try_delete(target)
-
-  # Finish link
-  # tolerate people trying to link a.so a.so etc.
-  files_to_link = unique_ordered(files_to_link)
-
-  logger.debug('emcc: linking: %s to %s', files_to_link, target)
-  link_llvm(files_to_link, target)
-
-
 def get_command_with_possible_response_file(cmd):
   # One of None, 0 or 1. (None: do default decision, 0: force disable, 1: force enable)
   force_response_files = os.getenv('EM_FORCE_RESPONSE_FILES')
@@ -541,7 +280,7 @@ def get_command_with_possible_response_file(cmd):
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
-  filename = response_file.create_response_file(cmd[1:], TEMP_DIR)
+  filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
 
@@ -561,21 +300,25 @@ def parse_llvm_nm_symbols(output):
 
   for line in output.split('\n'):
     # Line format: "[archive filename:]object filename: address status name"
-    entry_pos = line.rfind(':')
+    entry_pos = line.rfind(': ')
     if entry_pos < 0:
       continue
 
-    filename_pos = line.rfind(':', 0, entry_pos)
+    filename_end = line.rfind(':', 0, entry_pos)
     # Disambiguate between
     #   C:\bar.o: T main
     # and
     #   /foo.a:bar.o: T main
     # (both of these have same number of ':'s, but in the first, the file name on disk is "C:\bar.o", in second, it is "/foo.a")
-    if filename_pos < 0 or line[filename_pos + 1] in '/\\':
-      filename_pos = entry_pos
+    if filename_end < 0 or line[filename_end + 1] in '/\\':
+      filename_end = entry_pos
 
-    filename = line[:filename_pos]
-    status = line[entry_pos + 11] # Skip address, which is always fixed-length 8 chars.
+    filename = line[:filename_end]
+    if entry_pos + 13 >= len(line):
+      exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with an old version of llvm (please rebuild it).' % line)
+
+    # Skip address, which is always fixed-length 8 chars (plus 2 leading chars `: ` and one trailing space)
+    status = line[entry_pos + 11]
     symbol = line[entry_pos + 13:]
 
     if filename not in symbols:
@@ -595,7 +338,7 @@ def parse_llvm_nm_symbols(output):
 
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  try_delete(output_filename)
+  utils.delete_file(output_filename)
   cmd = [EMAR, action, output_filename] + filenames
   cmd = get_command_with_possible_response_file(cmd)
   run_process(cmd, stdout=stdout, stderr=stderr, env=env)
@@ -644,15 +387,22 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     cmd += ['--exportES6']
   if settings.VERBOSE:
     cmd += ['verbose']
-  if not return_output:
-    next = original_filename + '.jso.js'
-    shared.get_temp_files().note(next)
-    check_call(cmd, stdout=open(next, 'w'))
-    save_intermediate(next, '%s.js' % passes[0])
-    return next
-  output = check_call(cmd, stdout=PIPE).stdout
-  return output
+  if return_output:
+    return check_call(cmd, stdout=PIPE).stdout
 
+  acorn_optimizer.counter += 1
+  basename = shared.unsuffixed(original_filename)
+  if '.jso' in basename:
+    basename = shared.unsuffixed(basename)
+  output_file = basename + '.jso%d.js' % acorn_optimizer.counter
+  shared.get_temp_files().note(output_file)
+  cmd += ['-o', output_file]
+  check_call(cmd)
+  save_intermediate(output_file, '%s.js' % passes[0])
+  return output_file
+
+
+acorn_optimizer.counter = 0
 
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
@@ -913,19 +663,21 @@ def run_closure_cmd(cmd, filename, env, pretty):
   # But it looks like it creates such files on Linux(?) even without setting that command line
   # flag (and currently we don't), so delete the produced source map file to not leak files in
   # temp directory.
-  try_delete(outfile + '.map')
+  utils.delete_file(outfile + '.map')
+
+  closure_warnings = diagnostics.manager.warnings['closure']
 
   # Print Closure diagnostics result up front.
   if proc.returncode != 0:
     logger.error('Closure compiler run failed:\n')
-  elif len(proc.stderr.strip()) > 0:
-    if settings.CLOSURE_WARNINGS == 'error':
-      logger.error('Closure compiler completed with warnings and -sCLOSURE_WARNINGS=error enabled, aborting!\n')
-    elif settings.CLOSURE_WARNINGS == 'warn':
+  elif len(proc.stderr.strip()) > 0 and closure_warnings['enabled']:
+    if closure_warnings['error']:
+      logger.error('Closure compiler completed with warnings and -Werror=closure enabled, aborting!\n')
+    else:
       logger.warn('Closure compiler completed with warnings:\n')
 
   # Print input file (long wall of text!)
-  if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
+  if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
     input_file = open(filename, 'r').read().splitlines()
     for i in range(len(input_file)):
       sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
@@ -939,9 +691,9 @@ def run_closure_cmd(cmd, filename, env, pretty):
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
 
-  if len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet':
+  if len(proc.stderr.strip()) > 0 and closure_warnings['enabled']:
     # print list of warnings (possibly long wall of text if input was minified)
-    if settings.CLOSURE_WARNINGS == 'error':
+    if closure_warnings['error']:
       logger.error(proc.stderr)
     else:
       logger.warn(proc.stderr)
@@ -952,8 +704,8 @@ def run_closure_cmd(cmd, filename, env, pretty):
     elif DEBUG != 2:
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
-    if settings.CLOSURE_WARNINGS == 'error':
-      exit_with_error('closure compiler produced warnings and -sCLOSURE_WARNINGS=error enabled')
+    if closure_warnings['error']:
+      exit_with_error('closure compiler produced warnings and -W=error=closure enabled')
 
   return outfile
 
@@ -1551,17 +1303,16 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-save_intermediate_counter = 0
-
-
 def save_intermediate(src, dst):
   if DEBUG:
-    global save_intermediate_counter
-    dst = 'emcc-%d-%s' % (save_intermediate_counter, dst)
-    save_intermediate_counter += 1
-    dst = os.path.join(CANONICAL_TEMP_DIR, dst)
+    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
+    save_intermediate.counter += 1
+    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
     shutil.copyfile(src, dst)
+
+
+save_intermediate.counter = 0
 
 
 def js_legalization_pass_flags():

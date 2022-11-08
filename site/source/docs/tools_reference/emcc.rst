@@ -72,6 +72,13 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is a good setting for a release build.
 
+.. _emcc-Og:
+
+``-Og``
+  [compile+link]
+  Like ``-O1``. In future versions, this option might disable different
+  optimizations in order to improve debuggability.
+
 .. _emcc-Os:
 
 ``-Os``

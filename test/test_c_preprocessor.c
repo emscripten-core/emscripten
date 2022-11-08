@@ -33,6 +33,8 @@ EM_JS(void, test_remove_cpp_comments_in_shaders, (void), {
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 
+EM_JS_DEPS(main, "$preprocess_c_code,$remove_cpp_comments_in_shaders");
+
 EM_JS(void, test_c_preprocessor, (void), {
 	var numFailed = 0;
 	function test(input, expected) {
@@ -98,6 +100,11 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 1\n#if FOO >= 1\nB\n#endif', 'B\n'); // Test >=
 	test('#define FOO 1\n#if FOO >= 2\nB\n#endif', "");    // Test >=
 
+	test('#define FOO 0\n#define BAR 0\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '4\n'); // Test nested #if-#elses
+	test('#define FOO 0\n#define BAR 1\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '3\n'); // Test nested #if-#elses
+	test('#define FOO 1\n#define BAR 0\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '2\n'); // Test nested #if-#elses
+	test('#define FOO 1\n#define BAR 1\n#if FOO\n#if BAR\n1\n#else\n2\n#endif\n#else\n#if BAR\n3\n#else\n4\n#endif\n#endif', '1\n'); // Test nested #if-#elses
+
 	test('#define FOO 1\n#define BAR 2\n#if FOO < 3 && BAR < 4\nB\n#endif', 'B\n'); // Test evaluation of && and <
 	test('#define FOO 1\n#define BAR 2\n#if FOO < 3 && BAR < 2\nB\n#endif', "");    // Test evaluation of && and <
 
@@ -137,9 +144,9 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 42\nFOO\n', '42\n'); // Test expanding a preprocessor symbol
 
 	test('#define FOO 42\n#define BAR FOO\nBAR\n', '42\n'); // Test chained expanding a preprocessor symbol
-	test('#define MACRO(x) x\nMACRO(42)\n', '42\n'); // Test simple preprocessor macro
-	test('#define MACRO(x,y) x\nMACRO(42, 53)\n', '42\n'); // Test simple preprocessor macro
-	test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test simple preprocessor macro
+	test('#define MACRO(x) x\nMACRO(42)\n', '42\n'); // Test one-parameter preprocessor macro
+	test('#define MACRO(x,y) x\nMACRO(42, 53)\n', '42\n'); // Test a two-parameter preprocessor macro
+	test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test a macro with odd whitescape in it
 
 	test('#define MACRO(x,y,z) x+y<=z\nMACRO(42,15,30)\n', '42+15<=30\n'); // Test three-arg macro
 
@@ -161,7 +168,14 @@ EM_JS(void, test_c_preprocessor, (void), {
 
 	test('#if defined(FOO)\nA\n#endif', "");  // Test defined() macro
 	test('#define FOO 0\n#if defined(FOO)\nA\n#endif', "A\n");  // Test defined() macro
+	test('#define FOO 0\n#if !defined(FOO)\nA\n#endif', "");  // Test that !defined() works
+	test('#define FOO 0\n#if defined FOO \nA\n#endif', "A\n");  // Test defined without using parens
+	test('#define FOO 0\n#if ! defined FOO \nA\n#endif', "");  // Test that ! defined works, with odd whitespace
+	test('#define FOO 0\n#if defined   FOO  \nA\n#endif', "A\n");  // Test defined without using parens, with odd whitespace
+	test('#define FOO 0\n#if defined (FOO) \nA\n#endif', "A\n");  // Test defined with parens and whitespace
+	test('#define FOO 0\n#if defined ( FOO ) \nA\n#endif', "A\n");  // Test defined with parens and whitespace
 	test('#define FOO 0\n#undef FOO\n#if defined(FOO)\nA\n#endif', "");  // Test defined() macro after #undef
+	test('#define FOO 0\n#if defined FOO && BAR \nA\n#endif', "");  // Test that defined operator binds tighter than &&
 
 	test('#define SAMPLE_TEXTURE_2D texture \nvec4 c = SAMPLE_TEXTURE_2D(tex, texCoord);\n', 'vec4 c = texture(tex, texCoord);\n'); // Test expanding a non-macro to a macro-like call site
 
@@ -174,6 +188,8 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 1\n#if FOO\n#define BAR this_is_right\n#else\n#define BAR this_is_wrong\n#endif\nBAR', 'this_is_right\n'); // Test nested #defines in both sides of an #if-#else block.
 
 	test('\n#define FOO 1\nFOO\n', '\n1\n'); // Test that preprocessor is not confused by an input that starts with a \n
+
+	test('#line 162 "foo.glsl"\n', '#line 162 "foo.glsl"\n'); // Test that #line directives are retained in the output
 
 	if (numFailed) throw numFailed + ' tests failed!';
 });

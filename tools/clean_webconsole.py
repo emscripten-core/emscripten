@@ -23,7 +23,7 @@ def nice(x):
 
 
 repdata = (
-  Path(path_from_root('system/include/GL/gl.h')).read_text().splitline(keepends=True) +
+  Path(path_from_root('system/include/GL/gl.h')).read_text().splitlines(keepends=True) +
   ['\n'] +
   Path(path_from_root('system/include/GL/glext.h')).read_text().splitlines(keepends=True)
 )

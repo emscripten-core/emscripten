@@ -21,8 +21,8 @@ import jsrun
 import common
 from tools.shared import CLANG_CC, CLANG_CXX
 from common import TEST_ROOT, test_file, read_file, read_binary
-from tools.shared import run_process, PIPE, try_delete, EMCC, config
-from tools import building
+from tools.shared import run_process, PIPE, EMCC, config
+from tools import building, utils, shared
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -194,10 +194,12 @@ class EmscriptenBenchmarker(Benchmarker):
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
       env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
-      emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
+      # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
+      # a parameter and changes will be visible to the caller.
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
-    try_delete(final)
+    utils.delete_file(final)
     cmd = [
       EMCC, filename,
       OPTIMIZATIONS,
@@ -215,14 +217,14 @@ class EmscriptenBenchmarker(Benchmarker):
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
-    if '-sFORCE_FILESYSTEM' not in cmd:
+    if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
-      run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
+      run_binaryen_opts(shared.replace_suffix(final, '.wasm'), self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
@@ -232,12 +234,12 @@ class EmscriptenBenchmarker(Benchmarker):
     ret = [self.filename]
     if 'WASM=0' in self.cmd:
       if 'MINIMAL_RUNTIME=0' not in self.cmd:
-        ret.append(self.filename[:-3] + '.asm.js')
-        ret.append(self.filename[:-3] + '.mem')
+        ret.append(shared.replace_suffix(self.filename, '.asm.js'))
+        ret.append(shared.replace_suffix(self.filename, '.mem'))
       else:
         ret.append(self.filename + '.mem')
     else:
-      ret.append(self.filename[:-3] + '.wasm')
+      ret.append(shared.replace_suffix(self.filename, '.wasm'))
     return ret
 
 
@@ -266,9 +268,8 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     # move the JS away so there is no chance we run it by mistake
     shutil.move(self.filename, self.filename + '.old.js')
 
-    base = self.filename[:-3]
-    c = base + '.wasm.c'
-    native = base + '.exe'
+    c = shared.replace_suffix(self.filenmame, '.wasm.c')
+    native = shared.replace_suffix(self.filenmame, '.exe')
 
     run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
                  '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
@@ -317,7 +318,7 @@ class CheerpBenchmarker(Benchmarker):
       cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
-    try_delete(final)
+    utils.delete_file(final)
     dirs_to_delete = []
     cheerp_args += ['-cheerp-preexecute']
     try:
@@ -339,13 +340,13 @@ class CheerpBenchmarker(Benchmarker):
         run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
-        try_delete(dir_)
+        utils.delete_dir(dir_)
 
   def run(self, args):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
-    return [self.filename, self.filename.replace('.js', '.wasm')]
+    return [self.filename, shared.replace_suffix(self.filename, '.wasm')]
 
 
 # Benchmarkers
@@ -550,7 +551,8 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('memops', src, 'final:')
 
-  def zzztest_files(self):
+  @non_core
+  def test_files(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -591,7 +593,7 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark(src, 'ok')
+    self.do_benchmark('files', src, 'ok', emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0', '-sEXIT_RUNTIME'])
 
   def test_copy(self):
     src = r'''
@@ -781,7 +783,7 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('corrections', src, 'final:')
 
-  def zzz_test_corrections64(self):
+  def test_corrections64(self):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -855,7 +857,7 @@ class benchmark(common.RunnerCore):
   @non_core
   def test_life(self):
     src = read_file(test_file('life.c'))
-    self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
+    self.do_benchmark('life', src, '''--------------------------------''', force_c=True)
 
   def test_zzz_linpack(self):
     def output_parser(output):
@@ -868,21 +870,33 @@ class benchmark(common.RunnerCore):
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('native_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', test_file('benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
+    self.do_benchmark('foreign_functions', read_file(test_file('benchmark_ffis.cpp')), 'Total time:',
+                      output_parser=output_parser,
+                      # Not minimal because this uses functions in library_browsers.js
+                      emcc_args=['--js-library', test_file('benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
+                      shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_128b(self):
@@ -954,7 +968,9 @@ class benchmark(common.RunnerCore):
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      # We force recomputation for the native benchmarker because this benchmark
+      # uses native_exec=True, so we need to copy the native executable
+      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
@@ -1039,8 +1055,11 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_part/sqlite')],
-                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
+    self.do_benchmark('sqlite', src, 'TOTAL...',
+                      native_args=['-ldl', '-pthread'],
+                      shared_args=['-I' + test_file('third_party/sqlite')],
+                      # not minimal because of files
+                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1088,8 +1107,10 @@ class benchmark(common.RunnerCore):
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + test_file('poppler/include'), '-I' + test_file('freetype/include')],
-                      emcc_args=['-sFILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
-                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                      shared_args=['-I' + test_file('poppler/include'),
+                                   '-I' + test_file('freetype/include')],
+                      emcc_args=['-sFILESYSTEM', '--pre-js=pre.js', '--embed-file',
+                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
+                                 '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)

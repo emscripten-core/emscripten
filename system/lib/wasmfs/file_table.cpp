@@ -30,13 +30,22 @@ std::shared_ptr<OpenFileState> FileTable::Handle::getEntry(__wasi_fd_t fd) {
   return fileTable.entries[fd];
 }
 
-void FileTable::Handle::setEntry(__wasi_fd_t fd,
-                                 std::shared_ptr<OpenFileState> openFile) {
+std::shared_ptr<DataFile>
+FileTable::Handle::setEntry(__wasi_fd_t fd,
+                            std::shared_ptr<OpenFileState> openFile) {
   assert(fd >= 0);
   if (fd >= fileTable.entries.size()) {
     fileTable.entries.resize(fd + 1);
   }
+  if (openFile) {
+    ++openFile->uses;
+  }
+  std::shared_ptr<DataFile> ret;
+  if (fileTable.entries[fd] && --fileTable.entries[fd]->uses == 0) {
+    ret = fileTable.entries[fd]->locked().getFile()->dynCast<DataFile>();
+  }
   fileTable.entries[fd] = openFile;
+  return ret;
 }
 
 __wasi_fd_t
@@ -44,7 +53,7 @@ FileTable::Handle::addEntry(std::shared_ptr<OpenFileState> openFileState) {
   // TODO: add freelist to avoid linear lookup time.
   for (__wasi_fd_t i = 0;; i++) {
     if (!getEntry(i)) {
-      setEntry(i, openFileState);
+      (void)setEntry(i, openFileState);
       return i;
     }
   }

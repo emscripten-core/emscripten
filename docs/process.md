@@ -1,8 +1,7 @@
-Development Processes
-=====================
+# Development Processes
 
-Landing PRs
------------
+
+## Landing PRs
 
  * Even after the code of a PR is approved, it should only be landed if the
    CI on github is green, or the failures are known intermittent things
@@ -28,12 +27,41 @@ Landing PRs
    When landing multiple commits in such a scenario, use the "rebase" option,
    to avoid a merge commit.
 
+## Coding Style
 
-Release Processes
-=================
+### C/C++ Code
 
-Minor version updates (1.X.Y to 1.X.Y+1)
-----------------------------------------
+When writing new C/C++ in emscripten follow the LLVM style (as does binaryen).
+You can use `clang-format` to automatically format new code (and `git
+clang-format origin/main` to format just the lines you are changing).
+See [`.clang-format`][clang-format] for more details.
+
+When editing third party code such (e.g. musl, libc++) follow the upstream
+conventions.
+
+### JavaScript Code
+
+We use the same LLVM-based style as for C/C++.  Sadly, `clang-format` doesn't
+always work well with our library code since it can use custom macros and
+pre-processor.  See [`.clang-format`][clang-format] for more details.
+
+### Python Code
+
+We generally follow the pep8 standard with the major exception that we use 2
+spaces for indentation.  `flake8` is run on all PRs to ensure that python code
+conforms to this style.  See [`.flake8`][flake8] for more details.
+
+#### Static Type Checking
+
+We are beginning to use python3's type annotation syntax, along with the `mypy`
+tool to check python types statically.  See [`.mypy`][mypy] for more details.
+
+The goal is to one day check all type by running `mypy` with
+`--disallow-untyped-defs`, but this is happening incrementally over time.
+
+# Release Processes
+
+## Minor version updates (1.X.Y to 1.X.Y+1)
 
 When:
 
@@ -85,12 +113,12 @@ How:
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
    the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file
    above.
-1. Update [`emscripten-version.txt`][emscripten_version] and
-   [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
-   upcoming, version. An example of this PR is emscripten-core/emscripten#17439.
+1. Run the `tools/maint/create_release.py` tool in the emscripten repo to update
+   [`emscripten-version.txt`][emscripten_version] and
+   [`ChangeLog.md`][changelog].  An example of such PR is
+   emscripten-core/emscripten#17439.
 
-Major version update (1.X.Y to 1.(X+1).0)
------------------------------------------
+## Major version update (1.X.Y to 1.(X+1).0)
 
 When:
 
@@ -114,8 +142,7 @@ How:
 1. Follow the same steps for a minor version update.
 
 
-Updating the `emscripten.org` Website
---------------------------------------
+## Updating the `emscripten.org` Website
 
 The site is currently hosted in `gh-pages` branch of the separate [site
 repository][site_repo]. To update the docs, rebuild them and copy them into
@@ -129,8 +156,7 @@ You will need the specific sphinx version installed, which you can do using
 need to add `~/.local/bin` to your path, if pip installs to there).
 
 
-Updating the `emcc.py` help text
---------------------------------
+## Updating the `emcc.py` help text
 
 `emcc --help` output is generated from the main documentation under `site/`,
 so it is the same as shown on the website, but it is rendered to text. After
@@ -157,3 +183,6 @@ See notes above on installing sphinx.
 [DEPS.tagged-release]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/DEPS.tagged-release
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
 [emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
+[clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
+[flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
+[mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy

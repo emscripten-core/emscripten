@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { requireNodeFS(); NODEFS.staticInit(); }',
+  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit: () => {

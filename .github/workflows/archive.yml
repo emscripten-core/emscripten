@@ -8,17 +8,20 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   archive:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: make dist
       run: |
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
         echo "VERSION=$version" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2

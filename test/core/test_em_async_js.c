@@ -35,7 +35,13 @@ EM_ASYNC_JS(double, foo, (int timeout), {
   return _get_result();
 });
 
+// Test out void return and no params.
+EM_ASYNC_JS(void, bar, (), {
+  return;
+});
+
 int main() {
   printf("foo returned: %f\n", foo(10));
+  bar();
   return 0;
 }

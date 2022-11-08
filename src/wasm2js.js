@@ -63,10 +63,10 @@ WebAssembly = {
 
   /** @constructor */
   Instance: function(module, info) {
-    // TODO: use the module and info somehow - right now the wasm2js output is embedded in
+    // TODO: use the module somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg);
+    this.exports = Module['__wasm2jsInstantiate__'](info);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
@@ -77,7 +77,7 @@ WebAssembly = {
 #if SHARED_MEMORY
           'module': module,
 #endif
-          'instance': new WebAssembly.Instance(module)
+          'instance': new WebAssembly.Instance(module, info)
         });
 #if ASSERTIONS || WASM == 2 // see postamble_minimal.js which uses .catch
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.

@@ -12,11 +12,11 @@ global.assert = require('assert');
 global.nodePath = require('path');
 
 global.print = (x) => {
-  process['stdout'].write(x + '\n');
+  process.stdout.write(x + '\n');
 };
 
 global.printErr = (x) => {
-  process['stderr'].write(x + '\n');
+  process.stderr.write(x + '\n');
 };
 
 function find(filename) {
@@ -43,7 +43,7 @@ function load(f) {
 load('utility.js');
 
 // Load settings from JSON passed on the command line
-const settingsFile = process['argv'][2];
+const settingsFile = process.argv[2];
 assert(settingsFile);
 
 const settings = JSON.parse(read(settingsFile));
@@ -99,12 +99,12 @@ try {
   // Instead of process.exit() directly, wait for stdout flush event.
   // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
   // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-  process['stdout']['once']('drain', () => process['exit'](1));
+  process.stdout.once('drain', () => process.exit(1));
   // Make sure to print something to force the drain event to occur, in case the
   // stdout buffer was empty.
   console.log(' ');
   // Work around another node bug where sometimes 'drain' is never fired - make
   // another effort to emit the exit status, after a significant delay (if node
   // hasn't fired drain by then, give up)
-  setTimeout(() => process['exit'](1), 500);
+  setTimeout(() => process.exit(1), 500);
 }

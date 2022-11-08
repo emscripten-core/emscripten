@@ -30,6 +30,8 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
+class FileTable;
+
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position = 0;
@@ -40,25 +42,29 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   // open file descriptor.
   std::recursive_mutex mutex;
 
+  // The number of times this OpenFileState appears in the table. Use this
+  // instead of shared_ptr::use_count to avoid accidentally counting temporary
+  // objects.
+  int uses = 0;
+
   // We can't make the constructor private because std::make_shared needs to be
   // able to call it, but we can make it unusable publicly.
   struct private_key {
     explicit private_key(int) {}
   };
 
+  // `uses` is protected by the FileTable lock and can be accessed directly by
+  // `FileTable::Handle.
+  friend FileTable;
+
 public:
   OpenFileState(private_key, oflags_t flags, std::shared_ptr<File> file)
     : flags(flags), file(file) {}
 
-  ~OpenFileState() {
-    if (auto f = file->dynCast<DataFile>()) {
-      f->locked().close();
-    }
-  }
-
   [[nodiscard]] static int create(std::shared_ptr<File> file,
                                   oflags_t flags,
                                   std::shared_ptr<OpenFileState>& out) {
+    assert(file);
     if (auto f = file->dynCast<DataFile>()) {
       if (int err = f->locked().open(flags & O_ACCMODE)) {
         return err;
@@ -108,7 +114,14 @@ public:
       : fileTable(fileTable), lock(fileTable.mutex) {}
 
     std::shared_ptr<OpenFileState> getEntry(__wasi_fd_t fd);
-    void setEntry(__wasi_fd_t fd, std::shared_ptr<OpenFileState> openFile);
+
+    // Set the table slot at `fd` to the given file. If this overwrites the last
+    // reference to an OpenFileState for a data file in the table, return the
+    // file so it can be closed by the caller. Do not close the file directly in
+    // this method so it can be closed later while the FileTable lock is not
+    // held.
+    [[nodiscard]] std::shared_ptr<DataFile>
+    setEntry(__wasi_fd_t fd, std::shared_ptr<OpenFileState> openFile);
     __wasi_fd_t addEntry(std::shared_ptr<OpenFileState> openFileState);
   };
 

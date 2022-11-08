@@ -3711,7 +3711,9 @@ var LibrarySDL = {
   SDL_GetCurrentAudioDriver: function() {
     return allocateUTF8('Emscripten Audio');
   },
-
+  SDL_GetScancodeFromKey: function (key) {
+    return SDL.scanCodes[key]; 
+  },
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],
   SDL_GetAudioDriver: function(index) { return _SDL_GetCurrentAudioDriver() },
 
@@ -3724,16 +3726,17 @@ var LibrarySDL = {
   },
 
   SDL_AddTimer__proxy: 'sync',
+  SDL_AddTimer__deps: ['$safeSetTimeout'],
   SDL_AddTimer__sig: 'iiii',
   SDL_AddTimer: function(interval, callback, param) {
-    return window.setTimeout(function() {
-      {{{ makeDynCall('iii', 'callback') }}}(interval, param);
-    }, interval);
+    return safeSetTimeout(
+      () => {{{ makeDynCall('iii', 'callback') }}}(interval, param),
+      interval);
   },
   SDL_RemoveTimer__proxy: 'sync',
   SDL_RemoveTimer__sig: 'ii',
   SDL_RemoveTimer: function(id) {
-    window.clearTimeout(id);
+    clearTimeout(id);
     return true;
   },
 

@@ -20,11 +20,10 @@
 namespace __sanitizer {
 
 uptr StackTrace::GetNextInstructionPc(uptr pc) {
-#if defined(__sparc__) || defined(__mips__)
-  return pc + 8;
-#elif defined(__powerpc__) || defined(__arm__) || defined(__aarch64__) || \
-    defined(__hexagon__)
+#if defined(__aarch64__)
   return STRIP_PAC_PC((void *)pc) + 4;
+#elif defined(__sparc__) || defined(__mips__)
+  return pc + 8;
 #elif SANITIZER_RISCV64
   // Current check order is 4 -> 2 -> 6 -> 8
   u8 InsnByte = *(u8 *)(pc);
@@ -47,8 +46,10 @@ uptr StackTrace::GetNextInstructionPc(uptr pc) {
   }
   // bail-out if could not figure out the instruction size
   return 0;
-#else
+#elif SANITIZER_S390 || SANITIZER_I386 || SANITIZER_X32 || SANITIZER_X64
   return pc + 1;
+#else
+  return pc + 4;
 #endif
 }
 
@@ -122,7 +123,7 @@ void BufferedStackTrace::UnwindFast(uptr pc, uptr bp, uptr stack_top,
     uhwptr pc1 = caller_frame[2];
 #elif defined(__s390__)
     uhwptr pc1 = frame[14];
-#elif defined(__riscv)
+#elif defined(__loongarch__) || defined(__riscv)
     // frame[-1] contains the return address
     uhwptr pc1 = frame[-1];
 #else
@@ -137,7 +138,7 @@ void BufferedStackTrace::UnwindFast(uptr pc, uptr bp, uptr stack_top,
       trace_buffer[size++] = (uptr) pc1;
     }
     bottom = (uptr)frame;
-#if defined(__riscv)
+#if defined(__loongarch__) || defined(__riscv)
     // frame[-2] contain fp of the previous frame
     uptr new_bp = (uptr)frame[-2];
 #else

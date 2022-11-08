@@ -35,7 +35,6 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 
-from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles
 from . import diagnostics
@@ -75,6 +74,8 @@ diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
+# Closure warning are not (yet) enabled by default
+diagnostics.add_warning('closure', enabled=False)
 
 
 # TODO(sbc): Investigate switching to shlex.quote
@@ -117,15 +118,13 @@ def get_num_cores():
 
 
 def mp_run_process(command_tuple):
-  temp_files = get_temp_files()
-  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
-  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
-  ret = std_out.name if route_stdout_to_temp_files_suffix else None
-  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
-  out, _ = proc.communicate()
-  if pipe_stdout:
-    ret = out.decode('UTF-8')
-  return ret
+  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
+  stdout = None
+  if route_stdout_to_temp_files_suffix:
+    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
+  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
+  if route_stdout_to_temp_files_suffix:
+    return stdout.name
 
 
 def returncode_to_str(code):
@@ -137,31 +136,35 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
-# Runs multiple subprocess commands.
-# bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
-# string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
-# bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
 def run_multiple_processes(commands,
                            env=None,
-                           route_stdout_to_temp_files_suffix=None,
-                           pipe_stdout=False,
-                           check=True,
-                           cwd=None):
+                           route_stdout_to_temp_files_suffix=None):
+  """Runs multiple subprocess commands.
+
+  route_stdout_to_temp_files_suffix : string
+    if not None, all stdouts are instead written to files, and an array
+    of filenames is returned.
+  """
+
   if env is None:
     env = os.environ.copy()
-  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+
+  # By default, avoid using Python multiprocessing library due to a large amount
+  # of bugs it has on Windows (#8013, #718, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
+  # faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
     import multiprocessing
+    max_workers = get_num_cores()
     global multiprocessing_pool
     if not multiprocessing_pool:
-      multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+      if WINDOWS:
+        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
+        max_workers = min(max_workers, 61)
+      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
+    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
-
-  if route_stdout_to_temp_files_suffix and pipe_stdout:
-    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
 
   # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
   # when multiple child processes have been spawned.
@@ -170,59 +173,56 @@ def run_multiple_processes(commands,
   #   sys.exit(1)
   # signal.signal(signal.SIGINT, signal_handler)
 
-  with ToolchainProfiler.profile_block('run_multiple_processes'):
-    processes = []
-    num_parallel_processes = get_num_cores()
-    temp_files = get_temp_files()
-    i = 0
-    num_completed = 0
+  # Map containing all currently running processes.
+  # command index -> proc/Popen object
+  processes = {}
 
-    while num_completed < len(commands):
-      if i < len(commands) and len(processes) < num_parallel_processes:
-        # Not enough parallel processes running, spawn a new one.
-        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
-        if DEBUG:
-          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
-        print_compiler_stage(commands[i])
-        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
-        if route_stdout_to_temp_files_suffix:
-          std_outs += [(i, std_out.name)]
-        i += 1
+  def get_finished_process():
+    while True:
+      for idx, proc in processes.items():
+        if proc.poll() is not None:
+          return idx
+      # All processes still running; wait a short while for the first
+      # (oldest) process to finish, then look again if any process has completed.
+      idx, proc = next(iter(processes.items()))
+      try:
+        proc.communicate(timeout=0.2)
+        return idx
+      except subprocess.TimeoutExpired:
+        pass
+
+  num_parallel_processes = get_num_cores()
+  temp_files = get_temp_files()
+  i = 0
+  num_completed = 0
+  while num_completed < len(commands):
+    if i < len(commands) and len(processes) < num_parallel_processes:
+      # Not enough parallel processes running, spawn a new one.
+      if route_stdout_to_temp_files_suffix:
+        stdout = temp_files.get(route_stdout_to_temp_files_suffix)
       else:
-        # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
-        def get_finished_process():
-          while True:
-            j = 0
-            while j < len(processes):
-              if processes[j][1].poll() is not None:
-                out, err = processes[j][1].communicate()
-                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
-              j += 1
-            # All processes still running; wait a short while for the first (oldest) process to finish,
-            # then look again if any process has completed.
-            try:
-              out, err = processes[0][1].communicate(0.2)
-              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
-            except subprocess.TimeoutExpired:
-              pass
+        stdout = None
+      if DEBUG:
+        logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+      print_compiler_stage(commands[i])
+      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env)
+      processes[i] = proc
+      if route_stdout_to_temp_files_suffix:
+        std_outs.append((i, stdout.name))
+      i += 1
+    else:
+      # Not spawning a new process (Too many commands running in parallel, or
+      # no commands left): find if a process has finished.
+      idx = get_finished_process()
+      finished_process = processes.pop(idx)
+      if finished_process.returncode != 0:
+        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+      num_completed += 1
 
-        j, out, err = get_finished_process()
-        idx, finished_process = processes[j]
-        del processes[j]
-        if pipe_stdout:
-          std_outs += [(idx, out)]
-        if check and finished_process.returncode != 0:
-          if out:
-            logger.info(out)
-          if err:
-            logger.error(err)
-
-          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
-        num_completed += 1
-
-  # If processes finished out of order, sort the results to the order of the input.
-  std_outs.sort(key=lambda x: x[0])
-  return [x[1] for x in std_outs]
+  if route_stdout_to_temp_files_suffix:
+    # If processes finished out of order, sort the results to the order of the input.
+    std_outs.sort(key=lambda x: x[0])
+    return [x[1] for x in std_outs]
 
 
 def check_call(cmd, *args, **kw):
@@ -328,6 +328,7 @@ def env_with_node_in_path():
   return env
 
 
+@memoize
 def check_node_version():
   try:
     actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
@@ -336,10 +337,31 @@ def check_node_version():
     version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
+    return
 
   if version < MINIMUM_NODE_VERSION:
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
+
+  return version
+
+
+def node_bigint_flags():
+  node_version = check_node_version()
+  # wasm bigint was enabled by default in node v16.
+  if node_version and node_version < (16, 0, 0):
+    return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
+def node_pthread_flags():
+  node_version = check_node_version()
+  # bulk memory and wasm threads were enabled by default in node v16.
+  if node_version and node_version < (16, 0, 0):
+    return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
+  else:
+    return []
 
 
 @memoize
@@ -505,6 +527,7 @@ def replace_or_append_suffix(filename, new_suffix):
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
 # temp directory (TEMP_DIR/emscripten_temp).
+@memoize
 def get_emscripten_temp_dir():
   """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global EMSCRIPTEN_TEMP_DIR
@@ -514,7 +537,7 @@ def get_emscripten_temp_dir():
     if not DEBUG_SAVE:
       def prepare_to_clean_temp(d):
         def clean_temp():
-          try_delete(d)
+          utils.delete_dir(d)
 
         atexit.register(clean_temp)
       # this global var might change later
@@ -559,6 +582,7 @@ def setup_temp_dirs():
       atexit.register(lock.release)
 
 
+@memoize
 def get_temp_files():
   if DEBUG_SAVE:
     # In debug mode store all temp files in the emscripten-specific temp dir
@@ -646,7 +670,7 @@ def strip_prefix(string, prefix):
 
 
 def make_writable(filename):
-  assert(os.path.isfile(filename))
+  assert os.path.isfile(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IWUSR)
 
@@ -724,7 +748,6 @@ set_version_globals()
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
-LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))

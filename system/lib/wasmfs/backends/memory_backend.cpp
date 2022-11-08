@@ -45,26 +45,26 @@ std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
   return nullptr;
 }
 
-bool MemoryDirectory::removeChild(const std::string& name) {
+int MemoryDirectory::removeChild(const std::string& name) {
   auto entry = findEntry(name);
   if (entry != entries.end()) {
     entry->child->locked().setParent(nullptr);
     entries.erase(entry);
   }
-  return true;
+  return 0;
 }
 
-std::vector<Directory::Entry> MemoryDirectory::getEntries() {
+Directory::MaybeEntries MemoryDirectory::getEntries() {
   std::vector<Directory::Entry> result;
   result.reserve(entries.size());
   for (auto& [name, child] : entries) {
     result.push_back({name, child->kind, child->getIno()});
   }
-  return result;
+  return {result};
 }
 
-bool MemoryDirectory::insertMove(const std::string& name,
-                                 std::shared_ptr<File> file) {
+int MemoryDirectory::insertMove(const std::string& name,
+                                std::shared_ptr<File> file) {
   auto& oldEntries =
     std::static_pointer_cast<MemoryDirectory>(file->locked().getParent())
       ->entries;
@@ -74,9 +74,9 @@ bool MemoryDirectory::insertMove(const std::string& name,
       break;
     }
   }
-  removeChild(name);
+  (void)removeChild(name);
   insertChild(name, file);
-  return true;
+  return 0;
 }
 
 std::string MemoryDirectory::getName(std::shared_ptr<File> file) {

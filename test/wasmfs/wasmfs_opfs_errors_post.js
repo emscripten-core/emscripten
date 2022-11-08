@@ -24,6 +24,14 @@ async function run_test() {
     throw "Unexpected failure opening file for reading only";
   }
 
+  if (Module._try_truncate() != 0) {
+    throw "Did not get expected EIO when resizing file";
+  }
+
+  if (Module._try_unlink() != 0) {
+    throw "Did not get expected EIO when unlinking file";
+  }
+
   await access.close();
 
   // We can open the file in any mode now that there is no open access
@@ -39,6 +47,23 @@ async function run_test() {
 
   if (Module._try_open_rdonly() != 1) {
     throw "Unexpected failure opening file for reading";
+  }
+
+  if (Module._try_truncate() != 1) {
+    throw "Unexpected failure when resizing file";
+  }
+
+  if (Module._try_oob_read() != 0) {
+    throw "Did not get expected EINVAL doing out of bounds read";
+  }
+
+  if (Module._try_oob_write() != 0) {
+    throw "Did not get expected EINVAL doing out of bounds write";
+  }
+
+  if (Module._try_unlink() != 1) {
+    throw "Did not succeed to unlink the file (which should work now that " +
+          "nothing prevents it)";
   }
 
   Module._report_result(0);

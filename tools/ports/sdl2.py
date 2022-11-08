@@ -22,11 +22,12 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
+  ports.fetch_project('sdl2', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
-    source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
+    src_dir = os.path.join(ports.get_dir(), 'sdl2', SUBDIR)
+    source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
 
     # build
@@ -65,23 +66,12 @@ def get(ports, settings, shared):
     thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
-    commands = []
-    o_s = []
-    build_dir = ports.clear_project_build('sdl2')
-    for src in srcs:
-      o = os.path.join(build_dir, 'src', shared.replace_suffix(src, '.o'))
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      command = [shared.EMCC,
-                 '-sUSE_SDL=0',
-                 '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
-                 '-o', o, '-I' + ports.get_include_dir('SDL2'),
-                 '-O2', '-w']
-      if settings.USE_PTHREADS:
-        command += ['-sUSE_PTHREADS']
-      commands.append(command)
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
+    flags = ['-sUSE_SDL=0']
+    includes = [ports.get_include_dir('SDL2')]
+    if settings.USE_PTHREADS:
+      flags += ['-sUSE_PTHREADS']
+    ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
@@ -91,6 +81,7 @@ def clear(ports, settings, shared):
 
 
 def linker_setup(ports, settings):
+  # TODO(sbc): Move these into native code use EM_JS_DEPS macro.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
 
 

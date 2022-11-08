@@ -3,63 +3,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-import shutil
 import tempfile
 import atexit
-import stat
 import sys
 
-
-def try_delete(pathnames):
-  if isinstance(pathnames, list):
-    for pathname in pathnames:
-      try_delete_one(pathname)
-  else:
-    try_delete_one(pathnames)
-
-
-# Attempts to delete given possibly nonexisting or read-only directory tree or filename.
-# If any failures occur, the function silently returns without throwing an error.
-def try_delete_one(pathname):
-  try:
-    os.unlink(pathname)
-  except OSError:
-    pass
-  if not os.path.exists(pathname):
-    return
-  try:
-    shutil.rmtree(pathname, ignore_errors=True)
-  except IOError:
-    pass
-  if not os.path.exists(pathname):
-    return
-
-  # Ensure all files are readable and writable by the current user.
-  permission_bits = stat.S_IWRITE | stat.S_IREAD
-
-  def is_writable(path):
-    return (os.stat(path).st_mode & permission_bits) != permission_bits
-
-  def make_writable(path):
-    os.chmod(path, os.stat(path).st_mode | permission_bits)
-
-  # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
-  # them. Force-make everything writable in the subdirectory to make it
-  # removable and re-attempt.
-  if not is_writable(pathname):
-    make_writable(pathname)
-
-  if os.path.isdir(pathname):
-    for directory, subdirs, files in os.walk(pathname):
-      for item in files + subdirs:
-        i = os.path.join(directory, item)
-        make_writable(i)
-
-  try:
-    shutil.rmtree(pathname, ignore_errors=True)
-  except IOError:
-    pass
+from . import utils
 
 
 class TempFiles:
@@ -91,9 +39,9 @@ class TempFiles:
         self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
         return self_.file.name
 
-      def __exit__(self_, type, value, traceback):
+      def __exit__(self_, _type, _value, _traceback):
         if not self.save_debug_files:
-          try_delete(self_.file.name)
+          utils.delete_file(self_.file.name)
     return TempFileObject()
 
   def get_dir(self):
@@ -107,5 +55,5 @@ class TempFiles:
       print(f'not cleaning up temp files since in debug-save mode, see them in {self.tmpdir}', file=sys.stderr)
       return
     for filename in self.to_clean:
-      try_delete(filename)
+      utils.delete_file(filename)
     self.to_clean = []

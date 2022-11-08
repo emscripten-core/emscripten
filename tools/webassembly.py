@@ -109,6 +109,7 @@ class OpCode(IntEnum):
   F32_CONST = 0x43
   F64_CONST = 0x44
   I32_ADD = 0x6a
+  I64_ADD = 0x6b
   REF_NULL = 0xd0
   ATOMIC_PREFIX = 0xfe
   MEMORY_PREFIX = 0xfc
@@ -197,7 +198,7 @@ class Module:
   def __enter__(self):
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb): # noqa
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.buf:
       self.buf.close()
       self.buf = None
@@ -239,7 +240,7 @@ class Module:
         args.append(self.read_uleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
-      elif opcode in (OpCode.END,):
+      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
         pass
       else:
         raise Exception('unexpected opcode %s' % opcode)
@@ -272,6 +273,7 @@ class Module:
       yield Section(section_type, section_size, section_offset, name)
       offset = section_offset + section_size
 
+  @memoize
   def get_types(self):
     type_section = self.get_section(SecType.TYPE)
     if not type_section:
@@ -280,17 +282,21 @@ class Module:
     num_types = self.read_uleb()
     types = []
     for _ in range(num_types):
-      params = []
-      returns = []
       type_form = self.read_byte()
       assert type_form == 0x60
+
+      params = []
       num_params = self.read_uleb()
       for _ in range(num_params):
         params.append(self.read_type())
+
+      returns = []
       num_returns = self.read_uleb()
       for _ in range(num_returns):
         returns.append(self.read_type())
+
       types.append(FuncType(params, returns))
+
     return types
 
   def parse_features_section(self):
@@ -365,7 +371,7 @@ class Module:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
           self.skip(subsection_size)
-        assert(self.tell() == end)
+        assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
 
@@ -503,39 +509,55 @@ class Module:
 
     return tables
 
+  @memoize
+  def get_function_types(self):
+    function_section = self.get_section(SecType.FUNCTION)
+    if not function_section:
+      return []
+
+    self.seek(function_section.offset)
+    num_types = self.read_uleb()
+    func_types = []
+    for _ in range(num_types):
+      func_types.append(self.read_uleb())
+    return func_types
+
   def has_name_section(self):
     return self.get_custom_section('name') is not None
 
   @once
   def _calc_indexes(self):
-    self.num_imported_funcs = 0
-    self.num_imported_globals = 0
-    self.num_imported_memories = 0
-    self.num_imported_tables = 0
-    self.num_imported_tags = 0
+    self.imports_by_kind = {}
     for i in self.get_imports():
-      if i.kind == ExternType.FUNC:
-        self.num_imported_funcs += 1
-      elif i.kind == ExternType.GLOBAL:
-        self.num_imported_globals += 1
-      elif i.kind == ExternType.MEMORY:
-        self.num_imported_memories += 1
-      elif i.kind == ExternType.TABLE:
-        self.num_imported_tables += 1
-      elif i.kind == ExternType.TAG:
-        self.num_imported_tags += 1
-      else:
-        assert False, 'unhandled export type: %s' % i.kind
+      self.imports_by_kind.setdefault(i.kind, [])
+      self.imports_by_kind[i.kind].append(i)
+
+  def num_imported_funcs(self):
+    self._calc_indexes()
+    return len(self.imports_by_kind.get(ExternType.FUNC, []))
+
+  def num_imported_globals(self):
+    self._calc_indexes()
+    return len(self.imports_by_kind.get(ExternType.GLOBAL, []))
 
   def get_function(self, idx):
     self._calc_indexes()
-    assert idx >= self.num_imported_funcs
-    return self.get_functions()[idx - self.num_imported_funcs]
+    assert idx >= self.num_imported_funcs()
+    return self.get_functions()[idx - self.num_imported_funcs()]
 
   def get_global(self, idx):
     self._calc_indexes()
-    assert idx >= self.num_imported_globals
-    return self.get_globals()[idx - self.num_imported_globals]
+    assert idx >= self.num_imported_globals()
+    return self.get_globals()[idx - self.num_imported_globals()]
+
+  def get_function_type(self, idx):
+    self._calc_indexes()
+    if idx < self.num_imported_funcs():
+      imp = self.imports_by_kind[ExternType.FUNC][idx]
+      func_type = imp.type
+    else:
+      func_type = self.get_function_types()[idx - self.num_imported_funcs()]
+    return self.get_types()[func_type]
 
 
 def parse_dylink_section(wasm_file):

@@ -16,28 +16,13 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('sdl2_ttf', 'https://github.com/libsdl-org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_ttf', f'https://github.com/libsdl-org/SDL_ttf/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
-
-    srcs = ['SDL_ttf.c']
-    commands = []
-    o_s = []
-
-    build_dir = ports.clear_project_build('sdl2_ttf')
-    for src in srcs:
-      o = os.path.join(build_dir, shared.replace_suffix(src, '.o'))
-      command = [shared.EMCC,
-                 '-c', os.path.join(src_root, src),
-                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE=1', '-sUSE_HARFBUZZ=1', '-o', o, '-w']
-      commands.append(command)
-      o_s.append(o)
-
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
+    ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
   return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
 
@@ -57,4 +42,4 @@ def process_args(ports):
 
 
 def show():
-  return 'SDL2_ttf (USE_SDL_TTF=2; zlib license)'
+  return 'SDL2_ttf (-sUSE_SDL_TTF=2; zlib license)'

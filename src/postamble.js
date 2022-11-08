@@ -167,7 +167,7 @@ function callMain(args) {
     // that if we get here main returned zero.
     var ret = 0;
 #else
-    var ret = entryFunction(argc, argv);
+    var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
 
 #if BENCHMARK
@@ -180,9 +180,23 @@ function callMain(args) {
 #if ASSERTIONS
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
+#if ABORT_ON_WASM_EXCEPTIONS
+  }
+#endif
+#else
+#if ASYNCIFY == 2
+    // The current spec of JSPI returns a promise only if the function suspends
+    // and a plain value otherwise. This will likely change:
+    // https://github.com/WebAssembly/js-promise-integration/issues/11
+    Promise.resolve(ret).then((result) => {
+      exitJS(result, /* implicit = */ true);
+    }).catch((e) => {
+      handleException(e);
+    });
 #else
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
+#endif // ASYNCIFY == 2
     return ret;
   }
   catch (e) {
@@ -208,7 +222,7 @@ function stackCheckInit() {
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
+  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
 #else
   _emscripten_stack_init();
 #endif

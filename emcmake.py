@@ -4,6 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import os
 import sys
 from tools import shared
 from tools import config
@@ -30,15 +31,17 @@ variables so that emcc etc. are used. Typical usage:
     return any(substr in s for s in args)
 
   # Append the Emscripten toolchain file if the user didn't specify one.
-  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
+  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE') and 'CMAKE_TOOLCHAIN_FILE' not in os.environ:
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = config.NODE_JS[0]
-    # In order to allow cmake to run code built with pthreads we need to pass some extra flags to node.
-    # Note that we also need --experimental-wasm-bulk-memory which is true by default and hence not added here
+    node_js = [config.NODE_JS[0]]
+    # In order to allow cmake to run code built with pthreads we need to pass
+    # some extra flags to node.
+    node_js += shared.node_pthread_flags()
+    node_js = ';'.join(node_js)
     # See https://github.com/emscripten-core/emscripten/issues/15522
-    args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js};--experimental-wasm-threads')
+    args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual

@@ -177,6 +177,7 @@ function needsQuoting(ident) {
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
 const POINTER_SHIFT = MEMORY64 ? '3' : '2';
 const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
 

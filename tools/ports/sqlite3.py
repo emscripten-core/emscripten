@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 # sqlite amalgamation download URL uses relase year and tag
@@ -28,17 +27,14 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   release = f'sqlite-amalgamation-{VERSION[0]}{VERSION[1]:02}{VERSION[2]:02}00'
   # TODO: Fetch the file from an emscripten-hosted mirror.
-  ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', release, sha512hash=HASH)
+  ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libsqlite3')
 
     source_path = os.path.join(ports.get_dir(), 'sqlite3', release)
-    dest_path = ports.clear_project_build('sqlite3')
 
-    shutil.copytree(source_path, dest_path)
-
-    ports.install_headers(dest_path)
+    ports.install_headers(source_path)
 
     # flags are based on sqlite-autoconf output.
     # SQLITE_HAVE_ZLIB is only used by shell.c
@@ -76,7 +72,7 @@ def get(ports, settings, shared):
     else:
       flags += ['-DSQLITE_THREADSAFE=0']
 
-    ports.build_port(dest_path, final, flags=flags, exclude_files=['shell.c'])
+    ports.build_port(source_path, final, 'sqlite3', flags=flags, exclude_files=['shell.c'])
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

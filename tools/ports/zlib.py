@@ -4,11 +4,9 @@
 # found in the LICENSE file.
 
 import os
-import shutil
-from pathlib import Path
 
-VERSION = '1.2.12'
-HASH = 'cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14'
+VERSION = '1.2.13'
+HASH = '44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659'
 
 
 def needed(settings):
@@ -16,27 +14,17 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.tar.gz', 'zlib-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('zlib', f'https://github.com/madler/zlib/archive/refs/tags/v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
-    dest_path = ports.clear_project_build('zlib')
-    shutil.copytree(source_path, dest_path)
-    Path(dest_path, 'zconf.h').write_text(zconf_h)
-    ports.install_headers(dest_path)
+    ports.write_file(os.path.join(source_path, 'zconf.h'), zconf_h)
+    ports.install_headers(source_path)
 
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(dest_path, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w', '-c'])
-      o_s.append(o)
-    ports.run_commands(commands)
-
-    ports.create_lib(final, o_s)
+    flags = ['-Wno-deprecated-non-prototype']
+    ports.build_port(source_path, final, 'zlib', srcs=srcs, flags=flags)
 
   return [shared.Cache.get_lib('libz.a', create, what='port')]
 

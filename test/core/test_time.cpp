@@ -150,8 +150,9 @@ int main() {
   mktimeOk = !(
     tm2.tm_sec != tm_local.tm_sec || tm2.tm_min != tm_local.tm_min ||
     tm2.tm_hour != tm_local.tm_hour || tm2.tm_mday != tm_local.tm_mday ||
-    tm2.tm_mon != tm_local.tm_mon || tm2.tm_wday != tm_local.tm_wday ||
-    tm2.tm_yday != tm_local.tm_yday);
+    tm2.tm_mon != tm_local.tm_mon ||  tm2.tm_year != tm_local.tm_year ||
+    tm2.tm_wday != tm_local.tm_wday || tm2.tm_yday != tm_local.tm_yday);
+    
   printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
 
   // Verify that mktime is able to guess what the dst is. It might get it wrong
@@ -248,6 +249,29 @@ int main() {
   check_gmtime_localtime(-2147483649);
   check_gmtime_localtime(253402300799); // end of year 9999
   check_gmtime_localtime(-62135596800); // beginning of year 1
+
+  // check that localtime sets tm_yday correctly whenever the day rolls over (issue #17635)
+  // prior to being fixed, tm_yday did not increment correctly at epoch time 1049061599 (2003-03-31 00:00:00) in CET time
+  // assumes other tests already verified other aspects of localtime
+  {
+    struct tm prev_tm;
+    time_t test = xmas2002;
+    localtime_r(&test, &prev_tm);
+
+    for (int i = 1; i < 2*24*366; ++i) {
+      struct tm this_tm;
+      test = xmas2002 + 30*60*i;
+      localtime_r(&test, &this_tm);
+
+      if (this_tm.tm_year != prev_tm.tm_year) {
+        assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); //flipped over to 2003, 2002 was non-leap
+      } else if(this_tm.tm_mday != prev_tm.tm_mday) {
+        assert(this_tm.tm_yday == prev_tm.tm_yday + 1);
+      }
+
+      prev_tm = this_tm;
+    }
+  }
 
   puts("success");
   return 0;

@@ -143,11 +143,11 @@ Directory::Handle::insertSymlink(const std::string& name,
 // TODO: consider moving this to be `Backend::move` to avoid asymmetry between
 // the source and destination directories and/or taking `Directory::Handle`
 // arguments to prove that the directories have already been locked.
-bool Directory::Handle::insertMove(const std::string& name,
-                                   std::shared_ptr<File> file) {
+int Directory::Handle::insertMove(const std::string& name,
+                                  std::shared_ptr<File> file) {
   // Cannot insert into an unlinked directory.
   if (!getParent()) {
-    return false;
+    return -EPERM;
   }
 
   // Look up the file in its old parent's cache.
@@ -161,8 +161,8 @@ bool Directory::Handle::insertMove(const std::string& name,
   // involving the backend.
 
   // Attempt the move.
-  if (!getDir()->insertMove(name, file)) {
-    return false;
+  if (auto err = getDir()->insertMove(name, file)) {
+    return err;
   }
 
   if (oldIt != oldCache.end()) {
@@ -189,26 +189,27 @@ bool Directory::Handle::insertMove(const std::string& name,
   oldParent->locked().setMTime(now);
   setMTime(now);
 
-  return true;
+  return 0;
 }
 
-bool Directory::Handle::removeChild(const std::string& name) {
+int Directory::Handle::removeChild(const std::string& name) {
   auto& dcache = getDir()->dcache;
   auto entry = dcache.find(name);
   // If this is a mount, we don't need to call into the backend.
   if (entry != dcache.end() && entry->second.kind == DCacheKind::Mount) {
     dcache.erase(entry);
-    return true;
+    return 0;
   }
-  if (!getDir()->removeChild(name)) {
-    return false;
+  if (auto err = getDir()->removeChild(name)) {
+    assert(err < 0);
+    return err;
   }
   if (entry != dcache.end()) {
     entry->second.file->locked().setParent(nullptr);
     dcache.erase(entry);
   }
   setMTime(time(NULL));
-  return true;
+  return 0;
 }
 
 std::string Directory::Handle::getName(std::shared_ptr<File> file) {
@@ -224,7 +225,7 @@ std::string Directory::Handle::getName(std::shared_ptr<File> file) {
   return "";
 }
 
-size_t Directory::Handle::getNumEntries() {
+ssize_t Directory::Handle::getNumEntries() {
   size_t mounts = 0;
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
@@ -232,16 +233,23 @@ size_t Directory::Handle::getNumEntries() {
       ++mounts;
     }
   }
-  return getDir()->getNumEntries() + mounts;
+  auto numReal = getDir()->getNumEntries();
+  if (numReal < 0) {
+    return numReal;
+  }
+  return numReal + mounts;
 }
 
-std::vector<Directory::Entry> Directory::Handle::getEntries() {
+Directory::MaybeEntries Directory::Handle::getEntries() {
   auto entries = getDir()->getEntries();
+  if (entries.getError()) {
+    return entries;
+  }
   auto& dcache = getDir()->dcache;
   for (auto it = dcache.begin(); it != dcache.end(); ++it) {
     auto& [name, entry] = *it;
     if (entry.kind == DCacheKind::Mount) {
-      entries.push_back({name, entry.file->kind, entry.file->getIno()});
+      entries->push_back({name, entry.file->kind, entry.file->getIno()});
     }
   }
   return entries;

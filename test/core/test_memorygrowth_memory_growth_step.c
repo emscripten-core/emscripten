@@ -20,7 +20,7 @@ int get_memory_size() {
 int main() {
 
   // INITIAL_MEMORY=64Mb
-  // TOTAL_STACK=1Mb
+  // STACK_SIZE=1Mb
   // MAXIMUM_MEMORY=130Mb
   // MEMORY_GROWTH_LINEAR_STEP=1Mb
 

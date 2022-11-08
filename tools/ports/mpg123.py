@@ -4,9 +4,7 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
-from pathlib import Path
 
 TAG = '1.26.2'
 HASH = 'aa63fcb08b243a1e09f7701b3d84a19d7412a87253d54d49f014fdb9e75bbc81d152a41ed750fccde901453929b2a001585a7645351b41845ad205c17a73dcc9'
@@ -17,31 +15,31 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('mpg123', 'https://www.mpg123.de/download/mpg123-1.26.2.tar.bz2', 'mpg123-' + TAG, sha512hash=HASH)
+  ports.fetch_project('mpg123', f'https://www.mpg123.de/download/mpg123-{TAG}.tar.bz2', sha512hash=HASH)
 
-  def create(output_path):
+  def create(final):
     logging.info('building port: mpg123')
 
     source_path = os.path.join(ports.get_dir(), 'mpg123', 'mpg123-' + TAG)
-    dest_path = ports.clear_project_build('mpg123')
 
-    sauce_path = os.path.join(dest_path, 'src')
-    libmpg123_path = os.path.join(sauce_path, 'libmpg123')
-    compat_path = os.path.join(sauce_path, 'compat')
+    src_path = os.path.join(source_path, 'src')
+    libmpg123_path = os.path.join(src_path, 'libmpg123')
+    compat_path = os.path.join(src_path, 'compat')
 
-    shutil.copytree(source_path, dest_path)
-    Path(sauce_path, 'config.h').write_text(config_h)
-    Path(libmpg123_path, 'mpg123.h').write_text(mpg123_h)
+    ports.write_file(os.path.join(src_path, 'config.h'), config_h)
+    ports.write_file(os.path.join(libmpg123_path, 'mpg123.h'), mpg123_h)
+
+    # copy header to a location so it can be used as 'MPG123/'
+    ports.install_headers(libmpg123_path, pattern="*123.h", target='')
 
     flags = [
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
       '-O2',
       '-fomit-frame-pointer',
-      '-funroll-all-loops',
       '-finline-functions',
       '-ffast-math',
-      '-I' + sauce_path,
+      '-I' + src_path,
       '-I' + compat_path,
       '-I' + libmpg123_path,
     ]
@@ -76,19 +74,7 @@ def get(ports, settings, shared):
       os.path.join(compat_path, 'compat_str.c'),
     ]
 
-    commands = []
-    objects = []
-
-    for src in srcs:
-      obj = src + '.o'
-      commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + flags)
-      objects.append(obj)
-
-    ports.run_commands(commands)
-    ports.create_lib(output_path, objects)
-
-    # copy header to a location so it can be used as 'MPG123/'
-    ports.install_headers(libmpg123_path, pattern="*123.h", target='')
+    ports.build_port(source_path, final, 'mpg123', flags=flags, srcs=srcs)
 
   return [shared.Cache.get_lib('libmpg123.a', create, what='port')]
 

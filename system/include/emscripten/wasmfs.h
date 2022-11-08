@@ -50,6 +50,9 @@ backend_t wasmfs_create_node_backend(const char* root);
 
 backend_t wasmfs_create_opfs_backend(void);
 
+backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
+                                      void* arg);
+
 // Hooks
 
 // A hook users can do to run code during WasmFS startup. This hook happens

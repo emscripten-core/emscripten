@@ -38,6 +38,7 @@ var SIDE_MODULE_IMPORTS = [];
 // programs contains EM_JS or EM_ASM data section, in which case these symbols
 // won't exist.
 var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm',
+                         '__start_em_lib_deps', '__stop_em_lib_deps',
                          '__start_em_js', '__stop_em_js'];
 
 // Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
@@ -217,8 +218,8 @@ var GENERATE_DWARF = false;
 
 // Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
 // memory layout is fixed in the wasm binary at link time.
-var STACK_BASE = 0;
-var STACK_MAX = 0;
+var STACK_HIGH = 0;
+var STACK_LOW = 0;
 var HEAP_BASE = 0;
 
 // Used internally. set when there is a main() function.

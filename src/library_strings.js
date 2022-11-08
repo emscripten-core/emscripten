@@ -52,8 +52,10 @@ mergeInto(LibraryManager.library, {
 #endif
 #if TEXTDECODER
     var endPtr = ptr;
-    // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
-    // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
+    // TextDecoder needs to know the byte length in advance, it doesn't stop on
+    // null terminator by itself.
+    // Also, use the length info to avoid running tiny strings through
+    // TextDecoder, since .subarray() allocates garbage.
     var idx = endPtr >> 1;
     var maxIdx = idx + maxBytesToRead / 2;
     // If maxBytesToRead is not passed explicitly, it will be undefined, and this
@@ -62,28 +64,28 @@ mergeInto(LibraryManager.library, {
     endPtr = idx << 1;
 
 #if TEXTDECODER != 2
-    if (endPtr - ptr > 32 && UTF16Decoder) {
+    if (endPtr - ptr > 32 && UTF16Decoder)
 #endif // TEXTDECODER != 2
       return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'endPtr') }}});
+#endif // TEXTDECODER
+
 #if TEXTDECODER != 2
-    } else {
-#endif // TEXTDECODER != 2
-#endif // TEXTDECODER
-      var str = '';
+    // Fallback: decode without UTF16Decoder
+    var str = '';
 
-      // If maxBytesToRead is not passed explicitly, it will be undefined, and the for-loop's condition
-      // will always evaluate to true. The loop is then terminated on the first null char.
-      for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
-        var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
-        if (codeUnit == 0) break;
-        // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
-        str += String.fromCharCode(codeUnit);
-      }
-
-      return str;
-#if TEXTDECODER && TEXTDECODER != 2
+    // If maxBytesToRead is not passed explicitly, it will be undefined, and the
+    // for-loop's condition will always evaluate to true. The loop is then
+    // terminated on the first null char.
+    for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
+      var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+      if (codeUnit == 0) break;
+      // fromCharCode constructs a character from a UTF-16 code unit, so we can
+      // pass the UTF16 string right through.
+      str += String.fromCharCode(codeUnit);
     }
-#endif // TEXTDECODER
+
+    return str;
+#endif // TEXTDECODER != 2
   },
 
   // Copies the given Javascript String object 'str' to the emscripten HEAP at

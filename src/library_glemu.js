@@ -454,7 +454,7 @@ var LibraryGLEmulation = {
       _glShaderSource = _emscripten_glShaderSource = (shader, count, string, length) => {
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
-        out("glShaderSource: Input: \n" + source);
+        dbg("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
         // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
@@ -558,7 +558,7 @@ var LibraryGLEmulation = {
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
-        out("glShaderSource: Output: \n" + source);
+        dbg("glShaderSource: Output: \n" + source);
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
@@ -569,10 +569,10 @@ var LibraryGLEmulation = {
         GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
         if (!GLctx.getShaderParameter(GL.shaders[shader], GLctx.COMPILE_STATUS)) {
-          err('Failed to compile shader: ' + GLctx.getShaderInfoLog(GL.shaders[shader]));
-          err('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
-          err('Original source: ' + GL.shaderOriginalSources[shader]);
-          err('Source: ' + GL.shaderSources[shader]);
+          dbg('Failed to compile shader: ' + GLctx.getShaderInfoLog(GL.shaders[shader]));
+          dbg('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
+          dbg('Original source: ' + GL.shaderOriginalSources[shader]);
+          dbg('Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
         }
 #endif
@@ -605,11 +605,11 @@ var LibraryGLEmulation = {
       _glUseProgram = _emscripten_glUseProgram = (program) => {
 #if GL_DEBUG
         if (GL.debug) {
-          err('[using program with shaders]');
+          dbg('[using program with shaders]');
           if (program) {
             GL.programShaders[program].forEach(function(shader) {
-              err('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
-              err('         Source: ' + GL.shaderSources[shader]);
+              dbg('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
+              dbg('         Source: ' + GL.shaderSources[shader]);
             });
           }
         }
@@ -2166,7 +2166,7 @@ var LibraryGLEmulation = {
       var renderer = keyView.get();
       if (!renderer) {
 #if GL_DEBUG
-        err('generating renderer for ' + JSON.stringify(attributes));
+        dbg('generating renderer for ' + JSON.stringify(attributes));
 #endif
         renderer = GLImmediate.createRenderer();
         GLImmediate.currentRenderer = renderer;
@@ -3678,7 +3678,7 @@ var LibraryGLEmulation = {
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
-    if (GL.debug) err('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    if (GL.debug) dbg('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;

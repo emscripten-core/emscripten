@@ -5,7 +5,6 @@
 
 import logging
 import os
-import shutil
 
 TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
@@ -22,31 +21,22 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
-                      'regal-' + TAG, sha512hash=HASH)
+  ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: regal')
-    dest_path = ports.clear_project_build('regal')
+    source_path = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG)
 
     # copy sources
     # only what is needed is copied: regal, boost, lookup3
-    source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
-    dest_path_src = os.path.join(dest_path, 'src')
+    source_path_src = os.path.join(source_path, 'src')
 
     source_path_regal = os.path.join(source_path_src, 'regal')
     source_path_boost = os.path.join(source_path_src, 'boost')
     source_path_lookup3 = os.path.join(source_path_src, 'lookup3')
-    dest_path_regal = os.path.join(dest_path_src, 'regal')
-    dest_path_boost = os.path.join(dest_path_src, 'boost')
-    dest_path_lookup3 = os.path.join(dest_path_src, 'lookup3')
-
-    shutil.copytree(source_path_regal, dest_path_regal)
-    shutil.copytree(source_path_boost, dest_path_boost)
-    shutil.copytree(source_path_lookup3, dest_path_lookup3)
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
+    source_path_include = os.path.join(source_path, 'include', 'GL')
     ports.install_headers(source_path_include, target='GL')
 
     # build
@@ -105,37 +95,28 @@ def get(ports, settings, shared):
                   'regal/RegalX11.cpp',
                   'regal/RegalDllMain.cpp']
 
-    commands = []
-    o_s = []
+    srcs_regal = [os.path.join(source_path_src, s) for s in srcs_regal]
 
-    for src in srcs_regal:
-      c = os.path.join(dest_path_src, src)
-      o = os.path.join(dest_path_src, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
+    flags = [
+      '-DNDEBUG',
+      '-DREGAL_LOG=0',  # Set to 1 if you need to have some logging info
+      '-DREGAL_MISSING=0',  # Set to 1 if you don't want to crash in case of missing GL implementation
+      '-std=gnu++14',
+      '-fno-rtti',
+      '-fno-exceptions', # Disable exceptions (in STL containers mostly), as they are not used at all
+      '-O3',
+      '-I' + source_path_regal,
+      '-I' + source_path_lookup3,
+      '-I' + source_path_boost,
+      '-Wall',
+      '-Werror',
+      '-Wno-deprecated-register',
+      '-Wno-unused-parameter'
+    ]
+    if settings.USE_PTHREADS:
+      flags += ['-pthread']
 
-      command = [shared.EMCC, '-c', c,
-                 '-DNDEBUG',
-                 '-DREGAL_LOG=0',  # Set to 1 if you need to have some logging info
-                 '-DREGAL_MISSING=0',  # Set to 1 if you don't want to crash in case of missing GL implementation
-                 '-fno-rtti',
-                 '-fno-exceptions', # Disable exceptions (in STL containers mostly), as they are not used at all
-                 '-O3',
-                 '-o', o,
-                 '-I' + dest_path_regal,
-                 '-I' + dest_path_lookup3,
-                 '-I' + dest_path_boost,
-                 '-Wall',
-                 '-Werror',
-                 '-Wno-deprecated-register',
-                 '-Wno-unused-parameter']
-      if settings.USE_PTHREADS:
-        command += ['-pthread']
-      commands.append(command)
-
-      o_s.append(o)
-
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    ports.build_port(source_path_src, final, 'regal', srcs=srcs_regal, flags=flags)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

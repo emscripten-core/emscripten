@@ -384,7 +384,7 @@ var LibraryGL = {
           var extension = GLctx.getExtension("OES_standard_derivatives");
 #if GL_DEBUG
           if (!extension) {
-            err("Shader attempts to use the standard derivatives extension which is not available.");
+            dbg("Shader attempts to use the standard derivatives extension which is not available.");
           }
 #endif
         }
@@ -675,7 +675,7 @@ var LibraryGL = {
 #if GL_DEBUG
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
-        err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
+        dbg('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
         return 0;
       }
 #else
@@ -1036,7 +1036,7 @@ var LibraryGL = {
 #else
 
 #if GL_DEBUG
-      if (webGLContextAttributes.renderViaOffscreenBackBuffer) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -sOFFSCREEN_FRAMEBUFFER to enable support!');
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) dbg('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -sOFFSCREEN_FRAMEBUFFER to enable support!');
 #endif
 
 #endif
@@ -1047,9 +1047,9 @@ var LibraryGL = {
 #if GL_DEBUG
       if (contextHandle && !GL.contexts[contextHandle]) {
 #if USE_PTHREADS
-        err('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
+        dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
 #else
-        err('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
+        dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
 #endif
       }
 #endif
@@ -3097,13 +3097,13 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 #if GL_DEBUG
-    out('Input shader source: ' + source);
+    dbg('Input shader source: ' + source);
 #endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
     source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
 #if GL_DEBUG
-    out('Shader source after preprocessing: ' + source);
+    dbg('Shader source after preprocessing: ' + source);
 #endif
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 
@@ -3132,8 +3132,8 @@ var LibraryGL = {
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
 
 #if GL_DEBUG
-    out('Shader source after removing layout location directives: ' + source);
-    out('Explicit uniform locations recorded in the shader:');
+    dbg('Shader source after removing layout location directives: ' + source);
+    dbg('Explicit uniform locations recorded in the shader:');
     console.dir(explicitUniformLocations);
 #endif
 
@@ -3192,10 +3192,10 @@ var LibraryGL = {
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
-    out('Shader source after removing layout binding directives: ' + source);
-    out('Sampler binding locations recorded in the shader:');
+    dbg('Shader source after removing layout binding directives: ' + source);
+    dbg('Sampler binding locations recorded in the shader:');
     console.dir(samplerBindings);
-    out('Uniform binding locations recorded in the shader:');
+    dbg('Uniform binding locations recorded in the shader:');
     console.dir(uniformBindings);
 #endif
 
@@ -3227,7 +3227,7 @@ var LibraryGL = {
     GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
     var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
-    if (log) err('glCompileShader: ' + log);
+    if (log) dbg('glCompileShader: ' + log);
 #endif
   },
 
@@ -3412,8 +3412,8 @@ var LibraryGL = {
     GLctx.linkProgram(program);
 #if GL_DEBUG
     var log = (GLctx.getProgramInfoLog(program) || '').trim();
-    if (log) err('glLinkProgram: ' + log);
-    if (program.uniformLocsById) out('glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
+    if (log) dbg('glLinkProgram: ' + log);
+    if (program.uniformLocsById) dbg('glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
 #endif
     // Invalidate earlier computed uniform->ID mappings, those have now become stale
     program.uniformLocsById = 0; // Mark as null-like so that glGetUniformLocation() knows to populate this again.
@@ -3429,7 +3429,7 @@ var LibraryGL = {
         // the array sizes will get populated to correct sizes.
         program.uniformSizeAndIdsByName[shaderLocation] = [1, loc];
 #if GL_DEBUG
-        out('Marking uniform ' + loc + ' to location ' + shaderLocation);
+        dbg('Marking uniform ' + loc + ' to location ' + shaderLocation);
 #endif
 
         // Make sure we will never automatically assign locations within the range
@@ -3486,7 +3486,7 @@ var LibraryGL = {
           for(var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
 #if GL_DEBUG
-            out('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
+            dbg('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
 #endif
             GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
           }
@@ -3499,7 +3499,7 @@ var LibraryGL = {
         var bindings = p.explicitSamplerBindings[sampler];
         for(var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG
-          out('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
+          dbg('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif
           GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? '['+i+']' : '')), bindings[0]+i);
         }
@@ -4021,8 +4021,18 @@ var LibraryGL = {
   glMapBufferRange__sig: 'iiiii',
   glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glMapBufferRange: function(target, offset, length, access) {
-    if (access != 0x1A && access != 0xA) {
-      err("glMapBufferRange is only supported when access is MAP_WRITE|INVALIDATE_BUFFER");
+    if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
+      err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
+      return 0;
+    }
+
+    if ((access & 0x2/*GL_MAP_WRITE_BIT*/) == 0) {
+      err("glMapBufferRange access must include MAP_WRITE");
+      return 0;
+    }
+
+    if ((access & (0x4/*GL_MAP_INVALIDATE_BUFFER_BIT*/ | 0x8/*GL_MAP_INVALIDATE_RANGE_BIT*/)) == 0) {
+      err("glMapBufferRange access must include INVALIDATE_BUFFER or INVALIDATE_RANGE");
       return 0;
     }
 

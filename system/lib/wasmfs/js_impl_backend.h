@@ -82,7 +82,7 @@ class JSImplFile : public DataFile {
 
   // TODO: Notify the JS about open and close events?
   int open(oflags_t) override { return 0; }
-  void close() override {}
+  int close() override { return 0; }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return _wasmfs_jsimpl_write(
@@ -94,13 +94,13 @@ class JSImplFile : public DataFile {
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }
 
-  void flush() override {}
+  int flush() override { return 0; }
 
-  size_t getSize() override {
+  off_t getSize() override {
     return _wasmfs_jsimpl_get_size(getBackendIndex(), getFileIndex());
   }
 
-  void setSize(size_t size) override {
+  int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: JSImpl setSize");
   }
 

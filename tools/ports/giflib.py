@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 VERSION = '5.2.1'
@@ -16,18 +15,13 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('giflib', f'https://storage.googleapis.com/webassembly/emscripten-ports/giflib-{VERSION}.tar.gz', f'giflib-{VERSION}', sha512hash=HASH)
+  ports.fetch_project('giflib', f'https://storage.googleapis.com/webassembly/emscripten-ports/giflib-{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: giflib')
-
     source_path = os.path.join(ports.get_dir(), 'giflib', f'giflib-{VERSION}')
-    dest_path = ports.clear_project_build('giflib')
-    shutil.copytree(source_path, dest_path)
-
-    ports.install_headers(dest_path)
-
-    ports.build_port(dest_path, final)
+    ports.install_headers(source_path)
+    ports.build_port(source_path, final, 'giflib')
 
   return [shared.Cache.get_lib('libgif.a', create, what='port')]
 

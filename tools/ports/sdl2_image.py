@@ -19,52 +19,46 @@ def needed(settings):
   return settings.USE_SDL_IMAGE == 2
 
 
-def get(ports, settings, shared):
-  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-  ports.fetch_project('sdl2_image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG, sha512hash=HASH)
-
+def get_lib_name(settings):
   settings.SDL2_IMAGE_FORMATS.sort()
   formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
 
   libname = 'libSDL2_image'
   if formats != '':
     libname += '_' + formats
-  libname += '.a'
+  return libname + '.a'
+
+
+def get(ports, settings, shared):
+  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
+  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
+  ports.fetch_project('sdl2_image', f'https://github.com/emscripten-ports/SDL2_image/archive/{TAG}.zip', sha512hash=HASH)
+  libname = get_lib_name(settings)
 
   def create(final):
     src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'''.split()
-    commands = []
-    o_s = []
-    defs = []
+
+    defs = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
 
     for fmt in settings.SDL2_IMAGE_FORMATS:
       defs.append('-DLOAD_' + fmt.upper())
 
     if 'png' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-sUSE_LIBPNG=1']
+      defs += ['-sUSE_LIBPNG']
 
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
-      defs += ['-sUSE_LIBJPEG=1']
+      defs += ['-sUSE_LIBJPEG']
 
-    build_dir = ports.clear_project_build('sdl2_image')
-    for src in srcs:
-      o = os.path.join(build_dir, shared.replace_suffix(src, '.o'))
-      commands.append([shared.EMCC, '-c', os.path.join(src_dir, src),
-                       '-O2', '-sUSE_SDL=2', '-o', o, '-w'] + defs)
-      o_s.append(o)
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
   return [shared.Cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.get_path('libSDL2_image.a')
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

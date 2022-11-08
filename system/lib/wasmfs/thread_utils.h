@@ -25,9 +25,30 @@ public:
   // Spawn the worker thread.
   ProxyWorker()
     : queue(), thread([&]() {
-        // Process the queue in case any work came in while we were starting up,
-        // then sit in the event loop performing work as it comes in.
-        queue.execute();
+        // Sometimes the main thread is spinning, waiting on a WasmFS lock held
+        // by a thread trying to proxy work to this dedicated worker. In that
+        // case, the proxying message won't be relayed by the main thread and
+        // the system will deadlock. This heartbeat ensures that proxying work
+        // eventually gets done so the thread holding the lock can make forward
+        // progress even if the main thread is blocked.
+        //
+        // TODO: Remove this once we can postMessage directly between workers
+        // without involving the main thread.
+        //
+        // Note that this requires adding _emscripten_proxy_execute_queue to
+        // EXPORTED_FUNCTIONS.
+        EM_ASM({
+          var intervalID =
+            setInterval(() => {
+              if (ABORT) {
+                clearInterval(intervalID);
+              } else {
+                _emscripten_proxy_execute_queue($0);
+              }
+            }, 50);
+          }, queue.queue);
+
+        // Sit in the event loop performing work as it comes in.
         emscripten_exit_with_live_runtime();
       }) {}
 

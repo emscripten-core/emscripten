@@ -83,14 +83,13 @@ def get(ports, settings, shared):
   # Harfbuzz only published `.xz` packages, but not all python builds support
   # unpacking lzma archives, so we mirror a `.gz` version:
   # See https://github.com/emscripten-core/emsdk/issues/982
-  ports.fetch_project('harfbuzz', 'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-' + VERSION + '.tar.gz', 'harfbuzz-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('harfbuzz', f'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')
-    build_path = ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
-    freetype_include = ports.get_include_dir('freetype2/freetype')
+    freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
     # TODO(sbc): Look into HB_TINY, HB_LEAN, HB_MINI options.  Remove
@@ -131,15 +130,17 @@ def get(ports, settings, shared):
     else:
       cflags.append('-DHB_NO_MT')
 
-    commands = []
-    o_s = []
-    for src in srcs:
-      o = os.path.join(build_path, src + '.o')
-      shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.EMCC, '-c', os.path.join(source_path, 'src', src), '-o', o] + cflags)
-      o_s.append(o)
-    ports.run_commands(commands)
-    ports.create_lib(final, o_s)
+    # Letting HarfBuzz enable warnings through pragmas can block compiler
+    # upgrades in situations where say a ToT compiler build adds a new
+    # stricter warning under -Wfoowarning-subgroup. HarfBuzz pragma-enables
+    # -Wfoowarning which default-enables -Wfoowarning-subgroup implicitly but
+    # HarfBuzz upstream is not yet clean of warnings produced for
+    # -Wfoowarning-subgroup. Hence disabling pragma warning control here.
+    # See also: https://github.com/emscripten-core/emscripten/pull/18119
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR')
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_WARNING')
+
+    ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

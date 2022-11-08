@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 TAG = 'release-2.0.4'
@@ -36,17 +35,13 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-  ports.fetch_project('sdl2_mixer', 'https://github.com/libsdl-org/SDL_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
   libname = get_lib_name(settings)
 
   def create(final):
     logging.info('building port: sdl2_mixer')
 
     source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
-    dest_path = ports.clear_project_build('sdl2_mixer')
-
-    shutil.copytree(source_path, dest_path)
-
     flags = [
       '-sUSE_SDL=2',
       '-O2',
@@ -55,20 +50,20 @@ def get(ports, settings, shared):
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-sUSE_VORBIS=1',
+        '-sUSE_VORBIS',
         '-DMUSIC_OGG',
       ]
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
         '-Wno-incompatible-function-pointer-types',
-        '-sUSE_MPG123=1',
+        '-sUSE_MPG123',
         '-DMUSIC_MP3_MPG123',
       ]
 
     if "mod" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-sUSE_MODPLUG=1',
+        '-sUSE_MODPLUG',
         '-DMUSIC_MOD_MODPLUG',
       ]
 
@@ -77,10 +72,11 @@ def get(ports, settings, shared):
         '-DMUSIC_MID_TIMIDITY',
       ]
 
+    build_dir = ports.clear_project_build('sdl2_mixer')
     ports.build_port(
-      dest_path,
+      source_path,
       final,
-      includes=[],
+      build_dir,
       flags=flags,
       exclude_files=[
         'playmus.c',

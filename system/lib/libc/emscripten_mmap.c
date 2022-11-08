@@ -28,14 +28,23 @@ struct map {
   struct map* next;
 } __attribute__((aligned (1)));
 
+#define ALIGN_TO(value,alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
+
 // Linked list of all mapping, guarded by a musl-style lock (LOCK/UNLOCK)
 static volatile int lock[1];
 static struct map* mappings;
 
 // JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-intptr_t _mmap_js(size_t length, int prot, int flags, int fd, size_t offset, int* allocated);
+int _mmap_js(size_t length,
+             int prot,
+             int flags,
+             int fd,
+             size_t offset,
+             int* allocated,
+             void** addr);
 int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
-int _msync_js(intptr_t addr, size_t length, int flags, int fd);
+int _msync_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
 
 static struct map* find_mapping(intptr_t addr, struct map** prev) {
   struct map* map = mappings;
@@ -104,7 +113,7 @@ int __syscall_msync(intptr_t addr, size_t len, int flags) {
   if (map->flags & MAP_ANONYMOUS) {
     return 0;
   }
-  return _msync_js(addr, len, map->flags, map->fd);
+  return _msync_js(addr, len, map->prot, map->flags, map->fd, map->offset);
 }
 
 intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
@@ -120,24 +129,25 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
   // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
   // In this case fd argument is ignored.
   if (flags & MAP_ANONYMOUS) {
+    size_t alloc_len = ALIGN_TO(len, 16);
     // For anonymous maps, allocate that mapping at the end of the region.
-    void* ptr = emscripten_builtin_memalign(WASM_PAGE_SIZE, len + sizeof(struct map));
+    void* ptr = emscripten_builtin_memalign(WASM_PAGE_SIZE, alloc_len + sizeof(struct map));
     if (!ptr) {
       return -ENOMEM;
     }
-    memset(ptr, 0, len);
-    new_map = (struct map*)((char*)ptr + len);
+    memset(ptr, 0, alloc_len);
+    new_map = (struct map*)((char*)ptr + alloc_len);
     new_map->addr = ptr;
     new_map->fd = -1;
     new_map->allocated = true;
   } else {
     new_map = emscripten_builtin_malloc(sizeof(struct map));
-    long rtn = _mmap_js(len, prot, flags, fd, off, &new_map->allocated);
+    int rtn =
+      _mmap_js(len, prot, flags, fd, off, &new_map->allocated, &new_map->addr);
     if (rtn < 0) {
       emscripten_builtin_free(new_map);
       return rtn;
     }
-    new_map->addr = (void*)rtn;
     new_map->fd = fd;
   }
 

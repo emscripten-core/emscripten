@@ -13,9 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "em_task_queue.h"
 #include "proxying_notification_state.h"
-
-#define TASK_QUEUE_INITIAL_CAPACITY 128
 
 // Proxy Queue Lifetime Management
 // -------------------------------
@@ -59,139 +58,14 @@
 // constructor is a nice place to do it because scanning there is sufficient to
 // keep the number of zombie queues from growing without bound; creating a new
 // zombie ultimately requires creating a new queue.
-
-typedef struct task {
-  void (*func)(void*);
-  void* arg;
-} task;
-
-// A task queue for a particular thread. Organized into a linked list of
-// task_queues for different threads.
-typedef struct task_queue {
-  // Flag encoding the state of postMessage notifications for this task queue.
-  // Accessed directly from JS, so must be the first member.
-  _Atomic notification_state notification;
-  // Protects all modifications to mutable `task_queue` state.
-  pthread_mutex_t mutex;
-  // The target thread for this task_queue. Immutable and accessible without
-  // acquiring the mutex.
-  pthread_t thread;
-  // Recursion guard. Only accessed on the target thread, so there's no need to
-  // hold the lock when accessing it. TODO: We disallow recursive processing
-  // because that's what the old proxying API does, so it is safer to start with
-  // the same behavior. Experiment with relaxing this restriction once the old
-  // API uses these queues as well.
-  int processing;
-  // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
-  // `tail` and dequeued at `head`.
-  task* tasks;
-  int capacity;
-  int head;
-  int tail;
-} task_queue;
-
-
-// Send a postMessage notification containing the task_queue pointer to the
-// target thread so it will execute the queue when it returns to the event loop.
-// Also pass in the current thread and main thread ids to minimize calls back
-// into Wasm.
-extern int _emscripten_notify_task_queue(pthread_t target_thread,
-                                         pthread_t curr_thread,
-                                         pthread_t main_thread,
-                                         task_queue* queue);
-
-static task_queue* task_queue_create(pthread_t thread) {
-  task_queue* queue = malloc(sizeof(task_queue));
-  if (queue == NULL) {
-    return NULL;
-  }
-  task* tasks = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
-  if (tasks == NULL) {
-    free(queue);
-    return NULL;
-  }
-  *queue = (task_queue){.notification = NOTIFICATION_NONE,
-                        .mutex = PTHREAD_MUTEX_INITIALIZER,
-                        .thread = thread,
-                        .processing = 0,
-                        .tasks = tasks,
-                        .capacity = TASK_QUEUE_INITIAL_CAPACITY,
-                        .head = 0,
-                        .tail = 0};
-  return queue;
-}
-
-static void task_queue_destroy(task_queue* queue) {
-  pthread_mutex_destroy(&queue->mutex);
-  free(queue->tasks);
-  free(queue);
-}
-
-// Not thread safe.
-static int task_queue_is_empty(task_queue* queue) {
-  return queue->head == queue->tail;
-}
-
-// Not thread safe.
-static int task_queue_full(task_queue* queue) {
-  return queue->head == (queue->tail + 1) % queue->capacity;
-}
-
-// Not thread safe. Returns 1 on success and 0 on failure.
-static int task_queue_grow(task_queue* queue) {
-  // Allocate a larger task queue.
-  int new_capacity = queue->capacity * 2;
-  task* new_tasks = malloc(sizeof(task) * new_capacity);
-  if (new_tasks == NULL) {
-    return 0;
-  }
-  // Copy the tasks such that the head of the queue is at the beginning of the
-  // buffer. There are two cases to handle: either the queue wraps around the
-  // end of the old buffer or it does not.
-  int queued_tasks;
-  if (queue->head <= queue->tail) {
-    // No wrap. Copy the tasks in one chunk.
-    queued_tasks = queue->tail - queue->head;
-    memcpy(new_tasks, &queue->tasks[queue->head], sizeof(task) * queued_tasks);
-  } else {
-    // Wrap. Copy `first_queued` tasks up to the end of the old buffer and
-    // `last_queued` tasks at the beginning of the old buffer.
-    int first_queued = queue->capacity - queue->head;
-    int last_queued = queue->tail;
-    queued_tasks = first_queued + last_queued;
-    memcpy(new_tasks, &queue->tasks[queue->head], sizeof(task) * first_queued);
-    memcpy(new_tasks + first_queued, queue->tasks, sizeof(task) * last_queued);
-  }
-  free(queue->tasks);
-  queue->tasks = new_tasks;
-  queue->capacity = new_capacity;
-  queue->head = 0;
-  queue->tail = queued_tasks;
-  return 1;
-}
-
-// Not thread safe. Returns 1 on success and 0 on failure.
-static int task_queue_enqueue(task_queue* queue, task t) {
-  if (task_queue_full(queue) && !task_queue_grow(queue)) {
-    return 0;
-  }
-  queue->tasks[queue->tail] = t;
-  queue->tail = (queue->tail + 1) % queue->capacity;
-  return 1;
-}
-
-// Not thread safe. Assumes the queue is not empty.
-static task task_queue_dequeue(task_queue* queue) {
-  task t = queue->tasks[queue->head];
-  queue->head = (queue->head + 1) % queue->capacity;
-  return t;
-}
+//
+// -------------------------------
 
 struct em_proxying_queue {
-  // Protects all accesses to task_queues, size, and capacity.
+  // Protects all accesses to em_task_queues, size, and capacity.
   pthread_mutex_t mutex;
   // `size` task queue pointers stored in an array of size `capacity`.
-  task_queue** task_queues;
+  em_task_queue** task_queues;
   int size;
   int capacity;
   // Doubly linked list pointers for the zombie list.
@@ -221,7 +95,7 @@ static em_proxying_queue zombie_list_head = {.mutex = PTHREAD_MUTEX_INITIALIZER,
 static void em_proxying_queue_free(em_proxying_queue* q) {
   pthread_mutex_destroy(&q->mutex);
   for (int i = 0; i < q->size; i++) {
-    task_queue_destroy(q->task_queues[i]);
+    em_task_queue_destroy(q->task_queues[i]);
   }
   free(q->task_queues);
   free(q);
@@ -294,8 +168,8 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
 }
 
 // Not thread safe. Returns NULL if there are no tasks for the thread.
-static task_queue* get_tasks_for_thread(em_proxying_queue* q,
-                                        pthread_t thread) {
+static em_task_queue* get_tasks_for_thread(em_proxying_queue* q,
+                                           pthread_t thread) {
   assert(q != NULL);
   for (int i = 0; i < q->size; i++) {
     if (pthread_equal(q->task_queues[i]->thread, thread)) {
@@ -306,18 +180,18 @@ static task_queue* get_tasks_for_thread(em_proxying_queue* q,
 }
 
 // Not thread safe.
-static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
-                                               pthread_t thread) {
-  task_queue* tasks = get_tasks_for_thread(q, thread);
+static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
+                                                  pthread_t thread) {
+  em_task_queue* tasks = get_tasks_for_thread(q, thread);
   if (tasks != NULL) {
     return tasks;
   }
-  // There were no tasks for the thread; initialize a new task_queue. If there
-  // are not enough queues, allocate more.
+  // There were no tasks for the thread; initialize a new em_task_queue. If
+  // there are not enough queues, allocate more.
   if (q->size == q->capacity) {
     int new_capacity = q->capacity == 0 ? 1 : q->capacity * 2;
-    task_queue** new_task_queues =
-      realloc(q->task_queues, sizeof(task_queue*) * new_capacity);
+    em_task_queue** new_task_queues =
+      realloc(q->task_queues, sizeof(em_task_queue*) * new_capacity);
     if (new_task_queues == NULL) {
       return NULL;
     }
@@ -325,7 +199,7 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
     q->capacity = new_capacity;
   }
   // Initialize the next available task queue.
-  tasks = task_queue_create(thread);
+  tasks = em_task_queue_create(thread);
   if (tasks == NULL) {
     return NULL;
   }
@@ -335,19 +209,8 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 
 // Exported for use in worker.js, but otherwise an internal function.
 EMSCRIPTEN_KEEPALIVE
-void _emscripten_proxy_execute_task_queue(task_queue* tasks) {
-  tasks->processing = 1;
-  pthread_mutex_lock(&tasks->mutex);
-  while (!task_queue_is_empty(tasks)) {
-    task t = task_queue_dequeue(tasks);
-    // Unlock while the task is running to allow more work to be queued in
-    // parallel.
-    pthread_mutex_unlock(&tasks->mutex);
-    t.func(t.arg);
-    pthread_mutex_lock(&tasks->mutex);
-  }
-  pthread_mutex_unlock(&tasks->mutex);
-  tasks->processing = 0;
+void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
+  em_task_queue_execute(tasks);
 }
 
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
@@ -368,12 +231,12 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   pthread_mutex_lock(&q->mutex);
-  task_queue* tasks = get_tasks_for_thread(q, pthread_self());
+  em_task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   pthread_mutex_unlock(&q->mutex);
 
   if (tasks != NULL && !tasks->processing) {
     // Found the task queue and it is not already being processed; process it.
-    _emscripten_proxy_execute_task_queue(tasks);
+    em_task_queue_execute(tasks);
   }
 
   if (is_system_queue) {
@@ -387,14 +250,13 @@ int emscripten_proxy_async(em_proxying_queue* q,
                            void* arg) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
-  task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
+  em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
     return 0;
   }
   pthread_mutex_lock(&tasks->mutex);
-  int empty = task_queue_is_empty(tasks);
-  int enqueued = task_queue_enqueue(tasks, (task){func, arg});
+  int enqueued = em_task_queue_enqueue(tasks, (task){func, arg});
   pthread_mutex_unlock(&tasks->mutex);
   if (!enqueued) {
     return 0;

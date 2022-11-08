@@ -648,7 +648,7 @@ _mm_avg_epu16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_madd_epi16(__m128i __a, __m128i __b)
 {
-  return (__m128i)__builtin_wasm_dot_s_i32x4_i16x8((__i16x8)__a, (__i16x8)__b);
+  return (__m128i)wasm_i32x4_dot_i16x8((v128_t)__a, (v128_t)__b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

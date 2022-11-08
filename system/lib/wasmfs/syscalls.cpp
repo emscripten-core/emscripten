@@ -68,7 +68,7 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
 
   // If the file descriptor newfd was previously open, it will just be
   // overwritten silently.
-  fileTable.setEntry(newfd, oldOpenFile);
+  (void)fileTable.setEntry(newfd, oldOpenFile);
   return newfd;
 }
 
@@ -115,7 +115,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
 
   if (setOffset == OffsetHandling::OpenFileState) {
     if (lockedOpenFile.getFlags() & O_APPEND) {
-      offset = lockedFile.getSize();
+      off_t size = lockedFile.getSize();
+      if (size < 0) {
+        // Translate to WASI standard of positive return codes.
+        return -size;
+      }
+      offset = size;
       lockedOpenFile.setPosition(offset);
     } else {
       offset = lockedOpenFile.getPosition();
@@ -160,6 +165,9 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   if (setOffset == OffsetHandling::OpenFileState &&
       lockedOpenFile.getFile()->isSeekable()) {
     lockedOpenFile.setPosition(offset + bytesWritten);
+  }
+  if (bytesWritten) {
+    lockedFile.setMTime(time(NULL));
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -273,11 +281,22 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = wasmFS.getFileTable().locked();
-  if (!fileTable.getEntry(fd)) {
-    return __WASI_ERRNO_BADF;
+  std::shared_ptr<DataFile> closee;
+  {
+    // Do not hold the file table lock while performing the close.
+    auto fileTable = wasmFS.getFileTable().locked();
+    auto entry = fileTable.getEntry(fd);
+    if (!entry) {
+      return __WASI_ERRNO_BADF;
+    }
+    closee = fileTable.setEntry(fd, nullptr);
   }
-  fileTable.setEntry(fd, nullptr);
+  if (closee) {
+    // Translate to WASI standard of positive return codes.
+    int ret = -closee->locked().close();
+    assert(ret >= 0);
+    return ret;
+  }
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -291,7 +310,10 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   // way. TODO: in the future we may want syncing of directories.
   auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
   if (dataFile) {
-    dataFile->locked().flush();
+    auto ret = dataFile->locked().flush();
+    assert(ret <= 0);
+    // Translate to WASI standard of positive return codes.
+    return -ret;
   }
 
   return __WASI_ERRNO_SUCCESS;
@@ -337,7 +359,11 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   auto lockedFile = file->locked();
   auto buffer = (struct stat*)buf;
 
-  buffer->st_size = lockedFile.getSize();
+  off_t size = lockedFile.getSize();
+  if (size < 0) {
+    return size;
+  }
+  buffer->st_size = size;
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
@@ -434,8 +460,18 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       std::shared_ptr<File> created;
       if (backend == parent->getBackend()) {
         created = lockedParent.insertDataFile(std::string(childName), mode);
+        if (!created) {
+          // TODO Receive a specific error code, and report it here. For now,
+          //      report a generic error.
+          return -EIO;
+        }
       } else {
         created = backend->createFile(mode);
+        if (!created) {
+          // TODO Receive a specific error code, and report it here. For now,
+          //      report a generic error.
+          return -EIO;
+        }
         bool mounted = lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
@@ -446,6 +482,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
       std::shared_ptr<OpenFileState> openFile;
       if (auto err = OpenFileState::create(created, flags, openFile)) {
+        assert(err < 0);
         return err;
       }
       return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -496,27 +533,20 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
   if (auto err = OpenFileState::create(child, flags, openFile)) {
+    assert(err < 0);
     return err;
   }
 
   // If O_TRUNC, truncate the file if possible.
   if (flags & O_TRUNC) {
-    if (child->is<DataFile>()) {
-      if (fileMode & WASMFS_PERM_WRITE) {
-        // TODO: Linux still truncates the file when it's opened only for
-        // reading, so we should too. But until we get proper error reporting
-        // from setSize (which we can then ignore here), the OPFS backend will
-        // crash in this case because it does not support truncating files open
-        // only for reading.
-        if (accessMode != O_RDONLY) {
-          child->cast<DataFile>()->locked().setSize(0);
-        }
-      } else {
-        return -EACCES;
-      }
-    } else {
+    if (!child->is<DataFile>()) {
       return -EISDIR;
     }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+    // Try to truncate the file, continuing silently if we cannot.
+    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -591,11 +621,19 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     backend = parent->getBackend();
   }
 
-  std::shared_ptr<File> created;
   if (backend == parent->getBackend()) {
-    created = lockedParent.insertDirectory(childName, mode);
+    if (!lockedParent.insertDirectory(childName, mode)) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
   } else {
-    created = backend->createDirectory(mode);
+    auto created = backend->createDirectory(mode);
+    if (!created) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
     bool mounted = lockedParent.mountChild(childName, created);
     assert(mounted);
   }
@@ -640,7 +678,12 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_END) {
     // Only the open file state is altered in seek. Locking the underlying
     // data file here once is sufficient.
-    position = lockedOpenFile.getFile()->locked().getSize() + offset;
+    off_t size = lockedOpenFile.getFile()->locked().getSize();
+    if (size < 0) {
+      // Translate to WASI standard of positive return codes.
+      return -size;
+    }
+    position = size + offset;
   } else {
     return __WASI_ERRNO_INVAL;
   }
@@ -808,10 +851,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   }
 
   // Input is valid, perform the unlink.
-  if (!lockedParent.removeChild(childName)) {
-    return -EPERM;
-  }
-  return 0;
+  return lockedParent.removeChild(childName);
 }
 
 int __syscall_rmdir(intptr_t path) {
@@ -852,7 +892,10 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     {".", File::DirectoryKind, dir->getIno()},
     {"..", File::DirectoryKind, parent->getIno()}};
   auto dirEntries = lockedDir.getEntries();
-  entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
+  if (int err = dirEntries.getError()) {
+    return err;
+  }
+  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
 
   off_t bytesRead = 0;
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
@@ -988,8 +1031,9 @@ int __syscall_renameat(int olddirfd,
   }
 
   // Perform the move.
-  if (!lockedNewParent.insertMove(newFileName, oldFile)) {
-    return -EPERM;
+  if (auto err = lockedNewParent.insertMove(newFileName, oldFile)) {
+    assert(err < 0);
+    return err;
   }
   return 0;
 }
@@ -1170,9 +1214,9 @@ int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
 
 static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   auto dataFile = file->dynCast<DataFile>();
-  // TODO: support for symlinks.
+
   if (!dataFile) {
-    return __WASI_ERRNO_ISDIR;
+    return -EISDIR;
   }
 
   auto locked = dataFile->locked();
@@ -1184,11 +1228,9 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
     return -EINVAL;
   }
 
-  // TODO: error handling for allocation errors. atm with exceptions disabled,
-  //       however, C++ backends using std::vector for storage have no way to
-  //       report that, and will abort in malloc.
-  locked.setSize(size);
-  return 0;
+  int ret = locked.setSize(size);
+  assert(ret <= 0);
+  return ret;
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
@@ -1261,11 +1303,11 @@ int __syscall_pipe(intptr_t fd) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
-  auto fileTable = wasmFS.getFileTable().locked();
-
   std::shared_ptr<OpenFileState> openReader, openWriter;
   (void)OpenFileState::create(reader, O_RDONLY, openReader);
   (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+
+  auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
   fds[1] = fileTable.addEntry(openWriter);
 
@@ -1302,8 +1344,8 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
       if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
-        //       the position is at the end, we can't read from the current
-        //       position at least.
+        // the position is at the end, we can't read from the current position
+        // at least. If we update this, make sure the size isn't an error!
         if (openFile->locked().getFile()->locked().getSize() > 0) {
           mask |= writeBit;
         }
@@ -1347,14 +1389,19 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
     return -EINVAL;
   }
 
-  // TODO: We silently do nothing if the stream does not support allocation, but
-  //       in principle we should return EOPNOTSUPP.
   // TODO: We could only fill zeros for regions that were completely unused
   //       before, which for a backend with sparse data storage could make a
   //       difference. For that we'd need a new backend API.
   auto newNeededSize = off + len;
-  if (newNeededSize > locked.getSize()) {
-    locked.setSize(newNeededSize);
+  off_t size = locked.getSize();
+  if (size < 0) {
+    return size;
+  }
+  if (newNeededSize > size) {
+    if (auto err = locked.setSize(newNeededSize)) {
+      assert(err < 0);
+      return err;
+    }
   }
 
   return 0;
@@ -1382,7 +1429,7 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // TODO: Should we check for a limit on the max FD number, if we have one?
       while (1) {
         if (!fileTable.getEntry(newfd)) {
-          fileTable.setEntry(newfd, openFile);
+          (void)fileTable.setEntry(newfd, openFile);
           return newfd;
         }
         newfd++;
@@ -1490,8 +1537,30 @@ int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
   return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
 }
 
-intptr_t _mmap_js(
-  size_t length, int prot, int flags, int fd, size_t offset, int* allocated) {
+int _mmap_js(size_t length,
+             int prot,
+             int flags,
+             int fd,
+             size_t offset,
+             int* allocated,
+             void** addr) {
+  // PROT_EXEC is not supported (although we pretend to support the absence of
+  // PROT_READ or PROT_WRITE).
+  if ((prot & PROT_EXEC)) {
+    return -EPERM;
+  }
+
+  // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.
+  int mapType = flags & MAP_TYPE;
+  if (mapType != MAP_PRIVATE && mapType != MAP_SHARED &&
+      mapType != MAP_SHARED_VALIDATE) {
+    return -EINVAL;
+  }
+
+  if (mapType == MAP_SHARED_VALIDATE) {
+    WASMFS_UNREACHABLE("TODO: MAP_SHARED_VALIDATE");
+  }
+
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1512,7 +1581,7 @@ intptr_t _mmap_js(
     // According to the POSIX spec it is possible to write to a file opened in
     // read-only mode with MAP_PRIVATE flag, as all modifications will be
     // visible only in the memory of the current process.
-    if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0 &&
+    if ((prot & PROT_WRITE) != 0 && mapType != MAP_PRIVATE &&
         (lockedOpenFile.getFlags() & O_ACCMODE) != O_RDWR) {
       return -EACCES;
     }
@@ -1524,38 +1593,62 @@ intptr_t _mmap_js(
     return -ENODEV;
   }
 
-  // TODO: handle non-private mmaps. Those can be optimized in interesting ways
-  //       like avoiding an allocation and a copy as we do below (whereas a
-  //       private mmap is always a copy into a new, private region not shared
-  //       with anything else).
-  assert(flags & MAP_PRIVATE);
+  // TODO: On MAP_SHARED, install the mapping on the DataFile object itself so
+  // that reads and writes can be redirected to the mapped region and so that
+  // the mapping can correctly outlive the file being closed. This will require
+  // changes to emscripten_mmap.c as well.
 
   // Align to a wasm page size, as we expect in the future to get wasm
   // primitives to do this work, and those would presumably be aligned to a page
   // size. Aligning now avoids confusion later.
-  uint8_t* ptr = (uint8_t*)memalign(WASM_PAGE_SIZE, length);
+  uint8_t* ptr = (uint8_t*)emscripten_builtin_memalign(WASM_PAGE_SIZE, length);
   if (!ptr) {
     return -ENOMEM;
   }
 
-  auto written = file->locked().read(ptr, length, offset);
-  if (written < 0) {
+  auto nread = file->locked().read(ptr, length, offset);
+  if (nread < 0) {
     // The read failed. Report the error, but first free the allocation.
-    free(ptr);
-    return written;
+    emscripten_builtin_free(ptr);
+    return nread;
   }
 
   // From here on, we have succeeded, and can mark the allocation as having
   // occurred (which means that the caller has the responsibility to free it).
   *allocated = true;
+  *addr = (void*)ptr;
 
   // The read must be of a valid amount, or we have had an internal logic error.
-  assert(written <= length);
+  assert(nread <= length);
 
   // mmap clears any extra bytes after the data itself.
-  memset(ptr + written, 0, length - written);
+  memset(ptr + nread, 0, length - nread);
 
-  return (intptr_t)ptr;
+  return 0;
+}
+
+int _msync_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds. Only need to sync if shared and writes are allowed.
+  int mapType = flags & MAP_TYPE;
+  if (mapType == MAP_SHARED && (prot & PROT_WRITE)) {
+    __wasi_ciovec_t iovec;
+    iovec.buf = (uint8_t*)addr;
+    iovec.buf_len = length;
+    __wasi_size_t nwritten;
+    // Translate from WASI positive error codes to negative error codes.
+    return -__wasi_fd_pwrite(fd, &iovec, 1, offset, &nwritten);
+  }
+  return 0;
+}
+
+int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  // TODO: This is not correct! Mappings should be associated with files, not
+  // fds.
+  // TODO: Syncing should probably be handled in __syscall_munmap instead.
+  return _msync_js(addr, length, prot, flags, fd, offset);
 }
 
 // Stubs (at least for now)

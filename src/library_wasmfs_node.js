@@ -166,7 +166,12 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_node_close__deps: [],
   _wasmfs_node_close: function(fd) {
-    fs.closeSync(fd);
+    try {
+      fs.closeSync(fd);
+    } catch (e) {
+      if (!e.code) throw e;
+      return wasmfsNodeConvertNodeCode(e);
+    }
   },
 
   _wasmfs_node_read__deps: ['$wasmfsNodeConvertNodeCode'],

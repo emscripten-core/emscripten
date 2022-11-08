@@ -367,6 +367,15 @@ set via an environment variable.  e.g::
   EM_COMPILER_WRAPPER=gomacc emcc -c hello.c
 
 
+pkg-config
+==========
+
+*emconfigure* and *emmake* configure `pkg-config <https://www.freedesktop.org/wiki/Software/pkg-config/>`_
+for cross compiling and set the environment variable ``PKG_CONFIG_LIBDIR`` and
+``PKG_CONFIG_PATH``. To provide custom pkg-config paths, set the environment
+variable ``EM_PKG_CONFIG_PATH``.
+
+
 Examples / test code
 ====================
 

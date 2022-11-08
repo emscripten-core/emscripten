@@ -13,6 +13,8 @@
 #include <sys/uio.h>
 #include <emscripten.h>
 
+EM_JS_DEPS(main, "$ERRNO_CODES");
+
 int main() {
   EM_ASM(
     FS.mkdir('/working');

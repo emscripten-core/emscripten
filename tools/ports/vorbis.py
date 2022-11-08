@@ -5,7 +5,6 @@
 
 import logging
 import os
-import shutil
 
 TAG = 'version_1'
 HASH = '99bee75beb662f8520bbb18ad6dbf8590d30eb3a7360899f0ac4764ca72fe8013da37c9df21e525f9d2dc5632827d4b4cea558cbc938e7fbed0c41a29a7a2dc5'
@@ -18,18 +17,15 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
+  ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: vorbis')
-
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-    dest_path = ports.clear_project_build('vorbis')
-    shutil.copytree(source_path, dest_path)
-
-    ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
-                     ['-sUSE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
+    ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
+                     flags=['-sUSE_OGG'],
+                     exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 
   return [shared.Cache.get_lib('libvorbis.a', create)]
 
@@ -47,4 +43,4 @@ def process_args(ports):
 
 
 def show():
-  return 'vorbis (USE_VORBIS=1; zlib license)'
+  return 'vorbis (-sUSE_VORBIS; zlib license)'

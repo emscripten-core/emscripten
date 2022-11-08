@@ -6,12 +6,14 @@
 import difflib
 import os
 import re
+from typing import Set, Dict, Any
 
 from .utils import path_from_root, exit_with_error
 from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'STACK_SIZE',
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
@@ -84,13 +86,16 @@ COMPILE_TIME_SETTINGS = {
 }.union(PORTS_SETTINGS)
 
 
+user_settings: Dict[str, str] = {}
+
+
 class SettingsManager:
-  attrs = {}
-  types = {}
-  allowed_settings = set()
-  legacy_settings = {}
-  alt_names = {}
-  internal_settings = set()
+  attrs: Dict[str, Any] = {}
+  types: Dict[str, Any] = {}
+  allowed_settings: Set[str] = set()
+  legacy_settings: Dict[str, tuple] = {}
+  alt_names: Dict[str, str] = {}
+  internal_settings: Set[str] = set()
 
   def __init__(self):
     self.attrs.clear()

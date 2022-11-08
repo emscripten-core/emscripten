@@ -119,13 +119,8 @@ if (ENVIRONMENT_IS_SHELL) {
 // and build with --closure 1 to get Closure optimize out all the uses
 // altogether.
 
-function out(text) {
-  console.log(text);
-}
-
-function err(text) {
-  console.error(text);
-}
+var out = (text) => console.log(text);
+var err = (text) => console.error(text);
 
 // Override this function in a --pre-js file to get a signal for when
 // compilation is ready. In that callback, call the function run() to start
@@ -137,7 +132,7 @@ function ready() {
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}
 #elif ASSERTIONS
-  console.log('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
+  out('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
 #endif
 }
 

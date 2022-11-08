@@ -19,6 +19,8 @@ int waka(int w, long long xy, int z) {
   return 42;
 }
 
+EM_JS_DEPS(main, "$dynCall");
+
 int main() {
   EM_ASM({
     // Note that these would need to use BigInts if the file were built with

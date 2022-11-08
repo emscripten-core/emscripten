@@ -36,6 +36,9 @@ MINIMAL_TASKS = [
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
+    'libc++abi-debug',
+    'libc++abi-debug-except',
+    'libc++abi-debug-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
@@ -76,6 +79,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc_optz-mt-debug',
     'libc++abi-mt',
     'libc++abi-mt-noexcept',
+    'libc++abi-debug-mt',
+    'libc++abi-debug-mt-noexcept',
     'libc++-mt',
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
@@ -237,7 +242,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        library.get_path()
+        library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')

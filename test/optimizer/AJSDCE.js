@@ -1,3 +1,4 @@
+"use strict";
 
 // all unused
 var x;

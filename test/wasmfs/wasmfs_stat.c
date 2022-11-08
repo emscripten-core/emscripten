@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utime.h>
 
 // FIXME: Individual test to verify fstat in isolation. May get merged with
 // others later.
@@ -182,6 +183,23 @@ int main() {
   assert(lstatDirectory.st_blocks == 1);
 #endif
   assert(lstatDirectory.st_blksize == 4096);
+
+  // write to a file and check that mtime is updated
+  const long long TEST_TIME = 1ll << 34;
+  struct utimbuf t = {TEST_TIME, TEST_TIME};
+  fd = open("file", O_WRONLY | O_CREAT | O_EXCL, 0777);
+  assert(utime("file", &t) != -1);
+
+  write(fd, 0, 0);
+  assert(fstat(fd, &statFile) != -1);
+  assert(statFile.st_mtime == TEST_TIME);
+
+  const char* buffer = "abcdef";
+  write(fd, buffer, sizeof(buffer));
+  assert(fstat(fd, &statFile) != -1);
+  assert(statFile.st_mtime != TEST_TIME);
+
+  close(fd);
 
   return 0;
 }

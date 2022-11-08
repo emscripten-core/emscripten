@@ -24,6 +24,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
+#if ASSERTIONS && !MINIMAL_RUNTIME
+    '$demangleAll',
+#endif
     ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
@@ -116,7 +119,7 @@ FS.staticInit();` +
     // paths
     //
     lookupPath: (path, opts = {}) => {
-      path = PATH_FS.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
 
@@ -130,8 +133,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('ELOOP') }}});
       }
 
-      // split the path
-      var parts = PATH.normalizeArray(path.split('/').filter((p) => !!p), false);
+      // split the absolute path
+      var parts = path.split('/').filter((p) => !!p);
 
       // start at the root
       var current = FS.root;
@@ -1090,7 +1093,7 @@ FS.staticInit();` +
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
 #if FS_DEBUG
-          err("FS.trackingDelegate error on read file: " + path);
+          dbg("FS.trackingDelegate error on read file: " + path);
 #endif
         }
       }

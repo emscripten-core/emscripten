@@ -206,7 +206,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   # In SINGLE_FILE build, embed the main .js file into the .html output
   if settings.SINGLE_FILE:
     js_contents = utils.read_file(js_target)
-    shared.try_delete(js_target)
+    utils.delete_file(js_target)
   else:
     js_contents = ''
   shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)

@@ -5,7 +5,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 TAG = '11022021'
 HASH = 'f770031ad6c2152cbed8c8eab8edf2be1d27f9e74bc255a9930c17019944ee5fdda5308ea992c66a78af9fe1d8dca090f6c956910ce323f8728247c10e44036b'
@@ -16,33 +15,32 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libmodplug', 'https://github.com/jancc/libmodplug/archive/v' + TAG + '.zip', 'libmodplug-' + TAG, sha512hash=HASH)
+  ports.fetch_project('libmodplug', f'https://github.com/jancc/libmodplug/archive/v{TAG}.zip', sha512hash=HASH)
 
-  def create(output_path):
+  def create(final):
     logging.info('building port: libmodplug')
 
     source_path = os.path.join(ports.get_dir(), 'libmodplug', 'libmodplug-' + TAG)
     src_dir = os.path.join(source_path, 'src')
     libmodplug_path = os.path.join(src_dir, 'libmodplug')
 
-    build_dir = ports.clear_project_build('libmodplug')
-    shared.safe_ensure_dirs(build_dir)
-    Path(build_dir, 'config.h').write_text(config_h)
+    ports.write_file(os.path.join(source_path, 'config.h'), config_h)
 
     flags = [
+      '-Wno-deprecated-register',
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
       '-DHAVE_CONFIG_H',
       '-DSYM_VISIBILITY',
+      '-std=gnu++14',
       '-O2',
       '-fno-exceptions',
       '-ffast-math',
       '-fno-common',
       '-fvisibility=hidden',
-      '-I' + build_dir,
+      '-I' + source_path,
       '-I' + libmodplug_path,
     ]
-
     srcs = [
       os.path.join(src_dir, 'fastmix.cpp'),
       os.path.join(src_dir, 'load_669.cpp'),
@@ -80,16 +78,7 @@ def get(ports, settings, shared):
       os.path.join(src_dir, 'sndmix.cpp'),
     ]
 
-    commands = []
-    objects = []
-
-    for src in srcs:
-      obj = os.path.join(build_dir, os.path.basename(src) + '.o')
-      commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + flags)
-      objects.append(obj)
-
-    ports.run_commands(commands)
-    ports.create_lib(output_path, objects)
+    ports.build_port(source_path, final, 'libmodplug', flags=flags, srcs=srcs)
 
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
     ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')

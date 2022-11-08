@@ -120,27 +120,29 @@ def get_weak_imports(main_wasm):
 
 
 def update_settings_glue(wasm_file, metadata):
-  optimize_syscalls(metadata['declares'])
+  optimize_syscalls(metadata.imports)
 
   # Integrate info from backend
   if settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
   else:
-    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata['declares']]
-    syms = set(syms).difference(metadata['exports'])
-    syms.update(metadata['globalImports'])
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata.imports]
+    syms = set(syms).difference(metadata.exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
       get_weak_imports(wasm_file)
 
-  settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  settings.WASM_EXPORTS = metadata.exports + list(metadata.namedGlobals.keys())
   # Store function exports so that Closure and metadce can track these even in
   # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
-  settings.WASM_FUNCTION_EXPORTS = metadata['exports']
+  settings.WASM_FUNCTION_EXPORTS = metadata.exports
 
   # start with the MVP features, and add any detected features.
-  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
+  if settings.ASYNCIFY == 2:
+    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+
   if settings.USE_PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
@@ -148,11 +150,12 @@ def update_settings_glue(wasm_file, metadata):
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
   if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS']
+    # Dependencies of `callMain`
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS', '$handleException']
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
-  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or bool(settings.MAIN_MODULE)
+  settings.MAIN_READS_PARAMS = metadata.mainReadsParams or bool(settings.MAIN_MODULE)
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
     # callMain depends on this library function
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$allocateUTF8OnStack']
@@ -160,7 +163,10 @@ def update_settings_glue(wasm_file, metadata):
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
-    assert 'emscripten_stack_get_end' in metadata['exports']
+    assert 'emscripten_stack_get_end' in metadata.exports
+
+  for deps in metadata.jsDeps:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
 
 
 def apply_static_code_hooks(forwarded_json, code):
@@ -202,9 +208,9 @@ def compile_settings():
 
 def set_memory(static_bump):
   stack_low = align_memory(settings.GLOBAL_BASE + static_bump)
-  stack_high = align_memory(stack_low + settings.TOTAL_STACK)
-  settings.STACK_BASE = stack_high
-  settings.STACK_MAX = stack_low
+  stack_high = align_memory(stack_low + settings.STACK_SIZE)
+  settings.STACK_HIGH = stack_high
+  settings.STACK_LOW = stack_low
   settings.HEAP_BASE = align_memory(stack_high)
 
 
@@ -275,7 +281,7 @@ def trim_asm_const_body(body):
 
 def create_named_globals(metadata):
   named_globals = []
-  for k, v in metadata['namedGlobals'].items():
+  for k, v in metadata.namedGlobals.items():
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
@@ -303,9 +309,12 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
+  if settings.RELOCATABLE and settings.MEMORY64 == 2:
+    metadata.imports += ['__memory_base32']
+
   update_settings_glue(out_wasm, metadata)
 
-  if not settings.WASM_BIGINT and metadata['emJsFuncs']:
+  if not settings.WASM_BIGINT and metadata.emJsFuncs:
     import_map = {}
 
     with webassembly.Module(in_wasm) as module:
@@ -313,7 +322,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
       for imp in module.get_imports():
         import_map[imp.field] = imp
 
-    for em_js_func, raw in metadata.get('emJsFuncs', {}).items():
+    for em_js_func, raw in metadata.emJsFuncs.items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
         c_sig = []
@@ -321,15 +330,15 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
         c_sig = c_sig.split(',')
       if em_js_func in import_map:
         imp = import_map[em_js_func]
-        assert(imp.kind == webassembly.ExternType.FUNC)
+        assert imp.kind == webassembly.ExternType.FUNC
         signature = types[imp.type]
         if len(signature.params) != len(c_sig):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   if settings.SIDE_MODULE:
-    if metadata['asmConsts']:
+    if metadata.asmConsts:
       exit_with_error('EM_ASM is not supported in side modules')
-    if metadata['emJsFuncs']:
+    if metadata.emJsFuncs:
       exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
@@ -344,7 +353,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     dylink_sec = webassembly.parse_dylink_section(in_wasm)
     static_bump = align_memory(dylink_sec.mem_size)
     set_memory(static_bump)
-    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
+    logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
 
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
@@ -353,9 +362,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
     if settings.ASYNCIFY:
-      metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
+      metadata.imports += ['__asyncify_state', '__asyncify_data']
 
-  invoke_funcs = metadata['invokeFuncs']
+  invoke_funcs = metadata.invokeFuncs
   if invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
@@ -378,7 +387,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
         pre += f"  ignoredModuleProp('{sym}');\n"
     pre += "}\n"
 
-  exports = metadata['exports']
+  exports = metadata.exports
 
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
@@ -427,10 +436,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
 def remove_trailing_zeros(memfile):
   mem_data = utils.read_binary(memfile)
-  end = len(mem_data)
-  while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
-    end -= 1
-  utils.write_binary(memfile, mem_data[:end])
+  mem_data = mem_data.rstrip(b'\0')
+  utils.write_binary(memfile, mem_data)
 
 
 @ToolchainProfiler.profile()
@@ -447,7 +454,7 @@ def get_metadata(infile, outfile, modify_wasm, args):
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
   if DEBUG:
-    logger.debug("Metadata: " + pprint.pformat(metadata))
+    logger.debug("Metadata: " + pprint.pformat(metadata.__dict__))
   return metadata
 
 
@@ -537,7 +544,7 @@ def finalize_wasm(infile, outfile, memfile):
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [e for e in metadata.exports if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
   building.user_requested_exports.update(unexpected_exports)
@@ -548,7 +555,7 @@ def finalize_wasm(infile, outfile, memfile):
 
 def create_asm_consts(metadata):
   asm_consts = {}
-  for addr, const in metadata['asmConsts'].items():
+  for addr, const in metadata.asmConsts.items():
     body = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -571,10 +578,31 @@ def create_asm_consts(metadata):
   return asm_consts
 
 
+def type_to_sig(type):
+  # These should match the conversion in $sigToWasmTypes.
+  return {
+    webassembly.Type.I32: 'i',
+    webassembly.Type.I64: 'j',
+    webassembly.Type.F32: 'f',
+    webassembly.Type.F64: 'd',
+    webassembly.Type.VOID: 'v'
+  }[type]
+
+
+def func_type_to_sig(type):
+  parameters = [type_to_sig(param) for param in type.params]
+  if type.returns:
+    assert len(type.returns) == 1, "One return type expected."
+    ret = type.returns[0]
+  else:
+    ret = webassembly.Type.VOID
+  return type_to_sig(ret) + ''.join(parameters)
+
+
 def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
-  for name, raw in metadata.get('emJsFuncs', {}).items():
+  for name, raw in metadata.emJsFuncs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
     args = args[1:-1]
@@ -585,6 +613,9 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
+    if settings.ASYNCIFY == 2 and name in metadata.emJsFuncTypes:
+      sig = func_type_to_sig(metadata.emJsFuncTypes[name])
+      func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)
 
   return em_js_funcs
@@ -607,10 +638,6 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.WASM_EXCEPTIONS:
-      send_items_map['__cpp_exception'] = '___cpp_exception'
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      send_items_map['__c_longjmp'] = '___c_longjmp'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
@@ -647,21 +674,12 @@ def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  def add_send_items(name, mangled_name, ignore_dups=False):
-    # Sanity check that the names of emJsFuncs, declares, and globalImports don't overlap
-    if not ignore_dups and name in send_items_map:
-      assert name not in send_items_map, 'duplicate symbol in exports: %s' % name
-    send_items_map[name] = mangled_name
-
-  for name in metadata['emJsFuncs']:
-    add_send_items(name, name)
+  for name in metadata.emJsFuncs:
+    send_items_map[name] = name
   for name in invoke_funcs:
-    add_send_items(name, name)
-  for name in metadata['declares']:
-    add_send_items(name, asmjs_mangle(name))
-  for name in metadata['globalImports']:
-    # globalImports can currently overlap with declares, in the case of dynamic linking
-    add_send_items(name, asmjs_mangle(name), ignore_dups=settings.RELOCATABLE)
+    send_items_map[name] = name
+  for name in metadata.imports:
+    send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
 
@@ -807,12 +825,14 @@ def create_wasm64_wrappers(metadata):
     'emscripten_stack_get_current': 'p',
     '__errno_location': 'p',
     'emscripten_builtin_memalign': 'ppp',
+    'emscripten_builtin_free': 'vp',
     'main': '__PP',
     '__main_argc_argv': '__PP',
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
     '_wasmfs_write_file': '_ppp',
+    '__dl_seterr': '_pp',
   }
 
   wasm64_wrappers = '''
@@ -822,7 +842,7 @@ function instrumentWasmExportsForMemory64(exports) {
 
   sigs_seen = set()
   wrap_functions = []
-  for exp in metadata['exports']:
+  for exp in metadata.exports:
     sig = mapping.get(exp)
     if sig:
       if sig not in sigs_seen:

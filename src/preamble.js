@@ -165,15 +165,15 @@ function updateGlobalBufferAndViews(buf) {
 #endif
 }
 
-var TOTAL_STACK = {{{ TOTAL_STACK }}};
+var STACK_SIZE = {{{ STACK_SIZE }}};
 #if ASSERTIONS
-if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
+if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
 #endif
 
 {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
-assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
@@ -286,9 +286,9 @@ function preMain() {
 #if EXIT_RUNTIME
 function exitRuntime() {
 #if RUNTIME_DEBUG
-  err('exitRuntime');
+  dbg('exitRuntime');
 #endif
-#if ASYNCIFY && ASSERTIONS
+#if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
 #endif
@@ -455,20 +455,8 @@ function removeRunDependency(id) {
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
-#if USE_PTHREADS
-  // When running on a pthread, none of the incoming parameters on the module
-  // object are present.  The `onAbort` handler only exists on the main thread
-  // and so we need to proxy the handling of these back to the main thread.
-  // TODO(sbc): Extend this to all such handlers that can be passed into on
-  // module creation.
-  if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ 'cmd': 'onAbort', 'arg': what});
-  } else
-#endif
-  {
-    if (Module['onAbort']) {
-      Module['onAbort'](what);
-    }
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
   }
 #endif
 
@@ -482,6 +470,10 @@ function abort(what) {
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
+#elif ASYNCIFY == 1
+  if (what.indexOf('RuntimeError: unreachable') >= 0) {
+    what += '. "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)';
+  }
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
@@ -771,7 +763,6 @@ function instantiateSync(file, info) {
       // to load ok, but we do actually recompile the binary every time).
       var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
       cachedCodeFile = locateFile(cachedCodeFile);
-      requireNodeFS();
       var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
 #if RUNTIME_LOGGING
@@ -858,10 +849,6 @@ function createWasm() {
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
-#endif
-
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
@@ -869,8 +856,6 @@ function createWasm() {
 #if ABORT_ON_WASM_EXCEPTIONS
     exports = instrumentWasmExportsWithAbort(exports);
 #endif
-
-    Module['asm'] = exports;
 
 #if MAIN_MODULE
     var metadata = getDylinkMetadata(module);
@@ -881,6 +866,12 @@ function createWasm() {
 #endif
     mergeLibSymbols(exports, 'main')
 #endif
+
+#if MEMORY64
+    exports = instrumentWasmExportsForMemory64(exports);
+#endif
+
+    Module['asm'] = exports;
 
 #if USE_PTHREADS
 #if MAIN_MODULE

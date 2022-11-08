@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -75,19 +75,19 @@ mergeInto(LibraryManager.library, {
         }
       }
     }
-#if ASYNCIFY
+#if ASYNCIFY == 1
     // Data for a previous async operation that was in flight before us.
     var previousAsync = Asyncify.currData;
 #endif
     var ret = func.apply(null, cArgs);
     function onDone(ret) {
-#if ASYNCIFY
+#if ASYNCIFY == 1
       runtimeKeepalivePop();
 #endif
       if (stack !== 0) stackRestore(stack);
       return convertReturnValue(ret);
     }
-#if ASYNCIFY
+#if ASYNCIFY == 1
     // Keep the runtime alive through all calls. Note that this call might not be
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
@@ -114,7 +114,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
     ret = onDone(ret);
-#if ASYNCIFY
+#if ASYNCIFY == 1
     // If this is an async ccall, ensure we return a promise
     if (asyncMode) return Promise.resolve(ret);
 #endif

@@ -10,6 +10,9 @@ $__pthread_setcancelstate
 $__set_thread_state
 $__stdio_write
 $__timedwait
+$__tl_lock
+$__tl_unlock
+$__wait
 $__wake
 $__wasi_syscall_ret
 $__wasm_call_ctors
@@ -30,6 +33,7 @@ $a_cas_p.1
 $a_dec
 $a_fetch_add
 $a_inc
+$a_store
 $a_swap
 $add
 $dispose_chunk
@@ -37,6 +41,8 @@ $dlfree
 $dlmalloc
 $do_dispatch_to_thread
 $em_queued_call_malloc
+$em_task_queue_execute
+$em_task_queue_is_empty
 $emscripten_async_run_in_main_thread
 $emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
@@ -53,4 +59,3 @@ $sbrk
 $stackAlloc
 $stackRestore
 $stackSave
-$task_queue_is_empty

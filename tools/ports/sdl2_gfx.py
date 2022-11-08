@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
 
 TAG = '2b147ffef10ec541d3eace326eafe11a54e635f8'
@@ -20,17 +19,12 @@ def needed(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
-  ports.fetch_project('sdl2_gfx', 'https://github.com/svn2github/sdl2_gfx/archive/' + TAG + '.zip', 'sdl2_gfx-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_gfx', f'https://github.com/svn2github/sdl2_gfx/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: sdl2_gfx')
-
     source_path = os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG)
-    dest_path = ports.clear_project_build('sdl2_gfx')
-
-    shutil.copytree(source_path, dest_path)
-    ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
-
+    ports.build_port(source_path, final, 'sdl2_gfx', exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
     ports.install_headers(source_path, target='SDL2')
 
   return [shared.Cache.get_lib('libSDL2_gfx.a', create)]

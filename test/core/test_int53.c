@@ -11,6 +11,8 @@
 // Uncomment to compute the expected result:
 //#define GENERATE_ANSWERS
 
+EM_JS_DEPS(main, "$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling");
+
 void writeI53ToI64_int64(int64_t *heapAddress, int64_t num) {
 #ifdef GENERATE_ANSWERS
   *heapAddress = num;

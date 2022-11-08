@@ -114,6 +114,13 @@
 // || `[0x0080000000000, 0x008ffffffffff]` || LowShadow  ||
 // || `[0x0000000000000, 0x007ffffffffff]` || LowMem     ||
 //
+// Default Linux/LoongArch64 (47-bit VMA) mapping:
+// || `[0x500000000000, 0x7fffffffffff]` || HighMem    ||
+// || `[0x4a0000000000, 0x4fffffffffff]` || HighShadow ||
+// || `[0x480000000000, 0x49ffffffffff]` || ShadowGap  ||
+// || `[0x400000000000, 0x47ffffffffff]` || LowShadow  ||
+// || `[0x000000000000, 0x3fffffffffff]` || LowMem     ||
+//
 // Shadow mapping on FreeBSD/x86-64 with SHADOW_OFFSET == 0x400000000000:
 // || `[0x500000000000, 0x7fffffffffff]` || HighMem    ||
 // || `[0x4a0000000000, 0x4fffffffffff]` || HighShadow ||
@@ -174,8 +181,10 @@
 #else
 #  if SANITIZER_IOS
 #    define ASAN_SHADOW_OFFSET_DYNAMIC
-#  elif SANITIZER_MAC && defined(__aarch64__)
+#  elif SANITIZER_APPLE && defined(__aarch64__)
 #    define ASAN_SHADOW_OFFSET_DYNAMIC
+#  elif SANITIZER_FREEBSD && defined(__aarch64__)
+#    define ASAN_SHADOW_OFFSET_CONST 0x0000800000000000
 #  elif SANITIZER_RISCV64
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000000d55550000
 #  elif defined(__aarch64__)
@@ -188,12 +197,14 @@
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000400000000000
 #  elif SANITIZER_NETBSD
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000400000000000
-#  elif SANITIZER_MAC
+#  elif SANITIZER_APPLE
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000100000000000
 #  elif defined(__mips64)
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000002000000000
 #  elif defined(__sparc__)
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000080000000000
+#  elif SANITIZER_LOONGARCH64
+#    define ASAN_SHADOW_OFFSET_CONST 0x0000400000000000
 #  elif SANITIZER_WINDOWS64
 #    define ASAN_SHADOW_OFFSET_DYNAMIC
 #  else

@@ -31,9 +31,9 @@ import clang_native
 import jsrun
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
-from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
+from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
-from tools import shared, line_endings, building, config
+from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -82,13 +82,6 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
-
-
-def delete_contents(pathname):
-  for entry in os.listdir(pathname):
-    try_delete(os.path.join(pathname, entry))
-    # TODO(sbc): Should we make try_delete have a stronger guarantee?
-    assert not os.path.exists(os.path.join(pathname, entry))
 
 
 def test_file(*path_components):
@@ -267,7 +260,7 @@ def also_with_wasm_bigint(f):
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
       self.require_node()
-      self.node_args.append('--experimental-wasm-bigint')
+      self.node_args += shared.node_bigint_flags()
       f(self)
     else:
       f(self)
@@ -306,6 +299,35 @@ def create_file(name, contents, binary=False):
 
 def make_executable(name):
   Path(name).chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
+def make_dir_writeable(dirname):
+  # Ensure all files are readable and writable by the current user.
+  permission_bits = stat.S_IWRITE | stat.S_IREAD
+
+  def is_writable(path):
+    return (os.stat(path).st_mode & permission_bits) != permission_bits
+
+  def make_writable(path):
+    new_mode = os.stat(path).st_mode | permission_bits
+    os.chmod(path, new_mode)
+
+  # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
+  # them. Force-make everything writable in the subdirectory to make it
+  # removable and re-attempt.
+  if not is_writable(dirname):
+    make_writable(dirname)
+
+  for directory, subdirs, files in os.walk(dirname):
+    for item in files + subdirs:
+      i = os.path.join(directory, item)
+      if not os.path.islink(i):
+        make_writable(i)
+
+
+def force_delete_dir(dirname):
+  make_dir_writeable(dirname)
+  utils.delete_dir(dirname)
 
 
 def parameterized(parameters):
@@ -400,8 +422,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('WASM') != 0
 
   def check_dylink(self):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('MEMORY64 does not yet support dynamic linking')
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
@@ -437,7 +457,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.node_args += shared.node_pthread_flags()
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -464,11 +484,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def setUp(self):
     super().setUp()
     self.settings_mods = {}
-    self.emcc_args = ['-Werror', '-Wno-limited-postlink-optimizations']
-    # We want to be strict about closure warnings in our test code.
-    # TODO(sbc): Remove this if we make it the default for `-Werror`:
-    # https://github.com/emscripten-core/emscripten/issues/16205):
-    self.ldflags = ['-sCLOSURE_WARNINGS=error']
+    self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
+    self.ldflags = []
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
@@ -505,7 +522,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
-          delete_contents(self.working_dir)
+          utils.delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
@@ -523,7 +540,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
-      try_delete(self.get_dir())
+      force_delete_dir(self.get_dir())
 
       if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
@@ -585,15 +602,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return os.path.join(self.get_dir(), *pathelems)
 
   def add_pre_run(self, code):
-    create_file('prerun.js', 'Module.preRun = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'prerun.js']
 
   def add_post_run(self, code):
-    create_file('postrun.js', 'Module.postRun = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'postrun.js']
 
   def add_on_exit(self, code):
-    create_file('onexit.js', 'Module.onExit = function() { %s }' % code)
+    assert not self.get_setting('MINIMAL_RUNTIME')
+    create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
   # returns the full list of arguments to pass to emcc
@@ -936,7 +956,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
                   configure_args=None, make=None, make_args=None,
-                  env_init=None, cache_name_extra='', native=False):
+                  env_init=None, cache_name_extra='', native=False,
+                  force_rebuild=False):
     if make is None:
       make = ['make']
     if env_init is None:
@@ -950,7 +971,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # get_library() is used to compile libraries, and not link executables,
     # so we don't want to pass linker flags here (emscripten warns if you
     # try to pass linker settings when compiling).
-    emcc_args = self.get_emcc_args(ldflags=False)
+    emcc_args = []
+    if not native:
+      emcc_args = self.get_emcc_args(ldflags=False)
 
     hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
@@ -958,7 +981,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
-    if self.library_cache.get(cache_name):
+    if not force_rebuild and self.library_cache.get(cache_name):
       print('<load %s from cache> ' % cache_name, file=sys.stderr)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
@@ -981,9 +1004,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native)
 
   def clear(self):
-    delete_contents(self.get_dir())
+    utils.delete_contents(self.get_dir())
     if EMSCRIPTEN_TEMP_DIR:
-      delete_contents(EMSCRIPTEN_TEMP_DIR)
+      utils.delete_contents(EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -1180,8 +1203,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     srcfile = test_file(*path)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
-    expected = read_file(outfile)
-    return self._build_and_run(srcfile, expected, **kwargs)
+    if EMTEST_REBASELINE:
+      expected = None
+    else:
+      expected = read_file(outfile)
+    output = self._build_and_run(srcfile, expected, **kwargs)
+    if EMTEST_REBASELINE:
+      write_file(outfile, output)
+    return output
 
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
@@ -1256,11 +1285,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return js_output
 
   def get_freetype_library(self):
-    if '-Werror' in self.emcc_args:
-      self.emcc_args.remove('-Werror')
-    return self.get_library(os.path.join('third_party', 'freetype'), os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
+    self.emcc_args += [
+      '-Wno-misleading-indentation',
+      '-Wno-unused-but-set-variable',
+      '-Wno-pointer-bool-conversion',
+      '-Wno-shift-negative-value',
+    ]
+    return self.get_library(os.path.join('third_party', 'freetype'),
+                            os.path.join('objs', '.libs', 'libfreetype.a'),
+                            configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
+    freetype = self.get_freetype_library()
+
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
@@ -1270,18 +1307,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-I' + test_file('third_party/poppler/include')
     ]
 
-    freetype = self.get_freetype_library()
-
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    if '-Werror' in self.emcc_args:
-      self.emcc_args.remove('-Werror')
     self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
       '-Wno-tautological-compare',
       '-Wno-unknown-pragmas',
+      '-Wno-shift-negative-value',
+      '-Wno-dynamic-class-memaccess',
+      # Avoid warning about ERROR_ON_UNDEFINED_SYMBOLS being used at compile time
+      '-Wno-unused-command-line-argument',
+      '-Wno-js-compiler',
     ]
     env_init = env_init.copy() if env_init else {}
     env_init['FONTCONFIG_CFLAGS'] = ' '
@@ -1722,8 +1760,8 @@ class BrowserCore(RunnerCore):
     REPORT_RESULT macro to the C code.
     """
     self.set_setting('EXIT_RUNTIME')
-    assert('reporting' not in kwargs)
-    assert('expected' not in kwargs)
+    assert 'reporting' not in kwargs
+    assert 'expected' not in kwargs
     kwargs['reporting'] = Reporting.JS_ONLY
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
@@ -1753,7 +1791,7 @@ class BrowserCore(RunnerCore):
     outfile = 'test.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
-    try_delete(outfile)
+    utils.delete_file(outfile)
     self.compile_btest(args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
@@ -1762,7 +1800,7 @@ class BrowserCore(RunnerCore):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
       self.js_engines = [config.NODE_JS]
-      self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+      self.node_args += shared.node_pthread_flags()
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
@@ -1863,7 +1901,8 @@ def build_library(name,
     return open(os.path.join(project_dir, 'make.err'), mode)
 
   if EMTEST_BUILD_VERBOSE >= 3:
-    make_args += ['VERBOSE=1']
+    # VERBOSE=1 is cmake and V=1 is for autoconf
+    make_args += ['VERBOSE=1', 'V=1']
 
   try:
     with open_make_out('w') as make_out:

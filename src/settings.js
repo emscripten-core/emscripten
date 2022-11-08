@@ -110,7 +110,7 @@ var MEM_INIT_METHOD = false;
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
 // [link]
-var TOTAL_STACK = 5*1024*1024;
+var STACK_SIZE = 5*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
@@ -265,10 +265,11 @@ var GLOBAL_BASE = 1024;
 // [link]
 var USE_CLOSURE_COMPILER = false;
 
-// Specifies how warnings emitted by Closure are treated. Possible
-// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
-// out to console. If set to 'error', Closure warnings are treated like errors,
-// similar to -Werror compiler flag.
+// Deprecated: Use the standard warnings flags instead. e.g. `-Wclosure`,
+// `-Wno-closure`, `-Werror=closure`.
+// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are
+// printed out to console. If set to 'error', Closure warnings are treated like
+// errors, similar to -Werror compiler flag.
 // [link]
 var CLOSURE_WARNINGS = 'quiet';
 
@@ -604,7 +605,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
-//  * Work around old Chromium WebGL 1 bug (-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
+//  * Work around old Chromium WebGL 1 bug (-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG)
 //  * Disable WebAssembly. (Must be paired with -sWASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 //  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -833,14 +834,18 @@ var ASYNCIFY_REMOVE = [];
 // in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ADD = [];
 
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ONLY = [];
 
@@ -939,8 +944,7 @@ var FORCE_FILESYSTEM = false;
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
-// handles permissions and errors and so forth may be noticeable.  This has
-// mostly been tested on Linux so far.
+// handles permissions and errors and so forth may be noticeable.
 // [link]
 var NODERAWFS = false;
 
@@ -1055,7 +1059,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // The pthread that main() runs on is a normal pthread in all ways, with the one
 // difference that its stack size is the same as the main thread would normally
-// have, that is, TOTAL_STACK. This makes it easy to flip between
+// have, that is, STACK_SIZE. This makes it easy to flip between
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
@@ -1092,7 +1096,6 @@ var LINKABLE = false;
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
-//   * LEGACY_RUNTIME is disabled.
 // [compile+link]
 var STRICT = false;
 
@@ -1247,7 +1250,8 @@ var EXPORT_NAME = 'Module';
 // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
 // that is targeting a privileged or a certified execution environment, see
 // Firefox Content Security Policy (CSP) webpage for details:
-// https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
+// in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
 //  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
@@ -1398,95 +1402,96 @@ var LEGALIZE_JS_FFI = true;
 // 2 is a port of the SDL C code on emscripten-ports
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
-// [link]
+// [compile+link]
 var USE_SDL = 1;
 
 // Specify the SDL_gfx version that is being linked against. Must match USE_SDL
-// [link]
+// [compile+link]
 var USE_SDL_GFX = 0;
 
 // Specify the SDL_image version that is being linked against. Must match USE_SDL
-// [link]
+// [compile+link]
 var USE_SDL_IMAGE = 1;
 
 // Specify the SDL_ttf version that is being linked against. Must match USE_SDL
-// [link]
+// [compile+link]
 var USE_SDL_TTF = 1;
 
 // Specify the SDL_net version that is being linked against. Must match USE_SDL
-// [link]
+// [compile+link]
 var USE_SDL_NET = 1;
 
 // 1 = use icu from emscripten-ports
-// [link]
+// [compile+link]
 var USE_ICU = false;
 
 // 1 = use zlib from emscripten-ports
-// [link]
+// [compile+link]
 var USE_ZLIB = false;
 
 // 1 = use bzip2 from emscripten-ports
-// [link]
+// [compile+link]
 var USE_BZIP2 = false;
 
 // 1 = use giflib from emscripten-ports
-// [link]
+// [compile+link]
 var USE_GIFLIB = false;
 
 // 1 = use libjpeg from emscripten-ports
-// [link]
+// [compile+link]
 var USE_LIBJPEG = false;
 
 // 1 = use libpng from emscripten-ports
-// [link]
+// [compile+link]
 var USE_LIBPNG = false;
 
 // 1 = use Regal from emscripten-ports
-// [link]
+// [compile+link]
 var USE_REGAL = false;
 
 // 1 = use Boost headers from emscripten-ports
-// [link]
+// [compile+link]
 var USE_BOOST_HEADERS = false;
 
 // 1 = use bullet from emscripten-ports
-// [link]
+// [compile+link]
 var USE_BULLET = false;
 
 // 1 = use vorbis from emscripten-ports
-// [link]
+// [compile+link]
 var USE_VORBIS = false;
 
 // 1 = use ogg from emscripten-ports
-// [link]
+// [compile+link]
 var USE_OGG = false;
 
 // 1 = use mpg123 from emscripten-ports
-// [link]
+// [compile+link]
 var USE_MPG123 = false;
 
 // 1 = use freetype from emscripten-ports
-// [link]
+// [compile+link]
 var USE_FREETYPE = false;
 
 // Specify the SDL_mixer version that is being linked against.
 // Doesn't *have* to match USE_SDL, but a good idea.
-// [link]
+// [compile+link]
 var USE_SDL_MIXER = 1;
 
 // 1 = use harfbuzz from harfbuzz upstream
-// [link]
+// [compile+link]
 var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
-// [link]
+// [compile+link]
 var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
-// [link]
+// [compile+link]
 var USE_MODPLUG = false;
 
-// Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
+// Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
+// tga, xcf, xpm, xv
 // [link]
 var SDL2_IMAGE_FORMATS = [];
 
@@ -1495,7 +1500,7 @@ var SDL2_IMAGE_FORMATS = [];
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
-// [link]
+// [compile+link]
 var USE_SQLITE3 = false;
 
 // If true, the current build is performed for the Emscripten test harness.
@@ -2055,6 +2060,12 @@ var POLYFILL = true;
 // - DYLINK_DEBUG
 // - LIBRARY_DEBUG
 // - GL_DEBUG
+// - OPENAL_DEBUG
+// - EXCEPTION_DEBUG
+// - SYSCALL_DEBUG
+// - WEBSOCKET_DEBUG
+// - SOCKET_DEBUG
+// - FETCH_DEBUG
 // [link]
 var RUNTIME_DEBUG = false;
 
@@ -2062,7 +2073,7 @@ var RUNTIME_DEBUG = false;
 // Without this, such symbols can be made available by adding them to
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
 // library symbol.
-var LEGACY_RUNTIME = true;
+var LEGACY_RUNTIME = false;
 
 //===========================================
 // Internal, used for testing only, from here
@@ -2090,6 +2101,7 @@ var TEST_MEMORY_GROWTH_FAILS = false;
 // numeric setting, or -1 for a string setting).
 var LEGACY_SETTINGS = [
   ['BINARYEN', 'WASM'],
+  ['TOTAL_STACK', 'STACK_SIZE'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
@@ -2101,7 +2113,7 @@ var LEGACY_SETTINGS = [
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM=1 - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],

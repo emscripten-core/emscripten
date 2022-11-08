@@ -29,6 +29,8 @@ void magic_test_function(void) {
   puts("ok");
 }
 
+EM_JS_DEPS(test, "$ptrToString");
+
 int main(void) {
   magic_test_function();
   return 0;
