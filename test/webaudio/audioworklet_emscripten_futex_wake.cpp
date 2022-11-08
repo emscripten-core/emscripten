@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
+// Tests that
+// - _emscripten_thread_supports_atomics_wait() returns true in a Wasm Audio Worklet.
+// - emscripten_futex_wake() does not crash in a Wasm Audio Worklet.
+// - emscripten_get_now() does not crash in a Wasm Audio Worklet.
+
 int futexLocation = 0;
 int testSuccess = 0;
 
@@ -15,6 +20,7 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
   printf("supportsAtomicWait: %d\n", supportsAtomicWait);
   assert(supportsAtomicWait);
   emscripten_futex_wake(&futexLocation, 1);
+  printf("%f\n", emscripten_get_now());
   testSuccess = 1;
 
   return EM_FALSE;
