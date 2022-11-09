@@ -18,7 +18,7 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
 {
   int supportsAtomicWait = _emscripten_thread_supports_atomics_wait();
   printf("supportsAtomicWait: %d\n", supportsAtomicWait);
-  assert(supportsAtomicWait);
+  assert(!supportsAtomicWait);
   emscripten_futex_wake(&futexLocation, 1);
   printf("%f\n", emscripten_get_now());
   testSuccess = 1;
