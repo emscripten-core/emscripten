@@ -21,8 +21,10 @@ void __wasm_init_tls(void *memory);
 __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+	assert((*sbrk_ptr & 15) == 0);
+	assert(__builtin_wasm_tls_align() <= 16);
 	__wasm_init_tls((void*)*sbrk_ptr);
-	*sbrk_ptr += __builtin_wasm_tls_size();
+	*sbrk_ptr += (__builtin_wasm_tls_size() + 15) & -16;
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
