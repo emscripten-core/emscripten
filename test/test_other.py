@@ -12113,13 +12113,9 @@ Module['postRun'] = function() {{
 let stdout = '';
 let stderr = '';
 
-Module['print'] = function(text) {
-  stdout += text;
-}
-Module['printErr'] = function(text) {
-  stderr += text;
-}
-Module['postRun'] = function() {
+Module['print'] = (text) => stdout += text;
+Module['printErr'] = (text) => stderr += text;
+Module['postRun'] = () => {
     assert(stderr == '', 'stderr should be empty. \\n' +
         'stderr: \\n' + stderr);
     assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
@@ -12128,6 +12124,18 @@ Module['postRun'] = function() {
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf(test_file('hello_world.c'))
+
+  @requires_node
+  def test_noderawfs_override_stdin(self):
+    self.set_setting('NODERAWFS')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.set_setting('EXIT_RUNTIME')
+    create_file('pre.js', '''
+const data = 'hello, world!\\n'.split('').map(c => c.charCodeAt(0));
+Module['stdin'] = () => data.shift() || null;
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf(test_file('module/test_stdin.c'), 'hello, world!')
 
   # WASMFS tests
 
