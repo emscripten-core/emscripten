@@ -703,7 +703,7 @@ function asmFFICoercion(value, type) {
   return value;
 }
 
-function makeDynCall(sig, funcPtr) {
+function _createDynCall(sig, funcPtr) {
   assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
   let args = [];
@@ -780,6 +780,14 @@ Please update to new syntax.`);
     return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
   }
   return `getWasmTableEntry(${funcPtr})`;
+}
+
+function makeDynCall(sig, funcPtr) {
+  let dynCall = _createDynCall(sig, funcPtr);
+  if (funcPtr.startsWith('this.') && dynCall.startsWith('(function(')) {
+    throw `Error: {{{ makeDynCall('${sig}', '${funcPtr}' }}} cannot reference "this." inside makeDynCall() macro when building with -sDYNCALLS or with -sMEMORY64! Please refactor the reference to '${funcPtr}' to a separate variable outside the {{{ }}} block.`;
+  }
+  return dynCall;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
