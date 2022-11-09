@@ -7,6 +7,7 @@
 // Tests that
 // - _emscripten_thread_supports_atomics_wait() returns true in a Wasm Audio Worklet.
 // - emscripten_futex_wake() does not crash in a Wasm Audio Worklet.
+// - emscripten_futex_wait() does not crash in a Wasm Audio Worklet.
 // - emscripten_get_now() does not crash in a Wasm Audio Worklet.
 
 int futexLocation = 0;
@@ -21,6 +22,8 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
   assert(!supportsAtomicWait);
   emscripten_futex_wake(&futexLocation, 1);
   printf("%f\n", emscripten_get_now());
+
+  emscripten_futex_wait(&futexLocation, 1, /*maxWaitMs=*/2);
   testSuccess = 1;
 
   return EM_FALSE;
