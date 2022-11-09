@@ -4,7 +4,6 @@
 #include <emscripten/heap.h>
 #include <emscripten/stack.h>
 #include <malloc.h>
-#include <stddef.h>
 
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
@@ -22,18 +21,10 @@ void __wasm_init_tls(void *memory);
 __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-	uintptr_t sbrk_addr = *sbrk_ptr;
-
-	if(__builtin_wasm_tls_align() != 0)
-	{
-		sbrk_addr = (sbrk_addr + __builtin_wasm_tls_align() - 1) & (-__builtin_wasm_tls_align());
-	}
-	__wasm_init_tls((void*)sbrk_addr);
-
-	sbrk_addr += __builtin_wasm_tls_size();
-	sbrk_addr = (sbrk_addr + __alignof__(max_align_t) - 1) & (-__alignof__(max_align_t));
-
-	*sbrk_ptr = sbrk_addr;
+	assert((*sbrk_ptr & 15) == 0);
+	assert(__builtin_wasm_tls_align() <= 16);
+	__wasm_init_tls((void*)*sbrk_ptr);
+	*sbrk_ptr += (__builtin_wasm_tls_size() + 15) & -16;
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
