@@ -1,4 +1,4 @@
-.. Exceptions support:
+.. _exceptions:
 
 ==============================
 C++ exceptions support
@@ -74,3 +74,8 @@ throwing and catching exceptions to WebAssembly.
 As a result, it can reduce code size and performance overhead compared
 to the JavaScript-based implementation. However, it's still brand-new
 and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
+
+Using exceptions and setjmp-longjmp together
+############################################
+
+See :ref:`using-exceptions-and-setjmp-longjmp-together`.
