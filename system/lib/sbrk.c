@@ -6,13 +6,21 @@
  *
 */
 
+#if __EMSCRIPTEN_PTHREADS__
+#define RETRY_SBRK 1
+#endif
+
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#define RETRY_SBRK 1
+#endif
+
 #ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
 #endif
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#if __EMSCRIPTEN_PTHREADS__ // for error handling, see below
+#if RETRY_SBRK // for error handling, see below
 #include <stdio.h>
 #include <stdlib.h>
 #endif
@@ -54,16 +62,16 @@ void *sbrk(intptr_t increment_) {
   uintptr_t old_size;
   uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
-#if __EMSCRIPTEN_PTHREADS__
+#if RETRY_SBRK
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
   // itself is threadsafe so alternative allocators work. We do that by looping
   // and retrying if we hit interference with another thread.
   uintptr_t expected;
   while (1) {
-#endif // __EMSCRIPTEN_PTHREADS__
+#endif // RETRY_SBRK
     uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-#if __EMSCRIPTEN_PTHREADS__
+#if RETRY_SBRK
     uintptr_t old_brk = __c11_atomic_load((_Atomic(uintptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
     uintptr_t old_brk = *sbrk_ptr;
@@ -81,7 +89,7 @@ void *sbrk(intptr_t increment_) {
         goto Error;
       }
     }
-#if __EMSCRIPTEN_PTHREADS__
+#if RETRY_SBRK
     // Attempt to update the dynamic top to new value. Another thread may have
     // beat this one to the update, in which case we will need to start over
     // by iterating the loop body again.
@@ -93,18 +101,18 @@ void *sbrk(intptr_t increment_) {
     if (expected != old_brk) {
       continue;
     }
-#else // __EMSCRIPTEN_PTHREADS__
+#else // RETRY_SBRK
     *sbrk_ptr = new_brk;
-#endif // __EMSCRIPTEN_PTHREADS__
+#endif // RETRY_SBRK
 
 #ifdef __EMSCRIPTEN_TRACING__
     emscripten_memprof_sbrk_grow(old_brk, new_brk);
 #endif
     return (void*)old_brk;
 
-#if __EMSCRIPTEN_PTHREADS__
+#if RETRY_SBRK
   }
-#endif // __EMSCRIPTEN_PTHREADS__
+#endif // RETRY_SBRK
 
 Error:
   SET_ERRNO();
@@ -112,7 +120,7 @@ Error:
 }
 
 int brk(void* ptr) {
-#if __EMSCRIPTEN_PTHREADS__
+#if RETRY_SBRK
   // FIXME
   printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
   abort();
