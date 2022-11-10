@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.26 (in development)
 -----------------------
+- Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
+  environment variable).  This options specifies the name of a tar file into
+  which emscripten will copy all of the input files along with a response file
+  that will allow the command to be replicated.  This can be useful for sharing
+  reproduction cases with others (inspired by the lld option of the same name).
+  (#18160)
 
 3.1.25 - 11/08/22
 -----------------

@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import unittest
 from pathlib import Path
@@ -12674,3 +12675,26 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     }
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
+
+  def test_reproduce(self):
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    self.assertExists('foo.tar')
+    names = []
+    with tarfile.open('foo.tar') as f:
+      for name in f.getnames():
+        names.append(name.replace(path_from_root(), '/<root>'))
+      f.extractall()
+    names = '\n'.join(sorted(names)) + '\n'
+    expected = '''\
+foo/<root>/test/hello_world.c
+foo/response.txt
+foo/version.txt
+'''
+    self.assertTextDataIdentical(names, expected)
+    expected = '''\
+-sASSERTIONS=1
+<root>/test/hello_world.c
+'''
+    root = os.path.splitdrive(path_from_root())[1][1:]
+    response = read_file('foo/response.txt').replace(root, '<root>')
+    self.assertTextDataIdentical(response, expected)
