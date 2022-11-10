@@ -42,18 +42,8 @@ export function processMacros(text, filename) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-export function preprocess(filename, closureFriendly = true) {
+export function preprocess(filename) {
   let text = read(filename);
-  if (closureFriendly && EXPORT_ES6 && USE_ES6_IMPORT_META) {
-    // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` and `await import` usages
-    // with placeholders during preprocess phase, and back after all the other ops.
-    // See also: `phase_final_emitting` in emcc.py.
-    text = text
-      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT')
-      .replace(/\bexport default\b/g, 'EMSCRIPTEN$EXPORT$DEFAULT =');
-  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 

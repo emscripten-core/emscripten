@@ -9,10 +9,13 @@ if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;
 #endif
 #endif
 
-#if MODULARIZE == 'instance'
-export default {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function init(moduleArg = {}) {
+#if EXPORT_ES6
+// Ensure Closure and Acorn (specifically the JSDCE pass) is aware of the export.
+// This gets replaced by `export default` in the final output.
+// https://stackoverflow.com/questions/46092308
+window["{{{ EXPORT_NAME }}}"] = {{{ asyncIf(WASM_ASYNC_COMPILATION || ENVIRONMENT_MAY_BE_NODE) }}}function(moduleArg = {}) {
 #else
-var {{{ EXPORT_NAME }}} = {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function(moduleArg = {}) {
+var {{{ EXPORT_NAME }}} = {{{ asyncIf(WASM_ASYNC_COMPILATION) }}}function(moduleArg = {}) {
 #endif
 
 var Module = moduleArg;

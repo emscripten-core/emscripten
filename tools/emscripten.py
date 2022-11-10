@@ -212,6 +212,12 @@ def compile_javascript(symbols_only=False):
   else:
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
+
+    # Unmangle previously mangled `import.meta` references in lib*.js.
+    # See also: `LibraryManager.load` in modules.js.
+    if settings.EXPORT_ES6:
+      glue = glue.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+
   return glue, forwarded_data
 
 

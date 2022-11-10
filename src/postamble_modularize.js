@@ -46,12 +46,10 @@ for (const prop of Object.keys(Module)) {
 })();
 #endif
 
-// Export using a UMD style export, or ES6 exports if selected
 #if EXPORT_ES6
 #if MODULARIZE == 'instance'
+// FIXME: This doesn't work with Closure.
 {{{ declareInstanceExports() }}}
-#else
-export default {{{ EXPORT_NAME }}};
 #endif
 #else
 if (typeof exports === 'object' && typeof module === 'object') {
@@ -83,10 +81,6 @@ var isPthread = {{{ nodePthreadDetection() }}};
 #endif ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 
 // When running as a pthread, construct a new instance on startup
-#if MODULARIZE == 'instance'
-isPthread && init();
-#else
 isPthread && {{{ EXPORT_NAME }}}();
-#endif
 
 #endif // PTHREADS
