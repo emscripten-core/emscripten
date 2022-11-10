@@ -268,7 +268,8 @@ function JSDCE(ast, aggressive) {
           }
         },
         FunctionDeclaration(node, _c) {
-          if (names.has(node.id.name)) {
+          // FIXME: Check for `EXPORT_NAME` instead of `Module`
+          if (names.has(node.id.name) && node.id.name != 'Module') {
             removed++;
             emptyOut(node);
             return;
@@ -1718,6 +1719,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];

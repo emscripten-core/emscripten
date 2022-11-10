@@ -27,7 +27,7 @@
 #if MODULARIZE == 'instance'
 var Module = {};
 #else
-var Module = moduleArg;
+#include "preamble_modularize.js"
 #endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
