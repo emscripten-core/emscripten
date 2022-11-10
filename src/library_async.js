@@ -124,12 +124,10 @@ mergeInto(LibraryManager.library, {
               var results = type.results;
 #if ASSERTIONS
               assert(results.length !== 0, 'There must be a return result')
+              assert(parameters[0] === 'externref', 'First param must be externref.');
 #endif
-              // Remove the extern ref;
-              var firstElement = parameters.shift();
-#if ASSERTIONS
-              assert(firstElement === 'externref', 'First param must be externref.');
-#endif
+              // Remove the extern ref.
+              parameters.shift();
               original = new WebAssembly.Function(
                 { parameters , results: ['externref'] },
                 original,
