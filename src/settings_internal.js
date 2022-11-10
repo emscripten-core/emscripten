@@ -244,3 +244,5 @@ var ALL_INCOMING_MODULE_JS_API = [];
 // when weak symbols are undefined.  Only applies in the case of dyanmic linking
 // (MAIN_MODULE).
 var WEAK_IMPORTS = [];
+
+var STACK_FIRST = false;

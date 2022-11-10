@@ -551,6 +551,7 @@ jobs:
             core2.test_em_js
             core2.test_em_js_pthreads
             core2.test_unicode_js_library
+            other.test_stack_overflow
             other.test_dlmalloc_modes
             other.test_c_preprocessor
             other.test_prejs_unicode

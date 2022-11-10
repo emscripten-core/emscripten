@@ -3442,6 +3442,14 @@ mergeInto(LibraryManager.library, {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
+#if STACK_OVERFLOW_CHECK
+    checkStackCookie();
+    if (e instanceof WebAssembly.RuntimeError) {
+      if (_emscripten_stack_get_current() <= 0) {
+        err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to ' + STACK_SIZE + ')');
+      }
+    }
+#endif
 #if MINIMAL_RUNTIME
     throw e;
 #else

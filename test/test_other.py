@@ -12698,3 +12698,11 @@ foo/version.txt
     root = os.path.splitdrive(path_from_root())[1][1:]
     response = read_file('foo/response.txt').replace(root, '<root>')
     self.assertTextDataIdentical(response, expected)
+
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
+  def test_stack_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    self.emcc_args += ['-O1', '--profiling-funcs']
+    self.do_runf(test_file('core/stack_overflow.c'),
+                 'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
+                 assert_returncode=NON_ZERO)

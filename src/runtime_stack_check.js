@@ -14,6 +14,12 @@ function writeStackCookie() {
 #if ASSERTIONS
   assert((max & 3) == 0);
 #endif
+  // If the stack ends at address zero we write our cookies 4 bytes into the
+  // stack.  This prevents interference with the (separate) address-zero check
+  // below.
+  if (max == 0) {
+    max += 4;
+  }
   // The stack grow downwards towards _emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
@@ -33,6 +39,10 @@ function checkStackCookie() {
 #if RUNTIME_DEBUG
   dbg('checkStackCookie: ' + max.toString(16));
 #endif
+  // See writeStackCookie().
+  if (max == 0) {
+    max += 4;
+  }
   var cookie1 = {{{ makeGetValue('max', 0, 'u32') }}};
   var cookie2 = {{{ makeGetValue('max', 4, 'u32') }}};
   if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
