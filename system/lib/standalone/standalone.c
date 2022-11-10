@@ -127,14 +127,14 @@ void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t
   __builtin_unreachable();
 }
 
-size_t emscripten_get_heap_max() {
+size_t emscripten_memory_get_max() {
   // In standalone mode we don't have any wasm instructions to access the max
   // memory size so the best we can do (without calling an import) is return
   // the current heap size.
-  return emscripten_get_heap_size();
+  return emscripten_memory_get_size();
 }
 
-int emscripten_resize_heap(size_t size) {
+int emscripten_memory_resize(size_t size) {
 #ifdef EMSCRIPTEN_MEMORY_GROWTH
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);

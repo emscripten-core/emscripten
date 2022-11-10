@@ -27,6 +27,7 @@
 
 #if SANITIZER_EMSCRIPTEN
 #include "lsan/lsan_allocator.h"
+#include "emscripten/memory.h"
 #endif
 
 #if CAN_SANITIZE_LEAKS
@@ -531,14 +532,10 @@ void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
                          kReachable);
 }
 
-#if SANITIZER_EMSCRIPTEN
-extern "C" uptr emscripten_get_heap_size();
-#endif
-
 static void ProcessRootRegion(Frontier *frontier,
                               const RootRegion &root_region) {
 #if SANITIZER_EMSCRIPTEN
-  ScanRootRegion(frontier, root_region, 0, emscripten_get_heap_size(), true);
+  ScanRootRegion(frontier, root_region, 0, emscripten_memory_get_size(), true);
 #else
   MemoryMappingLayout proc_maps(/*cache_enabled*/ true);
   MemoryMappedSegment segment;

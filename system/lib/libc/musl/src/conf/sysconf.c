@@ -8,7 +8,7 @@
 #include "libc.h"
 
 #ifdef __EMSCRIPTEN__
-#include "emscripten/heap.h"
+#include "emscripten/memory.h"
 #include "emscripten/threading.h"
 #endif
 
@@ -213,7 +213,7 @@ long sysconf(int name)
 	case JT_PHYS_PAGES & 255:
 	case JT_AVPHYS_PAGES & 255: ;
 #ifdef __EMSCRIPTEN__
-		return emscripten_get_heap_max() / PAGE_SIZE;
+		return emscripten_memory_get_max() / PAGE_SIZE;
 #else
 		unsigned long long mem;
 		struct sysinfo si;

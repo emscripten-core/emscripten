@@ -10,7 +10,7 @@ T round_to_4k(T val){
 
 int main()
 {
-	printf("heap size: %zu\n", emscripten_get_heap_size());
+	printf("mem size: %zu\n", emscripten_memory_get_size());
 	printf("dynamic heap 0: %zu\n", round_to_4k(emmalloc_dynamic_heap_size()));
 	printf("free dynamic memory 0: %zu\n", round_to_4k(emmalloc_free_dynamic_memory()));
 	printf("unclaimed heap memory 0: %zu\n", round_to_4k(emmalloc_unclaimed_heap_memory()));

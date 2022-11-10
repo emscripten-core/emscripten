@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <emscripten/heap.h>
+#include <emscripten/memory.h>
 
 uint64_t nextAllocationSize = 16*1024*1024;
 bool allocHasFailed = false;
@@ -9,8 +9,8 @@ void grow_memory()
 {
 	uint8_t *ptr = (uint8_t*)malloc((size_t)nextAllocationSize);
 	EM_ASM({}, ptr); // Pass ptr out to confuse LLVM that it is used, so it won't optimize it away in -O1 and higher.
-	size_t heapSize = emscripten_get_heap_size();
-	printf("Allocated %zu: %d. Heap size: %zu\n", (size_t)nextAllocationSize, ptr ? 1 : 0, heapSize);
+	size_t memorySize = emscripten_memory_get_size();
+	printf("Allocated %zu: %d. Memory size: %zu\n", (size_t)nextAllocationSize, ptr ? 1 : 0, memorySize);
 	if (ptr)
 	{
 		if (!allocHasFailed)

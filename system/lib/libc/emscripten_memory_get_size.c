@@ -5,9 +5,9 @@
  * found in the LICENSE file.
  */
 
-#include <emscripten/heap.h>
+#include <emscripten/memory.h>
 #include <stddef.h>
 
-size_t emscripten_get_heap_size() {
+size_t emscripten_memory_get_size() {
   return __builtin_wasm_memory_size(0) << 16;
 }

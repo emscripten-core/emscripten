@@ -48,6 +48,13 @@ See docs/process.md for more on how version tagging works.
   a binaryen pass, so targeting older browsers requires the running of wasm-opt
   and is therefore incompatible with `ERROR_ON_WASM_CHANGES_AFTER_LINK` (i.e.
   fast linking). (#17690)
+  (#17690)
+- C functions related to the entire wasm memory were moved from `heap.h` to
+  `memory.h` and renamed.  The old names continue to work as aliases and
+  semantics have not changed:
+    emscripten_resize_heap -> emscripten_memory_resize
+    emscripten_get_heap_size -> emscripten_memory_get_size
+    emscripten_get_heap_max -> emscripten_memory_get_max
 - Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
   environment variable).  This options specifies the name of a tar file into
   which emscripten will copy all of the input files along with a response file

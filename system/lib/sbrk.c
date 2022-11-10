@@ -22,6 +22,7 @@ void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
 #endif
 
 #include <emscripten/heap.h>
+#include <emscripten/memory.h>
 
 #ifndef EMSCRIPTEN_NO_ERRNO
 #define SET_ERRNO() { errno = ENOMEM; }
@@ -74,10 +75,10 @@ void *sbrk(intptr_t increment_) {
     if (increment > 0 && new_brk <= old_brk) {
       goto Error;
     }
-    old_size = emscripten_get_heap_size();
+    old_size = emscripten_memory_get_size();
     if (new_brk > old_size) {
       // Try to grow memory.
-      if (!emscripten_resize_heap(new_brk)) {
+      if (!emscripten_memory_resize(new_brk)) {
         goto Error;
       }
     }

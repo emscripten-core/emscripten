@@ -7,7 +7,7 @@
 #include <malloc.h>
 #include <functional>
 #include <emscripten/bind.h>
-#include <emscripten/heap.h>
+#include <emscripten/memory.h>
 #include <emscripten/em_asm.h>
 
 using namespace emscripten;
@@ -194,11 +194,11 @@ std::u32string get_literal_u32string() {
 
 void force_memory_growth() {
     val module = val::global("Module");
-    std::size_t old_size = emscripten_get_heap_size();
+    std::size_t old_size = emscripten_memory_get_size();
     EM_ASM({"globalThis.oldheap = HEAPU8;"});
     assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
-    emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
-    assert(emscripten_get_heap_size() > old_size);
+    emscripten_memory_resize(old_size + EMSCRIPTEN_PAGE_SIZE);
+    assert(emscripten_memory_get_size() > old_size);
     // global HEAPU8 should now be rebound, and our oldheap should be detached
     assert(module["HEAPU8"]["byteLength"].as<size_t>() > old_size);
     assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);

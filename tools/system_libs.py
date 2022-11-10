@@ -1123,7 +1123,7 @@ class libc(MuslInternalLibrary,
         filenames=[
           'dynlink.c',
           'wasi-helpers.c',
-          'emscripten_get_heap_size.c',
+          'emscripten_memory_get_size.c',
           'raise.c',
           'kill.c',
           'sigaction.c',

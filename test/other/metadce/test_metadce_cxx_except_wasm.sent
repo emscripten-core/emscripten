@@ -1,6 +1,6 @@
 abort
 emscripten_memcpy_big
-emscripten_resize_heap
+emscripten_memory_resize
 environ_get
 environ_sizes_get
 fd_close

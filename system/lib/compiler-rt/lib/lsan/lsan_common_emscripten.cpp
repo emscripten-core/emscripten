@@ -33,8 +33,6 @@
 
 namespace __lsan {
 
-extern "C" uptr emscripten_get_heap_size();
-
 static const char kLinkerName[] = "ld";
 
 static char linker_placeholder[sizeof(LoadedModule)] ALIGNED(64);
