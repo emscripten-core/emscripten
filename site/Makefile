@@ -13,8 +13,10 @@ ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
 $(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx version 2.4.4 installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
 endif
 
-ifneq ($(shell $(SPHINXBUILD) --version), $(SPHINXBUILD) $(SPHINXVERSION))
-$(error This project requires $(SPHINXBUILD) $(SPHINXVERSION), but you have $(shell $(SPHINXBUILD) --version). Please install the correct version: http://sphinx-doc.org/)
+# Check if the sphinx's version is equal to or greater than the required version
+VERSION = $(shell $(SPHINXBUILD) --version | grep ^$(SPHINXBUILD) | sed 's/^.* //g')
+ifneq ($(SPHINXVERSION), $(firstword $(sort $(SPHINXVERSION) $(VERSION))))
+$(error This project requires $(SPHINXBUILD) $(SPHINXVERSION) or above, but you have $(VERSION). Please install the correct version: http://sphinx-doc.org/)
 endif
 
 # Internal variables.
