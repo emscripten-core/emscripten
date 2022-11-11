@@ -13,8 +13,7 @@ read_ = (filename, binary) => {
 #endif
   // We need to re-wrap `file://` strings to URLs. Normalizing isn't
   // necessary in that case, the path should already be absolute.
-  filename =
-    isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
+  filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
   return fs.readFileSync(filename, binary ? undefined : 'utf8');
 };
 
@@ -37,8 +36,7 @@ readAsync = (filename, onload, onerror) => {
   }
 #endif
   // See the comment in the `read_` function.
-  filename =
-    isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
+  filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
   fs.readFile(filename, function(err, data) {
     if (err) onerror(err);
     else onload(data.buffer);
