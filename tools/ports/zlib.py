@@ -8,6 +8,8 @@ import os
 VERSION = '1.2.13'
 HASH = '44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659'
 
+settings = {'USE_ZLIB': False}
+
 
 def needed(settings):
   return settings.USE_ZLIB

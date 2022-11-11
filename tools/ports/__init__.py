@@ -23,13 +23,16 @@ ports_by_name = {}
 # {variant_name: (port_name, extra_settings)}
 port_variants = {}
 
+# {setting name: default}
+port_settings = {}
+
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
 
 
 def read_ports():
-  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
+  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed', 'settings']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
@@ -55,9 +58,16 @@ def read_ports():
         utils.exit_with_error('duplicate port variant: %s' % variant)
       port_variants[variant] = (port.name, extra_settings)
 
+    for key, default in port.settings.items():
+      if key in port_settings:
+        utils.exit_with_error('duplicate setting: %s' % key)
+      port_settings[key] = default
+
   for dep in port.deps:
     if dep not in ports_by_name:
       utils.exit_with_error('unknown dependency in port: %s' % dep)
+
+  settings.update_port_settings(port_settings)
 
 
 def get_all_files_under(dirname):

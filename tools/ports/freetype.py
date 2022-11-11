@@ -8,6 +8,8 @@ import os
 TAG = 'VER-2-6'
 HASH = '24c1706045209a3fac64f423116318f3f97892b984e89f05600c71ac356d48d78d642d18b739f26d51d7b7723821becb991a90175accfe7a91ca16a3c759e4f8'
 
+settings = {'USE_FREETYPE': False}
+
 
 def needed(settings):
   return settings.USE_FREETYPE

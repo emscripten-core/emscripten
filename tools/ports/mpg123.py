@@ -9,6 +9,8 @@ import logging
 TAG = '1.26.2'
 HASH = 'aa63fcb08b243a1e09f7701b3d84a19d7412a87253d54d49f014fdb9e75bbc81d152a41ed750fccde901453929b2a001585a7645351b41845ad205c17a73dcc9'
 
+settings = {'USE_MPG123': False}
+
 
 def needed(settings):
   return settings.USE_MPG123

@@ -10,6 +10,7 @@ TAG = '1.6.37'
 HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
 
 deps = ['zlib']
+settings = {'USE_LIBPNG': False}
 variants = {'libpng-mt': {'USE_PTHREADS': 1}}
 
 

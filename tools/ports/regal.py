@@ -9,6 +9,7 @@ import os
 TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
 
+settings = {'USE_REGAL': False}
 variants = {'regal-mt': {'USE_PTHREADS': 1}}
 
 

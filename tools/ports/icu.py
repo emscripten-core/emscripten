@@ -10,6 +10,7 @@ TAG = 'release-68-2'
 VERSION = '68_2'
 HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
+settings = {'USE_ICU': False}
 variants = {'icu-mt': {'USE_PTHREADS': 1}}
 
 libname_libicu_common = 'libicu_common'

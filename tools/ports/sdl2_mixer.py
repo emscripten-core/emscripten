@@ -10,6 +10,13 @@ TAG = 'release-2.0.4'
 HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
 
 deps = ['sdl2']
+settings = {
+  # Specify the SDL_mixer version that is being linked against.
+  # Doesn't *have* to match USE_SDL, but a good idea.
+  'USE_SDL_MIXER': 1,
+  # Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
+  'SDL2_MIXER_FORMATS': ['ogg'],
+}
 variants = {
   'sdl2_mixer_mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
   'sdl2_mixer_none': {'SDL2_MIXER_FORMATS': []},

@@ -23,34 +23,7 @@ MEM_SIZE_SETTINGS = {
     'DEFAULT_PTHREAD_STACK_SIZE'
 }
 
-PORTS_SETTINGS = {
-    # All port-related settings are valid at compile time
-    'USE_SDL',
-    'USE_LIBPNG',
-    'USE_BULLET',
-    'USE_ZLIB',
-    'USE_BZIP2',
-    'USE_VORBIS',
-    'USE_COCOS2D',
-    'USE_ICU',
-    'USE_MODPLUG',
-    'USE_SDL_MIXER',
-    'USE_SDL_IMAGE',
-    'USE_SDL_TTF',
-    'USE_SDL_NET',
-    'USE_SDL_GFX',
-    'USE_LIBJPEG',
-    'USE_OGG',
-    'USE_REGAL',
-    'USE_BOOST_HEADERS',
-    'USE_HARFBUZZ',
-    'USE_MPG123',
-    'USE_GIFLIB',
-    'USE_FREETYPE',
-    'SDL2_MIXER_FORMATS',
-    'SDL2_IMAGE_FORMATS',
-    'USE_SQLITE3',
-}
+# PORTS_SETTINGS are now provided by each individual port.
 
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
@@ -83,7 +56,7 @@ COMPILE_TIME_SETTINGS = {
     # TODO: should not be here
     'AUTO_ARCHIVE_INDEXES',
     'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
-}.union(PORTS_SETTINGS)
+}
 
 
 user_settings: Dict[str, str] = {}
@@ -160,6 +133,16 @@ class SettingsManager:
     self.allowed_settings.clear()
     if allowed:
       self.allowed_settings.update(allowed)
+
+  def update_port_settings(self, port_setting):
+    for key, value in port_setting.items():
+      default = self.attrs.setdefault(key, value)
+      if value != default:
+        raise ValueError(
+          f"port setting {key!r}: '{value!r}' != default '{default!r}'."
+        )
+    # All port-related settings are valid at compile time
+    COMPILE_TIME_SETTINGS.update(set(port_setting))
 
   def __getattr__(self, attr):
     if self.allowed_settings:

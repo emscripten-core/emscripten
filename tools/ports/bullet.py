@@ -10,6 +10,8 @@ import shutil
 TAG = 'version_1'
 HASH = '3922486816cf7d99ee02c3c1ef63d94290e8ed304016dd9927137d04206e7674d9df8773a4abb7bb57783d0a5107ad0f893aa87acfb34f7b316eec22ca55a536'
 
+settings = {'USE_BULLET': False}
+
 
 def needed(settings):
   return settings.USE_BULLET == 1

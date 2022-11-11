@@ -9,6 +9,14 @@ TAG = 'release-2.24.2'
 HASH = 'b178bdc8f7c40271e09a72f639649d1d61953dda4dc12b77437259667b63b961fd3b2c67b0de6fdc5f9f9c80c49bfafd164e4c13715bc1056e550acc8bad5a3c'
 SUBDIR = 'SDL-' + TAG
 
+settings = {
+  # Specify the SDL version that is being linked against.
+  # 1, the default, is 1.3, which is implemented in JS
+  # 2 is a port of the SDL C code on emscripten-ports
+  # When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
+  # is not linked in.
+  'USE_SDL': 1
+}
 variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
 
 
