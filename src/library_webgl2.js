@@ -50,7 +50,7 @@ var LibraryWebGL2 = {
   },
 
   glGetInteger64v__sig: 'vii',
-  glGetInteger64v__deps: ['$emscriptenWebGLGet', '$writeI53ToI64'],
+  glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
@@ -723,6 +723,22 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
+#if WASM_BIGINT
+  glClientWaitSync__sig: 'iiii',
+  glClientWaitSync: function(sync, flags, timeout) {
+    // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
+    // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
+    // Inherently the value accepted in the timeout is lossy, and can't take in arbitrary u64 bit pattern (but most likely doesn't matter)
+    // See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15
+    return GLctx.clientWaitSync(GL.syncs[sync], flags, Number(timeout));
+  },
+
+  glWaitSync__sig: 'viii',
+  glWaitSync: function(sync, flags, timeout) {
+    // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
+    GLctx.waitSync(GL.syncs[sync], flags, Number(timeout));
+  },
+#else
   glClientWaitSync__sig: 'iiiii',
   glClientWaitSync__deps: ['$convertI32PairToI53'],
   glClientWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
@@ -739,6 +755,7 @@ var LibraryWebGL2 = {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     GLctx.waitSync(GL.syncs[sync], flags, convertI32PairToI53(timeoutLo, timeoutHi));
   },
+#endif
 
   glGetSynciv__sig: 'viiiii',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
