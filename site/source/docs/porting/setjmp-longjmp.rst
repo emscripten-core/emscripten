@@ -5,7 +5,7 @@ C setjmp-longjmp Support
 ========================
 
 setjmp-longjmp support is enabled by default in Emscripten. This is controlled
-by ``SUPPORT_LONGJMP`` setting, which can take these values:
+by the ``SUPPORT_LONGJMP`` setting, which can take these values:
 
 - ``emscripten``: JavaScript-based support
 - ``wasm``: WebAssembly exception handling-based support
@@ -13,7 +13,7 @@ by ``SUPPORT_LONGJMP`` setting, which can take these values:
 - 1: Default support (currently ``emscripten``) (default)
 
 Currently ``-sSUPPORT_LONGJMP=1`` is the same as
-``-sSUPPORT_LONGJMP=emscripten``, and turned on by default. This will later be
+``-sSUPPORT_LONGJMP=emscripten``, and turned on by default. This default will eventually be
 the new ``wasm`` when most browsers support it.
 
 ``setjmp`` saves information about the calling environment into a buffer, and
@@ -87,7 +87,7 @@ To use the WebAssembly EH and setjmp-longjmp support together:
 
   em++ -fwasm-exceptions -sSUPPORT_LONGJMP=wasm test.cpp -o test.js
 
-There is one restriction for using WebAssembly EH-based support for exceptions
+There is one specific restriction for using WebAssembly EH-based support for exceptions
 and setjmp-longjmp at the same time. You cannot call ``setjmp`` within a C++
 ``catch`` clause. For example, the following will not work:
 
