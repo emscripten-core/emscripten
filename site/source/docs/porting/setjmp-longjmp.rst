@@ -89,7 +89,8 @@ To use the WebAssembly EH and setjmp-longjmp support together:
 
 There is one specific restriction for using WebAssembly EH-based support for
 exceptions and setjmp-longjmp at the same time. You cannot call ``setjmp``
-within a C++ ``catch`` clause. For example, the following will not work:
+within a C++ ``catch`` clause. For example, the following will error out during
+compile time:
 
 .. code-block:: cpp
 
