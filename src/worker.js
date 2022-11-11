@@ -111,7 +111,14 @@ self.onunhandledrejection = (e) => {
   throw e.reason ?? e;
 };
 
-self.onmessage = (e) => {
+function msgChannelOnMessage (event) {
+  // User will write their own message channel onmessage to handle messages coming in from the other port
+  if (Module["msgChannelOnMessage"]) {
+    Module["msgChannelOnMessage"](event);
+  }
+}
+
+Module["PThreadOnMessage"] = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if PTHREADS_DEBUG
@@ -147,9 +154,9 @@ self.onmessage = (e) => {
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 
-#if PTHREADS_DEBUG
-      Module['workerID'] = e.data.workerID;
-#endif
+      Module['workerID'] = e.data.workerID
+      Module['msgChannelPort'] = e.data.msgChannelPort;
+      Module['msgChannelPort'].onmessage = msgChannelOnMessage;
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
@@ -254,6 +261,7 @@ self.onmessage = (e) => {
               err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling _emscripten_thread_exit.');
 #endif
               Module['__emscripten_thread_exit'](ex.status);
+              Module['msgChannelPort'].close();
             }
           }
           else
@@ -274,6 +282,7 @@ self.onmessage = (e) => {
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
         Module['__emscripten_thread_exit']({{{ cDefine('PTHREAD_CANCELED') }}});
+        Module['msgChannelPort'].close();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
@@ -302,3 +311,6 @@ self.onmessage = (e) => {
     throw ex;
   }
 };
+
+// This allows users to write their own onmessage handler and still fallback to the implementation in this file
+self.onmessage = Module["PThreadOnMessage"];

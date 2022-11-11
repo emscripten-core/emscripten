@@ -58,8 +58,8 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
-#if PTHREADS_DEBUG
     nextWorkerID: 1,
+#if PTHREADS_DEBUG
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
@@ -327,6 +327,9 @@ var LibraryPThread = {
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
 
+      // This is used when we start the application in a separate worker and require the pthreads to communicate with the browser thread e.g.
+      // main browser thread -> application thread -> pthreads
+      let msgChn = new MessageChannel();
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
         'cmd': 'load',
@@ -358,10 +361,18 @@ var LibraryPThread = {
 #if MAIN_MODULE
         'dynamicLibraries': Module['dynamicLibraries'],
 #endif
-#if PTHREADS_DEBUG
-        'workerID': PThread.nextWorkerID++,
-#endif
-      });
+        'workerID': PThread.nextWorkerID,
+        'msgChannelPort': msgChn.port2
+      }, [msgChn.port2]);
+
+      // Post the other port of the message channel to browser thread for a direct communication path
+      // else it does nothing if "main application thread" is the same as "main browser thread"
+      postMessage({
+        'cmd': "createMsgChannelPort",
+        'workerID': PThread.nextWorkerID,
+        'msgChannelPort': msgChn.port1
+      }, [msgChn.port1]);
+      worker.workerID = PThread.nextWorkerID++;
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
@@ -454,6 +465,11 @@ var LibraryPThread = {
     // but don't put it back to the pool.
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore.
     worker.pthread_ptr = 0;
+    
+    postMessage({
+      'cmd': "deleteMsgChannelPort",
+      'workerID': worker.nextWorkerID
+    });
   },
 
   __emscripten_thread_cleanup: function(thread) {
