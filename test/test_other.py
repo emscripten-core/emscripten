@@ -11327,16 +11327,17 @@ exec "$@"
     err = self.run_process([EMCC, test_file('test_old_dyncall_format.c'), '--js-library', test_file('library_test_old_dyncall_format.js')], stderr=PIPE).stderr
     self.assertContained('syntax for makeDynCall has changed', err)
 
-  # Current {{{ makeDynCall('sig', 'func') }}} macro has a limitation that 'func' cannot be a reference to 'this.x' - the 'this.' reference may not be properly
-  # resolved because of the use of anonymous enclosing functions. Test that attempting to pass a 'this.x' form of function will issue a compilation error.
-  def test_no_this_in_dyncall(self):
-    # Test that build causes descriptive error messages.
-    err = self.expect_fail([EMCC, test_file('no_this_in_dyncall.c'), '--js-library', test_file('no_this_in_dyncall.js'), '-sDYNCALLS'])
-    self.assertContained('cannot reference "this." inside makeDynCall()', err)
-    err = self.expect_fail([EMCC, test_file('no_this_in_dyncall.c'), '--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64'])
-    self.assertContained('cannot reference "this." inside makeDynCall()', err)
-    # For good measure, test that the code in the test is good in other build modes. (maybe in the future the above limitations will go away)
-    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')])
+  # Test that {{{ makeDynCall('sig', 'this.foo') }}} macro works, i.e. when 'this.' is referenced inside the macro block.
+  @parameterized({
+    'plain': [[]],
+    'dyncalls': [['-sDYNCALLS']]})
+  def test_this_in_dyncall(self, args):
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
+
+  @requires_v8
+  def test_this_in_dyncall_memory64(self):
+    self.v8_args += ['--experimental-wasm-memory64']
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
