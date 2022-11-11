@@ -43,23 +43,24 @@ mergeInto(LibraryManager.library, {
             var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
                                    x.startsWith('__asyncjs__');
 #if ASYNCIFY == 2
-            // Wrap all imports with a suspending WebAssembly function.
-            // TODO: wrap only async functions.
+            // Wrap async imports with a suspending WebAssembly function.
+            if (isAsyncifyImport) {
 #if ASSERTIONS
-            assert(sig, 'Missing __sig for ' + x);
+              assert(sig, 'Missing __sig for ' + x);
 #endif
-            var type = sigToWasmTypes(sig);
+              var type = sigToWasmTypes(sig);
 #if ASYNCIFY_DEBUG
-            dbg('asyncify: suspendOnReturnedPromise for', x, original);
+              dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-            // Add space for the suspender promise that will be used in the
-            // Wasm wrapper function.
-            type.parameters.unshift('externref');
-            imports[x] = original = new WebAssembly.Function(
-              type,
-              original,
-              { suspending: 'first' }
-            );
+              // Add space for the suspender promise that will be used in the
+              // Wasm wrapper function.
+              type.parameters.unshift('externref');
+              imports[x] = original = new WebAssembly.Function(
+                type,
+                original,
+                { suspending: 'first' }
+              );
+            }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
             imports[x] = function() {
@@ -103,6 +104,9 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
 #endif
+#if ASYNCIFY == 2
+      var ASYNCIFY_EXPORTS = {{{ JSON.stringify(ASYNCIFY_EXPORTS) }}};
+#endif
       var ret = {};
       for (var x in exports) {
         (function(x) {
@@ -110,22 +114,25 @@ mergeInto(LibraryManager.library, {
           if (typeof original == 'function') {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
-            // TODO: wrap only async functions.
+            var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
+            if (isAsyncifyExport) {
 #if ASYNCIFY_DEBUG
-            dbg('asyncify: returnPromiseOnSuspend for', x, original);
+              dbg('asyncify: returnPromiseOnSuspend for', x, original);
 #endif
-            var type = WebAssembly.Function.type(original);
-            var parameters = type.parameters;
-            var results = type.results;
+              var type = WebAssembly.Function.type(original);
+              var parameters = type.parameters;
+              var results = type.results;
 #if ASSERTIONS
-            assert(results.length !== 0, 'There must be a return result')
+              assert(results.length !== 0, 'There must be a return result')
+              assert(parameters[0] === 'externref', 'First param must be externref.');
 #endif
-            // Remove the extern ref;
-            parameters.shift();
-            original = new WebAssembly.Function(
-              { parameters , results: ['externref'] },
-              original,
-              { promising : 'first' });
+              // Remove the extern ref.
+              parameters.shift();
+              original = new WebAssembly.Function(
+                { parameters , results: ['externref'] },
+                original,
+                { promising : 'first' });
+            }
 #endif
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2

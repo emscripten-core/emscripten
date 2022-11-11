@@ -105,6 +105,10 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   '_dlopen_js', '__asyncjs__*'
 ]
 
+DEFAULT_ASYNCIFY_EXPORTS = [
+  'main'
+]
+
 # Target options
 final_js = None
 
@@ -665,6 +669,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
   elif settings.ASYNCIFY == 2:
     passes += ['--jspi']
+    passes += ['--pass-arg=jspi-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
+    passes += ['--pass-arg=jspi-exports@%s' % ','.join(settings.ASYNCIFY_EXPORTS)]
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -2650,6 +2656,8 @@ def phase_linker_setup(options, state, newargs):
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
+    # add the default exports (only used for ASYNCIFY == 2)
+    settings.ASYNCIFY_EXPORTS += DEFAULT_ASYNCIFY_EXPORTS
 
     # return the full import name, including module. The name may
     # already have a module prefix; if not, we assume it is "env".
