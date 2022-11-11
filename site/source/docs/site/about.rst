@@ -56,7 +56,7 @@ Ubuntu
 
 The version of Sphinx on Ubuntu package repository (apt-get) fails when building the site. This is an early version (1.1.3), which appears to be dependent on an old version of the Jinja templating library.
 
-The workaround is to use the *Python package installer* (pip) to get version 1.7.8, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
+The workaround is to use the *Python package installer* (pip) to get version 2.4.4, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
 
   pip install sphinx==2.4.4
 
