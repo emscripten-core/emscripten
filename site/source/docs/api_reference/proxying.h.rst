@@ -29,7 +29,7 @@ API Reference
 Types
 -----
 
-.. c:type:: em_proxying_queue*
+.. c:type:: em_proxying_queue
 
   An opaque handle to a set of thread-local work queues (one per thread) to
   which work can be asynchronously or synchronously proxied from other threads.
@@ -72,19 +72,19 @@ Functions
 
   Signal the end of a task proxied with ``emscripten_proxy_sync_with_ctx``.
 
-.. c:function:: int emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (\*func)(void*), void* arg)
+.. c:function:: int emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then return immediately without waiting for ``func`` to be executed.
   Returns 1 if the work was successfully enqueued or 0 otherwise.
 
-.. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (\*func)(void*), void* arg)
+.. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then wait for ``func`` to be executed synchronously before returning.
   Returns 1 if the ``func`` was successfully completed and 0 otherwise.
 
-.. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (\*func)(em_proxying_ctx*, void*), void* arg)
+.. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void* arg)
 
   The same as ``emscripten_proxy_sync`` except that instead of waiting for the
   proxied function to return, it waits for the proxied task to be explicitly
@@ -98,37 +98,37 @@ C++ API
 This C++ API is provided by proxying.h when compiling with C++11 or later. It is
 defined within namespace ``emscripten``.
 
-.. c:type:: ProxyingQueue
+.. cpp:type:: ProxyingQueue
 
   A thin C++ wrapper around an ``em_proxying_queue*``.
 
-  .. c:type:: ProxyingCtx
+  .. cpp:type:: ProxyingCtx
 
   A thin C++ wrapper around an ``em_proxying_ctx*``.
 
-    .. c:member:: em_proxying_ctx* ctx
+    .. cpp:member:: em_proxying_ctx* ctx
 
     The wrapped ``em_proxying_ctx*``.
 
-    .. c:member:: void finish()
+    .. cpp:member:: void finish()
 
     Calls ``emscripten_proxy_finish`` on the wrapped ``em_proxying_ctx*``.
 
-  .. c:member:: void execute()
+  .. cpp:member:: void execute()
 
     Calls ``emscripten_proxy_execute_queue`` on the wrapped ``em_proxying_queue*``.
 
-  .. c:member:: bool proxyAsync(pthread_t target, std::function<void()>&& func)
+  .. cpp:member:: bool proxyAsync(pthread_t target, std::function<void()>&& func)
 
     Calls ``emscripten_proxy_async`` to execute ``func``, returning ``true`` if the
     function was successfully enqueued and ``false`` otherwise.
 
-  .. c:member:: bool proxySync(const pthread_t target, const std::function<void()>& func)
+  .. cpp:member:: bool proxySync(const pthread_t target, const std::function<void()>& func)
 
     Calls ``emscripten_proxy_sync`` to execute ``func``, returning ``true`` if the
     function was successfully completed or ``false`` otherwise.
 
-  .. c:member:: bool proxySyncWithCtx(const pthread_t target, const std::function<void(ProxyingCtx)>& func)
+  .. cpp:member:: bool proxySyncWithCtx(const pthread_t target, const std::function<void(ProxyingCtx)>& func)
 
     Calls ``emscripten_proxy_sync_with_ctx`` to execute ``func``, returning ``true``
     if the function was successfully marked done with
