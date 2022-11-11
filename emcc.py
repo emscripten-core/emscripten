@@ -3516,6 +3516,7 @@ def phase_binaryen(target, options, wasm_target):
   # tell wasm-ld to strip anything, and we do it here.
   strip_debug = settings.DEBUG_LEVEL < 3
   strip_producers = not settings.EMIT_PRODUCERS_SECTION
+  strip_name = strip_debug and not settings.EMIT_NAME_SECTION
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
@@ -3541,11 +3542,13 @@ def phase_binaryen(target, options, wasm_target):
                           args=passes,
                           debug=intermediate_debug_info)
     building.save_intermediate(wasm_target, 'byn.wasm')
-  elif strip_debug or strip_producers:
+  elif strip_debug or strip_producers or strip_name:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     sections = ['producers'] if strip_producers else []
+    if strip_name:
+      sections += ['name']
     building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
     building.save_intermediate(wasm_target, 'strip.wasm')
 

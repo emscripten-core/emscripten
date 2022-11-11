@@ -2366,23 +2366,32 @@ int f() {
             self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
 
   def test_debuginfo(self):
-    for args, expect_debug in [
-        (['-O0'], False),
-        (['-O0', '-g'], True),
-        (['-O0', '-gsource-map'], True),
-        (['-O1'], False),
-        (['-O1', '-g'], True),
-        (['-O2'], False),
-        (['-O2', '-g'], True),
+    for args, expect_dwarf, expect_name in [
+        (['-O0'], False, False),
+        (['-O0', '-g'], True, True),
+        (['-O1'], False, False),
+        (['-O1', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, False),
+        (['-O1', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK', '--profiling-funcs'], False, True),
+        (['-O1', '--profiling-funcs'], False, True),
+        (['-O1', '--emit-symbol-map'], False, False),
+        (['-O1', '-g'], True, True),
+        (['-O2'], False, False),
+        (['-O2', '-g'], True, True),
       ]:
-      print(args, expect_debug)
-      err = self.run_process([EMXX, '-v', test_file('hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
-      lines = err.splitlines()
-      finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
-      if expect_debug:
-        self.assertIn(' -g ', finalize)
-      else:
-        self.assertNotIn(' -g ', finalize)
+      print(args, expect_dwarf, expect_name)
+      self.run_process([EMXX, '-v', test_file('hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+
+      # Check that expected .debug and name sections are found
+      with webassembly.Module('a.out.wasm') as module:
+        sections = [s.name for s in module.sections() if s.name]
+        if expect_name:
+          self.assertIn('name', sections)
+        else:
+          self.assertNotIn('name', sections)
+        if expect_dwarf:
+          self.assertIn('.debug_info', sections)
+        else:
+          self.assertNotIn('.debug_info', sections)
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
