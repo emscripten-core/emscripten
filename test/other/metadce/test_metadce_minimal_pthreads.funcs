@@ -10,6 +10,9 @@ $__pthread_setcancelstate
 $__set_thread_state
 $__stdio_write
 $__timedwait
+$__tl_lock
+$__tl_unlock
+$__wait
 $__wake
 $__wasi_syscall_ret
 $__wasm_call_ctors
@@ -30,6 +33,7 @@ $a_cas_p.1
 $a_dec
 $a_fetch_add
 $a_inc
+$a_store
 $a_swap
 $add
 $dispose_chunk

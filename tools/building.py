@@ -204,7 +204,7 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '-z', 'stack-size=%s' % settings.TOTAL_STACK,
+      '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
 
@@ -217,7 +217,7 @@ def lld_flags_for_executable(external_symbols):
         cmd += ['--entry=_emscripten_proxy_main']
       else:
         # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this sice the entry point can be either `main` or
+        # For now we need to do this since the entry point can be either `main` or
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
@@ -225,8 +225,11 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
       cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
-    if not settings.RELOCATABLE:
-      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if settings.STACK_FIRST:
+    cmd.append('--stack-first')
+  elif not settings.RELOCATABLE:
+    cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
   return cmd
 
@@ -300,24 +303,25 @@ def parse_llvm_nm_symbols(output):
 
   for line in output.split('\n'):
     # Line format: "[archive filename:]object filename: address status name"
-    entry_pos = line.rfind(':')
+    entry_pos = line.rfind(': ')
     if entry_pos < 0:
       continue
 
-    filename_pos = line.rfind(':', 0, entry_pos)
+    filename_end = line.rfind(':', 0, entry_pos)
     # Disambiguate between
     #   C:\bar.o: T main
     # and
     #   /foo.a:bar.o: T main
     # (both of these have same number of ':'s, but in the first, the file name on disk is "C:\bar.o", in second, it is "/foo.a")
-    if filename_pos < 0 or line[filename_pos + 1] in '/\\':
-      filename_pos = entry_pos
+    if filename_end < 0 or line[filename_end + 1] in '/\\':
+      filename_end = entry_pos
 
-    filename = line[:filename_pos]
+    filename = line[:filename_end]
     if entry_pos + 13 >= len(line):
       exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with an old version of llvm (please rebuild it).' % line)
 
-    status = line[entry_pos + 11] # Skip address, which is always fixed-length 8 chars.
+    # Skip address, which is always fixed-length 8 chars (plus 2 leading chars `: ` and one trailing space)
+    status = line[entry_pos + 11]
     symbol = line[entry_pos + 13:]
 
     if filename not in symbols:

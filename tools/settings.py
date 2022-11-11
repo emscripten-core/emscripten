@@ -13,6 +13,7 @@ from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'STACK_SIZE',
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
@@ -83,6 +84,9 @@ COMPILE_TIME_SETTINGS = {
     'AUTO_ARCHIVE_INDEXES',
     'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
 }.union(PORTS_SETTINGS)
+
+
+user_settings: Dict[str, str] = {}
 
 
 class SettingsManager:

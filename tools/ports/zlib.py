@@ -5,8 +5,8 @@
 
 import os
 
-VERSION = '1.2.12'
-HASH = 'cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14'
+VERSION = '1.2.13'
+HASH = '44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659'
 
 
 def needed(settings):
@@ -14,7 +14,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', f'https://storage.googleapis.com/webassembly/emscripten-ports/zlib-{VERSION}.tar.gz', 'zlib-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('zlib', f'https://github.com/madler/zlib/archive/refs/tags/v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)

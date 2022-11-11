@@ -112,7 +112,7 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
@@ -146,7 +146,11 @@ class Ports:
         dirname = os.path.dirname(obj)
         if not os.path.exists(dirname):
           os.makedirs(dirname)
-        commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
+        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
+          cmd[0] = shared.EMXX
+          cmd += cxxflags
+        commands.append(cmd)
         objects.append(obj)
 
       system_libs.run_build_commands(commands)
@@ -172,7 +176,7 @@ class Ports:
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, sha512hash=None):
+  def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 

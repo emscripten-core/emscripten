@@ -42,9 +42,9 @@ var emscriptenThreadProfiler = {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
-        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+        threadName = '"' + threadName + '" (' + ptrToString(threadPtr) + ')';
       } else {
-        threadName = '(0x' + threadPtr.toString(16) + ')';
+        threadName = '(' + ptrToString(threadPtr) + ')';
       }
 
       console.log('Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ');
@@ -70,9 +70,9 @@ var emscriptenThreadProfiler = {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
-        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+        threadName = '"' + threadName + '" (' + ptrToString(threadPtr) + ')';
       } else {
-        threadName = '(0x' + threadPtr.toString(16) + ')';
+        threadName = '(' + ptrToString(threadPtr) + ')';
       }
 
       str += 'Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ';
@@ -97,10 +97,8 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof Module != 'undefined') {
-  if (typeof document != 'undefined') {
-    emscriptenThreadProfiler.initialize();
-  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
-    emscriptenThreadProfiler.initializeNode();
-  }
+if (typeof document != 'undefined') {
+  emscriptenThreadProfiler.initialize();
+} else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
+  emscriptenThreadProfiler.initializeNode();
 }

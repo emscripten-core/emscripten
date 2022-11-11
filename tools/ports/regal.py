@@ -21,8 +21,7 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
-                      'regal-' + TAG, sha512hash=HASH)
+  ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: regal')

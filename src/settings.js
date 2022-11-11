@@ -110,7 +110,7 @@ var MEM_INIT_METHOD = false;
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
 // [link]
-var TOTAL_STACK = 5*1024*1024;
+var STACK_SIZE = 5*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
@@ -834,14 +834,18 @@ var ASYNCIFY_REMOVE = [];
 // in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ADD = [];
 
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
-// See notes on ASYNCIFY_REMOVE about the names.
+//
+// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// character substitutions.
 // [link]
 var ASYNCIFY_ONLY = [];
 
@@ -859,6 +863,12 @@ var ASYNCIFY_LAZY_LOAD_CODE = false;
 //  2: Verbose logging.
 // [link]
 var ASYNCIFY_DEBUG = 0;
+
+// Specify which of the exports will have JSPI applied to them and return a
+// promise.
+// Only supported for ASYNCIFY==2 mode.
+// [link]
+var ASYNCIFY_EXPORTS = [];
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
@@ -940,8 +950,7 @@ var FORCE_FILESYSTEM = false;
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
-// handles permissions and errors and so forth may be noticeable.  This has
-// mostly been tested on Linux so far.
+// handles permissions and errors and so forth may be noticeable.
 // [link]
 var NODERAWFS = false;
 
@@ -1056,7 +1065,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // The pthread that main() runs on is a normal pthread in all ways, with the one
 // difference that its stack size is the same as the main thread would normally
-// have, that is, TOTAL_STACK. This makes it easy to flip between
+// have, that is, STACK_SIZE. This makes it easy to flip between
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
@@ -1247,7 +1256,8 @@ var EXPORT_NAME = 'Module';
 // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
 // that is targeting a privileged or a certified execution environment, see
 // Firefox Content Security Policy (CSP) webpage for details:
-// https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
+// in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
 //  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
@@ -2047,6 +2057,12 @@ var POLYFILL = true;
 // - DYLINK_DEBUG
 // - LIBRARY_DEBUG
 // - GL_DEBUG
+// - OPENAL_DEBUG
+// - EXCEPTION_DEBUG
+// - SYSCALL_DEBUG
+// - WEBSOCKET_DEBUG
+// - SOCKET_DEBUG
+// - FETCH_DEBUG
 // [link]
 var RUNTIME_DEBUG = false;
 
@@ -2082,6 +2098,7 @@ var TEST_MEMORY_GROWTH_FAILS = false;
 // numeric setting, or -1 for a string setting).
 var LEGACY_SETTINGS = [
   ['BINARYEN', 'WASM'],
+  ['TOTAL_STACK', 'STACK_SIZE'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],

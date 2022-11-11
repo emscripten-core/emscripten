@@ -9,6 +9,7 @@ dynCall_jiji
 dynCall_viijii
 free
 main
+malloc
 memory
 setThrew
 stackAlloc

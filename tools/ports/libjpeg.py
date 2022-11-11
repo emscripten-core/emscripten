@@ -18,11 +18,11 @@ def get(ports, settings, shared):
   # Archive mirrored from http://www.ijg.org/files/jpegsrc.v9c.tar.gz.
   # We have issues where python urllib was not able to load from the www.ijg.org webserver
   # and was resulting in 403: Forbidden.
-  ports.fetch_project('libjpeg', 'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
+  ports.fetch_project('libjpeg', f'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libjpeg')
-    source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
+    source_path = os.path.join(ports.get_dir(), 'libjpeg', f'jpeg-{VERSION}')
     ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
     ports.install_headers(source_path)
     excludes = [

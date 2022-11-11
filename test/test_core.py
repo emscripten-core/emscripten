@@ -240,7 +240,7 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
         if impure:
           self.wasm_engines = []
         self.js_engines = [config.NODE_JS]
-        self.node_args.append('--experimental-wasm-bigint')
+        self.node_args += shared.node_bigint_flags()
         func(self)
         if wasm2c:
           print('wasm2c')
@@ -576,7 +576,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
-    self.node_args += ['--experimental-wasm-bigint']
+    self.node_args += shared.node_bigint_flags()
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
   def test_vararg_copy(self):
@@ -973,7 +973,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     self.do_core_test('test_stack_placement.c')
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_core_test('test_stack_placement.c')
@@ -981,7 +981,7 @@ base align: 0, 0, 0, 0'''])
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_stack_placement.c')
     self.set_setting('GLOBAL_BASE', 102400)
@@ -1074,6 +1074,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
+  @no_wasm64('output is sensitive to absolute data size')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
@@ -1926,7 +1927,7 @@ int main() {
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
     self.set_setting('INLINING_LIMIT')
-    self.set_setting('TOTAL_STACK', 8 * 1024)
+    self.set_setting('STACK_SIZE', 8 * 1024)
 
     self.do_core_test('test_stack_varargs.c')
 
@@ -1935,7 +1936,7 @@ int main() {
     # of the program directory influences how much stack we need, and so
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
-    self.set_setting('TOTAL_STACK', 8 * 1024)
+    self.set_setting('STACK_SIZE', 8 * 1024)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2277,7 +2278,7 @@ int main(int argc, char **argv) {
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
 
     self.set_setting('WASM_BIGINT')
-    self.node_args += ['--experimental-wasm-bigint']
+    self.node_args += shared.node_bigint_flags()
     self.do_core_test('test_em_js_i64.c')
 
   def test_runtime_stacksave(self):
@@ -2316,7 +2317,7 @@ int main(int argc, char **argv) {
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_STACK']
+      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var STACK_SIZE']
       code_start = None
       for s in possible_starts:
         if fail.find(s) >= 0:
@@ -2382,7 +2383,7 @@ int main(int argc, char **argv) {
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sTOTAL_STACK=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
+    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_memory_growth_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
@@ -2858,7 +2859,7 @@ The current type of b is: 9
 
   def test_time(self):
     self.do_core_test('test_time.cpp')
-    for tz in ['EST+05EDT', 'UTC+0']:
+    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
         # Run the test with different time zone settings if
@@ -2949,7 +2950,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf(test_file('core/stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf(test_file('core/stack_overflow.c'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('stackAlloc.cpp')
@@ -7006,7 +7007,7 @@ void* operator new(size_t size) {
       # mode. this happens to work without wasmfs, but with wasmfs we get the
       # time when we create/update a file, which uses clock_time_get that has an
       # i64 param. For such an import to work we need wasm-bigint support.
-      self.node_args.append('--experimental-wasm-bigint')
+      self.node_args += shared.node_bigint_flags()
     if not can_do_standalone(self):
       return self.skipTest('standalone mode not supported')
     self.set_setting('STANDALONE_WASM')
@@ -7047,7 +7048,7 @@ void* operator new(size_t size) {
       out(multi(8, 5.4, 4, 'bret'));
       out('*');
       // part 3: avoid stack explosion and check it's restored correctly
-      for (var i = 0; i < TOTAL_STACK/60; i++) {
+      for (var i = 0; i < STACK_SIZE/60; i++) {
         ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
       out('stack is ok.');
@@ -7580,14 +7581,14 @@ void* operator new(size_t size) {
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
-    self.node_args += ['--experimental-wasm-bigint']
+    self.node_args += shared.node_bigint_flags()
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
-    self.node_args += ['--experimental-wasm-bigint']
+    self.node_args += shared.node_bigint_flags()
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
@@ -8336,7 +8337,11 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and self.is_optimizing() and \
+
+    # For the purposes of this test we don't consider O1 to be optimizing
+    is_optimizing = self.is_optimizing() and '-O1' not in self.emcc_args
+
+    if not conditional and is_optimizing and \
        '-g' not in self.emcc_args and \
        '-fsanitize=leak' not in self.emcc_args and \
        not self.get_setting('WASMFS'):
@@ -8384,7 +8389,7 @@ Module['onRuntimeInitialized'] = function() {
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
-    if not conditional and self.is_optimizing():
+    if not conditional and is_optimizing:
       self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
     verify_working(['0'])
     # but breaking the second wasm actually breaks us
@@ -8567,7 +8572,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run('int main() { return 0; }', expected)
 
   def test_stack_overflow_check(self):
-    self.set_setting('TOTAL_STACK', 1048576)
+    self.set_setting('STACK_SIZE', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.do_runf(test_file('stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
@@ -9010,7 +9015,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     if self.is_optimizing():
       expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
     else:
@@ -9025,7 +9030,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_safe_stack_pthread(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
     if self.is_optimizing():
@@ -9038,7 +9043,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     if self.is_optimizing():
       expected = ['Aborted(stack overflow']
     else:
@@ -9050,7 +9055,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     self.dylink_test(r'''
       #include <stdio.h>
       extern void sidey();
@@ -9444,7 +9449,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests <emscripten/stack.h> API
   @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
-    self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
+    self.set_setting('STACK_SIZE', 4 * 1024 * 1024)
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
@@ -9633,7 +9638,7 @@ wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs']
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},
-                   node_args=['--experimental-wasm-bigint'])
+                   node_args=shared.node_bigint_flags())
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
 lto1 = make_run('lto1', emcc_args=['-flto', '-O1'])
@@ -9670,7 +9675,7 @@ core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
 bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
-                  node_args=['--experimental-wasm-bigint'])
+                  node_args=shared.node_bigint_flags())
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})

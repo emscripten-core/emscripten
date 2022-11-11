@@ -15,7 +15,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
+  ports.fetch_project('ogg', f'https://github.com/emscripten-ports/ogg/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: ogg')

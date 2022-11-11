@@ -3711,7 +3711,9 @@ var LibrarySDL = {
   SDL_GetCurrentAudioDriver: function() {
     return allocateUTF8('Emscripten Audio');
   },
-
+  SDL_GetScancodeFromKey: function (key) {
+    return SDL.scanCodes[key]; 
+  },
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],
   SDL_GetAudioDriver: function(index) { return _SDL_GetCurrentAudioDriver() },
 

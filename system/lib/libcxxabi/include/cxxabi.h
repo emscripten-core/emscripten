@@ -19,7 +19,7 @@
 
 #include <__cxxabi_config.h>
 
-#define _LIBCPPABI_VERSION 1002
+#define _LIBCPPABI_VERSION 15000
 #define _LIBCXXABI_NORETURN  __attribute__((noreturn))
 #define _LIBCXXABI_ALWAYS_COLD __attribute__((cold))
 
@@ -48,9 +48,9 @@ __cxa_free_exception(void *thrown_exception) _NOEXCEPT;
 extern _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void
 __cxa_throw(void *thrown_exception, std::type_info *tinfo,
 #ifdef __USING_WASM_EXCEPTIONS__
-            void *(*dest)(void *));
+            void *(_LIBCXXABI_DTOR_FUNC *dest)(void *));
 #else
-            void (*dest)(void *));
+            void (_LIBCXXABI_DTOR_FUNC *dest)(void *));
 #endif
 
 // 2.5.3 Exception Handlers

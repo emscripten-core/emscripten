@@ -27,7 +27,7 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   release = f'sqlite-amalgamation-{VERSION[0]}{VERSION[1]:02}{VERSION[2]:02}00'
   # TODO: Fetch the file from an emscripten-hosted mirror.
-  ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', release, sha512hash=HASH)
+  ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libsqlite3')

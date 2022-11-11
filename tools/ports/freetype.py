@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_1'
-HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
+TAG = 'VER-2-6'
+HASH = '24c1706045209a3fac64f423116318f3f97892b984e89f05600c71ac356d48d78d642d18b739f26d51d7b7723821becb991a90175accfe7a91ca16a3c759e4f8'
 
 
 def needed(settings):
@@ -14,10 +14,10 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
+  ports.fetch_project('freetype', f'https://github.com/freetype/freetype/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'freetype', 'freetype-' + TAG)
     ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))

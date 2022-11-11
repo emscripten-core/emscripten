@@ -83,7 +83,7 @@ def get(ports, settings, shared):
   # Harfbuzz only published `.xz` packages, but not all python builds support
   # unpacking lzma archives, so we mirror a `.gz` version:
   # See https://github.com/emscripten-core/emsdk/issues/982
-  ports.fetch_project('harfbuzz', 'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-' + VERSION + '.tar.gz', 'harfbuzz-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('harfbuzz', f'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')
@@ -129,6 +129,16 @@ def get(ports, settings, shared):
       cflags.append('-DHAVE_PTHREAD')
     else:
       cflags.append('-DHB_NO_MT')
+
+    # Letting HarfBuzz enable warnings through pragmas can block compiler
+    # upgrades in situations where say a ToT compiler build adds a new
+    # stricter warning under -Wfoowarning-subgroup. HarfBuzz pragma-enables
+    # -Wfoowarning which default-enables -Wfoowarning-subgroup implicitly but
+    # HarfBuzz upstream is not yet clean of warnings produced for
+    # -Wfoowarning-subgroup. Hence disabling pragma warning control here.
+    # See also: https://github.com/emscripten-core/emscripten/pull/18119
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR')
+    cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_WARNING')
 
     ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 

@@ -16,13 +16,13 @@ if (typeof Module == 'undefined') {
   };
 }
 
-if (!Object.hasOwnProperty(Module, 'print')) {
+if (!Module.hasOwnProperty('print')) {
   Module['print'] = function(x) {
     console.log(x);
   };
 }
 
-if (!Object.hasOwnProperty(Module, 'printErr')) {
+if (!Module.hasOwnProperty('printErr')) {
   Module['printErr'] = function(x) {
     console.error(x);
   };

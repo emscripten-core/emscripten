@@ -26,8 +26,7 @@ def get_lib_name(base_name, settings):
 
 
 def get(ports, settings, shared):
-  url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
-  ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
+  ports.fetch_project('icu', f'https://github.com/unicode-org/icu/releases/download/{TAG}/icu4c-{VERSION}-src.zip', sha512hash=HASH)
   icu_source_path = None
 
   def prepare_build():

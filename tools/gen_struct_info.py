@@ -261,7 +261,7 @@ def inspect_headers(headers, cflags):
   else:
     compiler = shared.EMCC
 
-  # -Oz optimizes enough to avoid warnings on code size/num locals
+  # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
                                '-O0',
                                '-Werror',
@@ -271,6 +271,7 @@ def inspect_headers(headers, cflags):
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sLLD_REPORT_UNDEFINED',
                                '-sSTRICT',
+                               '-sASSERTIONS=0',
                                # Use SINGLE_FILE so there is only a single
                                # file to cleanup.
                                '-sSINGLE_FILE']
@@ -301,7 +302,7 @@ def inspect_headers(headers, cflags):
   show('Calling generated program... ' + js_file[1])
   args = []
   if settings.MEMORY64:
-    args += ['--experimental-wasm-bigint']
+    args += shared.node_bigint_flags()
   info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:
