@@ -7,10 +7,10 @@ C setjmp-longjmp Support
 setjmp-longjmp support is enabled by default in Emscripten. This is controlled
 by the ``SUPPORT_LONGJMP`` setting, which can take these values:
 
-- ``emscripten``: JavaScript-based support
-- ``wasm``: WebAssembly exception handling-based support
-- 0: No support
-- 1: Default support (currently ``emscripten``) (default)
+* ``emscripten``: JavaScript-based support
+* ``wasm``: WebAssembly exception handling-based support
+* 0: No support
+* 1: Default support (currently ``emscripten``) (default)
 
 Currently ``-sSUPPORT_LONGJMP=1`` is the same as
 ``-sSUPPORT_LONGJMP=emscripten``, and turned on by default. This default will
