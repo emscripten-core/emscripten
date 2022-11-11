@@ -74,3 +74,18 @@ throwing and catching exceptions to WebAssembly.
 As a result, it can reduce code size and performance overhead compared
 to the JavaScript-based implementation. However, it's still brand-new
 and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
+
+JavaScript / C++ interaction
+############################
+
+No effort is made to bridge the JS and C++ worlds in terms of catching
+exceptions from the other side and automatically converting them. That is, you
+cannot expect a C++ try-catch to catch a JS exception. C++ can only catch C++
+exceptions. JS *can* catch C++ exceptions, but only because such exceptions
+are converted by the VM automatically (their actual form then depends on whether
+you are using the older JavaScript-based exceptions model or the newer
+WebAssembly exception handling proposal).
+
+The reason for this is that handling and converting expections by Emscripten
+would add significant overhead. If you need such functionality you can add it
+at the JS/Wasm layer.
