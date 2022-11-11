@@ -3020,7 +3020,7 @@ I = (K << 1) + ((S >> (K + (TREEBIN_SHIFT-1)) & 1));\
 
 /* index corresponding to given bit. Use x86 asm if possible */
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__) || defined(__EMSCRIPTEN__))
 #define compute_bit2idx(X, I)\
 {\
 unsigned int J;\
