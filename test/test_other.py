@@ -12676,29 +12676,6 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
 
-  def test_reproduce(self):
-    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
-    self.assertExists('foo.tar')
-    names = []
-    with tarfile.open('foo.tar') as f:
-      for name in f.getnames():
-        names.append(name.replace(path_from_root(), '/<root>'))
-      f.extractall()
-    names = '\n'.join(sorted(names)) + '\n'
-    expected = '''\
-foo/<root>/test/hello_world.c
-foo/response.txt
-foo/version.txt
-'''
-    self.assertTextDataIdentical(names, expected)
-    expected = '''\
--sASSERTIONS=1
-<root>/test/hello_world.c
-'''
-    root = os.path.splitdrive(path_from_root())[1][1:]
-    response = read_file('foo/response.txt').replace(root, '<root>')
-    self.assertTextDataIdentical(response, expected)
-
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
   def test_stack_overflow(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 1)
@@ -12706,3 +12683,31 @@ foo/version.txt
     self.do_runf(test_file('core/stack_overflow.c'),
                  'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
                  assert_returncode=NON_ZERO)
+
+  def test_reproduce(self):
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    self.assertExists('foo.tar')
+    names = []
+    root = os.path.splitdrive(path_from_root())[1][1:]
+    root = root.replace('\\', '/')
+    print('root: %s' % root)
+    with tarfile.open('foo.tar') as f:
+      for name in f.getnames():
+        print('name: %s' % name)
+        names.append(name.replace(root, '<root>'))
+      f.extractall()
+    names = '\n'.join(sorted(names)) + '\n'
+    expected = '''\
+foo/<root>/test/hello_world.c
+foo/response.txt
+foo/version.txt
+'''
+    self.assertTextDataIdentical(expected, names)
+    expected = '''\
+-sASSERTIONS=1
+<root>/test/hello_world.c
+'''
+    response = read_file('foo/response.txt')
+    response = response.replace('\\', '/')
+    response = response.replace(root, '<root>')
+    self.assertTextDataIdentical(expected, response)
