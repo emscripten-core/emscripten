@@ -6,11 +6,7 @@
  *
 */
 
-#if __EMSCRIPTEN_PTHREADS__
-#define RETRY_SBRK 1
-#endif
-
-#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
 #define RETRY_SBRK 1
 #endif
 
