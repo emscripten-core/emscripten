@@ -9242,6 +9242,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('pthread/emscripten_futexes.c', cflags=['-pthread', '-Wno-nonnull'])
 
   @requires_pthreads
+  @also_with_wasm_workers
   def test_stdio_locking(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.do_core_test('test_stdio_locking.c')
