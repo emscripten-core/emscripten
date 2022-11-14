@@ -14,7 +14,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('bzip2', 'https://github.com/emscripten-ports/bzip2/archive/' + VERSION + '.zip', 'bzip2-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('bzip2', f'https://github.com/emscripten-ports/bzip2/archive/{VERSION}.zip', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'bzip2', 'bzip2-' + VERSION)

@@ -271,6 +271,7 @@ def inspect_headers(headers, cflags):
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sLLD_REPORT_UNDEFINED',
                                '-sSTRICT',
+                               '-sASSERTIONS=0',
                                # Use SINGLE_FILE so there is only a single
                                # file to cleanup.
                                '-sSINGLE_FILE']

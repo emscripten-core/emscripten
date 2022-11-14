@@ -83,7 +83,7 @@ def get(ports, settings, shared):
   # Harfbuzz only published `.xz` packages, but not all python builds support
   # unpacking lzma archives, so we mirror a `.gz` version:
   # See https://github.com/emscripten-core/emsdk/issues/982
-  ports.fetch_project('harfbuzz', 'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-' + VERSION + '.tar.gz', 'harfbuzz-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('harfbuzz', f'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')

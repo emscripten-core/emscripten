@@ -1074,6 +1074,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
+  @no_wasm64('output is sensitive to absolute data size')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
@@ -2858,7 +2859,7 @@ The current type of b is: 9
 
   def test_time(self):
     self.do_core_test('test_time.cpp')
-    for tz in ['EST+05EDT', 'UTC+0']:
+    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
         # Run the test with different time zone settings if
@@ -2949,7 +2950,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf(test_file('core/stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf(test_file('core/stack_overflow.c'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('stackAlloc.cpp')

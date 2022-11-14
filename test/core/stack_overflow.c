@@ -6,7 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/stack.h>
 
 void recurse(unsigned long x);
 
@@ -18,7 +19,7 @@ void act(volatile unsigned long *a) {
 }
 
 void recurse(volatile unsigned long x) {
-  printf("recurse %ld\n", x);
+  printf("recurse %ld sp=%#lx\n", x, emscripten_stack_get_current());
   volatile unsigned long a = x;
   volatile char buffer[1000*1000];
   buffer[x/2] = 0;
@@ -36,4 +37,3 @@ void recurse(volatile unsigned long x) {
 int main() {
   recurse(1000*1000);
 }
-

@@ -761,7 +761,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
@@ -823,7 +823,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -849,7 +849,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.gain.gain.value;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
@@ -865,7 +865,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -933,7 +933,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -975,7 +975,7 @@ var LibraryOpenAL = {
         ];
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
@@ -999,7 +999,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -1040,7 +1040,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -1151,7 +1151,7 @@ var LibraryOpenAL = {
         return src.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return null;
@@ -1175,7 +1175,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -1539,7 +1539,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
         return;
@@ -2164,7 +2164,7 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          dbg('Unsupported context attribute 0x' + attr.toString(16));
+          dbg('Unsupported context attribute ' + ptrToString(attr));
 #endif
           AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
           return 0;
@@ -2586,7 +2586,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alcGetIntegerv() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg('alcGetIntegerv() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
       AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
       return;
@@ -2680,7 +2680,7 @@ var LibraryOpenAL = {
     default:
       if (index !== 0) {
 #if OPENAL_DEBUG
-        dbg('alcGetStringiSOFT() with param 0x' + param.toString(16) + ' not implemented yet');
+        dbg('alcGetStringiSOFT() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
         AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
         return 0;
@@ -3120,7 +3120,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alEnable() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg('alEnable() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3143,7 +3143,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alDisable() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg('alDisable() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3164,7 +3164,7 @@ var LibraryOpenAL = {
       return AL.currentCtx.sourceDistanceModel ? {{{ cDefine('AL_FALSE') }}} : {{{ cDefine('AL_TRUE') }}};
     default:
 #if OPENAL_DEBUG
-      dbg('alIsEnabled() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg('alIsEnabled() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0;
@@ -3186,7 +3186,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetDouble(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetDouble(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0.0;
@@ -3210,7 +3210,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetDoublev(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetDoublev(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3232,7 +3232,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetFloat(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetFloat(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       return 0.0;
     }
@@ -3255,7 +3255,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetFloatv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetFloatv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3277,7 +3277,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetInteger(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetInteger(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return 0;
@@ -3301,7 +3301,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetIntegerv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetIntegerv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3323,7 +3323,7 @@ var LibraryOpenAL = {
       return val !== 0 ? {{{ cDefine('AL_TRUE') }}} : {{{ cDefine('AL_FALSE') }}};
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBoolean(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetBoolean(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return {{{ cDefine('AL_FALSE') }}};
@@ -3347,7 +3347,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBooleanv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetBooleanv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3417,7 +3417,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListenerf(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetListenerf(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3448,7 +3448,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListener3f(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetListener3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3487,7 +3487,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListenerfv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetListenerfv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3510,7 +3510,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetListeneri(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg('alGetListeneri(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
     AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
@@ -3539,7 +3539,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListener3i(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetListener3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3578,7 +3578,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListeneriv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetListeneriv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3882,7 +3882,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBufferf(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg('alGetBufferf(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
     AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
@@ -3903,7 +3903,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBuffer3f(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg('alGetBuffer3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
     AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
@@ -3924,7 +3924,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBufferfv(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg('alGetBufferfv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
     AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
@@ -3953,7 +3953,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBufferi(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetBufferi(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -3976,7 +3976,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBuffer3i(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg('alGetBuffer3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
     AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
   },
@@ -4009,7 +4009,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBufferiv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetBufferiv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4478,7 +4478,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcef(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSourcef(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4510,7 +4510,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSource3f(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSource3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4558,7 +4558,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcefv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSourcefv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4604,7 +4604,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcei(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSourcei(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4636,7 +4636,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSource3i(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSource3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;
@@ -4689,7 +4689,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourceiv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg('alGetSourceiv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
       AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
       return;

@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import unittest
 from pathlib import Path
@@ -5598,6 +5599,37 @@ int main(void) {
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
 
+  @node_pthreads
+  def test_pthread_print_override_modularize(self):
+    self.set_setting('EXPORT_NAME', 'Test')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('MODULARIZE')
+    create_file('main.c', '''
+      #include <emscripten/console.h>
+
+      int main() {
+        _emscripten_out("hello, world!");
+        return 0;
+      }
+    ''')
+    create_file('main.js', '''
+      const Test = require('./test.js');
+
+      async function main() {
+        await Test({
+          // world -> earth
+          print: (text) => console.log(text.replace('world', 'earth'))
+        });
+      }
+      main();
+    ''')
+
+    self.emcc('main.c', output_filename='test.js')
+    output = self.run_js('main.js')
+    self.assertNotContained('hello, world!', output)
+    self.assertContained('hello, earth!', output)
+
   def test_define_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')
@@ -8457,6 +8489,17 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  def test_noderawfs_access_abspath(self):
+    create_file('foo', 'bar')
+    create_file('access.c', r'''
+      #include <unistd.h>
+      int main(int argc, char** argv) {
+        return access(argv[1], F_OK);
+      }
+    ''')
+    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
+    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, test_file('hello_world.c'),
@@ -11189,7 +11232,7 @@ exec "$@"
 
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
-    self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x1')
+    self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x00000001 (1)')
 
   def test_SUPPORT_LONGJMP_executable(self):
     err = self.expect_fail([EMCC, test_file('core/test_longjmp.c'), '-sSUPPORT_LONGJMP=0'])
@@ -11283,6 +11326,19 @@ exec "$@"
   def test_old_makeDynCall_syntax(self):
     err = self.run_process([EMCC, test_file('test_old_dyncall_format.c'), '--js-library', test_file('library_test_old_dyncall_format.js')], stderr=PIPE).stderr
     self.assertContained('syntax for makeDynCall has changed', err)
+
+  # Test that {{{ makeDynCall('sig', 'this.foo') }}} macro works, i.e. when 'this.' is referenced inside the macro block.
+  # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
+  @parameterized({
+    'plain': [[]],
+    'dyncalls': [['-sDYNCALLS']]})
+  def test_this_in_dyncall(self, args):
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
+
+  @requires_v8
+  def test_this_in_dyncall_memory64(self):
+    self.v8_args += ['--experimental-wasm-memory64']
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
@@ -12632,3 +12688,39 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     }
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
+
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
+  def test_stack_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    self.emcc_args += ['-O1', '--profiling-funcs']
+    self.do_runf(test_file('core/stack_overflow.c'),
+                 'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
+                 assert_returncode=NON_ZERO)
+
+  def test_reproduce(self):
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    self.assertExists('foo.tar')
+    names = []
+    root = os.path.splitdrive(path_from_root())[1][1:]
+    root = root.replace('\\', '/')
+    print('root: %s' % root)
+    with tarfile.open('foo.tar') as f:
+      for name in f.getnames():
+        print('name: %s' % name)
+        names.append(name.replace(root, '<root>'))
+      f.extractall()
+    names = '\n'.join(sorted(names)) + '\n'
+    expected = '''\
+foo/<root>/test/hello_world.c
+foo/response.txt
+foo/version.txt
+'''
+    self.assertTextDataIdentical(expected, names)
+    expected = '''\
+-sASSERTIONS=1
+<root>/test/hello_world.c
+'''
+    response = read_file('foo/response.txt')
+    response = response.replace('\\', '/')
+    response = response.replace(root, '<root>')
+    self.assertTextDataIdentical(expected, response)

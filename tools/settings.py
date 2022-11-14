@@ -86,6 +86,9 @@ COMPILE_TIME_SETTINGS = {
 }.union(PORTS_SETTINGS)
 
 
+user_settings: Dict[str, str] = {}
+
+
 class SettingsManager:
   attrs: Dict[str, Any] = {}
   types: Dict[str, Any] = {}

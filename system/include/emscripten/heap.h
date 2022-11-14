@@ -25,7 +25,7 @@ extern "C" {
 uintptr_t *emscripten_get_sbrk_ptr(void);
 
 // Attempts to geometrically or linearly increase the heap so that it
-// grows by at least requested_growth_bytes new bytes. The heap size may
+// grows to the new size of at least `requested_size` bytes. The heap size may
 // be overallocated, see src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
 // MEMORY_GROWTH_GEOMETRIC_CAP and MEMORY_GROWTH_LINEAR_STEP. This function
 // cannot be used to shrink the size of the heap.

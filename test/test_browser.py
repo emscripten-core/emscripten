@@ -5281,6 +5281,14 @@ Module["preRun"].push(function () {
   def test_wasm_worker_semaphore_try_acquire(self):
     self.btest(test_file('wasm_worker/semaphore_try_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
+  # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
+  def test_wasm_worker_proxied_function(self):
+    error_msg = "abort:Assertion failed: Attempted to call proxied function '_proxied_js_function' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!"
+    # Test that program aborts in ASSERTIONS-enabled builds
+    self.btest(test_file('wasm_worker/proxied_function.c'), expected=error_msg, args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+    # Test that code does not crash in ASSERTIONS-disabled builds
+    self.btest(test_file('wasm_worker/proxied_function.c'), expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
+
   @no_firefox('no 4GB support yet')
   @requires_v8
   def test_zzz_zzz_4gb(self):

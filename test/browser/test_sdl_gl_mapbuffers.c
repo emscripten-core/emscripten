@@ -100,10 +100,13 @@ int Init ()
    return GL_TRUE;
 }
 
+static const int kNegativeTest = 0;
+static const int kPositiveTest = 1;
+
 ///
 // Draw a triangle using the shader pair created in Init()
 //
-void Draw ()
+void Draw (GLenum accessBits, int testMode)
 {
    void *buffer;
    GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f,
@@ -119,14 +122,21 @@ void Draw ()
      GL_ARRAY_BUFFER,
      0,
      sizeof(vVertices),
-     GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_WRITE_BIT
+     accessBits
    );
-   if (buffer == NULL) {
+   if (testMode == kPositiveTest && buffer == NULL) {
      fprintf(stderr, "Could not map buffer: %x\n", glGetError());
-     exit(1);
+     return;
+   }
+   if (testMode == kNegativeTest) {
+     // When negative testing, stop after the call to glMapBufferRange.
+     return;
    }
    memcpy(buffer, vVertices, sizeof(vVertices));
-   glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, sizeof(vVertices));
+   if (accessBits & GL_MAP_FLUSH_EXPLICIT_BIT)
+   {
+      glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, sizeof(vVertices));
+   }
    glUnmapBuffer(GL_ARRAY_BUFFER);
 
    glViewport ( 0, 0, width, height );
@@ -176,8 +186,34 @@ int main(int argc, char *argv[])
   }
 
   Init();
-  Draw();
+
+  // Positive Tests.
+
+  // Test both invalidate modes and write.
+  Draw(GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_WRITE_BIT, kPositiveTest);
   Verify();
+
+  Draw(GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_WRITE_BIT, kPositiveTest);
+  Verify();
+
+  // Test both invalidate modes and write with flush explicit.
+  Draw(GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_WRITE_BIT, kPositiveTest);
+  Verify();
+
+  Draw(GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_WRITE_BIT, kPositiveTest);
+  Verify();
+
+
+  // Negative tests.
+
+  // Test write bit alone is unsupported.
+  Draw(GL_MAP_WRITE_BIT, kNegativeTest);
+
+  // Test read bit is unsupported.
+  Draw(GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_WRITE_BIT | GL_MAP_READ_BIT, kNegativeTest);
+
+  // Test unsynchronized bit is unsupported.
+  Draw(GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT, kNegativeTest);
 
   return 0;
 }

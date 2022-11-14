@@ -15,7 +15,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libmodplug', 'https://github.com/jancc/libmodplug/archive/v' + TAG + '.zip', 'libmodplug-' + TAG, sha512hash=HASH)
+  ports.fetch_project('libmodplug', f'https://github.com/jancc/libmodplug/archive/v{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libmodplug')

@@ -16,7 +16,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG, sha512hash=HASH)
+  ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: bullet')

@@ -19,7 +19,7 @@ def needed(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
-  ports.fetch_project('sdl2_gfx', 'https://github.com/svn2github/sdl2_gfx/archive/' + TAG + '.zip', 'sdl2_gfx-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_gfx', f'https://github.com/svn2github/sdl2_gfx/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: sdl2_gfx')

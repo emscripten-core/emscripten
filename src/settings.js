@@ -864,6 +864,12 @@ var ASYNCIFY_LAZY_LOAD_CODE = false;
 // [link]
 var ASYNCIFY_DEBUG = 0;
 
+// Specify which of the exports will have JSPI applied to them and return a
+// promise.
+// Only supported for ASYNCIFY==2 mode.
+// [link]
+var ASYNCIFY_EXPORTS = [];
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
 // EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
@@ -944,8 +950,7 @@ var FORCE_FILESYSTEM = false;
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
-// handles permissions and errors and so forth may be noticeable.  This has
-// mostly been tested on Linux so far.
+// handles permissions and errors and so forth may be noticeable.
 // [link]
 var NODERAWFS = false;
 

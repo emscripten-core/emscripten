@@ -18,8 +18,22 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.25 (in development)
+3.1.26 (in development)
 -----------------------
+- Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
+  environment variable).  This options specifies the name of a tar file into
+  which emscripten will copy all of the input files along with a response file
+  that will allow the command to be replicated.  This can be useful for sharing
+  reproduction cases with others (inspired by the lld option of the same name).
+  (#18160)
+- In non-optimizing builds emscripten will now place the stack first in memory,
+  before global data.  This is to get more accurate stack overflow errors (since
+  overflow will trap rather corrupting global data first).  This should not
+  be a user-visible change (unless your program does something very odd such
+  depending on the specific location of stack data in memory). (#18154)
+
+3.1.25 - 11/08/22
+-----------------
 - The `TOTAL_STACK` setting was renamed to `STACK_SIZE`.  The old name will
   continue to work as an alias. (#18128)
 - Exporting `print`/`printErr` via `-sEXPORTED_RUNTIME_METHODS` is deprecated in
