@@ -11328,6 +11328,7 @@ exec "$@"
     self.assertContained('syntax for makeDynCall has changed', err)
 
   # Test that {{{ makeDynCall('sig', 'this.foo') }}} macro works, i.e. when 'this.' is referenced inside the macro block.
+  # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
   @parameterized({
     'plain': [[]],
     'dyncalls': [['-sDYNCALLS']]})
