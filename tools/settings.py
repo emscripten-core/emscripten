@@ -80,9 +80,6 @@ COMPILE_TIME_SETTINGS = {
 
     # This is legacy setting that we happen to handle very early on
     'RUNTIME_LINKED_LIBS',
-    # TODO: should not be here
-    'AUTO_ARCHIVE_INDEXES',
-    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
 }.union(PORTS_SETTINGS)
 
 
