@@ -516,7 +516,7 @@ jobs:
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
             lsan.test_dylink_dso_needed
-            lsan.test_stdio_locking
+            lsan.test_stdio_locking_pthread
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
