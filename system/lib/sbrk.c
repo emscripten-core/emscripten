@@ -6,17 +6,13 @@
  *
 */
 
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
-#define RETRY_SBRK 1
-#endif
-
 #ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
 #endif
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#if RETRY_SBRK // for error handling, see below
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__ // for error handling, see below
 #include <stdio.h>
 #include <stdlib.h>
 #endif
@@ -58,16 +54,16 @@ void *sbrk(intptr_t increment_) {
   uintptr_t old_size;
   uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
-#if RETRY_SBRK
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
   // itself is threadsafe so alternative allocators work. We do that by looping
   // and retrying if we hit interference with another thread.
   uintptr_t expected;
   while (1) {
-#endif // RETRY_SBRK
+#endif // __EMSCRIPTEN_SHARED_MEMORY__
     uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-#if RETRY_SBRK
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
     uintptr_t old_brk = __c11_atomic_load((_Atomic(uintptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
     uintptr_t old_brk = *sbrk_ptr;
@@ -85,7 +81,7 @@ void *sbrk(intptr_t increment_) {
         goto Error;
       }
     }
-#if RETRY_SBRK
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
     // Attempt to update the dynamic top to new value. Another thread may have
     // beat this one to the update, in which case we will need to start over
     // by iterating the loop body again.
@@ -97,18 +93,18 @@ void *sbrk(intptr_t increment_) {
     if (expected != old_brk) {
       continue;
     }
-#else // RETRY_SBRK
+#else // __EMSCRIPTEN_SHARED_MEMORY__
     *sbrk_ptr = new_brk;
-#endif // RETRY_SBRK
+#endif // __EMSCRIPTEN_SHARED_MEMORY__
 
 #ifdef __EMSCRIPTEN_TRACING__
     emscripten_memprof_sbrk_grow(old_brk, new_brk);
 #endif
     return (void*)old_brk;
 
-#if RETRY_SBRK
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
   }
-#endif // RETRY_SBRK
+#endif // __EMSCRIPTEN_SHARED_MEMORY__
 
 Error:
   SET_ERRNO();
@@ -116,7 +112,7 @@ Error:
 }
 
 int brk(void* ptr) {
-#if RETRY_SBRK
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // FIXME
   printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
   abort();
