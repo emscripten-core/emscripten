@@ -18,11 +18,14 @@ import sys
 import socket
 import time
 import threading
+from typing import Optional
 
 ports = [int(sys.argv[1]), int(sys.argv[2])]
 
 
 class Listener(threading.Thread):
+  other: Optional[Listener] = None  # noqa: F821
+
   def run(self):
     self.conn = None
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -12,6 +12,7 @@ import time
 import unittest
 import zlib
 from pathlib import Path
+from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
@@ -351,7 +352,7 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers = []
+benchmarkers: List[Benchmarker] = []
 
 if not common.EMTEST_FORCE64:
   benchmarkers += [

@@ -7,6 +7,7 @@ from enum import Enum
 from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
+from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
@@ -29,8 +30,7 @@ import unittest
 
 import clang_native
 import jsrun
-from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
-from tools.shared import EMSCRIPTEN_TEMP_DIR
+from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
@@ -411,8 +411,8 @@ class RunnerMeta(type):
 class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
-  temp_dir = TEMP_DIR
-  canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
+  temp_dir = shared.TEMP_DIR
+  canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
 
   # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
   # Change this to None to get stderr reporting, for debugging purposes
@@ -532,7 +532,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if not EMTEST_SAVE_DIR:
       self.has_prev_ll = False
-      for temp_file in os.listdir(TEMP_DIR):
+      for temp_file in os.listdir(shared.TEMP_DIR):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
 
@@ -947,7 +947,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  library_cache = {}
+  library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):
     ret = self.in_dir('building')
@@ -1005,8 +1005,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def clear(self):
     utils.delete_contents(self.get_dir())
-    if EMSCRIPTEN_TEMP_DIR:
-      utils.delete_contents(EMSCRIPTEN_TEMP_DIR)
+    if shared.EMSCRIPTEN_TEMP_DIR:
+      utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests

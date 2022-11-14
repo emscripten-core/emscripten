@@ -17,7 +17,6 @@ from common import create_file, ensure_dir, make_executable, with_env_modify
 from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
-from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools.utils import delete_file, delete_dir
@@ -355,7 +354,7 @@ fi
     # but with EMCC_DEBUG=1 we should check
     with env_modify({'EMCC_DEBUG': '1'}):
       output = self.check_working(EMCC)
-    delete_dir(CANONICAL_TEMP_DIR)
+    delete_dir(shared.CANONICAL_TEMP_DIR)
 
     self.assertContained(SANITY_MESSAGE, output)
     output = self.check_working(EMCC)
@@ -683,7 +682,7 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
 
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
-    delete_dir(CANONICAL_TEMP_DIR)
+    delete_dir(shared.CANONICAL_TEMP_DIR)
 
   def test_required_config_settings(self):
     # with no binaryen root, an error is shown

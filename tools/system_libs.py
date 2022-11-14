@@ -12,6 +12,7 @@ import shutil
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from typing import List, Optional
 
 from . import shared, building, utils
 from . import deps_info
@@ -285,7 +286,7 @@ class Library:
   # automatically get the correct version of the library.
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
-  name = None
+  name: Optional[str] = None
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
@@ -304,7 +305,7 @@ class Library:
   # directory into the include path, you would write:
   #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
   # The include path of the parent class is automatically inherited.
-  includes = []
+  includes: List[str] = []
 
   # By default, `get_files` look for source files for this library under `src_dir`.
   # It will either use the files listed in `src_files`, or use the glob pattern in
@@ -312,10 +313,10 @@ class Library:
   # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
   # to be excluded from the library.
   # Alternatively, you can override `get_files` to use your own logic.
-  src_dir = None
-  src_files = None
-  src_glob = None
-  src_glob_exclude = None
+  src_dir: Optional[str] = None
+  src_files: Optional[List[str]] = []
+  src_glob: Optional[str] = None
+  src_glob_exclude: Optional[List[str]] = None
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False

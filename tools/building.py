@@ -405,7 +405,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   return output_file
 
 
-acorn_optimizer.counter = 0
+acorn_optimizer.counter = 0  # type: ignore
 
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
@@ -1315,7 +1315,7 @@ def save_intermediate(src, dst):
     shutil.copyfile(src, dst)
 
 
-save_intermediate.counter = 0
+save_intermediate.counter = 0  # type: ignore
 
 
 def js_legalization_pass_flags():
