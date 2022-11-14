@@ -9,7 +9,7 @@ mergeInto(LibraryManager.library, {
   test__deps: ['$classLike'],
   test: function(fnptr, val) {
     // Bug: Function pointers are currently treated as 64-bit, but should be 32-bit integers.
-    classLike.fnptr = Number(fnptr);
+    classLike.fnptr = fnptr;
     classLike.call(val);
   }
 });
