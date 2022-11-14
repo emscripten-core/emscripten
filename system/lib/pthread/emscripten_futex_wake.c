@@ -32,10 +32,13 @@ int emscripten_futex_wake(volatile void *addr, int count) {
   if (a_cas_p(&_emscripten_main_thread_futex, (void*)addr, 0) == addr) {
     // The main browser thread must never try to wake itself up!
     assert(!emscripten_is_main_browser_thread());
-    if (count != INT_MAX) --count;
-    main_thread_woken = 1;
-    if (count <= 0) {
-      return 1;
+    if (count != INT_MAX)
+    {
+      --count;
+      main_thread_woken = 1;
+      if (count <= 0) {
+        return 1;
+      }
     }
   }
 
