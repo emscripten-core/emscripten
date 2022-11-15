@@ -274,13 +274,13 @@ var LibraryPThread = {
         } else if (cmd === 'loaded') {
           worker.loaded = true;
           if (onFinishedLoading) onFinishedLoading(worker);
-#if ENVIRONMENT_MAY_BE_NODE
-          if (ENVIRONMENT_IS_NODE) worker.unref();
-#endif
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
           }
+#if ENVIRONMENT_MAY_BE_NODE
+          else if (ENVIRONMENT_IS_NODE) worker.unref();
+#endif
         } else if (cmd === 'print') {
           out('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'printErr') {
