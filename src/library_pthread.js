@@ -274,10 +274,12 @@ var LibraryPThread = {
         } else if (cmd === 'loaded') {
           worker.loaded = true;
           if (onFinishedLoading) onFinishedLoading(worker);
+#if ENVIRONMENT_MAY_BE_NODE
+          if (ENVIRONMENT_IS_NODE) worker.unref();
+#endif
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
-            delete worker.runPthread;
           }
         } else if (cmd === 'print') {
           out('Thread ' + d['threadId'] + ': ' + d['text']);
@@ -323,7 +325,6 @@ var LibraryPThread = {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
-        worker.unref();
       }
 #endif
 
@@ -599,10 +600,10 @@ var LibraryPThread = {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
+      delete worker.runPthread;
     };
     if (worker.loaded) {
       worker.runPthread();
-      delete worker.runPthread;
     }
     return 0;
   },
