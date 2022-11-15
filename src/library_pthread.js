@@ -205,6 +205,12 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        worker.unref();
+      }
+#endif
+
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
       __emscripten_thread_free_data(pthread_ptr);
@@ -317,6 +323,7 @@ var LibraryPThread = {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
+        worker.unref();
       }
 #endif
 
@@ -455,7 +462,13 @@ var LibraryPThread = {
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
 #endif
       }
-      return PThread.unusedWorkers.pop();
+      var worker = PThread.unusedWorkers.pop();
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        worker.ref();
+      }
+#endif
+      return worker;
     }
   },
 
@@ -671,7 +684,7 @@ var LibraryPThread = {
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
-    // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).  
+    // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).
     for (var i in transferredCanvasNames) {
       var name = transferredCanvasNames[i].trim();
       var offscreenCanvasInfo;
