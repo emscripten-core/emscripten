@@ -2910,7 +2910,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
-      ensure_archive_index(input_file)
       linker_inputs.append((i, input_file))
     elif language_mode:
       compile_source_file(i, input_file)
@@ -4053,6 +4052,10 @@ def process_libraries(state, linker_inputs):
   settings.JS_LIBRARIES.sort(key=lambda lib: lib[0])
   settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
   state.link_flags = new_flags
+
+  for _, f in linker_inputs:
+    if building.is_ar(f):
+      ensure_archive_index(f)
 
 
 class ScriptSource:

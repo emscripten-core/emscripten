@@ -6846,6 +6846,7 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
@@ -6862,7 +6863,7 @@ void* operator new(size_t size) {
 
     ppm_data = str(list(bytearray(read_binary(test_file('poppler/ref.ppm')))))
     self.do_run('', ppm_data.replace(' ', ''),
-                libraries=self.get_poppler_library(),
+                libraries=poppler,
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
