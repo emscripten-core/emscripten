@@ -23,11 +23,11 @@ def get(ports, settings, shared):
     ports.install_headers(source_path)
     ports.build_port(source_path, final, 'giflib')
 
-  return [shared.Cache.get_lib('libgif.a', create, what='port')]
+  return [shared.cache.get_lib('libgif.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libgif.a')
+  shared.cache.erase_lib('libgif.a')
 
 
 def process_args(ports):

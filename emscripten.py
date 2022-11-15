@@ -20,6 +20,7 @@ import pprint
 import shutil
 
 from tools import building
+from tools import cache
 from tools import diagnostics
 from tools import js_manipulation
 from tools import shared
@@ -868,8 +869,8 @@ def normalize_line_endings(text):
 
 
 def clear_struct_info():
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  shared.Cache.erase_file(output_name)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  cache.erase_file(output_name)
 
 
 def generate_struct_info():
@@ -882,8 +883,8 @@ def generate_struct_info():
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  settings.STRUCT_INFO = cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):

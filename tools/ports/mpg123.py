@@ -76,11 +76,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'mpg123', flags=flags, srcs=srcs)
 
-  return [shared.Cache.get_lib('libmpg123.a', create, what='port')]
+  return [shared.cache.get_lib('libmpg123.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libmpg123.a')
+  shared.cache.erase_lib('libmpg123.a')
 
 
 def process_args(ports):

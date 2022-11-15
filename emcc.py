@@ -51,6 +51,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
+from tools import cache
 from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file
 
@@ -851,7 +852,7 @@ def parse_s_args(args):
 
 
 def emsdk_cflags(user_args):
-  cflags = ['--sysroot=' + shared.Cache.get_sysroot(absolute=True)]
+  cflags = ['--sysroot=' + cache.get_sysroot(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -1677,7 +1678,7 @@ def phase_linker_setup(options, state, newargs):
     # Add `#!` line to output JS and make it executable.
     options.executable = True
 
-  system_libpath = '-L' + str(shared.Cache.get_lib_dir(absolute=True))
+  system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
@@ -3370,19 +3371,19 @@ def parse_args(newargs):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
-      shared.reconfigure_cache()
+      cache.setup(config.CACHE)
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
-      shared.Cache.erase()
+      logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
+      cache.erase()
       shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       ports.clear()
-      shared.Cache.erase()
+      cache.erase()
       shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--check'):

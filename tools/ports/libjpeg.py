@@ -32,11 +32,11 @@ def get(ports, settings, shared):
     ]
     ports.build_port(source_path, final, 'libjpeg', exclude_files=excludes)
 
-  return [shared.Cache.get_lib('libjpeg.a', create, what='port')]
+  return [shared.cache.get_lib('libjpeg.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libjpeg.a')
+  shared.cache.erase_lib('libjpeg.a')
 
 
 def process_args(ports):

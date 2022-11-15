@@ -27,11 +27,11 @@ def get(ports, settings, shared):
                      flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 
-  return [shared.Cache.get_lib('libvorbis.a', create)]
+  return [shared.cache.get_lib('libvorbis.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libvorbis.a')
+  shared.cache.erase_lib('libvorbis.a')
 
 
 def process_dependencies(settings):

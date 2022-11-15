@@ -25,11 +25,11 @@ def get(ports, settings, shared):
     ports.install_header_dir(os.path.join(source_path, 'include', 'ogg'), 'ogg')
     ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
-  return [shared.Cache.get_lib('libogg.a', create)]
+  return [shared.cache.get_lib('libogg.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libogg.a')
+  shared.cache.erase_lib('libogg.a')
 
 
 def process_args(ports):
