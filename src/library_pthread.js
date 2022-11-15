@@ -274,13 +274,11 @@ var LibraryPThread = {
         } else if (cmd === 'loaded') {
           worker.loaded = true;
           if (onFinishedLoading) onFinishedLoading(worker);
+          worker.unref();
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
           }
-#if ENVIRONMENT_MAY_BE_NODE
-          else if (ENVIRONMENT_IS_NODE) worker.unref();
-#endif
         } else if (cmd === 'print') {
           out('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'printErr') {
@@ -463,13 +461,7 @@ var LibraryPThread = {
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
 #endif
       }
-      var worker = PThread.unusedWorkers.pop();
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        worker.ref();
-      }
-#endif
-      return worker;
+      return PThread.unusedWorkers.pop();
     }
   },
 
@@ -598,6 +590,11 @@ var LibraryPThread = {
 #endif
     worker.runPthread = () => {
       // Ask the worker to start executing its pthread entry point function.
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        worker.ref();
+      }
+#endif
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
       delete worker.runPthread;
