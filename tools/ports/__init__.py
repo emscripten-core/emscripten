@@ -9,6 +9,7 @@ import os
 import shutil
 import glob
 from typing import Set
+from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
@@ -84,7 +85,7 @@ class Ports:
 
   @staticmethod
   def get_include_dir(*parts):
-    dirname = shared.Cache.get_include_dir(*parts)
+    dirname = cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -171,7 +172,7 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return shared.Cache.get_path('ports-builds')
+    return cache.get_path('ports-builds')
 
   name_cache: Set[str] = set()
 
@@ -217,7 +218,7 @@ class Ports:
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
             return
-          with shared.Cache.lock('unpack local port'):
+          with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
@@ -272,7 +273,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock('unpack port'):
+    with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock

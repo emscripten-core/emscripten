@@ -28,11 +28,11 @@ def get(ports, settings, shared):
     excludes = ['chatd.c', 'chat.cpp', 'showinterfaces.c']
     ports.build_port(src_dir, final, 'sdl2_net', exclude_files=excludes)
 
-  return [shared.Cache.get_lib('libSDL2_net.a', create, what='port')]
+  return [shared.cache.get_lib('libSDL2_net.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libSDL2_net.a')
+  shared.cache.erase_lib('libSDL2_net.a')
 
 
 def process_dependencies(settings):

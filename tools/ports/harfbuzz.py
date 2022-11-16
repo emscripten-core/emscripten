@@ -142,11 +142,11 @@ def get(ports, settings, shared):
 
     ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

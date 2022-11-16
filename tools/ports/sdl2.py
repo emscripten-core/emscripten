@@ -74,11 +74,11 @@ def get(ports, settings, shared):
       flags += ['-sUSE_PTHREADS']
     ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def linker_setup(ports, settings):

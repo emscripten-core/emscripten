@@ -27,11 +27,11 @@ def get(ports, settings, shared):
     ports.build_port(source_path, final, 'sdl2_gfx', exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
     ports.install_headers(source_path, target='SDL2')
 
-  return [shared.Cache.get_lib('libSDL2_gfx.a', create)]
+  return [shared.cache.get_lib('libSDL2_gfx.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libSDL2_gfx.a')
+  shared.cache.erase_lib('libSDL2_gfx.a')
 
 
 def process_dependencies(settings):

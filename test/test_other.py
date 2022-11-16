@@ -35,7 +35,7 @@ from common import env_modify, no_mac, no_windows, requires_native_clang, with_e
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
-from tools import shared, building, utils, deps_info, response_file
+from tools import shared, building, utils, deps_info, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
 import jsrun
@@ -616,13 +616,13 @@ f.close()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
     print(libpath)
-    self.assertIn(shared.Cache.get_lib_dir(absolute=True), libpath)
+    self.assertIn(cache.get_lib_dir(absolute=True), libpath)
 
   def test_emcc_print_file_name(self):
     self.run_process([EMBUILDER, 'build', 'libc'])
     output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
     filename = Path(output)
-    self.assertContained(shared.Cache.get_lib_name('libc.a'), str(filename))
+    self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
@@ -843,8 +843,8 @@ f.close()
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
-    libdir = shared.Cache.get_sysroot_dir('local/lib/pkgconfig')
-    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
+    libdir = cache.get_sysroot_dir('local/lib/pkgconfig')
+    libdir += os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
   @requires_pkg_config
@@ -869,7 +869,7 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
-      cachedir = os.path.normpath(shared.Cache.dirname)
+      cachedir = os.path.normpath(cache.cachedir)
       llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:
         i = os.path.normpath(i)
@@ -5746,7 +5746,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([PYTHON, cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
@@ -12646,13 +12646,13 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    with shared.Cache.lock('testing'):
+    with cache.lock('testing'):
       self.run_process([EMCC, '-c', test_file('hello_world.c')])
 
   def test_recursive_cache_lock(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
-    with shared.Cache.lock('testing'):
+    with cache.lock('testing'):
       err = self.expect_fail([EMBUILDER, 'build', 'libc', '--force'], expect_traceback=True)
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
 

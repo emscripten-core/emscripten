@@ -18,13 +18,14 @@ from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import config
-from tools.shared import EXPECTED_LLVM_VERSION, Cache
+from tools.shared import EXPECTED_LLVM_VERSION
 from tools.utils import delete_file, delete_dir
+from tools import cache
 from tools import shared, utils
 from tools import response_file
 from tools import ports
 
-SANITY_FILE = shared.Cache.get_path('sanity.txt')
+SANITY_FILE = cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
 
 
@@ -393,9 +394,9 @@ fi
     self.assertCacheEmpty()
 
   def assertCacheEmpty(self):
-    if os.path.exists(Cache.dirname):
+    if os.path.exists(cache.cachedir):
       # The cache is considered empty if it contains no files at all or just the cache.lock
-      self.assertIn(os.listdir(Cache.dirname), ([], ['cache.lock']))
+      self.assertIn(os.listdir(cache.cachedir), ([], ['cache.lock']))
 
   def ensure_cache(self):
     self.do([EMCC, '-O2', test_file('hello_world.c')])
@@ -408,7 +409,7 @@ fi
 
     # Building a file that *does* need something *should* trigger cache
     # generation, but only the first time
-    libname = Cache.get_lib_name('libc++.a')
+    libname = cache.get_lib_name('libc++.a')
     for i in range(3):
       print(i)
       self.clear()
@@ -416,14 +417,14 @@ fi
       print('\n\n\n', output)
       self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
-      self.assertExists(Cache.dirname)
-      self.assertExists(os.path.join(Cache.dirname, libname))
+      self.assertExists(cache.cachedir)
+      self.assertExists(os.path.join(cache.cachedir, libname))
 
   def test_cache_clearing_manual(self):
     # Manual cache clearing
     restore_and_set_up()
     self.ensure_cache()
-    self.assertExists(Cache.dirname)
+    self.assertExists(cache.cachedir)
     output = self.do([EMCC, '--clear-cache'])
     self.assertIn('clearing cache', output)
     self.assertIn(SANITY_MESSAGE, output)
@@ -436,7 +437,7 @@ fi
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
-      self.assertExists(Cache.dirname)
+      self.assertExists(cache.cachedir)
       output = self.do([EMCC])
       self.assertIn('clearing cache', output)
       self.assertCacheEmpty()
@@ -446,11 +447,11 @@ fi
     restore_and_set_up()
     self.clear_cache()
     self.ensure_cache()
-    self.assertExists(Cache.dirname)
+    self.assertExists(cache.cachedir)
     # changing config file should not clear cache
     add_to_config('FROZEN_CACHE = True')
     self.do([EMCC])
-    self.assertExists(Cache.dirname)
+    self.assertExists(cache.cachedir)
     # building libraries is disallowed
     output = self.do([EMBUILDER, 'build', 'libemmalloc'])
     self.assertContained('FROZEN_CACHE is set, but cache file is missing', output)
@@ -469,7 +470,7 @@ fi
       }
       ''')
     cache_dir_name = self.in_dir('test_cache')
-    libname = Cache.get_lib_name('libc.a')
+    libname = cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0

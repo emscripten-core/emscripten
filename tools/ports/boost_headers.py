@@ -35,11 +35,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'])
 
-  return [shared.Cache.get_lib('libboost_headers.a', create, what='port')]
+  return [shared.cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libboost_headers.a')
+  shared.cache.erase_lib('libboost_headers.a')
 
 
 def process_args(ports):

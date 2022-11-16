@@ -92,11 +92,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'freetype', flags=flags, srcs=srcs)
 
-  return [shared.Cache.get_lib('libfreetype.a', create, what='port')]
+  return [shared.cache.get_lib('libfreetype.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libfreetype.a')
+  shared.cache.erase_lib('libfreetype.a')
 
 
 def process_args(ports):

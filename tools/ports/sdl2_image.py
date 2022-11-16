@@ -54,11 +54,11 @@ def get(ports, settings, shared):
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

@@ -79,16 +79,16 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
-      shared.Cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
-      shared.Cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.Cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
+      shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
   ]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_common, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
 
 
 def process_args(ports):
