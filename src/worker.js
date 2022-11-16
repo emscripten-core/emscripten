@@ -35,7 +35,7 @@ if (ENVIRONMENT_IS_NODE) {
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
-      (0, eval)(fs.readFileSync(f, 'utf8'));
+      (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f);
     },
     postMessage: function(msg) {
       parentPort.postMessage(msg);
