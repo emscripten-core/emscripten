@@ -273,12 +273,12 @@ var LibraryPThread = {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
           worker.loaded = true;
-          if (onFinishedLoading) onFinishedLoading(worker);
 #if ENVIRONMENT_MAY_BE_NODE
           if (ENVIRONMENT_IS_NODE) {
             worker.unref();
           }
 #endif
+          if (onFinishedLoading) onFinishedLoading(worker);
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
