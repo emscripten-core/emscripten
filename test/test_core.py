@@ -2217,9 +2217,14 @@ int main(int argc, char **argv) {
     self.do_run_from_file('src.cpp', 'result.out')
     self.do_run_from_file('src.cpp', 'result.out', force_c=True)
 
-  def test_main_thread_async_em_asm(self):
-    self.do_core_test('test_main_thread_async_em_asm.cpp')
-    self.do_core_test('test_main_thread_async_em_asm.cpp', force_c=True)
+  @needs_dylink
+  @parameterized({
+    '': ([], False),
+    'relocatable': (['-sMAIN_MODULE=2'], False),
+    'force_c': ([], True),
+  })
+  def test_main_thread_async_em_asm(self, args, force_c=False):
+    self.do_core_test('test_main_thread_async_em_asm.cpp', emcc_args=args, force_c=force_c)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
   def test_main_thread_em_asm_signatures(self):
