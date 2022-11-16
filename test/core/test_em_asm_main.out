@@ -1,0 +1,17 @@
+in main
+em_asm in main
+no args works
+int types:
+         char : 1
+  signed char : 2
+unsigned char : 3
+         short: 4
+  signed short: 5
+unsigned short: 6
+         int  : 7
+  signed int  : 8
+unsigned int  : 9
+         long : 10
+  signed long : 11
+unsigned long : 12
+    terminator: 42

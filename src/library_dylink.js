@@ -89,6 +89,8 @@ var LibraryDylink = {
       '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
+      '__start_em_asm',
+      '__stop_em_asm',
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -654,6 +656,39 @@ var LibraryDylink = {
           if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
 #endif
           moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
+        }
+#endif
+
+#if MAIN_MODULE
+        function addEmAsm(addr, body) {
+          var args = [];
+          var arity = 0;
+          for (; arity < 16; arity++) {
+            if (body.indexOf('$' + arity) != -1) {
+              args.push('$' + arity);
+            } else {
+              break;
+            }
+          }
+          args = args.join(',');
+          var func = '(' + args +' ) => { ' + body + '};'
+#if DYLINK_DEBUG
+          dbg('adding new EM_ASM constant at: ' + ptrToString(start));
+#endif
+          {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
+        }
+
+        // Add any EM_ASM function that exist in the side module
+        if ('__start_em_asm' in moduleExports) {
+          var start = moduleExports['__start_em_asm'];
+          var stop = moduleExports['__stop_em_asm'];
+          {{{ from64('start') }}}
+          {{{ from64('stop') }}}
+          while (start < stop) {
+            var jsString = UTF8ToString(start);
+            addEmAsm(start, jsString);
+            start = HEAPU8.indexOf(0, start) + 1;
+          }
         }
 #endif
 

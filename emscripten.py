@@ -337,8 +337,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   if settings.SIDE_MODULE:
-    if metadata.asmConsts:
-      exit_with_error('EM_ASM is not supported in side modules')
     if metadata.emJsFuncs:
       exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
