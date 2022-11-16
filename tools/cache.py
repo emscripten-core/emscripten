@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Permanent cache for system librarys and ports.
+"""Permanent cache for system libraries and ports.
 """
 
 import contextlib
