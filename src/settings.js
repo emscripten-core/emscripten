@@ -1785,6 +1785,9 @@ var MIN_EDGE_VERSION = 0x7FFFFFFF;
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 75.0.3770 was released on 2019-06-04
+// This setting also applies to modern Chromium-based Edge, which shares version
+// numbers with Chrome (see notes above on MIN_EDGE_VERSION), so for both of
+// those browsers you only need to set MIN_CHROME_VERSION.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_CHROME_VERSION = 75;
