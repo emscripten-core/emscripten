@@ -12724,3 +12724,32 @@ foo/version.txt
     response = response.replace('\\', '/')
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
+
+  def test_signext_lowering(self):
+    cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-sWASM_BIGINT']
+
+    # We expect ERROR_ON_WASM_CHANGES_AFTER_LINK to fail due lowering of sign-ext being
+    # required for safari 12.
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=120000'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for firefox
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_FIREFOX_VERSION=61'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for chrome
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_CHROME_VERSION=73'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Running the same command with safari 14.1 should succeed because no lowering
+    # is required.
+    self.run_process(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=140100'])
+    self.assertEqual('1\n', self.run_js('a.out.js'))
+
+    # Running without ERROR_ON_WASM_CHANGES_AFTER_LINK but with safari 12
+    # should successfully lower sign-ext.
+    self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000', '-o', 'lowered.js'])
+    self.assertEqual('1\n', self.run_js('lowered.js'))
