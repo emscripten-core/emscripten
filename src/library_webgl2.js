@@ -723,10 +723,8 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
-#if WASM_BIGINT
-  glClientWaitSync__sig: 'iiii',
-#else
-  glClientWaitSync__sig: 'iiiii',
+  glClientWaitSync__sig: 'iiij',
+#if !WASM_BIGINT
   glClientWaitSync__deps: ['$convertI32PairToI53'],
 #endif
   glClientWaitSync: function(sync, flags, {{{ defineI64Param('timeout') }}}) {
@@ -743,10 +741,8 @@ var LibraryWebGL2 = {
     );
   },
 
-#if WASM_BIGINT
-  glWaitSync__sig: 'viii',
-#else
-  glWaitSync__sig: 'viiii',
+  glWaitSync__sig: 'viij',
+#if !WASM_BIGINT
   glWaitSync__deps: ['$convertI32PairToI53'],
 #endif
   glWaitSync: function(sync, flags, {{{ defineI64Param('timeout') }}}) {
