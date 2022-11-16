@@ -13,5 +13,5 @@ if __name__ == '__main__':
   try:
     sys.exit(emcc.main(sys.argv))
   except KeyboardInterrupt:
-    emcc.logger.warning('KeyboardInterrupt')
+    emcc.logger.debug('KeyboardInterrupt')
     sys.exit(1)

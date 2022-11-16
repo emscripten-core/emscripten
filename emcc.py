@@ -4240,5 +4240,5 @@ if __name__ == '__main__':
   try:
     sys.exit(main(sys.argv))
   except KeyboardInterrupt:
-    logger.warning('KeyboardInterrupt')
+    logger.debug('KeyboardInterrupt')
     sys.exit(1)
