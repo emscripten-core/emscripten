@@ -256,6 +256,7 @@ class other(RunnerCore):
     'node': (['-sENVIRONMENT=node'],),
   })
   @node_pthreads
+  @no_mac("Temporally disabled see: https://github.com/emscripten-core/emscripten/pull/17915#issuecomment-1319195397")
   def test_emcc_output_worker_mjs(self, args):
     create_file('extern-post.js', 'await Module();')
     os.mkdir('subdir')
