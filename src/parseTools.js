@@ -854,7 +854,7 @@ function modifyFunction(text, func) {
   // Match a function with a name.
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let names;
+  let name;
   let args;
   let rest;
   if (match) {
