@@ -48,7 +48,7 @@ readAsync = (filename, onload, onerror) => {
     onload(ret);
   }
 #endif
-  filename = nodePath['normalize'](filename);
+  filename = filename.startsWith('file://') ? new URL(filename, import.meta.url) : nodePath['normalize'](filename);
   fs.readFile(filename, function(err, data) {
     if (err) onerror(err);
     else onload(data.buffer);
