@@ -20,6 +20,7 @@ import pprint
 import shutil
 
 from tools import building
+from tools import cache
 from tools import diagnostics
 from tools import js_manipulation
 from tools import shared
@@ -208,7 +209,7 @@ def compile_settings():
 
 def set_memory(static_bump):
   stack_low = align_memory(settings.GLOBAL_BASE + static_bump)
-  stack_high = align_memory(stack_low + settings.TOTAL_STACK)
+  stack_high = align_memory(stack_low + settings.STACK_SIZE)
   settings.STACK_HIGH = stack_high
   settings.STACK_LOW = stack_low
   settings.HEAP_BASE = align_memory(stack_high)
@@ -868,8 +869,8 @@ def normalize_line_endings(text):
 
 
 def clear_struct_info():
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  shared.Cache.erase_file(output_name)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  cache.erase_file(output_name)
 
 
 def generate_struct_info():
@@ -882,8 +883,8 @@ def generate_struct_info():
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  settings.STRUCT_INFO = cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):

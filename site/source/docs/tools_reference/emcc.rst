@@ -72,6 +72,13 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is a good setting for a release build.
 
+.. _emcc-Og:
+
+``-Og``
+  [compile+link]
+  Like ``-O1``. In future versions, this option might disable different
+  optimizations in order to improve debuggability.
+
 .. _emcc-Os:
 
 ``-Os``
@@ -197,6 +204,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--tracing``
   [link]
   Enable the :ref:`Emscripten Tracing API <trace-h>`.
+
+``--reproduce=<file.tar>``
+  [compile+link]
+  Write tar file containing inputs and command to reproduce invocation.  When
+  sharing this file be aware that it will any object files, source files and
+  libraries that that were passed to the compiler.
 
 .. _emcc-emit-symbol-map:
 

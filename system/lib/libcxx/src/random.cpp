@@ -13,9 +13,9 @@
 #   define _CRT_RAND_S
 #endif // defined(_LIBCPP_USING_WIN32_RANDOM)
 
-#include "limits"
-#include "random"
-#include "system_error"
+#include <limits>
+#include <random>
+#include <system_error>
 
 #if defined(__sun__)
 #   define rename solaris_headers_are_broken
@@ -210,7 +210,7 @@ random_device::entropy() const noexcept
     return std::numeric_limits<result_type>::digits;
 
   return ent;
-#elif defined(__OpenBSD__) || defined(_LIBCPP_USING_FUCHSIA_CPRNG)
+#elif defined(_LIBCPP_USING_ARC4_RANDOM) || defined(_LIBCPP_USING_FUCHSIA_CPRNG)
   return std::numeric_limits<result_type>::digits;
 #else
   return 0;

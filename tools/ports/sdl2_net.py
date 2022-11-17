@@ -19,7 +19,7 @@ def needed(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_net'
-  ports.fetch_project('sdl2_net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_net', f'https://github.com/emscripten-ports/SDL2_net/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: sdl2_net')
@@ -28,11 +28,11 @@ def get(ports, settings, shared):
     excludes = ['chatd.c', 'chat.cpp', 'showinterfaces.c']
     ports.build_port(src_dir, final, 'sdl2_net', exclude_files=excludes)
 
-  return [shared.Cache.get_lib('libSDL2_net.a', create, what='port')]
+  return [shared.cache.get_lib('libSDL2_net.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libSDL2_net.a')
+  shared.cache.erase_lib('libSDL2_net.a')
 
 
 def process_dependencies(settings):

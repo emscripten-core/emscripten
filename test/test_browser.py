@@ -3292,8 +3292,13 @@ Module["preRun"].push(function () {
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                      '-Wno-js-compiler',
+                     # cocos2d uses std::binary_function which was removing in C++17.
+                     # We could pass `-std=c++14` here but that doesn't currently work for btest
+                     # since we compile a C file (report_result.c) in the same command.
+                     '-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION',
                      '--preload-file', preload_file, '--use-preload-plugins',
-                     '-Wno-inconsistent-missing-override'])
+                     '-Wno-inconsistent-missing-override',
+                     '-Wno-deprecated-declarations'])
 
   def test_async(self):
     for opts in [0, 1, 2, 3]:
@@ -3716,7 +3721,7 @@ Module["preRun"].push(function () {
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
-    self.btest('browser_test_hello_world.c', '0', args=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sTOTAL_STACK=16384', '--preload-file', 'data.dat'])
+    self.btest('browser_test_hello_world.c', '0', args=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sSTACK_SIZE=16384', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -4072,6 +4077,7 @@ Module["preRun"].push(function () {
         self.btest(test_file('gauge_available_memory.cpp'), expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread work
+  @no_chrome('https://github.com/emscripten-core/emscripten/issues/18210')
   @requires_threads
   def test_pthread_run_on_main_thread(self):
     self.btest_exit(test_file('pthread/test_pthread_run_on_main_thread.cpp'), args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE'])
@@ -4148,10 +4154,10 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_pthread_safe_stack(self):
-    # Note that as the test runs with PROXY_TO_PTHREAD, we set TOTAL_STACK,
+    # Note that as the test runs with PROXY_TO_PTHREAD, we set STACK_SIZE,
     # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
     # same stack size as the main thread normally would.
-    self.btest(test_file('core/test_safe_stack.c'), expected='abort:stack overflow', args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sTOTAL_STACK=64KB'])
+    self.btest(test_file('core/test_safe_stack.c'), expected='abort:stack overflow', args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
@@ -5276,6 +5282,14 @@ Module["preRun"].push(function () {
   def test_wasm_worker_semaphore_try_acquire(self):
     self.btest(test_file('wasm_worker/semaphore_try_acquire.c'), expected='0', args=['-sWASM_WORKERS'])
 
+  # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
+  def test_wasm_worker_proxied_function(self):
+    error_msg = "abort:Assertion failed: Attempted to call proxied function '_proxied_js_function' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!"
+    # Test that program aborts in ASSERTIONS-enabled builds
+    self.btest(test_file('wasm_worker/proxied_function.c'), expected=error_msg, args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
+    # Test that code does not crash in ASSERTIONS-disabled builds
+    self.btest(test_file('wasm_worker/proxied_function.c'), expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
+
   @no_firefox('no 4GB support yet')
   @requires_v8
   def test_zzz_zzz_4gb(self):
@@ -5433,6 +5447,10 @@ Module["preRun"].push(function () {
                args=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
                      test_file('pthread/test_pthread_unhandledrejection.post.js')],
                expected='exception:Uncaught [object ErrorEvent] / undefined')
+
+  @requires_threads
+  def test_pthread_key_recreation(self):
+    self.btest_exit(test_file('pthread/test_pthread_key_recreation.cpp'), args=['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=1'])
 
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])

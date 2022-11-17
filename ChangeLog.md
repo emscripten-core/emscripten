@@ -18,13 +18,50 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.25 (in development)
+3.1.26 (in development)
 -----------------------
+- Inline with the recent changes to llvm and binaryen, emscripten will now, by
+  default, enable the sign-extension and mutable-globals WebAssembly proposals.
+  In order to do so the default minimum safari version (`MIN_SAFARI_VERSION`)
+  was updated from 12.0 to 14.1, and support for the old EdgeHTML engine
+  (`MIN_EDGE_VERSION`) was removed by default.  If you want to continue to
+  support these older engines you can use these settings
+  (`-sMIN_SAFARI_VERSION=120000` and/or `-sMIN_EDGE_VERSION=44`) to revert to
+  the previous defaults, which will result in the new proposals being disabled.
+  Note that in order to avoid support for the sign-extension emscripten uses
+  a binaryen pass, so targeting older browsers requires the running of wasm-opt
+  and is therefore incompatible with `ERROR_ON_WASM_CHANGES_AFTER_LINK` (i.e.
+  fast linking). (#17690)
+- Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
+  environment variable).  This options specifies the name of a tar file into
+  which emscripten will copy all of the input files along with a response file
+  that will allow the command to be replicated.  This can be useful for sharing
+  reproduction cases with others (inspired by the lld option of the same name).
+  (#18160)
+- In non-optimizing builds emscripten will now place the stack first in memory,
+  before global data.  This is to get more accurate stack overflow errors (since
+  overflow will trap rather corrupting global data first).  This should not
+  be a user-visible change (unless your program does something very odd such
+  depending on the specific location of stack data in memory). (#18154)
+
+3.1.25 - 11/08/22
+-----------------
+- The `TOTAL_STACK` setting was renamed to `STACK_SIZE`.  The old name will
+  continue to work as an alias. (#18128)
 - Exporting `print`/`printErr` via `-sEXPORTED_RUNTIME_METHODS` is deprecated in
   favor of `out`/`err`.  The former symbols are supposed to be used with
   `-sINCOMING_MODULE_JS_API` instead. (#17955)
 - aio.h was removed from the sysroot.  Emscripten doesn't support any of the
   functions in this header.
+- Clang's function pointer cast warnings (enabled with `-Wcast-function-type`)
+  are now stricter. This warning is intended to help with CFI errors but also
+  helps wasm builds since wasm traps on such type mismatches in indirect calls.
+  We recommend that users enable it to prevent such errors (which can be hard to
+  debug otherwise). The older (less strict) behavior is also still possible with
+  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
+  but not errors). See https://reviews.llvm.org/D134831
+- libcxx and libcxxabi updated to LLVM 15. (#18113)
 
 3.1.24 - 10/11/22
 -----------------

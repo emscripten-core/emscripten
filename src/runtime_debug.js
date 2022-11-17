@@ -103,7 +103,7 @@ function prettyPrint(arg) {
     printObjectList.push(arg);
     return '<' + arg + '|' + (printObjectList.length-1) + '>';
   } else if (typeof arg == 'number') {
-    if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
+    if (arg > 0) return ptrToString(arg) + ' (' + arg + ')';
   }
   return arg;
 }

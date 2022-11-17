@@ -12,6 +12,7 @@ import time
 import unittest
 import zlib
 from pathlib import Path
+from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
@@ -22,7 +23,7 @@ import common
 from tools.shared import CLANG_CC, CLANG_CXX
 from common import TEST_ROOT, test_file, read_file, read_binary
 from tools.shared import run_process, PIPE, EMCC, config
-from tools import building, utils
+from tools import building, utils, shared
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -224,7 +225,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
-      run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
+      run_binaryen_opts(shared.replace_suffix(final, '.wasm'), self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
@@ -234,12 +235,12 @@ class EmscriptenBenchmarker(Benchmarker):
     ret = [self.filename]
     if 'WASM=0' in self.cmd:
       if 'MINIMAL_RUNTIME=0' not in self.cmd:
-        ret.append(self.filename[:-3] + '.asm.js')
-        ret.append(self.filename[:-3] + '.mem')
+        ret.append(shared.replace_suffix(self.filename, '.asm.js'))
+        ret.append(shared.replace_suffix(self.filename, '.mem'))
       else:
         ret.append(self.filename + '.mem')
     else:
-      ret.append(self.filename[:-3] + '.wasm')
+      ret.append(shared.replace_suffix(self.filename, '.wasm'))
     return ret
 
 
@@ -268,9 +269,8 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     # move the JS away so there is no chance we run it by mistake
     shutil.move(self.filename, self.filename + '.old.js')
 
-    base = self.filename[:-3]
-    c = base + '.wasm.c'
-    native = base + '.exe'
+    c = shared.replace_suffix(self.filenmame, '.wasm.c')
+    native = shared.replace_suffix(self.filenmame, '.exe')
 
     run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
                  '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
@@ -347,12 +347,12 @@ class CheerpBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
-    return [self.filename, self.filename.replace('.js', '.wasm')]
+    return [self.filename, shared.replace_suffix(self.filename, '.wasm')]
 
 
 # Benchmarkers
 
-benchmarkers = []
+benchmarkers: List[Benchmarker] = []
 
 if not common.EMTEST_FORCE64:
   benchmarkers += [

@@ -250,6 +250,29 @@ int main() {
   check_gmtime_localtime(253402300799); // end of year 9999
   check_gmtime_localtime(-62135596800); // beginning of year 1
 
+  // check that localtime sets tm_yday correctly whenever the day rolls over (issue #17635)
+  // prior to being fixed, tm_yday did not increment correctly at epoch time 1049061599 (2003-03-31 00:00:00) in CET time
+  // assumes other tests already verified other aspects of localtime
+  {
+    struct tm prev_tm;
+    time_t test = xmas2002;
+    localtime_r(&test, &prev_tm);
+
+    for (int i = 1; i < 2*24*366; ++i) {
+      struct tm this_tm;
+      test = xmas2002 + 30*60*i;
+      localtime_r(&test, &this_tm);
+
+      if (this_tm.tm_year != prev_tm.tm_year) {
+        assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); //flipped over to 2003, 2002 was non-leap
+      } else if(this_tm.tm_mday != prev_tm.tm_mday) {
+        assert(this_tm.tm_yday == prev_tm.tm_yday + 1);
+      }
+
+      prev_tm = this_tm;
+    }
+  }
+
   puts("success");
   return 0;
 }

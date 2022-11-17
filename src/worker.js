@@ -35,7 +35,7 @@ if (ENVIRONMENT_IS_NODE) {
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
-      (0, eval)(fs.readFileSync(f, 'utf8'));
+      (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f);
     },
     postMessage: function(msg) {
       parentPort.postMessage(msg);
@@ -138,6 +138,14 @@ self.onmessage = (e) => {
 #if MAIN_MODULE
       Module['dynamicLibraries'] = e.data.dynamicLibraries;
 #endif
+
+      // Use `const` here to ensure that the variable is scoped only to
+      // that iteration, allowing safe reference from a closure.
+      for (const handler of e.data.handlers) {
+        Module[handler] = function() {
+          postMessage({ cmd: 'callHandler', handler, args: [...arguments] });
+        }
+      }
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 

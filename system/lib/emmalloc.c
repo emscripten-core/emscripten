@@ -107,7 +107,7 @@ typedef struct RootRegion
   uint8_t* endPtr;
 } RootRegion;
 
-#if defined(__EMSCRIPTEN_PTHREADS__)
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
 static volatile uint8_t multithreadingLock = 0;
 #define MALLOC_ACQUIRE() while(__sync_lock_test_and_set(&multithreadingLock, 1)) { while(multithreadingLock) { /*nop*/ } }

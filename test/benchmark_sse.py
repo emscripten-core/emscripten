@@ -18,7 +18,7 @@ sys.path.append(__rootpath__)
 from tools.shared import WINDOWS, CLANG_CXX, EMCC, PIPE
 from tools.shared import run_process
 from tools.config import V8_ENGINE
-from test.common import EMRUN, test_file
+from common import EMRUN, test_file
 import clang_native
 
 temp_dir = tempfile.mkdtemp()

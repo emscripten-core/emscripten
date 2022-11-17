@@ -16,6 +16,7 @@ import sys
 from typing import Set, Dict
 from subprocess import PIPE
 
+from . import cache
 from . import diagnostics
 from . import response_file
 from . import shared
@@ -75,10 +76,10 @@ def get_building_env():
   env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
+  env['PKG_CONFIG_LIBDIR'] = cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
-  env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
+  env['PATH'] = cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
   env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
@@ -204,7 +205,7 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '-z', 'stack-size=%s' % settings.TOTAL_STACK,
+      '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
 
@@ -225,8 +226,11 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
     elif settings.MAXIMUM_MEMORY != -1:
       cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
-    if not settings.RELOCATABLE:
-      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if settings.STACK_FIRST:
+    cmd.append('--stack-first')
+  elif not settings.RELOCATABLE:
+    cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
   return cmd
 
@@ -300,24 +304,25 @@ def parse_llvm_nm_symbols(output):
 
   for line in output.split('\n'):
     # Line format: "[archive filename:]object filename: address status name"
-    entry_pos = line.rfind(':')
+    entry_pos = line.rfind(': ')
     if entry_pos < 0:
       continue
 
-    filename_pos = line.rfind(':', 0, entry_pos)
+    filename_end = line.rfind(':', 0, entry_pos)
     # Disambiguate between
     #   C:\bar.o: T main
     # and
     #   /foo.a:bar.o: T main
     # (both of these have same number of ':'s, but in the first, the file name on disk is "C:\bar.o", in second, it is "/foo.a")
-    if filename_pos < 0 or line[filename_pos + 1] in '/\\':
-      filename_pos = entry_pos
+    if filename_end < 0 or line[filename_end + 1] in '/\\':
+      filename_end = entry_pos
 
-    filename = line[:filename_pos]
+    filename = line[:filename_end]
     if entry_pos + 13 >= len(line):
       exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with an old version of llvm (please rebuild it).' % line)
 
-    status = line[entry_pos + 11] # Skip address, which is always fixed-length 8 chars.
+    # Skip address, which is always fixed-length 8 chars (plus 2 leading chars `: ` and one trailing space)
+    status = line[entry_pos + 11]
     symbol = line[entry_pos + 13:]
 
     if filename not in symbols:
@@ -401,7 +406,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   return output_file
 
 
-acorn_optimizer.counter = 0
+acorn_optimizer.counter = 0  # type: ignore
 
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
@@ -1311,7 +1316,7 @@ def save_intermediate(src, dst):
     shutil.copyfile(src, dst)
 
 
-save_intermediate.counter = 0
+save_intermediate.counter = 0  # type: ignore
 
 
 def js_legalization_pass_flags():

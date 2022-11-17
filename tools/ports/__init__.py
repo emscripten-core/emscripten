@@ -9,6 +9,7 @@ import os
 import shutil
 import glob
 from typing import Set
+from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
@@ -84,7 +85,7 @@ class Ports:
 
   @staticmethod
   def get_include_dir(*parts):
-    dirname = shared.Cache.get_include_dir(*parts)
+    dirname = cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -112,7 +113,7 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
@@ -146,7 +147,11 @@ class Ports:
         dirname = os.path.dirname(obj)
         if not os.path.exists(dirname):
           os.makedirs(dirname)
-        commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
+        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
+          cmd[0] = shared.EMXX
+          cmd += cxxflags
+        commands.append(cmd)
         objects.append(obj)
 
       system_libs.run_build_commands(commands)
@@ -167,12 +172,12 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return shared.Cache.get_path('ports-builds')
+    return cache.get_path('ports-builds')
 
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, sha512hash=None):
+  def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
@@ -213,7 +218,7 @@ class Ports:
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
             return
-          with shared.Cache.lock('unpack local port'):
+          with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
@@ -268,7 +273,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock('unpack port'):
+    with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock

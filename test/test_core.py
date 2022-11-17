@@ -973,7 +973,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     self.do_core_test('test_stack_placement.c')
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_core_test('test_stack_placement.c')
@@ -981,7 +981,7 @@ base align: 0, 0, 0, 0'''])
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_stack_placement.c')
     self.set_setting('GLOBAL_BASE', 102400)
@@ -1074,6 +1074,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
+  @no_wasm64('output is sensitive to absolute data size')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
@@ -1926,7 +1927,7 @@ int main() {
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
     self.set_setting('INLINING_LIMIT')
-    self.set_setting('TOTAL_STACK', 8 * 1024)
+    self.set_setting('STACK_SIZE', 8 * 1024)
 
     self.do_core_test('test_stack_varargs.c')
 
@@ -1935,7 +1936,7 @@ int main() {
     # of the program directory influences how much stack we need, and so
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
-    self.set_setting('TOTAL_STACK', 8 * 1024)
+    self.set_setting('STACK_SIZE', 8 * 1024)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2316,7 +2317,7 @@ int main(int argc, char **argv) {
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_STACK']
+      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var STACK_SIZE']
       code_start = None
       for s in possible_starts:
         if fail.find(s) >= 0:
@@ -2382,7 +2383,7 @@ int main(int argc, char **argv) {
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sTOTAL_STACK=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
+    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_memory_growth_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
@@ -2858,7 +2859,7 @@ The current type of b is: 9
 
   def test_time(self):
     self.do_core_test('test_time.cpp')
-    for tz in ['EST+05EDT', 'UTC+0']:
+    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
         # Run the test with different time zone settings if
@@ -2949,7 +2950,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf(test_file('core/stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf(test_file('core/stack_overflow.c'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('stackAlloc.cpp')
@@ -6845,6 +6846,7 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
@@ -6861,7 +6863,7 @@ void* operator new(size_t size) {
 
     ppm_data = str(list(bytearray(read_binary(test_file('poppler/ref.ppm')))))
     self.do_run('', ppm_data.replace(' ', ''),
-                libraries=self.get_poppler_library(),
+                libraries=poppler,
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
@@ -7047,7 +7049,7 @@ void* operator new(size_t size) {
       out(multi(8, 5.4, 4, 'bret'));
       out('*');
       // part 3: avoid stack explosion and check it's restored correctly
-      for (var i = 0; i < TOTAL_STACK/60; i++) {
+      for (var i = 0; i < STACK_SIZE/60; i++) {
         ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
       out('stack is ok.');
@@ -8571,7 +8573,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run('int main() { return 0; }', expected)
 
   def test_stack_overflow_check(self):
-    self.set_setting('TOTAL_STACK', 1048576)
+    self.set_setting('STACK_SIZE', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.do_runf(test_file('stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
@@ -9014,7 +9016,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('STACK_SIZE', 1024)
     if self.is_optimizing():
       expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
     else:
@@ -9029,7 +9031,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_safe_stack_pthread(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
     if self.is_optimizing():
@@ -9042,7 +9044,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     if self.is_optimizing():
       expected = ['Aborted(stack overflow']
     else:
@@ -9054,7 +9056,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('STACK_SIZE', 65536)
     self.dylink_test(r'''
       #include <stdio.h>
       extern void sidey();
@@ -9448,7 +9450,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests <emscripten/stack.h> API
   @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
-    self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
+    self.set_setting('STACK_SIZE', 4 * 1024 * 1024)
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS

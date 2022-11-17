@@ -110,7 +110,7 @@ var MEM_INIT_METHOD = false;
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
 // [link]
-var TOTAL_STACK = 5*1024*1024;
+var STACK_SIZE = 5*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
@@ -864,6 +864,12 @@ var ASYNCIFY_LAZY_LOAD_CODE = false;
 // [link]
 var ASYNCIFY_DEBUG = 0;
 
+// Specify which of the exports will have JSPI applied to them and return a
+// promise.
+// Only supported for ASYNCIFY==2 mode.
+// [link]
+var ASYNCIFY_EXPORTS = [];
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
 // EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
@@ -944,8 +950,7 @@ var FORCE_FILESYSTEM = false;
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
-// handles permissions and errors and so forth may be noticeable.  This has
-// mostly been tested on Linux so far.
+// handles permissions and errors and so forth may be noticeable.
 // [link]
 var NODERAWFS = false;
 
@@ -1060,7 +1065,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // The pthread that main() runs on is a normal pthread in all ways, with the one
 // difference that its stack size is the same as the main thread would normally
-// have, that is, TOTAL_STACK. This makes it easy to flip between
+// have, that is, STACK_SIZE. This makes it easy to flip between
 // PROXY_TO_PTHREAD and non-PROXY_TO_PTHREAD modes with main() always getting
 // the same amount of stack.
 //
@@ -1744,14 +1749,16 @@ var MIN_FIREFOX_VERSION = 65;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-// Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0
-// Mojave.
+// Safari 14.1.0 was released on April 26, 2021, bundled with macOS 11.0 Big
+// Sur and iOS 14.5.
+// The previous default, Safari 12.0.0 was released on September 17, 2018,
+// bundled with macOS 10.14.0 Mojave.
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_SAFARI_VERSION = 120000;
+var MIN_SAFARI_VERSION = 140100;
 
 // Specifies the oldest version of Internet Explorer to target. E.g. pass -s
 // MIN_IE_VERSION = 11 to drop support for IE 10 and older.
@@ -1763,10 +1770,17 @@ var MIN_IE_VERSION = 0x7FFFFFFF;
 // Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
 // flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
 // EdgeHTML 39 and older.
-// Edge 44.17763 was released on November 13, 2018
+// EdgeHTML 44.17763 was released on November 13, 2018
+// EdgeHTML was completely in April 2021 and replaced by the current
+// Chromium-based Edge.
+// Since version 79, Edge version numbers have mirrored chromium version
+// numbers, so it no longer makes sense specify MIN_EDGE_VERSION independenly.
+// If Chromium and Edge ever start to diverage this setting may be revived with
+// more modern post-chromium default value.
+// See https://en.wikipedia.org/wiki/Microsoft_Edge#New_Edge_release_history
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_EDGE_VERSION = 44;
+var MIN_EDGE_VERSION = 0x7FFFFFFF;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
@@ -1954,7 +1968,9 @@ var SEPARATE_DWARF_URL = '';
 // not in others like split-dwarf).
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
-// [link]
+// Some example of features that require post-link wasm changes are:
+// - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
+// - Lowering sign-extnesion operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled excptions that occur when calling exported WebAssembly
@@ -2093,6 +2109,7 @@ var TEST_MEMORY_GROWTH_FAILS = false;
 // numeric setting, or -1 for a string setting).
 var LEGACY_SETTINGS = [
   ['BINARYEN', 'WASM'],
+  ['TOTAL_STACK', 'STACK_SIZE'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],

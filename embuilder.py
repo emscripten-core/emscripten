@@ -19,6 +19,7 @@ import sys
 import time
 from contextlib import contextmanager
 
+from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
@@ -249,7 +250,7 @@ def main():
           library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
-        shared.Cache.erase_file('sysroot_install.stamp')
+        cache.erase_file('sysroot_install.stamp')
       if do_build:
         system_libs.ensure_sysroot()
     elif what == 'struct_info':

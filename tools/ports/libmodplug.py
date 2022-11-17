@@ -15,7 +15,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libmodplug', 'https://github.com/jancc/libmodplug/archive/v' + TAG + '.zip', 'libmodplug-' + TAG, sha512hash=HASH)
+  ports.fetch_project('libmodplug', f'https://github.com/jancc/libmodplug/archive/v{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libmodplug')
@@ -83,11 +83,11 @@ def get(ports, settings, shared):
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
     ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')
 
-  return [shared.Cache.get_lib('libmodplug.a', create, what='port')]
+  return [shared.cache.get_lib('libmodplug.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libmodplug.a')
+  shared.cache.erase_lib('libmodplug.a')
 
 
 def process_args(ports):

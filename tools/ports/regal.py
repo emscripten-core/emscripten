@@ -21,8 +21,7 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
-                      'regal-' + TAG, sha512hash=HASH)
+  ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: regal')
@@ -119,11 +118,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path_src, final, 'regal', srcs=srcs_regal, flags=flags)
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def linker_setup(ports, settings):

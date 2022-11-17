@@ -18,8 +18,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project(
-    'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG, sha512hash=HASH)
+  ports.fetch_project('cocos2d', f'https://github.com/emscripten-ports/Cocos2d/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')
@@ -51,14 +50,15 @@ def get(ports, settings, shared):
 
     ports.build_port(cocos2d_src, final, 'cocos2d',
                      flags=flags,
+                     cxxflags=['-std=c++14'],
                      includes=includes,
                      srcs=srcs)
 
-  return [shared.Cache.get_lib('libcocos2d.a', create, what='port')]
+  return [shared.cache.get_lib('libcocos2d.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libcocos2d.a')
+  shared.cache.erase_lib('libcocos2d.a')
 
 
 def process_dependencies(settings):

@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import unittest
 from pathlib import Path
@@ -34,7 +35,7 @@ from common import env_modify, no_mac, no_windows, requires_native_clang, with_e
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
-from tools import shared, building, utils, deps_info, response_file
+from tools import shared, building, utils, deps_info, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
 import jsrun
@@ -462,7 +463,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
         assert '._main = ' not in generated, 'closure compiler should not have been run'
         if keep_debug:
-          assert ('assert(INITIAL_MEMORY >= TOTAL_STACK' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+          assert ('assert(INITIAL_MEMORY >= STACK_SIZE' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
         if 'WASM=0' in params:
           looks_unminified = ' = {}' in generated and ' = []' in generated
           looks_minified = '={}' in generated and '=[]' and ';var' in generated
@@ -615,13 +616,13 @@ f.close()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
     print(libpath)
-    self.assertIn(shared.Cache.get_lib_dir(absolute=True), libpath)
+    self.assertIn(cache.get_lib_dir(absolute=True), libpath)
 
   def test_emcc_print_file_name(self):
     self.run_process([EMBUILDER, 'build', 'libc'])
     output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
     filename = Path(output)
-    self.assertContained(shared.Cache.get_lib_name('libc.a'), str(filename))
+    self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
@@ -842,8 +843,8 @@ f.close()
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
-    libdir = shared.Cache.get_sysroot_dir('local/lib/pkgconfig')
-    libdir += os.path.pathsep + shared.Cache.get_sysroot_dir('lib/pkgconfig')
+    libdir = cache.get_sysroot_dir('local/lib/pkgconfig')
+    libdir += os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
   @requires_pkg_config
@@ -868,7 +869,7 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
-      cachedir = os.path.normpath(shared.Cache.dirname)
+      cachedir = os.path.normpath(cache.cachedir)
       llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:
         i = os.path.normpath(i)
@@ -3909,7 +3910,7 @@ int main() {
       self.assertContained('Test passed.', self.run_js('a.out.js'))
 
   def test_os_oz(self):
-    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3']:
+    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og']:
       print(opt)
       proc = self.run_process([EMXX, '-v', test_file('hello_world.cpp'), opt], stderr=PIPE)
       self.assertContained(opt, proc.stderr)
@@ -3924,14 +3925,15 @@ int main() {
         ('s', ['-Os']),
         ('z', ['-Oz']),
         ('3', ['-O3']),
+        ('g', ['-Og']),
       ]:
       print(name, args)
       self.clear()
       self.run_process([EMCC, '-c', path_from_root('system/lib/dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
-    opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
-    opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
+    opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'], sizes['g'])
+    opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'], sizes['g'])
     # 'opt builds are all fairly close'
     self.assertLess(opt_min - opt_max, opt_max * 0.1)
     # unopt build is quite larger'
@@ -5597,6 +5599,37 @@ int main(void) {
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
 
+  @node_pthreads
+  def test_pthread_print_override_modularize(self):
+    self.set_setting('EXPORT_NAME', 'Test')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('MODULARIZE')
+    create_file('main.c', '''
+      #include <emscripten/console.h>
+
+      int main() {
+        _emscripten_out("hello, world!");
+        return 0;
+      }
+    ''')
+    create_file('main.js', '''
+      const Test = require('./test.js');
+
+      async function main() {
+        await Test({
+          // world -> earth
+          print: (text) => console.log(text.replace('world', 'earth'))
+        });
+      }
+      main();
+    ''')
+
+    self.emcc('main.c', output_filename='test.js')
+    output = self.run_js('main.js')
+    self.assertNotContained('hello, world!', output)
+    self.assertContained('hello, earth!', output)
+
   def test_define_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')
@@ -5713,7 +5746,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([PYTHON, cache.get_sysroot_dir('bin/sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
@@ -7336,7 +7369,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=32MB'])
 
     # A tiny amount is fine in wasm
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=65536', '-sTOTAL_STACK=1024'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=65536', '-sSTACK_SIZE=1024'])
     # And the program works!
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -8041,7 +8074,7 @@ int main() {
           return (int)(long)&muchData;
         }
       ''')
-    err = self.expect_fail([EMXX, 'src.cpp', '-sTOTAL_STACK=1KB', '-sINITIAL_MEMORY=64KB'])
+    err = self.expect_fail([EMXX, 'src.cpp', '-sSTACK_SIZE=1KB', '-sINITIAL_MEMORY=64KB'])
     self.assertContained('wasm-ld: error: initial memory too small', err)
 
   def test_o_level_clamp(self):
@@ -8455,6 +8488,17 @@ end
     self.assertContained(expected, err)
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
+
+  def test_noderawfs_access_abspath(self):
+    create_file('foo', 'bar')
+    create_file('access.c', r'''
+      #include <unistd.h>
+      int main(int argc, char** argv) {
+        return access(argv[1], F_OK);
+      }
+    ''')
+    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
+    self.run_js('a.out.js', args=[os.path.abspath('foo')])
 
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
@@ -10072,13 +10116,13 @@ int main(void) {
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
-    # Check that the proxied main gets run with TOTAL_STACK setting and not
+    # Check that the proxied main gets run with STACK_SIZE setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_runf(test_file('other/test_proxy_to_pthread_stack.c'),
                  ['success'],
                  emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
                             '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
-                            '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                            '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
   @parameterized({
@@ -10439,7 +10483,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', err)
 
   def test_boost_graph(self):
-    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-sUSE_BOOST_HEADERS'])
+    self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''
@@ -11188,7 +11232,7 @@ exec "$@"
 
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
-    self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x1')
+    self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x00000001 (1)')
 
   def test_SUPPORT_LONGJMP_executable(self):
     err = self.expect_fail([EMCC, test_file('core/test_longjmp.c'), '-sSUPPORT_LONGJMP=0'])
@@ -11282,6 +11326,19 @@ exec "$@"
   def test_old_makeDynCall_syntax(self):
     err = self.run_process([EMCC, test_file('test_old_dyncall_format.c'), '--js-library', test_file('library_test_old_dyncall_format.js')], stderr=PIPE).stderr
     self.assertContained('syntax for makeDynCall has changed', err)
+
+  # Test that {{{ makeDynCall('sig', 'this.foo') }}} macro works, i.e. when 'this.' is referenced inside the macro block.
+  # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
+  @parameterized({
+    'plain': [[]],
+    'dyncalls': [['-sDYNCALLS']]})
+  def test_this_in_dyncall(self, args):
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
+
+  @requires_v8
+  def test_this_in_dyncall_memory64(self):
+    self.v8_args += ['--experimental-wasm-memory64']
+    self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
@@ -12589,13 +12646,13 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    with shared.Cache.lock('testing'):
+    with cache.lock('testing'):
       self.run_process([EMCC, '-c', test_file('hello_world.c')])
 
   def test_recursive_cache_lock(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
-    with shared.Cache.lock('testing'):
+    with cache.lock('testing'):
       err = self.expect_fail([EMBUILDER, 'build', 'libc', '--force'], expect_traceback=True)
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
 
@@ -12631,3 +12688,68 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     }
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
+
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
+  def test_stack_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    self.emcc_args += ['-O1', '--profiling-funcs']
+    self.do_runf(test_file('core/stack_overflow.c'),
+                 'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
+                 assert_returncode=NON_ZERO)
+
+  def test_reproduce(self):
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    self.assertExists('foo.tar')
+    names = []
+    root = os.path.splitdrive(path_from_root())[1][1:]
+    root = root.replace('\\', '/')
+    print('root: %s' % root)
+    with tarfile.open('foo.tar') as f:
+      for name in f.getnames():
+        print('name: %s' % name)
+        names.append(name.replace(root, '<root>'))
+      f.extractall()
+    names = '\n'.join(sorted(names)) + '\n'
+    expected = '''\
+foo/<root>/test/hello_world.c
+foo/response.txt
+foo/version.txt
+'''
+    self.assertTextDataIdentical(expected, names)
+    expected = '''\
+-sASSERTIONS=1
+<root>/test/hello_world.c
+'''
+    response = read_file('foo/response.txt')
+    response = response.replace('\\', '/')
+    response = response.replace(root, '<root>')
+    self.assertTextDataIdentical(expected, response)
+
+  def test_signext_lowering(self):
+    cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-sWASM_BIGINT']
+
+    # We expect ERROR_ON_WASM_CHANGES_AFTER_LINK to fail due lowering of sign-ext being
+    # required for safari 12.
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=120000'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for firefox
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_FIREFOX_VERSION=61'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for chrome
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_CHROME_VERSION=73'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Running the same command with safari 14.1 should succeed because no lowering
+    # is required.
+    self.run_process(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=140100'])
+    self.assertEqual('1\n', self.run_js('a.out.js'))
+
+    # Running without ERROR_ON_WASM_CHANGES_AFTER_LINK but with safari 12
+    # should successfully lower sign-ext.
+    self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000', '-o', 'lowered.js'])
+    self.assertEqual('1\n', self.run_js('lowered.js'))

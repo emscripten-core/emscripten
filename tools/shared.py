@@ -444,7 +444,7 @@ def check_sanity(force=False):
 
   expected = generate_sanity()
 
-  sanity_file = Cache.get_path('sanity.txt')
+  sanity_file = cache.get_path('sanity.txt')
 
   def sanity_is_correct():
     if os.path.exists(sanity_file):
@@ -466,7 +466,7 @@ def check_sanity(force=False):
     # Early return without taking the cache lock
     return
 
-  with Cache.lock('sanity'):
+  with cache.lock('sanity'):
     # Check again once the cache lock as aquired
     if sanity_is_correct():
       return
@@ -476,7 +476,7 @@ def check_sanity(force=False):
       logger.info('old sanity: %s' % sanity_data)
       logger.info('new sanity: %s' % expected)
       logger.info('(Emscripten: config changed, clearing cache)')
-      Cache.erase()
+      cache.erase()
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
@@ -642,11 +642,6 @@ def asmjs_mangle(name):
   return name
 
 
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
@@ -771,8 +766,12 @@ EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
+# These get set by setup_temp_dirs
+TEMP_DIR = None
+EMSCRIPTEN_TEMP_DIR = None
+
 setup_temp_dirs()
 
-Cache = cache.Cache(config.CACHE)
+cache.setup(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

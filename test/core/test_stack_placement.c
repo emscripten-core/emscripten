@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <emscripten/stack.h>
 
 /* We had a regression where the stack position was not taking into account
  * the data and bss.  This test runs with 1024 byte stack which given that bug
@@ -22,7 +23,14 @@ int main(int argc, char* argv[]) {
   int* bss_address = &static_bss[BSS_BYTES-1];
   int* stack_address = &stack_var;
   printf("data: %p bss: %p stack: %p\n", data_address, bss_address, stack_address);
-  assert(stack_address > bss_address);
+  // Stack can either come after BSS or before data (In debug builds we link
+  // with --stack-first).
+  int stack_first = emscripten_stack_get_end() == 0;
+  if (stack_first) {
+    assert(stack_address < data_address);
+  } else {
+    assert(stack_address > bss_address);
+  }
   assert(bss_address > data_address);
   printf("success.\n");
   return 0;

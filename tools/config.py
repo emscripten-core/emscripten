@@ -6,7 +6,7 @@
 import os
 import sys
 import logging
-from typing import List
+from typing import List, Optional
 
 from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
@@ -21,16 +21,16 @@ EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
 BINARYEN_ROOT = None
 SPIDERMONKEY_ENGINE = None
-V8_ENGINE = None
+V8_ENGINE: Optional[List[str]] = None
 LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 JAVA = None
-JS_ENGINES = None
+JS_ENGINES: List[List[str]] = []
 WASMER = None
 WASMTIME = None
-WASM_ENGINES: List[str] = []
+WASM_ENGINES: List[List[str]] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None

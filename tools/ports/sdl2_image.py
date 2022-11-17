@@ -32,7 +32,7 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-  ports.fetch_project('sdl2_image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_image', f'https://github.com/emscripten-ports/SDL2_image/archive/{TAG}.zip', sha512hash=HASH)
   libname = get_lib_name(settings)
 
   def create(final):
@@ -54,11 +54,11 @@ def get(ports, settings, shared):
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

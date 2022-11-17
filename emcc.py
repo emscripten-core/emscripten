@@ -32,6 +32,7 @@ import shutil
 import stat
 import sys
 import time
+import tarfile
 from enum import Enum, unique, auto
 from subprocess import PIPE
 from urllib.parse import quote
@@ -46,11 +47,13 @@ from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
+from tools import feature_matrix
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools import cache
+from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file
 
 logger = logging.getLogger('emcc')
@@ -102,6 +105,10 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
   '_dlopen_js', '__asyncjs__*'
+]
+
+DEFAULT_ASYNCIFY_EXPORTS = [
+  'main'
 ]
 
 # Target options
@@ -275,6 +282,7 @@ class EmccOptions:
     self.no_entry = False
     self.shared = False
     self.relocatable = False
+    self.reproduce = None
 
 
 def will_metadce():
@@ -283,6 +291,67 @@ def will_metadce():
   if settings.ASSERTIONS:
     return False
   return settings.OPT_LEVEL >= 3 or settings.SHRINK_LEVEL >= 1
+
+
+def create_reproduce_file(name, args):
+  def make_relative(filename):
+    filename = os.path.normpath(os.path.abspath(filename))
+    filename = os.path.splitdrive(filename)[1]
+    filename = filename[1:]
+    return filename
+
+  root = unsuffixed_basename(name)
+  with tarfile.open(name, 'w') as reproduce_file:
+    reproduce_file.add(shared.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
+
+    with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
+      with open(rsp_name, 'w') as rsp:
+        ignore_next = False
+        output_arg = None
+
+        for arg in args:
+          ignore = ignore_next
+          ignore_next = False
+          if arg.startswith('--reproduce='):
+            continue
+
+          if arg.startswith('-o='):
+            rsp.write('-o\n')
+            arg = arg[3:]
+            output_arg = True
+            ignore = True
+
+          if output_arg:
+            # If -o path contains directories, "emcc @response.txt" will likely
+            # fail because the archive we are creating doesn't contain empty
+            # directories for the output path (-o doesn't create directories).
+            # Strip directories to prevent the issue.
+            arg = os.path.basename(arg)
+            output_arg = False
+
+          if not arg.startswith('-') and not ignore:
+            relpath = make_relative(arg)
+            rsp.write(relpath + '\n')
+            reproduce_file.add(arg, os.path.join(root, relpath))
+          else:
+            rsp.write(arg + '\n')
+
+          if ignore:
+            continue
+
+          if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+                     '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+                     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+                     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+                     '-install_name', '-compatibility_version',
+                     '-current_version', '-I', '-L', '-include-pch',
+                     '-Xlinker', '-Xclang'):
+            ignore_next = True
+
+          if arg == '-o':
+            output_arg = True
+
+      reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
 def setup_environment_settings():
@@ -340,12 +409,12 @@ def expand_byte_size_suffixes(value):
   return value
 
 
-def default_setting(user_settings, name, new_default):
+def default_setting(name, new_default):
   if name not in user_settings:
     setattr(settings, name, new_default)
 
 
-def apply_settings(user_settings):
+def apply_user_settings():
   """Take a map of users settings {NAME: VALUE} and apply them to the global
   settings object.
   """
@@ -396,21 +465,6 @@ def apply_settings(user_settings):
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
-
-
-# apply minimum browser version defaults based on user settings. if
-# a user requests a feature that we know is only supported in browsers
-# from a specific version and above, we can assume that browser version.
-def apply_min_browser_versions(user_settings):
-
-  def default_min_browser_version(browser, version):
-    default_setting(user_settings, f'MIN_{browser.upper()}_VERSION', version)
-
-  if settings.WASM_BIGINT:
-    default_min_browser_version('Safari', 150000)
-    default_min_browser_version('Edge', 79)
-    default_min_browser_version('Firefox', 68)
-    # Chrome has BigInt since v67 which is less than default min version.
 
 
 def is_ar_file_with_missing_index(archive_file):
@@ -546,6 +600,11 @@ def get_binaryen_passes():
     passes += ['--safe-heap']
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
+  # sign-ext is enabled by default by llvm.  If the target browser settings don't support
+  # this we lower it away here using a binaryen pass.
+  if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
+    logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
+    passes += ['--signext-lowering']
   if optimizing:
     passes += ['--post-emscripten']
   if optimizing:
@@ -602,6 +661,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
   elif settings.ASYNCIFY == 2:
     passes += ['--jspi']
+    passes += ['--pass-arg=jspi-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
+    passes += ['--pass-arg=jspi-exports@%s' % ','.join(settings.ASYNCIFY_EXPORTS)]
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -782,7 +843,7 @@ def parse_s_args(args):
 
 
 def emsdk_cflags(user_args):
-  cflags = ['--sysroot=' + shared.Cache.get_sysroot(absolute=True)]
+  cflags = ['--sysroot=' + cache.get_sysroot(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
@@ -1127,7 +1188,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   ## Process argument and setup the compiler
   state = EmccState(args)
-  options, newargs, user_settings = phase_parse_arguments(state)
+  options, newargs = phase_parse_arguments(state)
 
   shared.check_sanity()
 
@@ -1141,15 +1202,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
 
+  if 'EMCC_REPRODUCE' in os.environ:
+    options.reproduce = os.environ['EMCC_REPRODUCE']
+
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  newargs, input_files = phase_setup(options, state, newargs, user_settings)
+  newargs, input_files = phase_setup(options, state, newargs)
+
+  if options.reproduce:
+    create_reproduce_file(options.reproduce, args)
 
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
-    target, wasm_target = phase_linker_setup(options, state, newargs, user_settings)
+    target, wasm_target = phase_linker_setup(options, state, newargs)
     process_libraries(state, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
@@ -1174,7 +1241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, state, newargs, user_settings)
+  target, wasm_target = phase_linker_setup(options, state, newargs)
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
@@ -1273,14 +1340,13 @@ def phase_parse_arguments(state):
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes
 
-  user_settings = {}
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
-  # called ing `apply_settings`.
+  # calling `apply_user_settings`.
   strict_cmdline = user_settings.get('STRICT')
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
@@ -1290,13 +1356,13 @@ def phase_parse_arguments(state):
     settings[s[0]] = s[1]
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
-  apply_settings(user_settings)
+  apply_user_settings()
 
-  return options, newargs, user_settings
+  return options, newargs
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs, user_settings):
+def phase_setup(options, state, newargs):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -1305,7 +1371,7 @@ def phase_setup(options, state, newargs, user_settings):
     newargs += settings.RUNTIME_LINKED_LIBS
 
   if settings.STRICT:
-    default_setting(user_settings, 'DEFAULT_TO_CXX', 0)
+    default_setting('DEFAULT_TO_CXX', 0)
 
   # Find input files
 
@@ -1495,7 +1561,7 @@ def phase_setup(options, state, newargs, user_settings):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    default_setting(user_settings, 'DISABLE_EXCEPTION_THROWING', 1)
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
     if not settings.DISABLE_EXCEPTION_THROWING:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
@@ -1560,6 +1626,9 @@ def setup_pthreads(target):
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
+    # TODO: Remove this once we no longer need the heartbeat hack in
+    # wasmfs/thread_utils.h
+    settings.REQUIRED_EXPORTS += ['emscripten_proxy_execute_queue']
 
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
@@ -1590,7 +1659,7 @@ def setup_pthreads(target):
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state, newargs, user_settings):
+def phase_linker_setup(options, state, newargs):
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args
   if autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
@@ -1600,11 +1669,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # Add `#!` line to output JS and make it executable.
     options.executable = True
 
-  system_libpath = '-L' + str(shared.Cache.get_lib_dir(absolute=True))
+  system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
-    default_setting(user_settings, 'ASSERTIONS', 0)
+    default_setting('ASSERTIONS', 0)
 
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
@@ -1781,7 +1850,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
     if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-      default_setting(user_settings, 'STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
+      default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
   if settings.LLD_REPORT_UNDEFINED or settings.STANDALONE_WASM:
     # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1792,25 +1861,33 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
   # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
   if user_settings.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
-    default_setting(user_settings, 'ERROR_ON_UNDEFINED_SYMBOLS', 0)
+    default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
   # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
-    default_setting(user_settings, 'SUPPORT_ERRNO', 0)
+    default_setting('SUPPORT_ERRNO', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
-    default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
+    default_setting('AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
-    default_setting(user_settings, 'STRICT_JS', 1)
-    default_setting(user_settings, 'AUTO_JS_LIBRARIES', 0)
-    default_setting(user_settings, 'AUTO_NATIVE_LIBRARIES', 0)
-    default_setting(user_settings, 'AUTO_ARCHIVE_INDEXES', 0)
-    default_setting(user_settings, 'IGNORE_MISSING_MAIN', 0)
-    default_setting(user_settings, 'ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+    default_setting('STRICT_JS', 1)
+    default_setting('AUTO_JS_LIBRARIES', 0)
+    default_setting('AUTO_NATIVE_LIBRARIES', 0)
+    default_setting('AUTO_ARCHIVE_INDEXES', 0)
+    default_setting('IGNORE_MISSING_MAIN', 0)
+    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
 
   if not settings.AUTO_JS_LIBRARIES:
-    default_setting(user_settings, 'USE_SDL', 0)
+    default_setting('USE_SDL', 0)
+
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
+    # When optimizing for size it helps to put static data first before
+    # the stack (sincs this makes instructions for accessing this data
+    # use a smaller LEB encoding).
+    # However, for debugability is better to have the stack come first
+    # (becuase stack overflows will trap rather than corrupting data).
+    settings.STACK_FIRST = True
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -1820,7 +1897,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # widely supported there.
   if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
-    default_setting(user_settings, 'TEXTDECODER', 2)
+    default_setting('TEXTDECODER', 2)
 
   # If set to 1, we will run the autodebugger (the automatic debugging tool, see
   # tools/autodebugger).  Note that this will disable inclusion of libraries. This
@@ -1897,7 +1974,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
   # If we are including the entire JS library then we know for sure we will, by definition,
   # require all the reverse dependencies.
   if settings.INCLUDE_FULL_LIBRARY:
-    default_setting(user_settings, 'REVERSE_DEPS', 'all')
+    default_setting('REVERSE_DEPS', 'all')
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -1995,11 +2072,16 @@ def phase_linker_setup(options, state, newargs, user_settings):
       '$LE_HEAP_LOAD_F64'
     ]
 
+  if settings.RUNTIME_DEBUG or settings.ASSERTIONS or settings.STACK_OVERFLOW_CHECK or settings.PTHREADS_PROFILING or settings.GL_ASSERTIONS:
+    # Lots of code in debug/assertion blocks uses ptrToString.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ptrToString']
+
   if settings.STACK_OVERFLOW_CHECK:
     settings.REQUIRED_EXPORTS += [
       'emscripten_stack_get_end',
       'emscripten_stack_get_free',
-      'emscripten_stack_get_base'
+      'emscripten_stack_get_base',
+      'emscripten_stack_get_current',
     ]
 
     # We call one of these two functions during startup which caches the stack limits
@@ -2068,7 +2150,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   # MIN_WEBGL_VERSION=2 implies MAX_WEBGL_VERSION=2
   if settings.MIN_WEBGL_VERSION == 2:
-    default_setting(user_settings, 'MAX_WEBGL_VERSION', 2)
+    default_setting('MAX_WEBGL_VERSION', 2)
 
   if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
     exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
@@ -2144,7 +2226,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
-    exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
+    exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
 
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
@@ -2184,7 +2266,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # the behavior of trying to grow and returning 0 from malloc on failure, like
     # a standard system would. However, if the user sets the flag it
     # overrides that.
-    default_setting(user_settings, 'ABORTING_MALLOC', 0)
+    default_setting('ABORTING_MALLOC', 0)
 
   if settings.USE_PTHREADS:
     setup_pthreads(target)
@@ -2240,8 +2322,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   check_memory_setting('INITIAL_MEMORY')
   check_memory_setting('MAXIMUM_MEMORY')
-  if settings.INITIAL_MEMORY < settings.TOTAL_STACK:
-    exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {settings.INITIAL_MEMORY} (TOTAL_STACK={settings.TOTAL_STACK})')
+  if settings.INITIAL_MEMORY < settings.STACK_SIZE:
+    exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
@@ -2423,11 +2505,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
 
   if 'leak' in sanitize:
     settings.USE_LSAN = 1
-    default_setting(user_settings, 'EXIT_RUNTIME', 1)
+    default_setting('EXIT_RUNTIME', 1)
 
   if 'address' in sanitize:
     settings.USE_ASAN = 1
-    default_setting(user_settings, 'EXIT_RUNTIME', 1)
+    default_setting('EXIT_RUNTIME', 1)
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
@@ -2492,6 +2574,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
+    settings.STACK_FIRST = False
 
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem
@@ -2565,6 +2648,8 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
+    # add the default exports (only used for ASYNCIFY == 2)
+    settings.ASYNCIFY_EXPORTS += DEFAULT_ASYNCIFY_EXPORTS
 
     # return the full import name, including module. The name may
     # already have a module prefix; if not, we assume it is "env".
@@ -2654,7 +2739,7 @@ def phase_linker_setup(options, state, newargs, user_settings):
     if settings.WASM_EXCEPTIONS:
       settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
 
-  apply_min_browser_versions(user_settings)
+  feature_matrix.apply_min_browser_versions()
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
@@ -2817,7 +2902,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
-      ensure_archive_index(input_file)
       linker_inputs.append((i, input_file))
     elif language_mode:
       compile_source_file(i, input_file)
@@ -3134,16 +3218,20 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      options.requested_level = strip_prefix(arg, '-O') or '2'
-      if options.requested_level == 's':
-        options.requested_level = 2
+      requested_level = strip_prefix(arg, '-O') or '2'
+      if requested_level == 's':
+        requested_level = 2
         settings.SHRINK_LEVEL = 1
-      elif options.requested_level == 'z':
-        options.requested_level = 2
+      elif requested_level == 'z':
+        requested_level = 2
         settings.SHRINK_LEVEL = 2
+      elif requested_level == 'g':
+        requested_level = 1
+        settings.SHRINK_LEVEL = 0
+        settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       else:
         settings.SHRINK_LEVEL = 0
-      settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
+      settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
@@ -3164,6 +3252,8 @@ def parse_args(newargs):
       options.use_closure_compiler = int(consume_arg())
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
+    elif check_arg('--reproduce'):
+      options.reproduce = consume_arg()
     elif check_arg('--pre-js'):
       options.pre_js.append(consume_arg_file())
     elif check_arg('--post-js'):
@@ -3272,19 +3362,19 @@ def parse_args(newargs):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
-      shared.reconfigure_cache()
+      cache.setup(config.CACHE)
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
-      shared.Cache.erase()
+      logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
+      cache.erase()
       shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       ports.clear()
-      shared.Cache.erase()
+      cache.erase()
       shared.perform_sanity_checks() # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--check'):
@@ -3437,34 +3527,39 @@ def phase_binaryen(target, options, wasm_target):
     dwarf_info = settings.DEBUG_LEVEL >= 3
     if dwarf_info:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
-    building.run_wasm_opt(wasm_target,
-                          wasm_target,
-                          args=passes,
-                          debug=intermediate_debug_info)
-    building.save_intermediate(wasm_target, 'byn.wasm')
+    with ToolchainProfiler.profile_block('wasm_opt'):
+      building.run_wasm_opt(wasm_target,
+                            wasm_target,
+                            args=passes,
+                            debug=intermediate_debug_info)
+      building.save_intermediate(wasm_target, 'byn.wasm')
   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     sections = ['producers'] if strip_producers else []
-    building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
-    building.save_intermediate(wasm_target, 'strip.wasm')
+    with ToolchainProfiler.profile_block('strip_producers'):
+      building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
+      building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
-    building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
-    building.save_intermediate(wasm_target, 'ctors.wasm')
+    with ToolchainProfiler.profile_block('eval_ctors'):
+      building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
+      building.save_intermediate(wasm_target, 'ctors.wasm')
 
   # after generating the wasm, do some final operations
 
   if final_js:
     if settings.SUPPORT_BIG_ENDIAN:
-      final_js = building.little_endian_heap(final_js)
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
     if settings.CAN_ADDRESS_2GB:
-      final_js = building.use_unsigned_pointers_in_js(final_js)
+      with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
+        final_js = building.use_unsigned_pointers_in_js(final_js)
 
     # pthreads memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
@@ -3472,7 +3567,8 @@ def phase_binaryen(target, options, wasm_target):
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
     if settings.USE_PTHREADS and settings.ALLOW_MEMORY_GROWTH:
-      final_js = building.apply_wasm_memory_growth(final_js)
+      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
+        final_js = building.apply_wasm_memory_growth(final_js)
 
     if settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
@@ -3484,26 +3580,30 @@ def phase_binaryen(target, options, wasm_target):
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
-      save_intermediate_with_wasm('preclean', wasm_target)
-      final_js = building.minify_wasm_js(js_file=final_js,
-                                         wasm_file=wasm_target,
-                                         expensive_optimizations=will_metadce(),
-                                         minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
-                                         debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('postclean', wasm_target)
+      with ToolchainProfiler.profile_block('minify_wasm'):
+        save_intermediate_with_wasm('preclean', wasm_target)
+        final_js = building.minify_wasm_js(js_file=final_js,
+                                           wasm_file=wasm_target,
+                                           expensive_optimizations=will_metadce(),
+                                           minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
+                                           debug_info=intermediate_debug_info)
+        save_intermediate_with_wasm('postclean', wasm_target)
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
+    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
+      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
     return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
 
   if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
     if options.use_closure_compiler:
-      final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                           extra_closure_args=options.closure_args)
+      with ToolchainProfiler.profile_block('closure_compile'):
+        final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
+                                             extra_closure_args=options.closure_args)
     else:
-      final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
+      with ToolchainProfiler.profile_block('closure_transpile'):
+        final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
     save_intermediate_with_wasm('closure', wasm_target)
 
   symbols_file = None
@@ -3551,8 +3651,9 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if os.path.exists(wasm_target):
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
+      with ToolchainProfiler.profile_block('handle_final_symbols'):
+        building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+        save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
@@ -3568,7 +3669,8 @@ def phase_binaryen(target, options, wasm_target):
   # strip debug info if it was not already stripped by the last command
   if not debug_info and building.binaryen_kept_debug_info and \
      building.os.path.exists(wasm_target):
-    building.run_wasm_opt(wasm_target, wasm_target)
+    with ToolchainProfiler.profile_block('strip_with_wasm_opt'):
+      building.run_wasm_opt(wasm_target, wasm_target)
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
@@ -3943,6 +4045,10 @@ def process_libraries(state, linker_inputs):
   settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
   state.link_flags = new_flags
 
+  for _, f in linker_inputs:
+    if building.is_ar(f):
+      ensure_archive_index(f)
+
 
 class ScriptSource:
   def __init__(self):
@@ -4126,5 +4232,5 @@ if __name__ == '__main__':
   try:
     sys.exit(main(sys.argv))
   except KeyboardInterrupt:
-    logger.warning('KeyboardInterrupt')
+    logger.debug('KeyboardInterrupt')
     sys.exit(1)

@@ -26,8 +26,7 @@ def get_lib_name(base_name, settings):
 
 
 def get(ports, settings, shared):
-  url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
-  ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
+  ports.fetch_project('icu', f'https://github.com/unicode-org/icu/releases/download/{TAG}/icu4c-{VERSION}-src.zip', sha512hash=HASH)
   icu_source_path = None
 
   def prepare_build():
@@ -80,16 +79,16 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
-      shared.Cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
-      shared.Cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.Cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
+      shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
   ]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_common, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
 
 
 def process_args(ports):

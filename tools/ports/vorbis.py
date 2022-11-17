@@ -17,7 +17,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
+  ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: vorbis')
@@ -27,11 +27,11 @@ def get(ports, settings, shared):
                      flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 
-  return [shared.Cache.get_lib('libvorbis.a', create)]
+  return [shared.cache.get_lib('libvorbis.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libvorbis.a')
+  shared.cache.erase_lib('libvorbis.a')
 
 
 def process_dependencies(settings):

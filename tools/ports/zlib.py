@@ -14,7 +14,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', 'https://github.com/madler/zlib/archive/refs/tags/v' + VERSION + '.tar.gz', 'zlib-' + VERSION, sha512hash=HASH)
+  ports.fetch_project('zlib', f'https://github.com/madler/zlib/archive/refs/tags/v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
@@ -26,11 +26,11 @@ def get(ports, settings, shared):
     flags = ['-Wno-deprecated-non-prototype']
     ports.build_port(source_path, final, 'zlib', srcs=srcs, flags=flags)
 
-  return [shared.Cache.get_lib('libz.a', create, what='port')]
+  return [shared.cache.get_lib('libz.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libz.a')
+  shared.cache.erase_lib('libz.a')
 
 
 def process_args(ports):
