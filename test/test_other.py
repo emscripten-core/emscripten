@@ -7049,7 +7049,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'Invalid character 106("j") in readAsmConstArgs!'
+    expected = 'Invalid character 106("j") in readEmAsmArgs!'
     self.do_runf(test_file('other/test_em_asm_i64.cpp'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO)
