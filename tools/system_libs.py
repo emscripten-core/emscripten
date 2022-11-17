@@ -387,8 +387,8 @@ class Library:
 
   def generate(self):
     self.deterministic_paths = False
-    return shared.Cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
-                            deferred=True)
+    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
+                     deferred=True)
 
   def get_link_flag(self):
     """
