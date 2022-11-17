@@ -238,41 +238,68 @@ class other(RunnerCore):
         self.assertContained('LLVM_ROOT', config_contents)
         os.remove(config_path)
 
-  def test_emcc_output_mjs(self):
-    self.run_process([EMCC, '-o', 'hello_world.mjs', test_file('hello_world.c')])
-    output = read_file('hello_world.mjs')
-    self.assertContained('export default Module;', output)
-    # TODO(sbc): Test that this is actually runnable.  We currently don't have
-    # any tests for EXPORT_ES6 but once we do this should be enabled.
-    # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+  @parameterized({
+    '': ([],),
+    'node': (['-sENVIRONMENT=node'],),
+  })
+  def test_emcc_output_mjs(self, args):
+    create_file('extern-post.js', 'await Module();')
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '--extern-post-js', 'extern-post.js',
+                      test_file('hello_world.c')] + args)
+    src = read_file('hello_world.mjs')
+    self.assertContained('export default Module;', src)
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @parameterized({
-    '': (True, [],),
-    'no_import_meta': (False, ['-sUSE_ES6_IMPORT_META=0'],),
+    '': ([],),
+    'node': (['-sENVIRONMENT=node'],),
   })
-  def test_emcc_output_worker_mjs(self, has_import_meta, args):
+  @node_pthreads
+  def test_emcc_output_worker_mjs(self, args):
+    create_file('extern-post.js', 'await Module();')
     os.mkdir('subdir')
-    self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
+    self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
+                      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
+                      '--extern-post-js', 'extern-post.js',
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
-    self.assertContainedIf("new URL('hello_world.wasm', import.meta.url)", src, condition=has_import_meta)
-    self.assertContainedIf("new Worker(new URL('hello_world.worker.js', import.meta.url))", src, condition=has_import_meta)
+    self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained('import("./hello_world.mjs")', src)
+    self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
+  @node_pthreads
   def test_emcc_output_worker_mjs_single_file(self):
+    create_file('extern-post.js', 'await Module();')
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread',
+                     '--extern-post-js', 'extern-post.js',
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
     self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
+    create_file('extern-post.js', 'await Module();')
     self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '--extern-post-js', 'extern-post.js',
                       test_file('hello_world.c'), '--closure=1'])
     src = read_file('hello_world.mjs')
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+
+  def test_emcc_output_mjs_web_no_import_meta(self):
+    # Ensure we don't emit import.meta.url at all for:
+    # ENVIRONMENT=web + EXPORT_ES6 + USE_ES6_IMPORT_META=0
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      test_file('hello_world.c'),
+                      '-sENVIRONMENT=web', '-sUSE_ES6_IMPORT_META=0'])
+    src = read_file('hello_world.mjs')
+    self.assertNotContained('import.meta.url', src)
+    self.assertContained('export default Module;', src)
 
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
@@ -282,6 +309,11 @@ class other(RunnerCore):
   def test_export_es6_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
+
+  def test_export_es6_node_requires_import_meta(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'),
+                            '-sENVIRONMENT=node', '-sEXPORT_ES6', '-sUSE_ES6_IMPORT_META=0'])
+    self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
   def test_export_es6_allows_export_in_post_js(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sEXPORT_ES6', '--post-js', test_file('export_module.js')])
@@ -7017,7 +7049,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'Invalid character 106("j") in readAsmConstArgs!'
+    expected = 'Invalid character 106("j") in readEmAsmArgs!'
     self.do_runf(test_file('other/test_em_asm_i64.cpp'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO)
@@ -12724,3 +12756,32 @@ foo/version.txt
     response = response.replace('\\', '/')
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
+
+  def test_signext_lowering(self):
+    cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-sWASM_BIGINT']
+
+    # We expect ERROR_ON_WASM_CHANGES_AFTER_LINK to fail due lowering of sign-ext being
+    # required for safari 12.
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=120000'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for firefox
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_FIREFOX_VERSION=61'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Same for chrome
+    output = self.expect_fail(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_CHROME_VERSION=73'])
+    self.assertContained('error: changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', output)
+    self.assertContained('--signext-lowering', output)
+
+    # Running the same command with safari 14.1 should succeed because no lowering
+    # is required.
+    self.run_process(cmd + ['-sERROR_ON_WASM_CHANGES_AFTER_LINK', '-sMIN_SAFARI_VERSION=140100'])
+    self.assertEqual('1\n', self.run_js('a.out.js'))
+
+    # Running without ERROR_ON_WASM_CHANGES_AFTER_LINK but with safari 12
+    # should successfully lower sign-ext.
+    self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000', '-o', 'lowered.js'])
+    self.assertEqual('1\n', self.run_js('lowered.js'))

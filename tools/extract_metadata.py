@@ -209,7 +209,7 @@ def get_section_strings(module, export_map, section_name):
   end = seg_offset + size
   while str_start < end:
     str_end = data.find(b'\0', str_start)
-    asm_strings[str(start_addr - seg_offset + str_start)] = data_to_string(data[str_start:str_end])
+    asm_strings[start_addr - seg_offset + str_start] = data_to_string(data[str_start:str_end])
     str_start = str_end + 1
   return asm_strings
 
@@ -281,7 +281,7 @@ def get_string_at(module, address):
 class Metadata:
   imports: List[str]
   export: List[str]
-  asmConsts: List[str]
+  asmConsts: Dict[int, str]
   jsDeps: List[str]
   emJsFuncs: Dict[str, str]
   emJsFuncTypes: Dict[str, str]

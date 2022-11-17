@@ -573,7 +573,9 @@ def create_asm_consts(metadata):
       func = f'function({args}) {{ {body} }}'
     else:
       func = f'({args}) => {{ {body} }}'
-    asm_consts[int(addr)] = func
+    if settings.RELOCATABLE:
+      addr += settings.GLOBAL_BASE
+    asm_consts[addr] = func
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts

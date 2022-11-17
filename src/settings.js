@@ -1236,7 +1236,8 @@ var EXPORT_ES6 = false;
 
 // Use the ES6 Module relative import feature 'import.meta.url'
 // to auto-detect WASM Module path.
-// It might not be supported on old browsers / toolchains
+// It might not be supported on old browsers / toolchains. This setting
+// may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
 // [link]
 var USE_ES6_IMPORT_META = true;
 
@@ -1968,7 +1969,9 @@ var SEPARATE_DWARF_URL = '';
 // not in others like split-dwarf).
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
-// [link]
+// Some example of features that require post-link wasm changes are:
+// - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
+// - Lowering sign-extnesion operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled excptions that occur when calling exported WebAssembly

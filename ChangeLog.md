@@ -28,7 +28,10 @@ See docs/process.md for more on how version tagging works.
   support these older engines you can use these settings
   (`-sMIN_SAFARI_VERSION=120000` and/or `-sMIN_EDGE_VERSION=44`) to revert to
   the previous defaults, which will result in the new proposals being disabled.
-  (#17690)
+  Note that in order to avoid support for the sign-extension emscripten uses
+  a binaryen pass, so targeting older browsers requires the running of wasm-opt
+  and is therefore incompatible with `ERROR_ON_WASM_CHANGES_AFTER_LINK` (i.e.
+  fast linking). (#17690)
 - Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
   environment variable).  This options specifies the name of a tar file into
   which emscripten will copy all of the input files along with a response file
@@ -40,6 +43,7 @@ See docs/process.md for more on how version tagging works.
   overflow will trap rather corrupting global data first).  This should not
   be a user-visible change (unless your program does something very odd such
   depending on the specific location of stack data in memory). (#18154)
+- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 
 3.1.25 - 11/08/22
 -----------------
