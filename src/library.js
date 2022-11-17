@@ -2975,9 +2975,6 @@ mergeInto(LibraryManager.library, {
   emscripten_asm_const_int__sig: 'ippp',
   emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
@@ -3007,9 +3004,6 @@ mergeInto(LibraryManager.library, {
   $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM__sig: 'iippi',
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
