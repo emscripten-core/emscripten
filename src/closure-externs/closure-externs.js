@@ -11,8 +11,12 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta`.
+// Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
+var EMSCRIPTEN$AWAIT$IMPORT;
+
+// Don't minify createRequire
+var createRequire;
 
 // Closure externs used by library_sockfs.js
 
