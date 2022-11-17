@@ -207,6 +207,9 @@ var LibraryPThread = {
 
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
+        // Once a pthread has finished and the worker becomes idle, mark it
+        // as weakly referenced so that its existence does not prevent Node.js
+        // from exiting.
         worker.unref();
       }
 #endif
@@ -275,6 +278,9 @@ var LibraryPThread = {
           worker.loaded = true;
 #if ENVIRONMENT_MAY_BE_NODE
           if (ENVIRONMENT_IS_NODE) {
+            // Once worker is loaded & idle, mark it as weakly referenced,
+            // so that mere existence of a Worker in the pool does not prevent
+            // Node.js from exiting the app.
             worker.unref();
           }
 #endif
@@ -596,6 +602,8 @@ var LibraryPThread = {
       // Ask the worker to start executing its pthread entry point function.
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
+        // Mark worker as strongly referenced once we start executing a pthread,
+        // so that Node.js doesn't exit while the pthread is running.
         worker.ref();
       }
 #endif
