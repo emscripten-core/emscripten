@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.26 (in development)
+3.1.27 (in development)
 -----------------------
+
+3.1.26 - 11/17/22
+-----------------
 - Inline with the recent changes to llvm and binaryen, emscripten will now, by
   default, enable the sign-extension and mutable-globals WebAssembly proposals.
   In order to do so the default minimum safari version (`MIN_SAFARI_VERSION`)
