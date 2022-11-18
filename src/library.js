@@ -2979,11 +2979,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
-#if MEMORY64
-    return Number(ASM_CONSTS[code].apply(null, args));
-#else
     return ASM_CONSTS[code].apply(null, args);
-#endif
   },
 
   emscripten_asm_const_int__sig: 'ippp',
