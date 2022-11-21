@@ -32,10 +32,11 @@ old **fastcomp** backend which was removed in ``2.0.0`` (August 2020).
 There are some differences you may notice between the two backends, if you
 upgrade from fastcomp to upstream:
 
-* The wasm backend is strict about linking files with different features sets -
-  for example, if one file was built with atomics but another was not, it will
-  error at link time. This prevents possible bugs, but may mean you need to make
-  some build system fixes.
+* The Wasm backend does not allow linking objects where the result would have
+  thread safety problems. In particular, if some objects were built with threads
+  enabled and others were built without threads enabled, Emscripten may refuse
+  to link them. This will prevent subtle bugs, but may require build system
+  fixes.
 
 * ``WASM=0`` behaves differently in the two backends. In fastcomp we emit
   asm.js, while in upstream we emit JS (since not all wasm constructs can be
@@ -148,4 +149,3 @@ Instead you can pre-compress them to ``.wasm.gz`` and use content negotiation:
     RemoveType .gz
     AddEncoding x-gzip .gz
     AddType application/wasm .wasm
-
