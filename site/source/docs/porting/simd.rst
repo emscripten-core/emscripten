@@ -3,6 +3,8 @@
 .. role:: raw-html(raw)
     :format: html
 
+.. _porting-simd:
+
 =======================================
 Porting SIMD code targeting WebAssembly
 =======================================
@@ -56,7 +58,7 @@ When porting SIMD code to use WebAssembly SIMD, implementors should be aware of 
    * - i8x16.[shl|shr_s|shr_u]
      - x86
      - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3446-L3510>`_ (i.e. using 16x8 shifts).
-  
+
    * - i64x2.shr_s
      - x86
      - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2807-L2825>`_.
@@ -1078,7 +1080,7 @@ The following table highlights the availability and expected performance of diff
 Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
 
 
-====================================================== 
+======================================================
 Compiling SIMD code targeting ARM NEON instruction set
 ======================================================
 
@@ -1165,13 +1167,13 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ⚫ Not implemented, will trigger compiler error
    * - vclt
      - ✅ native
-   * - vcltz 
+   * - vcltz
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcnt
      - ⚫ Not implemented, will trigger compiler error
    * - vclz
      - ⚫ Not implemented, will trigger compiler error
-   * - vcombine 
+   * - vcombine
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vcreate
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1209,7 +1211,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vminv
      - ⚫ Not implemented, will trigger compiler error
-   * - vmla 
+   * - vmla
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1221,9 +1223,9 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vmul
      - ✅ native
-   * - vmul_n 
+   * - vmul_n
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
-   * - vmull 
+   * - vmull
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
@@ -1241,7 +1243,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpadd
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vpaddl 
+   * - vpaddl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpmax
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1253,11 +1255,11 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ⚫ Not implemented, will trigger compiler error
    * - vqabsb
      - ⚫ Not implemented, will trigger compiler error
-   * - vqadd 
+   * - vqadd
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vqaddb
      - ⚫ Not implemented, will trigger compiler error
-   * - vqdmulh  
+   * - vqdmulh
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqneg
      - ⚫ Not implemented, will trigger compiler error
