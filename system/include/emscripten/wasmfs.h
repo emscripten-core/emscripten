@@ -40,10 +40,6 @@ backend_t wasmfs_create_js_file_backend(void);
 // A function that receives a void* and returns a backend.
 typedef backend_t (*backend_constructor_t)(void*);
 
-// Creates a Proxied Backend in the new file system.
-backend_t wasmfs_create_proxied_backend(backend_constructor_t create_backend,
-                                        void* arg);
-
 backend_t wasmfs_create_fetch_backend(const char* base_url);
 
 backend_t wasmfs_create_node_backend(const char* root);
