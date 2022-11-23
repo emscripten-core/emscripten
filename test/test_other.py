@@ -12218,14 +12218,6 @@ Module['postRun'] = function() {{
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
 
-  @node_pthreads
-  def test_wasmfs_jsfile_proxying_backend(self):
-    self.emcc_args.append('-DPROXYING')
-    self.set_setting('USE_PTHREADS')
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.test_wasmfs_jsfile()
-
   def test_wasmfs_before_preload(self):
     self.set_setting('WASMFS')
     os.mkdir('js_backend_files')
