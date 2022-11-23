@@ -47,6 +47,24 @@ uintptr_t* emscripten_get_sbrk_ptr() {
   return &sbrk_val;
 }
 
+extern uint32_t __global_base;
+extern uint32_t __data_end;
+
+uintptr_t emscripten_get_global_base()
+{
+  return (uintptr_t)&__global_base;
+}
+
+uintptr_t emscripten_get_global_end()
+{
+  return (uintptr_t)&__data_end;
+}
+
+uintptr_t emscripten_get_dyn_heap_base()
+{
+  return (uintptr_t)&__heap_base;
+}
+
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
