@@ -15,6 +15,7 @@
 #include <emscripten/threading.h>
 
 namespace wasmfs {
+
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;

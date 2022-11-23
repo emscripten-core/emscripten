@@ -181,6 +181,10 @@ public:
       return 0;
     }
 
+    std::vector<Entry>& operator*() {
+      return *std::get_if<std::vector<Entry>>(this);
+    }
+
     std::vector<Entry>* operator->() {
       return std::get_if<std::vector<Entry>>(this);
     }
