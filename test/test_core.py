@@ -8047,11 +8047,11 @@ void* operator new(size_t size) {
 #include <emscripten.h>
 int main(int argc, char **argv) {
   emscripten_sleep(1);
-  printf("argc=%d argv=%s", argc, argv[0]);
+  printf("argc=%d argv=%s", argc, argv[1]);
 }
 ''')
 
-    self.do_runf('main.c', 'argc=1 argv=./this.program')
+    self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
