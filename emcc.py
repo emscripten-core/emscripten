@@ -108,7 +108,8 @@ DEFAULT_ASYNCIFY_IMPORTS = [
 ]
 
 DEFAULT_ASYNCIFY_EXPORTS = [
-  'main'
+  'main',
+  '__main_argc_argv'
 ]
 
 # Target options
