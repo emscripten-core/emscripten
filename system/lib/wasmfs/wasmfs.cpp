@@ -71,12 +71,12 @@ WasmFS::~WasmFS() {
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  
+
 #ifdef WASMFS_CASE_INSENSITIVE
   auto rootBackend =
-    createIgnoreCaseBackend([]() { return createMemoryFileBackend(); });
+    createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else
-  auto rootBackend = createMemoryFileBackend();
+  auto rootBackend = createMemoryBackend();
 #endif
   auto rootDirectory =
     rootBackend->createDirectory(S_IRUGO | S_IXUGO | S_IWUGO);

@@ -16,7 +16,7 @@
 
 namespace wasmfs {
 // This class describes a file that lives in Wasm Memory.
-class MemoryFile : public DataFile {
+class MemoryDataFile : public DataFile {
   std::vector<uint8_t> buffer;
 
   int open(oflags_t) override { return 0; }
@@ -31,11 +31,13 @@ class MemoryFile : public DataFile {
   }
 
 public:
-  MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
+  MemoryDataFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
 
   class Handle : public DataFile::Handle {
 
-    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
+    std::shared_ptr<MemoryDataFile> getFile() {
+      return file->cast<MemoryDataFile>();
+    }
 
   public:
     Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
@@ -111,6 +113,6 @@ public:
     : Symlink(backend), target(target) {}
 };
 
-backend_t createMemoryFileBackend();
+backend_t createMemoryBackend();
 
 } // namespace wasmfs
