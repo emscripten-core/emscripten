@@ -11645,10 +11645,6 @@ exec "$@"
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
-  def test_em_asm_side_module(self):
-    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('hello_world_em_asm.c')])
-    self.assertContained('EM_ASM is not supported in side modules', err)
-
   def test_em_js_side_module(self):
     err = self.expect_fail([EMXX, '-sSIDE_MODULE', test_file('core/test_em_js.cpp')])
     self.assertContained('EM_JS is not supported in side modules', err)

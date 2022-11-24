@@ -2257,6 +2257,11 @@ int main(int argc, char **argv) {
   def test_em_asm_direct(self):
     self.do_core_test('test_em_asm_direct.c')
 
+  @needs_dylink
+  def test_em_asm_side_module(self):
+    self.build(test_file('core/test_em_asm_side.c'), js_outfile=False, emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.do_core_test('test_em_asm_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
+
   @parameterized({
     '': ([], False),
     'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),

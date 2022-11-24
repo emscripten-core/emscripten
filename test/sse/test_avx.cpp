@@ -19,29 +19,28 @@ int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
 double *interesting_doubles = get_interesting_doubles();
 int numInterestingDoubles = sizeof(interesting_doubles_)/sizeof(interesting_doubles_[0]);
 
-int main()
-{
-	assert(numInterestingFloats % 4 == 0);
-	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+int main() {
+  assert(numInterestingFloats % 4 == 0);
+  assert(numInterestingInts % 4 == 0);
+  assert(numInterestingDoubles % 4 == 0); 
 
-	Ret_FloatPtr(__m128, _mm_broadcast_ss, 1, 1);
-	Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_pd);
-	Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ps);
-	Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_sd);
-	Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ss);
-	Ret_DoublePtr_M128i(__m128d, _mm_maskload_pd, 2, 2);
-	Ret_FloatPtr_M128i(__m128, _mm_maskload_ps, 4, 4);
-	void_OutDoublePtr_M128i_M128d(_mm_maskstore_pd, double*, 16, 8);
-	void_OutFloatPtr_M128i_M128(_mm_maskstore_ps, float*, 16, 4);
-	Ret_M128d_Tint(__m128d, _mm_permute_pd);
-	Ret_M128_Tint(__m128, _mm_permute_ps);
-	Ret_M128d_M128d(__m128d, _mm_permutevar_pd);
-	Ret_M128_M128(__m128, _mm_permutevar_ps);
-	Ret_M128d_M128d(int, _mm_testc_pd);
-	Ret_M128_M128(int, _mm_testc_ps);
-	Ret_M128d_M128d(int, _mm_testnzc_pd);
-	Ret_M128_M128(int, _mm_testnzc_ps);
-	Ret_M128d_M128d(int, _mm_testz_pd);
-	Ret_M128_M128(int, _mm_testz_ps);
+  Ret_FloatPtr(__m128, _mm_broadcast_ss, 1, 1);
+  Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_pd);
+  Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ps);
+  Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_sd);
+  Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ss);
+  Ret_DoublePtr_M128i(__m128d, _mm_maskload_pd, 2, 2);
+  Ret_FloatPtr_M128i(__m128, _mm_maskload_ps, 4, 4);
+  void_OutDoublePtr_M128i_M128d(_mm_maskstore_pd, double*, 16, 8);
+  void_OutFloatPtr_M128i_M128(_mm_maskstore_ps, float*, 16, 4);
+  Ret_M128d_Tint(__m128d, _mm_permute_pd);
+  Ret_M128_Tint(__m128, _mm_permute_ps);
+  Ret_M128d_M128d(__m128d, _mm_permutevar_pd);
+  Ret_M128_M128(__m128, _mm_permutevar_ps);
+  Ret_M128d_M128d(int, _mm_testc_pd);
+  Ret_M128_M128(int, _mm_testc_ps);
+  Ret_M128d_M128d(int, _mm_testnzc_pd);
+  Ret_M128_M128(int, _mm_testnzc_ps);
+  Ret_M128d_M128d(int, _mm_testz_pd);
+  Ret_M128_M128(int, _mm_testz_ps);
 }
