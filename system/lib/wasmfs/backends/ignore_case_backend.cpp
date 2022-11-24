@@ -3,8 +3,25 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the Ignore Case Backend of the new file system.
-// It is a virtual backend that normalizes all file paths to lower case.
+// A virtual backend that adapts any underlying backend to be
+// case-insensitive. IgnoreCaseDirectory intercepts all directory operations,
+// normalizes paths to be lower case, then forwards the operations with the new
+// paths to the underlying backend. It stores the original, non-normalized names
+// internally so they can be returned later, giving the appearance of a
+// case-insensitive but case-preserving file system.
+//
+// DataFiles and Symlinks are also wrapped, although their wrappers pass
+// operations through to the underlying files with not modifications. These
+// wrappers are important to maintain the clear distinction between the virtual
+// backend, which is visible to the rest of WasmFS, and the underlying "real"
+// backend, which does not know it is being virtualized. In particular, if we
+// did not wrap these files, the WasmFS dcache system would expect the virtual
+// directories to be the parents of the "real" unwrapped files. But the "real"
+// backend may expect that its directories are the parents of those files and
+// may not work correctly otherwise. Introducing the no-op wrappers solves this
+// problem: WasmFS sees a consistent view of virtual directories being the
+// parent of their virtual children, and the "real" underlying backend sees its
+// "real" directories being the parents of their "real" children.
 
 #include "backend.h"
 #include "file.h"
