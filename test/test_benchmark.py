@@ -399,7 +399,7 @@ if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
+      EmscriptenBenchmarker('Node.js', config.NODE_JS),
     ]
 
 
