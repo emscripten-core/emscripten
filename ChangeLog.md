@@ -21,6 +21,7 @@ See docs/process.md for more on how version tagging works.
 3.1.27 (in development)
 -----------------------
 - Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
+- Idle workers in a PThread pool no longer prevent Node.js app from exiting. (#18227)
 
 3.1.26 - 11/17/22
 -----------------
