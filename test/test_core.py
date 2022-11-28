@@ -8039,15 +8039,12 @@ void* operator new(size_t size) {
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_main(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-
     create_file('main.c',  r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main(int argc, char **argv) {
   emscripten_sleep(1);
-  printf("argc=%d argv=%s", argc, argv[1]);
+  printf("argc=%d argv=%s\n", argc, argv[1]);
 }
 ''')
 
