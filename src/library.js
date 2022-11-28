@@ -2916,21 +2916,21 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  $readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: [
-    '$readAsmConstArgsArray',
+  $readEmAsmArgsArray: '=[]',
+  $readEmAsmArgs__deps: [
+    '$readEmAsmArgsArray',
 #if MEMORY64
     '$readI53FromI64',
 #endif
   ],
-  $readAsmConstArgs: function(sigPtr, buf) {
+  $readEmAsmArgs: function(sigPtr, buf) {
 #if ASSERTIONS
-    // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-    assert(Array.isArray(readAsmConstArgsArray));
+    // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
+    assert(Array.isArray(readEmAsmArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
     assert(buf % {{{ STACK_ALIGN }}} == 0);
 #endif
-    readAsmConstArgsArray.length = 0;
+    readEmAsmArgsArray.length = 0;
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
@@ -2948,7 +2948,7 @@ mergeInto(LibraryManager.library, {
       // get automatically converted to int53/Double.
       validChars.push('p');
 #endif
-      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
+      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readEmAsmArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
 #endif
       // Floats are always passed as doubles, and doubles and int64s take up 8
       // bytes (two 32-bit slots) in memory, align reads to these:
@@ -2956,10 +2956,10 @@ mergeInto(LibraryManager.library, {
 #if MEMORY64
       // Special case for pointers under wasm64 which we read as int53 Numbers.
       if (ch == 112/*p*/) {
-        readAsmConstArgsArray.push(readI53FromI64(buf++ << 2));
+        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
       } else
 #endif
-      readAsmConstArgsArray.push(
+      readEmAsmArgsArray.push(
         ch == 105/*i*/ ? HEAP32[buf] :
 #if WASM_BIGINT
        (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
@@ -2969,42 +2969,45 @@ mergeInto(LibraryManager.library, {
       );
       ++buf;
     }
-    return readAsmConstArgsArray;
+    return readEmAsmArgsArray;
   },
 
-  emscripten_asm_const_int__sig: 'ippp',
-  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
-  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-    var args = readAsmConstArgs(sigPtr, argbuf);
+  $runEmAsmFunction__sig: 'ippp',
+  $runEmAsmFunction__deps: ['$readEmAsmArgs'],
+  $runEmAsmFunction: function(code, sigPtr, argbuf) {
+    var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
-#if MEMORY64
-    return Number(ASM_CONSTS[code].apply(null, args));
-#else
     return ASM_CONSTS[code].apply(null, args);
-#endif
+  },
+
+  emscripten_asm_const_int__sig: 'ippp',
+  emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
   emscripten_asm_const_double__sig: 'dppp',
-  emscripten_asm_const_double__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_double__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_double: function(code, sigPtr, argbuf) {
-    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
 #if MEMORY64
+  // We can't use the alias in wasm64 mode becuase the function signature differs
   emscripten_asm_const_ptr__sig: 'pppp',
-  emscripten_asm_const_ptr__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_ptr__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
-    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
 #else
   emscripten_asm_const_ptr: 'emscripten_asm_const_int',
 #endif
 
-  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
-  $mainThreadEM_ASM__sig: 'iippi',
-  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
-    var args = readAsmConstArgs(sigPtr, argbuf);
+  $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
+  $runMainThreadEmAsm__sig: 'iippi',
+  $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
+    var args = readEmAsmArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
@@ -3012,7 +3015,7 @@ mergeInto(LibraryManager.library, {
       // always un-variadify that, *before proxying*, as in the async case this
       // is a stack allocation that LLVM made, which may go away before the main
       // thread gets the message. For that reason we handle proxying *after* the
-      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // call to readEmAsmArgs, and therefore we do that manually here instead
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
@@ -3026,15 +3029,15 @@ mergeInto(LibraryManager.library, {
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
-  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
-    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
-  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
-    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 0);
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS

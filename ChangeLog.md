@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.26 (in development)
+3.1.27 (in development)
 -----------------------
+- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
+- Idle workers in a PThread pool no longer prevent Node.js app from exiting. (#18227)
+
+3.1.26 - 11/17/22
+-----------------
 - Inline with the recent changes to llvm and binaryen, emscripten will now, by
   default, enable the sign-extension and mutable-globals WebAssembly proposals.
   In order to do so the default minimum safari version (`MIN_SAFARI_VERSION`)
@@ -43,7 +48,6 @@ See docs/process.md for more on how version tagging works.
   overflow will trap rather corrupting global data first).  This should not
   be a user-visible change (unless your program does something very odd such
   depending on the specific location of stack data in memory). (#18154)
-- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 
 3.1.25 - 11/08/22
 -----------------

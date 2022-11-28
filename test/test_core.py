@@ -2257,6 +2257,11 @@ int main(int argc, char **argv) {
   def test_em_asm_direct(self):
     self.do_core_test('test_em_asm_direct.c')
 
+  @needs_dylink
+  def test_em_asm_side_module(self):
+    self.build(test_file('core/test_em_asm_side.c'), js_outfile=False, emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.do_core_test('test_em_asm_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
+
   @parameterized({
     '': ([], False),
     'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
@@ -2766,7 +2771,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_proxying_dropped_work(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=2')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
@@ -2779,7 +2783,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_dispatch_after_exit(self):
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
   @node_pthreads
@@ -2791,7 +2794,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_nested_work_queue(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
@@ -2804,13 +2806,11 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_cleanup(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.cpp')
 
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
-    self.set_setting('EXIT_RUNTIME')
     print('.. return')
     self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DRETURN'])
     print('.. exit')
@@ -2820,7 +2820,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_attr_getstack(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
@@ -2836,7 +2835,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_abort_interrupt(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
     self.do_runf(test_file('pthread/test_pthread_abort_interrupt.c'), expected, assert_returncode=NON_ZERO)
@@ -9112,13 +9110,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_cxx_threads(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
   @node_pthreads
   def test_pthread_busy_wait(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
@@ -9167,11 +9163,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_exit_main(self):
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
 
   def test_pthread_exit_main_stub(self):
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
 
   @node_pthreads
@@ -9223,7 +9217,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_stdio_locking(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/test_stdio_locking.c')
 
   @needs_dylink
@@ -9238,7 +9231,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink(self):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
@@ -9259,7 +9251,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
@@ -9269,7 +9260,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_exceptions(self):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
@@ -9312,7 +9302,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_tls(self):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
@@ -9322,7 +9311,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_longjmp(self):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
@@ -9332,7 +9320,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_main_module_1(self):
     self.emcc_args.append('-Wno-experimental')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('MAIN_MODULE')
     self.do_runf(test_file('hello_world.c'))

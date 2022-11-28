@@ -1251,12 +1251,13 @@ var BENCHMARK = false;
 // [link]
 var EXPORT_NAME = 'Module';
 
-// When set to 0, we do not emit eval() and new Function(), which disables some functionality
-// (causing runtime errors if attempted to be used), but allows the emitted code to be
-// acceptable in places that disallow dynamic code execution (chrome packaged app,
-// privileged firefox app, etc.). Pass this flag when developing an Emscripten application
-// that is targeting a privileged or a certified execution environment, see
-// Firefox Content Security Policy (CSP) webpage for details:
+// When set to 0, we do not emit eval() and new Function(), which disables some
+// functionality (causing runtime errors if attempted to be used), but allows
+// the emitted code to be acceptable in places that disallow dynamic code
+// execution (chrome packaged app, privileged firefox app, etc.). Pass this flag
+// when developing an Emscripten application that is targeting a privileged or a
+// certified execution environment, see Firefox Content Security Policy (CSP)
+// webpage for details:
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
 // in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
@@ -1271,11 +1272,12 @@ var EXPORT_NAME = 'Module';
 // - emscripten_run_script_int(),
 // - emscripten_run_script_string(),
 // - dlopen(),
-// - the functions ccall() and cwrap() are still available, but they are restricted to only
-//   being able to call functions that have been exported in the Module object in advance.
+// - the functions ccall() and cwrap() are still available, but they are
+//   restricted to only being able to call functions that have been exported in
+//   the Module object in advance.
 //
-// When set to -sDYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
-// to warnings instead of throwing an exception.
+// When -sDYNAMIC_EXECUTION=2 is set, attempts to call to eval() are demoted to
+// warnings instead of throwing an exception.
 // [link]
 var DYNAMIC_EXECUTION = 1;
 

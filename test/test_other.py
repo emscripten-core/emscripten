@@ -7049,7 +7049,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'Invalid character 106("j") in readAsmConstArgs!'
+    expected = 'Invalid character 106("j") in readEmAsmArgs!'
     self.do_runf(test_file('other/test_em_asm_i64.cpp'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO)
@@ -9101,7 +9101,6 @@ T6:(else) !ASSERTIONS""", output)
 const test_module = require("./module");
 test_module().then((test_module_instance) => {
   test_module_instance._main();
-  process.exit(0);
 });
 '''
     ensure_dir('subdir')
@@ -11646,10 +11645,6 @@ exec "$@"
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
-  def test_em_asm_side_module(self):
-    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('hello_world_em_asm.c')])
-    self.assertContained('EM_ASM is not supported in side modules', err)
-
   def test_em_js_side_module(self):
     err = self.expect_fail([EMXX, '-sSIDE_MODULE', test_file('core/test_em_js.cpp')])
     self.assertContained('EM_JS is not supported in side modules', err)
@@ -12218,14 +12213,6 @@ Module['postRun'] = function() {{
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
-
-  @node_pthreads
-  def test_wasmfs_jsfile_proxying_backend(self):
-    self.emcc_args.append('-DPROXYING')
-    self.set_setting('USE_PTHREADS')
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.test_wasmfs_jsfile()
 
   def test_wasmfs_before_preload(self):
     self.set_setting('WASMFS')

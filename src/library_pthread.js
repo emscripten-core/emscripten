@@ -205,6 +205,15 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // Once a pthread has finished and the worker becomes idle, mark it
+        // as weakly referenced so that its existence does not prevent Node.js
+        // from exiting.
+        worker.unref();
+      }
+#endif
+
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
       __emscripten_thread_free_data(pthread_ptr);
@@ -267,11 +276,18 @@ var LibraryPThread = {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
           worker.loaded = true;
+#if ENVIRONMENT_MAY_BE_NODE
+          if (ENVIRONMENT_IS_NODE) {
+            // Once worker is loaded & idle, mark it as weakly referenced,
+            // so that mere existence of a Worker in the pool does not prevent
+            // Node.js from exiting the app.
+            worker.unref();
+          }
+#endif
           if (onFinishedLoading) onFinishedLoading(worker);
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
-            delete worker.runPthread;
           }
         } else if (cmd === 'print') {
           out('Thread ' + d['threadId'] + ': ' + d['text']);
@@ -584,12 +600,19 @@ var LibraryPThread = {
 #endif
     worker.runPthread = () => {
       // Ask the worker to start executing its pthread entry point function.
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // Mark worker as strongly referenced once we start executing a pthread,
+        // so that Node.js doesn't exit while the pthread is running.
+        worker.ref();
+      }
+#endif
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
+      delete worker.runPthread;
     };
     if (worker.loaded) {
       worker.runPthread();
-      delete worker.runPthread;
     }
     return 0;
   },
@@ -671,7 +694,7 @@ var LibraryPThread = {
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
-    // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).  
+    // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).
     for (var i in transferredCanvasNames) {
       var name = transferredCanvasNames[i].trim();
       var offscreenCanvasInfo;

@@ -607,6 +607,8 @@ def get_binaryen_passes():
     passes += ['--signext-lowering']
   if optimizing:
     passes += ['--post-emscripten']
+    if settings.SIDE_MODULE:
+      passes += ['--pass-arg=post-emscripten-side-module']
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a

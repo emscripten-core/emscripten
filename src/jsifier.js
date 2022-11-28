@@ -67,38 +67,35 @@ function isDefined(symName) {
 }
 
 // JSifier
-function runJSify(functionsOnly) {
-  const mainPass = !functionsOnly;
+function runJSify() {
   const functionStubs = [];
 
   const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
 
-  if (mainPass) {
-    // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
-    // generateStructInfo in library.js)
+  // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
+  // generateStructInfo in library.js)
 
-    LibraryManager.load();
+  LibraryManager.load();
 
-    const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
-    for (const sym of EXPORTED_RUNTIME_METHODS) {
-      if ('$' + sym in LibraryManager.library) {
-        libFuncsToInclude.push('$' + sym);
-      }
+  const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  for (const sym of EXPORTED_RUNTIME_METHODS) {
+    if ('$' + sym in LibraryManager.library) {
+      libFuncsToInclude.push('$' + sym);
     }
-    if (INCLUDE_FULL_LIBRARY) {
-      for (const key in LibraryManager.library) {
-        if (!isJsLibraryConfigIdentifier(key)) {
-          libFuncsToInclude.push(key);
-        }
-      }
-    }
-    libFuncsToInclude.forEach((ident) => {
-      functionStubs.push({
-        identOrig: ident,
-        identMangled: mangleCSymbolName(ident),
-      });
-    });
   }
+  if (INCLUDE_FULL_LIBRARY) {
+    for (const key in LibraryManager.library) {
+      if (!isJsLibraryConfigIdentifier(key)) {
+        libFuncsToInclude.push(key);
+      }
+    }
+  }
+  libFuncsToInclude.forEach((ident) => {
+    functionStubs.push({
+      identOrig: ident,
+      identMangled: mangleCSymbolName(ident),
+    });
+  });
 
   function convertPointerParams(snippet, sig) {
     // Automatically convert any incoming pointer arguments from BigInt
@@ -472,14 +469,6 @@ function ${name}(${args}) {
 
     itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
-    //
-
-    if (!mainPass) {
-      const generated = itemsDict.function.concat(itemsDict.type);
-      print(generated.map((item) => item.JS).join('\n'));
-      return;
-    }
-
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
 
     const shellParts = read(shellFile).split('{{BODY}}');
@@ -492,9 +481,6 @@ function ${name}(${args}) {
             processMacros(preprocess(read('preamble.js'), 'preamble.js'));
     }
     print(pre);
-
-    // Print out global variables and postsets TODO: batching
-    runJSify(true);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
@@ -552,10 +538,7 @@ function ${name}(${args}) {
   }
 
   // Data
-
-  if (mainPass) {
-    functionStubs.forEach(functionStubHandler);
-  }
+  functionStubs.forEach(functionStubHandler);
 
   finalCombiner();
 }

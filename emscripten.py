@@ -337,8 +337,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   if settings.SIDE_MODULE:
-    if metadata.asmConsts:
-      exit_with_error('EM_ASM is not supported in side modules')
     if metadata.emJsFuncs:
       exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
@@ -469,13 +467,6 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
-    modify_wasm = True
-  if settings.USE_PTHREADS and settings.RELOCATABLE:
-    # HACK: When settings.USE_PTHREADS and settings.RELOCATABLE are set finalize needs to scan
-    # more than just the start function for memory.init instructions.  This means it can't run
-    # with setSkipFunctionBodies() enabled.  Currently the only way to force this is to set an
-    # output file.
-    # TODO(sbc): Find a better way to do this.
     modify_wasm = True
   if settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map', outfile)
