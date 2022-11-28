@@ -3139,12 +3139,14 @@ mergeInto(LibraryManager.library, {
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__sig: 'vp',
-  __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
+  __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
+    var base = _emscripten_stack_get_base();
+    var end = _emscripten_stack_get_end();
     abort('stack overflow (Attempt to set SP to ' + ptrToString(requested) +
-          ', with stack limits [' + ptrToString(_emscripten_stack_get_end()) +
-          ' - ' + ptrToString(_emscripten_stack_get_base()) + '])');
+          ', with stack limits [' + ptrToString(end) + ' - ' + ptrToString(base) +
+          ']). If you require more stack space build with -sSTACK_SIZE=<bytes>');
   },
 #endif
 

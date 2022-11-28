@@ -32,6 +32,7 @@ static void *thread1_start(void *arg)
   return NULL;
 }
 
+#define DEFAULT_STACK_SIZE (64*1024)
 int main()
 {
   pthread_t thr;
@@ -43,7 +44,7 @@ int main()
   void *stack_addr;
   pthread_attr_getstack(&attr, &stack_addr, &stack_size);
   printf("stack_size: %d, stack_addr: %p\n", (int)stack_size, stack_addr);
-  if (stack_size != 2*1024*1024 || stack_addr == NULL)
+  if (stack_size != DEFAULT_STACK_SIZE || stack_addr == NULL)
     result = -100; // Report failure.
 
   pthread_join(thr, NULL);

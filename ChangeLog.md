@@ -22,6 +22,17 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 - Idle workers in a PThread pool no longer prevent Node.js app from exiting. (#18227)
+- The default `STACK_SIZE` was reduced from 5MB to 64KB.  Projects that use more
+  than 64Kb of stack will now need specify `-sSTACK_SIZE` at link time.  For
+  example, `-sSTACK_SIZE=5MB` can be used to restore the previous behaviour.
+  To aid in debugging, as of #18154, we now also place the stack first in memory
+  in debug builds so that overflows will be immediately detected, and result in
+  runtime errors.  This change brings emscripten into line with `wasm-ld` and
+  wasi-sdk defaults, and also reduces memory usage by default.  In general,
+  WebAssembly stack usage should be lower than on other platforms since a lot of
+  state normally stored on the stack is hidden within the runtime and does not
+  occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
+  also reduced from 2MB to 64KB to match.
 
 3.1.26 - 11/17/22
 -----------------
@@ -48,6 +59,7 @@ See docs/process.md for more on how version tagging works.
   overflow will trap rather corrupting global data first).  This should not
   be a user-visible change (unless your program does something very odd such
   depending on the specific location of stack data in memory). (#18154)
+- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 
 3.1.25 - 11/08/22
 -----------------

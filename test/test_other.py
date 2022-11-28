@@ -2652,6 +2652,9 @@ int f() {
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
          '-sWASM_ASYNC_COMPILATION=0',
+         # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
+         # it which means we need more stack space than normal.
+         '-sTOTAL_STACK=2MB',
          '-sIN_TEST_HARNESS'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
@@ -5850,7 +5853,7 @@ int main() {
     # just care about message regarding allocating over 1GB of memory
     output = self.run_js('a.out.js')
     if not wasm:
-      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1473314816\n', output)
+      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1468137472\n', output)
 
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
