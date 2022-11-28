@@ -42,10 +42,28 @@ typedef backend_t (*backend_constructor_t)(void*);
 
 backend_t wasmfs_create_memory_backend(void);
 
+// Note: this cannot be called on the browser main thread because it might
+// deadlock while waiting for its dedicated worker thread to be spawned.
+//
+// Note: This function blocks on the main browser thread returning to its event
+// loop. Calling this function while holding a lock the main thread is waiting
+// to acquire will cause a deadlock.
+//
+// TODO: Add an async version of this function that will work on the main
+// thread.
 backend_t wasmfs_create_fetch_backend(const char* base_url);
 
 backend_t wasmfs_create_node_backend(const char* root);
 
+// Note: this cannot be called on the browser main thread because it might
+// deadlock while waiting for the OPFS dedicated worker thread to be spawned.
+//
+// Note: This function blocks on the main browser thread returning to its event
+// loop. Calling this function while holding a lock the main thread is waiting
+// to acquire will cause a deadlock.
+//
+// TODO: Add an async version of this function that will work on the main
+// thread.
 backend_t wasmfs_create_opfs_backend(void);
 
 backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
