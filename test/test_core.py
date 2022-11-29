@@ -8036,6 +8036,21 @@ void* operator new(size_t size) {
   def test_vswprintf_utf8(self):
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
+  # Test that a main with arguments is automatically asyncified.
+  @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
+  def test_async_main(self):
+    create_file('main.c',  r'''
+#include <stdio.h>
+#include <emscripten.h>
+int main(int argc, char **argv) {
+  emscripten_sleep(1);
+  printf("argc=%d argv=%s\n", argc, argv[1]);
+}
+''')
+
+    self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
+
   @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_stack_switching
   def test_async_hello(self):
