@@ -8,7 +8,7 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-const FOUR_GB = 4 * 1024 * 1024 * 1024;
+globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 let currentlyParsedFilename = '';
@@ -34,7 +34,7 @@ function processMacros(text) {
 // Also handles #include x.js (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
-function preprocess(text, filenameHint) {
+function preprocess(text, filenameHint, lineOffset = 0) {
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
@@ -63,97 +63,92 @@ function preprocess(text, filenameHint) {
   let emptyLine = false;
 
   try {
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      try {
-        if (line[line.length - 1] === '\r') {
-          line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
-        }
-        if (isHtml && line.includes('<style') && !inStyle) {
-          inStyle = true;
-        }
-        if (isHtml && line.includes('</style') && inStyle) {
-          inStyle = false;
-        }
+    for (let [i, line] of lines.entries()) {
+      i += lineOffset; // adjust line number in case this is e.g. 2nd part of shell.js
+      if (line[line.length - 1] === '\r') {
+        line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
+      }
+      if (isHtml && line.includes('<style') && !inStyle) {
+        inStyle = true;
+      }
+      if (isHtml && line.includes('</style') && inStyle) {
+        inStyle = false;
+      }
 
-        if (!inStyle) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('#')) {
-            const first = trimmed.split(' ', 1)[0];
-            if (first == '#if' || first == '#ifdef' || first == '#elif') {
-              if (first == '#ifdef') {
-                warn('use of #ifdef in js library.  Use #if instead.');
-              }
-              if (first == '#elif') {
-                const curr = showStack.pop();
-                if (curr == SHOW || curr == IGNORE_ALL) {
-                  // If we showed to previous block we enter the IGNORE_ALL state
-                  // and stay there until endif is seen
-                  showStack.push(IGNORE_ALL);
-                  continue;
-                }
-              }
-              const after = trimmed.substring(trimmed.indexOf(' '));
-              const truthy = !!eval(after);
-              showStack.push(truthy ? SHOW : IGNORE);
-            } else if (first === '#include') {
-              if (showCurrentLine()) {
-                let filename = line.substr(line.indexOf(' ') + 1);
-                if (filename.startsWith('"')) {
-                  filename = filename.substr(1, filename.length - 2);
-                }
-                const included = read(filename);
-                const result = preprocess(included, filename);
-                if (result) {
-                  ret += `// include: ${filename}\n`;
-                  ret += result;
-                  ret += `// end include: ${filename}\n`;
-                }
-              }
-            } else if (first === '#else') {
-              assert(showStack.length > 0);
-              const curr = showStack.pop();
-              if (curr == IGNORE) {
-                showStack.push(SHOW);
-              } else {
-                showStack.push(IGNORE);
-              }
-            } else if (first === '#endif') {
-              assert(showStack.length > 0);
-              showStack.pop();
-            } else if (first === '#warning') {
-              if (showCurrentLine()) {
-                printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-              }
-            } else if (first === '#error') {
-              if (showCurrentLine()) {
-                error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-              }
-            } else {
-              throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
+      if (!inStyle) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) {
+          const first = trimmed.split(' ', 1)[0];
+          if (first == '#if' || first == '#ifdef' || first == '#elif') {
+            if (first == '#ifdef') {
+              warn('use of #ifdef in js library.  Use #if instead.');
             }
-          } else {
-            if (showCurrentLine()) {
-              // Never emit more than one empty line at a time.
-              if (emptyLine && !line) {
+            if (first == '#elif') {
+              const curr = showStack.pop();
+              if (curr == SHOW || curr == IGNORE_ALL) {
+                // If we showed to previous block we enter the IGNORE_ALL state
+                // and stay there until endif is seen
+                showStack.push(IGNORE_ALL);
                 continue;
               }
-              ret += line + '\n';
-              if (!line) {
-                emptyLine = true;
-              } else {
-                emptyLine = false;
+            }
+            const after = trimmed.substring(trimmed.indexOf(' '));
+            const truthy = !!vm.runInThisContext(after, { filename: filenameHint, lineOffset: i, columnOffset: line.indexOf(after) });
+            showStack.push(truthy ? SHOW : IGNORE);
+          } else if (first === '#include') {
+            if (showCurrentLine()) {
+              let filename = line.substr(line.indexOf(' ') + 1);
+              if (filename.startsWith('"')) {
+                filename = filename.substr(1, filename.length - 2);
+              }
+              const included = read(filename);
+              const result = preprocess(included, filename);
+              if (result) {
+                ret += `// include: ${filename}\n`;
+                ret += result;
+                ret += `// end include: ${filename}\n`;
               }
             }
+          } else if (first === '#else') {
+            assert(showStack.length > 0);
+            const curr = showStack.pop();
+            if (curr == IGNORE) {
+              showStack.push(SHOW);
+            } else {
+              showStack.push(IGNORE);
+            }
+          } else if (first === '#endif') {
+            assert(showStack.length > 0);
+            showStack.pop();
+          } else if (first === '#warning') {
+            if (showCurrentLine()) {
+              printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            }
+          } else if (first === '#error') {
+            if (showCurrentLine()) {
+              error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            }
+          } else {
+            throw new Error(`${filenameHint}:${i + 1}: Unknown preprocessor directive ${first}`);
           }
-        } else { // !inStyle
+        } else {
           if (showCurrentLine()) {
+            // Never emit more than one empty line at a time.
+            if (emptyLine && !line) {
+              continue;
+            }
             ret += line + '\n';
+            if (!line) {
+              emptyLine = true;
+            } else {
+              emptyLine = false;
+            }
           }
         }
-      } catch (e) {
-        printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i + 1) + ': \"' + line + '\"!');
-        throw e;
+      } else { // !inStyle
+        if (showCurrentLine()) {
+          ret += line + '\n';
+        }
       }
     }
     assert(showStack.length == 0, `preprocessing error in file ${filenameHint}, \
