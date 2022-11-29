@@ -2314,6 +2314,8 @@ def phase_linker_setup(options, state, newargs):
   if settings.USE_PTHREADS:
     setup_pthreads(target)
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
+    if settings.PROXY_TO_PTHREAD:
+      settings.PTHREAD_POOL_SIZE_STRICT = 0
   else:
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -sUSE_PTHREADS to work!')

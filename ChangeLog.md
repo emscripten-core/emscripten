@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.29 (in development)
 -----------------------
+- PThreads can now be safely spawned on-demand in Node.js even without a PThread
+  pool (`PTHREAD_POOL_SIZE`) or proxying (`PROXY_TO_PTHREAD`) options. (#18305)
 
 3.1.28 - 12/08/22
 -----------------
