@@ -4,7 +4,14 @@
 // found in the LICENSE file.
 
 // Utilities for creating virtual backends that forward operations to underlying
-// "real" files.
+// "real" files. Virtual backends must wrap all underlying files, even if the
+// wrapper is a no-op, so that no part of the system observes mixed backends. To
+// the backend-independent code, the root directory of the virtual backend and
+// all of its descendants must appear to have the same virtual backend. To the
+// underlying "real" backend, all of its files must appear to have parents of
+// the same real backend. Without these invariants, renames would not work
+// correctly and without wrapping all files, these invariants would not be
+// upheld.
 
 #pragma once
 

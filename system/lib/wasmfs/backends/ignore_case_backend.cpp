@@ -10,18 +10,8 @@
 // internally so they can be returned later, giving the appearance of a
 // case-insensitive but case-preserving file system.
 //
-// DataFiles and Symlinks are also wrapped, although their wrappers pass
-// operations through to the underlying files with not modifications. These
-// wrappers are important to maintain the clear distinction between the virtual
-// backend, which is visible to the rest of WasmFS, and the underlying "real"
-// backend, which does not know it is being virtualized. In particular, if we
-// did not wrap these files, the WasmFS dcache system would expect the virtual
-// directories to be the parents of the "real" unwrapped files. But the "real"
-// backend may expect that its directories are the parents of those files and
-// may not work correctly otherwise. Introducing the no-op wrappers solves this
-// problem: WasmFS sees a consistent view of virtual directories being the
-// parent of their virtual children, and the "real" underlying backend sees its
-// "real" directories being the parents of their "real" children.
+// See the comment in virtual.h for an explanation of why DataFiles and Symlinks
+// must have no-op wrappers.
 
 #include "backend.h"
 #include "file.h"
