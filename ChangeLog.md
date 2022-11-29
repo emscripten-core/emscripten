@@ -59,7 +59,6 @@ See docs/process.md for more on how version tagging works.
   overflow will trap rather corrupting global data first).  This should not
   be a user-visible change (unless your program does something very odd such
   depending on the specific location of stack data in memory). (#18154)
-- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 
 3.1.25 - 11/08/22
 -----------------
