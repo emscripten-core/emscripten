@@ -205,18 +205,6 @@ self.onmessage = (e) => {
 #endif
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
-      // This worker was idle, and now should start executing its pthread entry
-      // point.
-      // performance.now() is specced to return a wallclock time in msecs since
-      // that Web Worker/main thread launched. However for pthreads this can
-      // cause subtle problems in emscripten_get_now() as this essentially
-      // would measure time from pthread_create(), meaning that the clocks
-      // between each threads would be wildly out of sync. Therefore sync all
-      // pthreads to the clock on the main browser thread, so that different
-      // threads see a somewhat coherent clock across each of them
-      // (+/- 0.1msecs in testing).
-      Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
