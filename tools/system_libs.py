@@ -981,8 +981,9 @@ class libc(MuslInternalLibrary,
         '__unmapself.c',
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
-        # TODO: Support this. See #12216.
+        # TODO: Support these. See #12216.
         'pthread_setname_np.c',
+        'pthread_getname_np.c',
       ]
       libc_files += files_in_path(
         path='system/lib/pthread',

@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.28 (in development)
 -----------------------
+- musl libc updated from v1.2.2 to v1.2.3. (#18270)
 
 3.1.27 - 11/29/22
 -----------------

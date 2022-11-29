@@ -1007,7 +1007,7 @@ uptr internal_sigprocmask(int how, __sanitizer_sigset_t *set,
 #if SANITIZER_FREEBSD
   return internal_syscall(SYSCALL(sigprocmask), how, set, oldset);
 #elif SANITIZER_EMSCRIPTEN
-  return NULL;
+  return 0;
 #else
   __sanitizer_kernel_sigset_t *k_set = (__sanitizer_kernel_sigset_t *)set;
   __sanitizer_kernel_sigset_t *k_oldset = (__sanitizer_kernel_sigset_t *)oldset;

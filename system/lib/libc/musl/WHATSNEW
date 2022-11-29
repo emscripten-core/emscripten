@@ -2287,3 +2287,43 @@ arch-specific bugs fixed:
 - i386 __set_thread_area fallback for pre-2.6 kernels didn't work
 - missing O_LARGEFILE macro value on x86_64, x32, mips64
 - unpredictable s390x breakage from failure to preserve call-saved registers
+
+
+
+1.2.3 release notes
+
+new features:
+- qsort_r function (POSIX-future)
+- pthread_getname_np extension function
+- hard float on SPE FPU for powerpc-sf
+- SEEK_DATA and SEEK_HOLE exposed in unistd.h (Linux extensions)
+
+compatibility:
+- free now preserves errno (POSIX-future requirement)
+- setjmp is declared explicitly with returns_twice for non-GCC compilers
+- macro version of isascii is no longer defined for C++
+- dynamic linker now tolerates zero-length LOAD segments
+- epoll_[p]wait is now a cancellation point
+- pwd/grp functions no longer fail on systems without AF_UNIX support
+- POSIX TZ parsing is stricter to allow more names to fallback to files
+- NULL is now defined as nullptr when used in C++11 or later
+- gettext now accepts null pointer as argument
+
+bugs fixed:
+- old regression in wcwidth of Hangul combining (vowel/final) letters
+- duplocale used wrong malloc when malloc was replaced (1.2.2 regression)
+- fmaf rounded wrong on archs without FE_TOWARDZERO (all softfloat archs)
+- popen didn't honor requirement not to leak other popen pipe fds to child
+- aligned_alloc and variants crashed on allocation failure
+- dl_iterate_phdr reported incorrect module TLS pointers
+- mishandling of some inputs in acoshf and expm1f and functions using them
+- potentially wrong-sign zero in cproj functions at infinity
+- multiple bugs in legacy function cuserid
+- minor posix_spawn file actions API conformance issues
+- pthread_setname_np fd leak
+- out-of-bound read in zoneinfo handling with distant-past times
+- out-of-tree builds lacked generated debug cfi for x86 asm
+
+arch-specific bugs fixed:
+- powerpc (32-bit) struct shmid_ds layout was wrong for some fields
+- time64 struct layout was wrong in sound ioctl fallback (32-bit archs)
