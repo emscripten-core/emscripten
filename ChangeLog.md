@@ -37,6 +37,12 @@ See docs/process.md for more on how version tagging works.
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
 - Improved error messages for writing custom JS libraries. (#18266)
+- More accurate synchronisation of `emscripten_get_now` clocks between main
+  thread and pthreads.
+  This also changes the absolute value returned by the function, but it shouldn't
+  affect correct usages as the function has always returned different values on
+  different platforms, and is clearly documented as "only meaningful in
+  comparison to other calls to this function". (#18267)
 
 3.1.26 - 11/17/22
 -----------------
