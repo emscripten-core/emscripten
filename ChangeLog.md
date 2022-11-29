@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.29 (in development)
 -----------------------
+- Added `Module.pthreadPoolReady` promise for the `PTHREAD_POOL_DELAY_LOAD`
+  mode that allows to safely join spawned threads. (#18281)
 
 3.1.28 - 12/08/22
 -----------------
