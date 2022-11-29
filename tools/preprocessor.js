@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+global.vm = require('vm');
 
 const arguments_ = process['argv'].slice(2);
 const debug = false;
@@ -46,7 +47,7 @@ global.read = function(filename) {
 };
 
 global.load = function(f) {
-  eval.call(null, read(f));
+  (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
 const settingsFile = arguments_[0];

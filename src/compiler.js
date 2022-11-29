@@ -8,6 +8,7 @@
 // LLVM => JavaScript compiler, main entry point
 
 const fs = require('fs');
+global.vm = require('vm');
 global.assert = require('assert');
 global.nodePath = require('path');
 
@@ -36,7 +37,7 @@ global.read = (filename) => {
 };
 
 function load(f) {
-  eval.call(null, read(f));
+  (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
 // Basic utilities
@@ -92,7 +93,7 @@ try {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
-    printErr('with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('with a log of the build and the input files used to run. Exception message: "' + (err.stack || err));
   }
 
   // Work around a node.js bug where stdout buffer is not flushed at process exit:

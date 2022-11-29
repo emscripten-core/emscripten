@@ -526,7 +526,7 @@ function ${name}(${args}) {
     const post = processMacros(preprocess(read(postFile), postFile));
     print(post);
 
-    print(processMacros(preprocess(shellParts[1], shellFile)));
+    print(processMacros(preprocess(shellParts[1], shellFile, shellParts[0].match(/\n/g).length)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
