@@ -33,6 +33,7 @@ See docs/process.md for more on how version tagging works.
   state normally stored on the stack is hidden within the runtime and does not
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
+- Improved error messages from custom JS libraries. (#18266)
 
 3.1.26 - 11/17/22
 -----------------
