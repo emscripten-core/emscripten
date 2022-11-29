@@ -27,6 +27,7 @@
 
 #if SANITIZER_EMSCRIPTEN
 #include "lsan/lsan_allocator.h"
+#include "emscripten/heap.h"
 #endif
 
 #if CAN_SANITIZE_LEAKS
@@ -530,10 +531,6 @@ void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
     ScanRangeForPointers(intersection_begin, intersection_end, frontier, "ROOT",
                          kReachable);
 }
-
-#if SANITIZER_EMSCRIPTEN
-extern "C" uptr emscripten_get_heap_size();
-#endif
 
 static void ProcessRootRegion(Frontier *frontier,
                               const RootRegion &root_region) {
