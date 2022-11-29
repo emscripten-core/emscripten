@@ -132,16 +132,19 @@ int main() {
 #endif
   assert(chdir("..") == 0);
 
+#ifdef WASMFS
   // Create a directory to be overwritten by the subsequent rename.
   assert(mkdir("SUBDIR2", S_IRWXUGO) == 0);
   int overwritten_dir = open("subdir2", O_RDONLY | O_DIRECTORY);
   assert(overwritten_dir != -1);
+#endif
 
   // Rename a directory.
   assert(rename("subdir", "Subdir2") == 0);
   assert(!exists("subdir"));
   assert(exists("subdir2"));
 
+#ifdef WASMFS
   // Check that the overwritten dir was properly unlinked.
   int cwd = open(".", O_DIRECTORY | O_RDONLY);
   assert(cwd != 0);
@@ -149,7 +152,10 @@ int main() {
   assert(getcwd(buffer, sizeof(buffer)) == NULL);
   assert(errno == ENOENT);
   assert(fchdir(cwd) == 0);
+#endif
 
+#ifdef WASMFS
+  // bug in legacy FS
   // Check that the parent of a moved directory is set correctly.
   assert(mkdir("subdir2/subsubdir", S_IRWXUGO) == 0);
   assert(rename("SubDir2/SubSubDir", "SUBSUBDIR") == 0);
@@ -160,6 +166,7 @@ int main() {
   assert(strcmp(buffer, "/SUBSUBDIR") == 0);
   assert(fchdir(cwd) == 0);
   assert(rmdir("subsubdir") == 0);
+#endif
 
   // Create a file symlink.
   assert(symlink("test2.txt", "test2.txt.lnk") == 0);
