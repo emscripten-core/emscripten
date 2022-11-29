@@ -159,13 +159,20 @@ int IgnoreCaseDirectory::insertMove(const std::string& name,
   auto oldParent =
     std::static_pointer_cast<IgnoreCaseDirectory>(file->locked().getParent());
   auto& oldChildren = oldParent->children;
+  // Delete the entry in the old parent.
   for (auto it = oldChildren.begin(); it != oldChildren.end(); ++it) {
     if (it->second.child == file) {
       oldChildren.erase(it);
       break;
     }
   }
-  children[normalized] = {name, file};
+  // Unlink the overwritten entry if it exists.
+  auto [it, inserted] = children.insert({normalized, {name, file}});
+  if (!inserted) {
+    it->second.child->locked().setParent(nullptr);
+    it->second = {name, file};
+  }
+
   return 0;
 }
 

@@ -257,7 +257,7 @@ protected:
   //  1. Ensuring that all insert* and getChild calls returning a particular
   //     file return the same File object.
   //
-  //  2. Clearing the File's parent field in `removeChild`.
+  //  2. Clearing unlinked Files' parents in `removeChild` and `insertMove`.
   //
   //  3. Implementing `getName`, since it cannot be implemented in terms of the
   //     dcache.

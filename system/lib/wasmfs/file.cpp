@@ -178,11 +178,12 @@ int Directory::Handle::insertMove(const std::string& name,
       it->second.file->locked().setParent(nullptr);
       it->second = entry;
     }
-    file->locked().setParent(getDir());
   } else {
     // This backend doesn't use the dcache.
     assert(getDir()->maintainsFileIdentity());
   }
+
+  file->locked().setParent(getDir());
 
   // TODO: Moving mount points probably shouldn't update the mtime.
   auto now = time(NULL);
