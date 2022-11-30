@@ -166,6 +166,13 @@ double emscripten_get_now(void) {
 // enabled (using wasm-eh) we get the real versions of these functions
 // as defined in libc++abi.
 
+// When using Emscripten exceptions we rely on __cxa_throw and __cxa_allocate_exception
+// being defined and exported by the JS part to handle exceptions.
+// I don't know exactly why but in that case we should not provide an implementation 
+// in C++ because if we do, then the program will use it and ignore the 
+// real version implemented in JS.
+
+#if !defined __USING_EMSCRIPTEN_EXCEPTIONS__
 __attribute__((__weak__))
 void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
@@ -175,6 +182,7 @@ __attribute__((__weak__))
 void* __cxa_allocate_exception(size_t thrown_size) {
   abort();
 }
+#endif
 
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.

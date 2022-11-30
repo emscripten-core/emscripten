@@ -1839,7 +1839,7 @@ class libasan_js(Library):
 # things that we'd normally do in JS. That includes some general things
 # as well as some additional musl components (that normally we reimplement
 # in JS as it's more efficient that way).
-class libstandalonewasm(MuslInternalLibrary):
+class libstandalonewasm(NoExceptLibrary, MuslInternalLibrary):
   name = 'libstandalonewasm'
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
@@ -1860,6 +1860,8 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
+    if self.eh_mode == Exceptions.EMSCRIPTEN:
+      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
     return cflags
