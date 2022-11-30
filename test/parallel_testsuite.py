@@ -15,11 +15,12 @@ import common
 
 NUM_CORES = None
 
-
-def run_test(test):
+def init_worker():
   # Prevent the "Terminate batch job (Y/N)?" dialog from intercepting Ctrl+C
   # on Windows.
   os.close(0)
+
+def run_test(test):
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
@@ -57,7 +58,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     tests = list(self.reversed_tests())
     use_cores = min(self.max_cores, len(tests), num_cores())
     print('Using %s parallel test processes' % use_cores)
-    pool = multiprocessing.Pool(use_cores)
+    pool = multiprocessing.Pool(use_cores, init_worker)
     results = [pool.apply_async(run_test, (t,)) for t in tests]
     results = [r.get() for r in results]
     pool.close()
