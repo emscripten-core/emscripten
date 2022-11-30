@@ -15,10 +15,12 @@ import common
 
 NUM_CORES = None
 
+
 def init_worker():
   # Prevent the "Terminate batch job (Y/N)?" dialog from intercepting Ctrl+C
   # on Windows.
   os.close(0)
+
 
 def run_test(test):
   olddir = os.getcwd()
