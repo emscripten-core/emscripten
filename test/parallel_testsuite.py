@@ -17,6 +17,9 @@ NUM_CORES = None
 
 
 def run_test(test):
+  # Prevent the "Terminate batch job (Y/N)?" dialog from intercepting Ctrl+C
+  # on Windows.
+  os.close(0)
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
