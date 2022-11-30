@@ -502,8 +502,6 @@ EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
 // FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void* __getDynamicPointerType(void* p);
-
 template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;

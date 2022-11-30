@@ -134,13 +134,7 @@ select_overload and select_const
 
 
 Functions
-=============
-
-.. cpp:function:: void* __getDynamicPointerType(void* p)
-
-
-   :param void* p
-
+=========
 
 .. cpp:function:: void function()
 
