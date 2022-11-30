@@ -234,7 +234,6 @@ class other(RunnerCore):
         self.run_process([compiler, '--generate-config'])
         self.assertExists(config_path)
         config_contents = read_file(config_path)
-        self.assertContained('EMSCRIPTEN_ROOT', config_contents)
         self.assertContained('LLVM_ROOT', config_contents)
         os.remove(config_path)
 

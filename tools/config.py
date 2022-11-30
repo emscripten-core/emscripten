@@ -176,7 +176,6 @@ def generate_config(path):
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
-  config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
   llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -199,10 +198,9 @@ It contains our best guesses for the important paths, which are:
   LLVM_ROOT       = %s
   BINARYEN_ROOT   = %s
   NODE_JS         = %s
-  EMSCRIPTEN_ROOT = %s
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node, __rootpath__), file=sys.stderr)
+''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
