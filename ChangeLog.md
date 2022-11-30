@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.27 (in development)
+3.1.28 (in development)
 -----------------------
+
+3.1.27 - 11/29/22
+-----------------
 - Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
 - Idle workers in a PThread pool no longer prevent Node.js app from exiting. (#18227)
 - The default `STACK_SIZE` was reduced from 5MB to 64KB.  Projects that use more
