@@ -579,6 +579,7 @@ static void *mmap_fixed(void *p, size_t n, int prot, int flags, int fd, off_t of
 {
 	static int no_map_fixed;
 	char *q;
+	if (!n) return p;
 	if (!no_map_fixed) {
 		q = mmap(p, n, prot, flags|MAP_FIXED, fd, off);
 		if (!DL_NOMMU_SUPPORT || q != MAP_FAILED || errno != EINVAL)
@@ -1830,7 +1831,7 @@ void __dls3(size_t *sp, size_t *auxv)
 			dprintf(2, "%s: cannot load %s: %s\n", ldname, argv[0], strerror(errno));
 			_exit(1);
 		}
-		Ehdr *ehdr = (void *)map_library(fd, &app);
+		Ehdr *ehdr = map_library(fd, &app);
 		if (!ehdr) {
 			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
 			_exit(1);
@@ -2330,7 +2331,8 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void 
 		info.dlpi_adds      = gencnt;
 		info.dlpi_subs      = 0;
 		info.dlpi_tls_modid = current->tls_id;
-		info.dlpi_tls_data  = current->tls.image;
+		info.dlpi_tls_data = !current->tls_id ? 0 :
+			__tls_get_addr((tls_mod_off_t[]){current->tls_id,0});
 
 		ret = (callback)(&info, sizeof (info), data);
 
