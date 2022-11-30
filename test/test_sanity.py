@@ -208,7 +208,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+    for content in ['LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -268,17 +268,6 @@ class sanity(RunnerCore):
         else:
           output = self.check_working(EMCC)
           self.assertNotContained(LLVM_WARNING, output)
-
-  def test_emscripten_root(self):
-    # The correct path
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root())
-    self.check_working(EMCC)
-
-    # The correct path with extra stuff
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
-    self.check_working(EMCC)
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
