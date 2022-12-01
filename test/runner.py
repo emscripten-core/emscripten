@@ -355,6 +355,10 @@ def configure():
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
 
+
+def main(args):
+  options = parse_args(args)
+
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
@@ -363,10 +367,6 @@ def configure():
     print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
   if os.getenv('EMTEST_VERBOSE'):
     print('Prefer --verbose over setting $EMTEST_VERBOSE')
-
-
-def main(args):
-  options = parse_args(args)
 
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
