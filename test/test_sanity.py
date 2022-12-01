@@ -671,7 +671,17 @@ fi
     self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG)
 
     open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG)
+
+  def test_empty_config(self):
+    restore_and_set_up()
+    make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    open(EM_CONFIG, 'w').close()
+    with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
+      self.check_working([EMCC])
 
   def test_embuilder_force(self):
     restore_and_set_up()
