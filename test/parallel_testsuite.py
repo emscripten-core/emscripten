@@ -19,7 +19,8 @@ NUM_CORES = None
 def init_worker():
   # Prevent the "Terminate batch job (Y/N)?" dialog from intercepting Ctrl+C
   # on Windows.
-  os.close(0)
+  devnull = os.open(os.devnull, os.O_RDONLY)
+  os.dup2(devnull, sys.stdin.fileno())
 
 
 def run_test(test):
