@@ -36,8 +36,8 @@ commands:
           name: download chrome
           command: |
             # Using stable rather than beta until we can fix
-            # https://github.com/emscripten-core/emscripten/issues/14369
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # https://github.com/emscripten-core/emscripten/issues/18293
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
