@@ -7,11 +7,8 @@ dynCall_iiiiij
 dynCall_iiiiijj
 dynCall_jiji
 dynCall_viijii
-free
 main
-malloc
 memory
-setThrew
 stackAlloc
 stackRestore
 stackSave

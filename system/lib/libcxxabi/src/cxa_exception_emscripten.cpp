@@ -32,9 +32,6 @@ __gxx_personality_v0(int version,
 }
 #endif // !defined(__USING_WASM_EXCEPTIONS__)
 
-#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
-  defined(__USING_WASM_EXCEPTIONS__)
-
 using namespace __cxxabiv1;
 
 //  Some utility routines are copied from cxa_exception.cpp
@@ -49,6 +46,9 @@ static inline void*
 thrown_object_from_cxa_exception(__cxa_exception* exception_header) {
   return static_cast<void*>(exception_header + 1);
 }
+
+#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
+  defined(__USING_WASM_EXCEPTIONS__)
 
 //  Get the exception object from the unwind pointer.
 //  Relies on the structure layout, where the unwind pointer is right in
@@ -130,3 +130,21 @@ char* __get_exception_terminate_message(void* thrown_object) {
 }
 
 #endif // __USING_EMSCRIPTEN_EXCEPTIONS__ || __USING_WASM_EXCEPTIONS__
+
+#ifndef __USING_WASM_EXCEPTIONS__
+
+namespace __cxxabiv1 {
+
+void* __cxa_allocate_exception(size_t size) _NOEXCEPT {
+  // Thrown object is prepended by exception metadata block
+  __cxa_exception* ex = (__cxa_exception*)malloc(size + sizeof(__cxa_exception));
+  return thrown_object_from_cxa_exception(ex);
+}
+
+void __cxa_free_exception(void *thrown_object) _NOEXCEPT {
+  free(cxa_exception_from_thrown_object(thrown_object));
+}
+
+}
+
+#endif // !__USING_WASM_EXCEPTIONS__

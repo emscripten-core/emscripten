@@ -61,9 +61,6 @@ _deps_info = {
   'SDL_PushEvent': ['malloc', 'free'],
   'SDL_free': ['free'],
   'SDL_malloc': ['malloc', 'free'],
-  '__cxa_allocate_exception': ['malloc'],
-  '__cxa_end_catch': ['setThrew', 'free'],
-  '__cxa_free_exception': ['free'],
   '_embind_register_class': ['free'],
   '_embind_register_enum_value': ['free'],
   '_embind_register_function': ['free'],
@@ -194,7 +191,7 @@ _deps_info = {
 
 def get_deps_info():
   if not settings.WASM_EXCEPTIONS and settings.LINK_AS_CXX:
-    _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
+    _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type', '__cxa_free_exception']
     _deps_info['__cxa_throw'] = ['__cxa_is_pointer_type']
     _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch', 'setTempRet0']
     _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch', 'setTempRet0']

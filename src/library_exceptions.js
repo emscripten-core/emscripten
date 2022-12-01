@@ -163,29 +163,6 @@ var LibraryExceptions = {
     }
   },
 
-  // Exceptions
-  __cxa_allocate_exception__sig: 'pp',
-  __cxa_allocate_exception: function(size) {
-    // Thrown object is prepended by exception metadata block
-    return _malloc(size + {{{ C_STRUCTS.__cxa_exception.__size__ }}}) + {{{ C_STRUCTS.__cxa_exception.__size__ }}};
-  },
-
-  __cxa_free_exception__deps: ['$ExceptionInfo'],
-  __cxa_free_exception__sig: 'vp',
-  __cxa_free_exception: function(ptr) {
-#if ABORTING_MALLOC || ASSERTIONS
-    try {
-#endif
-      return _free(new ExceptionInfo(ptr).ptr);
-#if ABORTING_MALLOC || ASSERTIONS
-    } catch(e) {
-#if ASSERTIONS
-      err('exception during __cxa_free_exception: ' + e);
-#endif
-    }
-#endif
-  },
-
   __cxa_increment_exception_refcount__deps: ['$exception_addRef', '$ExceptionInfo'],
   __cxa_increment_exception_refcount__sig: 'vp',
   __cxa_increment_exception_refcount: function(ptr) {
