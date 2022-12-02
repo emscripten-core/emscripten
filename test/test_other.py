@@ -7286,7 +7286,7 @@ int main() {
     create_file('test.c', r'''
 #include <stdio.h>
 
-void foo() {
+static void foo() {
   printf("foo\n");
 }
 
@@ -7297,17 +7297,12 @@ int main() {
 ''')
 
     # Without the 'INLINING_LIMIT', -O2 inlines foo()
-    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-sINLINING_LIMIT', '-flto']
+    cmd = [EMCC, 'test.c', '-O2', '-o', 'test.wasm', '-c', '-sINLINING_LIMIT', '-g']
     self.run_process(cmd)
-    # If foo() had been wrongly inlined above, internalizing foo and running
-    # global DCE makes foo DCE'd
-    opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
-    self.run_process([shared.LLVM_OPT] + opts + ['test.o', '-o', 'test2.o'])
 
-    # To this test to be successful, foo() shouldn't have been inlined above and
-    # foo() should be in the function list
-    output = self.run_process([shared.EM_NM, 'test2.o'], stdout=PIPE).stdout
-    self.assertContained('foo', output)
+    # If foo was inlined, it will have no callers and be DCEd because it is static
+    output = self.run_process([shared.LLVM_OBJDUMP, '-d', 'test.wasm'], stdout=PIPE).stdout
+    self.assertContained('<foo>', output)
 
   def test_output_eol(self):
     for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-sWASM=0']]:
