@@ -234,7 +234,6 @@ class other(RunnerCore):
         self.run_process([compiler, '--generate-config'])
         self.assertExists(config_path)
         config_contents = read_file(config_path)
-        self.assertContained('EMSCRIPTEN_ROOT', config_contents)
         self.assertContained('LLVM_ROOT', config_contents)
         os.remove(config_path)
 
@@ -7851,12 +7850,12 @@ int main() {
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
-      ([],                               False),
+      ([],                           False),
       (['-sSTANDALONE_WASM'],        False),
-      (['-O2'],                          False),
-      (['-O3'],                          True),
+      (['-O2'],                      False),
+      (['-O3'],                      True),
       (['-O3', '-sSTANDALONE_WASM'], False),
-      (['-Os'],                          True),
+      (['-Os'],                      True),
     ):
       # targeting .wasm (without .js) means we enable STANDALONE_WASM automatically, and don't minify imports/exports
       for target in ('out.js', 'out.wasm'):
@@ -7878,11 +7877,11 @@ int main() {
         print('  exports', exports)
         print('  imports', imports)
         if expect_minified_exports_and_imports:
-          assert 'a' in exports_and_imports
+          self.assertContained('a', exports_and_imports)
         else:
-          assert 'a' not in exports_and_imports
+          self.assertNotContained('a', exports_and_imports)
         if standalone:
-          assert 'fd_write' in exports_and_imports, 'standalone mode preserves import names for WASI APIs'
+          self.assertContained('fd_write', exports_and_imports, 'standalone mode preserves import names for WASI APIs')
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', self.run_js('out.js'))

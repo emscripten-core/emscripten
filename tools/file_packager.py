@@ -345,9 +345,9 @@ def generate_object_file(data_files):
     target = 'wasm64-unknown-emscripten'
   else:
     target = 'wasm32-unknown-emscripten'
-  shared.check_call([shared.LLVM_MC,
-                     '-filetype=obj',
-                     '-triple=' + target,
+  shared.check_call([shared.EMCC,
+                     '-c',
+                     '--target=' + target,
                      '-o', options.obj_output,
                      asm_file])
 

@@ -5,8 +5,10 @@
  * found in the LICENSE file.
  */
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -219,3 +221,10 @@ static void wasi_writeln(__wasi_fd_t fd, char* buffer) {
 void _emscripten_out(char* text) { wasi_writeln(1, text); }
 
 void _emscripten_err(char* text) { wasi_writeln(2, text); }
+
+// In the non-standalone build we define this helper function in JS to avoid
+// signture mismatch issues.
+// See: https://github.com/emscripten-core/posixtestsuite/issues/6
+void __call_sighandler(sighandler_t handler, int sig) {
+  handler(sig);
+}
