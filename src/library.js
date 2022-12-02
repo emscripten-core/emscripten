@@ -2328,12 +2328,10 @@ mergeInto(LibraryManager.library, {
                                "} else " +
 #endif
 #if USE_PTHREADS
-// Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
-// N.b. Wasm workers do not provide this kind of clock synchronization.
-                               "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
-                               "} else " +
-#endif
+// Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
+// make sure to adjust all timings to the respective time origins.
+                               "_emscripten_get_now = () => performance.timeOrigin + performance.now();\n",
+#else
 #if ENVIRONMENT_MAY_BE_SHELL
                                "if (typeof dateNow != 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
@@ -2349,6 +2347,7 @@ mergeInto(LibraryManager.library, {
                                // Modern environment where performance.now() is supported:
                                // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
                                "_emscripten_get_now = () => performance.now();\n",
+#endif
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds

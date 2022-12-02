@@ -26,6 +26,12 @@ See docs/process.md for more on how version tagging works.
   applications that wish to know where emscripten is installed looking for
   `emcc` in the `PATH` has long been the recommended method (i.e. `which emcc`).
   (#18279)
+- More accurate synchronisation of `emscripten_get_now` clocks between main
+  thread and pthreads.
+  This also changes the absolute value returned by the function, but it shouldn't
+  affect correct usages as the function has always returned different values on
+  different platforms, and is clearly documented as "only meaningful in
+  comparison to other calls to this function". (#18267)
 
 3.1.27 - 11/29/22
 -----------------

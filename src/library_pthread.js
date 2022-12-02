@@ -607,7 +607,6 @@ var LibraryPThread = {
         worker.ref();
       }
 #endif
-      msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
       delete worker.runPthread;
     };
