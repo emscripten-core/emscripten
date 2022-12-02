@@ -238,11 +238,11 @@ var LibraryPThread = {
       // module loaded.
       PThread.tlsInitFunctions.forEach((f) => f());
     },
-    // Loads the WebAssembly module into the given list of Workers.
+    // Loads the WebAssembly module into the given Worker.
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
-    loadWasmModuleToWorker: function(worker, onFinishedLoading) {
+    loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
@@ -284,7 +284,7 @@ var LibraryPThread = {
             worker.unref();
           }
 #endif
-          if (onFinishedLoading) onFinishedLoading(worker);
+          onFinishedLoading(worker);
           // If this Worker is already pending to start running a thread, launch the thread now
           if (worker.runPthread) {
             worker.runPthread();
@@ -400,6 +400,28 @@ var LibraryPThread = {
         'workerID': PThread.nextWorkerID++,
 #endif
       });
+    }),
+
+    loadWasmModuleToAllWorkers: function(onMaybeReady) {
+#if !PTHREAD_POOL_SIZE
+      onMaybeReady();
+#else
+      // Instantiation is synchronous in pthreads and we assert on run dependencies.
+      if (
+        ENVIRONMENT_IS_PTHREAD
+#if WASM_WORKERS
+        || ENVIRONMENT_IS_WASM_WORKER
+#endif
+      ) return onMaybeReady();
+      let promises = PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker);
+#if PTHREAD_POOL_DELAY_LOAD
+      // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
+      // waiting for the pthread pool during the startup phase.
+      onMaybeReady();
+#else
+      Promise.all(promises).then(onMaybeReady);
+#endif // PTHREAD_POOL_DELAY_LOAD
+#endif // PTHREAD_POOL_SIZE
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
