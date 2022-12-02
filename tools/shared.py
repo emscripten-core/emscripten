@@ -290,23 +290,22 @@ def check_llvm_version():
   return False
 
 
-def get_llc_targets():
-  if not os.path.exists(LLVM_COMPILER):
-    exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
+def get_clang_targets():
+  if not os.path.exists(CLANG_CC):
+    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
   try:
-    llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
-  except subprocess.CalledProcessError:
-    exit_with_error('error running `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
-  if 'Registered Targets:' not in llc_version_info:
-    exit_with_error('error parsing output of `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
-  pre, targets = llc_version_info.split('Registered Targets:')
-  return targets
+    target_info = run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
+  except subprocess.CalldProcessError:
+    exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+  if 'Registered Targets:' not in target_info:
+    exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+  return target_info.split('Registered Targets:')[1]
 
 
 def check_llvm():
-  targets = get_llc_targets()
-  if 'wasm32' not in targets and 'WebAssembly 32-bit' not in targets:
-    logger.critical('LLVM has not been built with the WebAssembly backend, llc reports:')
+  targets = get_clang_targets()
+  if 'wasm32' not in targets:
+    logger.critical('LLVM has not been built with the WebAssembly backend, clang reports:')
     print('===========================================================================', file=sys.stderr)
     print(targets, file=sys.stderr)
     print('===========================================================================', file=sys.stderr)
@@ -748,8 +747,6 @@ LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
-LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
-LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
