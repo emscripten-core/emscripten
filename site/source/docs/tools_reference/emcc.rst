@@ -286,28 +286,44 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--embed-file <file>``
   [link]
-  Specify a file (with path) to embed inside the generated JavaScript. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file (with path) to embed inside the generated WebAssembly module.
+  The path is relative to the current directory at compile time. If a directory
+  is passed here, its entire contents will be embedded.
 
-  For example, if the command includes ``--embed-file dir/file.dat``, then ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
+  For example, if the command includes ``--embed-file dir/file.dat``, then
+  ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
 
-  .. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
+  .. note:: Embedding files is generally more efficient than :ref:`preloading
+     <emcc-preload-file>` as it avoids copying the file data at runtime.
 
-  For more information about the ``--embed-file`` options, see :ref:`packaging-files`.
+  For more information about the ``--embed-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-preload-file:
 
 ``--preload-file <name>``
   [link]
-  Specify a file to preload before running the compiled code asynchronously. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file to preload before running the compiled code asynchronously. The
+  path is relative to the current directory at compile time. If a directory is
+  passed here, its entire contents will be embedded.
 
-  Preloaded files are stored in **filename.data**, where **filename.html** is the main file you are compiling to. To run your code, you will need both the **.html** and the **.data**.
+  Preloaded files are stored in **filename.data**, where **filename.html** is
+  the main file you are compiling to. To run your code, you will need both the
+  **.html** and the **.data**.
 
-  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
+  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`,
+     except that it is only relevant when generating HTML (it uses asynchronous
+     binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
-  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+  *emcc* runs `tools/file_packager
+  <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_
+  to do the actual packaging of embedded and preloaded files. You can run the
+  file packager yourself if you want (see :ref:`packaging-files-file-packager`).
+  You should then put the output of the file packager in an emcc ``--pre-js``,
+  so that it executes before your main compiled code.
 
-  For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
-
+  For more information about the ``--preload-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-exclude-file:
 
