@@ -11595,6 +11595,7 @@ exec "$@"
         cmd.append('-sASYNCIFY')
       if function.startswith('emscripten_webgl_') or 'offscreencanvas' in function:
         cmd.append('-sOFFSCREENCANVAS_SUPPORT')
+        cmd.append('-sUSE_PTHREADS')
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
