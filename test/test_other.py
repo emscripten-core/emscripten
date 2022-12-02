@@ -7286,7 +7286,7 @@ int main() {
     create_file('test.c', r'''
 #include <stdio.h>
 
-void foo() {
+static void foo() {
   printf("foo\n");
 }
 
@@ -7296,17 +7296,11 @@ int main() {
 }
 ''')
 
-    # Without the 'INLINING_LIMIT', -O2 inlines foo()
-    cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-sINLINING_LIMIT', '-flto']
+    # Without the 'INLINING_LIMIT', -O2 inlines foo() and then DCEs it because it has
+    # no callers and is static
+    cmd = [EMCC, 'test.c', '-O2', '-o', 'test.o', '-c', '-sINLINING_LIMIT']
     self.run_process(cmd)
-    # If foo() had been wrongly inlined above, internalizing foo and running
-    # global DCE makes foo DCE'd
-    opts = ['-internalize', '-internalize-public-api-list=main', '-globaldce']
-    self.run_process([shared.LLVM_OPT] + opts + ['test.o', '-o', 'test2.o'])
-
-    # To this test to be successful, foo() shouldn't have been inlined above and
-    # foo() should be in the function list
-    output = self.run_process([shared.EM_NM, 'test2.o'], stdout=PIPE).stdout
+    output = self.run_process([common.LLVM_OBJDUMP, '-t', 'test.o'], stdout=PIPE).stdout
     self.assertContained('foo', output)
 
   def test_output_eol(self):
