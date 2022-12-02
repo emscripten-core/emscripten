@@ -176,7 +176,7 @@ def generate_config(path):
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
-  llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
+  llvm_root = os.path.dirname(which('wasm-ld') or '/usr/bin/wasm-ld')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
   binaryen_root = os.path.dirname(os.path.dirname(which('wasm-opt') or '/usr/local/bin/wasm-opt'))
