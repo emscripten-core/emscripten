@@ -210,6 +210,12 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 // Exported for use in worker.js, but otherwise an internal function.
 EMSCRIPTEN_KEEPALIVE
 void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
+  // Before we attempt to execute a request from another thread make sure we
+  // are in sync with all the loaded code.
+  // For example, in PROXY_TO_PTHREAD the atexit functions are called via
+  // a proxied call, and without this call to syncronize we would crash if
+  // any atexit functions were registered from a side module.
+  _emscripten_thread_sync_code();
   em_task_queue_execute(tasks);
 }
 
