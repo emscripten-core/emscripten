@@ -62,7 +62,7 @@ NODE_JS = %s
 ''' % (config.LLVM_ROOT, config.BINARYEN_ROOT, config.NODE_JS)
 
 
-def make_fake_tool(filename, version, report_name=None):
+def make_fake_tool(filename, version, report_name=None, extra_output=None):
   if not report_name:
     report_name = os.path.basename(filename)
   print('make_fake_tool: %s' % filename)
@@ -71,28 +71,19 @@ def make_fake_tool(filename, version, report_name=None):
     f.write('#!/bin/sh\n')
     f.write('echo "%s version %s"\n' % (report_name, version))
     f.write('echo "..."\n')
+    if extra_output:
+      f.write('echo "%s"' % extra_output)
     f.write('exit 0\n')
   make_executable(filename)
 
 
-def make_fake_clang(filename, version):
+def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
-  make_fake_tool(filename, version)
-  make_fake_tool(filename + '++', version)
-
-
-def make_fake_llc(filename, targets):
-  """Create a fake llc that only handles --version and writes target
-  list to stdout.
-  """
-  print('make_fake_llc: %s' % filename)
-  ensure_dir(os.path.dirname(filename))
-  with open(filename, 'w') as f:
-    f.write('#!/bin/sh\n')
-    f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
-  make_executable(filename)
+  output = 'clang fake output\nRegistered Targets:\n%s' % targets
+  make_fake_tool(filename, version, output)
+  make_fake_tool(filename + '++', version, output)
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
@@ -248,7 +239,7 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
     real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
-    make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_tool(self.in_dir('fake', 'wasm-ld'), EXPECTED_LLVM_VERSION)
 
     for inc_x in range(-2, 3):
@@ -424,7 +415,6 @@ fi
     restore_and_set_up()
     self.ensure_cache()
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertExists(cache.cachedir)
       output = self.do([EMCC])
@@ -660,8 +650,7 @@ fi
         # doesn't actually use it.
         f.write('BINARYEN_ROOT = "%s"\n' % self.in_dir('fake', 'bin'))
 
-      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
-      make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)
+      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION, report)
       make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), EXPECTED_LLVM_VERSION)
 
     # fake llc output
