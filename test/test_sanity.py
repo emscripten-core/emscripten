@@ -172,7 +172,7 @@ class sanity(RunnerCore):
         open(os.path.join(temp_bin, name), 'w').close()
         make_executable(os.path.join(temp_bin, name))
 
-      make_new_executable('llvm-dis')
+      make_new_executable('wasm-ld')
       make_new_executable('node')
 
       with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
