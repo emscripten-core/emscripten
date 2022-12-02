@@ -7301,7 +7301,7 @@ int main() {
     self.run_process(cmd)
 
     # If foo was inlined, it will have no callers and be DCEd because it is static
-    output = self.run_process([shared.LLVM_OBJDUMP, '-d', 'test.wasm'], stdout=PIPE).stdout
+    output = self.run_process([common.LLVM_OBJDUMP, '-d', 'test.wasm'], stdout=PIPE).stdout
     self.assertContained('<foo>', output)
 
   def test_output_eol(self):
