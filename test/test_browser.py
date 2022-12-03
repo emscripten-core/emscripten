@@ -4080,7 +4080,7 @@ Module["preRun"].push(function () {
         self.btest(test_file('gauge_available_memory.cpp'), expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread work
-  @no_chrome('https://github.com/emscripten-core/emscripten/issues/18210')
+  @disabled('https://github.com/emscripten-core/emscripten/issues/18210')
   @requires_threads
   def test_pthread_run_on_main_thread(self):
     self.btest_exit(test_file('pthread/test_pthread_run_on_main_thread.cpp'), args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE'])
