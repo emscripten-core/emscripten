@@ -149,6 +149,9 @@ var LibraryGL = {
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
   $GL__deps: [
+#if USE_PTHREADS
+    'malloc', // Needed by registerContext
+#endif
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
