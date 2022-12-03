@@ -2620,7 +2620,6 @@ def phase_linker_setup(options, state, newargs):
      settings.USE_WEBGPU or \
      settings.OFFSCREENCANVAS_SUPPORT or \
      settings.LEGACY_GL_EMULATION or \
-     not settings.DISABLE_EXCEPTION_CATCHING or \
      settings.ASYNCIFY or \
      settings.WASMFS or \
      settings.DEMANGLE_SUPPORT or \
@@ -2646,6 +2645,7 @@ def phase_linker_setup(options, state, newargs):
       # setThrew(). We cannot handle this using deps_info as the invokes are not
       # emitted because of library function usage, but by codegen itself.
       'setThrew',
+      '__cxa_free_exception',
     ]
 
   if settings.ASYNCIFY:

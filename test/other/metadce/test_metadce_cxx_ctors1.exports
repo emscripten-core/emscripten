@@ -8,7 +8,6 @@ dynCall_iiiiijj
 dynCall_jiji
 dynCall_viijii
 main
-malloc
 memory
 stackAlloc
 stackRestore

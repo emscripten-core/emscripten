@@ -1454,7 +1454,10 @@ int main(int argc, char **argv)
     if '-fsanitize=leak' not in self.emcc_args:
       self.assertGreater(size - empty_size, 0.01 * size)
     # full disable can remove a little bit more
-    self.assertLess(disabled_size, fake_size)
+    # For some reason this no longer holds true at high optimizations
+    # levels: https://github.com/emscripten-core/emscripten/issues/18312
+    if not any(o in self.emcc_args for o in ('-O3', '-Oz', '-Os')):
+      self.assertLess(disabled_size, fake_size)
 
   @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_allowed_2(self):
@@ -1649,7 +1652,7 @@ int main(int argc, char **argv)
       self.emcc_args.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
 
     self.maybe_closure()
-    src = '''
+    create_file('main.cpp', '''
       #include <emscripten.h>
       #include <exception>
       #include <stdexcept>
@@ -1702,7 +1705,7 @@ int main(int argc, char **argv)
             }
           });
       }
-    '''
+    ''')
     expected = '''\
 int,
 char,
@@ -1711,7 +1714,7 @@ myexception,My exception happened
 char const*,
 '''
 
-    self.do_run(src, expected)
+    self.do_runf('main.cpp', expected)
 
   @with_both_eh_sjlj
   def test_bad_typeid(self):
@@ -4700,8 +4703,8 @@ res64 - external 64\n''', header='''\
   @parameterized({
     'libcxx': ('libc,libc++,libmalloc,libc++abi',),
     'all': ('1',),
-    'missing': ('libc,libmalloc', False, False, False),
-    'missing_assertions': ('libc,libmalloc', False, False, True),
+    'missing': ('libc,libmalloc,libc++abi', False, False, False),
+    'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
   def test_dylink_syslibs(self, syslibs, expect_pass=True, need_reverse=True, assertions=True):
     # one module uses libcxx, need to force its inclusion when it isn't the main
