@@ -18,6 +18,12 @@ var EMSCRIPTEN$AWAIT$IMPORT;
 // Don't minify createRequire
 var createRequire;
 
+// Don't minify startWorker which we use to start workers once the runtime is ready.
+/**
+ * @param {Object} Module
+ */
+var startWorker = function(Module) {};
+
 // Closure externs used by library_sockfs.js
 
 /**

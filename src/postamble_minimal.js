@@ -246,13 +246,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   ready();
 #endif
-
-#if USE_PTHREADS
-  // This Worker is now ready to host pthreads, tell the main thread we can proceed.
-  if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ 'cmd': 'loaded' });
-  }
-#endif
 }
 
 #if ASSERTIONS || WASM == 2

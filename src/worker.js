@@ -114,6 +114,15 @@ self.onunhandledrejection = (e) => {
   throw e.reason ?? e;
 };
 
+// Add a callback for when the runtime is initialized.
+self.startWorker = (instance) => {
+#if MODULARIZE
+  Module = instance;
+#endif
+  // Notify the main thread that this thread has loaded.
+  postMessage({ 'cmd': 'loaded' });
+};
+
 self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -167,11 +176,8 @@ self.onmessage = (e) => {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
-        return exports.default(Module);
-      }).then(function(instance) {
-        Module = instance;
-      });
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}'))
+      .then(exports => exports.default(Module));
 #else
       if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
@@ -194,13 +200,9 @@ self.onmessage = (e) => {
       }
 #if MODULARIZE
 #if MINIMAL_RUNTIME
-      {{{ EXPORT_NAME }}}(imports).then(function (instance) {
-        Module = instance;
-      });
+      {{{ EXPORT_NAME }}}(imports);
 #else
-      {{{ EXPORT_NAME }}}(Module).then(function (instance) {
-        Module = instance;
-      });
+      {{{ EXPORT_NAME }}}(Module);
 #endif
 #endif
 #endif // MODULARIZE && EXPORT_ES6
