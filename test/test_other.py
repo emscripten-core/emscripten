@@ -1634,7 +1634,8 @@ int f() {
     'embed': (['--embed-file', 'somefile.txt'],),
     'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
     'preload': (['--preload-file', 'somefile.txt'],),
-    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],),
+    'preload_es6': (['-sEXPORT_ES6', '--preload-file', 'somefile.txt'],),
   })
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
@@ -1654,10 +1655,17 @@ int f() {
         return 0;
       }
     ''')
+    export_es6 = '-sEXPORT_ES6' in args
+    # EXPORT_ES6 implies MODULARIZE
+    if export_es6:
+      create_file('extern-post.js', 'await Module();')
+      args += ['--extern-post-js', 'extern-post.js']
 
-    self.run_process([EMCC, 'main.c'] + args)
+    # ES modules requires the .mjs file extension on Node
+    output_filename = 'test.mjs' if export_es6 else 'test.js'
+    self.run_process([EMCC, 'main.c', '-o', output_filename] + args)
     # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js', engine=config.NODE_JS)
+    result = self.run_js(output_filename, engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
   @parameterized({
