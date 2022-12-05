@@ -179,7 +179,7 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
-def compile_settings():
+def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
     stderr_file = os.path.abspath(stderr_file)
@@ -199,11 +199,18 @@ def compile_settings():
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
+    args = [settings_file]
+    if symbols_only:
+      args += ['--symbols-only']
     out = shared.run_js_tool(path_from_root('src/compiler.js'),
-                             [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
+                             args, stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env, encoding='utf-8')
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  if symbols_only:
+    glue = None
+    forwarded_data = out
+  else:
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+    glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data
 
 
@@ -367,7 +374,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
-  glue, forwarded_data = compile_settings()
+  glue, forwarded_data = compile_javascript()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
