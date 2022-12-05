@@ -21,6 +21,7 @@ var Fetch = {
   },
 
 #if FETCH_SUPPORT_INDEXEDDB
+  // Be cautious that `onerror` may be run synchronously
   openDatabase: function(dbname, dbversion, onsuccess, onerror) {
     try {
 #if FETCH_DEBUG
@@ -68,12 +69,11 @@ var Fetch = {
         removeRunDependency('library_fetch_init');
       }
     };
+    if (isMainThread) {
+      addRunDependency('library_fetch_init');
+    }
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
-
-#if FETCH_SUPPORT_INDEXEDDB
-    if (typeof ENVIRONMENT_IS_FETCH_WORKER == 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
-#endif
   }
 }
 

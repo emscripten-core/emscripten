@@ -12326,6 +12326,21 @@ Module['postRun'] = function() {{
     self.build(test_file('fetch/example_waitable_xhr_to_memory.c'))
     self.build(test_file('fetch/example_xhr_progress.c'))
 
+  def test_fetch_init_node(self):
+    # Make sure that `Fetch` initialises correctly under Node where
+    # IndexedDB isn't available.
+    self.set_setting('FETCH')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['Fetch'])
+    create_file('src.c', r'''
+#include <stdio.h>
+int main() {
+  puts("ok");
+}
+''')
+    self.run_process([EMCC, 'src.c', '-sFETCH', '-sEXPORTED_RUNTIME_METHODS=["Fetch"]'])
+    ret = self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
+    self.assertContained('ok', ret)
+
   # Test that using llvm-nm works when response files are in use, and inputs are linked using relative paths.
   # llvm-nm has a quirk that it does not remove escape chars when printing out filenames.
   @with_env_modify({'EM_FORCE_RESPONSE_FILES': '1'})
