@@ -17,8 +17,10 @@ let currentlyParsedFilename = '';
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
 function processMacros(text) {
-  return text.replace(/{{{([^}]|}(?!}))+}}}/g, (str) => {
-    str = str.substr(3, str.length - 6);
+  // The `?` here in makes the regex non-greedy so it matches with the closest
+  // set of closing braces.
+  // `[\s\S]` works like `.` but include newline.
+  return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
     try {
       const ret = eval(str);
       return ret !== null ? ret.toString() : '';
