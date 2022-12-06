@@ -23,6 +23,8 @@ emcc can be influenced by a few environment variables:
 from tools.toolchain_profiler import ToolchainProfiler
 
 import base64
+import glob
+import hashlib
 import json
 import logging
 import os
@@ -39,7 +41,7 @@ from urllib.parse import quote
 
 
 import emscripten
-from tools import shared, system_libs, utils, ports
+from tools import shared, system_libs, utils, ports, filelock
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
@@ -500,8 +502,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-@ToolchainProfiler.profile_block('JS symbol generation')
-def get_all_js_syms():
+def generate_js_symbols():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
   # list of symbols depends on what settings are used.
@@ -516,6 +517,56 @@ def get_all_js_syms():
     if shared.is_c_symbol(name):
       name = shared.demangle_c_symbol_name(name)
       library_syms.add(name)
+  return library_syms
+
+
+@ToolchainProfiler.profile_block('JS symbol generation')
+def get_all_js_syms():
+  # Avoiding using the cache when generating struct info since
+  # this step is performed while the cache is locked.
+  if settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
+    return generate_js_symbols()
+
+  # We define a cache hit as when the settings and `--js-library` contents are
+  # identical.
+  input_files = [json.dumps(settings.dict(), sort_keys=True, indent=2)]
+  for jslib in sorted(glob.glob(utils.path_from_root('src') + '/library*.js')):
+    input_files.append(read_file(jslib))
+  for jslib in settings.JS_LIBRARIES:
+    if not os.path.isabs(jslib):
+      jslib = utils.path_from_root('src', jslib)
+    input_files.append(read_file(jslib))
+  content = '\n'.join(input_files)
+  content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+
+  def build_symbol_list(filename):
+    """Only called when there is no existing symbol list for a given content hash.
+    """
+    library_syms = generate_js_symbols()
+    write_file(filename, '\n'.join(library_syms) + '\n')
+
+  # We need to use a separate lock here for symbol lists because, unlike with system libraries,
+  # it's normally for these file to get pruned as part of normal operation.  This means that it
+  # can be deleted between the `cache.get()` then the `read_file`.
+  with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
+    filename = cache.get(f'symbol_lists/{content_hash}.txt', build_symbol_list)
+    library_syms = read_file(filename).splitlines()
+
+    # Limit of the overall size of the cache to 100 files.
+    # This code will get test coverage once we make LLD_REPORT_UNDEFINED the default
+    # since under those circumstances a full test run of `other` or `core` generates
+    # ~1000 unique symbol lists.
+    cache_limit = 100
+    root = cache.get_path('symbol_lists')
+    if len(os.listdir(root)) > cache_limit:
+      files = []
+      for f in os.listdir(root):
+        f = os.path.join(root, f)
+        files.append((f, os.path.getmtime(f)))
+      files.sort(key=lambda x: x[1])
+      # Delete all but the newest N files
+      for f, _ in files[:-cache_limit]:
+        delete_file(f)
 
   return library_syms
 
