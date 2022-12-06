@@ -508,23 +508,14 @@ def get_all_js_syms():
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
-  old_full = settings.INCLUDE_FULL_LIBRARY
-  try:
-    # Temporarily define INCLUDE_FULL_LIBRARY since we want a full list
-    # of all available JS library functions.
-    settings.INCLUDE_FULL_LIBRARY = True
-    settings.ONLY_CALC_JS_SYMBOLS = True
-    emscripten.generate_struct_info()
-    glue, forwarded_data = emscripten.compile_settings()
-    forwarded_json = json.loads(forwarded_data)
-    library_syms = set()
-    for name in forwarded_json['librarySymbols']:
-      if shared.is_c_symbol(name):
-        name = shared.demangle_c_symbol_name(name)
-        library_syms.add(name)
-  finally:
-    settings.ONLY_CALC_JS_SYMBOLS = False
-    settings.INCLUDE_FULL_LIBRARY = old_full
+  emscripten.generate_struct_info()
+  glue, forwarded_data = emscripten.compile_javascript(symbols_only=True)
+  forwarded_json = json.loads(forwarded_data)
+  library_syms = set()
+  for name in forwarded_json:
+    if shared.is_c_symbol(name):
+      name = shared.demangle_c_symbol_name(name)
+      library_syms.add(name)
 
   return library_syms
 

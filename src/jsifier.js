@@ -540,5 +540,10 @@ function ${name}(${args}) {
   // Data
   functionStubs.forEach(functionStubHandler);
 
+  if (ONLY_CALC_JS_SYMBOLS) {
+    print(JSON.stringify(librarySymbols));
+    return;
+  }
+
   finalCombiner();
 }
