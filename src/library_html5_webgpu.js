@@ -1,4 +1,4 @@
-{{{ (function() {
+{{{
   // Helper functions for code generation
   global.html5_gpu = {
     makeImportExport: function(snake_case, CamelCase) {
@@ -17,8 +17,8 @@
       return s;
     },
   };
-  return null;
-})(); }}}
+  null;
+}}}
 
 
 var LibraryHTML5WebGPU = {

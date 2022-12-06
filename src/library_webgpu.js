@@ -21,7 +21,7 @@
  *   (requires WebGPU to be available - otherwise the test will skip itself and pass)
  */
 
-{{{ (function() {
+{{{
   // Helper functions for code generation
   global.gpu = {
     makeInitManager: function(type) {
@@ -157,8 +157,8 @@
       VertexBufferNotUsed: 2,
     },
   };
-  return null;
-})(); }}}
+  null;
+}}}
 
 var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',

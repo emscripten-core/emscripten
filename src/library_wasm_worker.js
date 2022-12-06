@@ -1,6 +1,9 @@
-{{{ (function() { global.captureModuleArg = function() { return MODULARIZE ? '' : 'self.Module=d;'; }; return null; })(); }}}
-{{{ (function() { global.instantiateModule = function() { return MODULARIZE ? `${EXPORT_NAME}(d);` : ''; }; return null; })(); }}}
-{{{ (function() { global.instantiateWasm = function() { return MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};'; }; return null; })(); }}}
+{{{
+  global.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
+  global.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
+  global.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};';
+  null;
+}}}
 
 #if WASM_WORKERS
 
