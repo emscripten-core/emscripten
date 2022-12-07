@@ -2711,17 +2711,14 @@ int f() {
       print(args)
       self.clear()
 
-      testFiles = [
-        test_file('embind/underscore-1.4.2.js'),
-        test_file('embind/imvu_test_adapter.js'),
-        test_file('embind/embind.test.js'),
-      ]
-
       self.run_process(
         [EMXX, test_file('embind/embind_test.cpp'),
-         '--pre-js', test_file('embind/test.pre.js'),
-         '--post-js', test_file('embind/test.post.js'),
+         '--extern-post-js', test_file('embind/test.init.js'),
+         '--extern-post-js', test_file('embind/underscore-1.4.2.js'),
+         '--extern-post-js', test_file('embind/imvu_test_adapter.js'),
+         '--extern-post-js', test_file('embind/embind.test.js'),
          '-sWASM_ASYNC_COMPILATION=0',
+         '-sMODULARIZE',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
          '-sTOTAL_STACK=2MB',
@@ -2729,12 +2726,9 @@ int f() {
 
       if '-sDYNAMIC_EXECUTION=0' in args:
         js_binary_str = read_file('a.out.js')
-        self.assertNotContained('new Function(', js_binary_str)
         self.assertNotContained('eval(', js_binary_str)
-
-      with open('a.out.js', 'ab') as f:
-        for tf in testFiles:
-          f.write(read_binary(tf))
+        # these functions originate from the above test helpers
+        self.assertEqual(js_binary_str.count('new Function('), 2)
 
       output = self.run_js('a.out.js')
       self.assertNotContained('FAIL', output)
