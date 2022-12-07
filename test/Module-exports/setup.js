@@ -8,7 +8,6 @@
  * prevents the runtime exiting. This is necessary as otherwise things like
  * printf don't seem to work from methods called by JavaScript.
  */
-/** @suppress{checkTypes} */
-Module = {
+var Module = {
     'noExitRuntime' : true
 };
