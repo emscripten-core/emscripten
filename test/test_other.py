@@ -2005,8 +2005,11 @@ int f() {
     ''')
     create_file('before.js', '''
       var MESSAGE = 'hello from js';
-      // Module is initialized with empty object by default, so if there are no keys - nothing was run yet
-      if (Object.keys(Module).length) throw 'This code should run before anything else!';
+      // Only Module['inspect'] should be defined at this point
+      if (Object.keys(Module).length > 1 || Object.keys(Module)[0] !== 'inspect') {
+        throw 'Module defines unknown properties prior the pre-js output. ' +
+              'Defined properties: ' +  Object.keys(Module).join(',');
+      }
     ''')
     create_file('after.js', '''
       out(MESSAGE);
