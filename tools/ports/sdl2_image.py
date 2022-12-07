@@ -52,6 +52,11 @@ def get(ports, settings, shared):
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-sUSE_LIBJPEG']
 
+    if settings.USE_PTHREADS:
+      defs += ['-sUSE_PTHREADS']
+    if settings.WASM_WORKERS:
+      defs += ['-sWASM_WORKERS']
+
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
   return [shared.cache.get_lib(libname, create, what='port')]
