@@ -39,6 +39,11 @@ static void error(const char* fmt, ...) {
   va_start(ap, fmt);
   __dl_vseterr(fmt, ap);
   va_end(ap);
+#ifdef DYLINK_DEBUG
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+#endif
 }
 
 int __dl_invalid_handle(void* h) {
@@ -245,9 +250,13 @@ void _emscripten_thread_sync_code() {
 #endif
     void* success = _dlopen_js(p);
     if (!success) {
-      fprintf(stderr, "dlerror: %s\n", dlerror());
+      // If any on the libraries fails to load here then we give up.
+      // TODO(sbc): Ideally this would never happen and we could/should
+      // abort, but on the main thread (where we don't have sync xhr) its
+      // often not possible to syncronously load side module.
+      fprintf(stderr, "emscripten_thread_sync_code failed: %s\n", dlerror());
+      break;
     }
-    assert(success);
     thread_local_tail = p;
   }
   pthread_rwlock_unlock(&lock);

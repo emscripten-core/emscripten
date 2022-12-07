@@ -530,8 +530,11 @@ var LibraryDylink = {
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
       // threads already).
-      var needsAllocation = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
-      if (needsAllocation) {
+      // If `handle` is specified than it is assumed that the calling thread has
+      // exclusive access to it for the duration of this function.  See the
+      // locking in `dynlink.c`.
+      var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+      if (firstLoad) {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // finalize alignments and verify them
@@ -694,10 +697,10 @@ var LibraryDylink = {
 
         // initialize the module
 #if USE_PTHREADS
-        // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        // Only one thread should call __wasm_call_ctors, but all threads need
+        // to call _emscripten_tls_init
         registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
-        if (!ENVIRONMENT_IS_PTHREAD) {
+        if (firstLoad) {
 #endif
           var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
           if (applyRelocs) {

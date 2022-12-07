@@ -3100,7 +3100,14 @@ The current type of b is: 9
     self.do_run(src, expected)
 
   @needs_dylink
-  def test_dlfcn_basic(self):
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-Wno-experimental'],),
+  })
+  def test_dlfcn_basic(self, args):
+    if args:
+      self.setup_node_pthreads()
+    self.emcc_args += args
     create_file('liblib.cpp', '''
       #include <cstdio>
 
@@ -9299,7 +9306,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     if do_yield:
       self.emcc_args.append('-DYIELD')
-      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'), 'done join')
+      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
+                   ['side module ctor', 'done join'],
+                   assert_all=True)
     else:
       self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
                    'invalid index into function table',
