@@ -481,8 +481,7 @@ function ${name}(${args}) {
     print(processMacros(preprocess(read(shellFile), shellFile)));
 
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
-    const pre = processMacros(preprocess(read(preFile), preFile));
-    print(pre);
+    print(processMacros(preprocess(read(preFile), preFile)));
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
@@ -525,8 +524,7 @@ function ${name}(${args}) {
     }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    const post = processMacros(preprocess(read(postFile), postFile));
-    print(post);
+    print(processMacros(preprocess(read(postFile), postFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
