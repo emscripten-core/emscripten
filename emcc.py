@@ -1688,7 +1688,8 @@ def phase_linker_setup(options, state, newargs):
                               settings.SOCKET_DEBUG or
                               settings.FETCH_DEBUG or
                               settings.EXCEPTION_DEBUG or
-                              settings.PTHREADS_DEBUG)
+                              settings.PTHREADS_DEBUG or
+                              settings.ASYNCIFY_DEBUG)
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
