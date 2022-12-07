@@ -12243,9 +12243,9 @@ void foo() {}
     self.set_setting('NODERAWFS')
     create_file('pre.js', f'''
 const {{ execSync }} = require('child_process');
-const process = require('process');
+const {{ pid }} = require('process');
 
-const cmd = 'find /proc/' + process.pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\\\n" || true';
+const cmd = 'find /proc/' + pid + '/fd -lname "{self.get_dir()}*" -printf "%l\\\\n" || true';
 let openFilesPre;
 
 Module['preRun'] = function() {{
