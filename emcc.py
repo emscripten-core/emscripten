@@ -3075,7 +3075,7 @@ def phase_link(linker_arguments, wasm_target):
   # fastcomp deferred linking opts.
   # TODO: we could check if this is a fastcomp build, and still speed things up here
   js_syms = None
-  if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS and not settings.SIDE_MODULE:
+  if settings.ERROR_ON_UNDEFINED_SYMBOLS and not settings.SIDE_MODULE:
     js_syms = get_all_js_syms()
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
