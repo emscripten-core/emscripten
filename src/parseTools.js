@@ -36,7 +36,7 @@ function processMacros(text) {
 // Also handles #include x.js (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
-function preprocess(text, filenameHint, lineOffset = 0) {
+function preprocess(text, filenameHint) {
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
@@ -66,7 +66,6 @@ function preprocess(text, filenameHint, lineOffset = 0) {
 
   try {
     for (let [i, line] of lines.entries()) {
-      i += lineOffset; // adjust line number in case this is e.g. 2nd part of shell.js
       if (line[line.length - 1] === '\r') {
         line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
       }
