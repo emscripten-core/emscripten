@@ -9208,8 +9208,7 @@ _d
       proc = self.run_process([EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
       print(proc.stderr)
       if not expected:
-        self.assertFalse(proc.stderr)
-        js = open('a.out.js').read()
+        js = read_file('a.out.js')
         for sym in ('_a', '_b', '_c', '_d'):
           self.assertContained(f'var {sym} = ', js)
       else:
