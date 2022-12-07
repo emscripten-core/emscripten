@@ -6963,10 +6963,8 @@ Resolved: "/" => "/"
 
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
     self.run_process([EMCC, test_file('return64bit/test.c'),
-                      '--pre-js', test_file('return64bit/testbindstart.js'),
-                      '--pre-js', test_file('return64bit', bind_js),
-                      '--post-js', test_file('return64bit/testbindend.js'),
-                      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall',
+                      '--extern-pre-js', test_file('return64bit', bind_js),
+                      '-sDYNCALLS',
                       '-sEXPORTED_RUNTIME_METHODS=getTempRet0',
                       '-sEXPORTED_FUNCTIONS=_test_return64', '-o', 'test.js', '-O2',
                       '--closure=1', '-g1', '-sWASM_ASYNC_COMPILATION=0'] + args)
