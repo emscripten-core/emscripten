@@ -242,8 +242,6 @@ pid_t gettid(void);
 
 #ifndef __EMSCRIPTEN__
 #define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
-#else
-#define _POSIX_REALTIME_SIGNALS -1
 #endif
 
 #define _POSIX_REGEXP           1
@@ -252,8 +250,6 @@ pid_t gettid(void);
 
 #ifndef __EMSCRIPTEN__
 #define _POSIX_SPAWN            _POSIX_VERSION
-#else
-#define _POSIX_SPAWN            -1
 #endif
 
 #define _POSIX_VDISABLE         0
@@ -264,9 +260,7 @@ pid_t gettid(void);
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKSIZE _POSIX_VERSION
 #define _POSIX_THREAD_PRIORITY_SCHEDULING _POSIX_VERSION
-#ifdef __EMSCRIPTEN__
-#define _POSIX_THREAD_CPUTIME   -1
-#else
+#ifndef __EMSCRIPTEN__
 #define _POSIX_THREAD_CPUTIME   _POSIX_VERSION
 #endif
 #define _POSIX_TIMERS           _POSIX_VERSION
