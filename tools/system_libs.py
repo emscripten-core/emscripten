@@ -1305,6 +1305,18 @@ class libsockets_proxy(MTLibrary):
     return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
 
 
+class libasyncifyfiber(Library):
+  name = 'libasyncifyfiber'
+
+  cflags = ['-Os']
+
+  def get_files(self):
+    return [utils.path_from_root('system/lib/libasyncifyfiber/fiber.c')]
+
+  def can_use(self):
+      return super().can_use() and settings.ASYNCIFY == 1
+
+
 class crt1(MuslInternalLibrary):
   name = 'crt1'
   src_dir = 'system/lib/libc'
@@ -2121,6 +2133,9 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
+
+  if settings.ASYNCIFY == 1:
+    add_library('libasyncifyfiber')
 
   add_sanitizer_libs()
   return libs_to_link
