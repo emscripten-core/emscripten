@@ -39,8 +39,8 @@ See docs/process.md for more on how version tagging works.
   comparison to other calls to this function". (#18267)
 - Emscripten will now search your PATH for binaryen, llvm, and node if the
   corresponding config file settings (`BINARYEN_ROOT`, `LLVM_ROOT`, `NODE_JS`)
-  are not set.  In theory this allows emscripten to run with an empty config
-  file.
+  are not set.  Allows emscripten to run with an empty config file given the
+  right tools in the PATH. (#18289)
 
 3.1.27 - 11/29/22
 -----------------
