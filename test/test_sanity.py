@@ -163,7 +163,7 @@ class sanity(RunnerCore):
   def test_firstrun(self):
     default_config = config.embedded_config
     output = self.do([EMCC, '-v'])
-    self.assertContained('emcc: error: config file not found: %s.  Please create one by hand or run `emcc --generate-config`' % default_config, output)
+    self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
     try:
       temp_bin = tempfile.mkdtemp()
@@ -680,6 +680,16 @@ fi
     make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
     make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
     open(EM_CONFIG, 'w').close()
+    with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
+      self.check_working([EMCC])
+
+  def test_missing_config(self):
+    restore_and_set_up()
+    make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    delete_file(EM_CONFIG)
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
 

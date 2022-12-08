@@ -8,7 +8,7 @@ import sys
 import logging
 from typing import List, Optional
 
-from . import utils
+from . import utils, diagnostics
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
 logger = logging.getLogger('config')
@@ -101,6 +101,8 @@ def set_config_from_tool_location(config_key, tool_binary, f):
   if val is None:
     path = utils.which(tool_binary)
     if not path:
+      if not os.path.exists(EM_CONFIG):
+        diagnostics.warn('config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG)
       exit_with_error('%s not set in config (%s), and `%s` not found in PATH', config_key, EM_CONFIG, tool_binary)
     globals()[config_key] = f(path)
   elif not val:
@@ -152,6 +154,11 @@ def parse_config_file():
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]
+
+
+def init():
+  if os.path.exists(EM_CONFIG):
+    parse_config_file()
 
   # In the past the default-generated .emscripten config file would read certain environment
   # variables. We used generate a warning here but that could generates false positives
@@ -275,9 +282,6 @@ if '--generate-config' in sys.argv:
   generate_config(EM_CONFIG)
   sys.exit(0)
 
-if not os.path.exists(EM_CONFIG):
-  exit_with_error(f'config file not found: {EM_CONFIG}.  Please create one by hand or run `emcc --generate-config`')
-
 logger.debug('emscripten config is located in ' + EM_CONFIG)
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -285,4 +289,4 @@ logger.debug('emscripten config is located in ' + EM_CONFIG)
 # setting it to the currently active environment.
 os.environ['EM_CONFIG'] = EM_CONFIG
 
-parse_config_file()
+init()
