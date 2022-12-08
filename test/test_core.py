@@ -4149,8 +4149,8 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
-  def test_dylink_basics_lld_report_undefined(self):
-    self.set_setting('LLD_REPORT_UNDEFINED')
+  def test_dylink_basics_no_lld_report_undefined(self):
+    self.set_setting('LLD_REPORT_UNDEFINED', 0)
     self.do_basic_dylink_test()
 
   @needs_dylink
@@ -5150,9 +5150,6 @@ main main sees -524, -534, 72.
     # in the another module.
     # Each module will define its own copy of certain COMDAT symbols such as
     # each classs's typeinfo, but at runtime they should both use the same one.
-    # Use LLD_REPORT_UNDEFINED to test that it works as expected with weak/COMDAT
-    # symbols.
-    self.set_setting('LLD_REPORT_UNDEFINED')
     header = '''
     #include <cstddef>
 
@@ -6161,7 +6158,6 @@ Module['onRuntimeInitialized'] = function() {
     'nodefs': (['NODEFS']),
   })
   def test_unistd_misc(self, fs):
-    self.set_setting('LLD_REPORT_UNDEFINED')
     self.emcc_args += ['-D' + fs]
     if fs == 'NODEFS':
       self.require_node()
@@ -9416,9 +9412,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # In standalone we don't support implicitly building without main.  The user has to explicitly
       # opt out (see below).
       err = self.expect_fail([EMCC, test_file('core/test_ctors_no_main.cpp')] + self.get_emcc_args())
-      self.assertContained('error: undefined symbol: main/__main_argc_argv (referenced by top-level compiled C/C++ code)', err)
-      self.assertContained('warning: To build in STANDALONE_WASM mode without a main(), use emcc --no-entry', err)
-    elif not self.get_setting('LLD_REPORT_UNDEFINED') and not self.get_setting('STRICT'):
+      self.assertContained('undefined symbol: main', err)
+    elif not self.get_setting('STRICT'):
       # Traditionally in emscripten we allow main to be implicitly undefined.  This allows programs
       # with a main and libraries without a main to be compiled identically.
       # However we are trying to move away from that model to a more explicit opt-out model. See:
@@ -9436,6 +9431,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.do_core_test('test_ctors_no_main.cpp')
       self.clear_setting('EXPORTED_FUNCTIONS')
 
+  # Marked as impure since the WASI reactor modules (modules without main)
+  # are not yet suppored by the wasm engines we test against.
+  @also_with_standalone_wasm(impure=True)
   def test_undefined_main_explict(self):
     # If we pass --no-entry this test should compile without issue
     self.emcc_args.append('--no-entry')
@@ -9708,7 +9706,6 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre
                  settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # Experimental modes (not tested by CI)
-lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
 minimal0 = make_run('minimal0', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself

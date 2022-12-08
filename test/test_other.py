@@ -2167,8 +2167,8 @@ int f() {
         print(proc.stderr)
         if value or action is None:
           # The default is that we error in undefined symbols
-          self.assertContained('error: undefined symbol: something', proc.stderr)
-          self.assertContained('error: undefined symbol: elsey', proc.stderr)
+          self.assertContained('undefined symbol: something', proc.stderr)
+          self.assertContained('undefined symbol: elsey', proc.stderr)
           check_success = False
         elif action == 'ERROR' and not value:
           # Error disables, should only warn
@@ -3548,7 +3548,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
-   __internal_data:{
+  __internal_data:{
     '<' : 0,
     'white space' : 1
   },
@@ -6591,7 +6591,7 @@ int main() {
     err = self.expect_fail([EMCC, test_file('hello_world.c'),
                             '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=alGetError',
                             '-sEXPORTED_FUNCTIONS=_main,_alGet'])
-    self.assertContained('undefined exported symbol: "_alGet"', err)
+    self.assertContained('error: undefined exported symbol: "_alGet" [-Wundefined] [-Werror]', err)
 
   def test_musl_syscalls(self):
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -8361,7 +8361,7 @@ end
   def test_full_js_library_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
     err = self.expect_fail([EMCC, 'main.c', '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
-    self.assertContained('error: undefined symbol: foo', err)
+    self.assertContained('undefined symbol: foo', err)
 
   def test_full_js_library_except(self):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
@@ -9017,19 +9017,20 @@ console.error('JSLIB: none of the above');
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained('JSLIB: none of the above', err)
-    self.assertEqual(err.count('JSLIB'), 1)
+    self.assertNotContained('JSLIB: MAIN_MODULE', err)
+    self.assertNotContained('JSLIB: EXIT_RUNTIME', err)
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-sMAIN_MODULE'], stderr=PIPE).stderr
     self.assertContained('JSLIB: MAIN_MODULE=1', err)
-    self.assertEqual(err.count('JSLIB'), 1)
+    self.assertNotContained('JSLIB: EXIT_RUNTIME', err)
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-sMAIN_MODULE=2'], stderr=PIPE).stderr
     self.assertContained('JSLIB: MAIN_MODULE=2', err)
-    self.assertEqual(err.count('JSLIB'), 1)
+    self.assertNotContained('JSLIB: EXIT_RUNTIME', err)
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-sEXIT_RUNTIME'], stderr=PIPE).stderr
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
-    self.assertEqual(err.count('JSLIB'), 1)
+    self.assertNotContained('JSLIB: MAIN_MODULE', err)
 
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
@@ -9202,7 +9203,7 @@ _d
       # stray slash
       ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported symbol: "\\\\ "_c"'),
       # missing comma
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported symbol: "_b" "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'emcc: error: undefined exported symbol: "_b" "_c" [-Wundefined] [-Werror]'),
     ]:
       print(export_arg)
       proc = self.run_process([EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
@@ -10886,20 +10887,20 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.expect_fail([EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     self.expect_fail([EMCC, '-sSTRICT', 'a.c', 'b.c'])
 
+  # TODO(sbc): Remove these tests once we remove the LLD_REPORT_UNDEFINED
   def test_lld_report_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
-    stderr = self.expect_fail([EMCC, '-sLLD_REPORT_UNDEFINED', 'main.c'])
-    self.assertContained('wasm-ld: error:', stderr)
-    self.assertContained('main_0.o: undefined symbol: foo', stderr)
+    stderr = self.expect_fail([EMCC, '-sLLD_REPORT_UNDEFINED=0', 'main.c'])
+    self.assertContained('error: undefined symbol: foo (referenced by top-level compiled C/C++ code)', stderr)
 
   def test_lld_report_undefined_reverse_deps(self):
-    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sREVERSE_DEPS=all', test_file('hello_world.c')])
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED=0', '-sREVERSE_DEPS=all', test_file('hello_world.c')])
 
   def test_lld_report_undefined_exceptions(self):
-    self.run_process([EMXX, '-sLLD_REPORT_UNDEFINED', '-fwasm-exceptions', test_file('hello_libcxx.cpp')])
+    self.run_process([EMXX, '-sLLD_REPORT_UNDEFINED=0', '-fwasm-exceptions', test_file('hello_libcxx.cpp')])
 
   def test_lld_report_undefined_main_module(self):
-    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sMAIN_MODULE=2', test_file('hello_world.c')])
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED=0', '-sMAIN_MODULE=2', test_file('hello_world.c')])
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
@@ -11037,14 +11038,12 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c'), '--js-library', test_file('test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
-    # Check that we don't recommend LLD_REPORT_UNDEFINED for chained dependencies.
-    self.assertNotContained('LLD_REPORT_UNDEFINED', err)
 
-    # Test without chaining.  In this case we don't include the JS library at all resulting in `foo`
-    # being undefined in the native code and in this case we recommend LLD_REPORT_UNDEFINED.
+    # Test without chaining.  In this case we don't include the JS library at
+    # all resulting in `foo` being undefined in the native code.
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c')])
-    self.assertContained('error: undefined symbol: foo (referenced by top-level compiled C/C++ code)', err)
-    self.assertContained('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols', err)
+    self.assertContained('undefined symbol: foo', err)
+    self.assertNotContained('referenced by top-level compiled C/C++ code', err)
 
   def test_xclang_flag(self):
     create_file('foo.h', ' ')
@@ -11846,7 +11845,7 @@ EMSCRIPTEN_KEEPALIVE
 void foo() {}
 ''')
     err = self.expect_fail([EMCC, 'lib.cpp', '-pthread', '-sPROXY_TO_PTHREAD'])
-    self.assertContained('error: PROXY_TO_PTHREAD proxies main() for you, but no main exists', err)
+    self.assertContained('crt1_proxy_main.o: undefined symbol: main', err)
 
   def test_archive_bad_extension(self):
     # Regression test for https://github.com/emscripten-core/emscripten/issues/14012
@@ -11888,7 +11887,7 @@ void foo() {}
     cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
     if args:
       err = self.expect_fail(cmd)
-      self.assertContained('error: undefined symbol: __syscall_mincore', err)
+      self.assertContained('libc-debug.a(mincore.o): undefined symbol: __syscall_mincore', err)
     else:
       self.run_process(cmd)
       err = self.run_js('a.out.js')
