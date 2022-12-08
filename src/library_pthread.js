@@ -406,13 +406,15 @@ var LibraryPThread = {
 #if !PTHREAD_POOL_SIZE
       onMaybeReady();
 #else
-      // Instantiation is synchronous in pthreads and we assert on run dependencies.
+      // Instantiation is synchronous in pthreads.
       if (
         ENVIRONMENT_IS_PTHREAD
 #if WASM_WORKERS
         || ENVIRONMENT_IS_WASM_WORKER
 #endif
-      ) return onMaybeReady();
+      ) {
+        return onMaybeReady();
+      }
       let promises = PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker);
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
