@@ -12,19 +12,25 @@ mergeInto(LibraryManager.library, {
   $getPromise: function(id) {
     return promiseMap.get(id).promise;
   },
-  emscripten_promise_create__deps: ['$promiseMap'],
-  emscripten_promise_create__sig: 'p',
-  emscripten_promise_create: function() {
+
+  $makePromise__deps: ['$promiseMap'],
+  $makePromise: function() {
     var promiseInfo = {};
     promiseInfo.promise = new Promise((resolve, reject) => {
       promiseInfo.reject = reject;
       promiseInfo.resolve = resolve;
     });
-    var id = promiseMap.allocate(promiseInfo);
+    promiseInfo.id = promiseMap.allocate(promiseInfo);
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_create: ' + id);
+    dbg('makePromise: ' + promiseInfo.id);
 #endif
-    return id;
+    return promiseInfo;
+  },
+
+  emscripten_promise_create__deps: ['$makePromise'],
+  emscripten_promise_create__sig: 'p',
+  emscripten_promise_create: function() {
+    return makePromise().id;
   },
 
   emscripten_promise_destroy__deps: ['$promiseMap'],
@@ -42,7 +48,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_resolve: function(id, result, value) {
 #if RUNTIME_DEBUG
-    err('emscripten_promise_resolve: ' + id);
+    dbg('emscripten_promise_resolve: ' + id);
 #endif
     var info = promiseMap.get(id);
     switch (result) {

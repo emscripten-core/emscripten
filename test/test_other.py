@@ -6365,10 +6365,11 @@ int main(int argc,char** argv) {
     self.do_other_test('test_dlopen_async.c')
 
   def test_dlopen_blocking(self):
-    create_file('side.c', 'int foo = 42;\n')
-    self.run_process([EMCC, 'side.c', '-o', 'libside.so', '-sSIDE_MODULE'])
+    self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
+    self.emcc_args.append('libside.so')
     # Under node this should work both with and without ASYNCIFY
     # because we can do synchronous readBinary
     self.do_other_test('test_dlopen_blocking.c')
