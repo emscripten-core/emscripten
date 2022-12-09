@@ -2663,9 +2663,6 @@ def phase_linker_setup(options, state, newargs):
 
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
-    else:
-      settings.REQUIRED_EXPORTS += ['emscripten_fiber_init',
-                                    'emscripten_fiber_init_from_current_context']
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
