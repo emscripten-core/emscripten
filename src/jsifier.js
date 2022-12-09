@@ -67,7 +67,7 @@ function isDefined(symName) {
 }
 
 // JSifier
-function runJSify() {
+function runJSify(symbolsOnly = false) {
   const functionStubs = [];
 
   const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
@@ -212,22 +212,28 @@ function ${name}(${args}) {
 
     function addFromLibrary(item, dependent) {
       // dependencies can be JS functions, which we just run
-      if (typeof item == 'function') return item();
+      if (typeof item == 'function') {
+        return item();
+      }
 
       const ident = item.identOrig;
       const finalName = item.identMangled;
 
-      if (ident in addedLibraryItems) return '';
+      if (ident in addedLibraryItems) {
+        return;
+      }
       addedLibraryItems[ident] = true;
 
-      // don't process any special identifiers. These are looked up when processing the base name of the identifier.
+      // don't process any special identifiers. These are looked up when
+      // processing the base name of the identifier.
       if (isJsLibraryConfigIdentifier(ident)) {
-        return '';
+        return;
       }
 
-      // if the function was implemented in compiled code, there is no need to include the js version
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
       if (WASM_EXPORTS.has(ident)) {
-        return '';
+        return;
       }
 
       // This gets set to true in the case of dynamic linking for symbols that
@@ -236,7 +242,7 @@ function ${name}(${args}) {
       let isStub = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (ONLY_CALC_JS_SYMBOLS) {
+        if (symbolsOnly) {
           return;
         }
         const isWeakImport = WEAK_IMPORTS.has(ident);
@@ -284,6 +290,12 @@ function ${name}(${args}) {
         }
       }
 
+      librarySymbols.push(finalName);
+
+      if (symbolsOnly) {
+        return;
+      }
+
       const original = LibraryManager.library[ident];
       let snippet = original;
       const deps = LibraryManager.library[ident + '__deps'] || [];
@@ -291,6 +303,7 @@ function ${name}(${args}) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+
       const isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
@@ -322,12 +335,6 @@ function ${name}(${args}) {
         addImplicitDeps(snippet, deps);
       }
 
-      librarySymbols.push(finalName);
-
-      if (ONLY_CALC_JS_SYMBOLS) {
-        return '';
-      }
-
       const postsetId = ident + '__postset';
       let postset = LibraryManager.library[postsetId];
       if (postset) {
@@ -347,7 +354,8 @@ function ${name}(${args}) {
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
-      const identDependents = ident + "__deps: ['" + deps.join("','") + "']";
+      const deps_list = deps.join("','");
+      const identDependents = ident + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
         if (typeof dep != 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
@@ -540,7 +548,7 @@ function ${name}(${args}) {
   // Data
   functionStubs.forEach(functionStubHandler);
 
-  if (ONLY_CALC_JS_SYMBOLS) {
+  if (symbolsOnly) {
     print(JSON.stringify(librarySymbols));
     return;
   }
