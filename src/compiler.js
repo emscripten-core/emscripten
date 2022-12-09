@@ -45,12 +45,12 @@ load('utility.js');
 
 
 const argv = process.argv.slice(2);
-const symbolsOnly = argv.indexOf('--symbols-only');
-if (symbolsOnly != -1) {
-  argv.splice(symbolsOnly, 1);
+const symbolsOnlyArg = argv.indexOf('--symbols-only');
+if (symbolsOnlyArg != -1) {
+  argv.splice(symbolsOnlyArg, 1);
 }
 
-global.ONLY_CALC_JS_SYMBOLS = symbolsOnly != -1;
+const symbolsOnly = symbolsOnlyArg != -1;
 
 // Load settings from JSON passed on the command line
 const settingsFile = argv[0];
@@ -64,7 +64,7 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
-if (ONLY_CALC_JS_SYMBOLS) {
+if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;
 }
 
@@ -94,7 +94,7 @@ load('runtime.js');
 B = new Benchmarker();
 
 try {
-  runJSify();
+  runJSify(symbolsOnly);
 
   B.print('glue');
 } catch (err) {

@@ -222,10 +222,10 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(js_library_funcs):
+def report_missing_symbols(js_symbols):
   # Report any symbol that was explicitly exported but is present neither
   # as a native function nor as a JS library function.
-  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
   missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
   for symbol in sorted(missing):
     diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
