@@ -1123,29 +1123,26 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'dynlink.c',
-          'wasi-helpers.c',
+          'emscripten_console.c',
+          'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
-          'raise.c',
+          'emscripten_memcpy.c',
+          'emscripten_memmove.c',
+          'emscripten_memset.c',
+          'emscripten_mmap.c',
+          'emscripten_scan_stack.c',
+          'emscripten_time.c',
           'kill.c',
+          'pthread_sigmask.c',
+          'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
-          'pthread_sigmask.c',
-          'emscripten_console.c',
-          'emscripten_time.c',
+          'wasi-helpers.c',
         ])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=['emscripten_atomic.c', 'thread_profiler.c'])
-
-    libc_files += files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c',
-                 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c',
-                 'emscripten_mmap.c'
-                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
