@@ -1123,29 +1123,26 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'dynlink.c',
-          'wasi-helpers.c',
+          'emscripten_console.c',
+          'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
-          'raise.c',
+          'emscripten_memcpy.c',
+          'emscripten_memmove.c',
+          'emscripten_memset.c',
+          'emscripten_mmap.c',
+          'emscripten_scan_stack.c',
+          'emscripten_time.c',
           'kill.c',
+          'pthread_sigmask.c',
+          'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
-          'pthread_sigmask.c',
-          'emscripten_console.c',
-          'emscripten_time.c',
+          'wasi-helpers.c',
         ])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=['emscripten_atomic.c', 'thread_profiler.c'])
-
-    libc_files += files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c',
-                 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c',
-                 'emscripten_mmap.c'
-                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1303,18 +1300,6 @@ class libsockets_proxy(MTLibrary):
 
   def can_use(self):
     return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
-
-
-class libasyncifyfiber(Library):
-  name = 'libasyncifyfiber'
-
-  cflags = ['-Os']
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/libasyncifyfiber/fiber.c')]
-
-  def can_use(self):
-      return super().can_use() and settings.ASYNCIFY == 1
 
 
 class crt1(MuslInternalLibrary):
@@ -2133,9 +2118,6 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
-
-  if settings.ASYNCIFY == 1:
-    add_library('libasyncifyfiber')
 
   add_sanitizer_libs()
   return libs_to_link
