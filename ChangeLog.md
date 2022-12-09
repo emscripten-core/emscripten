@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.28 (in development)
+3.1.29 (in development)
 -----------------------
+
+3.1.28 - 12/08/22
+-----------------
 - `LLD_REPORT_UNDEFINED` is now enabled by default.  This makes undefined symbol
   errors more precise by including the name of the object that references the
   undefined symbol. The old behaviour (of allowing all undefined symbols at
