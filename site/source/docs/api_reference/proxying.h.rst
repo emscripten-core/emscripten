@@ -78,6 +78,13 @@ Functions
   thread then return immediately without waiting for ``func`` to be executed.
   Returns 1 if the work was successfully enqueued or 0 otherwise.
 
+.. c:function:: int emscripten_proxy_async_with_callback(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg, void (*callback)(void*), void* callback_arg)
+
+  Enqueue `func` on the given queue and thread. Once it finishes executing, it
+  will proxy `callback` back to the current thread on the same queue. Returns 1
+  if the work was successfully enqueued and the target thread notified or 0
+  otherwise.
+
 .. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
@@ -122,6 +129,12 @@ defined within namespace ``emscripten``.
 
     Calls ``emscripten_proxy_async`` to execute ``func``, returning ``true`` if the
     function was successfully enqueued and ``false`` otherwise.
+
+  .. cpp:member:: bool proxyAsyncWithCallback(pthread_t target, std::function<void()>&& func, std::function<void()>&& callback)
+
+    Calls ``emscripten_proxy_async_with_callback`` to execute ``func`` and
+    schedule ``callback``, returning ``true`` if the function was successfully
+    enqueued and ``false`` otherwise.
 
   .. cpp:member:: bool proxySync(const pthread_t target, const std::function<void()>& func)
 
