@@ -415,13 +415,16 @@ var LibraryPThread = {
       ) {
         return onMaybeReady();
       }
-      let promises = PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker);
+      let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
       // waiting for the pthread pool during the startup phase.
+      // If the user wants to wait on it elsewhere, they can do so via the
+      // Module['pthreadPoolReady'] promise.
+      Module['pthreadPoolReady'] = pthreadPoolReady;
       onMaybeReady();
 #else
-      Promise.all(promises).then(onMaybeReady);
+      pthreadPoolReady.then(onMaybeReady);
 #endif // PTHREAD_POOL_DELAY_LOAD
 #endif // PTHREAD_POOL_SIZE
     },
