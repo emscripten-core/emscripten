@@ -9145,7 +9145,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @parameterized({
-    'unpooled': (0,),
+    '': (0,),
     'pooled': (1,),
   })
   def test_pthread_cxx_threads(self, pthread_pool_size):
@@ -9154,7 +9154,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @parameterized({
-    'unpooled': (0,),
+    '': (0,),
     'pooled': (1,),
   })
   def test_pthread_busy_wait(self, pthread_pool_size):
