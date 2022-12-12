@@ -56,7 +56,10 @@ void test_proxy_async() {
   // Proxy to looper.
   {
     queue.proxyAsync(looper.native_handle(), [&]() {
-      i = 2;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 2;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -68,7 +71,10 @@ void test_proxy_async() {
   // Proxy to returner.
   {
     queue.proxyAsync(returner.native_handle(), [&]() {
-      i = 3;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 3;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -164,7 +170,10 @@ void test_proxy_async_with_callback(void) {
     queue.proxyAsyncWithCallback(
       looper.native_handle(),
       [&]() {
-        i = 2;
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          i = 2;
+        }
         executor = std::this_thread::get_id();
         cond.notify_one();
       },
@@ -184,7 +193,10 @@ void test_proxy_async_with_callback(void) {
     queue.proxyAsyncWithCallback(
       returner.native_handle(),
       [&]() {
-        i = 3;
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          i = 3;
+        }
         executor = std::this_thread::get_id();
         cond.notify_one();
       },
