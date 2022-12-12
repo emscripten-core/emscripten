@@ -7712,6 +7712,16 @@ void* operator new(size_t size) {
     expected = test_file('webidl/output_%s.txt' % mode)
     self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
 
+  # Test that we can perform fully-synchronous initialization when combining WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.
+  # Also checks that PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users can wait on for pthread initialization.
+  @node_pthreads
+  def test_embind_sync_if_pthread_delayed(self):
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.emcc_args += ['--bind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.do_run_in_out_file_test(test_file('core/pthread/test_embind_sync_if_pthread_delayed.cpp'))
+
   ### Tests for tools
 
   @no_wasm2js('TODO: source maps in wasm2js')
