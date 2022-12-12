@@ -9120,13 +9120,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @parameterized({
-    'unpooled': ([],),
+    '': ([],),
     'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
-    'proxied': (['-sPROXY_TO_PTHREAD'],),
+    'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_c11_threads(self, args):
     self.emcc_args += args
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREADS_DEBUG')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
