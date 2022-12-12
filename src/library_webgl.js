@@ -626,7 +626,7 @@ var LibraryGL = {
       if (Module['preinitializedWebGLContext']) {
         var ctx = Module['preinitializedWebGLContext'];
 #if MAX_WEBGL_VERSION >= 2
-        // The ctx object may not be of a known class (e.g. it may be a debug wrapper), so we ask it for its version instead.
+        // The ctx object may not be of a known class (e.g. it may be a debug wrapper), so we ask it for its version rather than use instanceof.
         webGLContextAttributes.majorVersion = Number(ctx.getParameter(ctx.VERSION).match(/^WebGL (\d+).\d+/)[1]);
 #else
         webGLContextAttributes.majorVersion = 1;
