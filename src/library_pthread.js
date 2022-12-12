@@ -25,9 +25,6 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
-#if STANDALONE_WASM
-#error "STANDALONE_WASM does not support shared memories yet"
-#endif
 
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',

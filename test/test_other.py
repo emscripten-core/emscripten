@@ -890,12 +890,17 @@ f.close()
         out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
         self.assertContained(version, out)
 
-  def test_cmake_check_type_size(self):
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/check_type_size')])
+  @parameterized({
+    '': [[]],
+    'pthreads': [['-DCMAKE_CXX_FLAGS=-pthread', '-DCMAKE_C_FLAGS=-pthread']],
+  })
+  def test_cmake_check_type_size(self, flags):
+    cmd = [EMCMAKE, 'cmake', test_file('cmake/check_type_size')] + flags
+    self.run_process(cmd)
 
     # Verify that this test works without needing to run node.  We do this by breaking node
     # execution.
-    self.run_process([EMCMAKE, 'cmake', '-DCMAKE_CROSSCOMPILING_EMULATOR=/missing_binary', test_file('cmake/check_type_size')])
+    self.run_process(cmd + ['-DCMAKE_CROSSCOMPILING_EMULATOR=/missing_binary'])
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`

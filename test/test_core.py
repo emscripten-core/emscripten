@@ -9120,9 +9120,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fPIC')
     self.do_core_test('test_hello_world.c')
 
+  # Marked as impure since we don't have a wasi-threads is still
+  # a WIP.
+  @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
-    self.set_setting('EXIT_RUNTIME')
+    if not self.get_setting('STANDALONE_WASM'):
+      self.set_setting('EXIT_RUNTIME')
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
