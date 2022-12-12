@@ -477,7 +477,7 @@ var LibraryPThread = {
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
 // PTHREAD_POOL_SIZE_STRICT should show a warning and, if set to level `2`, return from the function.
-#if PTHREAD_POOL_SIZE_STRICT && ASSERTIONS || PTHREAD_POOL_SIZE_STRICT == 2
+#if (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
 // However, if we're in Node.js, then we can create new workers on the fly and PTHREAD_POOL_SIZE_STRICT
 // should be ignored altogether.
 #if ENVIRONMENT_MAY_BE_NODE
