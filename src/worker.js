@@ -114,16 +114,7 @@ self.onunhandledrejection = (e) => {
   throw e.reason ?? e;
 };
 
-// Add a callback for when the runtime is initialized.
-self.startWorker = (instance) => {
-#if MODULARIZE
-  Module = instance;
-#endif
-  // Notify the main thread that this thread has loaded.
-  postMessage({ 'cmd': 'loaded' });
-};
-
-self.onmessage = (e) => {
+function handleMessage(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if PTHREADS_DEBUG
@@ -132,6 +123,25 @@ self.onmessage = (e) => {
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
+
+    // Until we initialize the runtime, queue up any further incoming messages.
+    let messageQueue = [];
+    self.onmessage = (e) => messageQueue.push(e);
+
+    // And add a callback for when the runtime is initialized.
+    self.startWorker = (instance) => {
+#if MODULARIZE
+      Module = instance;
+#endif
+      // Notify the main thread that this thread has loaded.
+      postMessage({ 'cmd': 'loaded' });
+      // Process any messages that were queued before the thread was ready.
+      for (let msg of messageQueue) {
+        handleMessage(msg);
+      }
+      // Restore the real message handler.
+      self.onmessage = handleMessage;
+    };
 
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
@@ -303,3 +313,5 @@ self.onmessage = (e) => {
     throw ex;
   }
 };
+
+self.onmessage = handleMessage;

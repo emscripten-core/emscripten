@@ -9133,9 +9133,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
-  def test_pthread_c11_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
+  @parameterized({
+    '': ([],),
+    'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
+    'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_pthread_c11_threads(self, args):
+    self.emcc_args += args
     self.set_setting('PTHREADS_DEBUG')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
@@ -9144,13 +9148,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c')
 
   @node_pthreads
-  def test_pthread_cxx_threads(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
+  @parameterized({
+    '': (0,),
+    'pooled': (1,),
+  })
+  def test_pthread_cxx_threads(self, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
   @node_pthreads
-  def test_pthread_busy_wait(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
+  @parameterized({
+    '': (0,),
+    'pooled': (1,),
+  })
+  def test_pthread_busy_wait(self, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
