@@ -83,7 +83,8 @@ Functions
   Enqueue `func` on the given queue and thread. Once (and if) it finishes
   executing, it will asynchronously proxy `callback` back to the current thread
   on the same queue. Returns 1 if the initial work was successfully enqueued and
-  the target thread notified or 0 otherwise.
+  the target thread notified or 0 otherwise. If the callback cannot be scheduled
+  (for example due to OOM), the program is aborted.
 
 .. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 

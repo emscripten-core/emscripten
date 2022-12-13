@@ -57,7 +57,8 @@ int emscripten_proxy_async(em_proxying_queue* q,
 // Enqueue `func` on the given queue and thread. Once (and if) it finishes
 // executing, it will asynchronously proxy `callback` back to the current thread
 // on the same queue. Returns 1 if the initial work was successfully enqueued
-// and the target thread notified or 0 otherwise.
+// and the target thread notified or 0 otherwise. If the callback cannot be
+// scheduled (for example due to OOM), the program is aborted.
 int emscripten_proxy_async_with_callback(em_proxying_queue* q,
                                          pthread_t target_thread,
                                          void (*func)(void*),
