@@ -230,6 +230,13 @@ function ${name}(${args}) {
         return;
       }
 
+      if (symbolsOnly) {
+        if (!isJsOnlyIdentifier(ident) && LibraryManager.library.hasOwnProperty(ident)) {
+          librarySymbols.push(ident);
+        }
+        return;
+      }
+
       // if the function was implemented in compiled code, there is no need to
       // include the js version
       if (WASM_EXPORTS.has(ident)) {
@@ -242,9 +249,6 @@ function ${name}(${args}) {
       let isStub = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (symbolsOnly) {
-          return;
-        }
         const isWeakImport = WEAK_IMPORTS.has(ident);
         if (!isDefined(ident) && !isWeakImport) {
           if (PROXY_TO_PTHREAD && !MAIN_MODULE && ident == '__main_argc_argv') {
@@ -291,10 +295,6 @@ function ${name}(${args}) {
       }
 
       librarySymbols.push(finalName);
-
-      if (symbolsOnly) {
-        return;
-      }
 
       const original = LibraryManager.library[ident];
       let snippet = original;
