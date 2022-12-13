@@ -25,9 +25,6 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
-#if STANDALONE_WASM
-#error "STANDALONE_WASM does not support shared memories yet"
-#endif
 
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
@@ -277,7 +274,8 @@ var LibraryPThread = {
         } else if (cmd === 'loaded') {
           worker.loaded = true;
 #if ENVIRONMENT_MAY_BE_NODE
-          if (ENVIRONMENT_IS_NODE) {
+          // Check that this worker doesn't have an associated pthread.
+          if (ENVIRONMENT_IS_NODE && !worker.pthread_ptr) {
             // Once worker is loaded & idle, mark it as weakly referenced,
             // so that mere existence of a Worker in the pool does not prevent
             // Node.js from exiting the app.
@@ -285,10 +283,6 @@ var LibraryPThread = {
           }
 #endif
           onFinishedLoading(worker);
-          // If this Worker is already pending to start running a thread, launch the thread now
-          if (worker.runPthread) {
-            worker.runPthread();
-          }
         } else if (cmd === 'print') {
           out('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'printErr') {
@@ -415,13 +409,16 @@ var LibraryPThread = {
       ) {
         return onMaybeReady();
       }
-      let promises = PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker);
+      let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
       // waiting for the pthread pool during the startup phase.
+      // If the user wants to wait on it elsewhere, they can do so via the
+      // Module['pthreadPoolReady'] promise.
+      Module['pthreadPoolReady'] = pthreadPoolReady;
       onMaybeReady();
 #else
-      Promise.all(promises).then(onMaybeReady);
+      pthreadPoolReady.then(onMaybeReady);
 #endif // PTHREAD_POOL_DELAY_LOAD
 #endif // PTHREAD_POOL_SIZE
     },
@@ -479,22 +476,30 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
-#if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT
+// PTHREAD_POOL_SIZE_STRICT should show a warning and, if set to level `2`, return from the function.
+#if (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
+// However, if we're in Node.js, then we can create new workers on the fly and PTHREAD_POOL_SIZE_STRICT
+// should be ignored altogether.
+#if ENVIRONMENT_MAY_BE_NODE
+        if (!ENVIRONMENT_IS_NODE) {
+#endif
 #if ASSERTIONS
-        err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
-        'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
-        'If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`.'
+            err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
+            'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
+            'If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`.'
 #if PTHREAD_POOL_SIZE_STRICT == 1
-        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-sPTHREAD_POOL_SIZE_STRICT=2`.'
+              + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-sPTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
-        );
+            );
 #endif // ASSERTIONS
-
+#if PTHREAD_POOL_SIZE_STRICT == 2
+            return;
 #endif
-#if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT == 2
-        // Don't return a Worker, which will translate into an EAGAIN error.
-        return;
-#else
+#if ENVIRONMENT_MAY_BE_NODE
+        }
+#endif
+#endif // PTHREAD_POOL_SIZE_STRICT
+#if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
 #endif
@@ -626,21 +631,15 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    worker.runPthread = () => {
-      // Ask the worker to start executing its pthread entry point function.
+    // Ask the worker to start executing its pthread entry point function.
 #if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // Mark worker as strongly referenced once we start executing a pthread,
-        // so that Node.js doesn't exit while the pthread is running.
-        worker.ref();
-      }
-#endif
-      worker.postMessage(msg, threadParams.transferList);
-      delete worker.runPthread;
-    };
-    if (worker.loaded) {
-      worker.runPthread();
+    if (ENVIRONMENT_IS_NODE) {
+      // Mark worker as strongly referenced once we start executing a pthread,
+      // so that Node.js doesn't exit while the pthread is running.
+      worker.ref();
     }
+#endif
+    worker.postMessage(msg, threadParams.transferList);
     return 0;
   },
 

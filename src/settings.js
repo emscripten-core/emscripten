@@ -1581,6 +1581,9 @@ var PTHREAD_POOL_SIZE_STRICT = 1;
 // calls take to actually start a thread, but without actually slowing down
 // main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
 // then the runtime will wait for the pool to start up before running main().
+// If you do need to synchronously wait on the created threads
+// (e.g. via pthread_join), you must wait on the Module.pthreadPoolReady
+// promise before doing so or you're very likely to run into deadlocks.
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = false;
 

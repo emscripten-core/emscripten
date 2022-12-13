@@ -7712,6 +7712,16 @@ void* operator new(size_t size) {
     expected = test_file('webidl/output_%s.txt' % mode)
     self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
 
+  # Test that we can perform fully-synchronous initialization when combining WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.
+  # Also checks that PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users can wait on for pthread initialization.
+  @node_pthreads
+  def test_embind_sync_if_pthread_delayed(self):
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.emcc_args += ['--bind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.do_run_in_out_file_test(test_file('core/pthread/test_embind_sync_if_pthread_delayed.cpp'))
+
   ### Tests for tools
 
   @no_wasm2js('TODO: source maps in wasm2js')
@@ -9110,18 +9120,26 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fPIC')
     self.do_core_test('test_hello_world.c')
 
+  # Marked as impure since we don't have a wasi-threads is still
+  # a WIP.
+  @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
-    self.set_setting('EXIT_RUNTIME')
+    if not self.get_setting('STANDALONE_WASM'):
+      self.set_setting('EXIT_RUNTIME')
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
-  def test_pthread_c11_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
+  @parameterized({
+    '': ([],),
+    'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
+    'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_pthread_c11_threads(self, args):
+    self.emcc_args += args
     self.set_setting('PTHREADS_DEBUG')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
@@ -9130,13 +9148,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c')
 
   @node_pthreads
-  def test_pthread_cxx_threads(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
+  @parameterized({
+    '': (0,),
+    'pooled': (1,),
+  })
+  def test_pthread_cxx_threads(self, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
   @node_pthreads
-  def test_pthread_busy_wait(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
+  @parameterized({
+    '': (0,),
+    'pooled': (1,),
+  })
+  def test_pthread_busy_wait(self, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
