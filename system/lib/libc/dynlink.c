@@ -22,12 +22,20 @@
 
 //#define DYLINK_DEBUG
 
+struct async_data {
+  em_dlopen_callback onsuccess;
+  em_arg_callback_func onerror;
+  void* user_data;
+};
+typedef void (*dlopen_callback_func)(struct dso*, struct async_data* user_data);
+
 void _dlinit(struct dso* main_dso_handle);
 void* _dlopen_js(struct dso* handle);
 void* _dlsym_js(struct dso* handle, const char* symbol);
 void _emscripten_dlopen_js(struct dso* handle,
-                           em_arg_callback_func onsuccess,
-                           em_arg_callback_func onerror);
+                           dlopen_callback_func onsuccess,
+                           dlopen_callback_func onerror,
+                           struct async_data* user_data);
 void __dl_vseterr(const char*, va_list);
 
 static struct dso * _Atomic head, * _Atomic tail;
@@ -88,24 +96,24 @@ static struct dso* load_library_start(const char* name, int flags) {
   return p;
 }
 
-static void dlopen_js_onsuccess(void* handle) {
-  struct dso* p = (struct dso*)handle;
+static void dlopen_js_onsuccess(struct dso* dso, struct async_data* data) {
 #ifdef DYLINK_DEBUG
   fprintf(stderr, "%p: dlopen_js_onsuccess: dso=%p mem_addr=%p mem_size=%p\n", pthread_self(), p, p->mem_addr, p->mem_size);
 #endif
-  load_library_done(p);
+  load_library_done(dso);
   pthread_rwlock_unlock(&lock);
-  p->onsuccess(p->user_data, p);
+  data->onsuccess(data->user_data, dso);
+  free(data);
 }
 
-static void dlopen_js_onerror(void* handle) {
-  struct dso* p = (struct dso*)handle;
+static void dlopen_js_onerror(struct dso* dso, struct async_data* data) {
 #ifdef DYLINK_DEBUG
   fprintf(stderr, "%p: dlopen_js_onerror: dso=%p\n", pthread_self(), handle);
 #endif
   pthread_rwlock_unlock(&lock);
-  p->onerror(p->user_data);
-  free(p);
+  data->onerror(data->user_data);
+  free(dso);
+  free(data);
 }
 
 // This function is called at the start of all entry points so that the dso
@@ -188,14 +196,18 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     onerror(user_data);
     return;
   }
-  p->user_data = user_data;
-  p->onsuccess = onsuccess;
-  p->onerror = onerror;
+
+  // For async mode
+  struct async_data* d = malloc(sizeof(struct async_data));
+  d->user_data = user_data;
+  d->onsuccess = onsuccess;
+  d->onerror = onerror;
+
 #ifdef DYLINK_DEBUG
   fprintf(stderr, "%p: calling emscripten_dlopen_js %p\n", pthread_self(), p);
 #endif
   // Unlock happens in dlopen_js_onsuccess/dlopen_js_onerror
-  _emscripten_dlopen_js(p, dlopen_js_onsuccess, dlopen_js_onerror);
+  _emscripten_dlopen_js(p, dlopen_js_onsuccess, dlopen_js_onerror, d);
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {

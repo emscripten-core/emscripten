@@ -15,11 +15,6 @@
 struct dso {
   struct dso *next, *prev;
 
-  // For async mode
-  em_dlopen_callback onsuccess;
-  em_arg_callback_func onerror;
-  void* user_data;
-
   // Flags used to open the library.  We need to cache these so that other
   // threads can mirror the open library state.
   int flags;
