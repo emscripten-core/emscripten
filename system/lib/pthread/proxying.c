@@ -379,8 +379,12 @@ static void call_callback_then_free(void* arg) {
 static void call_then_schedule_callback(void* arg) {
   struct callback* info = (struct callback*)arg;
   info->func(info->arg);
-  emscripten_proxy_async(
-    info->q, info->caller_thread, call_callback_then_free, arg);
+  if (!emscripten_proxy_async(
+        info->q, info->caller_thread, call_callback_then_free, arg)) {
+    // No way to gracefully report that we failed to schedule the callback, so
+    // abort.
+    abort();
+  }
 }
 
 int emscripten_proxy_async_with_callback(em_proxying_queue* q,
