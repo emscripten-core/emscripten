@@ -50,6 +50,7 @@ from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import feature_matrix
+from tools import deps_info
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
@@ -542,14 +543,28 @@ def get_all_js_syms():
     """Only called when there is no existing symbol list for a given content hash.
     """
     library_syms = generate_js_symbols()
-    write_file(filename, '\n'.join(library_syms) + '\n')
+    lines = []
+
+    for name, deps in library_syms.items():
+      if deps:
+        lines.append('%s: %s' % (name, ','.join(deps)))
+      else:
+        lines.append(name)
+    write_file(filename, '\n'.join(lines) + '\n')
 
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
   with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
     filename = cache.get(f'symbol_lists/{content_hash}.txt', build_symbol_list)
-    library_syms = read_file(filename).splitlines()
+    lines = read_file(filename).splitlines()
+    library_syms = {}
+    for line in lines:
+      if ':' in line:
+        name, deps = line.split(':')
+        library_syms[name] = deps.strip().split(',')
+      else:
+        library_syms[line] = []
 
     # Limit of the overall size of the cache to 100 files.
     # This code will get test coverage since a full test run of `other` or `core`
@@ -1315,9 +1330,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('stopping after linking to object file')
     return 0
 
+  js_syms = {}
+  if not settings.SIDE_MODULE:
+    js_syms = get_all_js_syms()
+    deps_info.append_deps_info(js_syms)
+
   phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs)
 
-  phase_link(linker_arguments, wasm_target)
+  phase_link(linker_arguments, wasm_target, js_syms)
 
   # Special handling for when the user passed '-Wl,--version'.  In this case the linker
   # does not create the output file, but just prints its version and exits with 0.
@@ -3062,7 +3082,7 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
 
 
 @ToolchainProfiler.profile_block('link')
-def phase_link(linker_arguments, wasm_target):
+def phase_link(linker_arguments, wasm_target, js_syms):
   logger.debug(f'linking: {linker_arguments}')
 
   # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
@@ -3072,13 +3092,6 @@ def phase_link(linker_arguments, wasm_target):
   settings.REQUIRED_EXPORTS = dedup_list(settings.REQUIRED_EXPORTS)
   settings.EXPORT_IF_DEFINED = dedup_list(settings.EXPORT_IF_DEFINED)
 
-  # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-  # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
-  # fastcomp deferred linking opts.
-  # TODO: we could check if this is a fastcomp build, and still speed things up here
-  js_syms = None
-  if settings.ERROR_ON_UNDEFINED_SYMBOLS and not settings.SIDE_MODULE:
-    js_syms = get_all_js_syms()
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
 

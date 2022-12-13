@@ -6782,26 +6782,22 @@ int main() {
 mergeInto(LibraryManager.library, {
   my_js__deps: ['main'],
   my_js: (function() {
-      return function() {
-        console.log("hello " + _nonexistingvariable);
-      };
+      return () => console.log("hello " + _nonexistingvariable);
   }()),
 });
 ''')
-    create_file('test.cpp', '''\
+    create_file('test.c', '''\
 #include <stdio.h>
 #include <stdlib.h>
 
-extern "C" {
-  extern void my_js();
-}
+void my_js();
 
 int main() {
   my_js();
   return EXIT_SUCCESS;
 }
 ''')
-    self.run_process([EMXX, 'test.cpp', '--js-library', 'library_foo.js'])
+    self.run_process([EMCC, 'test.c', '--js-library', 'library_foo.js'])
 
     # but we do error on a missing js var
     create_file('library_foo_missing.js', '''
@@ -6814,16 +6810,16 @@ mergeInto(LibraryManager.library, {
   }()),
 });
 ''')
-    err = self.expect_fail([EMXX, 'test.cpp', '--js-library', 'library_foo_missing.js'])
-    self.assertContained('undefined symbol: nonexistingvariable', err)
+    err = self.expect_fail([EMCC, 'test.c', '--js-library', 'library_foo_missing.js'])
+    self.assertContained('wasm-ld: error: symbol exported via --export not found: nonexistingvariable', err)
 
     # and also for missing C code, of course (without the --js-library, it's just a missing C method)
-    err = self.expect_fail([EMXX, 'test.cpp'])
+    err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('undefined symbol: my_js', err)
 
-  def test_js_lib_to_system_lib(self):
-    # memset is in compiled code, so a js library __deps can't access it. it
-    # would need to be in deps_info.json or EXPORTED_FUNCTIONS
+  def test_js_lib_native_deps(self):
+    # Verify that memset (which lives in compiled code), can be specified as a JS library
+    # dependency.
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   depper__deps: ['memset'],
@@ -6832,38 +6828,19 @@ mergeInto(LibraryManager.library, {
   },
 });
 ''')
-    create_file('test.cpp', r'''
-#include <string.h>
+    create_file('test.c', r'''
 #include <stdio.h>
 
-extern "C" {
-extern void depper(char*);
-}
+void depper(char*);
 
 int main(int argc, char** argv) {
-  char buffer[11];
-  buffer[10] = '\0';
-  // call by a pointer, to force linking of memset, no llvm intrinsic here
-  volatile auto ptr = memset;
-  (*ptr)(buffer, 'a', 10);
+  char buffer[11] = { 0 };
   depper(buffer);
   puts(buffer);
 }
 ''')
 
-    err = self.expect_fail([EMXX, 'test.cpp', '--js-library', 'lib.js'])
-    self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
-
-    # without the dep, and with EXPORTED_FUNCTIONS, it works ok
-    create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
-  depper: function(ptr) {
-    _memset(ptr, 'd'.charCodeAt(0), 10);
-  },
-});
-''')
-    self.run_process([EMXX, 'test.cpp', '--js-library', 'lib.js', '-sEXPORTED_FUNCTIONS=_main,_memset'])
-    self.assertContained('dddddddddd', self.run_js('a.out.js'))
+    self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
 
   def test_realpath(self):
     create_file('src.c', r'''

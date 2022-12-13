@@ -2325,7 +2325,7 @@ var LibraryHTML5 = {
 
   $battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; },
 
-  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget'],
+  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget', 'malloc'],
   $registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -2359,7 +2359,7 @@ var LibraryHTML5 = {
 
   emscripten_set_batterychargingchange_callback_on_thread__proxy: 'sync',
   emscripten_set_batterychargingchange_callback_on_thread__sig: 'iii',
-  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery', 'malloc'],
   emscripten_set_batterychargingchange_callback_on_thread: function(userData, callbackfunc, targetThread) {
     if (!battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
     registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE') }}}, "chargingchange", targetThread);
@@ -2368,7 +2368,7 @@ var LibraryHTML5 = {
 
   emscripten_set_batterylevelchange_callback_on_thread__proxy: 'sync',
   emscripten_set_batterylevelchange_callback_on_thread__sig: 'iii',
-  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery', 'malloc'],
   emscripten_set_batterylevelchange_callback_on_thread: function(userData, callbackfunc, targetThread) {
     if (!battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
     registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE') }}}, "levelchange", targetThread);

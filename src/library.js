@@ -2111,7 +2111,7 @@ mergeInto(LibraryManager.library, {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory'],
+  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
