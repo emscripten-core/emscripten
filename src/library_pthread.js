@@ -914,7 +914,10 @@ var LibraryPThread = {
     var numCallArgs = arguments.length - 2;
     var outerArgs = arguments;
 #if ASSERTIONS
-    if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
+    var maxArgs = {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') - 1 }}};
+    if (numCallArgs > maxArgs) {
+      throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
+    }
 #endif
     // Allocate a buffer, which will be copied by the C code.
     return withStackSave(() => {

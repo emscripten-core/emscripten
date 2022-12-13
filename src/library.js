@@ -22,6 +22,9 @@
 
 mergeInto(LibraryManager.library, {
   $ptrToString: function(ptr) {
+#if ASSERTIONS
+    assert(typeof ptr === 'number');
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
