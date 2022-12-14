@@ -299,6 +299,7 @@ def run_tests(options, suites):
     try:
       import xmlrunner
       testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2, failfast=options.failfast)
+      print('Writing XML test output to ' + os.path.abspath(output.name))
     except ImportError:
       testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
 
