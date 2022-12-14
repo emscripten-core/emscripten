@@ -304,9 +304,9 @@ protected:
   std::shared_ptr<File> file;
 
 public:
-  Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+  Handle(std::shared_ptr<File> file) : lock(file->mutex), file(file) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
-    : file(file), lock(file->mutex, std::defer_lock) {}
+    : lock(file->mutex, std::defer_lock), file(file) {}
   off_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) {

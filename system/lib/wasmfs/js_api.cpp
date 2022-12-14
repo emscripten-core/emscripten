@@ -44,7 +44,7 @@ void* _wasmfs_read_file(char* path) {
     emscripten_console_error("Fatal error in FS.readFile");
     abort();
   }
-  int numRead = pread(fd, result + sizeof(size), size, 0);
+  [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
   // TODO: Generalize this so that it is thread-proof.
   // Must guarantee that the file size has not changed by the time it is read.
   assert(numRead == size);
