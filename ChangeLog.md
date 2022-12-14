@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.29 (in development)
 -----------------------
+- Fixed bug in `PROXY_TO_PTHREAD` whereby certain async operations on the main
+  thread would cause the whole program to exit, even when the proxied main
+  function was still running. (#18372)
 - Added `Module.pthreadPoolReady` promise for the `PTHREAD_POOL_DELAY_LOAD`
   mode that allows to safely join spawned threads. (#18281)
 - PThreads can now be safely spawned on-demand in Node.js even without a PThread

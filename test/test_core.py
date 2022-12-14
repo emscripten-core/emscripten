@@ -2860,6 +2860,12 @@ The current type of b is: 9
     # streams were locked when the main thread returned.
     self.do_runf(test_file('pthread/test_pthread_stdout_after_main.c'))
 
+  @node_pthreads
+  def test_pthread_proxy_to_pthread(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test(test_file('pthread/test_pthread_proxy_to_pthread.c'))
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 
