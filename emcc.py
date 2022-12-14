@@ -510,21 +510,16 @@ def generate_js_symbols():
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   emscripten.generate_struct_info()
-  glue, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  forwarded_json = json.loads(forwarded_data)
-  library_syms = set()
-  for name in forwarded_json:
-    if shared.is_c_symbol(name):
-      name = shared.demangle_c_symbol_name(name)
-      library_syms.add(name)
-  return library_syms
+  _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
+  # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
+  return json.loads(forwarded_data)
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
 def get_all_js_syms():
   # Avoiding using the cache when generating struct info since
   # this step is performed while the cache is locked.
-  if settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
     return generate_js_symbols()
 
   # We define a cache hit as when the settings and `--js-library` contents are
