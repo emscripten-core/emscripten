@@ -3508,7 +3508,7 @@ mergeInto(LibraryManager.library, {
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
   $callUserCallback__deps: ['$handleException',
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -3525,24 +3525,24 @@ mergeInto(LibraryManager.library, {
     }
     try {
       func();
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
 #if USE_PTHREADS && !EXIT_RUNTIME
       if (ENVIRONMENT_IS_PTHREAD)
 #endif
         maybeExit();
-#endif
+#endif // EXIT_RUNTIME
     } catch (e) {
       handleException(e);
     }
   },
 
+#if EXIT_RUNTIME
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
-#if EXIT_RUNTIME
 #if PROXY_TO_PTHREAD
     // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
     // waits for the proxied main function to exit.
@@ -3565,14 +3565,20 @@ mergeInto(LibraryManager.library, {
         handleException(e);
       }
     }
-#endif // EXIT_RUNTIME
   },
 #else
+  // Define as stub function in case legacy code has unconditionally dependency
+  // on this function.  We also have at least one test that expects this
+  // library function to always exist.
+  $maybeExit: function() {},
+#endif // EXIT_RUNTIME
+
+#else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: function(func) {
     func();
   },
-#endif
+#endif // MINIMAL_RUNTIME
 
   $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
