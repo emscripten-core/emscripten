@@ -90,7 +90,9 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   uptr map_res = (uptr)MmapOrDieOnFatalError(map_size, mem_type);
   if (UNLIKELY(!map_res))
     return nullptr;
+#ifndef SANITIZER_EMSCRIPTEN
   uptr map_end = map_res + map_size;
+#endif
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
@@ -230,13 +232,6 @@ void *MapWritableFileToMemory(void *addr, uptr size, fd_t fd, OFF_T offset) {
   return (void *)p;
 }
 
-static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
-                                        uptr start2, uptr end2) {
-  CHECK(start1 <= end1);
-  CHECK(start2 <= end2);
-  return (end1 < start2) || (end2 < start1);
-}
-
 #if SANITIZER_EMSCRIPTEN
 bool MemoryRangeIsAvailable(uptr /*range_start*/, uptr /*range_end*/) {
   // TODO: actually implement this.
@@ -247,6 +242,13 @@ void DumpProcessMap() {
   Report("Cannot dump memory map on emscripten");
 }
 #else
+static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
+                                        uptr start2, uptr end2) {
+  CHECK(start1 <= end1);
+  CHECK(start2 <= end2);
+  return (end1 < start2) || (end2 < start1);
+}
+
 // FIXME: this is thread-unsafe, but should not cause problems most of the time.
 // When the shadow is mapped only a single thread usually exists (plus maybe
 // several worker threads on Mac, which aren't expected to map big chunks of

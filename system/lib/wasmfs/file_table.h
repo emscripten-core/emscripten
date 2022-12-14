@@ -59,7 +59,7 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
 
 public:
   OpenFileState(private_key, oflags_t flags, std::shared_ptr<File> file)
-    : flags(flags), file(file) {}
+    : file(file), flags(flags) {}
 
   [[nodiscard]] static int create(std::shared_ptr<File> file,
                                   oflags_t flags,
