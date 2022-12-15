@@ -858,6 +858,7 @@ var LibraryDylink = {
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
+      libFile = locateFile(libFile);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
           readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);

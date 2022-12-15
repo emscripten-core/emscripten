@@ -3102,7 +3102,7 @@ The current type of b is: 9
     if self.js_engines == [config.V8_ENGINE]:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: Error reading file"
     else:
-      expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory, open 'libfoo.so'"
+      expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory"
     self.do_run(src, expected)
 
   @needs_dylink
@@ -4071,6 +4071,7 @@ ok
 
   def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=None,
                    main_module=2,
+                   so_dir='',
                    so_name='liblib.so',
                    need_reverse=True, **kwargs):
     main_emcc_args = main_emcc_args or []
@@ -4094,13 +4095,13 @@ ok
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       out_file = self.build(side, js_outfile=(side_suffix == 'js'))
-    shutil.move(out_file, so_name)
+    shutil.move(out_file, os.path.join(so_dir, so_name))
 
     # main settings
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     self.emcc_args += main_emcc_args
-    self.emcc_args.append(so_name)
+    self.emcc_args.append(os.path.join(so_dir, so_name))
 
     if force_c:
       self.emcc_args.append('-nostdlib++')
@@ -4120,7 +4121,7 @@ ok
       # Test the reverse as well.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
       self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
-                        need_reverse=False, **kwargs)
+                        main_module, so_dir, so_name, need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -4176,6 +4177,22 @@ ok
   def test_dylink_safe_heap(self):
     self.set_setting('SAFE_HEAP')
     self.do_basic_dylink_test()
+
+  @needs_dylink
+  def test_dylink_locate_file(self):
+    so_dir = 'so_dir'
+    so_name = 'liblib.so'
+    os.mkdir(so_dir)
+    create_file('pre.js', '''
+    Module['locateFile'] = function(f) {
+      if (f === '%s') {
+        return '%s/' + f;
+      } else {
+        return f;
+      }
+    };
+    ''' % (so_name, so_dir))
+    self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_emcc_args=['--pre-js', 'pre.js'])
 
   @needs_dylink
   def test_dylink_function_pointer_equality(self):
