@@ -25,15 +25,15 @@ int emscripten_futex_wake(volatile void *addr, int count) {
     return 0;
   }
 
-  // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
-  // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
+  // See if main thread is waiting on this address? If so, wake it up by
+  // resetting its wake location to zero.  Note that this is not a fair
+  // procedure, since we always wake main thread first before any workers, so
   // this scheme does not adhere to real queue-based waiting.
   int main_thread_woken = 0;
   if (a_cas_p(&_emscripten_main_thread_futex, (void*)addr, 0) == addr) {
     // The main browser thread must never try to wake itself up!
     assert(!emscripten_is_main_browser_thread());
-    if (count != INT_MAX)
-    {
+    if (count != INT_MAX) {
       --count;
       main_thread_woken = 1;
       if (count <= 0) {

@@ -48,7 +48,7 @@ void Directory::Handle::cacheChild(const std::string& name,
   // backend.
   if (kind == DCacheKind::Mount || !getDir()->maintainsFileIdentity()) {
     auto& dcache = getDir()->dcache;
-    auto [_, inserted] = dcache.insert({name, {kind, child}});
+    [[maybe_unused]] auto [_, inserted] = dcache.insert({name, {kind, child}});
     assert(inserted && "inserted child already existed!");
   }
   // Set the child's parent.

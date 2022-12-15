@@ -126,14 +126,12 @@ public:
 private:
   Kind kind = None;
   int id = -1;
-  oflags_t openFlags;
   size_t openCount = 0;
 
 public:
   Kind getKind() { return kind; }
 
   int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
-    int result;
     if (kind == None) {
       assert(openCount == 0);
       switch (flags) {
@@ -221,7 +219,7 @@ public:
   OpenState state;
 
   OPFSFile(mode_t mode, backend_t backend, int fileID, ProxyWorker& proxy)
-    : DataFile(mode, backend), fileID(fileID), proxy(proxy) {}
+    : DataFile(mode, backend), proxy(proxy), fileID(fileID) {}
 
   ~OPFSFile() override {
     assert(state.getKind() == OpenState::None);
@@ -343,7 +341,7 @@ public:
   int dirID = 0;
 
   OPFSDirectory(mode_t mode, backend_t backend, int dirID, ProxyWorker& proxy)
-    : Directory(mode, backend), dirID(dirID), proxy(proxy) {}
+    : Directory(mode, backend), proxy(proxy), dirID(dirID) {}
 
   ~OPFSDirectory() override {
     // Never free the root directory ID.
