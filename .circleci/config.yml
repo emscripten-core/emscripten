@@ -163,7 +163,7 @@ commands:
       - pip-install
       - run: apt-get install ninja-build
   upload-test-results:
-    descripten: "Upload test results"
+    description: "Upload test results"
     steps:
       - store_test_results:
           path: out/test-results.xml
