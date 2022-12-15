@@ -296,6 +296,7 @@ def run_tests(options, suites):
   print([s[0] for s in suites])
   # Run the discovered tests
 
+  os.makedirs('out', exist_ok=True)
   with open('out/test-results.xml', 'wb') as output:
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
