@@ -175,7 +175,7 @@ commands:
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
       - store_test_results:
-          path: test-results.xml
+          path: out/test-results.xml
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:

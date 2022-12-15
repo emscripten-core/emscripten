@@ -27,5 +27,5 @@ coverage.xml
 
 .DS_Store
 
-# CircleCI test result file
-test-results.xml
+# Test output
+/out/
