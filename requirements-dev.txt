@@ -23,5 +23,3 @@ docutils==0.17.1
 
 # Needed by test/test_sockets.py
 websockify==0.10.0
-
-unittest-xml-reporting
