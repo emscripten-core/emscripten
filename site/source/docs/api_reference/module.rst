@@ -147,6 +147,9 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Called when something is printed to standard error (stderr)
 
+.. js:attribute:: Module.mainScriptUrlOrBlob
+
+  Allows pthread workers or WASM workers to independently load up the the main application module JavaScript file (e.g. main.js) from a URL or blob. Creation of pthread workers or WASM workers need to load the main application module JavaScript file (e.g. main.js). By default, they load the the content of main.js from the URL of main.js. However, if the main.js file was loaded from a Blob, it is not possible to access the URL of the main.js. Also, when main.js is bundled by a Node.JS module bundler (e.g. webpack), the URL of that script can be wrong, the URL after webpack bundler will result in wrong URL like main.chunk.js
 
 Other methods
 =============
