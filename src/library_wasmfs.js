@@ -7,10 +7,6 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
-#if USE_CLOSURE_COMPILER
-  // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
-#endif
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
