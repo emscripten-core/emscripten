@@ -836,7 +836,6 @@ def process_dynamic_libs(dylibs, lib_dirs):
     settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
     settings.EXPORTED_FUNCTIONS.extend(mangled_strong_imports)
     settings.EXPORT_IF_DEFINED.extend(weak_imports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(strong_imports)
     building.user_requested_exports.update(mangled_strong_imports)
 
 
