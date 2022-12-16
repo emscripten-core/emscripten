@@ -1877,7 +1877,8 @@ FS.staticInit();` +
           if (onload) onload();
           removeRunDependency(dep);
         }
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (typeof Browser != 'undefined' &&
+            Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {

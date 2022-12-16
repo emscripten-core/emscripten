@@ -33,7 +33,8 @@ mergeInto(LibraryManager.library, {
           removeRunDependency(dep);
         }
 #if !MINIMAL_RUNTIME
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (typeof Browser != 'undefined' &&
+            Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
