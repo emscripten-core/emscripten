@@ -428,6 +428,7 @@ jobs:
             core2
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
+      - upload-test-results
   test-core3:
     executor: bionic
     steps:
@@ -482,6 +483,7 @@ jobs:
           test_targets: "wasm64"
       - run-tests:
           test_targets: "wasm64l"
+      - upload-test-results
   test-latest-node:
     executor: linux-python
     steps:
