@@ -296,19 +296,23 @@ def run_tests(options, suites):
   print([s[0] for s in suites])
   # Run the discovered tests
 
-  os.makedirs('out', exist_ok=True)
-  with open('out/test-results.xml', 'wb') as output:
+  if os.getenv('CI'):
+    os.makedirs('out', exist_ok=True)
+    # output fd must remain open until after testRunner.run() below
+    output = open('out/test-results.xml', 'wb')
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
+  else:
+    testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
 
-    for mod_name, suite in suites:
-      print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
-      res = testRunner.run(suite)
-      msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
-             (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
-      num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
-      resultMessages.append(msg)
+  for mod_name, suite in suites:
+    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
+    res = testRunner.run(suite)
+    msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
+           (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
+    num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
+    resultMessages.append(msg)
 
   if len(resultMessages) > 1:
     print('====================')
