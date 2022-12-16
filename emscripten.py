@@ -135,6 +135,8 @@ def update_settings_glue(wasm_file, metadata):
       get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.exports + list(metadata.namedGlobals.keys())
+  settings.WASM_EXPORTS += list(metadata.emJsFuncs.keys())
+
   # Store function exports so that Closure and metadce can track these even in
   # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
   settings.WASM_FUNCTION_EXPORTS = metadata.exports
@@ -328,7 +330,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     with webassembly.Module(in_wasm) as module:
       types = module.get_types()
       for imp in module.get_imports():
-        import_map[imp.field] = imp
+        if imp.module not in ('GOT.mem', 'GOT.func'):
+          import_map[imp.field] = imp
 
     for em_js_func, raw in metadata.emJsFuncs.items():
       c_sig = raw.split('<::>')[0].strip('()')
@@ -613,10 +616,11 @@ def create_em_js(metadata):
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
-    func = f'function {name}({args}) {body}'
-    if settings.ASYNCIFY == 2 and name in metadata.emJsFuncTypes:
+    mangled = asmjs_mangle(name)
+    func = f'function {mangled}({args}) {body}'
+    if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
       sig = func_type_to_sig(metadata.emJsFuncTypes[name])
-      func = func + f'\n{name}.sig = \'{sig}\';'
+      func = func + f'\n{mangled}.sig = \'{sig}\';'
     em_js_funcs.append(func)
 
   return em_js_funcs
@@ -676,7 +680,7 @@ def create_sending(invoke_funcs, metadata):
   send_items_map = {}
 
   for name in metadata.emJsFuncs:
-    send_items_map[name] = name
+    send_items_map[name] = asmjs_mangle(name)
   for name in invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
