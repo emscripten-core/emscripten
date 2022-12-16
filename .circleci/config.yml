@@ -162,6 +162,11 @@ commands:
       - npm-install
       - pip-install
       - run: apt-get install ninja-build
+  upload-test-results:
+    description: "Upload test results"
+    steps:
+      - store_test_results:
+          path: out/test-results.xml
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -198,6 +203,7 @@ commands:
             - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
+      - upload-test-results
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -250,6 +256,7 @@ commands:
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
+      - upload-test-results
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
@@ -275,6 +282,7 @@ commands:
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
             test/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
             test/runner emrun
+      - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -294,6 +302,7 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             test/runner sockets
+      - upload-test-results
 
 jobs:
   build-docs:
@@ -419,6 +428,7 @@ jobs:
             core2
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
+      - upload-test-results
   test-core3:
     executor: bionic
     steps:
@@ -473,6 +483,7 @@ jobs:
           test_targets: "wasm64"
       - run-tests:
           test_targets: "wasm64l"
+      - upload-test-results
   test-latest-node:
     executor: linux-python
     steps:
@@ -495,6 +506,7 @@ jobs:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
           test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint"
+      - upload-test-results
   test-other:
     executor: bionic
     steps:
@@ -580,9 +592,12 @@ jobs:
             other.test_emcc_print_search_dirs
             other.test_emcc_print_file_name
             other.test_pkg_config*"
+      - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
           test_targets: "sockets.test_nodejs_sockets_echo*"
+      - upload-test-results
+
   test-mac:
     executor: mac
     environment:
@@ -621,6 +636,7 @@ jobs:
             core2.test_sse1
             skip:other.test_native_link_error_message
             skip:other.test_stack_switching_size"
+      - upload-test-results
 
 workflows:
   build-test:
