@@ -8249,9 +8249,9 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
-    self.set_setting('ASYNCIFY')
     self.do_core_test('test_hello_world.c')
 
   @parameterized({
@@ -8369,8 +8369,8 @@ Module['onRuntimeInitialized'] = function() {
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
   @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
   def test_asyncify_main_module(self):
-    self.set_setting('ASYNCIFY', 1)
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
 
