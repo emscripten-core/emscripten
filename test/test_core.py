@@ -2294,6 +2294,12 @@ int main(int argc, char **argv) {
     self.node_args += shared.node_bigint_flags()
     self.do_core_test('test_em_js_i64.c')
 
+  def test_em_js_address_taken(self):
+    self.do_core_test('test_em_js_address_taken.c')
+    if self.check_dylink():
+      self.set_setting('MAIN_MODULE', 2)
+      self.do_core_test('test_em_js_address_taken.c')
+
   def test_runtime_stacksave(self):
     self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
 
