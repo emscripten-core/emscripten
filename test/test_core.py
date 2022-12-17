@@ -9633,6 +9633,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(ldflags=False))
     self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
 
+  @requires_node
+  def test_native_promise(self):
+    self.do_core_test('test_native_promise.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None, require_v8=False, v8_args=None):
