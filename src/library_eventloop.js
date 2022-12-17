@@ -207,7 +207,6 @@ LibraryJSEventLoop = {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_reject: ' + id);
 #endif
-    assert(promiseMap.has(id));
     promiseMap.get(id).reject();
     promiseMap.free(id);
   },
