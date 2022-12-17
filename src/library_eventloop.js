@@ -78,7 +78,7 @@ LibraryJSEventLoop = {
     return emSetImmediate(function() {
       {{{ runtimeKeepalivePop(); }}}
       callUserCallback(function() {
-        {{{ makeDynCall('vi', 'cb') }}}(userData);
+        {{{ makeDynCall('vp', 'cb') }}}(userData);
       });
     });
   },
@@ -97,20 +97,20 @@ LibraryJSEventLoop = {
     function tick() {
       {{{ runtimeKeepalivePop(); }}}
       callUserCallback(function() {
-        if ({{{ makeDynCall('ii', 'cb') }}}(userData)) {
+        if ({{{ makeDynCall('ip', 'cb') }}}(userData)) {
           {{{ runtimeKeepalivePush(); }}}
           emSetImmediate(tick);
         }
       });
     }
     {{{ runtimeKeepalivePush(); }}}
-    return emSetImmediate(tick);
+    emSetImmediate(tick);
   },
 
   emscripten_set_timeout__sig: 'ipdp',
   emscripten_set_timeout__deps: ['$safeSetTimeout'],
   emscripten_set_timeout: function(cb, msecs, userData) {
-    return safeSetTimeout(() => {{{ makeDynCall('vi', 'cb') }}}(userData), msecs);
+    return safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs);
   },
 
   emscripten_clear_timeout__sig: 'vi',
