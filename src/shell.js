@@ -392,6 +392,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (scriptDirectory.indexOf('blob:') !== 0) {
     scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf('/')+1);
   } else {
+    // TODO: Why? Does this mean that the previous `scriptDirectory`-logic is only for `blob:` URLs?
     scriptDirectory = '';
   }
 
