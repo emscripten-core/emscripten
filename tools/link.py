@@ -2470,30 +2470,22 @@ def modularize():
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
-    script_url_node = ''
+    script_url_web = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
-    # webworker running in strict mode, so doesn't have access to 'document'.
-    # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
+    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
+    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
     src = '''\
 var %(EXPORT_NAME)s = (() => {
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
+  %(script_url_web)s
   return (%(wrapper_function)s);
 })();
 ''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
+      'EXPORT_NAME': settings.EXPORT_NAME,
+      'script_url_web': script_url_web,
+      'wrapper_function': wrapper_function,
+    }
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
