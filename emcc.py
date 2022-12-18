@@ -524,7 +524,7 @@ def get_all_js_syms():
 
   # We define a cache hit as when the settings and `--js-library` contents are
   # identical.
-  input_files = [json.dumps(settings.dict(), sort_keys=True, indent=2)]
+  input_files = [json.dumps(settings.external_dict(), sort_keys=True, indent=2)]
   for jslib in sorted(glob.glob(utils.path_from_root('src') + '/library*.js')):
     input_files.append(read_file(jslib))
   for jslib in settings.JS_LIBRARIES:
@@ -818,7 +818,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
   for dylib in dylibs:
     exports = webassembly.get_exports(dylib)
     exports = set(e.name for e in exports)
-    settings.SIDE_MODULE_EXPORTS.extend(exports)
+    settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)
     imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
@@ -826,12 +826,13 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # on the dynamic linker to create them on the fly.
     # TODO(sbc): Integrate with metadata.invokeFuncs that comes from the
     # main module to avoid creating new invoke functions at runtime.
+    imports = set(imports)
     imports = set(i for i in imports if not i.startswith('invoke_'))
-    weak_imports = imports.intersection(exports)
-    strong_imports = imports.difference(exports)
+    weak_imports = sorted(imports.intersection(exports))
+    strong_imports = sorted(imports.difference(exports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
-    mangled_imports = [shared.asmjs_mangle(e) for e in imports]
+    mangled_imports = [shared.asmjs_mangle(e) for e in sorted(imports)]
     mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
     settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
     settings.EXPORTED_FUNCTIONS.extend(mangled_strong_imports)

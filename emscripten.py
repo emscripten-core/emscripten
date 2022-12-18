@@ -188,15 +188,10 @@ def compile_javascript(symbols_only=False):
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
 
-  # Only the names of the legacy settings are used by the JS compiler
-  # so we can reduce the size of serialized json by simplifying this
-  # otherwise complex value.
-  settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
-
   # Save settings to a file to work around v8 issue 1579
   with shared.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(settings.dict(), s, sort_keys=True, indent=2)
+      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
     env = os.environ.copy()
