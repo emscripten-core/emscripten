@@ -30,9 +30,10 @@ if (ENVIRONMENT_IS_NODE) {
     self: global,
     require: require,
     Module: Module,
-    location: {
-      href: __filename
-    },
+#if !EXPORT_ES6
+    __filename: __filename,
+    __dirname: __dirname,
+#endif
     Worker: nodeWorkerThreads.Worker,
     importScripts: function(f) {
       (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f);
