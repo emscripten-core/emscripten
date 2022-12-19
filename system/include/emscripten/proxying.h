@@ -56,14 +56,17 @@ int emscripten_proxy_async(em_proxying_queue* q,
 
 // Enqueue `func` on the given queue and thread. Once (and if) it finishes
 // executing, it will asynchronously proxy `callback` back to the current thread
-// on the same queue. Returns 1 if the initial work was successfully enqueued
-// and the target thread notified or 0 otherwise. If the callback cannot be
-// scheduled (for example due to OOM), the program is aborted.
+// on the same queue. The result of the proxied function will be passed as the
+// second argument to the callback. Returns 1 if the initial work was
+// successfully enqueued and the target thread notified or 0 otherwise. If the
+// callback cannot be scheduled (for example due to OOM), the program is
+// aborted.
 int emscripten_proxy_async_with_callback(em_proxying_queue* q,
                                          pthread_t target_thread,
-                                         void (*func)(void*),
+                                         void* (*func)(void*),
                                          void* arg,
-                                         void (*callback)(void*),
+                                         void (*callback)(void* arg,
+                                                          void* result),
                                          void* callback_arg);
 
 // Enqueue `func` on the given queue and thread and wait for it to finish
@@ -103,6 +106,19 @@ class ProxyingQueue {
   static void runAndFree(void* arg) {
     auto* f = (std::function<void()>*)arg;
     (*f)();
+    delete f;
+  }
+
+  static void* runAndFreeWithResult(void* arg) {
+    auto* f = (std::function<void*()>*)arg;
+    void* result = (*f)();
+    delete f;
+    return result;
+  }
+
+  static void runAndFreeCallback(void* arg, void* result) {
+    auto* f = (std::function<void(void*)>*)arg;
+    (*f)(result);
     delete f;
   }
 
@@ -163,13 +179,17 @@ public:
   }
 
   bool proxyAsyncWithCallback(pthread_t target,
-                              std::function<void()>&& func,
-                              std::function<void()>&& callback) {
-    std::function<void()>* arg = new std::function<void()>(std::move(func));
-    std::function<void()>* callback_arg =
-      new std::function<void()>(std::move(callback));
-    return emscripten_proxy_async_with_callback(
-      queue, target, runAndFree, (void*)arg, runAndFree, (void*)callback_arg);
+                              std::function<void*()>&& func,
+                              std::function<void(void*)>&& callback) {
+    std::function<void*()>* arg = new std::function<void*()>(std::move(func));
+    std::function<void(void*)>* callback_arg =
+      new std::function<void(void*)>(std::move(callback));
+    return emscripten_proxy_async_with_callback(queue,
+                                                target,
+                                                runAndFreeWithResult,
+                                                (void*)arg,
+                                                runAndFreeCallback,
+                                                (void*)callback_arg);
   }
 
   bool proxySync(const pthread_t target, const std::function<void()>& func) {

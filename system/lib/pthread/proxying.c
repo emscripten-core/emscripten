@@ -362,23 +362,24 @@ int emscripten_proxy_sync(em_proxying_queue* q,
 struct callback {
   em_proxying_queue* q;
   pthread_t caller_thread;
-  void (*func)(void*);
+  void* (*func)(void*);
   void* arg;
-  void (*callback)(void*);
+  void (*callback)(void* arg, void* result);
   void* callback_arg;
+  void* result;
 };
 
 // Free the callback info on the same thread it was originally allocated on.
 // This may be more efficient.
 static void call_callback_then_free(void* arg) {
   struct callback* info = (struct callback*)arg;
-  info->callback(info->callback_arg);
+  info->callback(info->callback_arg, info->result);
   free(arg);
 }
 
 static void call_then_schedule_callback(void* arg) {
   struct callback* info = (struct callback*)arg;
-  info->func(info->arg);
+  info->result = info->func(info->arg);
   if (!emscripten_proxy_async(
         info->q, info->caller_thread, call_callback_then_free, arg)) {
     // No way to gracefully report that we failed to schedule the callback, so
@@ -389,9 +390,10 @@ static void call_then_schedule_callback(void* arg) {
 
 int emscripten_proxy_async_with_callback(em_proxying_queue* q,
                                          pthread_t target_thread,
-                                         void (*func)(void*),
+                                         void* (*func)(void*),
                                          void* arg,
-                                         void (*callback)(void*),
+                                         void (*callback)(void* arg,
+                                                          void* result),
                                          void* callback_arg) {
   struct callback* info = malloc(sizeof(*info));
   if (info == NULL) {
@@ -404,6 +406,7 @@ int emscripten_proxy_async_with_callback(em_proxying_queue* q,
     .arg = arg,
     .callback = callback,
     .callback_arg = callback_arg,
+    .result = NULL,
   };
   return emscripten_proxy_async(
     q, target_thread, call_then_schedule_callback, info);
