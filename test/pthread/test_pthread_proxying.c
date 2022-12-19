@@ -95,6 +95,11 @@ void await_widget(widget* w) {
 
 void do_run_widget(void* arg) { run_widget((widget*)arg); }
 
+void* do_run_widget_42(void* arg) {
+  run_widget((widget*)arg);
+  return (void*)42;
+}
+
 void finish_running_widget(void* arg) {
   widget* w = (widget*)arg;
   run_widget(w);
@@ -199,7 +204,8 @@ void test_proxy_sync_with_ctx(void) {
   destroy_widget(&w7);
 }
 
-void add_one(void* arg) {
+void add_one(void* arg, void* result) {
+  assert((intptr_t)result == 42);
   int* j = (int*)arg;
   *j = *j + 1;
 }
@@ -217,7 +223,7 @@ void test_proxy_async_with_callback(void) {
 
   // Proxy to ourselves.
   emscripten_proxy_async_with_callback(
-    proxy_queue, pthread_self(), do_run_widget, &w8, add_one, &j);
+    proxy_queue, pthread_self(), do_run_widget_42, &w8, add_one, &j);
   assert(!w8.done);
   assert(j == 0);
   emscripten_proxy_execute_queue(proxy_queue);
@@ -228,7 +234,7 @@ void test_proxy_async_with_callback(void) {
 
   // Proxy to looper.
   emscripten_proxy_async_with_callback(
-    proxy_queue, looper, do_run_widget, &w9, add_one, &j);
+    proxy_queue, looper, do_run_widget_42, &w9, add_one, &j);
   await_widget(&w9);
   assert(i == 9);
   assert(w9.done);
@@ -242,7 +248,7 @@ void test_proxy_async_with_callback(void) {
 
   // Proxy to returner.
   emscripten_proxy_async_with_callback(
-    proxy_queue, returner, do_run_widget, &w10, add_one, &j);
+    proxy_queue, returner, do_run_widget_42, &w10, add_one, &j);
   await_widget(&w10);
   assert(i == 10);
   assert(w10.done);

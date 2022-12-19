@@ -157,8 +157,12 @@ void test_proxy_async_with_callback(void) {
     [&]() {
       i = 1;
       executor = std::this_thread::get_id();
+      return (void*)42;
     },
-    [&]() { j++; });
+    [&](void* result) {
+      assert((intptr_t)result == 42);
+      j++;
+    });
   assert(i == 0);
   queue.execute();
   assert(i == 1);
@@ -176,8 +180,12 @@ void test_proxy_async_with_callback(void) {
         }
         executor = std::this_thread::get_id();
         cond.notify_one();
+        return (void*)1337;
       },
-      [&]() { j++; });
+      [&](void* result) {
+        assert((intptr_t)result == 1337);
+        j++;
+      });
     std::unique_lock<std::mutex> lock(mutex);
     cond.wait(lock, [&]() { return i == 2; });
     assert(executor == looper.get_id());
@@ -199,8 +207,12 @@ void test_proxy_async_with_callback(void) {
         }
         executor = std::this_thread::get_id();
         cond.notify_one();
+        return nullptr;
       },
-      [&]() { j++; });
+      [&](void* result) {
+        assert(result == nullptr);
+        j++;
+      });
     std::unique_lock<std::mutex> lock(mutex);
     cond.wait(lock, [&]() { return i == 3; });
     assert(executor == returner.get_id());
