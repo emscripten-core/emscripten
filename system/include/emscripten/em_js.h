@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <emscripten/em_macros.h>
+
 #ifdef __cplusplus
 #define _EM_JS_CPP_BEGIN extern "C" {
 #define _EM_JS_CPP_END   }

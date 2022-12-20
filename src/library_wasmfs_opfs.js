@@ -5,36 +5,6 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $handleAllocator__docs: '/** @constructor */',
-  $handleAllocator: function() {
-    this.allocated = [];
-    this.freelist = [];
-    this.get = function(id) {
-#if ASSERTIONS
-      assert(this.allocated[id] !== undefined);
-#endif
-      return this.allocated[id];
-    };
-    this.allocate = function(handle) {
-      let id;
-      if (this.freelist.length > 0) {
-        id = this.freelist.pop();
-        this.allocated[id] = handle;
-      } else {
-        id = this.allocated.length;
-        this.allocated.push(handle);
-      }
-      return id;
-    };
-    this.free = function(id) {
-#if ASSERTIONS
-      assert(this.allocated[id] !== undefined);
-#endif
-      delete this.allocated[id];
-      this.freelist.push(id);
-    };
-  },
-
   $wasmfsOPFSDirectoryHandles__deps: ['$handleAllocator'],
   $wasmfsOPFSDirectoryHandles: "new handleAllocator()",
   $wasmfsOPFSFileHandles__deps: ['$handleAllocator'],

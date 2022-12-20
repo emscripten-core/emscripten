@@ -2294,6 +2294,12 @@ int main(int argc, char **argv) {
     self.node_args += shared.node_bigint_flags()
     self.do_core_test('test_em_js_i64.c')
 
+  def test_em_js_address_taken(self):
+    self.do_core_test('test_em_js_address_taken.c')
+    if self.check_dylink():
+      self.set_setting('MAIN_MODULE', 2)
+      self.do_core_test('test_em_js_address_taken.c')
+
   def test_runtime_stacksave(self):
     self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
 
@@ -2764,7 +2770,6 @@ The current type of b is: 9
                                  interleaved_output=False, emcc_args=args)
 
   @node_pthreads
-  @no_wasm2js('occasionally hangs in wasm2js (#16569)')
   def test_pthread_proxying_cpp(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9145,7 +9150,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Marked as impure since we don't have a wasi-threads is still
   # a WIP.
-  @also_with_standalone_wasm(impure=True)
+  # Test is disabled on standalone because of flakes, see
+  # https://github.com/emscripten-core/emscripten/issues/18405
+  # @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
     if not self.get_setting('STANDALONE_WASM'):
@@ -9632,6 +9639,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_main_reads_args(self):
     self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(ldflags=False))
     self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
+
+  @requires_node
+  def test_native_promise(self):
+    self.do_core_test('test_native_promise.c')
 
 
 # Generate tests for everything

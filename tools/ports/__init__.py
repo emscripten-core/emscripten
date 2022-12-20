@@ -132,8 +132,7 @@ class Ports:
       cflags.append('-I' + include)
 
     if system_libs.USE_NINJA:
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
+      os.makedirs(build_dir, exist_ok=True)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
@@ -145,8 +144,7 @@ class Ports:
         relpath = os.path.relpath(src, src_dir)
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
+        os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
         if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
           cmd[0] = shared.EMXX

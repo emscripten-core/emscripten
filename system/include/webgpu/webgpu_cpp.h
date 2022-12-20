@@ -1243,7 +1243,7 @@ namespace wgpu {
         uint32_t binding;
         Buffer buffer = nullptr;
         uint64_t offset = 0;
-        uint64_t size;
+        uint64_t size = WGPU_WHOLE_SIZE;
         Sampler sampler = nullptr;
         TextureView textureView = nullptr;
     };
