@@ -14,6 +14,7 @@ variants = {'sdl2-mt': {'USE_PTHREADS': 1}, 'sdl2-ww': {'WASM_WORKERS': 1}}
 def needed(settings):
   return settings.USE_SDL == 2
 
+
 def get_lib_name(settings):
   name = 'libSDL2'
   if settings.USE_PTHREADS:
@@ -21,6 +22,7 @@ def get_lib_name(settings):
   elif settings.WASM_WORKERS:
     name += '-ww'
   return name + '.a'
+
 
 def get(ports, settings, shared):
   # get the port
