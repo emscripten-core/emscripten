@@ -7,6 +7,12 @@
 // === Auto-generated postamble setup entry stuff ===
 {{{ exportRuntime() }}}
 
+#if '$Browser' in addedLibraryItems
+var handledByPreloadPlugin = Browser.handledByPreloadPlugin;
+#else
+var handledByPreloadPlugin = () => false;
+#endif
+
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER

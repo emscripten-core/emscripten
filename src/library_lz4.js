@@ -48,24 +48,26 @@ mergeInto(LibraryManager.library, {
       // Abstracting out the common parts seems to be more effort than it is
       // worth.
       if (preloadPlugin) {
-        Browser.init();
-        pack['metadata'].files.forEach(function(file) {
-          var handled = false;
-          var fullname = file.filename;
-          Module['preloadPlugins'].forEach(function(plugin) {
-            if (handled) return;
-            if (plugin['canHandle'](fullname)) {
-              var dep = getUniqueRunDependency('fp ' + fullname);
-              addRunDependency(dep);
-              var finish = function() {
-                removeRunDependency(dep);
+        if (typeof Browser !== 'undefined') {
+          Browser.init();
+          pack['metadata'].files.forEach(function(file) {
+            var handled = false;
+            var fullname = file.filename;
+            Module['preloadPlugins'].forEach(function(plugin) {
+              if (handled) return;
+              if (plugin['canHandle'](fullname)) {
+                var dep = getUniqueRunDependency('fp ' + fullname);
+                addRunDependency(dep);
+                var finish = function() {
+                  removeRunDependency(dep);
+                }
+                var byteArray = FS.readFile(fullname);
+                plugin['handle'](byteArray, fullname, finish, finish);
+                handled = true;
               }
-              var byteArray = FS.readFile(fullname);
-              plugin['handle'](byteArray, fullname, finish, finish);
-              handled = true;
-            }
+            });
           });
-        });
+        }
       }
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {

@@ -8,6 +8,12 @@
 
 {{{ exportRuntime() }}}
 
+#if '$Browser' in addedLibraryItems
+var handledByPreloadPlugin = Browser.handledByPreloadPlugin;
+#else
+var handledByPreloadPlugin = () => false;
+#endif
+
 #if !MEM_INIT_IN_WASM
 function runMemoryInitializer() {
 #if USE_PTHREADS
