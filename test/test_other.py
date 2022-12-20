@@ -12794,3 +12794,16 @@ foo/version.txt
     self.assertContained('--signext-lowering', err)
     err = self.run_process(cmd + ['-sMIN_CHROME_VERSION=73'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
+
+  def test_itimer(self):
+    self.do_other_test('test_itimer.c')
+
+  @node_pthreads
+  def test_itimer_pthread(self):
+    self.do_other_test('test_itimer.c')
+
+  @node_pthreads
+  def test_itimer_proxy_to_pthread(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_itimer.c')

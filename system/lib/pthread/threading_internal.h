@@ -96,6 +96,16 @@ typedef struct thread_profiler_block {
   char name[EM_THREAD_NAME_MAX];
 } thread_profiler_block;
 
+// Called whenever a thread performs a blocking action (or calls sched_yield).
+// This function takes care of running the event queue and other housekeeping
+// tasks.
+//
+// If that caller already know the current time it can pass it vai the now
+// argument.  This can save _emscripten_check_timers from needing to call out to
+// JS to get the current time.  Passing 0 means that caller doesn't know the
+// the current time.
+void _emscripten_yield(double now);
+
 void __emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
 void __emscripten_thread_cleanup(pthread_t thread);
