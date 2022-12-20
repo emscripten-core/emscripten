@@ -47,7 +47,7 @@ mergeInto(LibraryManager.library, {
       // is that we only decompress the file if it can be preloaded.
       // Abstracting out the common parts seems to be more effort than it is
       // worth.
-      if (preloadPlugin) {
+      if (preloadPlugin && typeof Browser !== 'undefined') {
         Browser.init();
         pack['metadata'].files.forEach(function(file) {
           var handled = false;
