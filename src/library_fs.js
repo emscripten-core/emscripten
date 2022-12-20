@@ -86,6 +86,10 @@ Object.defineProperties(FSNode.prototype, {
 });
 FS.FSNode = FSNode;
 FS.staticInit();` +
+#if USE_CLOSURE_COMPILER
+           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
+           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
+#endif
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
   },
@@ -1877,8 +1881,7 @@ FS.staticInit();` +
           if (onload) onload();
           removeRunDependency(dep);
         }
-        if (typeof Browser != 'undefined' &&
-            Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {

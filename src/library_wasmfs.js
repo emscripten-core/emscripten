@@ -7,6 +7,10 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
+#if USE_CLOSURE_COMPILER
+  // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
+  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
+#endif
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
@@ -33,8 +37,7 @@ mergeInto(LibraryManager.library, {
           removeRunDependency(dep);
         }
 #if !MINIMAL_RUNTIME
-        if (typeof Browser != 'undefined' &&
-            Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
