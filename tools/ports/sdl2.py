@@ -11,6 +11,7 @@ SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'USE_PTHREADS': 1}, 'sdl2-ww': {'WASM_WORKERS': 1}}
 
+
 def needed(settings):
   return settings.USE_SDL == 2
 
