@@ -12329,8 +12329,6 @@ Module['postRun'] = function() {{
   def test_fetch_init_node(self):
     # Make sure that `Fetch` initialises correctly under Node where
     # IndexedDB isn't available.
-    self.set_setting('FETCH')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['Fetch'])
     create_file('src.c', r'''
 #include <stdio.h>
 int main() {
