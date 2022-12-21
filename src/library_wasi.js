@@ -197,6 +197,7 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
   $doReadv__docs: '/** @param {number=} offset */',
   $doReadv: function(stream, iov, iovcnt, offset) {
+    var has_offset = typeof offset !== 'undefined';
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
@@ -206,11 +207,15 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
+      if (has_offset) {
+        offset += curr;
+      }
     }
     return ret;
   },
   $doWritev__docs: '/** @param {number=} offset */',
   $doWritev: function(stream, iov, iovcnt, offset) {
+    var has_offset = typeof offset !== 'undefined';
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
@@ -219,6 +224,9 @@ var WasiLibrary = {
       var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
       if (curr < 0) return -1;
       ret += curr;
+      if (has_offset) {
+        offset += curr;
+      }
     }
     return ret;
   },
