@@ -21,27 +21,30 @@ var Fetch = {
   },
 
 #if FETCH_SUPPORT_INDEXEDDB
-  // Be cautious that `onerror` may be run synchronously
   openDatabase: function(dbname, dbversion, onsuccess, onerror) {
-    try {
+    // Run asynchronously so that `onerror` doesn't run synchronously
+    // when the `try` fails (#18329)
+    setTimeout(() => {
+      try {
 #if FETCH_DEBUG
-      dbg('fetch: indexedDB.open(dbname="' + dbname + '", dbversion="' + dbversion + '");');
+        dbg('fetch: indexedDB.open(dbname="' + dbname + '", dbversion="' + dbversion + '");');
 #endif
-      var openRequest = indexedDB.open(dbname, dbversion);
-    } catch (e) { return onerror(e); }
+        var openRequest = indexedDB.open(dbname, dbversion);
+      } catch (e) { return onerror(e); }
 
-    openRequest.onupgradeneeded = (event) => {
+      openRequest.onupgradeneeded = (event) => {
 #if FETCH_DEBUG
-      dbg('fetch: IndexedDB upgrade needed. Clearing database.');
+        dbg('fetch: IndexedDB upgrade needed. Clearing database.');
 #endif
-      var db = /** @type {IDBDatabase} */ (event.target.result);
-      if (db.objectStoreNames.contains('FILES')) {
-        db.deleteObjectStore('FILES');
-      }
-      db.createObjectStore('FILES');
-    };
-    openRequest.onsuccess = (event) => onsuccess(event.target.result);
-    openRequest.onerror = (error) => onerror(error);
+        var db = /** @type {IDBDatabase} */ (event.target.result);
+        if (db.objectStoreNames.contains('FILES')) {
+          db.deleteObjectStore('FILES');
+        }
+        db.createObjectStore('FILES');
+      };
+      openRequest.onsuccess = (event) => onsuccess(event.target.result);
+      openRequest.onerror = (error) => onerror(error);
+    })
   },
 #endif
 
