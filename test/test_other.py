@@ -12335,9 +12335,7 @@ int main() {
   puts("ok");
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-sFETCH', '-sEXPORTED_RUNTIME_METHODS=["Fetch"]'])
-    ret = self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
-    self.assertContained('ok', ret)
+    self.do_runf('src.c', 'ok', emcc_args=['-sFETCH', '-sEXPORTED_RUNTIME_METHODS=Fetch'])
 
   # Test that using llvm-nm works when response files are in use, and inputs are linked using relative paths.
   # llvm-nm has a quirk that it does not remove escape chars when printing out filenames.
