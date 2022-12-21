@@ -168,6 +168,10 @@ def update_settings_glue(wasm_file, metadata):
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata.exports
 
+  if 'emscripten_run_preload_plugins' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or \
+     'emscripten_run_preload_plugins_data' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+    settings.CREATE_PRELOADED_FILES = True
+
   for deps in metadata.jsDeps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
 

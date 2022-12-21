@@ -3394,6 +3394,7 @@ def parse_args(newargs):
       diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
     elif check_flag('--use-preload-plugins'):
       options.use_preload_plugins = True
+      settings.CREATE_PRELOADED_FILES = True
     elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
