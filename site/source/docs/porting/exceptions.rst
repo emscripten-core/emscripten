@@ -76,7 +76,20 @@ be supported in all WebAssembly engines yet
 <https://webassembly.org/roadmap/>`_.
 
 
-Using exceptions and setjmp-longjmp together
-############################################
+Debugging Exceptions
+====================
+
+When :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled, uncaught exceptions
+will print stack traces for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>`
+is enabled by default in :ref:`-O0 <emcc-O0>` and disabled in optimized builds
+(:ref:`-O1 <emcc-O1>` and above). You can enable it by passing ``-sASSERTIONS``
+to the ``emcc`` command line in optimized builds as well.
+
+You can also catch and examine C++ exceptions from JavaScript. See
+:ref:`handling-c-exceptions-from-javascript`.
+
+
+Using Exceptions and setjmp-longjmp Together
+============================================
 
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.
