@@ -777,7 +777,7 @@ var LibraryBrowser = {
     },
   },
 
-  emscripten_run_preload_plugins__deps: ['$PATH'],
+  emscripten_run_preload_plugins__deps: ['$PATH', '$Browser'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
@@ -803,6 +803,7 @@ var LibraryBrowser = {
     return 0;
   },
 
+  emscripten_run_preload_plugins_data__deps: ['$Browser'],
   emscripten_run_preload_plugins_data__proxy: 'sync',
   emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {

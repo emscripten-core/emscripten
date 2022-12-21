@@ -32,7 +32,7 @@ mergeInto(LibraryManager.library, {
           if (onload) onload();
           removeRunDependency(dep);
         }
-#if DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.indexOf('$Browser') >= 0 // emcc will add Browser in this way when preload plugins are needed
+#if CREATE_PRELOADED_FILES
         if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);

@@ -68,6 +68,13 @@ if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;
 }
 
+// emcc will add $Browser if --use-preload-plugins is passed. The other way in
+// which we can need the ability to create preloade files is if the user calls
+// the preloading logic directly.
+CREATE_PRELOADED_FILES =
+    DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.indexOf('$Browser') >= 0 ||
+    DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.indexOf('emscripten_run_preload_plugins') >= 0;
+
 // Side modules are pure wasm and have no JS
 assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
 
