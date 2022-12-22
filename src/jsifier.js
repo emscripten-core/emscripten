@@ -480,13 +480,8 @@ function ${name}(${args}) {
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     print(processMacros(preprocess(read(shellFile), shellFile)));
 
-    let pre;
-    if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
-    } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
-    }
+    const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
+    const pre = processMacros(preprocess(read(preFile), preFile));
     print(pre);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
