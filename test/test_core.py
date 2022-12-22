@@ -9409,7 +9409,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_Module_dynamicLibraries_pthreads(self):
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += ['-pthread', '-Wno-experimental']
-    self.emcc_args += ['--extern-pre-js', 'pre.js']
+    self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     # This test is for setting dynamicLibraries at runtime so we don't
@@ -9418,14 +9418,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      if (!global.Module) {
-        // This is the initial load (not a worker)
-        // Define the initial state of Module as we would
-        // in the html shell file.
-        // Use var to escape the scope of the if statement
-        var Module = {
-          dynamicLibraries: ['liblib.so']
-        };
+      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
+        // Load liblib.so by default on non-workers
+        Module['dynamicLibraries'] = ['liblib.so'];
+      } else {
+        // Verify whether the main thread passes Module.dynamicLibraries to the worker
+        assert(Module['dynamicLibraries'].includes('liblib.so'));
       }
     ''')
 
