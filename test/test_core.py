@@ -6003,6 +6003,16 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('FORCE_FILESYSTEM')
     self.do_runf(test_file('fs/test_llseek.c'), 'success')
 
+  @also_with_noderawfs
+  def test_fs_readv(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf(test_file('fs/test_readv.c'), 'success')
+
+  @also_with_noderawfs
+  def test_fs_writev(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf(test_file('fs/test_writev.c'), 'success')
+
   def test_fs_64bit(self):
     self.do_runf(test_file('fs/test_64bit.c'), 'success')
 
