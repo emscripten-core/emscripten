@@ -5227,6 +5227,40 @@ main main sees -524, -534, 72.
     self.dylink_testf(test_file('core/test_dylink_tls_export.c'),
                       need_reverse=False)
 
+  @needs_dylink
+  @disabled('TypeID does not currently handle this')
+  def test_dylink_typeid(self):
+    # When the default visibility of the library's symbols is hidden,
+    # the type info is not merged, and we end up with different type
+    # ids in the shared library and the executable.
+    self.emcc_args.append('-fvisibility=hidden')
+    self.dylink_test(header=r'''
+      #include <emscripten/wire.h>
+
+      using namespace emscripten::internal;
+      struct SomeType {};
+      __attribute__((visibility("default"))) TYPEID getSomeTypeId();
+    ''', main=r'''
+      #include "header.h"
+      #include <stdio.h>
+
+      int main() {
+        if (getSomeTypeId() != TypeID<SomeType>::get()) {
+          puts("type ids are not the same");
+          return 1;
+        }
+        puts("success");
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      #include <stdio.h>
+
+      TYPEID getSomeTypeId() {
+        return TypeID<SomeType>::get();
+      }
+    ''', expected=['success'], need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
