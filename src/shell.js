@@ -510,5 +510,3 @@ assert(!ENVIRONMENT_IS_SHELL, "shell environment detected but not enabled at bui
 #endif
 
 #endif // ASSERTIONS
-
-{{BODY}}
