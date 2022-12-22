@@ -5,7 +5,6 @@
  * found in the LICENSE file.
  */
 
-
 #include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -15,8 +14,7 @@
 #include <unistd.h>
 
 int main() {
-  int fd =
-    open("./preadv_offset_file.txt", O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
+  int fd = open("testfile", O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
   assert(fd >= 0);
 
   char buf0[16] = "a=1\n";
