@@ -12782,6 +12782,7 @@ foo/version.txt
     self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000', '-o', 'lowered.js'])
     self.assertEqual('1\n', self.run_js('lowered.js'))
 
+  @node_pthreads
   def test_locate_file_abspath_pthread(self):
     # Verify that `scriptDirectory` is an absolute path when `ENVIRONMENT_IS_WORKER`
     self.emcc_args += ['-pthread', '--pre-js', 'pre.js']
