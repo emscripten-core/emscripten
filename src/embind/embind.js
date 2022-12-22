@@ -298,7 +298,7 @@ var LibraryEmbind = {
   $registeredPointers: {},
 
   $registerType__deps: [
-    '$awaitingDependencies', '$registeredTypes',
+    '$awaitingDependencies', '$registeredTypes', '$getTypeName',
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
   $registerType__docs: '/** @param {Object=} options */',
@@ -318,6 +318,12 @@ var LibraryEmbind = {
             throwBindingError("Cannot register type '" + name + "' twice");
         }
     }
+
+#if MAIN_MODULE
+    // Store type name as well, which may or may not match the registered
+    // name, depending on mangling and the actual calls to register_foo.
+    registeredInstance.typeName = getTypeName(rawType);
+#endif
 
     registeredTypes[rawType] = registeredInstance;
     delete typeDependencies[rawType];
@@ -416,6 +422,20 @@ var LibraryEmbind = {
   $requireRegisteredType: function(rawType, humanName) {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
+#if MAIN_MODULE
+        // Fallback, in case of shared libraries, where the TypeID (rawType)
+        // for each type is not stable across library boundaries.
+        var typeName = getTypeName(rawType);
+        for (const typeId in registeredTypes) {
+            var type = registeredTypes[typeId];
+            if (type.typeName == typeName) {
+                registerType(rawType, type, {
+                    ignoreDuplicateRegistrations: true,
+                });
+                return type;
+            }
+        }
+#endif
         throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
     }
     return impl;

@@ -7684,6 +7684,31 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
+  @needs_dylink
+  def test_embind_type_registration_when_typeid_is_not_stable(self):
+    # See test_dylink_typeid
+    self.emcc_args += ['-lembind', '-fvisibility=hidden']
+    self.dylink_test(header=r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+    ''', main=r'''
+      #include "header.h"
+      int main() {
+        emscripten::val intVal(42);
+        emscripten::val valVal(intVal);
+        puts("success");
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      __attribute__((constructor)) void kaboom() {
+        emscripten::val intVal(42);
+        emscripten::val valVal(intVal);
+      }
+    ''', expected=['success'], need_reverse=False)
+
   @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
     '': ('DEFAULT', False),
