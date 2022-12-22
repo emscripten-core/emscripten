@@ -12781,3 +12781,16 @@ foo/version.txt
     # should successfully lower sign-ext.
     self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000', '-o', 'lowered.js'])
     self.assertEqual('1\n', self.run_js('lowered.js'))
+
+  def test_locate_file_abspath_pthread(self):
+    # Verify that `scriptDirectory` is an absolute path when `ENVIRONMENT_IS_WORKER`
+    self.emcc_args += ['-pthread', '--pre-js', 'pre.js']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    create_file('pre.js', '''
+    Module['locateFile'] = (fileName, scriptDirectory) => {
+      assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+      return scriptDirectory + fileName;
+    };
+    ''')
+    self.do_runf(test_file('hello_world.c'), 'hello, world!')
