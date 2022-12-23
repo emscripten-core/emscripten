@@ -91,7 +91,7 @@ commands:
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
