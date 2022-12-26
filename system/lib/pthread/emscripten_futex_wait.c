@@ -17,7 +17,9 @@ extern void* _emscripten_main_thread_futex;
 
 int _emscripten_thread_supports_atomics_wait(void);
 
-static int futex_wait_busy(volatile void *addr, uint32_t val, double timeout) {
+static int futex_wait_main_browser_thread(volatile void* addr,
+                                          uint32_t val,
+                                          double timeout) {
   // Atomics.wait is not available in the main browser thread, so simulate it
   // via busy spinning.
   double now = emscripten_get_now();
@@ -119,13 +121,18 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
-  // For threads that cannot block (i.e. the main browser thread) we can't use
-  // __builtin_wasm_memory_atomic_wait32 so we call out the JS function that
-  // will busy wait.
+  // For the main browser thread we can't use
+  // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
-    ret = futex_wait_busy(addr, val, max_wait_ms);
-    emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
-    return ret;
+    if (emscripten_is_main_browser_thread()) {
+      ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
+      return ret;
+    } else {
+      // TODO: handle non-main threads that also don't support `atomic.wait`.
+      // For example AudioWorklet.
+      assert(0);
+    }
   }
 
   // -1 (or any negative number) means wait indefinitely.
