@@ -3002,6 +3002,7 @@ mergeInto(LibraryManager.library, {
     return readEmAsmArgsArray;
   },
 
+#if HAVE_EM_ASM
   $runEmAsmFunction__sig: 'ippp',
   $runEmAsmFunction__deps: ['$readEmAsmArgs'],
   $runEmAsmFunction: function(code, sigPtr, argbuf) {
@@ -3069,6 +3070,7 @@ mergeInto(LibraryManager.library, {
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
     return runMainThreadEmAsm(code, sigPtr, argbuf, 0);
   },
+#endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols

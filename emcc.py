@@ -3086,7 +3086,7 @@ def phase_memory_initializer(memfile):
   global final_js
 
   src = read_file(final_js)
-  src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
+  src = do_replace(src, '<<< MEM_INITIALIZER >>>', '"%s"' % os.path.basename(memfile))
   write_file(final_js + '.mem.js', src)
   final_js += '.mem.js'
 

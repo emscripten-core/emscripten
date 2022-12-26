@@ -241,3 +241,5 @@ var ALL_INCOMING_MODULE_JS_API = [];
 var WEAK_IMPORTS = [];
 
 var STACK_FIRST = false;
+
+var HAVE_EM_ASM = true;

@@ -137,6 +137,8 @@ def update_settings_glue(wasm_file, metadata):
   # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
   settings.WASM_FUNCTION_EXPORTS = metadata.exports
 
+  settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.asmConsts) != 0)
+
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
   if settings.ASYNCIFY == 2:
@@ -408,11 +410,15 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
-  pre = pre.replace(
-    '// === Body ===',
-    ('// === Body ===\n\n' + asm_const_map +
-     '\n'.join(em_js_funcs) + '\n'))
+  extra_code = ''
+  if asm_const_pairs or settings.MAIN_MODULE:
+    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+  if em_js_funcs:
+    extra_code += '\n'.join(em_js_funcs) + '\n'
+  if extra_code:
+    pre = pre.replace(
+      '// === Body ===\n',
+      '// === Body ===\n\n' + extra_code + '\n')
 
   with open(outfile_js, 'w', encoding='utf-8') as out:
     out.write(normalize_line_endings(pre))
