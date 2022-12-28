@@ -611,11 +611,10 @@ def create_em_js(metadata):
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
-    mangled = asmjs_mangle(name)
-    func = f'function {mangled}({args}) {body}'
+    func = f'function {name}({args}) {body}'
     if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
       sig = func_type_to_sig(metadata.emJsFuncTypes[name])
-      func = func + f'\n{mangled}.sig = \'{sig}\';'
+      func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)
 
   return em_js_funcs
@@ -675,7 +674,7 @@ def create_sending(invoke_funcs, metadata):
   send_items_map = {}
 
   for name in metadata.emJsFuncs:
-    send_items_map[name] = asmjs_mangle(name)
+    send_items_map[name] = name
   for name in invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
