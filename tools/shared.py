@@ -74,6 +74,7 @@ diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
+diagnostics.add_warning('compatibility')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
