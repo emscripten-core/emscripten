@@ -298,7 +298,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-O2', '-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Wall', '-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -873,6 +873,12 @@ class libc(MuslInternalLibrary,
              '-Wno-macro-redefined',
              '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
+             '-Wno-missing-braces',
+             '-Wno-logical-op-parentheses',
+             '-Wno-bitwise-op-parentheses',
+             '-Wno-unused-but-set-variable',
+             '-Wno-unused-variable',
+             '-Wno-unused-label',
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
@@ -1123,29 +1129,26 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'dynlink.c',
-          'wasi-helpers.c',
+          'emscripten_console.c',
+          'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
-          'raise.c',
+          'emscripten_memcpy.c',
+          'emscripten_memmove.c',
+          'emscripten_memset.c',
+          'emscripten_mmap.c',
+          'emscripten_scan_stack.c',
+          'emscripten_time.c',
           'kill.c',
+          'pthread_sigmask.c',
+          'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
-          'pthread_sigmask.c',
-          'emscripten_console.c',
-          'emscripten_time.c',
+          'wasi-helpers.c',
         ])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=['emscripten_atomic.c', 'thread_profiler.c'])
-
-    libc_files += files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c',
-                 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c',
-                 'emscripten_mmap.c'
-                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1489,7 +1492,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
 class libmalloc(MTLibrary):
   name = 'libmalloc'
 
-  cflags = ['-fno-builtin']
+  cflags = ['-fno-builtin', '-Wno-unused-function', '-Wno-unused-but-set-variable', '-Wno-unused-variable']
   # malloc/free/calloc are runtime functions and can be generated during LTO
   # Therefor they cannot themselves be part of LTO.
   force_object_files = True

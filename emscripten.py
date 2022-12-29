@@ -135,6 +135,8 @@ def update_settings_glue(wasm_file, metadata):
       get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.exports + list(metadata.namedGlobals.keys())
+  settings.WASM_EXPORTS += list(metadata.emJsFuncs.keys())
+
   # Store function exports so that Closure and metadce can track these even in
   # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
   settings.WASM_FUNCTION_EXPORTS = metadata.exports
@@ -186,15 +188,10 @@ def compile_javascript(symbols_only=False):
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
 
-  # Only the names of the legacy settings are used by the JS compiler
-  # so we can reduce the size of serialized json by simplifying this
-  # otherwise complex value.
-  settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
-
   # Save settings to a file to work around v8 issue 1579
   with shared.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(settings.dict(), s, sort_keys=True, indent=2)
+      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
     env = os.environ.copy()
@@ -222,10 +219,10 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(js_library_funcs):
+def report_missing_symbols(js_symbols):
   # Report any symbol that was explicitly exported but is present neither
   # as a native function nor as a JS library function.
-  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
   missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
   for symbol in sorted(missing):
     diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
@@ -328,7 +325,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     with webassembly.Module(in_wasm) as module:
       types = module.get_types()
       for imp in module.get_imports():
-        import_map[imp.field] = imp
+        if imp.module not in ('GOT.mem', 'GOT.func'):
+          import_map[imp.field] = imp
 
     for em_js_func, raw in metadata.emJsFuncs.items():
       c_sig = raw.split('<::>')[0].strip('()')
@@ -614,7 +612,7 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
-    if settings.ASYNCIFY == 2 and name in metadata.emJsFuncTypes:
+    if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
       sig = func_type_to_sig(metadata.emJsFuncTypes[name])
       func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)

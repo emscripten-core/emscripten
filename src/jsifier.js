@@ -67,7 +67,7 @@ function isDefined(symName) {
 }
 
 // JSifier
-function runJSify() {
+function runJSify(symbolsOnly = false) {
   const functionStubs = [];
 
   const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
@@ -212,22 +212,35 @@ function ${name}(${args}) {
 
     function addFromLibrary(item, dependent) {
       // dependencies can be JS functions, which we just run
-      if (typeof item == 'function') return item();
+      if (typeof item == 'function') {
+        return item();
+      }
 
       const ident = item.identOrig;
       const finalName = item.identMangled;
 
-      if (ident in addedLibraryItems) return '';
+      if (ident in addedLibraryItems) {
+        return;
+      }
       addedLibraryItems[ident] = true;
 
-      // don't process any special identifiers. These are looked up when processing the base name of the identifier.
+      // don't process any special identifiers. These are looked up when
+      // processing the base name of the identifier.
       if (isJsLibraryConfigIdentifier(ident)) {
-        return '';
+        return;
       }
 
-      // if the function was implemented in compiled code, there is no need to include the js version
+      if (symbolsOnly) {
+        if (!isJsOnlyIdentifier(ident) && LibraryManager.library.hasOwnProperty(ident)) {
+          librarySymbols.push(ident);
+        }
+        return;
+      }
+
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
       if (WASM_EXPORTS.has(ident)) {
-        return '';
+        return;
       }
 
       // This gets set to true in the case of dynamic linking for symbols that
@@ -236,9 +249,6 @@ function ${name}(${args}) {
       let isStub = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (ONLY_CALC_JS_SYMBOLS) {
-          return;
-        }
         const isWeakImport = WEAK_IMPORTS.has(ident);
         if (!isDefined(ident) && !isWeakImport) {
           if (PROXY_TO_PTHREAD && !MAIN_MODULE && ident == '__main_argc_argv') {
@@ -284,6 +294,8 @@ function ${name}(${args}) {
         }
       }
 
+      librarySymbols.push(finalName);
+
       const original = LibraryManager.library[ident];
       let snippet = original;
       const deps = LibraryManager.library[ident + '__deps'] || [];
@@ -291,6 +303,7 @@ function ${name}(${args}) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+
       const isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
@@ -322,12 +335,6 @@ function ${name}(${args}) {
         addImplicitDeps(snippet, deps);
       }
 
-      librarySymbols.push(finalName);
-
-      if (ONLY_CALC_JS_SYMBOLS) {
-        return '';
-      }
-
       const postsetId = ident + '__postset';
       let postset = LibraryManager.library[postsetId];
       if (postset) {
@@ -347,7 +354,8 @@ function ${name}(${args}) {
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
-      const identDependents = ident + "__deps: ['" + deps.join("','") + "']";
+      const deps_list = deps.join("','");
+      const identDependents = ident + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
         if (typeof dep != 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
@@ -470,17 +478,10 @@ function ${name}(${args}) {
     itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
+    print(processMacros(preprocess(read(shellFile), shellFile)));
 
-    const shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0], shellFile)));
-    let pre;
-    if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
-    } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
-    }
-    print(pre);
+    const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
+    print(processMacros(preprocess(read(preFile), preFile)));
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
@@ -523,10 +524,7 @@ function ${name}(${args}) {
     }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    const post = processMacros(preprocess(read(postFile), postFile));
-    print(post);
-
-    print(processMacros(preprocess(shellParts[1], shellFile, shellParts[0].match(/\n/g).length)));
+    print(processMacros(preprocess(read(postFile), postFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
@@ -540,7 +538,7 @@ function ${name}(${args}) {
   // Data
   functionStubs.forEach(functionStubHandler);
 
-  if (ONLY_CALC_JS_SYMBOLS) {
+  if (symbolsOnly) {
     print(JSON.stringify(librarySymbols));
     return;
   }

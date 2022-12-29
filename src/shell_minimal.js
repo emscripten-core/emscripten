@@ -158,5 +158,3 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'fu
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS
-
-{{BODY}}

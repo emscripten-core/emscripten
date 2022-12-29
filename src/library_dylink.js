@@ -239,7 +239,7 @@ var LibraryDylink = {
   _dlopen_js: function(filename, flag) {
     abort(dlopenMissingError);
   },
-  _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
   _dlsym_js: function(handle, symbol) {
@@ -858,6 +858,7 @@ var LibraryDylink = {
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
+      libFile = locateFile(libFile);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
           readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
@@ -1023,17 +1024,17 @@ var LibraryDylink = {
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'vppp',
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onerror') }}}(handle, user_data); });
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle, user_data); });
     }
 
     {{{ runtimeKeepalivePush() }}}

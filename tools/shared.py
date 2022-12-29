@@ -383,7 +383,10 @@ def set_version_globals():
 
 def generate_sanity():
   sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
-  config_data = utils.read_file(config.EM_CONFIG)
+  if os.path.exists(config.EM_CONFIG):
+    config_data = utils.read_file(config.EM_CONFIG)
+  else:
+    config_data = ''
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -691,7 +694,7 @@ def read_and_preprocess(filename, expand_macros=False):
   # Create a settings file with the current settings to pass to the JS preprocessor
 
   settings_str = ''
-  for key, value in settings.dict().items():
+  for key, value in settings.external_dict().items():
     assert key == key.upper()  # should only ever be uppercase keys in settings
     jsoned = json.dumps(value, sort_keys=True)
     settings_str += f'var {key} = {jsoned};\n'

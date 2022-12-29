@@ -294,7 +294,18 @@ def run_tests(options, suites):
   print('Test suites:')
   print([s[0] for s in suites])
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+
+  if os.getenv('CI'):
+    os.makedirs('out', exist_ok=True)
+    # output fd must remain open until after testRunner.run() below
+    output = open('out/test-results.xml', 'wb')
+    import xmlrunner # type: ignore
+    testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
+                                         failfast=options.failfast)
+    print('Writing XML test output to ' + os.path.abspath(output.name))
+  else:
+    testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)

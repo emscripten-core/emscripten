@@ -593,32 +593,6 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_init__sig: 'viiiiiii',
-  emscripten_fiber_init__deps: ['$Asyncify'],
-  emscripten_fiber_init: function(fiber, entryPoint, userData, cStack, cStackSize, asyncStack, asyncStackSize) {
-    var cStackBase = cStack + cStackSize;
-
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'cStackBase',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'cStack',      'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'cStackBase',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       'entryPoint', 'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.user_data,   'userData',   'i32') }}};
-
-    var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
-    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
-  },
-
-  emscripten_fiber_init_from_current_context__sig: 'vii',
-  emscripten_fiber_init_from_current_context__deps: ['$Asyncify'],
-  emscripten_fiber_init_from_current_context: function(fiber, asyncStack, asyncStackSize) {
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '_emscripten_stack_get_base()', 'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '_emscripten_stack_get_end()',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       0,            'i32') }}};
-
-    var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
-    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
-  },
-
   emscripten_fiber_swap__sig: 'vii',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {

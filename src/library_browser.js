@@ -953,7 +953,7 @@ var LibraryBrowser = {
 #if OFFSCREEN_FRAMEBUFFER
     'emscripten_webgl_commit_frame',
 #endif
-#if !MINIMAL_RUNTIME
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -988,7 +988,7 @@ var LibraryBrowser = {
         dbg('main loop exiting..');
 #endif
         {{{ runtimeKeepalivePop() }}}
-#if !MINIMAL_RUNTIME
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
         maybeExit();
 #endif
         return false;

@@ -1043,6 +1043,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.assertContained('Traceback', proc.stderr)
     elif not WINDOWS or 'Access is denied' not in proc.stderr:
       self.assertNotContained('Traceback', proc.stderr)
+    if EMTEST_VERBOSE:
+      sys.stderr.write(proc.stderr)
     return proc.stderr
 
   # excercise dynamic linker.

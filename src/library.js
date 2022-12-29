@@ -22,6 +22,9 @@
 
 mergeInto(LibraryManager.library, {
   $ptrToString: function(ptr) {
+#if ASSERTIONS
+    assert(typeof ptr === 'number');
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -1241,9 +1244,7 @@ mergeInto(LibraryManager.library, {
 #if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw Infinity; },
-#endif
-
-#if !SUPPORT_LONGJMP
+#elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
@@ -1258,17 +1259,19 @@ mergeInto(LibraryManager.library, {
   // built with SUPPORT_LONGJMP=1, the object file contains references of not
   // longjmp but _emscripten_throw_longjmp, which is called from
   // emscripten_longjmp.
-  _emscripten_throw_longjmp: function() { error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)'); },
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
 #endif
+  _emscripten_throw_longjmp: function() {
+    error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
+  },
   // will never be emitted, as the dep errors at compile time
   longjmp: function(env, value) {
-    abort('longjmp not supported');
+    abort('longjmp not supported (build with -s SUPPORT_LONGJMP)');
   },
-  setjmp: function(env, value) {
-    abort('setjmp not supported');
+  setjmp: function(env) {
+    abort('setjmp not supported (build with -s SUPPORT_LONGJMP)');
   },
 #endif
 
@@ -3505,7 +3508,7 @@ mergeInto(LibraryManager.library, {
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
   $callUserCallback__deps: ['$handleException',
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -3522,24 +3525,29 @@ mergeInto(LibraryManager.library, {
     }
     try {
       func();
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
 #if USE_PTHREADS && !EXIT_RUNTIME
       if (ENVIRONMENT_IS_PTHREAD)
 #endif
         maybeExit();
-#endif
+#endif // EXIT_RUNTIME
     } catch (e) {
       handleException(e);
     }
   },
 
+#if EXIT_RUNTIME
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
-#if EXIT_RUNTIME
+#if PROXY_TO_PTHREAD
+    // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
+    // waits for the proxied main function to exit.
+    if (!ENVIRONMENT_IS_PTHREAD) return;
+#endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3557,14 +3565,20 @@ mergeInto(LibraryManager.library, {
         handleException(e);
       }
     }
-#endif // EXIT_RUNTIME
   },
 #else
+  // Define as stub function in case legacy code has unconditionally dependency
+  // on this function.  We also have at least one test that expects this
+  // library function to always exist.
+  $maybeExit: function() {},
+#endif // EXIT_RUNTIME
+
+#else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: function(func) {
     func();
   },
-#endif
+#endif // MINIMAL_RUNTIME
 
   $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
@@ -3681,6 +3695,36 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
     dbg('done preloading data files');
 #endif
+  },
+
+  $handleAllocator__docs: '/** @constructor */',
+  $handleAllocator: function() {
+    this.allocated = [];
+    this.freelist = [];
+    this.get = function(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      return this.allocated[id];
+    };
+    this.allocate = function(handle) {
+      let id;
+      if (this.freelist.length > 0) {
+        id = this.freelist.pop();
+        this.allocated[id] = handle;
+      } else {
+        id = this.allocated.length;
+        this.allocated.push(handle);
+      }
+      return id;
+    };
+    this.free = function(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      delete this.allocated[id];
+      this.freelist.push(id);
+    };
   },
 });
 

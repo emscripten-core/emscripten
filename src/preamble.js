@@ -926,38 +926,15 @@ function createWasm() {
     wasmModule = module;
 #endif
 
-#if WASM_WORKERS
-    if (!ENVIRONMENT_IS_WASM_WORKER) {
-#endif
 #if USE_PTHREADS
-    // Instantiation is synchronous in pthreads and we assert on run dependencies.
-    if (!ENVIRONMENT_IS_PTHREAD) {
-#if PTHREAD_POOL_SIZE
-      var numWorkersToLoad = PThread.unusedWorkers.length;
-      PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
-#if !PTHREAD_POOL_DELAY_LOAD
-        // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
-        // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
-        if (!--numWorkersToLoad) removeRunDependency('wasm-instantiate');
-#endif
-      })});
-#endif
-#if PTHREAD_POOL_DELAY_LOAD || !PTHREAD_POOL_SIZE
-      // PTHREAD_POOL_DELAY_LOAD==1 (or no preloaded pool in use): do not wait up for the Workers to
-      // instantiate the Wasm module, but proceed with main() immediately.
-      removeRunDependency('wasm-instantiate');
-#endif
-    }
+    PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
 #endif // ~USE_PTHREADS
-#if WASM_WORKERS
-    }
-#endif
 
   }
-  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  {{{ runIfMainThread("addRunDependency('wasm-instantiate');") }}}
+  // wait for the pthread pool (if any)
+  addRunDependency('wasm-instantiate');
 
 #if LOAD_SOURCE_MAP
   {{{ runIfMainThread("addRunDependency('source-map');") }}}

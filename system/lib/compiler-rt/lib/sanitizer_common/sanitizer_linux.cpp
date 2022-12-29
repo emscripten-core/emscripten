@@ -122,7 +122,7 @@ extern struct ps_strings *__ps_strings;
 
 extern char **environ;
 
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX
 // <linux/time.h>
 struct kernel_timeval {
   long tv_sec;
@@ -704,7 +704,7 @@ SANITIZER_WEAK_ATTRIBUTE extern void *__libc_stack_end;
 }
 #endif
 
-#if !SANITIZER_FREEBSD && !SANITIZER_NETBSD
+#if !SANITIZER_FREEBSD && !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 static void ReadNullSepFileToArray(const char *path, char ***arr,
                                    int arr_size) {
   char *buff;

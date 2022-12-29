@@ -206,6 +206,9 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
+      if (typeof offset !== 'undefined') {
+        offset += curr;
+      }
     }
     return ret;
   },
@@ -219,6 +222,9 @@ var WasiLibrary = {
       var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
       if (curr < 0) return -1;
       ret += curr;
+      if (typeof offset !== 'undefined') {
+        offset += curr;
+      }
     }
     return ret;
   },

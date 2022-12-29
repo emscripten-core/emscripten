@@ -3,12 +3,14 @@
 #include "libm.h"
 #include "sqrt_data.h"
 
+#ifndef __wasm__
 #define FENV_SUPPORT 1
 
 static inline uint32_t mul32(uint32_t a, uint32_t b)
 {
 	return (uint64_t)a*b >> 32;
 }
+#endif
 
 /* see sqrt.c for more detailed comments.  */
 
