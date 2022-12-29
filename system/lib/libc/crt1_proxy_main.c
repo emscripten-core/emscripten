@@ -13,6 +13,8 @@
 #include <emscripten/threading.h>
 #include <emscripten/eventloop.h>
 
+#include "threading_internal.h"
+
 static int _main_argc;
 static char** _main_argv;
 
@@ -49,5 +51,10 @@ EMSCRIPTEN_KEEPALIVE int _emscripten_proxy_main(int argc, char** argv) {
   pthread_t thread;
   int rc = pthread_create(&thread, &attr, _main_thread, NULL);
   pthread_attr_destroy(&attr);
+  if (rc == 0) {
+    // Mark the thread as strongly referenced, so that Node.js doesn't exit
+    // while the pthread is running.
+    _emscripten_thread_set_strongref(thread);
+  }
   return rc;
 }
