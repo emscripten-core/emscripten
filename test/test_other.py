@@ -1970,8 +1970,21 @@ int f() {
     self.run_process([EMXX, 'main.cpp', '--pre-js', 'before.js', '--post-js', 'after.js', '-sWASM_ASYNC_COMPILATION=0'])
     self.assertContained('hello from main\nhello from js\n', self.run_js('a.out.js'))
 
+  def test_sdl_none(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <SDL.h>
+
+      int main() {
+        return 0;
+      }
+    ''')
+    err = self.expect_fail([EMCC, 'main.c'])
+    self.assertContained('SDL.h:1:2: error: "To use the emscripten port of SDL use -sUSE_SDL or -sUSE_SDL=2"', err)
+    self.run_process([EMCC, 'main.c', '-sUSE_SDL'])
+
   def test_sdl_endianness(self):
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <SDL/SDL.h>
 
@@ -1980,11 +1993,10 @@ int f() {
         return 0;
       }
     ''')
-    self.run_process([EMXX, 'main.cpp'])
-    self.assertContained('1234, 1234, 4321\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', '1234, 1234, 4321\n')
 
   def test_sdl_scan_code_from_key(self):
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <SDL/SDL_keyboard.h>
 
@@ -1993,7 +2005,7 @@ int f() {
         return 0;
       }
     ''')
-    self.do_runf('main.cpp', '204\n')
+    self.do_runf('main.c', '204\n')
 
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
@@ -2168,7 +2180,7 @@ int f() {
         delete_file('a.out.js')
         print('checking "%s" %s' % (args, value))
         extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-        proc = self.run_process([EMXX, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
+        proc = self.run_process([EMXX, '-sUSE_SDL', 'main.cpp'] + extra + args, stderr=PIPE, check=False)
         print(proc.stderr)
         if value or action is None:
           # The default is that we error in undefined symbols
@@ -8154,7 +8166,7 @@ int main() {
     # everything it needs.
     directories = {'': []}
     for elem in os.listdir(path_from_root('system/include')):
-      if elem == 'compat':
+      if elem in ('compat', 'fakesdl'):
         continue
       full = path_from_root('system/include', elem)
       if os.path.isdir(full):

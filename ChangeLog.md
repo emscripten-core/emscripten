@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.30 (in development)
 -----------------------
+- The SDLv1 header directory is no longer added to the include path by default.
+  This means if you include SDL headers without the explicit version in them
+  (e.g. `SDL_events.h`) you will now need to add `-sUSE_SDL` explicitly at
+  compile time.  If you include the SDL headers with the directory name included
+  (e.g. `SDL/SDL_events.h`) you will not be affected by this change. (#18443)
 
 3.1.29 - 01/03/23
 -----------------

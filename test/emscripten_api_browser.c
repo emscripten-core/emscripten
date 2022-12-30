@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-#include <SDL.h>
+#include <SDL/SDL.h>
 #include <emscripten.h>
 #include <assert.h>
 
