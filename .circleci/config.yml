@@ -376,9 +376,11 @@ jobs:
       - run:
           name: get v8
           command: |
-            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
-            tar -xf node-v12.13.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            # We can't use a more recent version of node here because the linux
+            # image we are using doesn't have a recent enough glibc.
+            wget https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz
+            tar -xf node-v15.14.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8 v8@${V8_VERSION}
