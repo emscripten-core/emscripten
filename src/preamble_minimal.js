@@ -99,6 +99,11 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
 } else {
+#if MODULARIZE
+  if (Module['wasmMemory']) {
+    wasmMemory = Module['wasmMemory'];
+  }
+#endif // MODULARIZE
   updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
 #endif // USE_PTHREADS
