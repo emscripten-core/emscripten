@@ -80,9 +80,11 @@ function updateGlobalBufferAndViews(b) {
 }
 
 #if IMPORTED_MEMORY
+
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
+#endif // USE_PTHREADS
+
   wasmMemory =
 #if WASM_WORKERS
     Module['mem'] ||
@@ -96,12 +98,18 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     , 'shared': true
 #endif
     });
-  updateGlobalBufferAndViews(wasmMemory.buffer);
+
 #if USE_PTHREADS
-} else {
-  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
-#endif // USE_PTHREADS
+#if MODULARIZE
+else {
+  wasmMemory = Module.wasmMemory;
+#endif
+}
+#endif
+
+updateGlobalBufferAndViews(wasmMemory.buffer);
+
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"

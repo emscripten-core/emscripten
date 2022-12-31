@@ -4769,6 +4769,7 @@ Module["preRun"].push(function () {
     run([])
     run(['-sASSERTIONS'])
     run(['-sPROXY_TO_PTHREAD'])
+    run(['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'])
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
