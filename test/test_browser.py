@@ -4781,7 +4781,8 @@ Module["preRun"].push(function () {
   @parameterized({
     '': ([],),
     'assert': (['-sASSERTIONS'],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],)
+    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   @requires_threads
   def test_pthread_growth(self, emcc_args):

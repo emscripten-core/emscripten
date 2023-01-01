@@ -96,12 +96,16 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     , 'shared': true
 #endif
     });
-  updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
-} else {
-  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
+#if MODULARIZE
+else {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
 #endif // USE_PTHREADS
+
+updateGlobalBufferAndViews(wasmMemory.buffer);
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"

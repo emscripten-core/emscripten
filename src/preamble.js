@@ -138,14 +138,6 @@ var HEAP,
 var HEAP_DATA_VIEW;
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // Grab imports from the pthread to local scope.
-  buffer = Module['buffer'];
-  // Note that not all runtime fields are imported above
-}
-#endif
-
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
 #if SUPPORT_BIG_ENDIAN
