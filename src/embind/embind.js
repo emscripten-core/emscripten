@@ -906,7 +906,7 @@ var LibraryEmbind = {
       var heap = HEAPU32;
       var size = heap[handle]; // in elements
       var data = heap[handle + 1]; // byte offset into emscripten heap
-      return new TA(buffer, data, size);
+      return new TA(heap.buffer, data, size);
     }
 
     name = readLatin1String(name);

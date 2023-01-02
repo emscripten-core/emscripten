@@ -53,11 +53,11 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
-updateGlobalBufferAndViews(wasmMemory.buffer);
+updateMemoryViews();
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
+INITIAL_MEMORY = wasmMemory.buffer.byteLength;
 #if ASSERTIONS
 assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
 #endif

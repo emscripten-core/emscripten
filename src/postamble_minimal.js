@@ -206,7 +206,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   assert(wasmMemory);
   assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
-  updateGlobalBufferAndViews(wasmMemory.buffer);
+  updateMemoryViews();
 #endif
 
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
