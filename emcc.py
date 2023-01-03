@@ -917,6 +917,9 @@ def emsdk_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     cflags += ['-D__ARM_NEON__=1']
 
+  if not settings.USE_SDL:
+    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
+
   return cflags + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
 
@@ -1915,9 +1918,6 @@ def phase_linker_setup(options, state, newargs):
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
-
-  if not settings.AUTO_JS_LIBRARIES:
-    default_setting('USE_SDL', 0)
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
     # When optimizing for size it helps to put static data first before

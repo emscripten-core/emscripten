@@ -1406,7 +1406,7 @@ var LEGALIZE_JS_FFI = true;
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
 // [compile+link]
-var USE_SDL = 1;
+var USE_SDL = 0;
 
 // Specify the SDL_gfx version that is being linked against. Must match USE_SDL
 // [compile+link]
