@@ -1,14 +1,8 @@
+// Settings that control the emscripten compiler.  These are available to the
+// python code and also as global variables when the JS compiler runs. They
+// are set via the command line.  For example:
 //
-// @license
-// Copyright 2010 The Emscripten Authors
-// SPDX-License-Identifier: MIT
-//
-
-//
-// Various compiler settings. These are simply variables present when the
-// JS compiler runs. To set them, do something like:
-//
-//   emcc -sOPTION1=VALUE1 -sOPTION2=VALUE2 [..other stuff..]
+//   emcc -sOPTION1=VALUE1 -sOPTION2=ITEM1,ITEM2 [..other stuff..]
 //
 // For convenience and readability `-sOPTION` expands to `-sOPTION=1`
 // and `-sNO_OPTION` expands to `-sOPTION=0` (assuming OPTION is a valid
