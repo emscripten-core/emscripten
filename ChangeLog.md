@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.29 (in development)
+3.1.30 (in development)
 -----------------------
+
+3.1.29 - 01/03/23
+-----------------
 - Fixed bug in `PROXY_TO_PTHREAD` whereby certain async operations on the main
   thread would cause the whole program to exit, even when the proxied main
   function was still running. (#18372)
