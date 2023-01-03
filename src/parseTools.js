@@ -358,6 +358,7 @@ function makeSetTempDouble(i, type, value) {
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
+  assert(typeof noNeedFirst === 'undefined', 'makeGetValue no longer supports noNeedFirst parameter');
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -369,7 +370,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     unsigned = true;
   }
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
     return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
   }
@@ -399,6 +400,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  */
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
+  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
@@ -434,7 +436,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
     }
   }
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  const offset = calcFastOffset(ptr, pos);
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
@@ -593,10 +595,7 @@ function getFastValue(a, op, b, type) {
   return `(${a})${op}(${b})`;
 }
 
-function calcFastOffset(ptr, pos, noNeedFirst) {
-  assert(!noNeedFirst);
-  if (typeof ptr == 'bigint') ptr = Number(ptr);
-  if (typeof pos == 'bigint') pos = Number(pos);
+function calcFastOffset(ptr, pos) {
   return getFastValue(ptr, '+', pos, 'i32');
 }
 
