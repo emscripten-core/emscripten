@@ -94,7 +94,7 @@ EM_JS(int, _prefixed, (void), {
 });
 
 EM_JS(int, transitive, (void), {
-  // Verify that EM_JS functions can call other EM_JS functions by thier
+  // Verify that EM_JS functions can call other EM_JS functions by their
   // unmangled name.
   return noarg_int();
 });
