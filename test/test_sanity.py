@@ -280,8 +280,9 @@ class sanity(RunnerCore):
 
     for version, succeed in [('v0.8.0', False),
                              ('v4.1.0', False),
-                             ('v4.1.1', True),
-                             ('v4.2.3-pre', True),
+                             ('v14.18.1', False),
+                             ('v14.18.2', True),
+                             ('v14.18.3-pre', True),
                              ('cheez', False)]:
       print(version, succeed)
       delete_file(SANITY_FILE)

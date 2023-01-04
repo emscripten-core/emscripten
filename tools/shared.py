@@ -45,7 +45,11 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-MINIMUM_NODE_VERSION = (4, 1, 1)
+# Minimum node version required to run the emscripten compiler.  This is not
+# distict from minimum version of node required to execute the generted code.
+# This is not a strict requirement, but this is version of node we ship with
+# emsdk and the oldest version we use when testing the compiler.
+MINIMUM_NODE_VERSION = (14, 18, 2)
 EXPECTED_LLVM_VERSION = "16.0"
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
