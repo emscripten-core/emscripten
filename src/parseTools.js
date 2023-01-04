@@ -8,7 +8,7 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
+global.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 let currentlyParsedFilename = '';

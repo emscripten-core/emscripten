@@ -69,20 +69,30 @@ commands:
       - run:
           name: pip install
           command: << parameters.python >> -m pip install -r requirements-dev.txt
-  setup-latest-node:
-    description: "setup latest node"
+  install-node-version:
+    description: "install a specific version of node"
+    parameters:
+      node_version:
+        description: "version of node to install"
+        type: string
     steps:
       - run:
-          name: setup latest node
+          name: setup node v<< parameters.node_version >>
           command: |
             cd $HOME
-            wget https://nodejs.org/dist/v19.0.0/node-v19.0.0-linux-x64.tar.xz
-            tar xf node-v19.0.0-linux-x64.tar.xz
-            echo "NODE_JS = [os.path.expanduser('~/node-v19.0.0-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
+            version=<< parameters.node_version >>
+            wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
+            tar xf node-v${version}-linux-x64.tar.xz
+            echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
-            echo "export PATH=\"$HOME/node-v19.0.0-linux-x64/bin:\$PATH\"" >> $BASH_ENV
+            echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
+  install-latest-node:
+    description: "install latest version of node"
+    steps:
+      - install-node-version:
+         node_version: "19.0.0"
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -508,11 +518,11 @@ jobs:
           test_targets: "wasm64_v8"
       - run-tests:
           test_targets: "wasm64l"
-      - setup-latest-node
+      - install-latest-node
       - run-tests:
           test_targets: "wasm64"
       - upload-test-results
-  test-latest-node:
+  test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
@@ -523,10 +533,17 @@ jobs:
           command: git submodule update --init
       - pip-install
       - build
-      - setup-latest-node
+      # Run some basic tests with the minimum version of node that we currently
+      # support.
+      - install-node-version:
+          node_version: "10.19.0"
       - run-tests:
-          # Run tests that on older versions of node would require flags, but
-          # those flags should not be injected on newer versions.
+          test_targets: "core2.test_hello_world"
+      # Run a few test with the most recent version of node
+      # In particular we have some tests that require node flags on older
+      # versions of node but not with the most recent version.
+      - install-latest-node
+      - run-tests:
           test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map"
       - upload-test-results
   test-other:
@@ -703,7 +720,7 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-latest-node
+      - test-node-compat
       - test-windows
       - test-mac:
           # The mac tester also uses the libraries built on the linux builder to

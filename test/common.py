@@ -519,15 +519,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
-    self.node_args = [
-      # Increate stack trace limit to maximise usefulness of test failure reports
-      '--stack-trace-limit=50',
-      # Opt in to node v15 default behaviour:
-      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-      '--unhandled-rejections=throw',
-      # Include backtrace for all uncuaght exceptions (not just Error).
-      '--trace-uncaught',
-    ]
+    # Increate stack trace limit to maximise usefulness of test failure reports
+    self.node_args = ['--stack-trace-limit=50']
+
+    node_version = shared.check_node_version()
+    if node_version:
+      if node_version < (11, 0, 0):
+        self.node_args.append('--unhandled-rejections=strict')
+        self.node_args.append('--experimental-wasm-se')
+      else:
+        # Include backtrace for all uncuaght exceptions (not just Error).
+        self.node_args.append('--trace-uncaught')
+        if node_version < (15, 0, 0):
+          # Opt in to node v15 default behaviour:
+          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+          self.node_args.append('--unhandled-rejections=throw')
+
     self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
