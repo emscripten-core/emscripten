@@ -335,26 +335,6 @@ function asmFloatToInt(x) {
   return '(~~(' + x + '))';
 }
 
-function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
-  // Cannot use makeGetValue because it uses us
-  // this is a unique case where we *can* use HEAPF64
-  const heap = getHeapForType(type);
-  const ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type) * i);
-  let offset;
-  if (type == 'double') {
-    offset = '(' + ptr + ')>>3';
-  } else {
-    offset = getHeapOffset(ptr, type);
-  }
-  let ret = heap + '[' + offset + ']';
-  if (!forSet) ret = asmCoercion(ret, type);
-  return ret;
-}
-
-function makeSetTempDouble(i, type, value) {
-  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
-}
-
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
@@ -401,11 +381,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
   assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
-  if (type == 'double' && (align < 8)) {
-    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
-  } else if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
+  if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
     // If we lack either BigInt support or Memory64 then we must fall back to an
     // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
     // and without Memory64 i64 fields are not guaranteed to be aligned to 64
@@ -422,15 +398,10 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
     const bytes = Runtime.getNativeTypeSize(type);
     if (needSplitting) {
       let ret = '';
-      if (isIntImplemented(type)) {
-        ret += 'tempBigInt=' + value + sep;
-        for (let i = 0; i < bytes; i++) {
-          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-          if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-        }
-      } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
-        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
+      ret += 'tempBigInt=' + value + sep;
+      for (let i = 0; i < bytes; i++) {
+        ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
+        if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
       }
       return ret;
     }
