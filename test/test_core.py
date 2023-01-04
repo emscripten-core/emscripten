@@ -264,7 +264,6 @@ def with_asyncify_and_stack_switching(f):
       self.require_v8()
       # enable stack switching and other relevant features (like reference types
       # for the return value of externref)
-      self.v8_args.append('--wasm-staging')
       self.v8_args.append('--experimental-wasm-stack-switching')
       if not self.is_wasm():
         self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
