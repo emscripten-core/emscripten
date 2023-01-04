@@ -9,6 +9,7 @@ import logging
 from enum import IntEnum, auto
 
 from .settings import settings, user_settings
+from . import diagnostics
 
 logger = logging.getLogger('feature_matrix')
 
@@ -19,6 +20,7 @@ class Feature(IntEnum):
   BULK_MEMORY = auto()
   MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
+  THREADS = auto()
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
@@ -49,6 +51,11 @@ min_browser_versions = {
     'firefox': 68,
     'safari': 150000,
   },
+  Feature.THREADS: {
+    'chrome': 74,
+    'firefox': 79,
+    'safari': 140100,
+  },
 }
 
 
@@ -70,14 +77,22 @@ def caniuse(feature):
   return True
 
 
-def enable_feature(feature):
+def enable_feature(feature, reason):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
-    if settings[name] < min_version and name not in user_settings:
-      setattr(settings, name, min_version)
+    if settings[name] < min_version:
+      if name in user_settings:
+        # If the user explicitly chose an older version we issue a warning.
+        diagnostics.warning(
+            'compatibility',
+            f'{name}={user_settings[name]} is not compatible with {reason} '
+            f'({min_version} or above required)')
+      else:
+        # Otherwise we bump the minimum version to accommodate the feature.
+        setattr(settings, name, min_version)
 
 
 # apply minimum browser version defaults based on user settings. if
@@ -85,4 +100,7 @@ def enable_feature(feature):
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
   if settings.WASM_BIGINT:
-    enable_feature(Feature.JS_BIGINT_INTEGRATION)
+    enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
+  if settings.USE_PTHREADS:
+    enable_feature(Feature.THREADS, 'pthreads')
+    enable_feature(Feature.BULK_MEMORY, 'pthreads')
