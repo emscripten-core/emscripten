@@ -33,7 +33,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
@@ -12488,9 +12488,8 @@ Module['postRun'] = function() {{
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.
-  @requires_v8
+  @requires_wasm64
   def test_memory64(self):
-    self.v8_args += ['--experimental-wasm-memory64']
     for opt in ['-O0', '-O1', '-O2', '-O3']:
       self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', '-Wno-experimental', opt])
 
