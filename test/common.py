@@ -528,7 +528,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Include backtrace for all uncuaght exceptions (not just Error).
       '--trace-uncaught',
     ]
-    self.v8_args = []
+    self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
