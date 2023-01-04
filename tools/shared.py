@@ -45,7 +45,11 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-MINIMUM_NODE_VERSION = (4, 1, 1)
+# Minimum node version required to run the emscripten compiler.  This is distinct
+# from the minimum version required to execute the generated code.  This is not an
+# exact requirement, but is the oldest version of node that we do any testing with.
+# This version aligns with the current Ubuuntu TLS 20.04 (Focal).
+MINIMUM_NODE_VERSION = (10, 19, 0)
 EXPECTED_LLVM_VERSION = "16.0"
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
