@@ -507,7 +507,7 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint"
+          test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map"
       - upload-test-results
   test-other:
     executor: bionic
