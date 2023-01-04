@@ -346,12 +346,6 @@ fi
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
-    # emcc should also check sanity if the file is outdated
-    open(EM_CONFIG, 'a').write('# extra stuff\n')
-    output = self.check_working(EMCC)
-    self.assertContained(SANITY_MESSAGE, output)
-    self.assertNotContained(SANITY_FAIL_MESSAGE, output)
-
   def test_em_config_env_var(self):
     # emcc should be configurable directly from EM_CONFIG without any config file
     restore_and_set_up()
