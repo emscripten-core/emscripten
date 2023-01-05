@@ -210,9 +210,13 @@ commands:
       test_targets:
         description: "Test suites to run"
         type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
     steps:
       - run:
-          name: run tests
+          name: run tests (<< parameters.title >>)
           command: |
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./tools/check_clean.py
@@ -232,6 +236,10 @@ commands:
         description: "Run with cache frozen"
         type: boolean
         default: true
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
     steps:
       - prepare-for-tests
       - when:
@@ -240,6 +248,7 @@ commands:
             - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
+          title: << parameters.title >>
       - upload-test-results
   test-firefox:
     description: "Runs emscripten tests under firefox"
@@ -434,6 +443,7 @@ jobs:
           # also run a few asan tests.  Run these with frozen_cache disabled
           # since we don't pre-build all the asan libraries.
           frozen_cache: false
+          title: "asan+lsan"
           test_targets: "
             asan.test_stat
             asan.test_float_builtins
@@ -453,6 +463,7 @@ jobs:
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
           # also run a corez test of dynamic linking + forced syslibs.
+          title: "core2+extras"
           test_targets: "
             core2
             browser.test_pthread_join
@@ -465,6 +476,7 @@ jobs:
           frozen_cache: false
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
+          title: "core3+extras"
           test_targets: "
             lto2.test_dylink_syslibs_all
             core3
@@ -515,11 +527,14 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - run-tests:
+          title: "wasm64_v8"
           test_targets: "wasm64_v8"
       - run-tests:
+          title: "wasm64l"
           test_targets: "wasm64l"
       - install-latest-node
       - run-tests:
+          title: "wasm64"
           test_targets: "wasm64"
       - upload-test-results
   test-node-compat:
@@ -538,12 +553,16 @@ jobs:
       - install-node-version:
           node_version: "10.19.0"
       - run-tests:
+          title: "core2.test_hello_world"
           test_targets: "core2.test_hello_world"
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older
       # versions of node but not with the most recent version.
       - install-latest-node
       - run-tests:
+          # Run tests that on older versions of node would require flags, but
+          # those flags should not be injected on newer versions.
+          title: "core2 subset"
           test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map"
       - upload-test-results
   test-other:
@@ -594,6 +613,7 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
+          title: "other subset"
           test_targets: "
             core0.test_dylink_basics
             core2.test_sse1
@@ -635,6 +655,7 @@ jobs:
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
+          title: "sockets.test_nodejs_sockets_echo*"
           test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
@@ -669,6 +690,7 @@ jobs:
       - run-tests:
           # skip other.test_stack_switching_size as we do not currently install
           # d8 on mac
+          title: "other+extras"
           test_targets: "
             other
             sockets.test_nodejs_sockets_echo*
