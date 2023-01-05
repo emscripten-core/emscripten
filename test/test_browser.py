@@ -3809,14 +3809,23 @@ Module["preRun"].push(function () {
     print('Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD')
     self.btest(test_file('pthread/main_thread_%s.cpp' % name), expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     if name == 'join':
-      print('Test that by default we just warn about blocking on the main thread.')
-      self.btest_exit(test_file('pthread/main_thread_%s.cpp' % name), args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE'])
+      create_file('pre.js', '''
+        Module['printErr'] = (x) => {
+          if (x.includes('Blocking on the main thread is very dangerous')) {
+            maybeReportResultToServer('got_warn');
+          }
+        };
+      ''')
+      print('Test that we warn about blocking on the main thread in debug builds')
+      self.btest(test_file('pthread/main_thread_join.cpp'), expected='got_warn', args=['-sEXIT_RUNTIME', '-sASSERTIONS', '--pre-js', 'pre.js', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE'])
+      print('Test that we do not warn about blocking on the main thread in release builds')
+      self.btest_exit(test_file('pthread/main_thread_join.cpp'), args=['-O3', '--pre-js', 'pre.js', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD')
       self.btest_exit(test_file('pthread/main_thread_join.cpp'), assert_returncode=2, args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool')
       self.btest_exit(test_file('pthread/main_thread_join.cpp'), assert_returncode=2, args=['-O3', '-sUSE_PTHREADS', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that everything works ok when we are on a pthread.')
-      self.btest_exit(test_file('pthread/main_thread_%s.cpp' % name), args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-sPROXY_TO_PTHREAD', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest_exit(test_file('pthread/main_thread_join.cpp'), args=['-O3', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-sPROXY_TO_PTHREAD', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
