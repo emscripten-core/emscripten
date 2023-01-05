@@ -106,9 +106,8 @@ function _free() {
 
 // Memory management
 
-var HEAP,
 /** @type {!ArrayBuffer} */
-  buffer,
+var buffer,
 /** @type {!Int8Array} */
   HEAP8,
 /** @type {!Uint8Array} */
