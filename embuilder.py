@@ -16,6 +16,7 @@ import argparse
 import logging
 import sys
 import time
+from typing import Generator, List, Tuple
 from contextlib import contextmanager
 
 from tools import cache
@@ -107,7 +108,7 @@ legacy_prefixes = {
 }
 
 
-def get_help():
+def get_help() -> str:
   all_tasks = get_system_tasks()[1] + PORTS
   all_tasks.sort()
   return '''
@@ -120,7 +121,7 @@ Issuing 'embuilder build ALL' causes each task to be built.
 
 
 @contextmanager
-def get_port_variant(name):
+def get_port_variant(name: str) -> Generator:
   if name in ports.port_variants:
     name, extra_settings = ports.port_variants[name]
     old_settings = settings.dict().copy()
@@ -135,17 +136,17 @@ def get_port_variant(name):
     settings.dict().update(old_settings)
 
 
-def clear_port(port_name):
+def clear_port(port_name: str) -> None:
   with get_port_variant(port_name) as port_name:
     ports.clear_port(port_name, settings)
 
 
-def build_port(port_name):
+def build_port(port_name: str) -> None:
   with get_port_variant(port_name) as port_name:
     ports.build_port(port_name, settings)
 
 
-def get_system_tasks():
+def get_system_tasks() -> Tuple[List[str], List[str]]:
   system_libraries = system_libs.Library.get_all_variations()
   system_tasks = list(system_libraries.keys())
   # This is needed to build the generated_struct_info.json file.
@@ -156,7 +157,7 @@ def get_system_tasks():
   return system_libraries, system_tasks
 
 
-def main():
+def main() -> int:
   all_build_start_time = time.time()
 
   parser = argparse.ArgumentParser(description=__doc__,

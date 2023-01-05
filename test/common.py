@@ -421,6 +421,7 @@ class RunnerMeta(type):
 class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
+  assert shared.TEMP_DIR
   temp_dir = shared.TEMP_DIR
   canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
 

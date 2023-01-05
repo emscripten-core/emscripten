@@ -6,11 +6,11 @@
 """Simple color-enabled diagnositics reporting functions.
 """
 
-import ctypes
+import ctypes  # type: ignore
 import logging
 import os
 import sys
-from typing import Dict
+from typing import Dict, NoReturn
 
 
 WINDOWS = sys.platform.startswith('win')
@@ -147,7 +147,7 @@ def diag(level, msg, *args):
   sys.stderr.write('\n')
 
 
-def error(msg, *args):
+def error(msg, *args) -> NoReturn:
   diag(ERROR, msg, *args)
   sys.exit(1)
 

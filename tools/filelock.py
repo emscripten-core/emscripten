@@ -37,24 +37,23 @@ A platform independent file lock that supports the with-statement.
 
 # Modules
 # ------------------------------------------------
+import fcntl
 import logging
 import os
 import threading
 import time
+import sys
+from typing import Optional, Type
 try:
     import warnings
 except ImportError:
-    warnings = None
+    pass
 
 try:
     import msvcrt
 except ImportError:
-    msvcrt = None
+    pass
 
-try:
-    import fcntl
-except ImportError:
-    fcntl = None
 
 
 # Backward compatibility
@@ -72,7 +71,6 @@ __all__ = [
     "BaseFileLock",
     "WindowsFileLock",
     "UnixFileLock",
-    "SoftFileLock",
     "FileLock"
 ]
 
@@ -409,50 +407,8 @@ class UnixFileLock(BaseFileLock):
         os.close(fd)
         return None
 
-# Soft lock
-# ~~~~~~~~~
 
-class SoftFileLock(BaseFileLock):
-    """
-    Simply watches the existence of the lock file.
-    """
-
-    def _acquire(self):
-        open_mode = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_TRUNC
-        try:
-            fd = os.open(self._lock_file, open_mode)
-        except (IOError, OSError):
-            pass
-        else:
-            self._lock_file_fd = fd
-        return None
-
-    def _release(self):
-        os.close(self._lock_file_fd)
-        self._lock_file_fd = None
-
-        try:
-            os.remove(self._lock_file)
-        # The file is already deleted and that's what we want.
-        except OSError:
-            pass
-        return None
-
-
-# Platform filelock
-# ~~~~~~~~~~~~~~~~~
-
-#: Alias for the lock, which should be used for the current platform. On
-#: Windows, this is an alias for :class:`WindowsFileLock`, on Unix for
-#: :class:`UnixFileLock` and otherwise for :class:`SoftFileLock`.
-FileLock = None
-
-if msvcrt:
+if sys.platform == "win32":
     FileLock = WindowsFileLock
-elif fcntl:
-    FileLock = UnixFileLock
 else:
-    FileLock = SoftFileLock
-
-    if warnings is not None:
-        warnings.warn("only soft file lock is available")
+    FileLock = UnixFileLock

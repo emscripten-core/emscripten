@@ -12,7 +12,7 @@ import shutil
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
-from typing import List, Optional
+from typing import List, Tuple, Dict, Optional
 
 from . import shared, building, utils
 from . import deps_info
@@ -206,8 +206,8 @@ rule archive
       out += '\n'
 
     objects = sorted(objects, key=lambda x: os.path.basename(x))
-    objects = ' '.join(objects)
-    out += f'build {libname}: archive {objects}\n'
+    objects_str = ' '.join(objects)
+    out += f'build {libname}: archive {objects_str}\n'
 
   utils.write_file(filename, out)
 
@@ -321,6 +321,8 @@ class Library:
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
+
+  useable_variations: Optional[Dict[str, 'Library']] = None
 
   def __init__(self):
     """
@@ -612,7 +614,7 @@ class Library:
 
     This returns a dictionary of simple names to Library objects.
     """
-    if not hasattr(cls, 'useable_variations'):
+    if cls.useable_variations is None:
       cls.useable_variations = {}
       for subclass in cls.get_inheritance_tree():
         if subclass.name:
@@ -1049,15 +1051,15 @@ class libc(MuslInternalLibrary,
       'pow_small.c', 'log_small.c', 'log2_small.c'
     ]
 
-    ignore = set(ignore)
+    ignore_set = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       # Don't recurse into ingored directories
-      remove = [d for d in dirnames if d in ignore]
+      remove = [d for d in dirnames if d in ignore_set]
       for r in remove:
         dirnames.remove(r)
 
       for f in filenames:
-        if f.endswith('.c') and f not in ignore:
+        if f.endswith('.c') and f not in ignore_set:
           libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     # Allowed files from ignored modules
@@ -1993,7 +1995,7 @@ def handle_reverse_deps(input_files):
 
 
 def get_libs_to_link(args, forced, only_forced):
-  libs_to_link = []
+  libs_to_link: List[Tuple[str, bool]] = []
 
   if '-nostdlib' in args:
     return libs_to_link

@@ -24,7 +24,7 @@ ports = [int(sys.argv[1]), int(sys.argv[2])]
 
 
 class Listener(threading.Thread):
-  other: Optional[Listener] = None  # noqa: F821
+  other: Optional['Listener'] = None
 
   def run(self):
     self.conn = None
