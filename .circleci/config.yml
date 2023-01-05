@@ -211,7 +211,7 @@ commands:
         description: "Test suites to run"
         type: string
       title:
-        description: "Name of give test suite"
+        description: "Name of given test suite"
         type: string
         default: ""
     steps:
