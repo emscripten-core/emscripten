@@ -172,22 +172,23 @@ mergeInto(LibraryManager.library, {
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
+    var b = wasmMemory.buffer;
 #if MEMORYPROFILER
-    var oldHeapSize = buffer.byteLength;
+    var oldHeapSize = b.byteLength;
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
-      updateGlobalBufferAndViews(wasmMemory.buffer);
+      wasmMemory.grow((size - b.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
+      updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      err('emscripten_realloc_buffer: Attempted to grow heap from ' + b.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -324,7 +325,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(memoryIndex == 0);
 #endif
-    updateGlobalBufferAndViews(wasmMemory.buffer);
+    updateMemoryViews();
   },
 
   system__deps: ['$setErrNo'],
