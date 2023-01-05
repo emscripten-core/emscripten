@@ -19,11 +19,3 @@ function getCompilerSetting(name) {
   return compilerSettings[name];
 }
 #endif // RETAIN_COMPILER_SETTINGS
-
-#if USE_PTHREADS
-// JS library code refers to Atomics in the manner used from asm.js, provide
-// the same API here.
-var Atomics_load = Atomics.load;
-var Atomics_store = Atomics.store;
-var Atomics_compareExchange = Atomics.compareExchange;
-#endif
