@@ -424,8 +424,13 @@ function makeSetValueImpl(ptr, pos, value, type) {
 
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const shift = Math.log2(size);
-  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
+  let mod;
+  if (MEMORY64) {
+    mod = size == 1 ? '' : ('/' + size);
+  } else {
+    const shift = Math.log2(size);
+    mod = size == 1 ? '' : CAN_ADDRESS_2GB ? ('>>>' + shift) : ('>>' + shift);
+  }
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
@@ -918,6 +923,34 @@ function from64(x) {
 function to64(x) {
   if (!MEMORY64) return x;
   return `BigInt(${x})`;
+}
+
+// Generates an expression that tests whether a pointer (either a BigInt or a signed int32 JS Number) is aligned to the given byte multiple.
+function isPtrAligned(ptr, alignment) {
+  if (MEMORY64) return /^\d+$/.test(alignment) ? `BigInt(${ptr}) % ${alignment}n == 0n` : `BigInt(${ptr}) % BigInt(${alignment}) == 0n`;
+  return `${ptr} % ${alignment} == 0`;
+}
+
+const MAX_MEMORY53 = 2 ** 53; // == 9007199254740992
+
+// Converts a pointer (either a BigInt or a signed int32 JS Number) in-place to an index on the heap (a BigInt or an unsigned JS Number).
+// N.B. in ASSERTIONS mode may generate two statements (in form "a;b;").
+function convertPtrToIdx(ptr, accessWidth) {
+  const assertPointerAlignment = ASSERTIONS ? `assert(${isPtrAligned(ptr, `2 ** ${accessWidth}`)});` : '';
+
+  let conversion;
+  if (MEMORY64) {
+    // if our address space would ever get larger than 53 bits, we could do something like this:
+    // if (MAXIMUM_MEMORY > MAX_MEMORY53) conversion = /^\d+$/.test(accessWidth) ? `${ptr} >>= ${accessWidth}n` : `${ptr} >>= BigInt(${accessWidth})`;
+    assert(MAXIMUM_MEMORY <= MAX_MEMORY53);
+    conversion = accessWidth ? `${ptr} = ${ptr} / (2 ** ${accessWidth})` : '';
+  } else if (CAN_ADDRESS_2GB) {
+    conversion = accessWidth ? `${ptr} >>>= ${accessWidth}` : '';
+  } else {
+    conversion = accessWidth ? `${ptr} >>= ${accessWidth}` : '';
+  }
+  
+  return assertPointerAlignment + conversion;
 }
 
 // Add assertions to catch common errors when using the Promise object we
