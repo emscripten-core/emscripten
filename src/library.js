@@ -3148,7 +3148,7 @@ mergeInto(LibraryManager.library, {
     var end = _emscripten_stack_get_end();
     abort('stack overflow (Attempt to set SP to ' + ptrToString(requested) +
           ', with stack limits [' + ptrToString(end) + ' - ' + ptrToString(base) +
-          ']). If you require more stack space build with -sSTACK_SIZE=<bytes>');
+          ']). If you require more stack space build with -sSTACK_SIZE=<bytes> and -sDEFAULT_PTHREAD_STACK_SIZE=<bytes>');
   },
 #endif
 
