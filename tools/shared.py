@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from functools import wraps
 from subprocess import PIPE
 import atexit
-import binascii
 import json
 import logging
 import os
@@ -387,14 +386,7 @@ def set_version_globals():
 
 
 def generate_sanity():
-  sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
-  if os.path.exists(config.EM_CONFIG):
-    config_data = utils.read_file(config.EM_CONFIG)
-  else:
-    config_data = ''
-  checksum = binascii.crc32(config_data.encode())
-  sanity_file_content += '|%#x\n' % checksum
-  return sanity_file_content
+  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
 
 
 def perform_sanity_checks():
