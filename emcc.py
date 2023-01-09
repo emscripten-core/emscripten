@@ -3767,9 +3767,10 @@ def modularize():
   if not settings.EXPORT_READY_PROMISE:
     return_value = '{}'
 
+  # FIXME: https://bugs.webkit.org/show_bug.cgi?id=223533
   src = '''
-%(maybe_async)sfunction(%(EXPORT_NAME)s) {
-  %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+%(maybe_async)sfunction(_%(EXPORT_NAME)s) {
+  %(EXPORT_NAME)s = _%(EXPORT_NAME)s || {};
 
 %(src)s
 
