@@ -1627,6 +1627,8 @@ def setup_pthreads(target):
   if settings.ALLOW_MEMORY_GROWTH:
     diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
+  default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
+
   # Functions needs to be exported from the module since they are used in worker.js
   settings.REQUIRED_EXPORTS += [
     'emscripten_dispatch_to_thread_',

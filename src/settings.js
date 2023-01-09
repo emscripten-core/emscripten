@@ -1581,18 +1581,14 @@ var PTHREAD_POOL_SIZE_STRICT = 1;
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = false;
 
-// If not explicitly specified, this is the stack size to use for newly created
-// pthreads.  According to
-// http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack
-// size on Linux/x86-32 for a new thread is 2 megabytes, so follow the same
-// convention. Use pthread_attr_setstacksize() at thread creation time to
-// explicitly specify the stack size, in which case this value is ignored. Note
-// that the wasm function call control flow stack is separate from this
-// stack, and this stack only contains certain function local variables, such as
-// those that have their addresses taken, or ones that are too large to fit as
-// local vars in wasm code.
+// Default stack size to use for newly created pthreads.  When not set, this
+// defaults to STACK_SIZE (which in turn defaults to 64k).  Can also be set at
+// runtime using pthread_attr_setstacksize().  Note that the wasm control flow
+// stack is separate from this stack.  This stack only contains certain function
+// local variables, such as those that have their addresses taken, or ones that
+// are too large to fit as local vars in wasm code.
 // [link]
-var DEFAULT_PTHREAD_STACK_SIZE = 64*1024;
+var DEFAULT_PTHREAD_STACK_SIZE = 0;
 
 // True when building with --threadprofiler
 // [link]
