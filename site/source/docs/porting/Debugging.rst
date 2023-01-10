@@ -145,7 +145,9 @@ Debug printouts can even execute arbitrary JavaScript. For example::
   }
 
 
-Handling C++ exceptions from javascript
+.. _handling-c-exceptions-from-javascript:
+
+Handling C++ exceptions from JavaScript
 =======================================
 
 C++ exceptions are thrown from WebAssembly using exception pointers, which means

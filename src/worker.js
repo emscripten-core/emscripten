@@ -114,7 +114,7 @@ self.onunhandledrejection = (e) => {
   throw e.reason ?? e;
 };
 
-self.onmessage = (e) => {
+function handleMessage(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if PTHREADS_DEBUG
@@ -123,6 +123,25 @@ self.onmessage = (e) => {
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
+
+    // Until we initialize the runtime, queue up any further incoming messages.
+    let messageQueue = [];
+    self.onmessage = (e) => messageQueue.push(e);
+
+    // And add a callback for when the runtime is initialized.
+    self.startWorker = (instance) => {
+#if MODULARIZE
+      Module = instance;
+#endif
+      // Notify the main thread that this thread has loaded.
+      postMessage({ 'cmd': 'loaded' });
+      // Process any messages that were queued before the thread was ready.
+      for (let msg of messageQueue) {
+        handleMessage(msg);
+      }
+      // Restore the real message handler.
+      self.onmessage = handleMessage;
+    };
 
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
@@ -167,11 +186,8 @@ self.onmessage = (e) => {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
-        return exports.default(Module);
-      }).then(function(instance) {
-        Module = instance;
-      });
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}'))
+      .then(exports => exports.default(Module));
 #else
       if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
@@ -194,29 +210,13 @@ self.onmessage = (e) => {
       }
 #if MODULARIZE
 #if MINIMAL_RUNTIME
-      {{{ EXPORT_NAME }}}(imports).then(function (instance) {
-        Module = instance;
-      });
+      {{{ EXPORT_NAME }}}(imports);
 #else
-      {{{ EXPORT_NAME }}}(Module).then(function (instance) {
-        Module = instance;
-      });
+      {{{ EXPORT_NAME }}}(Module);
 #endif
 #endif
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
-      // This worker was idle, and now should start executing its pthread entry
-      // point.
-      // performance.now() is specced to return a wallclock time in msecs since
-      // that Web Worker/main thread launched. However for pthreads this can
-      // cause subtle problems in emscripten_get_now() as this essentially
-      // would measure time from pthread_create(), meaning that the clocks
-      // between each threads would be wildly out of sync. Therefore sync all
-      // pthreads to the clock on the main browser thread, so that different
-      // threads see a somewhat coherent clock across each of them
-      // (+/- 0.1msecs in testing).
-      Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
@@ -313,3 +313,5 @@ self.onmessage = (e) => {
     throw ex;
   }
 };
+
+self.onmessage = handleMessage;

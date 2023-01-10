@@ -62,7 +62,7 @@ NODE_JS = %s
 ''' % (config.LLVM_ROOT, config.BINARYEN_ROOT, config.NODE_JS)
 
 
-def make_fake_tool(filename, version, report_name=None):
+def make_fake_tool(filename, version, report_name=None, extra_output=None):
   if not report_name:
     report_name = os.path.basename(filename)
   print('make_fake_tool: %s' % filename)
@@ -71,28 +71,19 @@ def make_fake_tool(filename, version, report_name=None):
     f.write('#!/bin/sh\n')
     f.write('echo "%s version %s"\n' % (report_name, version))
     f.write('echo "..."\n')
+    if extra_output:
+      f.write('echo "%s"' % extra_output)
     f.write('exit 0\n')
   make_executable(filename)
 
 
-def make_fake_clang(filename, version):
+def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
-  make_fake_tool(filename, version)
-  make_fake_tool(filename + '++', version)
-
-
-def make_fake_llc(filename, targets):
-  """Create a fake llc that only handles --version and writes target
-  list to stdout.
-  """
-  print('make_fake_llc: %s' % filename)
-  ensure_dir(os.path.dirname(filename))
-  with open(filename, 'w') as f:
-    f.write('#!/bin/sh\n')
-    f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
-  make_executable(filename)
+  output = 'clang fake output\nRegistered Targets:\n%s' % targets
+  make_fake_tool(filename, version, output)
+  make_fake_tool(filename + '++', version, output)
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
@@ -172,7 +163,7 @@ class sanity(RunnerCore):
   def test_firstrun(self):
     default_config = config.embedded_config
     output = self.do([EMCC, '-v'])
-    self.assertContained('emcc: error: config file not found: %s.  Please create one by hand or run `emcc --generate-config`' % default_config, output)
+    self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
     try:
       temp_bin = tempfile.mkdtemp()
@@ -181,7 +172,7 @@ class sanity(RunnerCore):
         open(os.path.join(temp_bin, name), 'w').close()
         make_executable(os.path.join(temp_bin, name))
 
-      make_new_executable('llvm-dis')
+      make_new_executable('wasm-ld')
       make_new_executable('node')
 
       with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
@@ -208,7 +199,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+    for content in ['LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -248,7 +239,7 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
     real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
-    make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
     make_fake_tool(self.in_dir('fake', 'wasm-ld'), EXPECTED_LLVM_VERSION)
 
     for inc_x in range(-2, 3):
@@ -268,17 +259,6 @@ class sanity(RunnerCore):
         else:
           output = self.check_working(EMCC)
           self.assertNotContained(LLVM_WARNING, output)
-
-  def test_emscripten_root(self):
-    # The correct path
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root())
-    self.check_working(EMCC)
-
-    # The correct path with extra stuff
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
-    self.check_working(EMCC)
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -300,8 +280,9 @@ class sanity(RunnerCore):
 
     for version, succeed in [('v0.8.0', False),
                              ('v4.1.0', False),
-                             ('v4.1.1', True),
-                             ('v4.2.3-pre', True),
+                             ('v10.18.0', False),
+                             ('v10.19.0', True),
+                             ('v10.19.1-pre', True),
                              ('cheez', False)]:
       print(version, succeed)
       delete_file(SANITY_FILE)
@@ -364,12 +345,6 @@ fi
     # Make sure the test runner didn't do anything to the setup
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
-    self.assertNotContained(SANITY_FAIL_MESSAGE, output)
-
-    # emcc should also check sanity if the file is outdated
-    open(EM_CONFIG, 'a').write('# extra stuff\n')
-    output = self.check_working(EMCC)
-    self.assertContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
   def test_em_config_env_var(self):
@@ -435,7 +410,6 @@ fi
     restore_and_set_up()
     self.ensure_cache()
     make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'got wasm32 backend! WebAssembly 32-bit')
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertExists(cache.cachedir)
       output = self.do([EMCC])
@@ -671,8 +645,7 @@ fi
         # doesn't actually use it.
         f.write('BINARYEN_ROOT = "%s"\n' % self.in_dir('fake', 'bin'))
 
-      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
-      make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)
+      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION, report)
       make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), EXPECTED_LLVM_VERSION)
 
     # fake llc output
@@ -693,7 +666,27 @@ fi
     self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG)
 
     open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG)
+
+  def test_empty_config(self):
+    restore_and_set_up()
+    make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    open(EM_CONFIG, 'w').close()
+    with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
+      self.check_working([EMCC])
+
+  def test_missing_config(self):
+    restore_and_set_up()
+    make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
+    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    delete_file(EM_CONFIG)
+    with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
+      self.check_working([EMCC])
 
   def test_embuilder_force(self):
     restore_and_set_up()

@@ -23,9 +23,13 @@ extern "C" {
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+#define SEEK_DATA 3
+#define SEEK_HOLE 4
 #endif // EMSCRIPTEN
 
-#ifdef __cplusplus
+#if __cplusplus >= 201103L && !defined(__EMSCRIPTEN__)
+#define NULL nullptr
+#elif defined(__cplusplus)
 #define NULL 0L
 #else
 #define NULL ((void*)0)
@@ -254,7 +258,11 @@ pid_t gettid(void);
 
 #define _POSIX_VDISABLE         0
 
+#if defined(__EMSCRIPTEN__) && !defined(_REENTRANT) /* XXX Emscripten doesn't always support pthreads */
+#define _POSIX_THREADS          -1
+#else
 #define _POSIX_THREADS          _POSIX_VERSION
+#endif
 #define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
 #define _POSIX_THREAD_SAFE_FUNCTIONS _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION

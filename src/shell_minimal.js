@@ -119,6 +119,12 @@ function ready() {
 #elif ASSERTIONS
   out('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
 #endif
+#if USE_PTHREADS
+  // This Worker is now ready to host pthreads, tell the main thread we can proceed.
+  if (ENVIRONMENT_IS_PTHREAD) {
+    startWorker(Module);
+  }
+#endif
 }
 
 #if POLYFILL
@@ -152,5 +158,3 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'fu
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS
-
-{{BODY}}

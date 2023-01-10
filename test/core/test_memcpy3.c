@@ -26,7 +26,7 @@
 int main() {
   #define RUN(type) \
   { \
-    type buffer[TOTAL]; \
+    static type buffer[TOTAL]; \
     volatile int seed = 123; \
     TEST(1, type); \
     TEST(2, type); \

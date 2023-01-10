@@ -3,12 +3,14 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <emscripten/threading.h>
+#include <stdlib.h>
+
 #include "backend.h"
 #include "file.h"
 #include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
-#include <stdlib.h>
 
 using namespace wasmfs;
 
@@ -124,14 +126,12 @@ public:
 private:
   Kind kind = None;
   int id = -1;
-  oflags_t openFlags;
   size_t openCount = 0;
 
 public:
   Kind getKind() { return kind; }
 
   int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
-    int result;
     if (kind == None) {
       assert(openCount == 0);
       switch (flags) {
@@ -219,7 +219,7 @@ public:
   OpenState state;
 
   OPFSFile(mode_t mode, backend_t backend, int fileID, ProxyWorker& proxy)
-    : DataFile(mode, backend), fileID(fileID), proxy(proxy) {}
+    : DataFile(mode, backend), proxy(proxy), fileID(fileID) {}
 
   ~OPFSFile() override {
     assert(state.getKind() == OpenState::None);
@@ -341,7 +341,7 @@ public:
   int dirID = 0;
 
   OPFSDirectory(mode_t mode, backend_t backend, int dirID, ProxyWorker& proxy)
-    : Directory(mode, backend), dirID(dirID), proxy(proxy) {}
+    : Directory(mode, backend), proxy(proxy), dirID(dirID) {}
 
   ~OPFSDirectory() override {
     // Never free the root directory ID.
@@ -470,6 +470,10 @@ public:
 extern "C" {
 
 backend_t wasmfs_create_opfs_backend() {
+  // ProxyWorker cannot safely be synchronously spawned from the main browser
+  // thread. See comment in thread_utils.h for more details.
+  assert(!emscripten_is_main_browser_thread() &&
+         "Cannot safely create OPFS backend on main browser thread");
   return wasmFS.addBackend(std::make_unique<OPFSBackend>());
 }
 

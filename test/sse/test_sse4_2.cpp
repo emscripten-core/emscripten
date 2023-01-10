@@ -19,11 +19,10 @@ int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
 double *interesting_doubles = get_interesting_doubles();
 int numInterestingDoubles = sizeof(interesting_doubles_)/sizeof(interesting_doubles_[0]);
 
-int main()
-{
-	assert(numInterestingFloats % 4 == 0);
-	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+int main() {
+  assert(numInterestingFloats % 4 == 0);
+  assert(numInterestingInts % 4 == 0);
+  assert(numInterestingDoubles % 4 == 0);
 
-	Ret_M128i_M128i(__m128i, _mm_cmpgt_epi64);
+  Ret_M128i_M128i(__m128i, _mm_cmpgt_epi64);
 }

@@ -26,7 +26,7 @@ def get(ports, settings, shared):
     src_dir = os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
     excludes = ['chatd.c', 'chat.cpp', 'showinterfaces.c']
-    ports.build_port(src_dir, final, 'sdl2_net', exclude_files=excludes)
+    ports.build_port(src_dir, final, 'sdl2_net', exclude_files=excludes, flags=['-sUSE_SDL=2'])
 
   return [shared.cache.get_lib('libSDL2_net.a', create, what='port')]
 

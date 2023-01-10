@@ -20,14 +20,30 @@
 #include <string.h>
 #include <dynlink.h>
 
+#include <emscripten/console.h>
+
 //#define DYLINK_DEBUG
+
+#ifdef DYLINK_DEBUG
+#define dbg(fmt, ...) _emscripten_errf("%p: " fmt, pthread_self(), ##__VA_ARGS__)
+#else
+#define dbg(fmt, ...)
+#endif
+
+struct async_data {
+  em_dlopen_callback onsuccess;
+  em_arg_callback_func onerror;
+  void* user_data;
+};
+typedef void (*dlopen_callback_func)(struct dso*, struct async_data* user_data);
 
 void _dlinit(struct dso* main_dso_handle);
 void* _dlopen_js(struct dso* handle);
 void* _dlsym_js(struct dso* handle, const char* symbol);
 void _emscripten_dlopen_js(struct dso* handle,
-                           em_arg_callback_func onsuccess,
-                           em_arg_callback_func onerror);
+                           dlopen_callback_func onsuccess,
+                           dlopen_callback_func onerror,
+                           struct async_data* user_data);
 void __dl_vseterr(const char*, va_list);
 
 static struct dso * _Atomic head, * _Atomic tail;
@@ -39,6 +55,11 @@ static void error(const char* fmt, ...) {
   va_start(ap, fmt);
   __dl_vseterr(fmt, ap);
   va_end(ap);
+#ifdef DYLINK_DEBUG
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+#endif
 }
 
 int __dl_invalid_handle(void* h) {
@@ -51,9 +72,13 @@ int __dl_invalid_handle(void* h) {
 }
 
 static void load_library_done(struct dso* p) {
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: load_library_done: dso=%p mem_addr=%p mem_size=%d table_addr=%p table_size=%d\n", pthread_self(), p, p->mem_addr, p->mem_size, p->table_addr, p->table_size);
-#endif
+  dbg("load_library_done: dso=%p mem_addr=%p mem_size=%zu "
+      "table_addr=%p table_size=%zu",
+      p,
+      p->mem_addr,
+      p->mem_size,
+      p->table_addr,
+      p->table_size);
 
   // insert into linked list
   p->prev = tail;
@@ -83,24 +108,23 @@ static struct dso* load_library_start(const char* name, int flags) {
   return p;
 }
 
-static void dlopen_js_onsuccess(void* handle) {
-  struct dso* p = (struct dso*)handle;
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: dlopen_js_onsuccess: dso=%p mem_addr=%p mem_size=%p\n", pthread_self(), p, p->mem_addr, p->mem_size);
-#endif
-  load_library_done(p);
+static void dlopen_js_onsuccess(struct dso* dso, struct async_data* data) {
+  dbg("dlopen_js_onsuccess: dso=%p mem_addr=%p mem_size=%zu",
+      dso,
+      dso->mem_addr,
+      dso->mem_size);
+  load_library_done(dso);
   pthread_rwlock_unlock(&lock);
-  p->onsuccess(p->user_data, p);
+  data->onsuccess(data->user_data, dso);
+  free(data);
 }
 
-static void dlopen_js_onerror(void* handle) {
-  struct dso* p = (struct dso*)handle;
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: dlopen_js_onerror: dso=%p\n", pthread_self(), handle);
-#endif
+static void dlopen_js_onerror(struct dso* dso, struct async_data* data) {
+  dbg("dlopen_js_onerror: dso=%p", dso);
   pthread_rwlock_unlock(&lock);
-  p->onerror(p->user_data);
-  free(p);
+  data->onerror(data->user_data);
+  free(dso);
+  free(data);
 }
 
 // This function is called at the start of all entry points so that the dso
@@ -127,9 +151,7 @@ void* dlopen(const char* file, int flags) {
   if (!file) {
     return head;
   }
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: dlopen: %s [%d]\n", pthread_self(), file, flags);
-#endif
+  dbg("dlopen: %s [%d]", file, flags);
 
   struct dso* p;
   int cs;
@@ -139,9 +161,7 @@ void* dlopen(const char* file, int flags) {
   /* Search for the name to see if it's already loaded */
   for (p = head; p; p = p->next) {
     if (!strcmp(p->name, file)) {
-#ifdef DYLINK_DEBUG
-      fprintf(stderr, "%p: dlopen: already opened: %p\n", pthread_self(), p);
-#endif
+      dbg("dlopen: already opened: %p", p);
       goto end;
     }
   }
@@ -152,16 +172,12 @@ void* dlopen(const char* file, int flags) {
   }
   void* success = _dlopen_js(p);
   if (!success) {
-#ifdef DYLINK_DEBUG
-    fprintf(stderr, "%p: dlopen_js: failed\n", pthread_self(), p);
-#endif
+    dbg("dlopen_js: failed: %p", p);
     free(p);
     p = NULL;
     goto end;
   }
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: dlopen_js: success: %p\n", pthread_self(), p);
-#endif
+  dbg("dlopen_js: success: %p", p);
   load_library_done(p);
 end:
   pthread_rwlock_unlock(&lock);
@@ -183,20 +199,20 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     onerror(user_data);
     return;
   }
-  p->user_data = user_data;
-  p->onsuccess = onsuccess;
-  p->onerror = onerror;
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: calling emscripten_dlopen_js %p\n", pthread_self(), p);
-#endif
+
+  // For async mode
+  struct async_data* d = malloc(sizeof(struct async_data));
+  d->user_data = user_data;
+  d->onsuccess = onsuccess;
+  d->onerror = onerror;
+
+  dbg("calling emscripten_dlopen_js %p", p);
   // Unlock happens in dlopen_js_onsuccess/dlopen_js_onerror
-  _emscripten_dlopen_js(p, dlopen_js_onsuccess, dlopen_js_onerror);
+  _emscripten_dlopen_js(p, dlopen_js_onsuccess, dlopen_js_onerror, d);
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: __dlsym dso:%p sym:%s\n", pthread_self(), p, s);
-#endif
+  dbg("__dlsym dso:%p sym:%s", p, s);
   if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
     return 0;
   }
@@ -229,9 +245,7 @@ void _emscripten_thread_sync_code() {
   syncing = true;
   ensure_init();
   if (thread_local_tail == tail) {
-#ifdef DYLINK_DEBUG
-    fprintf(stderr, "%p: emscripten_thread_sync_code: already in sync\n", pthread_self());
-#endif
+    dbg("emscripten_thread_sync_code: already in sync");
     goto done;
   }
   pthread_rwlock_rdlock(&lock);
@@ -240,20 +254,26 @@ void _emscripten_thread_sync_code() {
   }
   while (thread_local_tail->next) {
     struct dso* p = thread_local_tail->next;
-#ifdef DYLINK_DEBUG
-    fprintf(stderr, "%p: emscripten_thread_sync_code: %s mem_addr=%p mem_size=%d table_addr=%p table_size=%d\n", pthread_self(), p->name, p->mem_addr, p->mem_size, p->table_addr, p->table_size);
-#endif
+    dbg("emscripten_thread_sync_code: %s mem_addr=%p "
+        "mem_size=%zu table_addr=%p table_size=%zu",
+        p->name,
+        p->mem_addr,
+        p->mem_size,
+        p->table_addr,
+        p->table_size);
     void* success = _dlopen_js(p);
     if (!success) {
-      fprintf(stderr, "dlerror: %s\n", dlerror());
+      // If any on the libraries fails to load here then we give up.
+      // TODO(sbc): Ideally this would never happen and we could/should
+      // abort, but on the main thread (where we don't have sync xhr) its
+      // often not possible to syncronously load side module.
+      _emscripten_errf("emscripten_thread_sync_code failed: %s", dlerror());
+      break;
     }
-    assert(success);
     thread_local_tail = p;
   }
   pthread_rwlock_unlock(&lock);
-#ifdef DYLINK_DEBUG
-  fprintf(stderr, "%p: emscripten_thread_sync_code done\n", pthread_self());
-#endif
+  dbg("emscripten_thread_sync_code done");
 
 done:
   syncing = false;

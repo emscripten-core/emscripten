@@ -1,4 +1,3 @@
-__cxa_allocate_exception
 __cxa_throw
 abort
 emscripten_memcpy_big

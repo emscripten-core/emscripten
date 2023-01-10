@@ -472,7 +472,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
           //      report a generic error.
           return -EIO;
         }
-        bool mounted = lockedParent.mountChild(std::string(childName), created);
+        [[maybe_unused]] bool mounted = lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
       // TODO: Check that the insert actually succeeds.
@@ -634,7 +634,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
       //      a generic error.
       return -EIO;
     }
-    bool mounted = lockedParent.mountChild(childName, created);
+    [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
     assert(mounted);
   }
 

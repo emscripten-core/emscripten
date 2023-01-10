@@ -33,6 +33,8 @@ int main() {
     var output = FS.readFile("/root/test");
     out(UTF8ArrayToString(output, 0));
     out("Length: " + output.byteLength);
+    var err = FS.unlink("/root/test");
+    out("FS.unlink: " + err);
   });
 
   EM_ASM({
@@ -44,7 +46,8 @@ int main() {
 
   EM_ASM({
     try {
-      var output = FS.readFile("", {encoding : 'utf8'});
+      // Already unlinked above, file should not exist anymore
+      var output = FS.readFile("/root/test", {encoding : 'utf8'});
     } catch (err) {
     }
   });

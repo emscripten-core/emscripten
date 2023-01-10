@@ -1,6 +1,9 @@
-{{{ (function() { global.captureModuleArg = function() { return MODULARIZE ? '' : 'self.Module=d;'; }; return null; })(); }}}
-{{{ (function() { global.instantiateModule = function() { return MODULARIZE ? `${EXPORT_NAME}(d);` : ''; }; return null; })(); }}}
-{{{ (function() { global.instantiateWasm = function() { return MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};'; }; return null; })(); }}}
+{{{
+  global.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
+  global.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
+  global.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};';
+  null;
+}}}
 
 #if WASM_WORKERS
 
@@ -188,7 +191,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_viii: 'emscripten_wasm_worker_post_function_3',
   emscripten_wasm_worker_post_function_vddd: 'emscripten_wasm_worker_post_function_3',
 
-  emscripten_wasm_worker_post_function_sig__deps: ['$readAsmConstArgs'],
+  emscripten_wasm_worker_post_function_sig__deps: ['$readEmAsmArgs'],
   emscripten_wasm_worker_post_function_sig__sig: 'vippp',
   emscripten_wasm_worker_post_function_sig: function(id, funcPtr, sigPtr, varargs) {
 #if ASSERTIONS
@@ -198,7 +201,7 @@ mergeInto(LibraryManager.library, {
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_wasm_worker_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': readAsmConstArgs(sigPtr, varargs) });
+    _wasm_workers[id].postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
   },
 
   _emscripten_atomic_wait_states: "['ok', 'not-equal', 'timed-out']",

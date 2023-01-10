@@ -111,3 +111,6 @@ Buffer.prototype.slice = function(start, end) {};
  * @nosideeffects
  */
 Buffer.prototype.toString = function(encoding, start, end) {};
+
+Worker.prototype.ref = function() {};
+Worker.prototype.unref = function() {};

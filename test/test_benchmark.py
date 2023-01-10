@@ -849,7 +849,9 @@ class benchmark(common.RunnerCore):
 
   def test_havlak(self):
     src = read_file(test_file('havlak.cpp'))
-    self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'])
+    # This runs many recursive calls (DFS) and thus needs a larger stack
+    self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'],
+                      emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
     src = read_file(test_file('base64.cpp'))

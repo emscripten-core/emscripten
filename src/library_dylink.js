@@ -89,6 +89,8 @@ var LibraryDylink = {
       '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
+      '__start_em_asm',
+      '__stop_em_asm',
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -237,7 +239,7 @@ var LibraryDylink = {
   _dlopen_js: function(filename, flag) {
     abort(dlopenMissingError);
   },
-  _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
   _dlsym_js: function(handle, symbol) {
@@ -528,8 +530,11 @@ var LibraryDylink = {
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
       // threads already).
-      var needsAllocation = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
-      if (needsAllocation) {
+      // If `handle` is specified than it is assumed that the calling thread has
+      // exclusive access to it for the duration of this function.  See the
+      // locking in `dynlink.c`.
+      var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+      if (firstLoad) {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // finalize alignments and verify them
@@ -657,12 +662,45 @@ var LibraryDylink = {
         }
 #endif
 
+#if MAIN_MODULE
+        function addEmAsm(addr, body) {
+          var args = [];
+          var arity = 0;
+          for (; arity < 16; arity++) {
+            if (body.indexOf('$' + arity) != -1) {
+              args.push('$' + arity);
+            } else {
+              break;
+            }
+          }
+          args = args.join(',');
+          var func = '(' + args +' ) => { ' + body + '};'
+#if DYLINK_DEBUG
+          dbg('adding new EM_ASM constant at: ' + ptrToString(start));
+#endif
+          {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
+        }
+
+        // Add any EM_ASM function that exist in the side module
+        if ('__start_em_asm' in moduleExports) {
+          var start = moduleExports['__start_em_asm'];
+          var stop = moduleExports['__stop_em_asm'];
+          {{{ from64('start') }}}
+          {{{ from64('stop') }}}
+          while (start < stop) {
+            var jsString = UTF8ToString(start);
+            addEmAsm(start, jsString);
+            start = HEAPU8.indexOf(0, start) + 1;
+          }
+        }
+#endif
+
         // initialize the module
 #if USE_PTHREADS
-        // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        // Only one thread should call __wasm_call_ctors, but all threads need
+        // to call _emscripten_tls_init
         registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
-        if (!ENVIRONMENT_IS_PTHREAD) {
+        if (firstLoad) {
 #endif
           var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
           if (applyRelocs) {
@@ -820,6 +858,7 @@ var LibraryDylink = {
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
+      libFile = locateFile(libFile);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
           readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
@@ -985,17 +1024,17 @@ var LibraryDylink = {
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'vppp',
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onerror') }}}(handle, user_data); });
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle, user_data); });
     }
 
     {{{ runtimeKeepalivePush() }}}

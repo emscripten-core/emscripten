@@ -9,11 +9,12 @@
 {{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
 
 {{{
-  global.isCurrentContextWebGL2 = function isCurrentContextWebGL2() {
+  global.isCurrentContextWebGL2 = () => {
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     if (MAX_WEBGL_VERSION <= 1) return 'false';
     return 'GL.currentContext.version >= 2';
   }
+  null;
 }}}
 
 var LibraryGL = {
@@ -149,6 +150,9 @@ var LibraryGL = {
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
   $GL__deps: [
+#if USE_PTHREADS
+    'malloc', // Needed by registerContext
+#endif
 #if MIN_WEBGL_VERSION == 1
     '_webgl_enable_ANGLE_instanced_arrays',
     '_webgl_enable_OES_vertex_array_object',
@@ -622,7 +626,8 @@ var LibraryGL = {
       if (Module['preinitializedWebGLContext']) {
         var ctx = Module['preinitializedWebGLContext'];
 #if MAX_WEBGL_VERSION >= 2
-        webGLContextAttributes.majorVersion = (typeof WebGL2RenderingContext != 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
+        // The ctx object may not be of a known class (e.g. it may be a debug wrapper), so we ask it for its version rather than use instanceof.
+        webGLContextAttributes.majorVersion = Number(ctx.getParameter(ctx.VERSION).match(/^WebGL (\d+).\d+/)[1]);
 #else
         webGLContextAttributes.majorVersion = 1;
 #endif
@@ -649,7 +654,7 @@ var LibraryGL = {
 #if MIN_WEBGL_VERSION >= 2
       var ctx = canvas.getContext("webgl2", webGLContextAttributes);
 #else
-      var ctx = 
+      var ctx =
 #if MAX_WEBGL_VERSION >= 2
         (webGLContextAttributes.majorVersion > 1)
         ?
@@ -3149,7 +3154,7 @@ var LibraryGL = {
     while(bindingMatch = bindingRegex.exec(source)) {
       // We have a layout(binding=x) enabled uniform. Parse the array length of that uniform, if it is an array, i.e. a
       //    layout(binding = 3) uniform sampler2D mainTexture[arrayLength];
-      // or 
+      // or
       //    layout(binding = 1, std140) uniform MainBlock { ... } name[arrayLength];
       var arrayLength = 1;
       for(var i = bindingMatch.index; i < source.length && source[i] != ';'; ++i) {

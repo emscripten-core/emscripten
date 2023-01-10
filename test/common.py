@@ -183,6 +183,16 @@ def requires_node(func):
   return decorated
 
 
+def requires_wasm64(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm64()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_v8(func):
   assert callable(func)
 
@@ -435,7 +445,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
-    self.js_engines = [config.V8_ENGINE]
+    self.require_engine(config.V8_ENGINE)
     self.emcc_args.append('-sENVIRONMENT=shell')
 
   def require_node(self):
@@ -444,9 +454,32 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    if self.get_setting('MEMORY64') == 1:
-      self.skipTest("MEMORY64=1 tests don't yet run under node")
-    self.js_engines = [config.NODE_JS]
+    self.require_engine(config.NODE_JS)
+
+  def require_engine(self, engine):
+    if self.required_engine and self.required_engine != engine:
+      self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
+    self.required_engine = engine
+    self.js_engines = [engine]
+
+  def require_wasm64(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        self.node_args += ['--experimental-wasm-memory64']
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args += ['--experimental-wasm-memory64']
+      return
+
+    if 'EMTEST_SKIP_WASM64' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def setup_node_pthreads(self):
     self.require_node()
@@ -486,20 +519,28 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
-    self.node_args = [
-      # Increate stack trace limit to maximise usefulness of test failure reports
-      '--stack-trace-limit=50',
-      # Opt in to node v15 default behaviour:
-      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-      '--unhandled-rejections=throw',
-      # Include backtrace for all uncuaght exceptions (not just Error).
-      '--trace-uncaught',
-    ]
-    self.v8_args = []
+    # Increate stack trace limit to maximise usefulness of test failure reports
+    self.node_args = ['--stack-trace-limit=50']
+
+    node_version = shared.check_node_version()
+    if node_version:
+      if node_version < (11, 0, 0):
+        self.node_args.append('--unhandled-rejections=strict')
+        self.node_args.append('--experimental-wasm-se')
+      else:
+        # Include backtrace for all uncuaght exceptions (not just Error).
+        self.node_args.append('--trace-uncaught')
+        if node_version < (15, 0, 0):
+          # Opt in to node v15 default behaviour:
+          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+          self.node_args.append('--unhandled-rejections=throw')
+
+    self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
     self.js_engines = config.JS_ENGINES.copy()
+    self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
@@ -1043,6 +1084,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.assertContained('Traceback', proc.stderr)
     elif not WINDOWS or 'Access is denied' not in proc.stderr:
       self.assertNotContained('Traceback', proc.stderr)
+    if EMTEST_VERBOSE:
+      sys.stderr.write(proc.stderr)
     return proc.stderr
 
   # excercise dynamic linker.

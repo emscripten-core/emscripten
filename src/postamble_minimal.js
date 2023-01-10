@@ -114,22 +114,6 @@ var asm;
 
 #if USE_PTHREADS
 var wasmModule;
-#if PTHREAD_POOL_SIZE
-function loadWasmModuleToWorkers() {
-#if PTHREAD_POOL_DELAY_LOAD
-  PThread.unusedWorkers.forEach(PThread.loadWasmModuleToWorker);
-#else
-  var numWorkersToLoad = PThread.unusedWorkers.length;
-  PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
-    // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the
-    // Worker pool has loaded up. If all Workers have finished loading up the
-    // Wasm Module, proceed with main()
-    if (!--numWorkersToLoad) ready();
-  })});
-#endif
-}
-#endif
-
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
@@ -164,10 +148,6 @@ if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.w
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
-#if USE_PTHREADS
-  // Export Wasm module for pthread creation to access.
-  wasmModule = output.module || Module['wasm'];
-#endif
 #if !LibraryManager.has('library_exports.js') && !EMBIND
   // If not using the emscripten_get_exported_function() API or embind, keep the
   // 'asm' exports variable in local scope to this instantiate function to save
@@ -226,7 +206,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   assert(wasmMemory);
   assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
-  updateGlobalBufferAndViews(wasmMemory.buffer);
+  updateMemoryViews();
 #endif
 
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
@@ -237,21 +217,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
   initRuntime(asm);
-#if USE_PTHREADS && PTHREAD_POOL_SIZE
-  if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
-#if !PTHREAD_POOL_DELAY_LOAD
-  else
-#endif
-    ready();
+#if USE_PTHREADS
+  // Export Wasm module for pthread creation to access.
+  wasmModule = output.module || Module['wasm'];
+  PThread.loadWasmModuleToAllWorkers(ready);
 #else
   ready();
-#endif
-
-#if USE_PTHREADS
-  // This Worker is now ready to host pthreads, tell the main thread we can proceed.
-  if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ 'cmd': 'loaded' });
-  }
 #endif
 }
 

@@ -22,6 +22,9 @@
 
 mergeInto(LibraryManager.library, {
   $ptrToString: function(ptr) {
+#if ASSERTIONS
+    assert(typeof ptr === 'number');
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -169,22 +172,23 @@ mergeInto(LibraryManager.library, {
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
+    var b = wasmMemory.buffer;
 #if MEMORYPROFILER
-    var oldHeapSize = buffer.byteLength;
+    var oldHeapSize = b.byteLength;
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
-      updateGlobalBufferAndViews(wasmMemory.buffer);
+      wasmMemory.grow((size - b.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
+      updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      err('emscripten_realloc_buffer: Attempted to grow heap from ' + b.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -321,7 +325,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(memoryIndex == 0);
 #endif
-    updateGlobalBufferAndViews(wasmMemory.buffer);
+    updateMemoryViews();
   },
 
   system__deps: ['$setErrNo'],
@@ -1241,9 +1245,7 @@ mergeInto(LibraryManager.library, {
 #if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw Infinity; },
-#endif
-
-#if !SUPPORT_LONGJMP
+#elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
@@ -1258,17 +1260,19 @@ mergeInto(LibraryManager.library, {
   // built with SUPPORT_LONGJMP=1, the object file contains references of not
   // longjmp but _emscripten_throw_longjmp, which is called from
   // emscripten_longjmp.
-  _emscripten_throw_longjmp: function() { error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)'); },
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
 #endif
+  _emscripten_throw_longjmp: function() {
+    error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
+  },
   // will never be emitted, as the dep errors at compile time
   longjmp: function(env, value) {
-    abort('longjmp not supported');
+    abort('longjmp not supported (build with -s SUPPORT_LONGJMP)');
   },
-  setjmp: function(env, value) {
-    abort('setjmp not supported');
+  setjmp: function(env) {
+    abort('setjmp not supported (build with -s SUPPORT_LONGJMP)');
   },
 #endif
 
@@ -2328,12 +2332,10 @@ mergeInto(LibraryManager.library, {
                                "} else " +
 #endif
 #if USE_PTHREADS
-// Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
-// N.b. Wasm workers do not provide this kind of clock synchronization.
-                               "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
-                               "} else " +
-#endif
+// Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
+// make sure to adjust all timings to the respective time origins.
+                               "_emscripten_get_now = () => performance.timeOrigin + performance.now();\n",
+#else
 #if ENVIRONMENT_MAY_BE_SHELL
                                "if (typeof dateNow != 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
@@ -2349,6 +2351,7 @@ mergeInto(LibraryManager.library, {
                                // Modern environment where performance.now() is supported:
                                // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
                                "_emscripten_get_now = () => performance.now();\n",
+#endif
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
@@ -2916,21 +2919,21 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  $readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: [
-    '$readAsmConstArgsArray',
+  $readEmAsmArgsArray: '=[]',
+  $readEmAsmArgs__deps: [
+    '$readEmAsmArgsArray',
 #if MEMORY64
     '$readI53FromI64',
 #endif
   ],
-  $readAsmConstArgs: function(sigPtr, buf) {
+  $readEmAsmArgs: function(sigPtr, buf) {
 #if ASSERTIONS
-    // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-    assert(Array.isArray(readAsmConstArgsArray));
+    // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
+    assert(Array.isArray(readEmAsmArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
     assert(buf % {{{ STACK_ALIGN }}} == 0);
 #endif
-    readAsmConstArgsArray.length = 0;
+    readEmAsmArgsArray.length = 0;
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
@@ -2948,7 +2951,7 @@ mergeInto(LibraryManager.library, {
       // get automatically converted to int53/Double.
       validChars.push('p');
 #endif
-      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
+      assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readEmAsmArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
 #endif
       // Floats are always passed as doubles, and doubles and int64s take up 8
       // bytes (two 32-bit slots) in memory, align reads to these:
@@ -2956,10 +2959,10 @@ mergeInto(LibraryManager.library, {
 #if MEMORY64
       // Special case for pointers under wasm64 which we read as int53 Numbers.
       if (ch == 112/*p*/) {
-        readAsmConstArgsArray.push(readI53FromI64(buf++ << 2));
+        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
       } else
 #endif
-      readAsmConstArgsArray.push(
+      readEmAsmArgsArray.push(
         ch == 105/*i*/ ? HEAP32[buf] :
 #if WASM_BIGINT
        (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
@@ -2969,48 +2972,45 @@ mergeInto(LibraryManager.library, {
       );
       ++buf;
     }
-    return readAsmConstArgsArray;
+    return readEmAsmArgsArray;
   },
 
-  emscripten_asm_const_int__sig: 'ippp',
-  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
-  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
+  $runEmAsmFunction__sig: 'ippp',
+  $runEmAsmFunction__deps: ['$readEmAsmArgs'],
+  $runEmAsmFunction: function(code, sigPtr, argbuf) {
+    var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
     if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
-#if MEMORY64
-    return Number(ASM_CONSTS[code].apply(null, args));
-#else
     return ASM_CONSTS[code].apply(null, args);
-#endif
+  },
+
+  emscripten_asm_const_int__sig: 'ippp',
+  emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
+  emscripten_asm_const_int: function(code, sigPtr, argbuf) {
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
   emscripten_asm_const_double__sig: 'dppp',
-  emscripten_asm_const_double__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_double__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_double: function(code, sigPtr, argbuf) {
-    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
 #if MEMORY64
+  // We can't use the alias in wasm64 mode becuase the function signature differs
   emscripten_asm_const_ptr__sig: 'pppp',
-  emscripten_asm_const_ptr__deps: ['emscripten_asm_const_int'],
+  emscripten_asm_const_ptr__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
-    return _emscripten_asm_const_int(code, sigPtr, argbuf);
+    return runEmAsmFunction(code, sigPtr, argbuf);
   },
 #else
   emscripten_asm_const_ptr: 'emscripten_asm_const_int',
 #endif
 
-  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
-  $mainThreadEM_ASM__sig: 'iippi',
-  $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
+  $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
+  $runMainThreadEmAsm__sig: 'iippi',
+  $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
+    var args = readEmAsmArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
@@ -3018,7 +3018,7 @@ mergeInto(LibraryManager.library, {
       // always un-variadify that, *before proxying*, as in the async case this
       // is a stack allocation that LLVM made, which may go away before the main
       // thread gets the message. For that reason we handle proxying *after* the
-      // call to readAsmConstArgs, and therefore we do that manually here instead
+      // call to readEmAsmArgs, and therefore we do that manually here instead
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
@@ -3032,15 +3032,15 @@ mergeInto(LibraryManager.library, {
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
-  emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
-    return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
-  emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
+  emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
-    return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 0);
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -3142,12 +3142,14 @@ mergeInto(LibraryManager.library, {
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__sig: 'vp',
-  __handle_stack_overflow__deps: ['emscripten_stack_get_base'],
+  __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
+    var base = _emscripten_stack_get_base();
+    var end = _emscripten_stack_get_end();
     abort('stack overflow (Attempt to set SP to ' + ptrToString(requested) +
-          ', with stack limits [' + ptrToString(_emscripten_stack_get_end()) +
-          ' - ' + ptrToString(_emscripten_stack_get_base()) + '])');
+          ', with stack limits [' + ptrToString(end) + ' - ' + ptrToString(base) +
+          ']). If you require more stack space build with -sSTACK_SIZE=<bytes>');
   },
 #endif
 
@@ -3507,7 +3509,7 @@ mergeInto(LibraryManager.library, {
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
   $callUserCallback__deps: ['$handleException',
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -3524,24 +3526,29 @@ mergeInto(LibraryManager.library, {
     }
     try {
       func();
-#if EXIT_RUNTIME || USE_PTHREADS
+#if EXIT_RUNTIME
 #if USE_PTHREADS && !EXIT_RUNTIME
       if (ENVIRONMENT_IS_PTHREAD)
 #endif
         maybeExit();
-#endif
+#endif // EXIT_RUNTIME
     } catch (e) {
       handleException(e);
     }
   },
 
+#if EXIT_RUNTIME
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
-#if EXIT_RUNTIME
+#if PROXY_TO_PTHREAD
+    // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
+    // waits for the proxied main function to exit.
+    if (!ENVIRONMENT_IS_PTHREAD) return;
+#endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3559,14 +3566,20 @@ mergeInto(LibraryManager.library, {
         handleException(e);
       }
     }
-#endif // EXIT_RUNTIME
   },
 #else
+  // Define as stub function in case legacy code has unconditionally dependency
+  // on this function.  We also have at least one test that expects this
+  // library function to always exist.
+  $maybeExit: function() {},
+#endif // EXIT_RUNTIME
+
+#else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: function(func) {
     func();
   },
-#endif
+#endif // MINIMAL_RUNTIME
 
   $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
@@ -3683,6 +3696,36 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
     dbg('done preloading data files');
 #endif
+  },
+
+  $handleAllocator__docs: '/** @constructor */',
+  $handleAllocator: function() {
+    this.allocated = [];
+    this.freelist = [];
+    this.get = function(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      return this.allocated[id];
+    };
+    this.allocate = function(handle) {
+      let id;
+      if (this.freelist.length > 0) {
+        id = this.freelist.pop();
+        this.allocated[id] = handle;
+      } else {
+        id = this.allocated.length;
+        this.allocated.push(handle);
+      }
+      return id;
+    };
+    this.free = function(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      delete this.allocated[id];
+      this.freelist.push(id);
+    };
   },
 });
 

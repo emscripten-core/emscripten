@@ -27,6 +27,7 @@
 
 #if SANITIZER_EMSCRIPTEN
 #include "lsan/lsan_allocator.h"
+#include "emscripten/heap.h"
 #endif
 
 #if CAN_SANITIZE_LEAKS
@@ -371,6 +372,7 @@ extern "C" SANITIZER_WEAK_ATTRIBUTE void __libc_iterate_dynamic_tls(
     pid_t, void (*cb)(void *, void *, uptr, void *), void *);
 #    endif
 
+#if !SANITIZER_EMSCRIPTEN
 static void ProcessThreadRegistry(Frontier *frontier) {
   InternalMmapVector<uptr> ptrs;
   GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
@@ -392,7 +394,6 @@ static void ProcessThreadRegistry(Frontier *frontier) {
   }
 }
 
-#if !SANITIZER_EMSCRIPTEN
 // Scans thread data (stacks and TLS) for heap pointers.
 static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
                            Frontier *frontier) {
@@ -530,10 +531,6 @@ void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
     ScanRangeForPointers(intersection_begin, intersection_end, frontier, "ROOT",
                          kReachable);
 }
-
-#if SANITIZER_EMSCRIPTEN
-extern "C" uptr emscripten_get_heap_size();
-#endif
 
 static void ProcessRootRegion(Frontier *frontier,
                               const RootRegion &root_region) {
@@ -676,6 +673,7 @@ void LeakSuppressionContext::PrintMatchedSuppressions() {
   Printf("%s\n\n", line);
 }
 
+#if !SANITIZER_EMSCRIPTEN
 static void ReportIfNotSuspended(ThreadContextBase *tctx, void *arg) {
   const InternalMmapVector<tid_t> &suspended_threads =
       *(const InternalMmapVector<tid_t> *)arg;
@@ -687,14 +685,15 @@ static void ReportIfNotSuspended(ThreadContextBase *tctx, void *arg) {
           tctx->os_id);
   }
 }
+#endif
 
-#  if SANITIZER_FUCHSIA
+#  if SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN
 
 // Fuchsia provides a libc interface that guarantees all threads are
 // covered, and SuspendedThreadList is never really used.
 static void ReportUnsuspendedThreads(const SuspendedThreadsList &) {}
 
-#  else  // !SANITIZER_FUCHSIA
+#  else  // !(SANITIZER_FUCHSIA || SANITIZER_FUCHSIA)
 
 static void ReportUnsuspendedThreads(
     const SuspendedThreadsList &suspended_threads) {
@@ -715,9 +714,7 @@ static void CheckForLeaksCallback(const SuspendedThreadsList &suspended_threads,
   CheckForLeaksParam *param = reinterpret_cast<CheckForLeaksParam *>(arg);
   CHECK(param);
   CHECK(!param->success);
-#if !SANITIZER_EMSCRIPTEN
   ReportUnsuspendedThreads(suspended_threads);
-#endif
   ClassifyAllChunks(suspended_threads, &param->frontier);
   ForEachChunk(CollectLeaksCb, &param->leaks);
   // Clean up for subsequent leak checks. This assumes we did not overwrite any

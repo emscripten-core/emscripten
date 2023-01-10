@@ -212,26 +212,17 @@ global.LibraryManager = {
       }
       try {
         processed = processMacros(preprocess(src, filename));
-        eval(processed);
+        vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
       } catch (e) {
-        const details = [e, e.lineNumber ? `line number: ${e.lineNumber}` : ''];
+        error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
-          details.push((e.stack || '').toString().replace('Object.<anonymous>', filename));
-        }
-        if (processed) {
-          error(`failure to execute js library "${filename}": ${details}`);
-          if (VERBOSE) {
+          if (processed) {
             error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
           } else {
-            error('use -sVERBOSE to see more details');
+            error(`original source:\n=============\n${src}\n=============`);
           }
         } else {
-          error(`failure to process js library "${filename}": ${details}`);
-          if (VERBOSE) {
-            error(`original source:\n=============\n${src}\n=============`);
-          } else {
-            error('use -sVERBOSE to see more details');
-          }
+          error('use -sVERBOSE to see more details');
         }
         throw e;
       } finally {

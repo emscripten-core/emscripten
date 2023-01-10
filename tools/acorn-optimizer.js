@@ -235,6 +235,7 @@ function hasSideEffects(node) {
       case 'VariableDeclarator':
       case 'ObjectExpression':
       case 'Property':
+      case 'SpreadElement':
       case 'BlockStatement':
       case 'ArrayExpression':
       case 'EmptyStatement': {
@@ -399,7 +400,11 @@ function runJSDCE(ast, aggressive) {
       ObjectExpression(node, c) {
         // ignore the property identifiers
         node.properties.forEach(function (node) {
-          c(node.value);
+          if (node.value) {
+            c(node.value);
+          } else if (node.argument) {
+            c(node.argument);
+          }
         });
       },
       MemberExpression(node, c) {

@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 109
+EXPECTED_BINARYEN_VERSION = 111
 
 # cache results of nm - it can be slow to run
 nm_cache = {}

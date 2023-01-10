@@ -292,7 +292,7 @@ function run(args) {
     readyPromiseResolve(Module);
 #endif // MODULARIZE
     initRuntime();
-    postMessage({ 'cmd': 'loaded' });
+    startWorker(Module);
     return;
   }
 #endif

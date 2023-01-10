@@ -26,7 +26,7 @@ __attribute__((weak))
 int __main_void(void) {
   /* Fill in the arguments from WASI syscalls. */
   size_t argc;
-  char **argv;
+  char **argv = NULL;
   size_t argv_buf_size;
   __wasi_errno_t err;
 

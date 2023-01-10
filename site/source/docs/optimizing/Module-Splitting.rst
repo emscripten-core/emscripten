@@ -55,8 +55,9 @@ further changes to the JS produced by the initial compilation.
 Basic Example
 -------------
 
-Let’s run through a basic example of using SPLIT_MODULE with Node. Later we will
-adapt the example to run on the Web as well.
+Let’s run through a basic example of using SPLIT_MODULE with Node. Later in the
+"Running on the Web" section we will discuss how to adapt the example to run on
+the Web as well.
 
 Here’s our application code::
 

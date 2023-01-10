@@ -6,6 +6,7 @@
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <threads.h>
 
 // The worker threads we will use. `looper` sits in a loop, continuously
 // processing work as it becomes available, while `returner` returns to the JS
@@ -93,6 +94,11 @@ void await_widget(widget* w) {
 // Helper functions we will proxy to perform our work.
 
 void do_run_widget(void* arg) { run_widget((widget*)arg); }
+
+void* do_run_widget_42(void* arg) {
+  run_widget((widget*)arg);
+  return (void*)42;
+}
 
 void finish_running_widget(void* arg) {
   widget* w = (widget*)arg;
@@ -196,6 +202,68 @@ void test_proxy_sync_with_ctx(void) {
 
   destroy_widget(&w6);
   destroy_widget(&w7);
+}
+
+void add_one(void* arg, void* result) {
+  assert((intptr_t)result == 42);
+  int* j = (int*)arg;
+  *j = *j + 1;
+}
+
+thread_local int j = 0;
+
+void test_proxy_async_with_callback(void) {
+  printf("Testing async_with_callback proxying\n");
+
+  int i = 0;
+  widget w8, w9, w10;
+  init_widget(&w8, &i, 8);
+  init_widget(&w9, &i, 9);
+  init_widget(&w10, &i, 10);
+
+  // Proxy to ourselves.
+  emscripten_proxy_async_with_callback(
+    proxy_queue, pthread_self(), do_run_widget_42, &w8, add_one, &j);
+  assert(!w8.done);
+  assert(j == 0);
+  emscripten_proxy_execute_queue(proxy_queue);
+  assert(i == 8);
+  assert(w8.done);
+  assert(pthread_equal(w8.thread, pthread_self()));
+  assert(j == 1);
+
+  // Proxy to looper.
+  emscripten_proxy_async_with_callback(
+    proxy_queue, looper, do_run_widget_42, &w9, add_one, &j);
+  await_widget(&w9);
+  assert(i == 9);
+  assert(w9.done);
+  assert(pthread_equal(w9.thread, looper));
+  assert(j == 1);
+  // TODO: Add a way to wait for work before executing it.
+  while (j < 2) {
+    emscripten_proxy_execute_queue(proxy_queue);
+  }
+  assert(j == 2);
+
+  // Proxy to returner.
+  emscripten_proxy_async_with_callback(
+    proxy_queue, returner, do_run_widget_42, &w10, add_one, &j);
+  await_widget(&w10);
+  assert(i == 10);
+  assert(w10.done);
+  assert(pthread_equal(w10.thread, returner));
+  assert(j == 2);
+  emscripten_proxy_execute_queue(proxy_queue);
+  // TODO: Add a way to wait for work before executing it.
+  while (j < 3) {
+    emscripten_proxy_execute_queue(proxy_queue);
+  }
+  assert(j == 3);
+
+  destroy_widget(&w8);
+  destroy_widget(&w9);
+  destroy_widget(&w10);
 }
 
 typedef struct increment_to_arg {
@@ -328,6 +396,7 @@ int main(int argc, char* argv[]) {
   test_proxy_async();
   test_proxy_sync();
   test_proxy_sync_with_ctx();
+  test_proxy_async_with_callback();
 
   should_quit = 1;
   pthread_join(looper, NULL);

@@ -8,7 +8,7 @@ import sys
 import logging
 from typing import List, Optional
 
-from . import utils
+from . import utils, diagnostics
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
 logger = logging.getLogger('config')
@@ -96,6 +96,19 @@ def normalize_config_settings():
     CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 
+def set_config_from_tool_location(config_key, tool_binary, f):
+  val = globals()[config_key]
+  if val is None:
+    path = utils.which(tool_binary)
+    if not path:
+      if not os.path.exists(EM_CONFIG):
+        diagnostics.warn('config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG)
+      exit_with_error('%s not set in config (%s), and `%s` not found in PATH', config_key, EM_CONFIG, tool_binary)
+    globals()[config_key] = f(path)
+  elif not val:
+    exit_with_error('%s is set to empty value in %s', config_key, EM_CONFIG)
+
+
 def parse_config_file():
   """Parse the emscripten config file using python's exec.
 
@@ -142,6 +155,11 @@ def parse_config_file():
     elif key in config:
       globals()[key] = config[key]
 
+
+def init():
+  if os.path.exists(EM_CONFIG):
+    parse_config_file()
+
   # In the past the default-generated .emscripten config file would read certain environment
   # variables. We used generate a warning here but that could generates false positives
   # See https://github.com/emscripten-core/emsdk/issues/862
@@ -155,12 +173,9 @@ def parse_config_file():
     if env_value and new_key not in os.environ:
       logger.debug(f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`')
 
-  # Certain keys are mandatory
-  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
-    if key not in config:
-      exit_with_error('%s is not defined in %s', key, EM_CONFIG)
-    if not globals()[key]:
-      exit_with_error('%s is set to empty value in %s', key, EM_CONFIG)
+  set_config_from_tool_location('LLVM_ROOT', 'clang', os.path.dirname)
+  set_config_from_tool_location('NODE_JS', 'node', lambda x: x)
+  set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
 
   normalize_config_settings()
 
@@ -176,8 +191,7 @@ def generate_config(path):
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
-  config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
-  llvm_root = os.path.dirname(which('llvm-dis') or '/usr/bin/llvm-dis')
+  llvm_root = os.path.dirname(which('wasm-ld') or '/usr/bin/wasm-ld')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
   binaryen_root = os.path.dirname(os.path.dirname(which('wasm-opt') or '/usr/local/bin/wasm-opt'))
@@ -199,10 +213,9 @@ It contains our best guesses for the important paths, which are:
   LLVM_ROOT       = %s
   BINARYEN_ROOT   = %s
   NODE_JS         = %s
-  EMSCRIPTEN_ROOT = %s
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node, __rootpath__), file=sys.stderr)
+''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option
@@ -269,9 +282,6 @@ if '--generate-config' in sys.argv:
   generate_config(EM_CONFIG)
   sys.exit(0)
 
-if not os.path.exists(EM_CONFIG):
-  exit_with_error(f'config file not found: {EM_CONFIG}.  Please create one by hand or run `emcc --generate-config`')
-
 logger.debug('emscripten config is located in ' + EM_CONFIG)
 
 # Emscripten compiler spawns other processes, which can reimport shared.py, so
@@ -279,4 +289,4 @@ logger.debug('emscripten config is located in ' + EM_CONFIG)
 # setting it to the currently active environment.
 os.environ['EM_CONFIG'] = EM_CONFIG
 
-parse_config_file()
+init()

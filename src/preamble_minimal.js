@@ -54,14 +54,14 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if SUPPORT_BIG_ENDIAN
   HEAP_DATA_VIEW,
 #endif
-  wasmMemory, buffer, wasmTable;
+  wasmMemory, wasmTable;
 
 
-function updateGlobalBufferAndViews(b) {
+function updateMemoryViews() {
+  var b = wasmMemory.buffer;
 #if ASSERTIONS && SHARED_MEMORY
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
-  buffer = b;
 #if SUPPORT_BIG_ENDIAN
   HEAP_DATA_VIEW = new DataView(b);
 #endif
@@ -96,12 +96,16 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     , 'shared': true
 #endif
     });
-  updateGlobalBufferAndViews(wasmMemory.buffer);
 #if USE_PTHREADS
-} else {
-  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
 }
+#if MODULARIZE
+else {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
 #endif // USE_PTHREADS
+
+updateMemoryViews();
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
