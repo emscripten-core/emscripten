@@ -299,7 +299,7 @@ def get_clang_targets():
     exit_with_error('clang executable not found at `%s`' % CLANG_CC)
   try:
     target_info = run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
-  except subprocess.CalldProcessError:
+  except subprocess.CalledProcessError:
     exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
   if 'Registered Targets:' not in target_info:
     exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
