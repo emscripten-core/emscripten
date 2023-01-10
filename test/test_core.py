@@ -1310,42 +1310,32 @@ int main()
     src = '''
     #include <iostream>
 
-    class MyException
-    {
+    class MyException {
     public:
         MyException(){ std::cout << "Construct..."; }
         MyException( const MyException & ) { std::cout << "Copy..."; }
         ~MyException(){ std::cout << "Destruct..."; }
     };
 
-    int function()
-    {
+    int function() {
         std::cout << "Throw...";
         throw MyException();
     }
 
-    int function2()
-    {
+    int function2() {
         return function();
     }
 
-    int main()
-    {
-        try
-        {
+    int main() {
+        try {
             function2();
-        }
-        catch (MyException & e)
-        {
+        } catch (MyException & e) {
             std::cout << "Caught...";
         }
 
-        try
-        {
+        try {
             function2();
-        }
-        catch (MyException e)
-        {
+        } catch (MyException e) {
             std::cout << "Caught...";
         }
 
@@ -1371,8 +1361,7 @@ int main()
 #include <iostream>
 #include <stdexcept>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   if (argc != 2) {
     std::cout << "need an arg" << std::endl;
     return 1;
@@ -1740,10 +1729,10 @@ int main () {
     # abort() should not run destructors
     out = self.do_run(r'''
 #include <stdlib.h>
-#include <iostream>
+#include <stdio.h>
 
 struct Foo {
-  ~Foo() { std::cout << "Destructing Foo" << std::endl; }
+  ~Foo() { printf("Destructing Foo\n"); }
 };
 
 int main() {
@@ -5554,7 +5543,7 @@ Module = {
       stdin: function() { return Module.data.pop() || null },
       stdout: function(x) { out('got: ' + x) }
     };
-''')
+    ''')
     self.emcc_args += ['--pre-js', 'pre.js']
 
     src = r'''
@@ -5624,8 +5613,7 @@ Module = {
     src = r'''
       #include <stdio.h>
       char buf[32];
-      int main()
-      {
+      int main() {
         const char *r = "SUCCESS";
         FILE *f = fopen("eol.txt", "r");
         while (fgets(buf, 32, f) != NULL) {
@@ -5649,65 +5637,62 @@ Module = {
       #include <stdio.h>
       #include <assert.h>
       #include <float.h>
-      int main()
-      {
-          float x = FLT_MAX, y = FLT_MAX, z = FLT_MAX;
+      int main() {
+        float x = FLT_MAX, y = FLT_MAX, z = FLT_MAX;
 
-          FILE* fp = fopen("three_numbers.txt", "r");
-          if (fp) {
-              int match = fscanf(fp, " %f %f %f ", &x, &y, &z);
-              printf("match = %d\n", match);
-              printf("x = %0.1f, y = %0.1f, z = %0.1f\n", x, y, z);
-          } else {
-              printf("failed to open three_numbers.txt\n");
-          }
-          return 0;
+        FILE* fp = fopen("three_numbers.txt", "r");
+        if (fp) {
+          int match = fscanf(fp, " %f %f %f ", &x, &y, &z);
+          printf("match = %d\n", match);
+          printf("x = %0.1f, y = %0.1f, z = %0.1f\n", x, y, z);
+        } else {
+          printf("failed to open three_numbers.txt\n");
+        }
+        return 0;
       }
     '''
     self.emcc_args += ['--embed-file', 'three_numbers.txt']
     self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
   def test_fscanf_2(self):
-    create_file('a.txt', '''1/2/3 4/5/6 7/8/9
-''')
+    create_file('a.txt', '1/2/3 4/5/6 7/8/9\n')
     self.emcc_args += ['--embed-file', 'a.txt']
-    self.do_run(r'''#include <cstdio>
-#include <iostream>
+    self.do_run(r'''\
+      #include <stdio.h>
 
-using namespace std;
+      int main(int argv, char** argc) {
+        printf("fscanf test\n");
 
-int
-main( int argv, char ** argc ) {
-    cout << "fscanf test" << endl;
+        FILE* file = fopen("a.txt", "rb");
+        int vertexIndex[4];
+        int normalIndex[4];
+        int uvIndex[4];
 
-    FILE * file;
-    file = fopen("a.txt", "rb");
-    int vertexIndex[4];
-    int normalIndex[4];
-    int uvIndex[4];
+        int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                             &vertexIndex[0], &uvIndex[0], &normalIndex[0],
+                             &vertexIndex[1], &uvIndex[1], &normalIndex[1],
+                             &vertexIndex[2], &uvIndex[2], &normalIndex[2],
+                             &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
+        fclose(file);
 
-    int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex    [1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
-
-    cout << matches << endl;
-
-    return 0;
-}
-''', 'fscanf test\n9\n')
+        printf("matches: %d\n", matches);
+        return 0;
+      }
+    ''', 'fscanf test\nmatches: 9\n')
 
   def test_fileno(self):
     create_file('empty.txt', '')
     src = r'''
       #include <stdio.h>
       #include <unistd.h>
-      int main()
-      {
-          FILE* fp = fopen("empty.txt", "r");
-          if (fp) {
-              printf("%d\n", fileno(fp));
-          } else {
-              printf("failed to open empty.txt\n");
-          }
-          return 0;
+      int main() {
+        FILE* fp = fopen("empty.txt", "r");
+        if (fp) {
+            printf("%d\n", fileno(fp));
+        } else {
+            printf("failed to open empty.txt\n");
+        }
+        return 0;
       }
     '''
     self.emcc_args += ['--embed-file', 'empty.txt']
@@ -5979,9 +5964,9 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASSERTIONS')
     self.do_run(r'''
       #include <emscripten.h>
-      #include <iostream>
+      #include <stdio.h>
       int main(void) {
-        std::cout << "hello world\n"; // should work with strict mode
+        printf("hello world\n"); // should work with strict mode
         EM_ASM(
           try {
             FS.readFile('/dummy.txt');
@@ -6276,8 +6261,7 @@ PORT: 3979
     create_file('src.cpp', '''
       #include <iostream>
 
-      int main()
-      {
+      int main() {
         std::cout << "hello world" << std::endl << 77 << "." << std::endl;
         return 0;
       }
