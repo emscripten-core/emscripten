@@ -457,8 +457,13 @@ function exportRuntime() {
       }
     }
 
+<<<<<<< HEAD
     if (unexported.length || unusedLibSymbols.size) {
       let unexportedStubs = 'var unexportedSymbols = [\n';
+=======
+    if (!MINIMAL_RUNTIME && unexported.length) {
+      unexportedStubs += 'var unexportedRuntimeSymbols = [\n';
+>>>>>>> 8eaba1561 (Remove unexported getter setup for MINIMAL_RUNTIME case)
       for (const sym of unexported) {
         unexportedStubs += `  '${sym}',\n`;
       }
