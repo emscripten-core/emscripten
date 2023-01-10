@@ -193,6 +193,16 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_wasm_eh(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_v8(func):
   assert callable(func)
 
@@ -467,19 +477,39 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       version = shared.check_node_version()
       if version >= (16, 0, 0):
         self.js_engines = [config.NODE_JS]
-        self.node_args += ['--experimental-wasm-memory64']
+        self.node_args.append('--experimental-wasm-memory64')
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args += ['--experimental-wasm-memory64']
+      self.v8_args.append('--experimental-wasm-memory64')
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
       self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+
+  def require_wasm_eh(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        if version < (20, 0, 0):
+          self.node_args.append('--experimental-wasm-eh')
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-eh')
+      return
+
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def setup_node_pthreads(self):
     self.require_node()

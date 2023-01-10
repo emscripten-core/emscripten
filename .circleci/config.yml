@@ -563,7 +563,7 @@ jobs:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
           title: "core2 subset"
-          test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map"
+          test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map core2.test_exceptions_wasm"
       - upload-test-results
   test-other:
     executor: bionic
@@ -598,6 +598,8 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
       - run:
@@ -662,7 +664,10 @@ jobs:
   test-mac:
     executor: mac
     environment:
+      # We don't install d8 or modern node on the mac runner so we skip any
+      # tests that depend on those.
       EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:

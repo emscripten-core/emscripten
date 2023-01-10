@@ -100,13 +100,12 @@ def with_both_eh_sjlj(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.require_v8()
+      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
       if self.get_setting('MEMORY64'):
@@ -135,12 +134,11 @@ def with_both_sjlj(f):
       # Wasm SjLj is currently supported only in wasm backend and V8
       if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm SjLj')
-      self.require_v8()
+      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -1133,12 +1131,11 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
     if not self.is_wasm():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
-    self.require_v8()
+    self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    self.v8_args.append('--experimental-wasm-eh')
     for arg in ['-fwasm-exceptions', '-fno-exceptions']:
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
 
@@ -1271,12 +1268,11 @@ int main()
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     if not self.is_wasm():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
-    self.require_v8()
+    self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    self.v8_args.append('--experimental-wasm-eh')
     for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
