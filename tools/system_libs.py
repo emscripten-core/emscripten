@@ -956,7 +956,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc'
     ]
 
@@ -973,6 +973,8 @@ class libc(MuslInternalLibrary,
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
+        # 'env' exclusion
+        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c', '__stack_chk_fail.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1086,9 +1088,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
         filenames=['getdents.c', 'gettid.c', 'utimes.c'])
-    libc_files += files_in_path(
-        path='system/lib/libc/musl/src/env',
-        filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',

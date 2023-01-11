@@ -6,6 +6,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -44,6 +45,11 @@ int main() {
   printf("setenv(X=Y) ret: %d\n", setenv("X=Y", "foo", 1));
   printf("unsetenv('') ret: %d\n", unsetenv(""));
   printf("unsetenv(X=Y) ret: %d\n", unsetenv("X=Y"));
+
+  clearenv();
+  printf("clearenv -> %p\n", environ);
+  assert(environ == NULL);
+  assert(getenv("PATH") == NULL);
 
   return 0;
 }
