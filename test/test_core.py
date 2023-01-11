@@ -6209,18 +6209,10 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_unary_literal.cpp')
 
   def test_env(self):
-    expected = read_file(test_file('env/output.txt'))
-    self.do_runf(test_file('env/src.c'), [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
-      expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
-    ])
+    self.do_core_test('test_env.c', regex=True)
 
   def test_environ(self):
-    expected = read_file(test_file('env/output-mini.txt'))
-    self.do_runf(test_file('env/src-mini.c'), [
-      expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src-mini.js')).replace('\\', '/'), # node, can find itself properly
-      expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
-    ])
+    self.do_core_test('test_environ.c', regex=True)
 
   def test_systypes(self):
     self.do_core_test('test_systypes.c')
