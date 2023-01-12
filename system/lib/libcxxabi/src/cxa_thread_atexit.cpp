@@ -113,8 +113,8 @@ extern "C" {
     return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
 #else
 #ifndef __EMSCRIPTEN__
-    // musl doesn't provide __cxa_thread_atexit_impl
-    // https://github.com/emscripten-core/emscripten/issues/15722
+    // Emscripten doesn't implement __cxa_thread_atexit_impl, so we can simply
+    // avoid this check.
     if (__cxa_thread_atexit_impl) {
       return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
     } else
