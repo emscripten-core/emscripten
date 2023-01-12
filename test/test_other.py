@@ -1307,9 +1307,9 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
-  def test_export_all_modularize(self):
+  def test_minimal_runtime_export_all_modularize(self):
     """
-    This test ensures that modularize and export all work simulatenously.
+    This test ensures that modularize and export all work simultaneously.
 
     In addition, it ensures that EXPORT_ALL is honored while using MINIMAL_RUNTIME.
     """

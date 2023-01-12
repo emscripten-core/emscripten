@@ -78,8 +78,7 @@ function updateMemoryViews() {
   HEAPU64 = new BigUint64Array(b);
 #endif
 
-#if MODULARIZE
-#if EXPORT_ALL
+#if MODULARIZE && EXPORT_ALL
   // Export the heap to be used outside of the WASM module.
   Module['HEAP8'] = HEAP8;
   Module['HEAP16'] = HEAP16;
@@ -92,7 +91,6 @@ function updateMemoryViews() {
 #if WASM_BIGINT
   Module['HEAP64'] = HEAP64;
   Module['HEAPU64'] = HEAPU64;
-#endif
 #endif
 #endif
 }
