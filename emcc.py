@@ -751,9 +751,12 @@ def make_js_executable(script):
     pass # can fail if e.g. writing the executable to /dev/null
 
 
-def do_split_module(wasm_file):
+def do_split_module(wasm_file, options):
   os.rename(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
+  if options.requested_debug:
+    # Tell wasm-split to preserve function names.
+    args += ['-g']
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
 
 
@@ -3192,7 +3195,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
-    do_split_module(wasm_target)
+    do_split_module(wasm_target, options)
 
   for f in generated_text_files_with_native_eols:
     tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
