@@ -884,7 +884,7 @@ class benchmark(common.RunnerCore):
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark', 'benchmark_ffis.cpp')), 'Total time:',
+    self.do_benchmark('native_functions', read_file(test_file('benchmark/benchmark_ffis.cpp')), 'Total time:',
                       output_parser=output_parser,
                       # Not minimal because this uses functions in library_browsers.js
                       emcc_args=['-sMINIMAL_RUNTIME=0'],
