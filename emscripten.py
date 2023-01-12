@@ -673,12 +673,13 @@ def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  for name in metadata.emJsFuncs:
-    send_items_map[name] = name
   for name in invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
-    send_items_map[name] = asmjs_mangle(name)
+    if name in metadata.emJsFuncs:
+      send_items_map[name] = name
+    else:
+      send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
 
