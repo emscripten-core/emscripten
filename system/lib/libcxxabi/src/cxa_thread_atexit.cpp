@@ -113,8 +113,8 @@ extern "C" {
     return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
 #else
 #ifndef __EMSCRIPTEN__
-    // Emscripten doesn't fully support weak undefined symbols yet
-    // https://github.com/emscripten-core/emscripten/issues/12819
+    // musl doesn't provide __cxa_thread_atexit_impl
+    // https://github.com/emscripten-core/emscripten/issues/15722
     if (__cxa_thread_atexit_impl) {
       return __cxa_thread_atexit_impl(dtor, obj, dso_symbol);
     } else
