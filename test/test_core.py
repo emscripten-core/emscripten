@@ -5780,7 +5780,7 @@ Module = {
   def test_utf8_textdecoder(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_runf(test_file('benchmark', 'benchmark_utf8.cpp'), 'OK.')
+    self.do_runf(test_file('benchmark/benchmark_utf8.cpp'), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5804,7 +5804,7 @@ Module = {
   def test_utf16_textdecoder(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
-    self.do_runf(test_file('benchmark', 'benchmark_utf16.cpp'), 'OK.')
+    self.do_runf(test_file('benchmark/benchmark_utf16.cpp'), 'OK.')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')
