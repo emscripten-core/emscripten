@@ -9350,6 +9350,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  def test_pthread_dlopen_many(self):
+    nthreads = 10
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-Wno-experimental')
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
+    for i in range(nthreads):
+      shutil.copyfile('liblib.so', f'liblib{i}.so')
+
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_runf(test_file('core/pthread/test_pthread_dlopen_many.c'),
+                 ['side module ctor', 'main done', 'side module atexit'],
+                 emcc_args=[f'-DNUM_THREADS={nthreads}'],
+                 assert_all=True)
+
+  @needs_dylink
+  @node_pthreads
   def test_pthread_dlsym(self):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
