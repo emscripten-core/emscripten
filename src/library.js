@@ -2264,14 +2264,41 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-  alarm__deps: ['raise', '$callUserCallback'],
-  alarm: function(seconds) {
-    setTimeout(function() {
-      callUserCallback(function() {
-        _raise({{{ cDefine('SIGALRM') }}});
-      });
-    }, seconds*1000);
+  $timers: {},
+
+  // Helper function for setitimer that registers timers with the eventloop.
+  // Timers always fire on the main thread, either directly from JS (here) or
+  // or when the main thread is busy waiting calling _emscripten_yield.
+  _setitimer_js__sig: 'iid',
+  _setitimer_js__proxy: 'sync',
+  _setitimer_js__deps: ['$timers', '$callUserCallback',
+                        '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js: function(which, timeout_ms) {
+#if RUNTIME_DEBUG
+    dbg('setitimer_js ' + which + ' timeout=' + timeout_ms);
+#endif
+    // First, clear any existing timer.
+    if (timers[which]) {
+      clearTimeout(timers[which].id);
+      delete timers[which];
+    }
+
+    // A timeout of zero simply cancels the current timeout so we have nothing
+    // more to do.
+    if (!timeout_ms) return 0;
+
+    var id = setTimeout(() => {
+#if ASSERTIONS
+      assert(which in timers);
+#endif
+      delete timers[which];
+#if RUNTIME_DEBUG
+      dbg('itimer fired: ' + which);
+#endif
+      callUserCallback(() => __emscripten_timeout(which, _emscripten_get_now()));
+    }, timeout_ms);
+    timers[which] = { id: id, timeout_ms: timeout_ms };
+    return 0;
   },
 
   // Helper for raise() to avoid signature mismatch failures:

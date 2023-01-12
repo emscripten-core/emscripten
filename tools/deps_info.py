@@ -51,7 +51,8 @@
 from tools.settings import settings
 
 _deps_info = {
-  'alarm': ['raise'],
+  'alarm': ['_emscripten_timeout'],
+  'setitimer': ['_emscripten_timeout'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],

@@ -46,8 +46,14 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
-void _emscripten_yield() {
-  // nop
+static void dummy(double now)
+{
+}
+
+weak_alias(dummy, _emscripten_check_timers);
+
+void _emscripten_yield(double now) {
+  _emscripten_check_timers(now);
 }
 
 int pthread_mutex_init(
@@ -403,7 +409,9 @@ void __unlock(void* ptr) {}
 // proper sleeps, so simulate a busy spin wait loop instead.
 void emscripten_thread_sleep(double msecs) {
   double start = emscripten_get_now();
-  while (emscripten_get_now() - start < msecs) {
-    // Do nothing.
-  }
+  double now = start;
+  do {
+    _emscripten_yield(now);
+    now = emscripten_get_now();
+  } while (now - start < msecs);
 }

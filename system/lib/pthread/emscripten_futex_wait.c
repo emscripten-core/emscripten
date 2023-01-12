@@ -64,7 +64,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
       // We were told to stop waiting, so stop.
       break;
     }
-    _emscripten_yield();
+    _emscripten_yield(now);
 
     // Check the value, as if we were starting the futex all over again.
     // This handles the following case:
@@ -116,7 +116,10 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return -EINVAL;
   }
 
-  _emscripten_yield();
+  // Pass 0 here, which means we don't have access to the current time in this
+  // function.  This tells _emscripten_yield to call emscripten_get_now if (and
+  // only if) it needs to know the time.
+  _emscripten_yield(0);
 
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
