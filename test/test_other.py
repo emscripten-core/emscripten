@@ -11666,6 +11666,20 @@ exec "$@"
     err = self.expect_fail([EMXX, '-sSIDE_MODULE', test_file('core/test_em_js.cpp')])
     self.assertContained('EM_JS is not supported in side modules', err)
 
+  def test_em_js_main_module(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
+    self.do_runf(test_file('core/test_em_js.cpp'))
+
+  def test_em_js_main_module_address(self):
+    # This works under static linking but is known to fail with dynamic linking
+    # See https://github.com/emscripten-core/emscripten/issues/18494
+    self.do_runf(test_file('other/test_em_js_main_module_address.c'))
+
+    self.set_setting('MAIN_MODULE', 2)
+    expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: function foo() { err("hello"); })'
+    self.do_runf(test_file('other/test_em_js_main_module_address.c'), expected, assert_returncode=NON_ZERO)
+
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
   # several .o files to test that emcc internally uses response files properly when calling llvmn-nm and wasm-ld.
   @is_slow_test
