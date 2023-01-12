@@ -34,6 +34,11 @@ See docs/process.md for more on how version tagging works.
   (e.g. `SDL_events.h`) you will now need to add `-sUSE_SDL` explicitly at
   compile time.  If you include the SDL headers with the directory name included
   (e.g. `SDL/SDL_events.h`) you will not be affected by this change. (#18443)
+- Significant improvements were made (in the version of LLVM associated with
+  this emsdk release) to the quality of DWARF debug info when building in
+  optimized mode. See https://reviews.llvm.org/D140373. Using the -O1 flag is
+  recommended if a program is too large or slow to debug with -O0 (although
+  -O0 is still better for debugging when feasible).
 
 3.1.29 - 01/03/23
 -----------------
