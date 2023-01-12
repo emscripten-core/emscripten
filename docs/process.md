@@ -149,9 +149,9 @@ How:
 The site is currently hosted in `gh-pages` branch of the separate [site
 repository][site_repo]. To update the docs, rebuild them and copy them into
 this repository.  There is a script that will perform these steps automatically:
-`tools/maint/update_docs.py`.  Just run this script with no arguments if the
-emscripten-site repository is checked out alongside emscripten itself, or pass
-the location of the checkout if not.
+[`tools/maint/update_docs.py`][update_docs].  Just run this script with no
+arguments if the emscripten-site repository is checked out alongside emscripten
+itself, or pass the location of the checkout if not.
 
 You will need the specific sphinx version installed, which you can do using
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
@@ -189,3 +189,4 @@ See notes above on installing sphinx.
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
 [flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
+[update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
