@@ -155,15 +155,14 @@ function updateMemoryViews() {
 #endif
 }
 
-var STACK_SIZE = {{{ STACK_SIZE }}};
 #if ASSERTIONS
-if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
+if (Module['STACK_SIZE']) assert({{{ STACK_SIZE }}} === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
 #endif
 
 {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
-assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
+assert(INITIAL_MEMORY >= {{{ STACK_SIZE }}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{ STACK_SIZE }}} + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
