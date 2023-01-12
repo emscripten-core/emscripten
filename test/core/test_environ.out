@@ -4,4 +4,4 @@ PATH=/
 PWD=/
 HOME=/home/web_user
 LANG=C.UTF-8
-_={{{ THIS_PROGRAM }}}
+_=.*(/test_environ.js|/this.program)
