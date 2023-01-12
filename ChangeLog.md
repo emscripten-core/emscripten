@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.30 (in development)
+3.1.31 (in development)
 -----------------------
+
+3.1.30 - 01/11/23
+-----------------
 - The default pthread stack size will now be set to match `-sSTACK_SIZE` by
   default.  Set `DEFAULT_PTHREAD_STACK_SIZE` explicitly to override this.
   (#18479)
