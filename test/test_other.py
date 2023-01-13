@@ -12817,6 +12817,7 @@ foo/version.txt
     self.do_other_test('test_itimer.c')
 
   @node_pthreads
+  @no_mac("Our Mac CI currently has too much contention to run this reliably")
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
