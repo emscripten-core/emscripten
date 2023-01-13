@@ -30,7 +30,6 @@ ignorePatterns:
   - "src/threadprofiler.js"
   - "src/cpuprofiler.js"
   - "src/memoryprofiler.js"
-  - "src/support.js"
   - "src/gl-matrix.js"
   - "src/headless.js"
   - "src/headlessCanvas.js"

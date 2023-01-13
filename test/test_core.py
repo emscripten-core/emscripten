@@ -7100,7 +7100,7 @@ void* operator new(size_t size) {
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
-    # test dyncall (and other runtime methods in support.js) can be exported
+    # test dyncall (and other runtime methods) can be exported
     self.emcc_args += ['-DEXPORTED']
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
