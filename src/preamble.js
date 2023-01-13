@@ -1141,10 +1141,6 @@ function createWasm() {
 var tempDouble;
 var tempI64;
 
-var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
-
-{{{ getNativeTypeSize }}}
-
 #include "runtime_debug.js"
 
 #if RETAIN_COMPILER_SETTINGS

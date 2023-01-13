@@ -3755,11 +3755,15 @@ mergeInto(LibraryManager.library, {
     };
   },
 
+  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
+  $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
   // demand.
   $STACK_SIZE: {{{ STACK_SIZE }}},
   $STACK_ALIGN: {{{ STACK_ALIGN }}},
+  $POINTER_SIZE: {{{ POINTER_SIZE }}},
 });
 
 function autoAddDeps(object, name) {
