@@ -3755,9 +3755,11 @@ mergeInto(LibraryManager.library, {
     };
   },
 
-  // We used to define this unconditionally as a global. Instead, we now define
-  // it here so folks can pull it in explicitly, on demand.
+  // We used to define these globals unconditionally in support code.
+  // Instead, we now define them here so folks can pull it in explicitly, on
+  // demand.
   $STACK_SIZE: {{{ STACK_SIZE }}},
+  $STACK_ALIGN: {{{ STACK_ALIGN }}},
 });
 
 function autoAddDeps(object, name) {
