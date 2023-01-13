@@ -9,7 +9,12 @@
 #include <endian.h>
 #include "syscall.h"
 
+#ifdef __EMSCRIPTEN__
+// The upstream version below is UB in C2x and rejected by clang.
+#define alignof(t) _Alignof(t)
+#else
 #define alignof(t) offsetof(struct { char c; t x; }, x)
+#endif
 
 #define W 1
 #define R 2
