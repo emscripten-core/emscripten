@@ -186,6 +186,7 @@ _deps_info = {
   'wgpuBufferGetMappedRange': ['malloc', 'free'],
   'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
+  '$stringToNewUTF8': ['malloc']
 }
 
 
