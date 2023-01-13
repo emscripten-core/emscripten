@@ -133,11 +133,17 @@ def make_invoke(sig):
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # Exceptions thrown from C++ exception will be integer numbers.
-  # longjmp will throw the number Infinity.
-  # Create a try-catch guard that rethrows the exception if anything else
-  # than a Number was thrown. To do that quickly and in a code size conserving
-  # manner, use the compact test "e !== e+0" to check if e was not a Number.
+  # Create a try-catch guard that rethrows the Emscripten EH exception, if any.
+  if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP == 'emscripten':
+    # Exceptions thrown from C++ will be an integer number and longjmp will throw
+    # the number Infinity. Use the compact and fast "e !== e+0" test to check if
+    # e was not a Number.
+    rethrow = 'if (e !== e+0) throw e;'
+    rethrow += '\n    _setThrew(1, 0);'
+  else:
+    rethrow = 'throw e;'
+    exceptional_ret = ''
+
   ret = '''\
 function invoke_%s(%s) {
   var sp = stackSave();
@@ -145,10 +151,9 @@ function invoke_%s(%s) {
     %s
   } catch(e) {
     stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);%s
+    %s%s
   }
-}''' % (sig, ','.join(args), body, exceptional_ret)
+}''' % (sig, ','.join(args), body, rethrow, exceptional_ret)
 
   return ret
 
