@@ -446,19 +446,25 @@ def check_sanity(force=False):
   sanity_file = cache.get_path('sanity.txt')
 
   def sanity_is_correct():
-    if os.path.exists(sanity_file):
+    sanity_data = None
+    # We can't simply check for the existence of sanity_file and then read from
+    # it here because we don't hold the cache lock yet and some other process
+    # could clear the cache between checking for, and reading from, the file.
+    try:
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data == expected:
-        logger.debug(f'sanity file up-to-date: {sanity_file}')
-        # Even if the sanity file is up-to-date we still need to at least
-        # check the llvm version. This comes at no extra performance cost
-        # since the version was already extracted and cached by the
-        # generate_sanity() call above.
-        if force:
-          perform_sanity_checks()
-        else:
-          check_llvm_version()
-        return True # all is well
+    except Exception:
+      pass
+    if sanity_data == expected:
+      logger.debug(f'sanity file up-to-date: {sanity_file}')
+      # Even if the sanity file is up-to-date we still need to at least
+      # check the llvm version. This comes at no extra performance cost
+      # since the version was already extracted and cached by the
+      # generate_sanity() call above.
+      if force:
+        perform_sanity_checks()
+      else:
+        check_llvm_version()
+      return True # all is well
     return False
 
   if sanity_is_correct():
