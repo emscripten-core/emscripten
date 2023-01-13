@@ -538,7 +538,7 @@ var LibraryDylink = {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // finalize alignments and verify them
-        memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
+        memAlign = Math.max(memAlign, {{{ STACK_ALIGN }}}); // we at least need stack alignment
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
         var tableBase = metadata.tableSize ? wasmTable.length : 0;
