@@ -3485,7 +3485,7 @@ mergeInto(LibraryManager.library, {
     checkStackCookie();
     if (e instanceof WebAssembly.RuntimeError) {
       if (_emscripten_stack_get_current() <= 0) {
-        err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to ' + STACK_SIZE + ')');
+        err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to ' + {{{ STACK_SIZE }}} + ')');
       }
     }
 #endif
@@ -3754,6 +3754,10 @@ mergeInto(LibraryManager.library, {
       this.freelist.push(id);
     };
   },
+
+  // We used to define this unconditionally as a global. Instead, we now define
+  // it here so folks can pull it in explicitly, on demand.
+  $STACK_SIZE: {{{ STACK_SIZE }}},
 });
 
 function autoAddDeps(object, name) {
