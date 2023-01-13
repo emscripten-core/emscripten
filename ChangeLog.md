@@ -20,9 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.31 (in development)
 -----------------------
-- The `STACK_SIZE`, and `STACK_ALIGN` JavaScript globals were removed by
-  default.  In debug builds a clear error is shown if you try to use these.
-  (#18503)
+- The `STACK_SIZE`, `STACK_ALIGN` and `POINTER_SIZE` JavaScript globals were
+  removed by default.  In debug builds a clear error is shown if you try to use
+  these. (#18503)
 
 3.1.30 - 01/11/23
 -----------------
