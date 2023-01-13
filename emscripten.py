@@ -108,10 +108,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-  return ident.replace('%', '$').replace('@', '_').replace('.', '_')
-
-
 def get_weak_imports(main_wasm):
   dylink_sec = webassembly.parse_dylink_section(main_wasm)
   for symbols in dylink_sec.import_info.values():
@@ -128,7 +124,7 @@ def update_settings_glue(wasm_file, metadata):
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
   else:
-    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata.imports]
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + metadata.imports
     syms = set(syms).difference(metadata.exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
