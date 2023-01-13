@@ -1244,7 +1244,13 @@ mergeInto(LibraryManager.library, {
 
 #if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
-  _emscripten_throw_longjmp: function() { throw Infinity; },
+  _emscripten_throw_longjmp: function() {
+#if EXCEPTION_STACK_TRACES
+    throw new EmscriptenSjLj;
+#else
+    throw Infinity;
+#endif
+  },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of

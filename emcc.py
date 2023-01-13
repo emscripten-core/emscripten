@@ -1927,11 +1927,17 @@ def phase_linker_setup(options, state, newargs):
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
 
-  # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
-  # implies full stack overflow checks.
   if settings.ASSERTIONS:
-    # However, we don't set this default in PURE_WASI, or when we are linking without standard
-    # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
+    # Exceptions are thrown with a stack trace by default when ASSERTIONS is
+    # set and when building with either -fexceptions or -fwasm-exceptions.
+    if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
+      exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
+    default_setting('EXCEPTION_STACK_TRACES', not settings.DISABLE_EXCEPTION_CATCHING or settings.WASM_EXCEPTIONS)
+
+    # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
+    # implies full stack overflow checks. However, we don't set this default in
+    # PURE_WASI, or when we are linking without standard libraries because
+    # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
     if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
@@ -2223,6 +2229,17 @@ def phase_linker_setup(options, state, newargs):
 
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
+
+  # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
+  settings.SUPPORTS_ES6_CLASSES = (settings.MIN_EDGE_VERSION >= 13 and
+                                   settings.MIN_FIREFOX_VERSION >= 45 and
+                                   settings.MIN_CHROME_VERSION >= 49 and
+                                   settings.MIN_SAFARI_VERSION >= 90000 and
+                                   settings.MIN_IE_VERSION == 0x7FFFFFFF)
+
+  if settings.EXCEPTION_STACK_TRACES and not settings.SUPPORTS_ES6_CLASSES:
+    diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
+    settings.EXCEPTION_STACK_TRACES = 0
 
   # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
   if not settings.WASM2JS:
@@ -2822,14 +2839,8 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
-  # When ASSERTIONS or EXCEPTION_STACK_TRACES is set, we include stack traces in
-  # Wasm exception objects using the JS API, which needs this C++ tag exported.
-  if settings.ASSERTIONS:
-    if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
-      exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
-    default_setting('EXCEPTION_STACK_TRACES', 1)
-  if settings.EXCEPTION_STACK_TRACES and settings.WASM_EXCEPTIONS:
-    settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
+  if settings.EXCEPTION_STACK_TRACES:
+    # EXCEPTION_STACK_TRACES implies EXPORT_EXCEPTION_HANDLING_HELPERS
     settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
 
   # Make `getExceptionMessage` and other necessary functions available for use.

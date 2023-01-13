@@ -232,9 +232,13 @@ var HAS_MAIN = false;
 var LINK_AS_CXX = false;
 
 // Set when some minimum browser version triggers doesn't support the
-// minimum set of ES6 featurs.  This triggers transpilation to ES5
+// minimum set of ES6 features.  This triggers transpilation to ES5
 // using closure compiler.
 var TRANSPILE_TO_ES5 = false;
+
+// Set to true when ES6 classes can safely be used.  This will cause
+// src/runtime_es6_classes.js to be included in the bundle.
+var SUPPORTS_ES6_CLASSES = false;
 
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
