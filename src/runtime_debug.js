@@ -49,7 +49,6 @@ function missingGlobal(sym, msg) {
 }
 
 missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
-missingGlobal('STACK_SIZE', 'Add STACK_SIZE to EXPORTED_RUNTIME_METHODS or $STACK_SIZE to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE');
 
 function missingLibrarySymbol(sym) {
   if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
