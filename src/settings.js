@@ -725,21 +725,22 @@ var DISABLE_EXCEPTION_THROWING = false;
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
-// longer do that, and exceptions work normally, which can be useful for libraries
-// or programs that don't need exit() to work.
-
+// longer do that, and exceptions work normally, which can be useful for
+// libraries or programs that don't need exit() to work.
+//
 // Emscripten uses an ExitStatus exception to halt when exit() is called.
 // With this option, we prevent that from showing up as an unhandled
 // exception.
 // [link]
 var NODEJS_CATCH_EXIT = true;
 
-// Catch unhandled rejections in node. Without this, node may print the error,
-// and that this behavior will change in future node, wait a few seconds, and
-// then exit with 0 (which hides the error if you don't read the log). With
-// this, we catch any unhandled rejection and throw an actual error, which will
-// make the process exit immediately with a non-0 return code.
-// This should be fixed in Node 15+.
+// Catch unhandled rejections in node. This only effect versions of node older
+// than 15.  Without this, old version node will print a warning, but exit
+// with a zero return code.  With this setting enabled, we handle any unhandled
+// rejection and throw an exception, which will cause  the process exit
+// immediately with a non-0 return code.
+// This not needed in Node 15+ so this setting will default to false if
+// MIN_NODE_VERSION is 150000 or above.
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
@@ -1784,6 +1785,12 @@ var MIN_EDGE_VERSION = 0x7FFFFFFF;
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_CHROME_VERSION = 75;
+
+// Specifies minimum node version to target for the generated code.  This is
+// distinct from the minimum version required run the emscripten compiler.
+// This version aligns with the current Ubuuntu TLS 20.04 (Focal).
+// Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
+var MIN_NODE_VERSION = 101900;
 
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little

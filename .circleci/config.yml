@@ -553,8 +553,11 @@ jobs:
       - install-node-version:
           node_version: "10.19.0"
       - run-tests:
-          title: "core2.test_hello_world"
-          test_targets: "core2.test_hello_world"
+          title: "selected subset"
+          test_targets: "
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            core2.test_hello_world"
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older
       # versions of node but not with the most recent version.
@@ -562,8 +565,14 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          title: "core2 subset"
-          test_targets: "-v core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_source_map core2.test_exceptions_wasm"
+          title: "selected subset"
+          test_targets: "-v
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            core2.test_pthread_create
+            core2.test_i64_invoke_bigint
+            core2.test_source_map
+            core2.test_exceptions_wasm"
       - upload-test-results
   test-other:
     executor: bionic
