@@ -104,7 +104,7 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'emscripten_fiber_swap',
+  'emscripten_fiber_swap', '__load_secondary_module',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
   '_dlopen_js', '__asyncjs__*'
 ]
@@ -706,6 +706,9 @@ def get_binaryen_passes():
     passes += ['--jspi']
     passes += ['--pass-arg=jspi-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
     passes += ['--pass-arg=jspi-exports@%s' % ','.join(settings.ASYNCIFY_EXPORTS)]
+    if settings.SPLIT_MODULE:
+      passes += ['--pass-arg=jspi-split-module']
+
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -2529,6 +2532,9 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
+
+  if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':

@@ -533,6 +533,17 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_load_secondary_module__sig: 'v',
+  emscripten_load_secondary_module: async function() {
+    Module['asm']['load_secondary_module_status'].value = 1;
+    var imports = {'primary': Module['asm']};
+    // Replace '.wasm' suffix with '.deferred.wasm'.
+    var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+    await new Promise((resolve) => {
+      instantiateAsync(null, deferred, imports, resolve);
+    });
+  },
+
   $Fibers__deps: ['$Asyncify'],
   $Fibers: {
     nextFiber: 0,
