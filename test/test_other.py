@@ -2906,14 +2906,7 @@ int f() {
 
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
-    expected = '''Init: 0
-Font: 0x1
-Sum: 0
-you should see two lines of text in different colors and a blue rectangle
-SDL_Quit called (and ignored)
-done.
-'''
-    self.do_runf(test_file('other/test_sdl_headless.c'), expected,  emcc_args=['-sHEADLESS'])
+    self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
 
   def test_preprocess(self):
     # Pass -Werror to prevent regressions such as https://github.com/emscripten-core/emscripten/pull/9661

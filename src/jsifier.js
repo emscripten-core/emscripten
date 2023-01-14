@@ -509,8 +509,7 @@ function ${name}(${args}) {
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
       includeFile('headlessCanvas.js');
-      print('\n');
-      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
+      includeFile('headless.js')
       print('}');
     }
     if (PROXY_TO_WORKER) {
