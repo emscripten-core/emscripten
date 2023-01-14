@@ -241,3 +241,7 @@ var ALL_INCOMING_MODULE_JS_API = [];
 var WEAK_IMPORTS = [];
 
 var STACK_FIRST = false;
+
+// True when createPreloadedFile() can be called. In that case we must include
+// the logic for preload plugins.
+var CREATE_PRELOADED_FILES = false;
