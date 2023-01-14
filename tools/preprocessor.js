@@ -59,7 +59,6 @@ load('utility.js');
 load('modules.js');
 load('parseTools.js');
 
-const fromHTML = read(shellFile);
-const toHTML = expandMacros ? processMacros(preprocess(fromHTML, shellFile)) : preprocess(fromHTML, shellFile);
+const toHTML = expandMacros ? processMacros(preprocess(shellFile)) : preprocess(shellFile);
 
 print(toHTML);

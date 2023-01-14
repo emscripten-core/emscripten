@@ -193,7 +193,6 @@ global.LibraryManager = {
           printErr('processing system library: ' + filename);
         }
       }
-      const src = read(filename);
       let origLibrary = undefined;
       let processed = undefined;
       // When we parse user libraries also set `__user` attribute
@@ -211,15 +210,16 @@ global.LibraryManager = {
         });
       }
       try {
-        processed = processMacros(preprocess(src, filename));
+        processed = processMacros(preprocess(filename));
         vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
+          const orig = read(filename);
           if (processed) {
             error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
           } else {
-            error(`original source:\n=============\n${src}\n=============`);
+            error(`original source:\n=============\n${orig}\n=============`);
           }
         } else {
           error('use -sVERBOSE to see more details');
