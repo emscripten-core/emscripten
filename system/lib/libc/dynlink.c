@@ -50,15 +50,19 @@ static struct dso * _Atomic head, * _Atomic tail;
 
 #ifdef _REENTRANT
 static thread_local struct dso* thread_local_tail;
-static pthread_rwlock_t lock;
+static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void dlsync_locked() {
+static void dlsync() {
   if (!thread_local_tail) {
     thread_local_tail = head;
   }
+  if (!thread_local_tail->next) {
+    return;
+  }
+  dbg("dlsync: catching up %p %p", thread_local_tail, tail);
   while (thread_local_tail->next) {
     struct dso* p = thread_local_tail->next;
-    dbg("dlsync_locked: %s mem_addr=%p "
+    dbg("dlsync: %s mem_addr=%p "
         "mem_size=%zu table_addr=%p table_size=%zu",
         p->name,
         p->mem_addr,
@@ -76,6 +80,7 @@ static void dlsync_locked() {
     }
     thread_local_tail = p;
   }
+  dbg("dlsync: done");
 }
 
 // This function is called from emscripten_yield which itself is called whenever
@@ -89,38 +94,31 @@ void _emscripten_thread_sync_code() {
   if (skip_dlsync) {
     return;
   }
-  skip_dlsync = true;
   ensure_init();
-  if (thread_local_tail != tail) {
-    dbg("emscripten_thread_sync_code: catching up %p %p", thread_local_tail, tail);
-    pthread_rwlock_rdlock(&lock);
-    dlsync_locked();
-    pthread_rwlock_unlock(&lock);
-    dbg("emscripten_thread_sync_code: done");
+  if (!thread_local_tail) {
+    thread_local_tail = head;
   }
-  skip_dlsync = false;
-}
-
-static void do_read_lock() {
-  skip_dlsync = true;
-  pthread_rwlock_rdlock(&lock);
+  if (thread_local_tail != tail) {
+    skip_dlsync = true;
+    dlsync();
+    skip_dlsync = false;
+  }
 }
 
 static void do_write_lock() {
   // Once we have the lock we want to avoid automatic code sync as that would
   // result in a deadlock.
   skip_dlsync = true;
-  pthread_rwlock_wrlock(&lock);
+  pthread_mutex_lock(&write_lock);
 }
 
-static void do_unlock() {
-  pthread_rwlock_unlock(&lock);
+static void do_write_unlock() {
+  pthread_mutex_unlock(&write_lock);
   skip_dlsync = false;
 }
 #else
-#define do_unlock()
-#define do_read_lock()
 #define do_write_lock()
+#define do_write_unlock()
 #endif
 
 static void error(const char* fmt, ...) {
@@ -190,14 +188,14 @@ static void dlopen_js_onsuccess(struct dso* dso, struct async_data* data) {
       dso->mem_addr,
       dso->mem_size);
   load_library_done(dso);
-  do_unlock();
+  do_write_lock();
   data->onsuccess(data->user_data, dso);
   free(data);
 }
 
 static void dlopen_js_onerror(struct dso* dso, struct async_data* data) {
   dbg("dlopen_js_onerror: dso=%p", dso);
-  do_unlock();
+  do_write_unlock();
   data->onerror(data->user_data);
   free(dso);
   free(data);
@@ -219,7 +217,7 @@ static void ensure_init() {
     load_library_done(p);
     assert(head);
   }
-  do_unlock();
+  do_write_unlock();
 }
 
 void* dlopen(const char* file, int flags) {
@@ -235,7 +233,7 @@ void* dlopen(const char* file, int flags) {
   do_write_lock();
 #ifdef _REENTRANT
   // Make sure we are in sync before loading any new DSOs.
-  dlsync_locked();
+  dlsync();
 #endif
 
   /* Search for the name to see if it's already loaded */
@@ -260,8 +258,9 @@ void* dlopen(const char* file, int flags) {
   dbg("dlopen_js: success: %p", p);
   load_library_done(p);
 end:
-  do_unlock();
+  do_write_unlock();
   pthread_setcancelstate(cs, 0);
+  dbg("dlopen: %s done", file);
   return p;
 }
 
@@ -275,7 +274,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   do_write_lock();
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
-    do_unlock();
+    do_write_unlock();
     onerror(user_data);
     return;
   }
@@ -297,9 +296,7 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
     return 0;
   }
   void* res;
-  do_read_lock();
   res = _dlsym_js(p, s);
-  do_unlock();
   dbg("__dlsym done dso:%p res:%p", p, res);
   return res;
 }
