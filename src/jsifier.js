@@ -453,7 +453,11 @@ function ${name}(${args}) {
     item.JS = addFromLibrary(item, TOP_LEVEL);
   }
 
-  // Final combiner
+  function includeFile(fileName) {
+    print(`// include: ${fileName}`);
+    print(processMacros(preprocess(read(fileName), fileName)));
+    print(`// end include: ${fileName}`);
+  }
 
   function finalCombiner() {
     const splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
@@ -478,10 +482,10 @@ function ${name}(${args}) {
     itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
-    print(processMacros(preprocess(read(shellFile), shellFile)));
+    includeFile(shellFile);
 
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
-    print(processMacros(preprocess(read(preFile), preFile)));
+    includeFile(preFile);
 
     const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
@@ -496,7 +500,7 @@ function ${name}(${args}) {
     }
 
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
-      print(preprocess(read('base64Utils.js')));
+      includeFile('base64Utils.js');
     }
 
     if (abortExecution) throw Error('Aborting compilation due to previous errors');
@@ -508,25 +512,25 @@ function ${name}(${args}) {
 
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
-      print(read('headlessCanvas.js'));
+      includeFile('headlessCanvas.js');
       print('\n');
       print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
     if (PROXY_TO_WORKER) {
       print('if (ENVIRONMENT_IS_WORKER) {\n');
-      print(read('webGLWorker.js'));
-      print(processMacros(preprocess(read('proxyWorker.js'), 'proxyWorker.js')));
+      includeFile('webGLWorker.js');
+      includeFile('proxyWorker.js');
       print('}');
     }
     if (DETERMINISTIC) {
-      print(read('deterministic.js'));
+      includeFile('deterministic.js');
     }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    print(processMacros(preprocess(read(postFile), postFile)));
+    includeFile(postFile);
 
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
+    print('//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
       warnings: warnings,
       ATINITS: ATINITS.join('\n'),
