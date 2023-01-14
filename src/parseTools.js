@@ -34,9 +34,8 @@ function processMacros(text) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-// Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
-function preprocess(text, filenameHint) {
+function preprocess(filename) {
+  let text = read(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
@@ -56,8 +55,8 @@ function preprocess(text, filenameHint) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filenameHint;
-  const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
+  currentlyParsedFilename = filename;
+  const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
@@ -94,7 +93,7 @@ function preprocess(text, filenameHint) {
               }
             }
             const after = trimmed.substring(trimmed.indexOf(' '));
-            const truthy = !!vm.runInThisContext(after, { filename: filenameHint, lineOffset: i, columnOffset: line.indexOf(after) });
+            const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
             showStack.push(truthy ? SHOW : IGNORE);
           } else if (first === '#include') {
             if (showCurrentLine()) {
@@ -102,8 +101,7 @@ function preprocess(text, filenameHint) {
               if (filename.startsWith('"')) {
                 filename = filename.substr(1, filename.length - 2);
               }
-              const included = read(filename);
-              const result = preprocess(included, filename);
+              const result = preprocess(filename);
               if (result) {
                 ret += `// include: ${filename}\n`;
                 ret += result;
@@ -123,14 +121,14 @@ function preprocess(text, filenameHint) {
             showStack.pop();
           } else if (first === '#warning') {
             if (showCurrentLine()) {
-              printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
             }
           } else if (first === '#error') {
             if (showCurrentLine()) {
-              error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+              error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
             }
           } else {
-            throw new Error(`${filenameHint}:${i + 1}: Unknown preprocessor directive ${first}`);
+            throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
           }
         } else {
           if (showCurrentLine()) {
@@ -152,7 +150,7 @@ function preprocess(text, filenameHint) {
         }
       }
     }
-    assert(showStack.length == 0, `preprocessing error in file ${filenameHint}, \
+    assert(showStack.length == 0, `preprocessing error in file ${filename}, \
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {

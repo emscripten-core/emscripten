@@ -455,7 +455,7 @@ function ${name}(${args}) {
 
   function includeFile(fileName) {
     print(`// include: ${fileName}`);
-    print(processMacros(preprocess(read(fileName), fileName)));
+    print(processMacros(preprocess(fileName)));
     print(`// end include: ${fileName}`);
   }
 
