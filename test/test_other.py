@@ -2026,7 +2026,7 @@ int f() {
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
 
   @node_pthreads
-  def test_zzz_libpng_with_pthreads(self):
+  def test_libpng_with_pthreads(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf(test_file('third_party/libpng/pngtest.c'), 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-sUSE_PTHREADS'])
