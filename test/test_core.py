@@ -7098,7 +7098,7 @@ void* operator new(size_t size) {
     self.do_runf(test_file('core/test_ccall.cpp'), 'true')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall', '$ASSERTIONS'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
     # test dyncall (and other runtime methods) can be exported
     self.emcc_args += ['-DEXPORTED']
@@ -8593,16 +8593,14 @@ Module['onRuntimeInitialized'] = function() {
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
         // Globals
-        if (ASSERTIONS) {
-          console.log(typeof MEMFS);
-          console.log(IDBFS);
-          console.log(NODEFS);
-          FS.mkdir('/working1');
-          try {
-            FS.mount(IDBFS, {}, '/working1');
-          } catch (e) {
-            console.log('|' + e + '|');
-          }
+        console.log(typeof MEMFS);
+        console.log(IDBFS);
+        console.log(NODEFS);
+        FS.mkdir('/working1');
+        try {
+          FS.mount(IDBFS, {}, '/working1');
+        } catch (e) {
+          console.log('|' + e + '|');
         }
       };
     ''')
@@ -9599,6 +9597,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-lembind',
       '-sASYNCIFY',
       '-sASYNCIFY_IMPORTS=["sleep_and_return"]',
+      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
     ]
     self.emcc_args += args

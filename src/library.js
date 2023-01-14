@@ -3766,6 +3766,7 @@ mergeInto(LibraryManager.library, {
   $STACK_SIZE: {{{ STACK_SIZE }}},
   $STACK_ALIGN: {{{ STACK_ALIGN }}},
   $POINTER_SIZE: {{{ POINTER_SIZE }}},
+  $ASSERTIONS: {{{ ASSERTIONS }}},
 });
 
 function autoAddDeps(object, name) {
