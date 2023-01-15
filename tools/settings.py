@@ -156,8 +156,8 @@ class SettingsManager:
   def dict(self):
     return self.attrs
 
-  def external_dict(self):
-    external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS}
+  def external_dict(self, skip_keys={}): # noqa
+    external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS and k not in skip_keys}
     # Only the names of the legacy settings are used by the JS compiler
     # so we can reduce the size of serialized json by simplifying this
     # otherwise complex value.

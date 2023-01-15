@@ -1104,3 +1104,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // or can use .subarray() otherwise.
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
 }
+
+function preJS() {
+  let result = '';
+  for (const fileName of PRE_JS_FILES) {
+    result += preprocess(fileName);
+  }
+  return result;
+}

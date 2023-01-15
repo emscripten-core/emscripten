@@ -526,6 +526,10 @@ function ${name}(${args}) {
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
     includeFile(postFile);
 
+    for (const fileName of POST_JS_FILES) {
+      includeFile(fileName);
+    }
+
     print('//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
       warnings: warnings,
