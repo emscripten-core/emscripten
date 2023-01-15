@@ -3763,7 +3763,7 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  return_value = settings.EXPORT_NAME
+  return_value = 'Module'
   if settings.WASM_ASYNC_COMPILATION:
     return_value += '.ready'
   if not settings.EXPORT_READY_PROMISE:
@@ -3775,7 +3775,7 @@ def modularize():
 
   src = '''
 %(maybe_async)sfunction(config) {
-  var %(EXPORT_NAME)s = config || {};
+  var Module = config || {};
 
 %(src)s
 
@@ -3783,7 +3783,6 @@ def modularize():
 }
 ''' % {
     'maybe_async': async_emit,
-    'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
     'return_value': return_value
   }
