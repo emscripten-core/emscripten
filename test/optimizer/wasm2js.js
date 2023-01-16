@@ -1,5 +1,5 @@
 // EMSCRIPTEN_START_ASM
-function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+function instantiate(wasmImports, wasmMemory, wasmTable) {
 
 var helpee = 12;
 
@@ -449,7 +449,7 @@ return asmFunc({
     'Infinity': Infinity,
     'Math': Math
   },
-  asmLibraryArg,
+  wasmImports,
   wasmMemory.buffer
 )
 

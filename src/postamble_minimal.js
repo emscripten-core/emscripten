@@ -99,10 +99,10 @@ function initRuntime(asm) {
 
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
-  'a': asmLibraryArg,
+  'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-  'env': asmLibraryArg
-  , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+  'env': wasmImports,
+  '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
 

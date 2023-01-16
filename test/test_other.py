@@ -7583,17 +7583,19 @@ int main() {
     filename = test_file('other/metadce', filename)
     expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
-    # Run once without closure and parse output to find asmLibraryArg
+    # Run once without closure and parse output to find wasmImports
     build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
+    # TODO(sbc): Find a way to do that that doesn't depend on internal details of
+    # the generated code.
     js = read_file('a.out.js')
-    start = js.find('asmLibraryArg = ')
-    assert start != -1
+    start = js.find('wasmImports = ')
+    self.assertNotEqual(start, -1)
     end = js.find('}', start)
-    assert end != -1
+    self.assertNotEqual(end, -1)
     start = js.find('{', start)
-    assert start != -1
+    self.assertNotEqual(start, -1)
     relevant = js[start + 2:end - 1]
     relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
     sent = [x.split(':')[0].strip() for x in relevant]

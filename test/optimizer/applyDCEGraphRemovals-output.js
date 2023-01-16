@@ -1,6 +1,6 @@
 var name;
 
-var asmLibraryArg = {
+var wasmImports = {
  "save1": 1,
  "save2": 2
 };

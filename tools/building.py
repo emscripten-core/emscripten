@@ -757,7 +757,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     # This means that any usages of data symbols within the JS or in the side modules can/will keep
     # these exports alive on the wasm module.
     # This is important today for weak data symbols that are defined by the main and the side module
-    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to asmLibraryArg
+    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to wasmImports
     # when the main module is loaded.  If this doesn't happen then the symbols in the side module
     # will take precedence.
     exports = settings.WASM_EXPORTS

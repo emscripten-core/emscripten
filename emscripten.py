@@ -773,12 +773,12 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   module = []
 
-  module.append('var asmLibraryArg = %s;\n' % sending)
+  module.append('var wasmImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
     # instrumenting imports is used in asyncify in two ways: to add assertions
     # that check for proper import use, and for ASYNCIFY=2 we use them to set up
     # the Promise API on the import side.
-    module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
+    module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
 
   if not settings.MINIMAL_RUNTIME:
     module.append("var asm = createWasm();\n")
