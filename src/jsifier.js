@@ -271,10 +271,19 @@ function ${name}(${args}) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          const target = `Module['${mangled}']`;
+          // Create a stub for this symbol which can later be replaced by the
+          // dynamic linker.  If this stub is called before the symbol is
+          // resolved assert in debug builds or trap in release builds.
+          if (ASYNCIFY) {
+            // See the definition of asyncifyStubs in preamble.js for why this
+            // is needed.
+            target = `asyncifyStubs['${symbol}']`;
+          } else {
+            target = `wasmImports['${symbol}']`;
+          }
           let assertion = '';
           if (ASSERTIONS) {
-            assertion += `if (!${target}) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
+            assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
           }
           const functionBody = assertion + `return ${target}.apply(null, arguments);`;
           LibraryManager.library[symbol] = new Function(functionBody);
@@ -426,6 +435,9 @@ function ${name}(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
+        if (ASYNCIFY) {
+          contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
+        }
       }
 
       let commentText = '';

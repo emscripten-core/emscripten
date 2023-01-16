@@ -424,7 +424,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     out.write(normalize_line_endings(pre))
     pre = None
 
-    sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
     if settings.MINIMAL_RUNTIME:
@@ -432,7 +431,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
         post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
       receiving = ''
 
-    module = create_module(sending, receiving, invoke_funcs, metadata)
+    module = create_module(receiving, invoke_funcs, metadata, forwarded_json['librarySymbols'])
 
     write_output_file(out, module)
 
@@ -671,7 +670,7 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map[s] = s
 
 
-def create_sending(invoke_funcs, metadata):
+def create_sending(invoke_funcs, metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
@@ -684,6 +683,28 @@ def create_sending(invoke_funcs, metadata):
       send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
+
+  if settings.MAIN_MODULE:
+    # When including dynamic linking support, also add any JS library functions
+    # that are part of EXPORTED_FUNCTIONS (or in the case of MAIN_MODULE=1 add
+    # all JS library functions).  This allows `dlsym(RTLD_DEFAULT)` to lookup JS
+    # library functions, since `wasmImports` acts as the global symbol table.
+    wasm_exports = set(metadata.exports)
+    library_symbols = set(library_symbols)
+    if settings.MAIN_MODULE == 1:
+      for f in library_symbols:
+        if shared.is_c_symbol(f):
+          demangled = shared.demangle_c_symbol_name(f)
+          if demangled in wasm_exports:
+            continue
+          send_items_map[demangled] = f
+    else:
+      for f in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
+        if f in library_symbols and shared.is_c_symbol(f):
+          demangled = shared.demangle_c_symbol_name(f)
+          if demangled in wasm_exports:
+            continue
+          send_items_map[demangled] = f
 
   sorted_keys = sorted(send_items_map.keys())
   return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
@@ -720,10 +741,10 @@ def make_export_wrappers(exports, delay_assignment):
     elif delay_assignment:
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.
-      wrapper += '''function() {
-  return (%(mangled)s = %(exported)sModule["asm"]["%(name)s"]).apply(null, arguments);
-};
-''' % {'mangled': mangled, 'name': name, 'exported': exported}
+      wrapper += f'''function() {{
+  return ({mangled} = {exported}Module["asm"]["{name}"]).apply(null, arguments);
+}};
+'''
     else:
       wrapper += 'asm["%s"]' % name
 
@@ -771,11 +792,12 @@ def create_receiving(exports):
     return '\n'.join(receiving) + '\n'
 
 
-def create_module(sending, receiving, invoke_funcs, metadata):
+def create_module(receiving, invoke_funcs, metadata, library_symbols):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
   module = []
 
+  sending = create_sending(invoke_funcs, metadata, library_symbols)
   module.append('var wasmImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
     # instrumenting imports is used in asyncify in two ways: to add assertions

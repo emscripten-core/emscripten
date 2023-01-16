@@ -1100,6 +1100,25 @@ function getUnsharedTextDecoderView(heap, start, end) {
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
 }
 
+function getEntryFunction() {
+  var entryFunction = 'main';
+  if (STANDALONE_WASM) {
+    if (EXPECT_MAIN) {
+      entryFunction = '_start';
+    } else {
+      entryFunction = '_initialize';
+    }
+  } else if (PROXY_TO_PTHREAD) {
+    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+    // that will call the user's real main() for the application.
+    entryFunction = '_emscripten_proxy_main';
+  }
+  if (MAIN_MODULE) {
+    return `resolveGlobalSymbol('${entryFunction}');`
+  }
+  return '_' + entryFunction;
+}
+
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {

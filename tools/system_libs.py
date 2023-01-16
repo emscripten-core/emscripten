@@ -1982,7 +1982,7 @@ def handle_reverse_deps(input_files):
     symbolses.append({'defs': set(), 'undefs': set()})
 
   # depend on exported functions
-  for export in settings.EXPORTED_FUNCTIONS:
+  for export in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
     if settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
     symbolses[0]['undefs'].add(demangle_c_symbol_name(export))

@@ -1223,4 +1223,13 @@ function runMemoryInitializer() {
 }
 #endif // MEM_INIT_IN_WASM == 0
 
+#if MAIN_MODULE && ASYNCIFY
+// With MAIN_MODULE + ASYNCIFY the normal method of placing stub functions in
+// wasmImports for as-yet-undefined symbols doesn't work since ASYNCIFY then
+// wraps these stub functions and we can't then replace them directly.  Instead
+// the stub functions call into `asyncifyStubs` which gets populated by the
+// dynamic linker as symbols are loaded.
+var asyncifyStubs = {};
+#endif
+
 // === Body ===
