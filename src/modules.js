@@ -444,7 +444,7 @@ function exportRuntime() {
   const exports = runtimeElements.map(maybeExport);
   const results = exports.filter((name) => name);
 
-  if (ASSERTIONS) {
+  if (ASSERTIONS && !EXPORT_ALL) {
     const unusedLibSymbols = getUnusedLibarySymbols();
     if (unusedLibSymbols.size) {
       results.push(addMissingLibraryStubs(unusedLibSymbols));
@@ -457,13 +457,8 @@ function exportRuntime() {
       }
     }
 
-<<<<<<< HEAD
     if (unexported.length || unusedLibSymbols.size) {
       let unexportedStubs = 'var unexportedSymbols = [\n';
-=======
-    if (!MINIMAL_RUNTIME && unexported.length) {
-      unexportedStubs += 'var unexportedRuntimeSymbols = [\n';
->>>>>>> 8eaba1561 (Remove unexported getter setup for MINIMAL_RUNTIME case)
       for (const sym of unexported) {
         unexportedStubs += `  '${sym}',\n`;
       }

@@ -1334,7 +1334,6 @@ int f() {
 
       import Test from './test.mjs';
       async function main() {
-        console.log(Test);
         const mod = await Test();
         mod._libf1();
         mod._libf2();

@@ -56,6 +56,12 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
   wasmMemory, wasmTable;
 
+{{{ (function() {
+  global.assignToModuleIfExportAll = function(x) {
+    return MODULARIZE && EXPORT_ALL ? `Module['${x}'] =` : '';
+  };
+  return null;
+})(); }}}
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
@@ -63,35 +69,19 @@ function updateMemoryViews() {
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 #if SUPPORT_BIG_ENDIAN
-  HEAP_DATA_VIEW = new DataView(b);
+  {{{ assignToModuleIfExportAll('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
 #endif
-  HEAP8 = new Int8Array(b);
-  HEAP16 = new Int16Array(b);
-  HEAP32 = new Int32Array(b);
-  HEAPU8 = new Uint8Array(b);
-  HEAPU16 = new Uint16Array(b);
-  HEAPU32 = new Uint32Array(b);
-  HEAPF32 = new Float32Array(b);
-  HEAPF64 = new Float64Array(b);
+  {{{ assignToModuleIfExportAll('HEAP8') }}} HEAP8 = new Int8Array(b);
+  {{{ assignToModuleIfExportAll('HEAP16') }}} HEAP16 = new Int16Array(b);
+  {{{ assignToModuleIfExportAll('HEAP32') }}} HEAP32 = new Int32Array(b);
+  {{{ assignToModuleIfExportAll('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
+  {{{ assignToModuleIfExportAll('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
+  {{{ assignToModuleIfExportAll('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
+  {{{ assignToModuleIfExportAll('HEAPF32') }}} HEAPF32 = new Float32Array(b);
+  {{{ assignToModuleIfExportAll('HEAPF64') }}} HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
-  HEAP64 = new BigInt64Array(b);
-  HEAPU64 = new BigUint64Array(b);
-#endif
-
-#if MODULARIZE && EXPORT_ALL
-  // Export the heap to be used outside of the WASM module.
-  Module['HEAP8'] = HEAP8;
-  Module['HEAP16'] = HEAP16;
-  Module['HEAP32'] = HEAP32;
-  Module['HEAPU8'] = HEAPU8;
-  Module['HEAPU16'] = HEAPU16;
-  Module['HEAPU32'] = HEAPU32;
-  Module['HEAPF32'] = HEAPF32;
-  Module['HEAPF64'] = HEAPF64;
-#if WASM_BIGINT
-  Module['HEAP64'] = HEAP64;
-  Module['HEAPU64'] = HEAPU64;
-#endif
+  {{{ assignToModuleIfExportAll('HEAP64') }}} HEAP64 = new BigInt64Array(b);
+  {{{ assignToModuleIfExportAll('HEAPU64') }}} HEAPU64 = new BigUint64Array(b);
 #endif
 }
 
